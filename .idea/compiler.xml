@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <bytecodeTargetLevel>
+      <module name="common_tools_main" target="1.8" />
+      <module name="common_tools_test" target="1.8" />
+      <module name="crypto_main" target="1.8" />
+      <module name="crypto_test" target="1.8" />
+      <module name="uniclient_main" target="1.8" />
+      <module name="uniclient_test" target="1.8" />
+      <module name="universa_core_main" target="1.8" />
+      <module name="universa_core_test" target="1.8" />
+      <module name="universa_main" target="1.8" />
+      <module name="universa_test" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common_tools/common_tools.iml" filepath="$PROJECT_DIR$/.idea/modules/common_tools/common_tools.iml" group="common_tools" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common_tools/common_tools_main.iml" filepath="$PROJECT_DIR$/.idea/modules/common_tools/common_tools_main.iml" group="common_tools" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common_tools/common_tools_test.iml" filepath="$PROJECT_DIR$/.idea/modules/common_tools/common_tools_test.iml" group="common_tools" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/crypto/crypto.iml" filepath="$PROJECT_DIR$/.idea/modules/crypto/crypto.iml" group="crypto" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/crypto/crypto_main.iml" filepath="$PROJECT_DIR$/.idea/modules/crypto/crypto_main.iml" group="crypto" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/crypto/crypto_test.iml" filepath="$PROJECT_DIR$/.idea/modules/crypto/crypto_test.iml" group="crypto" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient.iml" group="uniclient" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient_main.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient_main.iml" group="uniclient" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient_test.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient_test.iml" group="uniclient" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa.iml" filepath="$PROJECT_DIR$/.idea/modules/universa.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_core.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_core.iml" group="universa_core" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_core_main.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_core_main.iml" group="universa_core" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_core_test.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_core_test.iml" group="universa_core" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_main.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_main.iml" group="universa" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_test.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_test.iml" group="universa" />
+    </modules>
+  </component>
+</project>

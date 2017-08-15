@@ -1,0 +1,11 @@
+rootProject.name = 'uniclient'
+include ':common_tools'
+project(':common_tools').projectDir = new File(settingsDir, '../common_tools')
+include ':crypto'
+project(':crypto').projectDir = new File(settingsDir, '../crypto')
+include ':universa_core'
+project(':universa_core').projectDir = new File(settingsDir, '../universa_core')
+
+
+
+
