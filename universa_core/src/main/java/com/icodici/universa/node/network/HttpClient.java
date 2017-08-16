@@ -31,6 +31,11 @@ public class HttpClient {
             this.code = code;
             this.data = data;
         }
+
+        @Override
+        public String toString() {
+            return ""+code+": "+data;
+        }
     }
 
     private String url;

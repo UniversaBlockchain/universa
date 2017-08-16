@@ -13,12 +13,15 @@ import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Arrays.asList;
 import static net.sergeych.tools.JsonTool.toJson;
@@ -30,19 +33,23 @@ public class CLIMain {
     private static OptionParser parser;
     private static OptionSet options;
     private static boolean testMode;
-    private static boolean useJson = false;
 
-    private static final List<String> messages = new ArrayList<>();
-    private static final List<Binder> errors = new ArrayList<>();
+    private static Reporter reporter = new Reporter();
+    private static ClientNetwork clientNetwork;
+    private static List<String> keyFileNames;
+    private static Set<PrivateKey> privateKeys;
 
     static public void main(String[] args) throws IOException {
 //        args = new String[]{"-g", "longkey", "-s", "4096"};
+        // when we run untitests, it is important
+        reporter.clear();
         parser = new OptionParser() {
             {
                 acceptsAll(asList("?", "h", "help"), "show help").forHelp();
-                acceptsAll(asList("g", "generate"), "generate new key pair")
+                acceptsAll(asList("g", "generate"), "generate new key pair and store in a files starting " +
+                        "with a given prefix")
                         .withRequiredArg().ofType(String.class)
-                        .describedAs("filename");
+                        .describedAs("name_prefix");
                 accepts("s", "with -g, specify key strength")
                         .withRequiredArg()
                         .ofType(Integer.class)
@@ -51,6 +58,13 @@ public class CLIMain {
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file.yml");
                 acceptsAll(asList("j", "json"), "return result in json format");
+                acceptsAll(asList("network"), "check network status");
+                acceptsAll(asList("k", "keys"), "list of comma-separated private key files to" +
+                        "sign contract with, if appropriated")
+                        .withRequiredArg().ofType(String.class)
+                        .withValuesSeparatedBy(",").describedAs("key_file");
+//                acceptsAll(asList("show", "s"), "show contract")
+//                        .withRequiredArg().ofType(String.class)
             }
         };
         try {
@@ -60,9 +74,23 @@ public class CLIMain {
                 usage(null);
             }
 
-            if( options.has("j")) {
-                useJson = true;
+            if(options.has("k")) {
+                keyFileNames = (List<String>) options.valuesOf("k");
             }
+
+            if (options.has("j")) {
+                reporter.setJsonMode(true);
+            }
+
+            if (options.has("network")) {
+                ClientNetwork n = getClientNetwork();
+                int total = n.size();
+                int active = n.checkNetworkState(reporter);
+                reporter.message("network availablity: " + active + "/" + total);
+                reporter.message("status: suspended for maintenance");
+                finish();
+            }
+
             if (options.has("g")) {
                 generateKeyPair();
                 return;
@@ -77,10 +105,8 @@ public class CLIMain {
         } catch (OptionException e) {
             usage("Unrecognized parameter: " + e.getMessage());
         } catch (Finished e) {
-            System.out.println(toJson(Binder.fromKeysValues(
-                    "messages", messages,
-                    "errors", errors
-            )));
+            if( reporter.isJsonMode())
+                System.out.println(reporter.reportJson());
         } catch (Exception e) {
             e.printStackTrace();
             usage(e.getMessage());
@@ -92,13 +118,14 @@ public class CLIMain {
     private static void createContract() throws IOException {
         String source = (String) options.valueOf("c");
         Contract c = Contract.fromYamlFile(source);
+        getPrivateKeys().forEach(k -> c.addSignerKey(k));
         byte[] data = c.seal();
         // try sign
         String contractFileName = source.replaceAll("\\.(yml|yaml)$", ".unic");
         try (FileOutputStream fs = new FileOutputStream(contractFileName)) {
             fs.write(data);
         }
-        report("created contract file: "+ contractFileName);
+        report("created contract file: " + contractFileName);
         checkContract(c);
         finish();
     }
@@ -116,27 +143,11 @@ public class CLIMain {
     }
 
     private static void report(String message) {
-        if( !useJson )
-            System.out.println(message);
-        messages.add(message);
+        reporter.message(message);
     }
 
     private static void addError(String code, String object, String message) {
-        if( useJson ) {
-            errors.add(Binder.fromKeysValues(
-                    "code", code,
-                    "object", object,
-                    "message", message
-            ));
-        }
-        else {
-            String msg = "** ERROR: " + code;
-            if (object != null && !object.isEmpty())
-                msg += " in " + object;
-            if (message != null && !message.isEmpty())
-                msg += ": " + message;
-            System.out.println(msg);
-        }
+        reporter.error(code,object,message);
     }
 
     private static void generateKeyPair() throws IOException {
@@ -167,6 +178,27 @@ public class CLIMain {
 
     public static void setTestMode() {
         testMode = true;
+    }
+
+    public static Reporter getReporter() {
+        return reporter;
+    }
+
+    public static synchronized ClientNetwork getClientNetwork() {
+        if( clientNetwork == null )
+            clientNetwork = new ClientNetwork();
+        return clientNetwork;
+    }
+
+    public static synchronized Set<PrivateKey> getPrivateKeys() throws IOException {
+        if( privateKeys == null ) {
+            privateKeys = new HashSet<>();
+            for(String fileName: keyFileNames) {
+                PrivateKey pk = new PrivateKey(Do.read(fileName));
+                privateKeys.add(pk);
+            }
+        }
+        return privateKeys;
     }
 
     public static class Finished extends RuntimeException {
