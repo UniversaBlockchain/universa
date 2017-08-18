@@ -20,6 +20,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Collection;
@@ -90,13 +91,18 @@ public class NetworkBuilder {
         }
 
         /**
-         * Setup a network using this instance as a local node and others as remote ones. rootPath must
-         * be set before calling this method.
+         * Setup a network using this instance as a local node and others as remote ones. rootPath must be set before
+         * calling this method.
          *
          * @return
          */
         Network buildNetowrk() throws SQLException, IOException, TimeoutException, InterruptedException {
-            PrivateKey privateKey = new PrivateKey(Do.read(new FileInputStream(rootPath + "/tmp/" + nodeId + ".private.unikey")));
+            String privateKeyFileName = rootPath + "/tmp/" + nodeId + ".private.unikey";
+            if (!new File(privateKeyFileName).exists())
+                privateKeyFileName = rootPath + "/tmp/pkey";
+            if (!new File(privateKeyFileName).exists())
+                throw new FileNotFoundException("no private key file for the node found");
+            PrivateKey privateKey = new PrivateKey(Do.read(new FileInputStream(privateKeyFileName)));
             Network network = new Network();
             for (NodeInfo nodeInfo : roster.values()) {// let's be paranoid
                 if (!nodeInfo.getNodeId().equals(nodeId))
@@ -116,11 +122,12 @@ public class NetworkBuilder {
         }
 
         /**
-         * This method MUST BE CALLED AFTER ALL NETWORK INITIALIZATION IS DONE.
-         * Failure to do it will cause nonfunctional node rejecting incoming connections.
+         * This method MUST BE CALLED AFTER ALL NETWORK INITIALIZATION IS DONE. Failure to do it will cause
+         * nonfunctional node rejecting incoming connections.
          *
          * @param network    to which to connect. Must be fully formed except of this instance
          * @param privateKey
+         *
          * @throws SQLException
          */
         private void createLocalNode(Network network, PrivateKey privateKey) throws SQLException, IOException {
@@ -163,12 +170,12 @@ public class NetworkBuilder {
         this.rootPath = rootPath;
         String nodesPath = rootPath + "/config/nodes";
         File nodesFile = new File(nodesPath);
-        if(!nodesFile.exists())
-            throw new IllegalArgumentException("path does not eixist: "+nodesFile.getCanonicalPath());
+        if (!nodesFile.exists())
+            throw new IllegalArgumentException("path does not eixist: " + nodesFile.getCanonicalPath());
         Yaml yaml = new Yaml();
         int count = 0;
         for (String name : nodesFile.list()) {
-            if(name.endsWith(".unikey")) {
+            if (name.endsWith(".unikey")) {
                 if (name.indexOf(".private.unikey") >= 0)
                     throw new IllegalStateException("private key found in shared folder. please remove.");
                 String nodeId = name.substring(0, name.length() - 7);

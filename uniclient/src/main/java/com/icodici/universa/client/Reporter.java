@@ -21,6 +21,7 @@ public class Reporter {
     }
 
     private boolean jsonMode = false;
+    private boolean verboseMode = false;
 
     private static final List<String> messages = new ArrayList<>();
     private static final List<Binder> errors = new ArrayList<>();
@@ -30,9 +31,19 @@ public class Reporter {
      *
      * @param text
      */
-    public void notice(String text) {
+    public synchronized void notice(String text) {
         if (!jsonMode)
             System.out.println(text);
+    }
+
+    public synchronized void progress(String text) {
+        if (!jsonMode)
+            System.out.print(text+"\r");
+    }
+
+    public void verbose(String text) {
+        if( verboseMode)
+            message(text);
     }
 
     /**
@@ -40,7 +51,7 @@ public class Reporter {
      *
      * @param text
      */
-    public void message(String text) {
+    public synchronized void message(String text) {
         messages.add(text);
         if (!jsonMode)
             System.out.println(text);
@@ -53,7 +64,7 @@ public class Reporter {
      * @param object
      * @param text
      */
-    public void error(String code, String object, String text) {
+    public synchronized void error(String code, String object, String text) {
         errors.add(Binder.fromKeysValues(
                 "code", code,
                 "object", object,
@@ -62,7 +73,7 @@ public class Reporter {
         if (!jsonMode) {
             String msg = "** ERROR: " + code;
             if (object != null && !object.isEmpty())
-                msg += " in " + object;
+                msg += ": " + object;
             if (text != null && !text.isEmpty())
                 msg += ": " + text;
             System.out.println(msg);
@@ -86,11 +97,11 @@ public class Reporter {
      *
      * @return
      */
-    public String reportJson() {
+    public synchronized String reportJson() {
         return JsonTool.toJsonString(report());
     }
 
-    public String getMessage(int smartIndex) {
+    public synchronized String getMessage(int smartIndex) {
         if (smartIndex < 0)
             smartIndex = messages.size() + smartIndex;
         if (smartIndex < 0)
@@ -102,9 +113,17 @@ public class Reporter {
         return messages.get(smartIndex);
     }
 
-    public void clear() {
+    public synchronized void clear() {
         messages.clear();
         errors.clear();
         jsonMode = false;
+    }
+
+    public boolean isVerboseMode() {
+        return verboseMode;
+    }
+
+    public void setVerboseMode(boolean verboseMode) {
+        this.verboseMode = verboseMode;
     }
 }

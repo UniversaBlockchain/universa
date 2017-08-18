@@ -23,6 +23,8 @@ import java.net.URLConnection;
 
 public class HttpClient {
 
+    private String nodeId;
+
     public class Answer {
         public final int code;
         public final Binder data;
@@ -38,15 +40,21 @@ public class HttpClient {
         }
     }
 
+    public String getUrl() {
+        return url;
+    }
+
     private String url;
 
-    public HttpClient(String rootUrlString) {
+    public HttpClient(String nodeId, String rootUrlString) {
         this.url = rootUrlString;
+        this.nodeId = nodeId;
     }
 
     public Answer request(String path, Object... keysValues) throws IOException {
         return request(path, Binder.fromKeysValues(keysValues));
     }
+
 
     public Answer request(String path, Binder params) throws IOException {
         String charset = "UTF-8";
@@ -59,6 +67,9 @@ public class HttpClient {
 
         URLConnection connection = new URL(url + "/"+ path).openConnection();
         connection.setDoOutput(true);
+
+        connection.setConnectTimeout(2000);
+        connection.setReadTimeout(5000);
         connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
         try (
@@ -85,5 +96,10 @@ public class HttpClient {
         int responseCode = httpConnection.getResponseCode();
         byte[] answer = Do.read(httpConnection.getInputStream());
         return new Answer(responseCode, Boss.unpack(answer));
+    }
+
+    @Override
+    public String toString() {
+        return "Node<"+nodeId+":"+getUrl()+">";
     }
 }

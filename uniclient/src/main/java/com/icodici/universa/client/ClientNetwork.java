@@ -31,7 +31,7 @@ public class ClientNetwork {
                 String host = nodeData.getStringOrThrow("ip");
                 int port = nodeData.getIntOrThrow("client_port");
                 String url = "http://" + host + ":" + port;
-                HttpClient client = new HttpClient(url);
+                HttpClient client = new HttpClient(nodeId,url);
                 clients.add(client);
             });
         } catch (IOException e) {
@@ -56,18 +56,26 @@ public class ClientNetwork {
             futures.add(
                     es.submit(() -> {
                         try {
+                            reporter.verbose("checking "+client);
                             HttpClient.Answer answer = client.request("ping", "foo", "bar");
                             if (answer.code == 200) {
+                                reporter.verbose(client.toString() + " OK");
                                 int cnt = okNodes.incrementAndGet();
+                                reporter.progress(""+cnt);
+                                return;
                             }
                         } catch (IOException e) {
+                            reporter.error("CONNECTION_FAILED", client.toString(), "connection failed: "+e);
                         }
                     })
             );
         });
         futures.forEach(f -> {
             try {
-                f.get(5, TimeUnit.SECONDS);
+                f.get(4, TimeUnit.SECONDS);
+            } catch (TimeoutException e) {
+                reporter.verbose("timout");
+                f.cancel(true);
             } catch (Exception e) {
                 e.printStackTrace();
             }

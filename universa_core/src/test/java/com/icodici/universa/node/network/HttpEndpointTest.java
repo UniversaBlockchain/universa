@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node.network;
 
+import net.sergeych.tools.Binder;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -21,7 +22,7 @@ public class HttpEndpointTest {
     public void ping() throws Exception {
         rootUrl = "http://localhost:17172";
         ep = new HttpEndpoint(17172);
-        client = new HttpClient("http://localhost:17172");
+        client = new HttpClient("testnode1", "http://localhost:17172");
         HttpClient.Answer a = client.request("ping", "hello", "world");
         assertEquals(a.code, 200);
         System.out.println(a.data);

@@ -58,6 +58,7 @@ public class CLIMain {
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file.yml");
                 acceptsAll(asList("j", "json"), "return result in json format");
+                acceptsAll(asList("v", "verbose"), "provide more detailed information");
                 acceptsAll(asList("network"), "check network status");
                 acceptsAll(asList("k", "keys"), "list of comma-separated private key files to" +
                         "sign contract with, if appropriated")
@@ -72,6 +73,9 @@ public class CLIMain {
 
             if (options.has("?")) {
                 usage(null);
+            }
+            if( options.has("v")) {
+                reporter.setVerboseMode(true);
             }
 
             if(options.has("k")) {
