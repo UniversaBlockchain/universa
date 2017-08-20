@@ -14,6 +14,7 @@ import fi.iki.elonen.NanoHTTPD;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Ut;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
@@ -78,25 +79,41 @@ public class ClientEndpoint {
                         result = Binder.fromKeysValues("ping", "pong");
                         result.putAll(params);
                         break;
-                        default:
-                            return errorResponse(Response.Status.NOT_FOUND, "BAD_COMMAND", "command not supported");
+                    default:
+                        return errorResponse(Response.Status.NOT_FOUND, "BAD_COMMAND", "command not supported");
                     case "/network":
                         result = getNetworkDirectory();
                         break;
+                    case "/stop":
+                        if (true) {
+                            Do.later(() -> {
+                                Thread.sleep(100);
+                                closeAllConnections();
+                                stop();
+                                System.out.println("stopped http endpoint");
+                            });
+                            result = Binder.fromKeysValues("stopped", "ok");
+                        } else
+                            result = Binder.fromKeysValues("can;t stop", "insufficient rights");
                 }
                 return makeResponse(Response.Status.OK, result);
-            } catch (Exception e) {
+            } catch (
+                    Exception e)
+
+            {
                 return errorResponse(e);
             }
         }
 
         private Response errorResponse(Response.Status code, String errorCode, String text) {
-            return reponseKeysValues(code,"error", errorCode, "text", text);
+            return reponseKeysValues(code, "error", errorCode, "text", text);
         }
+
         private Response errorResponse(Throwable t) {
             t.printStackTrace();
             return reponseKeysValues(Response.Status.INTERNAL_ERROR,
-                                     "error", "INTERROR", "text", t.getMessage());
+                                     "error", "INTERROR", "text", t.getMessage()
+            );
         }
 
         private Response reponseKeysValues(Response.Status status, Object... data) {
@@ -141,30 +158,31 @@ public class ClientEndpoint {
             );
             encryptedAnswer = publicKey.encrypt(Boss.pack(data));
         }
+
     }
 
-    ConcurrentHashMap<PublicKey,Registration> registrations = new ConcurrentHashMap<>();
+    ConcurrentHashMap<PublicKey, Registration> registrations = new ConcurrentHashMap<>();
 
     Binder requestToken(Binder params) throws EncryptionError {
         PublicKey remoteKey = params.getOrThrow("key");
         Registration r;
         synchronized (registrations) {
             r = registrations.get(remoteKey);
-            if( r == null ) {
+            if (r == null) {
                 r = new Registration(remoteKey);
-                registrations.put(remoteKey,r);
+                registrations.put(remoteKey, r);
             }
         }
         return Binder.fromKeysValues("encryptedToken", r.encryptedAnswer);
     }
 
-    public ClientEndpoint(int port, LocalNode localNode,NetworkBuilder nb) throws IOException {
+    public ClientEndpoint(int port, LocalNode localNode, NetworkBuilder nb) throws IOException {
         this.port = port;
         this.networkBuilder = nb;
         instance = new Server(port);
         this.localNode = localNode;
         instance.start();
-        System.out.println("Client interface ready on port "+port);
+        System.out.println("Client interface ready on port " + port);
     }
 
 

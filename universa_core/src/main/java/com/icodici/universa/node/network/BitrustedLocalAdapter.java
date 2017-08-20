@@ -19,6 +19,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.utils.LogPrinter;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
@@ -50,7 +51,11 @@ public class BitrustedLocalAdapter {
         this.privateKey = privateKey;
         this.knownNodes = knownNodes;
         log.d("node " + localNode.getId()+" will listen to "+portToListen);
-        serverSocket = new ServerSocket(portToListen);
+        try {
+            serverSocket = new ServerSocket(portToListen);
+        } catch(BindException e) {
+            throw new BindException("address already in use: "+portToListen);
+        }
         server = pool.submit(() -> serveIncomingConnections());
     }
 
