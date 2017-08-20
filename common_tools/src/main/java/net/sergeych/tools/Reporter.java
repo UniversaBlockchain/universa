@@ -1,26 +1,42 @@
-package com.icodici.universa.client;
-
-import net.sergeych.tools.Binder;
-import net.sergeych.tools.JsonTool;
+package net.sergeych.tools;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Tool to report messages, errors, progress notifications the same way in console applications, GUI applications and
+ * services. Create instance and call {@link #notice(String)}, {@link #progress(String)} and {@link #error(String,
+ * String, String)}. Supports collecting and reporting collected data, {@link #setQuiet(boolean)} mode, {@link
+ * #reportJson()} and one level of verbisity: {@link #setVerboseMode(boolean)}.
+ */
 public class Reporter {
 
     public List<Binder> getErrors() {
         return errors;
     }
 
-    public boolean isJsonMode() {
-        return jsonMode;
+    /**
+     * See {@link #setQuiet(boolean)}
+     *
+     * @return
+     */
+    public boolean isQuiet() {
+        return quiet;
     }
 
-    public void setJsonMode(boolean jsonMode) {
-        this.jsonMode = jsonMode;
+    /**
+     * Set quiet mode: all information is only collected. To report it later at some poing, use {@link #report()} or
+     * {@link #reportJson()}. If the work is not finished, consider {@link #clear()} before collecting more data.
+     * <p>
+     * By default, reporter collects data and print itout messages to the stdout.
+     *
+     * @param quiet
+     */
+    public void setQuiet(boolean quiet) {
+        this.quiet = quiet;
     }
 
-    private boolean jsonMode = false;
+    private boolean quiet = false;
     private boolean verboseMode = false;
 
     private static final List<String> messages = new ArrayList<>();
@@ -32,17 +48,17 @@ public class Reporter {
      * @param text
      */
     public synchronized void notice(String text) {
-        if (!jsonMode)
+        if (!quiet)
             System.out.println(text);
     }
 
     public synchronized void progress(String text) {
-        if (!jsonMode)
-            System.out.print(text+"\r");
+        if (!quiet)
+            System.out.print(text + "\r");
     }
 
     public void verbose(String text) {
-        if( verboseMode)
+        if (verboseMode)
             message(text);
     }
 
@@ -53,12 +69,13 @@ public class Reporter {
      */
     public synchronized void message(String text) {
         messages.add(text);
-        if (!jsonMode)
+        if (!quiet)
             System.out.println(text);
     }
 
     /**
-     * Report error. Unless in JSON mode, will be printed immediately.
+     * Report error. Unless in JSON mode, will be printed immediately. Errors are 3-field objects with string fields
+     * "code", "object" and "text", which is usslay enough for most usages.
      *
      * @param code
      * @param object
@@ -70,7 +87,7 @@ public class Reporter {
                 "object", object,
                 "message", text
         ));
-        if (!jsonMode) {
+        if (!quiet) {
             String msg = "** ERROR: " + code;
             if (object != null && !object.isEmpty())
                 msg += ": " + object;
@@ -108,7 +125,7 @@ public class Reporter {
             smartIndex = 0;
         if (smartIndex >= messages.size())
             smartIndex = messages.size() - 1;
-        if( smartIndex < 0)
+        if (smartIndex < 0)
             return null;
         return messages.get(smartIndex);
     }
@@ -116,7 +133,7 @@ public class Reporter {
     public synchronized void clear() {
         messages.clear();
         errors.clear();
-        jsonMode = false;
+        quiet = false;
     }
 
     public boolean isVerboseMode() {

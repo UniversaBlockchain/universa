@@ -12,19 +12,17 @@ import com.icodici.universa.contract.Contract;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.tools.Reporter;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import static java.util.Arrays.asList;
-import static net.sergeych.tools.JsonTool.toJson;
 
 public class CLIMain {
 
@@ -83,7 +81,7 @@ public class CLIMain {
             }
 
             if (options.has("j")) {
-                reporter.setJsonMode(true);
+                reporter.setQuiet(true);
             }
 
             if (options.has("network")) {
@@ -109,7 +107,7 @@ public class CLIMain {
         } catch (OptionException e) {
             usage("Unrecognized parameter: " + e.getMessage());
         } catch (Finished e) {
-            if( reporter.isJsonMode())
+            if( reporter.isQuiet())
                 System.out.println(reporter.reportJson());
         } catch (Exception e) {
             e.printStackTrace();

@@ -8,6 +8,7 @@
 package com.icodici.universa.client;
 
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Reporter;
 import org.junit.Before;
 import org.junit.Test;
 

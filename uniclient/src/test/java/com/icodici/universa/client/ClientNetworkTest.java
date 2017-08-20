@@ -1,5 +1,6 @@
 package com.icodici.universa.client;
 
+import net.sergeych.tools.Reporter;
 import org.junit.Test;
 
 import static org.junit.Assert.*;

@@ -4,7 +4,7 @@ import com.icodici.universa.node.network.HttpClient;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
-import net.sergeych.utils.Bytes;
+import net.sergeych.tools.Reporter;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;

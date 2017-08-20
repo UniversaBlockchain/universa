@@ -41,6 +41,7 @@ public class NetworkBuilder {
         private String nodeId;
         private String host;
         private int port;
+        private int clientPort;
         private PublicKey publicKey;
         private byte[] packedPublicKey;
         private HashId publicKeyId;
@@ -81,6 +82,7 @@ public class NetworkBuilder {
             nodeId = fields.getStringOrThrow("id");
             host = fields.getStringOrThrow("ip");
             port = fields.getIntOrThrow("port");
+            clientPort = fields.getInt("client_port", -1);
             this.packedPublicKey = packedPublicKey;
             setupKey();
         }
@@ -94,9 +96,11 @@ public class NetworkBuilder {
          * Setup a network using this instance as a local node and others as remote ones. rootPath must be set before
          * calling this method.
          *
+         * @param overrideClietnPort if set to non-zero, {@link ClientEndpoint} will use this port instead of one
+         *                           specified in node configuration file.
          * @return
          */
-        Network buildNetowrk() throws SQLException, IOException, TimeoutException, InterruptedException {
+        Network buildNetowrk(int overrideClietnPort) throws SQLException, IOException, TimeoutException, InterruptedException {
             String privateKeyFileName = rootPath + "/tmp/" + nodeId + ".private.unikey";
             if (!new File(privateKeyFileName).exists())
                 privateKeyFileName = rootPath + "/tmp/pkey";
@@ -109,7 +113,7 @@ public class NetworkBuilder {
                     nodeInfo.createRemoteNode(network, privateKey);
             }
             // very important to create local node when all remote nodes are ready
-            createLocalNode(network, privateKey);
+            createLocalNode(network, privateKey, overrideClietnPort);
             network.deriveConsensus(0.7);
             return network;
         }
@@ -130,7 +134,7 @@ public class NetworkBuilder {
          *
          * @throws SQLException
          */
-        private void createLocalNode(Network network, PrivateKey privateKey) throws SQLException, IOException {
+        private void createLocalNode(Network network, PrivateKey privateKey, int overrideClientPort) throws SQLException, IOException {
             SqlLedger ledger = new SqlLedger("jdbc:sqlite:" + rootPath + "/system/" + nodeId + ".sqlite.db");
             LocalNode localNode = new LocalNode(nodeId, network, ledger);
             network.registerLocalNode(localNode);
@@ -141,6 +145,7 @@ public class NetworkBuilder {
                 }
             }
             new BitrustedLocalAdapter(localNode, privateKey, keysNodes, port);
+            new ClientEndpoint(overrideClientPort == 0 ? clientPort : overrideClientPort, localNode, NetworkBuilder.this);
         }
     }
 
@@ -166,7 +171,13 @@ public class NetworkBuilder {
         this.rootPath = rootPath;
     }
 
-    public void loadConfig(String rootPath, int maxNodes) throws IOException {
+    /**
+     * Load networking configuration from a given root path
+     *
+     * @param rootPath
+     * @throws IOException
+     */
+    public void loadConfig(String rootPath) throws IOException {
         this.rootPath = rootPath;
         String nodesPath = rootPath + "/config/nodes";
         File nodesFile = new File(nodesPath);
@@ -179,31 +190,34 @@ public class NetworkBuilder {
                 if (name.indexOf(".private.unikey") >= 0)
                     throw new IllegalStateException("private key found in shared folder. please remove.");
                 String nodeId = name.substring(0, name.length() - 7);
-                try (FileInputStream in = new FileInputStream(nodesPath + "/" + nodeId + ".yaml")) {
+                File yamlFile = new File(nodesPath + "/" + nodeId + ".yaml");
+                if (!yamlFile.exists())
+                    yamlFile = new File(nodesPath + "/" + nodeId + ".yml");
+                if (!yamlFile.exists())
+                    throw new IOException("Not found .yml confoguration for " + nodeId);
+                try (FileInputStream in = new FileInputStream(yamlFile)) {
                     NodeInfo ni = new NodeInfo(
                             Binder.from(yaml.load(in)),
                             Do.read(new FileInputStream(nodesPath + "/" + nodeId + ".unikey"))
                     );
                     roster.put(nodeId, ni);
                 }
-                if (++count >= maxNodes)
-                    return;
             }
         }
     }
 
-    static public NetworkBuilder from(String rootPath, int maxNodes) throws IOException {
+    static public NetworkBuilder from(String rootPath) throws IOException {
         NetworkBuilder e = new NetworkBuilder();
-        e.loadConfig(rootPath, maxNodes);
+        e.loadConfig(rootPath);
         return e;
     }
 
-    Network buildNetwork(String localNodeId) throws InterruptedException, SQLException, TimeoutException, IOException {
+    public Network buildNetwork(String localNodeId, int ovverideClientPort) throws InterruptedException, SQLException, TimeoutException, IOException {
         NodeInfo nodeInfo = roster.get(localNodeId);
         if (nodeInfo == null)
             throw new IllegalArgumentException("node information not found: " + localNodeId);
         if (rootPath == null)
             throw new IllegalArgumentException("root path not set");
-        return nodeInfo.buildNetowrk();
+        return nodeInfo.buildNetowrk(ovverideClientPort);
     }
 }

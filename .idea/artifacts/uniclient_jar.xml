@@ -1,5 +1,5 @@
 <component name="ArtifactManager">
-  <artifact type="jar" build-on-make="true" name="uniclient:jar">
+  <artifact type="jar" name="uniclient:jar">
     <output-path>$USER_HOME$/bin</output-path>
     <root id="archive" name="uniclient.jar">
       <element id="dir-copy" path="$PROJECT_DIR$/uniclient/src/main/resources" />

@@ -26,12 +26,12 @@ public class NetworkBuilderTest {
 
     @Test
     public void buildNetwork() throws Exception {
-        NetworkBuilder e = NetworkBuilder.from("src/test_config", TEST_NODES);
+        NetworkBuilder e = NetworkBuilder.from("src/test_config");
         List<NetworkBuilder.NodeInfo> nodeInfo = new ArrayList<>(e.nodeInfo());
-        Network n1 = nodeInfo.get(0).buildNetowrk();
-        Network n2 = nodeInfo.get(1).buildNetowrk();
+        Network n1 = nodeInfo.get(0).buildNetowrk(18170);
+        Network n2 = nodeInfo.get(1).buildNetowrk(18171);
         for (int i = 2; i < TEST_NODES; i++) {
-            nodeInfo.get(i).buildNetowrk();
+            nodeInfo.get(i).buildNetowrk(18170+i);
         }
 //        Network n3 = nodeInfo.get(2).buildNetowrk();
 //        Network n4 = nodeInfo.get(3).buildNetowrk();

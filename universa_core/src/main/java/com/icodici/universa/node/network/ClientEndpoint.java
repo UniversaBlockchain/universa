@@ -9,6 +9,7 @@ package com.icodici.universa.node.network;
 
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.node.LocalNode;
 import fi.iki.elonen.NanoHTTPD;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -26,9 +27,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * We might need to use threadpool later (https://github.com/NanoHttpd/nanohttpd/wiki/Example:-Using-a-ThreadPool)
  */
-public class HttpEndpoint {
+public class ClientEndpoint {
 
     private final Server instance;
+    private LocalNode localNode;
     private int port;
 
     // todo: get rid of Nanohttpd - it SAVES TEMP FILE - and this can't be avoided
@@ -132,9 +134,10 @@ public class HttpEndpoint {
         return Binder.fromKeysValues("encryptedToken", r.encryptedAnswer);
     }
 
-    public HttpEndpoint(int port) throws IOException {
+    public ClientEndpoint(int port, LocalNode localNode, NetworkBuilder networkBuilder) throws IOException {
         this.port = port;
         instance = new Server(port);
+        this.localNode = localNode;
         instance.start();
     }
 
