@@ -38,6 +38,10 @@ public class HttpClient {
         public String toString() {
             return ""+code+": "+data;
         }
+
+        public boolean isOk() {
+            return code == 200;
+        }
     }
 
     public String getUrl() {

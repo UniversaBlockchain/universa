@@ -75,7 +75,6 @@ public class CLIMain {
             if( options.has("v")) {
                 reporter.setVerboseMode(true);
             }
-
             if(options.has("k")) {
                 keyFileNames = (List<String>) options.valuesOf("k");
             }

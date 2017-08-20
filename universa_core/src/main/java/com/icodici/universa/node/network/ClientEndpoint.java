@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClientEndpoint {
 
     private final Server instance;
+    private final NetworkBuilder networkBuilder;
     private LocalNode localNode;
     private int port;
 
@@ -79,6 +80,9 @@ public class ClientEndpoint {
                         break;
                         default:
                             return errorResponse(Response.Status.NOT_FOUND, "BAD_COMMAND", "command not supported");
+                    case "/network":
+                        result = getNetworkDirectory();
+                        break;
                 }
                 return makeResponse(Response.Status.OK, result);
             } catch (Exception e) {
@@ -101,6 +105,26 @@ public class ClientEndpoint {
 
         private Response makeResponse(Response.Status status, Binder data) {
             return new BinaryResponse(status, Boss.pack(data));
+        }
+    }
+
+    private Binder networkDirectory = null;
+
+    private Binder getNetworkDirectory() {
+        synchronized (this) {
+            if (null == networkDirectory) {
+                Binder network = new Binder();
+                networkBuilder.nodeInfo().forEach(ni -> {
+                    network.put(ni.getNodeId(),
+                                Binder.fromKeysValues(
+                                        "port", ni.getClientPort(),
+                                        "ip", ni.getHost()
+                                )
+                    );
+                    networkDirectory = network;
+                });
+            }
+            return networkDirectory;
         }
     }
 
@@ -134,11 +158,13 @@ public class ClientEndpoint {
         return Binder.fromKeysValues("encryptedToken", r.encryptedAnswer);
     }
 
-    public ClientEndpoint(int port, LocalNode localNode, NetworkBuilder networkBuilder) throws IOException {
+    public ClientEndpoint(int port, LocalNode localNode,NetworkBuilder nb) throws IOException {
         this.port = port;
+        this.networkBuilder = nb;
         instance = new Server(port);
         this.localNode = localNode;
         instance.start();
+        System.out.println("Client interface ready on port "+port);
     }
 
 

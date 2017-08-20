@@ -70,11 +70,12 @@ public class NetworkBuilder {
             return publicKeyId;
         }
 
-        NodeInfo(String nodeId, byte[] packedPublicKey, String host, int port) throws EncryptionError {
+        NodeInfo(String nodeId, byte[] packedPublicKey, String host, int port,int clientPort) throws EncryptionError {
             this.nodeId = nodeId;
             this.packedPublicKey = packedPublicKey;
             this.host = host;
             this.port = port;
+            this.clientPort = clientPort;
             setupKey();
         }
 
@@ -148,12 +149,16 @@ public class NetworkBuilder {
             new BitrustedLocalAdapter(localNode, privateKey, keysNodes, port);
             new ClientEndpoint(overrideClientPort == 0 ? clientPort : overrideClientPort, localNode, NetworkBuilder.this);
         }
+
+        public int getClientPort() {
+            return clientPort;
+        }
     }
 
     Map<String, NodeInfo> roster = new ConcurrentHashMap<>();
 
-    public void registerNode(String nodeId, byte[] packedPublicKey, String host, int port) throws EncryptionError {
-        roster.put(nodeId, new NodeInfo(nodeId, packedPublicKey, host, port));
+    public void registerNode(String nodeId, byte[] packedPublicKey, String host, int port,int clientPort) throws EncryptionError {
+        roster.put(nodeId, new NodeInfo(nodeId, packedPublicKey, host, port, clientPort));
     }
 
     public void unregisterNode(String nodeId) {
@@ -214,9 +219,9 @@ public class NetworkBuilder {
     }
 
     static public NetworkBuilder from(String rootPath) throws IOException {
-        NetworkBuilder e = new NetworkBuilder();
-        e.loadConfig(rootPath);
-        return e;
+        NetworkBuilder nb = new NetworkBuilder();
+        nb.loadConfig(rootPath);
+        return nb;
     }
 
     public Network buildNetwork(String localNodeId, int ovverideClientPort) throws InterruptedException, SQLException, TimeoutException, IOException {
