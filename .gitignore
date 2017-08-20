@@ -30,4 +30,5 @@ hs_err_pid*
 /uniclient/src/test_files/simple_root_contract.unic
 .DS_Store
 
-/universa_core/src/test_config/system/
+/universa_core/src/test_config/system/*
+/universa_core/src/test_config2/system/

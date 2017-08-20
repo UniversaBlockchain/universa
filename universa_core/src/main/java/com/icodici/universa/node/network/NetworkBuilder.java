@@ -78,8 +78,8 @@ public class NetworkBuilder {
             setupKey();
         }
 
-        public NodeInfo(Binder fields, byte[] packedPublicKey) throws EncryptionError {
-            nodeId = fields.getStringOrThrow("id");
+        public NodeInfo(String nodeId, Binder fields, byte[] packedPublicKey) throws EncryptionError {
+            this.nodeId = nodeId;
             host = fields.getStringOrThrow("ip");
             port = fields.getIntOrThrow("port");
             clientPort = fields.getInt("client_port", -1);
@@ -98,6 +98,7 @@ public class NetworkBuilder {
          *
          * @param overrideClietnPort if set to non-zero, {@link ClientEndpoint} will use this port instead of one
          *                           specified in node configuration file.
+         *
          * @return
          */
         Network buildNetowrk(int overrideClietnPort) throws SQLException, IOException, TimeoutException, InterruptedException {
@@ -105,7 +106,7 @@ public class NetworkBuilder {
             if (!new File(privateKeyFileName).exists())
                 privateKeyFileName = rootPath + "/tmp/pkey";
             if (!new File(privateKeyFileName).exists())
-                throw new FileNotFoundException("no private key file for the node found");
+                throw new FileNotFoundException("no private key file found for "+nodeId);
             PrivateKey privateKey = new PrivateKey(Do.read(new FileInputStream(privateKeyFileName)));
             Network network = new Network();
             for (NodeInfo nodeInfo : roster.values()) {// let's be paranoid
@@ -175,21 +176,26 @@ public class NetworkBuilder {
      * Load networking configuration from a given root path
      *
      * @param rootPath
+     *
      * @throws IOException
      */
     public void loadConfig(String rootPath) throws IOException {
         this.rootPath = rootPath;
         String nodesPath = rootPath + "/config/nodes";
+        String keysPath = rootPath + "/config/keys";
         File nodesFile = new File(nodesPath);
         if (!nodesFile.exists())
-            throw new IllegalArgumentException("path does not eixist: " + nodesFile.getCanonicalPath());
+            throw new IllegalArgumentException("nodes path does not eixist: " + nodesFile.getCanonicalPath());
+        File keysFile = new File(keysPath);
+        if (!keysFile.exists())
+            throw new IllegalArgumentException("keys path does not eixist: " + keysFile.getCanonicalPath());
         Yaml yaml = new Yaml();
         int count = 0;
-        for (String name : nodesFile.list()) {
+        for (String name : keysFile.list()) {
             if (name.endsWith(".unikey")) {
                 if (name.indexOf(".private.unikey") >= 0)
                     throw new IllegalStateException("private key found in shared folder. please remove.");
-                String nodeId = name.substring(0, name.length() - 7);
+                String nodeId = name.substring(0, name.length() - 14);
                 File yamlFile = new File(nodesPath + "/" + nodeId + ".yaml");
                 if (!yamlFile.exists())
                     yamlFile = new File(nodesPath + "/" + nodeId + ".yml");
@@ -197,8 +203,9 @@ public class NetworkBuilder {
                     throw new IOException("Not found .yml confoguration for " + nodeId);
                 try (FileInputStream in = new FileInputStream(yamlFile)) {
                     NodeInfo ni = new NodeInfo(
+                            nodeId,
                             Binder.from(yaml.load(in)),
-                            Do.read(new FileInputStream(nodesPath + "/" + nodeId + ".unikey"))
+                            Do.read(new FileInputStream(keysPath + "/" + nodeId + ".public.unikey"))
                     );
                     roster.put(nodeId, ni);
                 }

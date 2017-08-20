@@ -26,7 +26,7 @@ public class NetworkBuilderTest {
 
     @Test
     public void buildNetwork() throws Exception {
-        NetworkBuilder e = NetworkBuilder.from("src/test_config");
+        NetworkBuilder e = NetworkBuilder.from("src/test_config2");
         List<NetworkBuilder.NodeInfo> nodeInfo = new ArrayList<>(e.nodeInfo());
         Network n1 = nodeInfo.get(0).buildNetowrk(18170);
         Network n2 = nodeInfo.get(1).buildNetowrk(18171);
