@@ -83,6 +83,12 @@ public class LocalNode extends Node {
         return null;
     }
 
+    @Override
+    public void shutdown() {
+        allElections.forEach((id, e)-> e.close());
+//        ledger.close();
+    }
+
     // Client API interface -----------------------------------------------------------------------------------
 
     /**

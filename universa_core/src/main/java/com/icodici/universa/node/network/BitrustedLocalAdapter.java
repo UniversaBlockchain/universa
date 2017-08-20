@@ -23,10 +23,7 @@ import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 /**
  * The class that exports {@link com.icodici.universa.node.LocalNode} to the ourside world using {@link
@@ -36,7 +33,7 @@ public class BitrustedLocalAdapter {
 
     private static LogPrinter log = new LogPrinter("BTLA");
     private static ExecutorService pool = Executors.newFixedThreadPool(16);
-    private final Future<?> server;
+    private Future<?> server;
     private final LocalNode localNode;
     private final PrivateKey privateKey;
     private Map<HashId, Node> knownNodes;
@@ -56,7 +53,12 @@ public class BitrustedLocalAdapter {
         } catch(BindException e) {
             throw new BindException("address already in use: "+portToListen);
         }
-        server = pool.submit(() -> serveIncomingConnections());
+        server = null;
+        try {
+            server = pool.submit(() -> serveIncomingConnections());
+        }
+        catch(RejectedExecutionException e) {
+        }
     }
 
     private Object serveIncomingConnections() throws Exception {
@@ -65,6 +67,16 @@ public class BitrustedLocalAdapter {
             pool.submit(() -> new Connection(s));
         }
         return null;
+    }
+
+    public void shutdown() {
+        try {
+            localNode.shutdown();
+            stop = true;
+            serverSocket.close();
+        }
+        catch (Exception e) {
+        }
     }
 
     class Connection implements Farcall.Target {

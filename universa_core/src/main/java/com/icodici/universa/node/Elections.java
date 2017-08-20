@@ -198,6 +198,10 @@ class Elections {
                 // the pollers collection can not be mutated at this point as all pollers are created in the constructor.
                 // If later this behavior will be changed, this should be rewritten to sync with stop field changes
                 pool.execute(() -> pollers.forEach(x -> x.close()));
+//                try {
+//                    pool.awaitTermination(500,TimeUnit.MILLISECONDS);
+//                } catch (InterruptedException e) {
+//                }
                 fireOnDone();
             }
         }

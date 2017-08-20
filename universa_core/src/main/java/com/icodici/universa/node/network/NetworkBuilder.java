@@ -23,19 +23,26 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Universa network configuratior & enviromnent.
  */
-public class NetworkBuilder {
+public class NetworkBuilder implements AutoCloseable{
 
     LogPrinter log = new LogPrinter("ENV");
     private String rootPath;
+    private List<BitrustedLocalAdapter> adapters = new ArrayList<>();
+    private ClientEndpoint clientEndpoint;
+    private AtomicBoolean closed = new AtomicBoolean(false);
+
+    @Override
+    public void close() throws Exception {
+        shutdown();
+    }
 
     public class NodeInfo {
         private String nodeId;
@@ -115,7 +122,7 @@ public class NetworkBuilder {
                     nodeInfo.createRemoteNode(network, privateKey);
             }
             // very important to create local node when all remote nodes are ready
-            createLocalNode(network, privateKey, overrideClietnPort);
+            createLocalServer(network, privateKey, overrideClietnPort);
             network.deriveConsensus(0.7);
             return network;
         }
@@ -128,6 +135,9 @@ public class NetworkBuilder {
         }
 
         /**
+         * Create local server ({@link BitrustedLocalAdapter} and client endpoint ({@link ClientEndpoint} and set it up
+         * in the parent {@link NetworkBuilder} object.
+         *
          * This method MUST BE CALLED AFTER ALL NETWORK INITIALIZATION IS DONE. Failure to do it will cause
          * nonfunctional node rejecting incoming connections.
          *
@@ -136,7 +146,7 @@ public class NetworkBuilder {
          *
          * @throws SQLException
          */
-        private void createLocalNode(Network network, PrivateKey privateKey, int overrideClientPort) throws SQLException, IOException {
+        private void createLocalServer(Network network, PrivateKey privateKey, int overrideClientPort) throws SQLException, IOException {
             SqlLedger ledger = new SqlLedger("jdbc:sqlite:" + rootPath + "/system/" + nodeId + ".sqlite.db");
             LocalNode localNode = new LocalNode(nodeId, network, ledger);
             network.registerLocalNode(localNode);
@@ -146,8 +156,8 @@ public class NetworkBuilder {
                     keysNodes.put(ni.publicKeyId, network.getNode(ni.nodeId));
                 }
             }
-            new BitrustedLocalAdapter(localNode, privateKey, keysNodes, port);
-            new ClientEndpoint(overrideClientPort == 0 ? clientPort : overrideClientPort, localNode, NetworkBuilder.this);
+            adapters.add(new BitrustedLocalAdapter(localNode, privateKey, keysNodes, port));
+            clientEndpoint = new ClientEndpoint(overrideClientPort == 0 ? clientPort : overrideClientPort, localNode, NetworkBuilder.this);
         }
 
         public int getClientPort() {
@@ -222,6 +232,13 @@ public class NetworkBuilder {
         NetworkBuilder nb = new NetworkBuilder();
         nb.loadConfig(rootPath);
         return nb;
+    }
+
+    public void shutdown() {
+        if( closed.compareAndSet(false, true) ) {
+            adapters.forEach(a -> a.shutdown());
+            clientEndpoint.shutdown();
+        }
     }
 
     public Network buildNetwork(String localNodeId, int ovverideClientPort) throws InterruptedException, SQLException, TimeoutException, IOException {

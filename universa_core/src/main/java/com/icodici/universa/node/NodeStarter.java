@@ -22,11 +22,12 @@ import java.util.concurrent.TimeoutException;
 import static java.util.Arrays.asList;
 
 public class NodeStarter {
-    private static final String NODE_VERSION = "0.17";
+    private static final String NODE_VERSION = "0.18";
     private static OptionParser parser;
     private static OptionSet options;
     public static final Reporter reporter = new Reporter();
     private static String NAME_STRING = "Universa node server v" + NODE_VERSION + "\n";
+    private static NetworkBuilder networkBuilder;
 
 
     static public void main(String[] args) {
@@ -44,6 +45,7 @@ public class NodeStarter {
                 acceptsAll(asList("p", "port"), "listening port for HTTP endpoint to override value in .yaml")
                         .withRequiredArg().ofType(Integer.class)
                         .defaultsTo(0).describedAs("port");
+                accepts("test", "intended to be used in integration tests");
             }
         };
         try {
@@ -55,10 +57,15 @@ public class NodeStarter {
             reporter.message("Starting client interface");
             startNetwork();
             reporter.message("System started");
-            synchronized (parser) { parser.wait(); };
+            if (!options.has("test"))
+                synchronized (parser) {
+                    parser.wait();
+                }
 
         } catch (OptionException e) {
             usage("Unrecognized parameter: " + e.getMessage());
+        } catch (InterruptedException e) {
+
         } catch (Exception e) {
             e.printStackTrace();
             usage(e.getMessage());
@@ -67,9 +74,16 @@ public class NodeStarter {
 
     private static void startNetwork() throws IOException, InterruptedException, SQLException, TimeoutException {
         reporter.progress("reading network configuration");
-        NetworkBuilder nb = NetworkBuilder.from((String) options.valueOf("config"));
+        networkBuilder = NetworkBuilder.from((String) options.valueOf("config"));
         int port = (int) options.valueOf("port");
-        nb.buildNetwork((String)options.valueOf("id"), port);
+        networkBuilder.buildNetwork((String) options.valueOf("id"), port);
+    }
+
+    static public void shutdown() {
+        networkBuilder.shutdown();
+        synchronized (parser) {
+            parser.notifyAll();
+        }
     }
 
     static private void usage(String text) {
@@ -87,7 +101,8 @@ public class NodeStarter {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.exit(100);
+        if (!options.has("test"))
+            System.exit(100);
     }
 
 }

@@ -95,6 +95,8 @@ public interface Ledger {
      */
     void reload(StateRecord stateRecord) throws StateRecord.NotFoundException;
 
+    default void close() {}
+
     public static class Rollback extends Db.RollbackException {
     }
 

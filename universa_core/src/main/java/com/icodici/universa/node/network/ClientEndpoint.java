@@ -30,10 +30,18 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ClientEndpoint {
 
-    private final Server instance;
+    private Server instance;
     private final NetworkBuilder networkBuilder;
     private LocalNode localNode;
     private int port;
+
+    public void shutdown() {
+        if (instance != null)
+            synchronized (instance) {
+                instance.shutdown();
+                instance = null;
+            }
+    }
 
     // todo: get rid of Nanohttpd - it SAVES TEMP FILE - and this can't be avoided
     // as a variant, we can reqrite it to make proper use of the TempFileFactory which
@@ -86,12 +94,7 @@ public class ClientEndpoint {
                         break;
                     case "/stop":
                         if (true) {
-                            Do.later(() -> {
-                                Thread.sleep(100);
-                                closeAllConnections();
-                                stop();
-                                System.out.println("stopped http endpoint");
-                            });
+                            networkBuilder.shutdown();
                             result = Binder.fromKeysValues("stopped", "ok");
                         } else
                             result = Binder.fromKeysValues("can;t stop", "insufficient rights");
@@ -103,6 +106,11 @@ public class ClientEndpoint {
             {
                 return errorResponse(e);
             }
+        }
+
+        private void shutdown() {
+            closeAllConnections();
+            stop();
         }
 
         private Response errorResponse(Response.Status code, String errorCode, String text) {
@@ -182,7 +190,6 @@ public class ClientEndpoint {
         instance = new Server(port);
         this.localNode = localNode;
         instance.start();
-        System.out.println("Client interface ready on port " + port);
     }
 
 

@@ -55,6 +55,8 @@ public abstract class Node {
         return nodeId.hashCode();
     }
 
+    public abstract void shutdown();
+
     @Override
     public boolean equals(Object obj) {
         if( obj instanceof Node ) {

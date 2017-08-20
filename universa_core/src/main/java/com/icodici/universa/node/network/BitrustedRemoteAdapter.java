@@ -69,6 +69,16 @@ public class BitrustedRemoteAdapter extends Node {
         });
     }
 
+    @Override
+    public void shutdown() {
+        try {
+            farcall.close();
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private <T> T inConnection(Function<Farcall,T> block) throws IOException, InterruptedException {
         try {
             synchronized (stateLock) {

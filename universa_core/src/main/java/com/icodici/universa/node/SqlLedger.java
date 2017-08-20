@@ -148,8 +148,14 @@ public class SqlLedger implements Ledger {
         try {
             return block.call();
         } catch (Exception ex) {
-            throw new Ledger.Failure("Ledger operation failed: ", ex);
+            throw new Ledger.Failure("Ledger operation failed: "+ex.getMessage(), ex);
         }
+    }
+
+    @Override
+    public void close() {
+        System.out.println("CLOSE!");
+        db().close();
     }
 
     @Override
