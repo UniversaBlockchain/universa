@@ -18,6 +18,7 @@ import net.sergeych.tools.Reporter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,7 +35,7 @@ public class CLIMain {
 
     private static Reporter reporter = new Reporter();
     private static ClientNetwork clientNetwork;
-    private static List<String> keyFileNames;
+    private static List<String> keyFileNames = new ArrayList<>();
     private static Set<PrivateKey> privateKeys;
 
     static public void main(String[] args) throws IOException {

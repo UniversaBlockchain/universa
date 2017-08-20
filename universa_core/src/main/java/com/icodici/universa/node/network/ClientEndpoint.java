@@ -87,17 +87,17 @@ public class ClientEndpoint {
                         result = Binder.fromKeysValues("ping", "pong");
                         result.putAll(params);
                         break;
-                    default:
-                        return errorResponse(Response.Status.NOT_FOUND, "BAD_COMMAND", "command not supported");
                     case "/network":
                         result = getNetworkDirectory();
                         break;
-                    case "/stop":
-                        if (true) {
-                            networkBuilder.shutdown();
-                            result = Binder.fromKeysValues("stopped", "ok");
-                        } else
-                            result = Binder.fromKeysValues("can;t stop", "insufficient rights");
+                    default:
+                        return errorResponse(Response.Status.NOT_FOUND, "BAD_COMMAND", "command not supported: "+uri);
+//                    case "/stop":
+//                        if (true) {
+//                            networkBuilder.shutdown();
+//                            result = Binder.fromKeysValues("stopped", "ok");
+//                        } else
+//                            result = Binder.fromKeysValues("can;t stop", "insufficient rights");
                 }
                 return makeResponse(Response.Status.OK, result);
             } catch (
@@ -143,7 +143,8 @@ public class ClientEndpoint {
                     network.put(ni.getNodeId(),
                                 Binder.fromKeysValues(
                                         "port", ni.getClientPort(),
-                                        "ip", ni.getHost()
+                                        "ip", ni.getHost(),
+                                        "key", ni.getPackedPublicKey()
                                 )
                     );
                     networkDirectory = network;

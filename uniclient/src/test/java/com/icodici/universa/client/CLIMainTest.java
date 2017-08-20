@@ -49,6 +49,9 @@ public class CLIMainTest {
         callMain("-c", rootPath+"simple_root_contract.yml",
                  "-k", rootPath+"_xer0yfe2nn1xthc.private.unikey");
         assert(new File(rootPath+"/simple_root_contract.unic").exists());
+        if( errors.size() > 0 ) {
+            System.out.println(errors);
+        }
         assertEquals(0, errors.size());
     }
 

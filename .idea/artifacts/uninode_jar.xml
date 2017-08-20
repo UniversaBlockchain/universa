@@ -1,5 +1,5 @@
 <component name="ArtifactManager">
-  <artifact name="uninode:jar">
+  <artifact build-on-make="true" name="uninode:jar">
     <output-path>$PROJECT_DIR$/out/artifacts/uninode_jar</output-path>
     <root id="root">
       <element id="archive" name="uninode.jar">
