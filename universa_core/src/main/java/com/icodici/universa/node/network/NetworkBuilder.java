@@ -157,7 +157,7 @@ public class NetworkBuilder implements AutoCloseable{
                 }
             }
             adapters.add(new BitrustedLocalAdapter(localNode, privateKey, keysNodes, port));
-            clientEndpoint = new ClientEndpoint(overrideClientPort == 0 ? clientPort : overrideClientPort, localNode, NetworkBuilder.this);
+            clientEndpoint = new ClientEndpoint(privateKey, overrideClientPort == 0 ? clientPort : overrideClientPort, localNode, NetworkBuilder.this);
         }
 
         public int getClientPort() {

@@ -7,33 +7,48 @@
 
 package com.icodici.universa.node.network;
 
-import com.icodici.crypto.EncryptionError;
-import com.icodici.crypto.PublicKey;
+import com.icodici.crypto.*;
+import com.icodici.universa.contract.Errors;
+import com.icodici.universa.node.ErrorRecord;
 import com.icodici.universa.node.LocalNode;
 import fi.iki.elonen.NanoHTTPD;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
-import net.sergeych.utils.Ut;
 
+import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static java.util.Arrays.asList;
 
 /**
- * HTTP endpoint for client requests
+ * HTTP endpoint for client requests.
+ * <p>
+ * Key authentication, two steps, client calls serber:
+ * <p>
+ * connect(my_public_key, client_salt) -> server_nonce get_token(signed(my_public_key, server_nonce, client_nonce)) ->
+ * signed(node_key, server_nonce, encrypted(my_public_key, session_key))
  * <p>
  * We might need to use threadpool later (https://github.com/NanoHttpd/nanohttpd/wiki/Example:-Using-a-ThreadPool)
  */
 public class ClientEndpoint {
 
+    private interface Implementor {
+        Binder apply(Session session) throws Exception;
+    }
+
     private Server instance;
     private final NetworkBuilder networkBuilder;
     private LocalNode localNode;
     private int port;
+    private PrivateKey myKey;
 
     public void shutdown() {
         if (instance != null)
@@ -79,6 +94,31 @@ public class ClientEndpoint {
             }
         }
 
+        private Binder inSession(PublicKey key, Implementor function) throws EncryptionError {
+            return inSession(getSession(key), function);
+        }
+
+        private Binder inSession(Session s, Implementor processor) {
+            synchronized (s) {
+                try {
+                    s.errors.clear();
+                    return s.answer(processor.apply(s));
+                } catch (ClientError e) {
+                    s.errors.add(e.errorRecord);
+                } catch (Exception e) {
+                    s.errors.add(new ErrorRecord(Errors.FAILURE, "", e.getMessage()));
+                }
+                return s.answer(null);
+            }
+        }
+
+        private Binder inSession(long id, Implementor processor) {
+            Session s = sessionsById.get(id);
+            if (s == null)
+                throw new IllegalArgumentException("bad session number");
+            return inSession(s, processor);
+        }
+
         private Response processRequest(String uri, Binder params) {
             try {
                 Binder result = null;
@@ -90,20 +130,35 @@ public class ClientEndpoint {
                     case "/network":
                         result = getNetworkDirectory();
                         break;
+                    case "/connect":
+                        try {
+                            PublicKey clientKey = new PublicKey(params.getBinaryOrThrow("client_key"));
+                            result = inSession(clientKey, session -> session.connect());
+                        } catch (Exception e) {
+                            return errorResponse(Response.Status.OK,
+                                                 new ErrorRecord(Errors.BAD_CLIENT_KEY,
+                                                                 "client_key",
+                                                                 e.getMessage()
+                                                 )
+                            );
+                        }
+                        break;
+                    case "/get_token":
+                        result = inSession(params.getLongOrThrow("session_id"), s -> s.getToken(params));
+                        break;
+                    case "/command":
+                        result = inSession(params.getLongOrThrow("session_id"), s -> s.command(params));
+                        break;
                     default:
-                        return errorResponse(Response.Status.NOT_FOUND, "BAD_COMMAND", "command not supported: "+uri);
-//                    case "/stop":
-//                        if (true) {
-//                            networkBuilder.shutdown();
-//                            result = Binder.fromKeysValues("stopped", "ok");
-//                        } else
-//                            result = Binder.fromKeysValues("can;t stop", "insufficient rights");
+                        return errorResponse(Response.Status.OK,
+                                             new ErrorRecord(Errors.UNKNOWN_COMMAND,
+                                                             "uri",
+                                                             "command not supported: " + uri
+                                             )
+                        );
                 }
                 return makeResponse(Response.Status.OK, result);
-            } catch (
-                    Exception e)
-
-            {
+            } catch (Exception e) {
                 return errorResponse(e);
             }
         }
@@ -113,14 +168,15 @@ public class ClientEndpoint {
             stop();
         }
 
-        private Response errorResponse(Response.Status code, String errorCode, String text) {
-            return reponseKeysValues(code, "error", errorCode, "text", text);
+        private Response errorResponse(Response.Status code, ErrorRecord er) {
+            return reponseKeysValues(code, "errors", asList(er)
+            );
         }
 
         private Response errorResponse(Throwable t) {
             t.printStackTrace();
-            return reponseKeysValues(Response.Status.INTERNAL_ERROR,
-                                     "error", "INTERROR", "text", t.getMessage()
+            return errorResponse(Response.Status.OK,
+                                 new ErrorRecord(Errors.FAILURE, "", t.getMessage())
             );
         }
 
@@ -132,6 +188,7 @@ public class ClientEndpoint {
             return new BinaryResponse(status, Boss.pack(data));
         }
     }
+
 
     private Binder networkDirectory = null;
 
@@ -154,44 +211,158 @@ public class ClientEndpoint {
         }
     }
 
-    private class Registration {
-        PublicKey publicKey;
-        byte[] sessionKey;
-        byte[] encryptedAnswer;
+    private AtomicLong sessionIds = new AtomicLong(
+            LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) +
+                    Do.randomInt(0x7FFFffff));
 
-        Registration(PublicKey key) throws EncryptionError {
+    private class Session {
+
+        private PublicKey publicKey;
+        private SymmetricKey sessionKey;
+        private byte[] serverNonce;
+        private byte[] encryptedAnswer;
+        private long sessionId = sessionIds.incrementAndGet();
+
+
+        Session(PublicKey key) throws EncryptionError {
             publicKey = key;
-            sessionKey = Do.randomBytes(32);
-            Binder data = Binder.fromKeysValues(
-                    "sk", sessionKey
-            );
-            encryptedAnswer = publicKey.encrypt(Boss.pack(data));
         }
 
+        private void createSessionKey() throws EncryptionError {
+            if (sessionKey == null) {
+                sessionKey = new SymmetricKey();
+                Binder data = Binder.fromKeysValues(
+                        "sk", sessionKey.pack()
+                );
+                encryptedAnswer = publicKey.encrypt(Boss.pack(data));
+            }
+        }
+
+        Binder connect() {
+            if (serverNonce == null)
+                serverNonce = Do.randomBytes(48);
+            return Binder.fromKeysValues(
+                    "server_nonce", serverNonce,
+                    "session_id", sessionId
+            );
+        }
+
+        Binder getToken(Binder data) {
+            // Check the answer is properly signed
+            byte[] signedAnswer = data.getBinaryOrThrow("data");
+            try {
+                if (publicKey.verify(signedAnswer, data.getBinaryOrThrow("signature"), HashType.SHA512)) {
+                    Binder params = Boss.unpack(signedAnswer);
+                    // now we can check the results
+                    if (!Arrays.equals(params.getBinaryOrThrow("server_nonce"), serverNonce))
+                        addError(Errors.BADVALUE, "server_nonce", "does not match");
+                    else {
+                        // Nonce is ok, we can return session token
+                        createSessionKey();
+                        Binder result = Binder.fromKeysValues(
+                                "client_nonce", params.getBinaryOrThrow("client_nonce"),
+                                "encrypted_token", encryptedAnswer
+                        );
+                        byte[] packed = Boss.pack(result);
+                        return Binder.fromKeysValues(
+                                "data", packed,
+                                "signature", myKey.sign(packed, HashType.SHA512)
+                        );
+                    }
+                }
+            } catch (Exception e) {
+                addError(Errors.BADVALUE, "signed_data", "wrong or tampered data block:"+e.getMessage());
+            }
+            return null;
+        }
+
+        private Binder answer(Binder result) {
+            if (result == null)
+                result = new Binder();
+            if (!errors.isEmpty()) {
+                result.put("errors", errors);
+                errors.clear();
+            }
+            return result;
+        }
+
+        private void addError(Errors code, String object, String message) {
+            errors.add(new ErrorRecord(code, object, message));
+        }
+
+        private List<ErrorRecord> errors = Collections.synchronizedList(new ArrayList<>());
+
+        public Binder command(Binder params) throws ClientError {
+            String cmd = params.getStringOrThrow("command");
+            switch (cmd) {
+                case "hello":
+                    return Binder.fromKeysValues("status", "OK",
+                                                 "message", "welcome to the Universa"
+                    );
+            }
+            throw new ClientError(Errors.UNKNOWN_COMMAND, "command", "unknown: " + cmd);
+        }
     }
 
-    ConcurrentHashMap<PublicKey, Registration> registrations = new ConcurrentHashMap<>();
+    ConcurrentHashMap<PublicKey, Session> sessionsByKey = new ConcurrentHashMap<>();
+    ConcurrentHashMap<Long, Session> sessionsById = new ConcurrentHashMap<>();
+
+    private @Nonnull
+    Session getSession(PublicKey key) throws EncryptionError {
+        synchronized (sessionsByKey) {
+            Session r = sessionsByKey.get(key);
+            if (r == null) {
+                r = new Session(key);
+                sessionsByKey.put(key, r);
+                sessionsById.put(r.sessionId, r);
+            }
+            return r;
+        }
+    }
+
 
     Binder requestToken(Binder params) throws EncryptionError {
         PublicKey remoteKey = params.getOrThrow("key");
-        Registration r;
-        synchronized (registrations) {
-            r = registrations.get(remoteKey);
+        Session r;
+        synchronized (sessionsByKey) {
+            r = sessionsByKey.get(remoteKey);
             if (r == null) {
-                r = new Registration(remoteKey);
-                registrations.put(remoteKey, r);
+                r = new Session(remoteKey);
+                sessionsByKey.put(remoteKey, r);
             }
         }
         return Binder.fromKeysValues("encryptedToken", r.encryptedAnswer);
     }
 
-    public ClientEndpoint(int port, LocalNode localNode, NetworkBuilder nb) throws IOException {
+    public ClientEndpoint(PrivateKey privateKey, int port, LocalNode localNode, NetworkBuilder nb) throws IOException {
         this.port = port;
         this.networkBuilder = nb;
         instance = new Server(port);
         this.localNode = localNode;
         instance.start();
+        myKey = privateKey;
     }
 
+    static public class ClientError extends IOException {
+        public ErrorRecord getErrorRecord() {
+            return errorRecord;
+        }
+
+        private final ErrorRecord errorRecord;
+
+        public ClientError(ErrorRecord er) {
+            super(er.toString());
+            this.errorRecord = er;
+        }
+
+        public ClientError(Errors code, String object, String message) {
+            this(new ErrorRecord(code, object, message));
+        }
+
+        @Override
+        public String toString() {
+            return "ClientError: " + errorRecord;
+        }
+    }
 
 }

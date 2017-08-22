@@ -7,6 +7,10 @@
 
 package com.icodici.universa.node.network;
 
+import com.icodici.crypto.HashType;
+import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
+import com.icodici.crypto.SymmetricKey;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -17,13 +21,90 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.BindException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Arrays;
 
 public class HttpClient {
 
+    public class EndpointException extends IOException {
+        private final Answer answer;
+
+        public EndpointException(Answer answer) {
+            this.answer = answer;
+        }
+
+        public Answer getAnswer() {
+            return answer;
+        }
+
+        public int getCode() {
+            return answer.code;
+        }
+
+        public Binder getData() {
+            return answer.data;
+        }
+
+        @Override
+        public String toString() {
+            return "Client::EndpointException " + answer;
+        }
+    }
+
     private String nodeId;
+    private PrivateKey privateKey;
+    private SymmetricKey sessionKey;
+    private long sessionId;
+
+    /**
+     * Authenticte self to the remote party. Blocks until the handshake is done.
+     */
+    public void start(PrivateKey privateKey, PublicKey nodePublicKey) throws IOException {
+        if (this.privateKey != null)
+            throw new IllegalStateException("Private key is already set and the session is started");
+        this.privateKey = privateKey;
+        Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
+        sessionId = a.data.getLongOrThrow("session_id");
+        byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
+        byte[] client_nonce = Do.randomBytes(47);
+        byte[] data = Boss.pack(Binder.fromKeysValues(
+                "client_nonce", client_nonce,
+                "server_nonce", server_nonce
+        ));
+        a = requestOrThrow("get_token",
+                           "signature", privateKey.sign(data, HashType.SHA512),
+                           "data", data,
+                           "session_id", sessionId
+        );
+        data = a.data.getBinaryOrThrow("data");
+        if (!nodePublicKey.verify(data, a.data.getBinaryOrThrow("signature"), HashType.SHA512))
+            throw new IOException("node signature failed");
+        Binder params = Boss.unpack(data);
+        if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
+            throw new IOException("client nonce mismatch");
+        sessionKey = new SymmetricKey(params.getBinary("session_key"));
+
+//        Binder result = command("hello");
+//        System.out.println(result);
+    }
+
+//    public Binder command(String name,Binder params) {
+//
+//    }
+
+    public Binder command(String name, Object... keysValues) {
+        return command(name, Binder.fromKeysValues(keysValues));
+    }
+
+    private Answer requestOrThrow(String connect, Object... params) throws IOException {
+        Answer answer = request(connect, params);
+        if (answer.code >= 400 || answer.data.containsKey("errors"))
+            throw new EndpointException(answer);
+        return answer;
+    }
 
     public class Answer {
         public final int code;
@@ -36,7 +117,10 @@ public class HttpClient {
 
         @Override
         public String toString() {
-            return ""+code+": "+data;
+            if (data.containsKey("errors")) {
+                return "" + code + " errors: " + data.getOrCreateList("errors");
+            }
+            return "" + code + ": " + data;
         }
 
         public boolean isOk() {
@@ -69,7 +153,7 @@ public class HttpClient {
 
         String CRLF = "\r\n"; // Line separator required by multipart/form-data.
 
-        URLConnection connection = new URL(url + "/"+ path).openConnection();
+        URLConnection connection = new URL(url + "/" + path).openConnection();
         connection.setDoOutput(true);
 
         connection.setConnectTimeout(2000);
@@ -99,11 +183,11 @@ public class HttpClient {
         HttpURLConnection httpConnection = (HttpURLConnection) connection;
         int responseCode = httpConnection.getResponseCode();
         byte[] answer = Do.read(httpConnection.getInputStream());
-        return new Answer(responseCode, Boss.unpack(answer));
+        return new Answer(responseCode, Binder.from(Boss.load(answer)));
     }
 
     @Override
     public String toString() {
-        return "Node<"+nodeId+":"+getUrl()+">";
+        return "Node<" + nodeId + ":" + getUrl() + ">";
     }
 }

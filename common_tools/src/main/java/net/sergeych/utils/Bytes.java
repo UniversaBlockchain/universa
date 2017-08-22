@@ -368,6 +368,8 @@ public class Bytes implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
+        if( obj instanceof byte[] )
+            return Arrays.equals((byte[])obj, data);
         if (obj instanceof Bytes) {
             byte[] other = ((Bytes) obj).data;
             return Arrays.equals(other, data);

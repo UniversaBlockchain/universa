@@ -32,5 +32,12 @@ public enum Errors {
     /**
      * New state is bad in general (say, not changed)
      */
-    BADSTATE
+    BADSTATE,
+    // -------------------------- other errors which are not contract-specific
+    /**
+     * General error of unknown type
+     */
+    FAILURE,
+    BAD_CLIENT_KEY,
+    UNKNOWN_COMMAND
 }
