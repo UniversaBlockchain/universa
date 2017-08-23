@@ -36,5 +36,6 @@ public class ClientEndpointTest extends TestCase {
         ep = new ClientEndpoint(TestKeys.privateKey(0), 17172, null, null);
         client = new HttpClient("testnode1", "http://localhost:17172");
         client.start(TestKeys.privateKey(1), TestKeys.publicKey(0));
+        assert(client.ping());
     }
 }

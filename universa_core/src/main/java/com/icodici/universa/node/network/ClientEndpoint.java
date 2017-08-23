@@ -312,6 +312,8 @@ public class ClientEndpoint {
                     return Binder.fromKeysValues("status", "OK",
                                                  "message", "welcome to the Universa"
                     );
+                case "sping":
+                    return Binder.fromKeysValues("sping", "spong");
             }
             throw new ClientError(Errors.UNKNOWN_COMMAND, "command", "unknown: " + cmd);
         }
