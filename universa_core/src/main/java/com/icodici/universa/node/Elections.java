@@ -8,6 +8,7 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.Approvable;
+import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.utils.LogPrinter;
@@ -117,27 +118,33 @@ class Elections {
             } else {
                 // check the referenced items
                 for (HashId id : item.getReferencedItems()) {
-                    if (!ledger.isApproved(id))
+                    if (!ledger.isApproved(id)) {
+                        item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                         checkPassed = false;
+                    }
                 }
 
                 // check revoking items
                 for (Approvable a : item.getRevokingItems()) {
                     StateRecord r = record.lockToRevoke(a.getId());
-                    if (r == null)
+                    if (r == null) {
                         checkPassed = false;
+                        item.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
+                    }
                     else
                         lockedToRevoke.add(r);
                 }
 
                 // check new items
                 for (Approvable newItem : item.getNewItems()) {
-                    if (!newItem.check())
+                    if (!newItem.check()) {
                         checkPassed = false;
-                    else {
+                        item.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
+                    } else {
                         StateRecord r = record.createOutputLockRecord(newItem.getId());
                         if (r == null) {
                             checkPassed = false;
+                            item.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item existst in ledger");
                         } else {
                             lockedToCreate.add(r);
                         }

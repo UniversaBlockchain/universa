@@ -261,7 +261,7 @@ public class ClientEndpoint {
                     Binder params = Boss.unpack(signedAnswer);
                     // now we can check the results
                     if (!Arrays.equals(params.getBinaryOrThrow("server_nonce"), serverNonce))
-                        addError(Errors.BADVALUE, "server_nonce", "does not match");
+                        addError(Errors.BAD_VALUE, "server_nonce", "does not match");
                     else {
                         // Nonce is ok, we can return session token
                         createSessionKey();
@@ -277,7 +277,7 @@ public class ClientEndpoint {
                     }
                 }
             } catch (Exception e) {
-                addError(Errors.BADVALUE, "signed_data", "wrong or tampered data block:" + e.getMessage());
+                addError(Errors.BAD_VALUE, "signed_data", "wrong or tampered data block:" + e.getMessage());
             }
             return null;
         }

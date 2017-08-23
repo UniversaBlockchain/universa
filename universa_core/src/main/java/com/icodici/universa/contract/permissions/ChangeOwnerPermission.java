@@ -33,11 +33,11 @@ public class ChangeOwnerPermission extends Permission {
         if( x != null ) {
             stateChanges.remove("owner");
             if( !(x instanceof ChangedItem) )
-                contract.addError(Errors.BADVALUE, "state.owner", "improper change");
+                contract.addError(Errors.BAD_VALUE, "state.owner", "improper change");
             else {
                 ChangedItem<Role, Role> ci = (ChangedItem<Role, Role>) x;
                 if( !(ci.newValue() instanceof Role) )
-                    contract.addError(Errors.BADVALUE, "state.owner", "improper change");
+                    contract.addError(Errors.BAD_VALUE, "state.owner", "improper change");
             }
         }
         super.checkChanges(contract, stateChanges);

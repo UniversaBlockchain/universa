@@ -9,7 +9,7 @@ package com.icodici.universa;
 
 public enum Errors {
     NOT_SUPPORTED,
-    BADVALUE,
+    BAD_VALUE,
     EXPIRED,
     MISSING_OWNER,
     MISSING_ISSUER,
@@ -27,18 +27,24 @@ public enum Errors {
     /**
      * Approvable item of unknown type or general reference error
      */
-    BADREF,
+    BAD_REF,
+    /**
+     * can't revoke requested item
+     */
+    BAD_REVOKE,
+    BAD_NEW_ITEM,
+    NEW_ITEM_EXISTS,
     ILLEGAL_CHANGE,
     /**
      * New state is bad in general (say, not changed)
      */
-    BADSTATE,
+    BADSTATE
     // -------------------------- other errors which are not contract-specific
-    /**
+,    /**
      * General error of unknown type
      */
     FAILURE,
     BAD_CLIENT_KEY,
-    COMMAND_FAILED,
-    UNKNOWN_COMMAND
+    UNKNOWN_COMMAND,
+    COMMAND_FAILED
 }

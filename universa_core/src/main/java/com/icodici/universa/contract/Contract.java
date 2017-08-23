@@ -203,13 +203,13 @@ public class Contract implements Approvable {
         if (issuer != null && !issuer.equalKeys(createdBy))
             addError(ISSUER_MUST_CREATE, "state.created_by");
         if (state.revision != 1)
-            addError(BADVALUE, "state.revision", "must be 1 in a root contract");
+            addError(BAD_VALUE, "state.revision", "must be 1 in a root contract");
         if (state.createdAt == null)
             state.createdAt = definition.createdAt;
         else if (!state.createdAt.equals(definition.createdAt))
-            addError(BADVALUE, "state.created_at", "invalid");
+            addError(BAD_VALUE, "state.created_at", "invalid");
         if (state.origin != null)
-            addError(BADVALUE, "state.origin", "must be empty in a root contract");
+            addError(BAD_VALUE, "state.origin", "must be empty in a root contract");
 
         checkRootDependencies();
     }
@@ -218,7 +218,7 @@ public class Contract implements Approvable {
         // Revoke dependencies: _issuer_ of the root contract must have right to revoke
         revokingItems.forEach(item -> {
             if (!(item instanceof Contract))
-                addError(BADREF, "revokingItem", "revoking item is not a Contract");
+                addError(BAD_REF, "revokingItem", "revoking item is not a Contract");
             Contract rc = (Contract) item;
             if (!rc.isPermitted("revoke", getIssuer()))
                 addError(FORBIDDEN, "revokingItem", "revocation not permitted for item " + rc.getId());
@@ -236,16 +236,16 @@ public class Contract implements Approvable {
         // get the previous version
         Contract parent = getRevokingItem(getParent());
         if (parent == null) {
-            addError(BADREF, "parent", "parent contract must be included");
+            addError(BAD_REF, "parent", "parent contract must be included");
         } else {
             // checking parent:
             // proper origin
             HashId rootId = parent.getRootId();
             if (!rootId.equals(getOrigin())) {
-                addError(BADVALUE, "state.origin", "wrong origin, should be root");
+                addError(BAD_VALUE, "state.origin", "wrong origin, should be root");
             }
             if (!getParent().equals(parent.getId()))
-                addError(BADVALUE, "state.parent", "illegal parent reference");
+                addError(BAD_VALUE, "state.parent", "illegal parent reference");
 
             ContractDelta delta = new ContractDelta(parent, this);
             delta.check();
@@ -286,7 +286,7 @@ public class Contract implements Approvable {
         if (definition.createdAt == null ||
                 definition.createdAt.isAfter(LocalDateTime.now()) ||
                 definition.createdAt.isBefore(getEarliestCreationTime())) {
-            addError(BADVALUE, "definition.created_at", "invalid");
+            addError(BAD_VALUE, "definition.created_at", "invalid");
         }
         if (definition.expiresAt == null ||
                 definition.expiresAt.isBefore(LocalDateTime.now())) {
@@ -295,10 +295,10 @@ public class Contract implements Approvable {
         if (state.createdAt == null ||
                 state.createdAt.isAfter(LocalDateTime.now()) ||
                 state.createdAt.isBefore(getEarliestCreationTime())) {
-            addError(BADVALUE, "state.created_at");
+            addError(BAD_VALUE, "state.created_at");
         }
         if (apiLevel < 1)
-            addError(BADVALUE, "api_level");
+            addError(BAD_VALUE, "api_level");
         Role owner = getRole("owner");
         if (owner == null || !owner.isValid())
             addError(MISSING_OWNER, "state.owner");
@@ -306,10 +306,10 @@ public class Contract implements Approvable {
         if (issuer == null || !issuer.isValid())
             addError(MISSING_ISSUER, "state.issuer");
         if (state.revision < 1)
-            addError(BADVALUE, "state.revision");
+            addError(BAD_VALUE, "state.revision");
         Role createdBy = getRole("creator");
         if (createdBy == null || !createdBy.isValid())
-            addError(BADVALUE, "state.created_by");
+            addError(BAD_VALUE, "state.created_by");
         if (!isSignedBy(createdBy))
             addError(NOT_SIGNED, "", "missing creator signature(s)");
     }

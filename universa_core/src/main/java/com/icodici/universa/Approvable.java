@@ -62,4 +62,11 @@ public interface Approvable extends HashIdentifiable {
      * @return true if this instance is completely checked with positive result.
      */
     boolean check();
+
+    default void addError(ErrorRecord r) {
+    }
+
+    default void addError(Errors code,String object,String message) {
+        addError(new ErrorRecord(code, object, message));
+    }
 }

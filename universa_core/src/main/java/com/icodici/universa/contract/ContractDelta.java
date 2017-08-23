@@ -67,20 +67,20 @@ public class ContractDelta {
         }
         ChangedItem<Integer,Integer> revision = (ChangedItem) stateChanges.get("revision");
         if( revision == null )
-            addError(BADVALUE, "state,revision", "is not incremented");
+            addError(BAD_VALUE, "state,revision", "is not incremented");
         else {
             stateChanges.remove("revision");
             if( revision.oldValue() + 1 != revision.newValue() )
-                addError(BADVALUE, "state.revision", "wrong revision number");
+                addError(BAD_VALUE, "state.revision", "wrong revision number");
         }
         Delta creationTimeChange = stateChanges.get("created_at");
         if( creationTimeChange == null || !(creationTimeChange instanceof ChangedItem) )
-            addError(BADVALUE, "stat.created_at", "invlaid new state");
+            addError(BAD_VALUE, "stat.created_at", "invlaid new state");
         else {
             stateChanges.remove("created_at");
             ChangedItem<LocalDateTime,LocalDateTime> ci = (ChangedItem)creationTimeChange;
             if( !ci.newValue().isAfter(ci.oldValue()) )
-                addError(BADVALUE, "state.created_at", "new creation datetime is before old one");
+                addError(BAD_VALUE, "state.created_at", "new creation datetime is before old one");
         }
 
         excludePermittedChanges();
