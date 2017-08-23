@@ -281,7 +281,6 @@ public class ClientEndpoint {
                 result = new Binder();
             if (!errors.isEmpty()) {
                 result.put("errors", errors);
-                errors.clear();
             }
             return result;
         }
@@ -292,7 +291,21 @@ public class ClientEndpoint {
 
         private List<ErrorRecord> errors = Collections.synchronizedList(new ArrayList<>());
 
-        public Binder command(Binder params) throws ClientError {
+        public Binder command(Binder params) throws ClientError, EncryptionError {
+            // decrypt params and execute command
+            Binder result = executeAuthenticatedCommand(
+                    Boss.unpack(
+                            sessionKey.decrypt(params.getBinaryOrThrow("params"))
+                    )
+            );
+            // encrypt and return result
+            return Binder.fromKeysValues(
+                    "result",
+                    sessionKey.encrypt(Boss.pack(result))
+            );
+        }
+
+        private Binder executeAuthenticatedCommand(Binder params) throws ClientError {
             String cmd = params.getStringOrThrow("command");
             switch (cmd) {
                 case "hello":
@@ -320,19 +333,6 @@ public class ClientEndpoint {
         }
     }
 
-
-    Binder requestToken(Binder params) throws EncryptionError {
-        PublicKey remoteKey = params.getOrThrow("key");
-        Session r;
-        synchronized (sessionsByKey) {
-            r = sessionsByKey.get(remoteKey);
-            if (r == null) {
-                r = new Session(remoteKey);
-                sessionsByKey.put(remoteKey, r);
-            }
-        }
-        return Binder.fromKeysValues("encryptedToken", r.encryptedAnswer);
-    }
 
     public ClientEndpoint(PrivateKey privateKey, int port, LocalNode localNode, NetworkBuilder nb) throws IOException {
         this.port = port;

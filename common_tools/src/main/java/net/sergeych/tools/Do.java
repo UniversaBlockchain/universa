@@ -25,7 +25,7 @@ public class Do {
     static Charset utf8 = Charset.forName("utf-8");
 
     public static byte[] read(String fileName) throws IOException {
-        try(FileInputStream f = new FileInputStream(fileName)) {
+        try (FileInputStream f = new FileInputStream(fileName)) {
             return read(f);
         }
     }
@@ -55,6 +55,7 @@ public class Do {
      * For other types of collections converts i to an array which might require further optimization.
      *
      * @param source collection
+     *
      * @return random item. null if the collection is empty.
      */
     public static <T> T sample(Collection source) {
@@ -85,6 +86,7 @@ public class Do {
      * get the next integer in [0,max] range using {@link SecureRandom} generator
      *
      * @param max
+     *
      * @return
      */
     public static int randomInt(int max) {
@@ -95,6 +97,7 @@ public class Do {
      * Get a sequence of random bytes using SecureRandom.
      *
      * @param length array length
+     *
      * @return random bytes array
      */
     public static byte[] randomBytes(int length) {
@@ -107,13 +110,14 @@ public class Do {
      * Get a sequence of random negative bytes using SecureRandom, useful to test errors
      *
      * @param length array length
+     *
      * @return random bytes array
      */
     public static byte[] randomNegativeBytes(int length) {
         byte[] data = new byte[length];
         getRng().nextBytes(data);
         for (int i = 0; i < data.length; i++) {
-            if(data[i] > 0)
+            if (data[i] > 0)
                 data[i] = (byte) -data[i];
         }
         return data;
@@ -157,6 +161,7 @@ public class Do {
      * Convert "key, value" pairs from varargs into a Map.
      *
      * @param args key, value pairs.Can be 0 length or any even length.
+     *
      * @return filled Map instance
      */
     public static HashMap<String, Object> map(Object... args) {
@@ -176,11 +181,15 @@ public class Do {
      * Convert native array or some collection fo list
      *
      * @param x array, collection or a list
+     *
      * @return
      */
-    public static <T,U> ArrayList<T> list(U x) {
+    public static <T, U> ArrayList<T> list(U x) {
         if (x instanceof ArrayList)
             return (ArrayList<T>) x;
+        if (x instanceof Collection) {
+            return new ArrayList<>((Collection) x);
+        }
         if (x instanceof Collection) {
             return new ArrayList<>((Collection) x);
         }
@@ -194,7 +203,7 @@ public class Do {
         return null;
     }
 
-    public static <T,U> ArrayList<T> listOf(U... objects) {
+    public static <T, U> ArrayList<T> listOf(U... objects) {
         ArrayList<T> list = new ArrayList<T>();
         for (U x : objects) {
             list.add((T) x);
@@ -259,6 +268,7 @@ public class Do {
      * parallel.
      *
      * @param task to perform
+     *
      * @return connected and deferred result of the operation already started.
      */
     static public DeferredResult inParallel(final Task task) {

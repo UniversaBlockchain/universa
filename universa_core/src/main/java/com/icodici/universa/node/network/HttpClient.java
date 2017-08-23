@@ -14,6 +14,7 @@ import com.icodici.crypto.SymmetricKey;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.LogPrinter;
 import net.sergeych.utils.Ut;
 
 import javax.annotation.Nonnull;
@@ -29,10 +30,45 @@ import java.util.Arrays;
 
 public class HttpClient {
 
-    public class EndpointException extends IOException {
+    static private LogPrinter log = new LogPrinter("HTCL");
+    private String connectMessage;
+
+    public String getConnectMessage() {
+        return connectMessage;
+    }
+
+    public class ClientException extends IOException {
+        public ClientException(String message) {
+            super(message);
+        }
+
+        public ClientException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        public ClientException(Throwable cause) {
+            super(cause);
+        }
+
+        public HttpClient getClient() { return HttpClient.this; }
+    }
+
+    public class ConnectionFailedException extends ClientException {
+
+        public ConnectionFailedException() {
+            super("connection failed");
+        }
+
+        public ConnectionFailedException(String reason) {
+            super(reason);
+        }
+    }
+
+    public class EndpointException extends ClientException {
         private final Answer answer;
 
         public EndpointException(Answer answer) {
+            super("Client::EndpointException " + answer);
             this.answer = answer;
         }
 
@@ -46,11 +82,6 @@ public class HttpClient {
 
         public Binder getData() {
             return answer.data;
-        }
-
-        @Override
-        public String toString() {
-            return "Client::EndpointException " + answer;
         }
     }
 
@@ -85,17 +116,47 @@ public class HttpClient {
         Binder params = Boss.unpack(data);
         if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
             throw new IOException("client nonce mismatch");
-        sessionKey = new SymmetricKey(params.getBinary("session_key"));
+        byte[] key = Boss.unpack(
+                privateKey.decrypt(
+                        params.getBinaryOrThrow("encrypted_token")
+                )
+        )
+                .getBinaryOrThrow("sk");
+        sessionKey = new SymmetricKey(key);
 
-//        Binder result = command("hello");
-//        System.out.println(result);
+        Binder result = command("hello");
+        this.connectMessage = result.getStringOrThrow("message");
+        if( !result.getStringOrThrow("status").equals("OK"))
+            throw new ConnectionFailedException(""+result);
     }
 
-//    public Binder command(String name,Binder params) {
-//
-//    }
+    public Binder command(String name, Binder params) throws IOException {
+        if (sessionKey == null)
+            throw new IllegalStateException("session key is not yet setlled");
+        Binder call = Binder.fromKeysValues(
+                "command", name,
+                "params", params
+        );
+        for (int i = 0; i < 10; i++) {
+            try {
+                Answer a = requestOrThrow("command",
+                                          "command", "command",
+                                          "params", sessionKey.encrypt(Boss.pack(call)),
+                                          "session_id", sessionId
+                );
+                return Boss.unpack(
+                        sessionKey.decrypt(a.data.getBinaryOrThrow("result"))
+                );
+            } catch (IOException e) {
+                e.printStackTrace();
+                log.d("error executing command " + name + ": " + e);
+            }
+            log.d("repeating command " + name + ", attempt " + (i + 1));
+        }
+        throw new IOException("Failed to execute command " + name);
+    }
 
-    public Binder command(String name, Object... keysValues) {
+    public Binder command(String name, Object... keysValues) throws IOException {
         return command(name, Binder.fromKeysValues(keysValues));
     }
 
@@ -118,7 +179,7 @@ public class HttpClient {
         @Override
         public String toString() {
             if (data.containsKey("errors")) {
-                return "" + code + " errors: " + data.getOrCreateList("errors");
+                return "" + code + " error: " + data.getListOrThrow("errors");
             }
             return "" + code + ": " + data;
         }

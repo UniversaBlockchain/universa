@@ -436,4 +436,14 @@ public class Binder extends HashMap<String, Object> {
             return new ArrayList<>();
         return Do.list(x);
     }
+
+    public <T> List<T> getListOrThrow(String key) {
+        Object x = get(key);
+        if( x == null )
+            throw new IllegalArgumentException("missing list parameter: "+key);
+        List<T> list = Do.list(x);
+        if( x == null )
+            throw new IllegalArgumentException("can't make list for "+key+" from "+x);
+        return list;
+    }
 }
