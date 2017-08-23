@@ -54,7 +54,7 @@ public class ErrorRecord {
                 return new ErrorRecord(
                         Errors.valueOf(binder.getStringOrThrow("error")),
                         binder.getStringOrThrow("object"),
-                        binder.getStringOrThrow("message")
+                        binder.getString("message", "")
                 );
             }
 

@@ -11,6 +11,8 @@ import com.icodici.crypto.HashType;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
+import com.icodici.universa.contract.Errors;
+import com.icodici.universa.node.ErrorRecord;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -26,6 +28,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Arrays;
+import java.util.List;
 
 public class HttpClient {
 
@@ -36,6 +39,8 @@ public class HttpClient {
     private SymmetricKey sessionKey;
     private long sessionId;
     private String url;
+    private PublicKey nodePublicKey;
+
     public HttpClient(String nodeId, String rootUrlString) {
         this.url = rootUrlString;
         this.nodeId = nodeId;
@@ -46,11 +51,13 @@ public class HttpClient {
     }
 
     /**
-     * Authenticte self to the remote party. Blocks until the handshake is done.
+     * Authenticte self to the remote party. Blocks until the handshake is done. It is important to start() connection
+     * before any use.
      */
     public void start(PrivateKey privateKey, PublicKey nodePublicKey) throws IOException {
-        if (this.privateKey != null)
-            throw new IllegalStateException("Private key is already set and the session is started");
+        this.nodePublicKey = nodePublicKey;
+        if (sessionKey != null)
+            throw new IllegalStateException("session already started");
         this.privateKey = privateKey;
         Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
         sessionId = a.data.getLongOrThrow("session_id");
@@ -81,12 +88,18 @@ public class HttpClient {
 
         Binder result = command("hello");
         this.connectMessage = result.getStringOrThrow("message");
-        if( !result.getStringOrThrow("status").equals("OK"))
-            throw new ConnectionFailedException(""+result);
+        if (!result.getStringOrThrow("status").equals("OK"))
+            throw new ConnectionFailedException("" + result);
+    }
+
+    public void restart() throws IOException {
+        sessionKey = null;
+        start(privateKey, nodePublicKey);
     }
 
     /**
      * Ping remote side to ensure it is connected
+     *
      * @return true is remote side answers properly. false generally meand we have to recconnect.
      */
     public boolean ping() {
@@ -98,6 +111,17 @@ public class HttpClient {
         }
     }
 
+    /**
+     * Execute a command over the authenticated and encrypted connection. In the case of network errors, restarts the
+     * command.
+     *
+     * @param name   command name
+     * @param params command params
+     *
+     * @return decrypted command answer
+     *
+     * @throws IOException if the commadn can't be executed after several retries or the remote side reports error.
+     */
     public Binder command(String name, Binder params) throws IOException {
         if (sessionKey == null)
             throw new IllegalStateException("session key is not yet setlled");
@@ -106,23 +130,54 @@ public class HttpClient {
                 "params", params
         );
         for (int i = 0; i < 10; i++) {
+            ErrorRecord er = null;
             try {
                 Answer a = requestOrThrow("command",
                                           "command", "command",
                                           "params", sessionKey.encrypt(Boss.pack(call)),
                                           "session_id", sessionId
                 );
-                return Boss.unpack(
+                Binder data = Boss.unpack(
                         sessionKey.decrypt(a.data.getBinaryOrThrow("result"))
                 );
+                Binder result = data.getBinder("result", null);
+                if( result != null )
+                    return result;
+                er = (ErrorRecord) data.get("error");
+                if( er == null )
+                    er = new ErrorRecord(Errors.FAILURE, "", "unprocessablereply");
+            } catch (EndpointException e) {
+                // this is not good = we'd better pass it in the encoded block
+                ErrorRecord r = e.getFirstError();
+                if( r.getError() == Errors.COMMAND_FAILED )
+                    throw e;
             } catch (IOException e) {
                 e.printStackTrace();
                 log.d("error executing command " + name + ": " + e);
             }
+            // if we get here with error, we need to throw it.
+            if( er != null )
+                throw new CommandFailedException(er);
+            // otherwise it is an recoverable error and we must retry
             log.d("repeating command " + name + ", attempt " + (i + 1));
+            try {
+                Thread.sleep(i*3*100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            restart();
         }
         throw new IOException("Failed to execute command " + name);
     }
+
+    /**
+     * Execute command over the authenticated and encrypted connection. See {@link #command(String, Binder)} for more.
+     * @param name command name
+     * @param keysValues keys (strings) and values of the command arguments. Values can be anything {@link Boss} protocol
+     *                   and registered adapters support
+     * @return command result
+     * @throws IOException if the command can't be executed (also if remote returns an error)
+     */
 
     public Binder command(String name, Object... keysValues) throws IOException {
         return command(name, Binder.fromKeysValues(keysValues));
@@ -203,7 +258,9 @@ public class HttpClient {
             super(cause);
         }
 
-        public HttpClient getClient() { return HttpClient.this; }
+        public HttpClient getClient() {
+            return HttpClient.this;
+        }
     }
 
     public class ConnectionFailedException extends ClientException {
@@ -236,7 +293,32 @@ public class HttpClient {
         public Binder getData() {
             return answer.data;
         }
+
+        public List<ErrorRecord> getErrors() {
+            return answer.data.getListOrThrow("errors");
+        }
+
+        public ErrorRecord getFirstError() {
+            return getErrors().get(0);
+        }
     }
+
+    /**
+     * Exception thrown if the remote command (authenticated) reports some {@link ErrorRecord}-based error.
+     */
+    public class CommandFailedException extends ClientException {
+        private final ErrorRecord error;
+
+        public CommandFailedException(ErrorRecord error) {
+            super(error.toString());
+            this.error = error;
+        }
+
+        public ErrorRecord getError() {
+            return error;
+        }
+    }
+
 
     public class Answer {
         public final int code;

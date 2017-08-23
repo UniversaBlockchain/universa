@@ -40,6 +40,12 @@ import static java.util.Arrays.asList;
  */
 public class ClientEndpoint {
 
+    public void changeKeyFor(PublicKey clientKey) throws EncryptionError {
+        Session session = sessionsByKey.get(clientKey);
+        if (session != null)
+            session.sessionKey = null;
+    }
+
     private interface Implementor {
         Binder apply(Session session) throws Exception;
     }
@@ -271,7 +277,7 @@ public class ClientEndpoint {
                     }
                 }
             } catch (Exception e) {
-                addError(Errors.BADVALUE, "signed_data", "wrong or tampered data block:"+e.getMessage());
+                addError(Errors.BADVALUE, "signed_data", "wrong or tampered data block:" + e.getMessage());
             }
             return null;
         }
@@ -293,11 +299,23 @@ public class ClientEndpoint {
 
         public Binder command(Binder params) throws ClientError, EncryptionError {
             // decrypt params and execute command
-            Binder result = executeAuthenticatedCommand(
-                    Boss.unpack(
-                            sessionKey.decrypt(params.getBinaryOrThrow("params"))
-                    )
-            );
+            Binder result = null;
+            try {
+                result = Binder.fromKeysValues(
+                        "result",
+                        executeAuthenticatedCommand(
+                                Boss.unpack(
+                                        sessionKey.decrypt(params.getBinaryOrThrow("params"))
+                                )
+                        )
+                );
+            } catch (Exception e) {
+                ErrorRecord r = (e instanceof ClientError) ? ((ClientError) e).getErrorRecord() :
+                        new ErrorRecord(Errors.COMMAND_FAILED, "", e.getMessage());
+                result = Binder.fromKeysValues(
+                        "error", r
+                );
+            }
             // encrypt and return result
             return Binder.fromKeysValues(
                     "result",
@@ -307,13 +325,23 @@ public class ClientEndpoint {
 
         private Binder executeAuthenticatedCommand(Binder params) throws ClientError {
             String cmd = params.getStringOrThrow("command");
-            switch (cmd) {
-                case "hello":
-                    return Binder.fromKeysValues("status", "OK",
-                                                 "message", "welcome to the Universa"
-                    );
-                case "sping":
-                    return Binder.fromKeysValues("sping", "spong");
+            try {
+                switch (cmd) {
+                    case "hello":
+                        return Binder.fromKeysValues("status", "OK",
+                                                     "message", "welcome to the Universa"
+                        );
+                    case "sping":
+                        return Binder.fromKeysValues("sping", "spong");
+
+                    case "test_error":
+                        throw new IllegalAccessException("sample error");
+                }
+//            } catch (ClientError e) {
+//                throw e;
+            }
+            catch (Exception e) {
+                throw new ClientError(Errors.COMMAND_FAILED, cmd, e.getMessage());
             }
             throw new ClientError(Errors.UNKNOWN_COMMAND, "command", "unknown: " + cmd);
         }

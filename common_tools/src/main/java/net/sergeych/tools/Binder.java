@@ -225,10 +225,23 @@ public class Binder extends HashMap<String, Object> {
     }
 
     public Binder getBinderOrThrow(String key) {
-        Binder result = getBinder(key);
-        if( key == null )
+        Binder result = getBinder(key, null);
+        if( result == null )
             throw new IllegalArgumentException("map not found at key: "+key);
         return result;
+    }
+
+    public Binder getBinder(String key,Binder defaultValue) {
+        HashMap<String, Object> x = (HashMap<String, Object>) get(key);
+        Binder b = null;
+        if (x instanceof Binder) {
+            b = (Binder) x;
+        } else if (x != null) {
+            new Binder(x);
+            if (frozen)
+                b.freeze();
+        }
+        return b == null ? defaultValue : b;
     }
 
     /**
