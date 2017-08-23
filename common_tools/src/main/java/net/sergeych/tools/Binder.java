@@ -237,7 +237,7 @@ public class Binder extends HashMap<String, Object> {
         if (x instanceof Binder) {
             b = (Binder) x;
         } else if (x != null) {
-            new Binder(x);
+            b = new Binder(x);
             if (frozen)
                 b.freeze();
         }

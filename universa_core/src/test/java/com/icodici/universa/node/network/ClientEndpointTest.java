@@ -9,7 +9,7 @@ package com.icodici.universa.node.network;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.contract.Errors;
+import com.icodici.universa.Errors;
 import com.icodici.universa.node.TestCase;
 import org.junit.Test;
 

@@ -11,7 +11,9 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
+import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
+import com.icodici.universa.ErrorRecord;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -27,7 +29,7 @@ import java.time.chrono.ChronoLocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.icodici.universa.contract.Errors.*;
+import static com.icodici.universa.Errors.*;
 
 public class Contract implements Approvable {
 
@@ -110,11 +112,11 @@ public class Contract implements Approvable {
         apiLevel = 1;
     }
 
-    public List<Error> getErrors() {
+    public List<ErrorRecord> getErrors() {
         return errors;
     }
 
-    private final List<Error> errors = new ArrayList<>();
+    private final List<ErrorRecord> errors = new ArrayList<>();
 
     public Contract(Binder root) throws EncryptionError {
         initializeWith(root);
@@ -224,7 +226,10 @@ public class Contract implements Approvable {
     }
 
     public void addError(Errors code, String field, String text) {
-        errors.add(new Error(code, field, text));
+        Errors code1 = code;
+        String field1 = field;
+        String text1 = text;
+        errors.add(new ErrorRecord(code1, field1, text1));
     }
 
     private void checkChangedContract() {
@@ -416,7 +421,9 @@ public class Contract implements Approvable {
     }
 
     protected void addError(Errors code, String field) {
-        errors.add(new Error(code, field));
+        Errors code1 = code;
+        String field1 = field;
+        errors.add(new ErrorRecord(code1, field1, ""));
     }
 
     public ChronoLocalDateTime<?> getEarliestCreationTime() {
@@ -559,47 +566,6 @@ public class Contract implements Approvable {
     public Map<String, Permission> getPermissions() {
         return permissions;
     }
-
-    public class Error {
-        private Error(Errors code, String field, String text) {
-            this.code = code;
-            this.field = field;
-            this.text = text;
-        }
-
-        public Errors getCode() {
-            return code;
-        }
-
-        public String getField() {
-            return field;
-        }
-
-        public Contract getContract() {
-            return Contract.this;
-        }
-
-        private final Errors code;
-        private final String field;
-
-        public String getText() {
-            return text;
-        }
-
-        private final String text;
-
-        private Error(Errors code, String field) {
-            this.code = code;
-            this.field = field;
-            this.text = null;
-        }
-
-        @Override
-        public String toString() {
-            return code.toString() + " in " + field;
-        }
-    }
-
 
     public class State {
         private int revision;
@@ -746,7 +712,7 @@ public class Contract implements Approvable {
 
     public void traceErrors() {
         errors.forEach(e -> {
-            System.out.println("Error: " + e.code + " @" + e.field + ": " + e.text);
+            System.out.println("Error: " + e);
         });
     }
 

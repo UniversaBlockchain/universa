@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Errors;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.RevokePermission;
 import net.sergeych.diff.Delta;

@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Errors;
 import com.icodici.universa.node.network.TestKeys;
 import org.junit.Test;
 
@@ -30,7 +31,7 @@ public class TransactionContractTest extends ContractTestBase {
         boolean result = tc.check();
         assertFalse(result);
         assertEquals(1, tc.getErrors().size());
-        assertEquals(Errors.FORBIDDEN, tc.getErrors().get(0).getCode());
+        assertEquals(Errors.FORBIDDEN, tc.getErrors().get(0).getError());
     }
 
     @Test

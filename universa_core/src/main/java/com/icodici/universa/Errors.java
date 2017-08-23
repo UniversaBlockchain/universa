@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.universa.contract;
+package com.icodici.universa;
 
 public enum Errors {
     NOT_SUPPORTED,

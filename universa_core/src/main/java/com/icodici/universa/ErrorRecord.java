@@ -1,6 +1,5 @@
-package com.icodici.universa.node;
+package com.icodici.universa;
 
-import com.icodici.universa.contract.Errors;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 

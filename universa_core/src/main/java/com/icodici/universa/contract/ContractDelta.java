@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Errors;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
 
-import static com.icodici.universa.contract.Errors.*;
+import static com.icodici.universa.Errors.*;
 
 public class ContractDelta {
 

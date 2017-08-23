@@ -8,6 +8,8 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.ErrorRecord;
+import com.icodici.universa.Errors;
 import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -44,10 +46,10 @@ public class ContractTest extends ContractTestBase {
     public void checkCreatingRootContract() throws Exception {
         Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
         boolean ok = c.check();
-        List<Contract.Error> errors = c.getErrors();
+        List<ErrorRecord> errors = c.getErrors();
         // It is just ok but not signed
         assertEquals(1, errors.size());
-        assertEquals(errors.get(0).getCode(), Errors.NOT_SIGNED);
+        assertEquals(errors.get(0).getError(), Errors.NOT_SIGNED);
 
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         ok = c.check();
@@ -56,7 +58,7 @@ public class ContractTest extends ContractTestBase {
             assertTrue(ok);
             assertTrue(c.isOk());
         } else {
-            for (Contract.Error e : errors) {
+            for (ErrorRecord e : errors) {
                 System.out.println(e);
                 fail("errors in contract");
             }
@@ -78,13 +80,13 @@ public class ContractTest extends ContractTestBase {
         assertProperSimpleRootContract(c2);
 
         boolean ok = c2.check();
-        List<Contract.Error> errors = c2.getErrors();
+        List<ErrorRecord> errors = c2.getErrors();
 
         if (errors.isEmpty()) {
             assertTrue(ok);
             assertTrue(c.isOk());
         } else {
-            for (Contract.Error e : errors) {
+            for (ErrorRecord e : errors) {
                 System.out.println(e);
                 fail("errors in contract");
             }
@@ -156,8 +158,8 @@ public class ContractTest extends ContractTestBase {
         c1.seal();
         c1.check();
         assertEquals(1, c1.getErrors().size());
-        Contract.Error error = c1.getErrors().get(0);
-        assertEquals(Errors.FORBIDDEN, error.getCode());
+        ErrorRecord error = c1.getErrors().get(0);
+        assertEquals(Errors.FORBIDDEN, error.getError());
 
         // good contract change: creator is an owner
 
