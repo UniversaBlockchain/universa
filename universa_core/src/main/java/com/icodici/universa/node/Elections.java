@@ -58,16 +58,26 @@ class Elections {
     private HashSet<StateRecord> lockedToRevoke = new HashSet<>();
     private HashSet<StateRecord> lockedToCreate = new HashSet<>();
     private AsyncEvent<ItemResult> doneEvent = new AsyncEvent<>();
+    private boolean started = false;
 
     public Elections(LocalNode localNode, HashId itemId) throws Error {
         this.itemId = itemId;
-        initWithNode(localNode);
+        this.localNode = localNode;
     }
 
     public Elections(LocalNode localNode, Approvable item) throws Error {
         this.itemId = item.getId();
         this.item = item;
         itemDownloaded.fire(null);
+        this.localNode = localNode;
+    }
+
+    public void ensureStarted() throws Error {
+        synchronized (this) {
+            if( started )
+                return;
+            started = true;
+        }
         initWithNode(localNode);
     }
 
@@ -462,7 +472,7 @@ class Elections {
                     log.d(localNode.toString() + " stop polling, interrupted, pollers size: " + pollers.size());
                     pollers.remove(this);
                 } catch (Exception e) {
-                    log.e("failed to check item " + itemId + " from node " + node + ": " + e.getMessage() + ", retrying");
+//                    log.e("failed to check item " + itemId + " from node " + node + ": " + e.getMessage() + ", retrying");
 //                    e.printStackTrace();
                     reschedule();
                 }
@@ -475,7 +485,8 @@ class Elections {
         }
 
         private void reschedule() {
-            future = pool.schedule(this, network.getRequeryPause().toMillis(), TimeUnit.MILLISECONDS);
+            if( !stop )
+                future = pool.schedule(this, network.getRequeryPause().toMillis(), TimeUnit.MILLISECONDS);
 
         }
     }

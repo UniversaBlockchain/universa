@@ -39,6 +39,9 @@ public class StateRecord implements HashIdentifiable {
     }
 
     public void initFrom(ResultSet rs) throws SQLException {
+        // the processing mught be already fininshed by now:
+        if( rs == null || rs.isClosed() )
+            throw new SQLException("resultset or connection is closed");
         recordId = rs.getLong("id");
         try {
             id = HashId.withDigest(Do.read(rs.getBinaryStream("hash")));

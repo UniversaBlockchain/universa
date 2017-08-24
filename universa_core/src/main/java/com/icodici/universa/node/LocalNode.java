@@ -56,7 +56,7 @@ public class LocalNode extends Node {
     public ItemResult checkItem(Node caller, HashId itemId, ItemState state, boolean haveCopy) throws IOException {
         // First, we can have it in the ledger
         ItemResult itemResult = processCheckItem(caller, itemId, state, haveCopy, null, null);
-        log.d(""+this+" checkItem( from: " + caller + ":" + itemId + ":" + haveCopy + " << " + itemResult);
+        log.d("" + this + " checkItem( from: " + caller + ":" + itemId + ":" + haveCopy + " << " + itemResult);
         return itemResult;
     }
 
@@ -85,7 +85,7 @@ public class LocalNode extends Node {
 
     @Override
     public void shutdown() {
-        allElections.forEach((id, e)-> e.close());
+        allElections.forEach((id, e) -> e.close());
 //        ledger.close();
     }
 
@@ -160,57 +160,70 @@ public class LocalNode extends Node {
      */
     @NonNull
     private ItemResult processCheckItem(Node caller, @NonNull HashId itemId, ItemState state, boolean haveCopy, Approvable item, Consumer<ItemResult> onDone) throws Elections.Error {
-        synchronized (checkLock) {
-            // Check the election first, it is faster than checking teh ledger
-            Elections elections = allElections.get(itemId);
-            if (elections == null) {
-                // It is not being elected, it could be in the ledger:
-                StateRecord record = ledger.getRecord(itemId);
-                if (record != null) {
-                    // We have state in ledger but already discarded the item itself
-                    ItemResult result = new ItemResult(record, false);
-                    if (onDone != null) {
-                        onDone.accept(result);
-                    }
-                    return result;
+        // Check the election first, it is faster than checking teh ledger
+        Elections elections = allElections.get(itemId);
+        if (elections == null) {
+            // It is not being elected, it could be in the ledger:
+            StateRecord record = ledger.getRecord(itemId);
+            if (record != null) {
+                // We have state in ledger but already discarded the item itself
+                ItemResult result = new ItemResult(record, false);
+                if (onDone != null) {
+                    onDone.accept(result);
                 }
-                // it is not in the ledger, it is not being elected, creeate new elections.
-                // If it wil throw an exception, it would be processed by the caller
-                if (item != null) {
-                    assert (item.getId().equals(itemId));
-                    elections = new Elections(this, item);
-                } else
-                    elections = new Elections(this, itemId);
-                allElections.put(itemId, elections);
-                // purge finished elections
-                elections.onDone(itemResult -> {
-                    Elections.pool.schedule(() -> {
-                        allElections.remove(itemId);
+                return result;
+            }
+            // it is not in the ledger, it is not being elected, creeate new elections.
+            // If it wil throw an exception, it would be processed by the caller
+
+            // Race condition preventing - we should only create one elections for one itemId
+            // but is should stay in allElections long enough so we will find it there anyway - if it even
+            // was processed entirely while we were crawling to the point:
+            synchronized (checkLock) {
+                // we can go there by the time someone else just created elections for us:
+                elections = allElections.get(itemId);
+                if (elections == null) {
+                    if (item != null) {
+                        assert (item.getId().equals(itemId));
+                        elections = new Elections(this, item);
+                    } else
+                        elections = new Elections(this, itemId);
+                    allElections.put(itemId, elections);
+                }
+            }
+            // from now we can and e should do everything in parallel again.
+            // as starting elections includes long initial item checking procedure,
+            // we do it outside of the checkLock mutex:
+            elections.ensureStarted();
+
+            // purge finished elections
+            elections.onDone(itemResult -> {
+                Elections.pool.schedule(() -> {
+                    allElections.remove(itemId);
 //                        log.i("elections+item purged: "+itemId);
-                    }, network.getMaxElectionsTime().toMillis(), TimeUnit.MILLISECONDS);
-                });
-            }
-            if (caller != null && haveCopy)
-                elections.addSourceNode(caller);
-            if (caller != null && state != null) {
-                switch (state) {
-                    case PENDING_POSITIVE:
-                    case APPROVED:
-                        elections.registerVote(caller, true);
-                        break;
-                    case PENDING_NEGATIVE:
-                    case REVOKED:
-                    case DECLINED:
-                        elections.registerVote(caller, false);
-                        break;
-                    default:
-                }
-            }
-            if (onDone != null) {
-                elections.onDone(onDone);
-            }
-            return new ItemResult(elections.getRecord(), elections.getItem() != null);
+                }, network.getMaxElectionsTime().toMillis(), TimeUnit.MILLISECONDS);
+            });
         }
+        if (caller != null && haveCopy)
+            elections.addSourceNode(caller);
+        if (caller != null && state != null) {
+            switch (state) {
+                case PENDING_POSITIVE:
+                case APPROVED:
+                    elections.registerVote(caller, true);
+                    break;
+                case PENDING_NEGATIVE:
+                case REVOKED:
+                case DECLINED:
+                    elections.registerVote(caller, false);
+                    break;
+                default:
+            }
+        }
+        if (onDone != null) {
+            elections.onDone(onDone);
+        }
+        return new ItemResult(elections.getRecord(), elections.getItem() != null);
     }
 
     public Ledger getLedger() {
@@ -227,8 +240,7 @@ public class LocalNode extends Node {
     }
 
     /**
-     * Testing only. Imitate situation when the item can't be downloaded prior to consensus
-     * found.
+     * Testing only. Imitate situation when the item can't be downloaded prior to consensus found.
      */
     public void emulateLateDownload() {
         this.lateDownload = true;
