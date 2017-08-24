@@ -8,6 +8,8 @@
 package com.icodici.universa;
 
 import com.icodici.crypto.Sha512;
+import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64;
 import net.sergeych.utils.Base64u;
@@ -122,5 +124,26 @@ public class HashId implements Comparable<HashId> {
      */
     public static HashId of(byte[] data) {
         return new HashId(data);
+    }
+
+    static {
+        Boss.registerAdapter(HashId.class, new Boss.Adapter() {
+            @Override
+            public Binder serialize(Object object) {
+                return Binder.fromKeysValues(
+                        "sha152", ((HashId)object).getDigest()
+                );
+            }
+
+            @Override
+            public Object deserialize(Binder binder) {
+                return HashId.withDigest(binder.getBinaryOrThrow("sha512"));
+            }
+
+            @Override
+            public String typeName() {
+                return "hashid";
+            }
+        });
     }
 }

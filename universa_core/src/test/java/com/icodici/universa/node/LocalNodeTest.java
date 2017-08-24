@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import org.junit.Test;
@@ -34,6 +35,12 @@ public class LocalNodeTest extends NodeTestCase {
 
         ItemResult itemResult;
         TestItem item = new TestItem(true);
+
+        ItemInfo ii = n.registerItem(item);
+        assert(ii.getErrors().isEmpty());
+        assertEquals(item.getId(), ii.getItemId());
+        assertEquals(ItemState.PENDING_POSITIVE, ii.getItemResult().state);
+        assertEquals(ItemState.PENDING_POSITIVE, ii.getItemResult().state);
         itemResult = n.registerItemAndWait(item);
         assertEquals(ItemState.APPROVED, itemResult.state);
         itemResult = n.registerItemAndWait(item);
@@ -133,7 +140,7 @@ public class LocalNodeTest extends NodeTestCase {
     }
 
     @Test
-    public void rejectBadNewItesm() throws Exception {
+    public void rejectBadNewItem() throws Exception {
         LocalNode n = createLocalConsensus();
 
         TestItem main = new TestItem(true);
@@ -167,6 +174,10 @@ public class LocalNodeTest extends NodeTestCase {
         assertEquals(2, main.getNewItems().size());
 
         ItemResult itemResult;
+        ItemInfo ii = n.registerItem(main);
+        assertEquals(ItemState.PENDING_NEGATIVE,ii.getItemResult().state);
+        assertEquals(1,ii.getErrors().size());
+        assertEquals(Errors.NEW_ITEM_EXISTS, ii.getErrors().iterator().next().getError());
         itemResult = n.registerItemAndWait(main);
         assertEquals(ItemState.DECLINED, itemResult.state);
         StateRecord record = ledger.getRecord(new1.getId());

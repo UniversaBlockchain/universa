@@ -8,13 +8,13 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.Approvable;
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 public class TestItem implements Approvable {
@@ -24,7 +24,7 @@ public class TestItem implements Approvable {
     private Set<Approvable> newItems = new HashSet<>();
     private Set<HashId> referencedItems = new HashSet<>();
     private Set<Approvable> revokingItems = new HashSet<>();
-
+    private List<ErrorRecord> errors = new ArrayList<>();
     @Override
     public Set<HashId> getReferencedItems() {
         return referencedItems;
@@ -78,5 +78,15 @@ public class TestItem implements Approvable {
                 return new TestItem(binder.getBooleanOrThrow("ok"));
             }
         });
+    }
+
+    @Override
+    public void addError(ErrorRecord r) {
+        errors.add(r);
+    }
+
+    @Override
+    public Collection<ErrorRecord> getErrors() {
+        return errors;
     }
 }

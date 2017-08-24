@@ -32,6 +32,7 @@ public class ClientEndpointTest extends TestCase {
         System.out.println(a.data);
         assertEquals("pong", a.data.getStringOrThrow("ping"));
         assertEquals("world", a.data.getStringOrThrow("hello"));
+        ep.shutdown();
     }
 
     @Test
@@ -47,13 +48,13 @@ public class ClientEndpointTest extends TestCase {
         assert(client.ping());
         try {
             client.command("test_error");
-            fail("expected exception wasn't trown");
+            fail("expected exception wasn't thrown");
         }
         catch(HttpClient.CommandFailedException e) {
             assertEquals(Errors.COMMAND_FAILED, e.getError().getError());
             assertEquals("test_error", e.getError().getObjectName());
             assertEquals("sample error", e.getError().getMessage());
         }
-
+        ep.shutdown();
     }
 }

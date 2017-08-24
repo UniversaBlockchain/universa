@@ -99,12 +99,13 @@ public class LocalNode extends Node {
      *
      * @return the instance describing item's current state (at the time of calling)
      */
-    public ItemResult registerItem(Approvable item, Consumer<ItemResult> onDone) throws IOException {
-        return processCheckItem(null, item.getId(), null, false, item, onDone);
+    public ItemInfo registerItem(Approvable item, Consumer<ItemResult> onDone) throws IOException {
+        @NonNull ItemResult itemResult = processCheckItem(null, item.getId(), null, false, item, onDone);
+        return new ItemInfo(itemResult, item);
     }
 
     public ItemResult registerItemAndWait(Approvable item) throws Elections.Error, InterruptedException {
-        ItemResult itemResult = processCheckItem(null, item.getId(), null, false, item, null);
+        processCheckItem(null, item.getId(), null, false, item, null);
         return waitForItem(item.getId());
     }
 
@@ -216,7 +217,7 @@ public class LocalNode extends Node {
         return ledger;
     }
 
-    public ItemResult registerItem(Approvable item) throws IOException {
+    public ItemInfo registerItem(Approvable item) throws IOException {
         return registerItem(item, null);
     }
 

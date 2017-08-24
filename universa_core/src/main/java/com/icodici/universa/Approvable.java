@@ -7,6 +7,9 @@
 
 package com.icodici.universa;
 
+import edu.emory.mathcs.backport.java.util.Collections;
+
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -68,5 +71,9 @@ public interface Approvable extends HashIdentifiable {
 
     default void addError(Errors code,String object,String message) {
         addError(new ErrorRecord(code, object, message));
+    }
+
+    default Collection<ErrorRecord> getErrors() {
+        return Collections.emptyList();
     }
 }
