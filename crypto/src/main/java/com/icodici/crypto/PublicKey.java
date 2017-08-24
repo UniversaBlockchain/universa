@@ -134,4 +134,17 @@ public class PublicKey extends AbstractKey {
         byte[] key = (byte[]) a.get("n");
         return key[0] + (key[1] << 8) + (key[2] << 16) + (key[3] << 24);
     }
+
+    private byte[] _fingerprint;
+
+    @Override
+    public byte[] fingerprint() {
+        synchronized (publicKey) {
+            if( _fingerprint == null ) {
+                Map<String, Object> a = publicKey.toHash();
+                _fingerprint = new Sha256().update((byte[])a.get("e")).update((byte[])a.get("n")).digest();
+            }
+            return _fingerprint;
+        }
+    }
 }

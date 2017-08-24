@@ -46,6 +46,7 @@ public class ExtendedSignature {
      *
      * @param key
      * @param data
+     *
      * @return binary signature
      */
     static public byte[] sign(PrivateKey key, byte[] data) {
@@ -73,7 +74,7 @@ public class ExtendedSignature {
      * Map keys.
      * <p>
      * Use {@link #extractKeyId(byte[])} to get a keyId from a packed extended signature, find the proper key, than
-     * {@link #verify(PublicKey, byte[], byte[])} the data.
+     * {@link #verify(PublicKey, byte[], byte[])} the data. It uses corresponding {@link PublicKey#fingerprint()}.
      *
      * @param key key to calculate Id
      *
@@ -81,15 +82,16 @@ public class ExtendedSignature {
      */
     static public Bytes keyId(AbstractKey key) {
         if (key instanceof PrivateKey)
-            return new Bytes(key.getPublicKey().pack()).sha256();
-        return new Bytes(key.pack()).sha256();
+            return new Bytes(key.getPublicKey().fingerprint());
+        return new Bytes(key.fingerprint());
     }
 
     /**
-     * Get the keyId (see {@link #keyId}) from a packed binary signature. This method can be used to find proper
-     * public key when signing with several keys.
+     * Get the keyId (see {@link #keyId}) from a packed binary signature. This method can be used to find proper public
+     * key when signing with several keys.
      *
      * @param signature to extrack keyId from
+     *
      * @return the keyId instance as {@link Bytes}
      */
     public static Bytes extractKeyId(byte[] signature) {
@@ -98,12 +100,13 @@ public class ExtendedSignature {
     }
 
     /**
-     * Unpack and the extended signature. On success, returns instance of the {@link ExtendedSignature} with a
-     * decoded timestamp, {@link #getCreatedAt()}
+     * Unpack and the extended signature. On success, returns instance of the {@link ExtendedSignature} with a decoded
+     * timestamp, {@link #getCreatedAt()}
      *
-     * @param key to verify signature with
+     * @param key       to verify signature with
      * @param signature the binary extended signature
-     * @param data signed data
+     * @param data      signed data
+     *
      * @return null if the signature is invalud, {@link ExtendedSignature} instance on success.
      */
 

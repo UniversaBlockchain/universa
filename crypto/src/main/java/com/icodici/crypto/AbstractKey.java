@@ -206,4 +206,8 @@ public abstract class AbstractKey implements Bindable {
         };
 
     }
+
+    public byte[] fingerprint() {
+        throw new RuntimeException("this key does not support fomgerprints");
+    }
 }
