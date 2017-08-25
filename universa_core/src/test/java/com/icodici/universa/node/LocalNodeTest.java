@@ -18,7 +18,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.*;
 
 public class LocalNodeTest extends NodeTestCase {

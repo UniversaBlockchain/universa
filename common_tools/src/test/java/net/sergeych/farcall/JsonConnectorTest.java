@@ -7,7 +7,6 @@
 
 package net.sergeych.farcall;
 
-import net.sergeych.farcall.JsonConnector;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StreamConnector;
 import org.junit.Test;

@@ -7,10 +7,6 @@
 
 package com.icodici.crypto;
 
-import com.icodici.crypto.Digest;
-import com.icodici.crypto.Sha256;
-import com.icodici.crypto.Sha512;
-import com.icodici.crypto.SymmetricKey;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;

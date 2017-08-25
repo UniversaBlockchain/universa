@@ -10,7 +10,6 @@
  */
 package net.sergeych.boss;
 
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.Bytes;
 import org.junit.After;

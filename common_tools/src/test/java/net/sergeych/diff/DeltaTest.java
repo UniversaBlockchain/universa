@@ -7,7 +7,6 @@
 
 package net.sergeych.diff;
 
-import net.sergeych.diff.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;

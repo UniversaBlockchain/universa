@@ -7,8 +7,6 @@
 
 package com.icodici.crypto;
 
-import com.icodici.crypto.EncryptionError;
-import com.icodici.crypto.PrivateKey;
 import net.sergeych.tools.Do;
 
 /**

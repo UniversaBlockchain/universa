@@ -7,7 +7,6 @@
 
 package com.icodici.universa.node;
 
-import com.icodici.universa.node.network.ClientEndpoint;
 import com.icodici.universa.node.network.NetworkBuilder;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;

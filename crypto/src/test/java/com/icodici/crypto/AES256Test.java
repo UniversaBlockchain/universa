@@ -7,10 +7,6 @@
 
 package com.icodici.crypto;
 
-import com.icodici.crypto.AES256;
-import com.icodici.crypto.BlockCipher;
-import com.icodici.crypto.EncryptionError;
-import com.icodici.crypto.SymmetricKey;
 import org.spongycastle.util.encoders.Hex;
 
 import static org.junit.Assert.assertArrayEquals;

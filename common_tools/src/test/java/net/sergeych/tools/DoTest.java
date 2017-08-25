@@ -1,6 +1,5 @@
 package net.sergeych.tools;
 
-import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.ArrayList;

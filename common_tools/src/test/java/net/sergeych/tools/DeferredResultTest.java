@@ -7,7 +7,6 @@
 
 package net.sergeych.tools;
 
-import net.sergeych.tools.DeferredResult;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

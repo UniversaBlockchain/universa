@@ -12,7 +12,8 @@ import org.junit.Test;
 
 import java.time.LocalDateTime;
 
-import static com.icodici.universa.node.ItemState.*;
+import static com.icodici.universa.node.ItemState.APPROVED;
+import static com.icodici.universa.node.ItemState.REVOKED;
 import static org.junit.Assert.assertEquals;
 
 public class ItemResultTest extends TestCase {

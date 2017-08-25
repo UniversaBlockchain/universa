@@ -7,7 +7,6 @@
 
 package com.icodici.crypto.rsaoaep;
 
-import com.icodici.crypto.rsaoaep.RSAOAEPDigestFactory;
 import org.spongycastle.crypto.Digest;
 import org.spongycastle.crypto.digests.SHA512Digest;
 import org.spongycastle.util.encoders.Hex;

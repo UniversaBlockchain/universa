@@ -14,7 +14,6 @@
       <element id="library" level="project" name="Gradle: org.yaml:snakeyaml:1.18" />
       <element id="library" level="project" name="Gradle: com.madgag.spongycastle:core:1.54.0.0" />
       <element id="library" level="project" name="Gradle: net.sf.jopt-simple:jopt-simple:4.9" />
-      <element id="library" level="project" name="Gradle: org.checkerframework:checker:2.1.0" />
     </root>
   </artifact>
 </component>

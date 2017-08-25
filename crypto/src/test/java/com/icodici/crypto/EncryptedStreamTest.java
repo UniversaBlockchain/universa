@@ -7,7 +7,6 @@
 
 package com.icodici.crypto;
 
-import com.icodici.crypto.*;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;

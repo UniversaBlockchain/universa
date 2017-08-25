@@ -20,8 +20,8 @@ import java.util.HashSet;
 import java.util.List;
 
 import static org.hamcrest.Matchers.instanceOf;
-import static org.junit.Assert.*;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.*;
 
 public class ContractTest extends ContractTestBase {
     @Test

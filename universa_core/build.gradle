@@ -16,6 +16,5 @@ dependencies {
     compile group: 'net.sf.jopt-simple', name: 'jopt-simple', version: '4.9'
     compile group: 'org.nanohttpd', name:  'nanohttpd', version: '2.2.0'
     compile project(':common_tools')
-    testCompile project(':common_tools')
     compile project(':crypto')
 }

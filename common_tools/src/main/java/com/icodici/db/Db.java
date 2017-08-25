@@ -156,6 +156,7 @@ public class Db implements Cloneable {
             connection = DriverManager.getConnection(connectionString);
         this.properties = properties;
         connection.setAutoCommit(true);
+        // we might also need  PRAGMA synchronous=OFF
         checkDB(migrationsResource);
     }
 

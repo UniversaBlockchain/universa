@@ -1,6 +1,5 @@
 package net.sergeych.tools;
 
-import net.sergeych.tools.AsyncEvent;
 import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;

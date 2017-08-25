@@ -1,8 +1,5 @@
 package net.sergeych.informer;
 
-import net.sergeych.informer.Informer;
-import net.sergeych.informer.LostEvent;
-import net.sergeych.informer.Subscriber;
 import org.junit.Before;
 import org.junit.Test;
 

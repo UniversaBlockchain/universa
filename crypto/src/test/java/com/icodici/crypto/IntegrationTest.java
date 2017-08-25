@@ -7,8 +7,6 @@
 
 package com.icodici.crypto;
 
-import com.icodici.crypto.AbstractPublicKey;
-import com.icodici.crypto.HashType;
 import com.icodici.crypto.rsaoaep.RSAOAEPPrivateKey;
 import org.junit.Test;
 import org.spongycastle.util.encoders.Hex;

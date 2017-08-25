@@ -7,7 +7,6 @@
 
 package com.icodici.db;
 
-import com.icodici.db.Db;
 import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
 import org.junit.Test;

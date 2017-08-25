@@ -7,10 +7,6 @@
 
 package com.icodici.crypto;
 
-import com.icodici.crypto.PBKDF2;
-import com.icodici.crypto.Sha1;
-import com.icodici.crypto.Sha256;
-import com.icodici.crypto.Sha512;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 import org.spongycastle.util.encoders.Hex;

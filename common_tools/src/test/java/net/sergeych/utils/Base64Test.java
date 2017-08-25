@@ -1,7 +1,5 @@
 package net.sergeych.utils;
 
-import net.sergeych.utils.Base64;
-import net.sergeych.utils.Base64u;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;

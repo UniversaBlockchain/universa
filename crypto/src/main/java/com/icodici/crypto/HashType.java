@@ -8,7 +8,9 @@
 package com.icodici.crypto;
 
 import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.*;
+import org.spongycastle.crypto.digests.SHA1Digest;
+import org.spongycastle.crypto.digests.SHA256Digest;
+import org.spongycastle.crypto.digests.SHA512Digest;
 
 import java.util.Collections;
 import java.util.HashMap;

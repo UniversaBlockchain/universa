@@ -7,8 +7,6 @@
 
 package net.sergeych.farcall;
 
-import net.sergeych.farcall.BossConnector;
-import net.sergeych.farcall.Farcall;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.tools.StreamConnector;

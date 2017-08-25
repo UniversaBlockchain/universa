@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.Predicate;
 
+import com.icodici.universa.node.network.BitrustedConnector.Error;
+
 public class BitrustedConnector implements Farcall.Target, Connector {
 
     private static final int MY_VERSION = 1;

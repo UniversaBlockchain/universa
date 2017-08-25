@@ -8,8 +8,8 @@
 package com.icodici.universa.node.network;
 
 import com.icodici.crypto.*;
-import com.icodici.universa.Errors;
 import com.icodici.universa.ErrorRecord;
+import com.icodici.universa.Errors;
 import com.icodici.universa.node.LocalNode;
 import fi.iki.elonen.NanoHTTPD;
 import net.sergeych.boss.Boss;
