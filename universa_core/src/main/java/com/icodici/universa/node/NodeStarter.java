@@ -12,6 +12,7 @@ import com.icodici.universa.node.network.NetworkBuilder;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Reporter;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ public class NodeStarter {
     public static final Reporter reporter = new Reporter();
     private static String NAME_STRING = "Universa node server v" + NODE_VERSION + "\n";
     private static NetworkBuilder networkBuilder;
+    private static AsyncEvent eventReqady = new AsyncEvent();
 
 
     static public void main(String[] args) {
@@ -57,6 +59,7 @@ public class NodeStarter {
             reporter.message("Starting client interface");
             startNetwork();
             reporter.message("System started");
+            eventReqady.fire(null);
             if (!options.has("test"))
                 synchronized (parser) {
                     parser.wait();
@@ -70,6 +73,10 @@ public class NodeStarter {
             e.printStackTrace();
             usage(e.getMessage());
         }
+    }
+
+    public static void waitReady() throws InterruptedException {
+        eventReqady.await();
     }
 
     private static void startNetwork() throws IOException, InterruptedException, SQLException, TimeoutException {

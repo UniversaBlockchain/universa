@@ -131,8 +131,8 @@ public class Do {
         void perform() throws Exception;
     }
 
-    public interface Task {
-        Object perform() throws Exception;
+    public interface Task<T> {
+        T perform() throws Exception;
     }
 
     public interface TaskWithoutResult {

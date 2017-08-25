@@ -1,4 +1,4 @@
-package com.icodici.universa.client;
+package com.icodici.universa;
 
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
