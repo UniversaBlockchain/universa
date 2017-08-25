@@ -42,6 +42,8 @@ public class CLIMain {
 //        args = new String[]{"-g", "longkey", "-s", "4096"};
         // when we run untitests, it is important
         reporter.clear();
+        // it could be called moe than once from tests
+        privateKeys = null;
         parser = new OptionParser() {
             {
                 acceptsAll(asList("?", "h", "help"), "show help").forHelp();
