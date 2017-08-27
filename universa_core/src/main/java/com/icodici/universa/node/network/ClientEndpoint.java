@@ -197,9 +197,13 @@ public class ClientEndpoint {
 
 
     private Binder networkDirectory = null;
+    private Object networkDirectoryLock = new Object();
 
     private Binder getNetworkDirectory() {
-        synchronized (this) {
+        if (null != networkDirectory) {
+            return networkDirectory;
+        }
+        synchronized (networkDirectoryLock) {
             if (null == networkDirectory) {
                 Binder network = new Binder();
                 networkBuilder.nodeInfo().forEach(ni -> {
