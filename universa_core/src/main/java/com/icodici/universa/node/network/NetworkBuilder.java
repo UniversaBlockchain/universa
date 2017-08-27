@@ -112,7 +112,7 @@ public class NetworkBuilder implements AutoCloseable{
          *
          * @return
          */
-        Network buildNetowrk(int overrideClietnPort) throws SQLException, IOException, TimeoutException, InterruptedException {
+        Network buildNetwork(int overrideClietnPort) throws SQLException, IOException, TimeoutException, InterruptedException {
             String privateKeyFileName = rootPath + "/tmp/" + nodeId + ".private.unikey";
             if (!new File(privateKeyFileName).exists())
                 privateKeyFileName = rootPath + "/tmp/pkey";
@@ -250,6 +250,6 @@ public class NetworkBuilder implements AutoCloseable{
             throw new IllegalArgumentException("node information not found: " + localNodeId);
         if (rootPath == null)
             throw new IllegalArgumentException("root path not set");
-        return nodeInfo.buildNetowrk(ovverideClientPort);
+        return nodeInfo.buildNetwork(ovverideClientPort);
     }
 }

@@ -48,10 +48,10 @@ public class NetworkBuilderTest {
 
         try (NetworkBuilder e = NetworkBuilder.from("src/test_config2")) {
             List<NetworkBuilder.NodeInfo> nodeInfo = new ArrayList<>(e.nodeInfo());
-            Network n1 = nodeInfo.get(0).buildNetowrk(18370);
-            Network n2 = nodeInfo.get(1).buildNetowrk(18371);
+            Network n1 = nodeInfo.get(0).buildNetwork(18370);
+            Network n2 = nodeInfo.get(1).buildNetwork(18371);
             for (int i = 2; i < TEST_NODES; i++) {
-                nodeInfo.get(i).buildNetowrk(18370 + i);
+                nodeInfo.get(i).buildNetwork(18370 + i);
             }
 
             assertEquals(TEST_NODES, n1.getAllNodes().size());
