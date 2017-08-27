@@ -15,7 +15,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.node.LocalNode;
 import com.icodici.universa.node.Network;
 import com.icodici.universa.node.Node;
-import com.icodici.universa.node.SqlLedger;
+import com.icodici.universa.node.SqliteLedger;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
@@ -150,7 +150,7 @@ public class NetworkBuilder implements AutoCloseable{
          * @throws SQLException
          */
         private void createLocalServer(Network network, PrivateKey privateKey, int overrideClientPort) throws SQLException, IOException {
-            SqlLedger ledger = new SqlLedger("jdbc:sqlite:" + rootPath + "/system/" + nodeId + ".sqlite.db");
+            SqliteLedger ledger = new SqliteLedger("jdbc:sqlite:" + rootPath + "/system/" + nodeId + ".sqlite.db");
             LocalNode localNode = new LocalNode(nodeId, network, ledger);
             network.registerLocalNode(localNode);
             Map<HashId, Node> keysNodes = new HashMap<>();

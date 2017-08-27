@@ -6,22 +6,34 @@ import net.sergeych.tools.StopWatch;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.Assert.*;
 
-public class SqlLedgerTest extends TestCase {
-    private SqlLedger ledger;
+public class PostgresLedgerTest extends TestCase {
+    private PostgresLedger ledger;
 
     @Before
     public void setUp() throws Exception {
-        new File("testledger").delete();
-        ledger = new SqlLedger("jdbc:sqlite:testledger");
+//        new File("testledger").delete();
+//        Class.forName("org.postgresql.Driver");
+        ledger = new PostgresLedger("jdbc:postgresql://localhost:5432/universa_node");
         ledger.enableCache(false);
+    }
+
+    @Test
+    public void create() throws Exception {
+        System.out.println("" + ledger.getDb().getIntParam("version"));
+        HashId id = HashId.createRandom();
+        assertNull(ledger.getRecord(id));
+        StateRecord r = ledger.findOrCreate(id);
+        System.out.println(r);
     }
 
     @Test
@@ -43,16 +55,18 @@ public class SqlLedgerTest extends TestCase {
         assertSame(r3, r4);
     }
 
-//    @Test
+    @Test
     public void ledgerBenchmark() throws Exception {
         ExecutorService es = Executors.newCachedThreadPool();
 //        ExecutorService es = Executors.newSingleThreadExecutor();
         List<Future<?>> ff = new ArrayList<>();
+        int nMax = 32;
+        int nIds = 4000;
         long t = StopWatch.measure(true, () -> {
-            for (int n = 0; n < 4; n++) {
+            for (int n = 0; n < nMax; n++) {
                 final int x = n;
                 ff.add(es.submit(() -> {
-                           HashId ids[] = new HashId[10000];
+                           HashId ids[] = new HashId[nIds];
                            for (int i = 0; i < ids.length; i++) ids[i] = HashId.createRandom();
                            System.out.println(x);
                            StopWatch.measure(true, () -> {
@@ -81,7 +95,8 @@ public class SqlLedgerTest extends TestCase {
             });
             System.out.println("total");
         });
-        System.out.println("TPS: "+(4.0*10000*1000/t));
+        System.out.println("TPS: " + (nMax * nIds * 1000 / t));
+        System.out.println("" + ledger.getDb().queryOne("SELECT count(*) from ledger"));
     }
 
     @Test

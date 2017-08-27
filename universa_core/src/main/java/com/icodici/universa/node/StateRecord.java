@@ -161,7 +161,7 @@ public class StateRecord implements HashIdentifiable {
         return ledger;
     }
 
-    public void setLedger(SqlLedger ledger) {
+    public void setLedger(Ledger ledger) {
         this.ledger = ledger;
     }
 

@@ -15,6 +15,9 @@ dependencies {
     compile 'org.yaml:snakeyaml:1.18'
     compile group: 'net.sf.jopt-simple', name: 'jopt-simple', version: '4.9'
     compile group: 'org.nanohttpd', name:  'nanohttpd', version: '2.2.0'
+    //    compile group:'org.mapdb', name:'mapdb', version:'3.0.5'
+    compile group: 'org.postgresql', name: 'postgresql', version: '42.1.4.jre7'
     compile project(':common_tools')
+
     compile project(':crypto')
 }

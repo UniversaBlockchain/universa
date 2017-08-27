@@ -13,6 +13,7 @@
     <orderEntry type="module" module-name="universa_core_main" />
     <orderEntry type="library" name="Gradle: org.yaml:snakeyaml:1.18" level="project" />
     <orderEntry type="library" name="Gradle: org.nanohttpd:nanohttpd:2.2.0" level="project" />
+    <orderEntry type="library" name="Gradle: org.postgresql:postgresql:42.1.4.jre7" level="project" />
     <orderEntry type="module" module-name="common_tools_main" />
     <orderEntry type="module" module-name="crypto_main" />
     <orderEntry type="library" name="Gradle: com.eclipsesource.minimal-json:minimal-json:0.9.4" level="project" />

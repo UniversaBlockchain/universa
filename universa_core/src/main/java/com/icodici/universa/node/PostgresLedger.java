@@ -11,13 +11,13 @@ import com.icodici.db.Db;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.HashId;
-import org.sqlite.SQLiteConfig;
-import org.sqlite.SQLiteOpenMode;
 
 import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
@@ -30,31 +30,22 @@ import java.util.concurrent.Callable;
  * <p>
  * Created by sergeych on 16/07/2017.
  */
-public class SqlLedger implements Ledger {
+public class PostgresLedger implements Ledger {
     private final DbPool dbPool;
 
     private boolean sqlite = false;
 
     private Object writeLock = new Object();
-//    private Object transactionLock = new Object();
+    //    private Object transactionLock = new Object();
     private Map<HashId, WeakReference<StateRecord>> cachedRecords = new WeakHashMap<>();
     private boolean useCache = true;
 
-    public SqlLedger(String connectionString) throws SQLException {
-        sqlite = connectionString.contains("jdbc");
-        Properties properties;
-        if (sqlite) {
-            SQLiteConfig config = new SQLiteConfig();
-            config.setSharedCache(true);
-            config.setJournalMode(SQLiteConfig.JournalMode.WAL);
-            config.setOpenMode(SQLiteOpenMode.FULLMUTEX);
-            properties = config.toProperties();
-        } else
-            properties = new Properties();
-        dbPool = new DbPool(connectionString, properties, 16);
+    public PostgresLedger(String connectionString) throws SQLException {
+        Properties properties = new Properties();
+        dbPool = new DbPool(connectionString, properties, 32);
         try {
             dbPool.execute(db -> {
-                db.setupDatabase("/migrations/migrate_");
+                db.setupDatabase("/migrations/postgres/migrate_");
             });
         } catch (Exception e) {
             throw new SQLException("Failed to migrate", e);
@@ -127,7 +118,7 @@ public class SqlLedger implements Ledger {
         try {
             r.save();
             return r;
-        } catch (Ledger.Failure e) {
+        } catch (Failure e) {
             return null;
         }
     }
@@ -137,16 +128,16 @@ public class SqlLedger implements Ledger {
         // This simple version requires that database is used exclusively by one localnode - the normal way. As nodes
         // are multithreaded, there is absolutely no use to share database between nodes.
         return protect(() -> {
-            synchronized (writeLock) {
-                StateRecord r = getRecord(itemId);
-                if (r == null) {
-                    r = new StateRecord(this);
-                    r.setId(itemId);
-                    r.setState(ItemState.PENDING);
-                    r.save();
-                }
-                return r;
-            }
+            inPool(db -> {
+                db.update(
+                        "INSERT INTO ledger(hash, state, created_at) values(?,?,?) ON CONFLICT (hash) DO NOTHING",
+                        itemId.getDigest(),
+                        ItemState.PENDING.ordinal(),
+                        LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
+                );
+                return null;
+            });
+            return getRecord(itemId);
         });
     }
 
@@ -154,7 +145,7 @@ public class SqlLedger implements Ledger {
         try {
             return block.call();
         } catch (Exception ex) {
-            throw new Ledger.Failure("Ledger operation failed: " + ex.getMessage(), ex);
+            throw new Failure("Ledger operation failed: " + ex.getMessage(), ex);
         }
     }
 
@@ -171,12 +162,12 @@ public class SqlLedger implements Ledger {
     public <T> T transaction(Callable<T> callable) {
         return protect(() -> {
 //            synchronized (transactionLock) {
-                // as Rollback exception is instanceof Db.Rollback, it will work as supposed by default:
-                // rethrow unchecked exceotions and return null on rollback.
-                try (Db db = dbPool.db()) {
-                    return
-                            db.transaction(() -> callable.call());
-                }
+            // as Rollback exception is instanceof Db.Rollback, it will work as supposed by default:
+            // rethrow unchecked exceotions and return null on rollback.
+            try (Db db = dbPool.db()) {
+                return
+                        db.transaction(() -> callable.call());
+            }
 //            }
         });
     }
@@ -188,12 +179,10 @@ public class SqlLedger implements Ledger {
             throw new IllegalStateException("can't destroy record without recordId");
         }
         protect(() -> {
-            synchronized (writeLock) {
-                inPool(d -> {
-                    d.update("DELETE FROM ledger WHERE id = ?", recordId);
-                    return null;
-                });
-            }
+            inPool(d -> {
+                d.update("DELETE FROM ledger WHERE id = ?", recordId);
+                return null;
+            });
             synchronized (cachedRecords) {
                 cachedRecords.remove(record.getId());
             }
@@ -209,39 +198,38 @@ public class SqlLedger implements Ledger {
             throw new IllegalStateException("can't save with  adifferent ledger (make a copy!)");
 
         try (PooledDb db = dbPool.db()) {
-            synchronized (writeLock) {
-                if (stateRecord.getRecordId() == 0) {
-                    try (
-                            PreparedStatement statement =
-                                    db.statement(
-                                            "insert into ledger(hash,state,created_at, expires_at, locked_by_id) values(?,?,?,?,?);")
-                    ) {
-                        statement.setBytes(1, stateRecord.getId().getDigest());
-                        statement.setInt(2, stateRecord.getState().ordinal());
-                        statement.setLong(3, StateRecord.unixTime(stateRecord.getCreatedAt()));
-                        statement.setLong(4, StateRecord.unixTime(stateRecord.getExpiresAt()));
-                        statement.setLong(5, stateRecord.getLockedByRecordId());
-                        statement.executeUpdate();
-                        try (ResultSet keys = statement.getGeneratedKeys()) {
-                            if (!keys.next())
-                                throw new RuntimeException("generated keys are not supported");
-                            long id = keys.getLong(1);
-                            stateRecord.setRecordId(id);
-                        }
+            if (stateRecord.getRecordId() == 0) {
+                try (
+                        PreparedStatement statement =
+                                db.statementReturningKeys(
+                                        "insert into ledger(hash,state,created_at, expires_at, locked_by_id) values(?,?,?,?,?);"
+                                )
+                ) {
+                    statement.setBytes(1, stateRecord.getId().getDigest());
+                    statement.setInt(2, stateRecord.getState().ordinal());
+                    statement.setLong(3, StateRecord.unixTime(stateRecord.getCreatedAt()));
+                    statement.setLong(4, StateRecord.unixTime(stateRecord.getExpiresAt()));
+                    statement.setLong(5, stateRecord.getLockedByRecordId());
+                    statement.executeUpdate();
+                    try (ResultSet keys = statement.getGeneratedKeys()) {
+                        if (!keys.next())
+                            throw new RuntimeException("generated keys are not supported");
+                        long id = keys.getLong(1);
+                        stateRecord.setRecordId(id);
                     }
-                    putToCache(stateRecord);
-                } else {
-                    db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
-                              stateRecord.getState().ordinal(),
-                              StateRecord.unixTime(stateRecord.getExpiresAt()),
-                              stateRecord.getLockedByRecordId(),
-                              stateRecord.getRecordId()
-                    );
                 }
+                putToCache(stateRecord);
+            } else {
+                db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
+                          stateRecord.getState().ordinal(),
+                          StateRecord.unixTime(stateRecord.getExpiresAt()),
+                          stateRecord.getLockedByRecordId(),
+                          stateRecord.getRecordId()
+                );
             }
         } catch (SQLException se) {
 //            se.printStackTrace();
-            throw new Ledger.Failure("StateRecord save failed:" + se);
+            throw new Failure("StateRecord save failed:" + se);
         }
     }
 
@@ -276,5 +264,9 @@ public class SqlLedger implements Ledger {
             this.useCache = false;
             cachedRecords.clear();
         }
+    }
+
+    public Db getDb() throws SQLException {
+        return dbPool.db();
     }
 }

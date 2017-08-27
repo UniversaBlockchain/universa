@@ -26,7 +26,7 @@ public class NodeTestCase extends TestCase {
 //        File tempFile = new File("nodedb_"+nodeId+ ".db");
         File tempFile = File.createTempFile("nodedb", "db");
 //        LogPrinter.showDebug(true);
-        SqlLedger ledger = new SqlLedger("jdbc:sqlite:" + tempFile);
+        SqliteLedger ledger = new SqliteLedger("jdbc:sqlite:" + tempFile);
         assertNotNull(ledger.findOrCreate(HashId.createRandom()));
         assertNull(ledger.getRecord(HashId.createRandom()));
         LocalNode n = new LocalNode(nodeId, network, ledger);
