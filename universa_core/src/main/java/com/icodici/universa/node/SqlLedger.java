@@ -8,17 +8,20 @@
 package com.icodici.universa.node;
 
 import com.icodici.db.Db;
+import com.icodici.db.DbPool;
+import com.icodici.db.PooledDb;
 import com.icodici.universa.HashId;
 import org.sqlite.SQLiteConfig;
+import org.sqlite.SQLiteOpenMode;
 
 import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Properties;
 import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The basic SQL-based ledger.
@@ -28,36 +31,42 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by sergeych on 16/07/2017.
  */
 public class SqlLedger implements Ledger {
-    private final Db dbtool;
+    private final DbPool dbPool;
 
-//    private final Connection connection;
-
-    private AtomicInteger aint = new AtomicInteger(177140);
-    private String connString;
     private boolean sqlite = false;
 
-    private Object creationLock = new Object();
-    private Object transactionLock = new Object();
+    private Object writeLock = new Object();
+//    private Object transactionLock = new Object();
     private Map<HashId, WeakReference<StateRecord>> cachedRecords = new WeakHashMap<>();
     private boolean useCache = true;
 
     public SqlLedger(String connectionString) throws SQLException {
         sqlite = connectionString.contains("jdbc");
+        Properties properties;
         if (sqlite) {
             SQLiteConfig config = new SQLiteConfig();
             config.setSharedCache(true);
-            dbtool = new Db(connectionString, config.toProperties(), "/migrations/migrate_");
-        } else {
-            dbtool = new Db(connectionString, null, "/migrations/migrate_");
+            config.setJournalMode(SQLiteConfig.JournalMode.WAL);
+            config.setOpenMode(SQLiteOpenMode.FULLMUTEX);
+            properties = config.toProperties();
+        } else
+            properties = new Properties();
+        dbPool = new DbPool(connectionString, properties, 16);
+        try {
+            dbPool.execute(db -> {
+                db.setupDatabase("/migrations/migrate_");
+            });
+        } catch (Exception e) {
+            throw new SQLException("Failed to migrate", e);
         }
     }
 
     /**
-     * Get the instance of the {@link Db} for a calling thread. Safe to call repeatedly (retuns the same instance
-     * per thread).
+     * Get the instance of the {@link Db} for a calling thread. Safe to call repeatedly (retuns the same instance per
+     * thread).
      */
-    public final Db db() {
-        return dbtool.instance();
+    public final <T> T inPool(DbPool.DbConsumer<T> consumer) throws Exception {
+        return dbPool.execute(consumer);
     }
 
 
@@ -67,7 +76,7 @@ public class SqlLedger implements Ledger {
             StateRecord cached = getFromCache(itemId);
             if (cached != null)
                 return cached;
-            try (ResultSet rs = dbtool.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1", itemId.getDigest())) {
+            try (ResultSet rs = inPool(db -> db.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1", itemId.getDigest()))) {
                 if (rs != null) {
                     StateRecord record = new StateRecord(this, rs);
                     putToCache(record);
@@ -76,7 +85,7 @@ public class SqlLedger implements Ledger {
             }
             return null;
         });
-        if( sr != null && sr.isExpired() ) {
+        if (sr != null && sr.isExpired()) {
             sr.destroy();
             return null;
         }
@@ -84,7 +93,7 @@ public class SqlLedger implements Ledger {
     }
 
     private StateRecord getFromCache(HashId itemId) {
-        if( useCache ) {
+        if (useCache) {
             synchronized (cachedRecords) {
                 WeakReference<StateRecord> ref = cachedRecords.get(itemId);
                 if (ref == null)
@@ -96,13 +105,12 @@ public class SqlLedger implements Ledger {
                 }
                 return r;
             }
-        }
-        else
+        } else
             return null;
     }
 
     private void putToCache(StateRecord r) {
-        if( useCache ) {
+        if (useCache) {
             synchronized (cachedRecords) {
                 cachedRecords.put(r.getId(), new WeakReference<StateRecord>(r));
             }
@@ -112,17 +120,15 @@ public class SqlLedger implements Ledger {
 
     @Override
     public StateRecord createOutputLockRecord(long creatorRecordId, HashId newItemHashId) {
-        synchronized (creationLock) {
-            StateRecord r = new StateRecord(this);
-            r.setState(ItemState.LOCKED_FOR_CREATION);
-            r.setLockedByRecordId(creatorRecordId);
-            r.setId(newItemHashId);
-            try {
-                r.save();
-                return r;
-            } catch (Ledger.Failure e) {
-                return null;
-            }
+        StateRecord r = new StateRecord(this);
+        r.setState(ItemState.LOCKED_FOR_CREATION);
+        r.setLockedByRecordId(creatorRecordId);
+        r.setId(newItemHashId);
+        try {
+            r.save();
+            return r;
+        } catch (Ledger.Failure e) {
+            return null;
         }
     }
 
@@ -131,7 +137,7 @@ public class SqlLedger implements Ledger {
         // This simple version requires that database is used exclusively by one localnode - the normal way. As nodes
         // are multithreaded, there is absolutely no use to share database between nodes.
         return protect(() -> {
-            synchronized (creationLock) {
+            synchronized (writeLock) {
                 StateRecord r = getRecord(itemId);
                 if (r == null) {
                     r = new StateRecord(this);
@@ -148,24 +154,30 @@ public class SqlLedger implements Ledger {
         try {
             return block.call();
         } catch (Exception ex) {
-            throw new Ledger.Failure("Ledger operation failed: "+ex.getMessage(), ex);
+            throw new Ledger.Failure("Ledger operation failed: " + ex.getMessage(), ex);
         }
     }
 
     @Override
     public void close() {
-        System.out.println("CLOSE!");
-        db().close();
+        try {
+            dbPool.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public <T> T transaction(Callable<T> callable) {
         return protect(() -> {
-            synchronized (transactionLock) {
+//            synchronized (transactionLock) {
                 // as Rollback exception is instanceof Db.Rollback, it will work as supposed by default:
                 // rethrow unchecked exceotions and return null on rollback.
-                return dbtool.transaction(() -> callable.call());
-            }
+                try (Db db = dbPool.db()) {
+                    return
+                            db.transaction(() -> callable.call());
+                }
+//            }
         });
     }
 
@@ -176,7 +188,12 @@ public class SqlLedger implements Ledger {
             throw new IllegalStateException("can't destroy record without recordId");
         }
         protect(() -> {
-            dbtool.update("DELETE FROM ledger WHERE id = ?", recordId);
+            synchronized (writeLock) {
+                inPool(d -> {
+                    d.update("DELETE FROM ledger WHERE id = ?", recordId);
+                    return null;
+                });
+            }
             synchronized (cachedRecords) {
                 cachedRecords.remove(record.getId());
             }
@@ -186,35 +203,41 @@ public class SqlLedger implements Ledger {
 
     @Override
     public void save(StateRecord stateRecord) {
-        PreparedStatement statement;
         if (stateRecord.getLedger() == null) {
             stateRecord.setLedger(this);
         } else if (stateRecord.getLedger() != this)
             throw new IllegalStateException("can't save with  adifferent ledger (make a copy!)");
 
-        try {
-            if (stateRecord.getRecordId() == 0) {
-                statement = dbtool.statement("insert into ledger(hash,state,created_at, expires_at, locked_by_id) values(?,?,?,?,?);");
-                statement.setBytes(1, stateRecord.getId().getDigest());
-                statement.setInt(2, stateRecord.getState().ordinal());
-                statement.setLong(3, StateRecord.unixTime(stateRecord.getCreatedAt()));
-                statement.setLong(4, StateRecord.unixTime(stateRecord.getExpiresAt()));
-                statement.setLong(5, stateRecord.getLockedByRecordId());
-                statement.executeUpdate();
-                try (ResultSet keys = statement.getGeneratedKeys()) {
-                    if (!keys.next())
-                        throw new RuntimeException("generated keys are not supported");
-                    long id = keys.getLong(1);
-                    stateRecord.setRecordId(id);
-                }
-                putToCache(stateRecord);
-            } else {
-                dbtool.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
+        try (PooledDb db = dbPool.db()) {
+            synchronized (writeLock) {
+                if (stateRecord.getRecordId() == 0) {
+                    try (
+                            PreparedStatement statement =
+                                    db.statement(
+                                            "insert into ledger(hash,state,created_at, expires_at, locked_by_id) values(?,?,?,?,?);")
+                    ) {
+                        statement.setBytes(1, stateRecord.getId().getDigest());
+                        statement.setInt(2, stateRecord.getState().ordinal());
+                        statement.setLong(3, StateRecord.unixTime(stateRecord.getCreatedAt()));
+                        statement.setLong(4, StateRecord.unixTime(stateRecord.getExpiresAt()));
+                        statement.setLong(5, stateRecord.getLockedByRecordId());
+                        statement.executeUpdate();
+                        try (ResultSet keys = statement.getGeneratedKeys()) {
+                            if (!keys.next())
+                                throw new RuntimeException("generated keys are not supported");
+                            long id = keys.getLong(1);
+                            stateRecord.setRecordId(id);
+                        }
+                    }
+                    putToCache(stateRecord);
+                } else {
+                    db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
                               stateRecord.getState().ordinal(),
                               StateRecord.unixTime(stateRecord.getExpiresAt()),
                               stateRecord.getLockedByRecordId(),
                               stateRecord.getRecordId()
-                );
+                    );
+                }
             }
         } catch (SQLException se) {
 //            se.printStackTrace();
@@ -225,25 +248,31 @@ public class SqlLedger implements Ledger {
 
     @Override
     public void reload(StateRecord stateRecord) throws StateRecord.NotFoundException {
-        try (ResultSet rs = dbtool.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1",
-                                            stateRecord.getId().getDigest())) {
-            if (rs == null)
-                throw new StateRecord.NotFoundException("record not found");
-            stateRecord.initFrom(rs);
-        } catch (SQLException e) {
+        try {
+            try (
+                    PooledDb db = dbPool.db();
+                    ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1",
+                                               stateRecord.getId().getDigest()
+                    );
+            ) {
+                if (rs == null)
+                    throw new StateRecord.NotFoundException("record not found");
+                stateRecord.initFrom(rs);
+            }
+        } catch (Exception e) {
             throw new RuntimeException("Failed to reload RecordSet", e);
         }
     }
 
     /**
      * Enable or disable records caching. USe it in tests only, in production it should always be enabled
+     *
      * @param enable
      */
     public void enableCache(boolean enable) {
-        if( enable ) {
+        if (enable) {
             this.useCache = true;
-        }
-        else {
+        } else {
             this.useCache = false;
             cachedRecords.clear();
         }

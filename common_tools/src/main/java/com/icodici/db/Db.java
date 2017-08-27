@@ -31,9 +31,10 @@ import java.util.concurrent.Callable;
  * <p>
  * Created by sergeych on 20.03.16.
  */
-public class Db implements Cloneable {
+public class Db implements Cloneable, AutoCloseable {
 
-    private String connectionString;
+    private boolean walMode = false;
+    protected String connectionString;
     private int currentDbVersion = 0;
 
     private Connection connection;
@@ -42,20 +43,12 @@ public class Db implements Cloneable {
         return properties;
     }
 
-    private Properties properties = null;
+    protected Properties properties = null;
     private static LogPrinter log = new LogPrinter("Db");
-
-    private ThreadLocal<Db> localInstance = new ThreadLocal<>().withInitial(() -> {
-        try {
-            return new Db(connectionString, properties);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    });
 
     public void close() {
         synchronized (connectionString) {
+            System.out.println("clsing db connection " + this);
             if (connection != null) {
                 for (PreparedStatement s : cachedStatements.values()) {
                     try {
@@ -75,15 +68,6 @@ public class Db implements Cloneable {
                 connection = null;
             }
         }
-    }
-
-    /**
-     * Get (and create as need) an instance with separate connection for the current thread.
-     *
-     * @return ready instance local for the calling thread
-     */
-    public Db instance() {
-        return localInstance.get();
     }
 
     public boolean isClosed() {
@@ -155,9 +139,16 @@ public class Db implements Cloneable {
         else
             connection = DriverManager.getConnection(connectionString);
         this.properties = properties;
+//        System.out.println("creating db instance for " + Thread.currentThread().getId());
+        this.walMode = true;
         connection.setAutoCommit(true);
-        // we might also need  PRAGMA synchronous=OFF
-        checkDB(migrationsResource);
+        if (connectionString.contains("jdbc")) {
+            queryOne("PRAGMA journal_mode=WAL");
+            update("PRAGMA synchronous=OFF");
+            queryOne("PRAGMA mmap_size=268435456");
+        }
+        if (migrationsResource != null)
+            setupDatabase(migrationsResource);
     }
 
     public Db clone() {
@@ -189,7 +180,7 @@ public class Db implements Cloneable {
             T result = worker.call();
             connection.commit();
             return result;
-        } catch(RollbackException e) {
+        } catch (RollbackException e) {
             connection.rollback();
         } catch (Exception e) {
             log.e("Exception in transaction: %s", e);
@@ -201,7 +192,8 @@ public class Db implements Cloneable {
         return null;
     }
 
-    static public class RollbackException extends Exception {}
+    static public class RollbackException extends Exception {
+    }
 
     private int myVersion = 0;
 
@@ -246,11 +238,11 @@ public class Db implements Cloneable {
     }
 
     private int detectMaxMigrationVersion(String migrationResource) {
-        if(migrationResource == null || migrationResource.length() == 0)
+        if (migrationResource == null || migrationResource.length() == 0)
             return 0;
         int i = 0;
         InputStream is;
-        while( (is = getClass().getResourceAsStream(migrationResource + i + ".sql")) != null ) {
+        while ((is = getClass().getResourceAsStream(migrationResource + i + ".sql")) != null) {
             i++;
             try {
                 is.close();
@@ -261,7 +253,7 @@ public class Db implements Cloneable {
         return i;
     }
 
-    private void checkDB(String migrationsResource) {
+    public void setupDatabase(String migrationsResource) {
         createDB(migrationsResource);
     }
 
@@ -270,13 +262,14 @@ public class Db implements Cloneable {
     public PreparedStatement statement(String sqlText, Object... args) throws SQLException {
 //        log.d("statement: |" + sqlText + "|  " + Arrays.toString(args));
 //        System.out.println("statement: |" + sqlText + "|  " + Arrays.toString(args));
-        PreparedStatement statement = cachedStatements.get(sqlText);
-        if (statement == null) {
-            statement = connection.prepareStatement(sqlText);
-            cachedStatements.put(sqlText, statement);
-        } else {
-            statement.clearParameters();
-        }
+//        PreparedStatement statement = cachedStatements.get(sqlText);
+        PreparedStatement statement = null;
+//        if (statement == null) {
+        statement = connection.prepareStatement(sqlText);
+//            cachedStatements.put(sqlText, statement);
+//        } else {
+//            statement.clearParameters();
+//        }
         int index = 1;
         for (Object arg : args) {
             statement.setObject(index, arg);
@@ -286,11 +279,16 @@ public class Db implements Cloneable {
     }
 
     public ResultSet queryRow(String sqlText, Object... args) throws SQLException {
-        ResultSet rs = statement(sqlText, args).executeQuery();
+        PreparedStatement s = statement(sqlText, args);
+        s.closeOnCompletion();
+        ResultSet rs = s.executeQuery();
         if (rs.next()) {
             return rs;
         }
-        return null;
+        else {
+            s.close();
+            return null;
+        }
     }
 
     /**
@@ -299,63 +297,66 @@ public class Db implements Cloneable {
      *
      * @param sqlText sql text string with '?' for parameters
      * @param args    query parameters
+     *
      * @return retreived data or null
+     *
      * @throws SQLException
      */
     public <T> T queryOne(String sqlText, Object... args) throws SQLException {
-        ResultSet rs = statement(sqlText, args).executeQuery();
-        if (rs.next()) {
-            return (T) rs.getObject(1);
+        try (PreparedStatement s = statement(sqlText, args);
+             ResultSet rs = s.executeQuery();
+        ) {
+            if (rs.next()) {
+                return (T) rs.getObject(1);
+            }
         }
         return null;
     }
+
+    private Object writeLock = new Object();
 
     /**
      * Perform sql update on created/cached prepared statement
      *
      * @param sqlText
      * @param args
+     *
      * @throws SQLException
      */
     public void update(String sqlText, Object... args) throws SQLException {
-        statement(sqlText, args).executeUpdate();
+        try (PreparedStatement s = statement(sqlText, args)) {
+            s.executeUpdate();
+        }
     }
 
     public void executeFile(String name) {
-        Statement statement = null;
         StringBuilder sb = new StringBuilder();
         int counter = 0;
 
         try {
-            statement = connection.createStatement();
-            InputStream resourceStream = getClass().getResourceAsStream(name);
-            if(resourceStream == null)
-                throw new RuntimeException("failed to get migration: "+name);
-            BufferedReader r = new BufferedReader(new InputStreamReader(resourceStream));
-            String line;
-            while ((line = r.readLine()) != null) {
-                counter += 1;
-                line = line.trim();
-                sb.append(line + "\n");
-                if (line.endsWith(";")) {
-                    statement.executeUpdate(sb.toString());
-                    sb = new StringBuilder();
-                    counter = 0;
+            try (Statement statement = connection.createStatement()) {
+                InputStream resourceStream = getClass().getResourceAsStream(name);
+                if (resourceStream == null)
+                    throw new RuntimeException("failed to get migration: " + name);
+                BufferedReader r = new BufferedReader(new InputStreamReader(resourceStream));
+                String line;
+                while ((line = r.readLine()) != null) {
+                    counter += 1;
+                    line = line.trim();
+                    sb.append(line + "\n");
+                    if (line.endsWith(";")) {
+                        statement.executeUpdate(sb.toString());
+                        sb = new StringBuilder();
+                        counter = 0;
+                    }
                 }
             }
-        }catch (RuntimeException re) {
+        } catch (RuntimeException re) {
             throw re;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             log.e("Eror executing file: " + e + "\nIn line " + counter + " of:\n" + sb.toString());
             throw new RuntimeException("Failed to migrate", e);
-        } finally {
-            try {
-                statement.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
         }
     }
 }

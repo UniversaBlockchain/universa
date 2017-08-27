@@ -2,11 +2,15 @@ package com.icodici.universa.node;
 
 import com.icodici.universa.HashId;
 import net.sergeych.tools.Do;
+import net.sergeych.tools.StopWatch;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 
 import static org.junit.Assert.*;
 
@@ -39,6 +43,47 @@ public class SqlLedgerTest extends TestCase {
         assertSame(r3, r4);
     }
 
+//    @Test
+    public void ledgerBenchmark() throws Exception {
+        ExecutorService es = Executors.newCachedThreadPool();
+//        ExecutorService es = Executors.newSingleThreadExecutor();
+        List<Future<?>> ff = new ArrayList<>();
+        long t = StopWatch.measure(true, () -> {
+            for (int n = 0; n < 4; n++) {
+                final int x = n;
+                ff.add(es.submit(() -> {
+                           HashId ids[] = new HashId[10000];
+                           for (int i = 0; i < ids.length; i++) ids[i] = HashId.createRandom();
+                           System.out.println(x);
+                           StopWatch.measure(true, () -> {
+                               for (HashId i : ids) {
+                                   try {
+                                       ledger.findOrCreate(i);
+                                   } catch (Exception e) {
+                                       e.printStackTrace();
+                                       fail(e.getMessage());
+                                   }
+                               }
+                           });
+                           System.out.println("end-" + x);
+                           return null;
+                       })
+                );
+            }
+            ff.forEach(f -> {
+                try {
+                    f.get();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
+            });
+            System.out.println("total");
+        });
+        System.out.println("TPS: "+(4.0*10000*1000/t));
+    }
+
     @Test
     public void createOutputLockRecord() throws Exception {
         ledger.enableCache(true);
@@ -52,7 +97,7 @@ public class SqlLedgerTest extends TestCase {
         assertEquals(ItemState.LOCKED_FOR_CREATION, r1.getState());
         assertEquals(owner.getRecordId(), r1.getLockedByRecordId());
         StateRecord r2 = owner.createOutputLockRecord(id);
-        assertSame (r2, r1);
+        assertSame(r2, r1);
         assertNull(owner.createOutputLockRecord(other.getId()));
         // And hacked low level operation must fail too
         assertNull(ledger.createOutputLockRecord(owner.getRecordId(), other.getId()));
@@ -153,7 +198,7 @@ public class SqlLedgerTest extends TestCase {
 
         assertSameRecords(existing, r1);
         assertSameRecords(existing, r2);
-        assertSame(r1,r2);
+        assertSame(r1, r2);
         assertEquals(ItemState.LOCKED, existing.getState());
         assertEquals(r.getRecordId(), existing.getLockedByRecordId());
 
