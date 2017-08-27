@@ -244,12 +244,12 @@ public class NetworkBuilder implements AutoCloseable{
         }
     }
 
-    public Network buildNetwork(String localNodeId, int ovverideClientPort) throws InterruptedException, SQLException, TimeoutException, IOException {
+    public Network buildNetwork(String localNodeId, int overrideClientPort) throws InterruptedException, SQLException, TimeoutException, IOException {
         NodeInfo nodeInfo = roster.get(localNodeId);
         if (nodeInfo == null)
             throw new IllegalArgumentException("node information not found: " + localNodeId);
         if (rootPath == null)
             throw new IllegalArgumentException("root path not set");
-        return nodeInfo.buildNetwork(ovverideClientPort);
+        return nodeInfo.buildNetwork(overrideClientPort);
     }
 }
