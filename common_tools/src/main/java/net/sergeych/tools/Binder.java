@@ -262,9 +262,9 @@ public class Binder extends HashMap<String, Object> {
      * @return parameter value or throws {@link IllegalArgumentException}.
      */
     public int getIntOrThrow(String key) {
-        Integer i = (Integer) get(key);
-        if (i == null) throw new IllegalArgumentException("missing integer parameter");
-        return i;
+        Number n = (Number) get(key);
+        if (n == null) throw new IllegalArgumentException("missing integer parameter");
+        return n.intValue();
     }
 
     /**

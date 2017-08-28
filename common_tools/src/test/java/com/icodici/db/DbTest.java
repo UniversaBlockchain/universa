@@ -7,34 +7,13 @@
 
 package com.icodici.db;
 
-import net.sergeych.tools.DeferredResult;
-import net.sergeych.tools.Do;
 import org.junit.Test;
 import org.sqlite.SQLiteConfig;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class DbTest {
-
-    @Test
-    public void instance() throws Exception {
-        Db t = new Db("jdbc:sqlite:", null);
-        List<Db> all = Collections.synchronizedList(new ArrayList<>());
-        DeferredResult dr1 = Do.inParallel(() -> all.add(t.instance()));
-        DeferredResult dr2 = Do.inParallel(() -> all.add(t.instance()));
-        dr1.join(); dr2.join();
-        assertEquals(2, all.size());
-        assertEquals(t, all.get(0));
-        assertEquals(t, all.get(1));
-        assert(t != all.get(0));
-        assert(t != all.get(1));
-        assert(all.get(1) != all.get(0));
-    }
 
     @Test
     public void testClone() throws Exception {

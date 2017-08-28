@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.zip.CRC32;
 
 /**
- * Wrap for byte[] utility class. Allow usage as an HashMap key. Very effective construction from
- * byte[] and back ({@link #toArray()} - no copying.
+ * Wrap for byte[] utility class. Allow usage as an HashMap key. Very effective construction from byte[] and back
+ * ({@link #toArray()} - no copying.
  *
  * @author sergeych
  */
@@ -53,14 +53,12 @@ public class Bytes implements Serializable {
     }
 
     /**
-     * Construct by reading certain number of bytes, or all of them, from a stream. Please note that
-     * if the stream contains less bytes than ordered, no exception will be thrown. This constructor
-     * will provide empty buffer on empty stream.
+     * Construct by reading certain number of bytes, or all of them, from a stream. Please note that if the stream
+     * contains less bytes than ordered, no exception will be thrown. This constructor will provide empty buffer on
+     * empty stream.
      *
-     * @param in
-     *         stream to read from
-     * @param length
-     *         how many bytes to read. If &lt; 1, all file will be read.
+     * @param in     stream to read from
+     * @param length how many bytes to read. If &lt; 1, all file will be read.
      *
      * @throws IOException
      */
@@ -84,8 +82,7 @@ public class Bytes implements Serializable {
     /**
      * Create zero-filled instance of the specified size
      *
-     * @param size
-     *         desired size
+     * @param size desired size
      */
     public Bytes(int size) {
         this(new byte[size]);
@@ -94,8 +91,7 @@ public class Bytes implements Serializable {
     /**
      * Construct from hexadecimal string. any spaces between digits are ignored.
      *
-     * @param hex
-     *         hexidecomal string, like "FF 01"
+     * @param hex hexidecomal string, like "FF 01"
      *
      * @return
      */
@@ -124,8 +120,7 @@ public class Bytes implements Serializable {
     /**
      * Convert HEX string (ignoring whitespaces) to a byte[]
      *
-     * @param hex
-     *         strign
+     * @param hex strign
      *
      * @return decoded data
      */
@@ -137,8 +132,7 @@ public class Bytes implements Serializable {
     /**
      * Decode Base64 string into Bytes instance
      *
-     * @param baseStr
-     *         base64 string, possibily split to lines. Tries to add missing '=' to the end
+     * @param baseStr base64 string, possibily split to lines. Tries to add missing '=' to the end
      *
      * @return
      */
@@ -224,8 +218,7 @@ public class Bytes implements Serializable {
     /**
      * Writes dump into standrd output. Same as {@link #toDump(byte[])}.
      *
-     * @param data
-     *         data to dump.
+     * @param data data to dump.
      */
     static public void dump(byte data[]) {
         String[] lines = Bytes.toDump(data);
@@ -237,11 +230,9 @@ public class Bytes implements Serializable {
     }
 
     /**
-     * Generate dump string with address, hex bytes and ASCII character areas, line endings are
-     * "\n"s.
+     * Generate dump string with address, hex bytes and ASCII character areas, line endings are "\n"s.
      *
-     * @param data
-     *         data to dump
+     * @param data data to dump
      *
      * @return
      */
@@ -303,8 +294,8 @@ public class Bytes implements Serializable {
     }
 
     /**
-     * Convert to a BigInteger value. Be sure to check desired bytes order and call {@link
-     * #flipSelf()} first if necessary. See {@link BigInteger#BigInteger(byte[])}.
+     * Convert to a BigInteger value. Be sure to check desired bytes order and call {@link #flipSelf()} first if
+     * necessary. See {@link BigInteger#BigInteger(byte[])}.
      *
      * @return resulting BigInteger instance
      */
@@ -313,9 +304,8 @@ public class Bytes implements Serializable {
     }
 
     /**
-     * Tries to convert bytes to UTF8 string. If the string seems to contain non-characters. convert
-     * it to base64 for readability. the type is shown by prefix, "t:" for utf8 text and "b64:" for
-     * base64
+     * Tries to convert bytes to UTF8 string. If the string seems to contain non-characters. convert it to base64 for
+     * readability. the type is shown by prefix, "t:" for utf8 text and "b64:" for base64
      */
     public String inspect() {
         String res = new String(data, utf8);
@@ -368,8 +358,8 @@ public class Bytes implements Serializable {
 
     @Override
     public boolean equals(Object obj) {
-        if( obj instanceof byte[] )
-            return Arrays.equals((byte[])obj, data);
+        if (obj instanceof byte[])
+            return Arrays.equals((byte[]) obj, data);
         if (obj instanceof Bytes) {
             byte[] other = ((Bytes) obj).data;
             return Arrays.equals(other, data);
@@ -402,12 +392,11 @@ public class Bytes implements Serializable {
     }
 
     /**
-     * Calculate SHA256 hash for this instance optionally with any number of additional chinks. Hash
-     * is calculated on own bytes then on chunks if any.
+     * Calculate SHA256 hash for this instance optionally with any number of additional chinks. Hash is calculated on
+     * own bytes then on chunks if any.
      *
-     * @param chunks
-     *         chunks to concatenate to the calculated hash. Each chink should be either Bytes
-     *         instance, String or byte[] array
+     * @param chunks chunks to concatenate to the calculated hash. Each chink should be either Bytes instance, String or
+     *               byte[] array
      *
      * @return sha256 hashcode (32 bytes) in wrapped into the Bytes instance.
      */
@@ -440,12 +429,10 @@ public class Bytes implements Serializable {
     }
 
     /**
-     * Extract part of the data from ith index (inclusive) to the end. Is a shortcat for
-     * <code>part(i, 0);</code> see {@link #part(int, int)} for details. Note this method actually
-     * copy bytes!
+     * Extract part of the data from ith index (inclusive) to the end. Is a shortcat for <code>part(i, 0);</code> see
+     * {@link #part(int, int)} for details. Note this method actually copy bytes!
      *
-     * @param start
-     *         index to copy. If &lt; 0 means offstet from the end.
+     * @param start index to copy. If &lt; 0 means offstet from the end.
      *
      * @return {@link Bytes} instance with copied bytes.
      */
@@ -454,8 +441,8 @@ public class Bytes implements Serializable {
     }
 
     /**
-     * Extract a part of bytes into new instance. Bytes are copied!. This utility function
-     * recalculates its params for convience:
+     * Extract a part of bytes into new instance. Bytes are copied!. This utility function recalculates its params for
+     * convience:
      * <p>
      * <p>
      * Negative start index means offser from the last element:
@@ -472,11 +459,9 @@ public class Bytes implements Serializable {
      * </pre>
      * Length parameter is truncated if is bigger than remaining bytes length.
      *
-     * @param start
-     *         the start index, inclusive. If &lt; 0 then means offset from the end of data
-     * @param length
-     *         the number of bytes to copy. When 0 then the all the rest of bytes will be copied. Is
-     *         automatically truncated as need.
+     * @param start  the start index, inclusive. If &lt; 0 then means offset from the end of data
+     * @param length the number of bytes to copy. When 0 then the all the rest of bytes will be copied. Is automatically
+     *               truncated as need.
      *
      * @return the {@link Bytes} instance with copied part.
      */
@@ -508,8 +493,7 @@ public class Bytes implements Serializable {
     /**
      * Return new buffer that is a concatenation of this and other.
      *
-     * @param other
-     *         Bytes buffer to concatenate
+     * @param other Bytes buffer to concatenate
      *
      * @return new Bytes instance
      */
@@ -535,8 +519,7 @@ public class Bytes implements Serializable {
     /**
      * Return new buffer that is a concatenation of this and other.
      *
-     * @param otherBytes
-     *         Bytes buffer to concatenate
+     * @param otherBytes Bytes buffer to concatenate
      *
      * @return new Bytes instance
      */
@@ -547,8 +530,7 @@ public class Bytes implements Serializable {
     /**
      * Create random bytes using {@link SecureRandom} RNG in SHA1PRNG mode.
      *
-     * @param length
-     *         length if bytes
+     * @param length length if bytes
      *
      * @return
      */
@@ -567,16 +549,13 @@ public class Bytes implements Serializable {
     }
 
     /**
-     * Return new Bytes instance padded to the required size. If the current size is less than or
-     * equal to the size, returns the copy of this.
+     * Return new Bytes instance padded to the required size. If the current size is less than or equal to the size,
+     * returns the copy of this.
      *
-     * @param size
-     *         desired size
-     * @param fillByte
-     *         fill byte
+     * @param size     desired size
+     * @param fillByte fill byte
      *
-     * @return new {@link Bytes} instance padded if necessary. Its size is always lesss or equal
-     * than size.
+     * @return new {@link Bytes} instance padded if necessary. Its size is always lesss or equal than size.
      */
     public Bytes padToSize(int size, int fillByte) {
         if (data.length >= size)
@@ -611,6 +590,13 @@ public class Bytes implements Serializable {
 //        byte[] zero = new byte[] { 0 };
 //        return new Bytes(zero, reverse().toArray());
         return this;
+    }
+
+    public static String toHex(byte[] data) {
+        StringBuilder str = new StringBuilder();
+        for (byte b : data)
+            str.append(String.format("%02X ", b));
+        return str.toString().trim();
     }
 
 //    public String toNameCode32() {
