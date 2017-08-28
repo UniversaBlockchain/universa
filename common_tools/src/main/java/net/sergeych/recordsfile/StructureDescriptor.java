@@ -7,33 +7,72 @@ import java.util.Arrays;
 import java.util.Map;
 
 /**
- * Byte structure packer/unpacker. uses network byte order (big endian).
+ * Byte structures packer/unpacker. Uses network byte order (big endian). Allows to pack/unpack integers, byte[] arrasy
+ * and string into fixed-size byte sequences. The main idea is to convert integers or longs to/from bytes fields using
+ * unsigned notation and network order. Can also store byte arrays and strings.
  */
-public class ByteStructureDescriptor {
+public class StructureDescriptor {
 
     private Map<String, FieldDef> fields = new java.util.HashMap<>();
     private int currentOffset = 0;
     private boolean frozen = false;
 
+    /**
+     * Full structure size.
+     *
+     * @return
+     */
     public int getSize() {
         return currentOffset;
     }
 
+    /**
+     * unpack packed binary data
+     *
+     * @param res
+     *
+     * @return
+     */
     public Binder unpack(byte[] res) {
         return unpack(res, 0);
     }
 
+    /**
+     * Unpack packed binary data staring from a given offset
+     *
+     * @param data
+     * @param fromOffset
+     *
+     * @return Binder with map of unpacked fields
+     */
     public Binder unpack(byte[] data, int fromOffset) {
         Binder result = new Binder();
         fields.forEach((key, fd) -> result.put(key, fd.unpack(data, fromOffset)));
         return result;
     }
 
-    public ByteStructureDescriptor addField(String name, int sizeInBytes) {
+    /**
+     * Add ingeter field to the structure.
+     *
+     * @param name
+     * @param sizeInBytes in network order, should be between 1 and 8 inclusive
+     *
+     * @return this
+     */
+    public StructureDescriptor addField(String name, int sizeInBytes) {
         return addField(name, sizeInBytes, Integer.class);
     }
 
-    public ByteStructureDescriptor addField(String name, int sizeInBytes, Class itemClass) {
+    /**
+     * Add field specifying both size in bytes and class of the object to unpack to.
+     *
+     * @param name
+     * @param sizeInBytes from 1 to 8 inclusive
+     * @param itemClass   item unpack to
+     *
+     * @return this
+     */
+    public StructureDescriptor addField(String name, int sizeInBytes, Class itemClass) {
         if (fields.containsKey(name))
             throw new IllegalArgumentException("field already defined: " + name);
         if (frozen)
@@ -43,7 +82,17 @@ public class ByteStructureDescriptor {
         return this;
     }
 
-    public ByteStructureDescriptor addArrayField(String name, int itemSizeInBytes, int nEntries, Class itemClass) {
+    /**
+     * Not yet fully functional
+     *
+     * @param name
+     * @param itemSizeInBytes
+     * @param nEntries
+     * @param itemClass
+     *
+     * @return
+     */
+    private StructureDescriptor addArrayField(String name, int itemSizeInBytes, int nEntries, Class itemClass) {
         if (fields.containsKey(name))
             throw new IllegalArgumentException("field already defined: " + name);
         if (frozen)
@@ -54,10 +103,27 @@ public class ByteStructureDescriptor {
         return this;
     }
 
+    /**
+     * Pack structure into binary data with given values
+     *
+     * @param data map of values. If any key in the map does not belong to the structure. throws {@link
+     *             IllegalArgumentException}
+     *
+     * @return packed structure
+     */
     public byte[] pack(Binder data) {
         return pack(data, false);
     }
 
+    /**
+     * Pack structure using given values, optionally ignore keys that are not included in the structure.
+     *
+     * @param data            map of values to pack
+     * @param ignoreNonFields if true ignores any keys not listed in the structure, owtherwise throws {@link
+     *                        IllegalArgumentException}.
+     *
+     * @return packed structure
+     */
     public byte[] pack(Binder data, boolean ignoreNonFields) {
         frozen = true;
         byte[] bytes = new byte[currentOffset];
@@ -65,6 +131,15 @@ public class ByteStructureDescriptor {
         return bytes;
     }
 
+    /**
+     * Pack structure with given data into existing binary array from a specified offset
+     *
+     * @param bytes           binary array where to put data
+     * @param fromOffset      put packed data starting from this offset
+     * @param data            map of values to pack
+     * @param ignoreNonFields if true ignores any keys not listed in the structure, owtherwise throws {@link
+     *                        IllegalArgumentException}.
+     */
     public void packTo(byte[] bytes, int fromOffset, Binder data, boolean ignoreNonFields) {
         data.forEach((key, value) -> {
             FieldDef fd = fields.get(key);
@@ -77,28 +152,48 @@ public class ByteStructureDescriptor {
         });
     }
 
-    public ByteStructureDescriptor addByteField(String name) {
+    public StructureDescriptor addByteField(String name) {
         return addField(name, 1);
     }
 
-    public ByteStructureDescriptor addShortField(String name) {
+    public StructureDescriptor addShortField(String name) {
         return addField(name, 2);
     }
 
-    public ByteStructureDescriptor addIntField(String name) {
+    public StructureDescriptor addIntField(String name) {
         return addField(name, 4);
     }
 
-    public ByteStructureDescriptor addLongField(String name) {
+    public StructureDescriptor addLongField(String name) {
         return addField(name, 8, Long.class);
     }
 
-    public ByteStructureDescriptor addBinaryField(String name, int length) {
+    /**
+     * Add byte[] field.
+     *
+     * @param name
+     * @param length in bytes, any positive value.
+     *
+     * @return this
+     */
+    public StructureDescriptor addBinaryField(String name, int length) {
         return addArrayField(name, 1, length, Byte.class);
     }
 
-    public ByteStructureDescriptor addStringField(String name, int maxLength) {
-        return addArrayField(name, 1, maxLength, String.class);
+    /**
+     * Add string field to be packed usgin system default encoding (utf-8 mainly) into a fixed-size bytes slot. Maximum
+     * size in bytes is either (fieldSize - 1) bytes (fieldSize <= 256, or fieldSize - 2 bytes otherwise except for
+     * extremely long fields, longer than 64Kb, in which case it be fieldSize - 3. Note that string length in characters
+     * could be any depending on the characters used.
+     *
+     * @param name
+     * @param fieldSize
+     *
+     * @return
+     */
+
+    public StructureDescriptor addStringField(String name, int fieldSize) {
+        return addArrayField(name, 1, fieldSize, String.class);
     }
 
 
@@ -135,17 +230,17 @@ public class ByteStructureDescriptor {
                 throw new IllegalArgumentException("strigns require byte[] binary array to store");
             int counterSize = getCounterSize();
             byte[] chars = s.getBytes();
-            if( chars.length + counterSize > size )
+            if (chars.length + counterSize > size)
                 throw new IllegalArgumentException("string too long");
             int start = fromOffset + offset;
             packInt(data, start, chars.length, counterSize);
-            System.arraycopy(chars, 0, data, start+counterSize, chars.length);
+            System.arraycopy(chars, 0, data, start + counterSize, chars.length);
         }
 
         private int getCounterSize() {
-            if( size <= 256 )
+            if (size <= 256)
                 return 1;
-            if( size <= 0xFFFF-2 )
+            if (size <= 0xFFFF - 2)
                 return 2;
             return 3;
         }
@@ -171,7 +266,7 @@ public class ByteStructureDescriptor {
                 acc = (int) value;
             else
                 throw new IllegalArgumentException("unsupported numeric type: " + value.getClass().getCanonicalName());
-            packInt(data, offset+fromOffset, acc, size);
+            packInt(data, offset + fromOffset, acc, size);
         }
 
         private void packInt(byte[] data, int fromOffset, long value, int sizeInBytes) {
@@ -207,9 +302,9 @@ public class ByteStructureDescriptor {
 
         private String unpackSring(byte[] data, int fromOffset) {
             int counterSize = getCounterSize();
-            int length = (int) readIntegerFrom(data, offset+fromOffset, counterSize);
-            int start = offset+fromOffset + counterSize;
-            byte [] stringBytes = Arrays.copyOfRange(data, start, start+length);
+            int length = (int) readIntegerFrom(data, offset + fromOffset, counterSize);
+            int start = offset + fromOffset + counterSize;
+            byte[] stringBytes = Arrays.copyOfRange(data, start, start + length);
             return new String(stringBytes);
         }
 
@@ -222,7 +317,7 @@ public class ByteStructureDescriptor {
         }
 
         private long unpackLong(byte[] data, int fromOffset) {
-            return readIntegerFrom(data, fromOffset+offset, size);
+            return readIntegerFrom(data, fromOffset + offset, size);
         }
 
         private long readIntegerFrom(byte[] data, int fromOffset, int sizeInBytes) {

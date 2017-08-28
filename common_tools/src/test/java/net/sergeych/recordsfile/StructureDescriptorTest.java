@@ -6,10 +6,10 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
-public class ByteStructureDescriptorTest {
+public class StructureDescriptorTest {
     @Test
     public void packInt() throws Exception {
-        ByteStructureDescriptor d = new ByteStructureDescriptor();
+        StructureDescriptor d = new StructureDescriptor();
 
         d.addField("b1", 1)
                 .addField("b2", 1)
@@ -57,7 +57,7 @@ public class ByteStructureDescriptorTest {
 
     @Test
     public void unpackNumbers() throws Exception {
-        ByteStructureDescriptor d = new ByteStructureDescriptor();
+        StructureDescriptor d = new StructureDescriptor();
 
         d.addByteField("b")
                 .addShortField("sh")
@@ -82,7 +82,7 @@ public class ByteStructureDescriptorTest {
 
     @Test
     public void packBytes() throws Exception {
-        ByteStructureDescriptor d = new ByteStructureDescriptor();
+        StructureDescriptor d = new StructureDescriptor();
         d.addField("type", 1)
                 .addBinaryField("bb",12);
 
@@ -99,7 +99,7 @@ public class ByteStructureDescriptorTest {
 
     @Test
     public void packSmallString() throws Exception {
-        ByteStructureDescriptor d = new ByteStructureDescriptor();
+        StructureDescriptor d = new StructureDescriptor();
         d.addField("type", 1)
                 .addStringField("bb",19);
         byte[] res = d.pack(Binder.fromKeysValues(
