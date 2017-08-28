@@ -29,7 +29,7 @@ public class PostgresLedgerTest extends TestCase {
 
     @Test
     public void create() throws Exception {
-        System.out.println("" + ledger.getDb().getIntParam("version"));
+//        System.out.println("" + ledger.getDb().getIntParam("version"));
         HashId id = HashId.createRandom();
         assertNull(ledger.getRecord(id));
         StateRecord r = ledger.findOrCreate(id);

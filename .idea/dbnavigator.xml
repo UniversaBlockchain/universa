@@ -24,32 +24,42 @@
     <autoscroll-from-editor value="true" />
     <show-object-properties value="true" />
     <loaded-nodes>
-      <connection connection-id="22105869-1598-4fb0-80e5-687ef4b357f6">
-        <schema name="information_schema" object-types="function, table, view" />
+      <connection connection-id="5c68b755-6fb2-4962-811a-cd615e94169c">
         <schema name="pg_catalog" object-types="function, table, view" />
-        <schema name="public" object-types="function, sequence, table, view" />
-      </connection>
-      <connection connection-id="e1253ee1-a0aa-4413-873a-b2dae9e9cf52">
-        <schema name="information_schema" object-types="function, sequence, table, view" />
-        <schema name="pg_toast_temp_1" object-types="function, sequence, table, view" />
-        <schema name="public" object-types="function, sequence, table, view" />
+        <schema name="public" object-types="column, constraint, function, index, sequence, table, dataset trigger, view" />
       </connection>
     </loaded-nodes>
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
-    <connection id="22105869-1598-4fb0-80e5-687ef4b357f6">
-      <console name="Connection" type="STANDARD"><![CDATA[select count(*) from ledger;]]></console>
+    <connection id="5c68b755-6fb2-4962-811a-cd615e94169c">
+      <console name="universa_node" type="STANDARD"><![CDATA[CREATE OR REPLACE FUNCTION sr_find_or_create(hash_id bytea)
+RETURNS SETOF ledger AS $$
+BEGIN
+    INSERT INTO ledger(hash, state, created_at)
+    VALUES($1,1,extract(epoch from now()))
+    ON CONFLICT (hash) DO NOTHING;
+
+    RETURN QUERY SELECT * FROM ledger WHERE hash = $1;
+END;
+$$
+LANGUAGE 'plpgsql';
+
+select * from ledger where hash = '\x2ca93916ec53606beeba6e6a8833140d65164cdef99c327ca74c32cd6389d9aeb34078557cd895ab6ecd7f5f23423d46b7f63760a81b947ffddbaa3c2df77c52';
+
+select * from sr_find_or_create('\x2ca93916ec53606beeba6e6a8833140d65164cdef99c327ca74c32cd6389d9aeb34078557cd895ab6ecd7f5f23423d46b7f63760a81b947ffddbaa3c2df77c51');]]></console>
     </connection>
-    <connection id="e1253ee1-a0aa-4413-873a-b2dae9e9cf52">
-      <console name="universa_node" type="STANDARD" />
-    </connection>
+  </component>
+  <component name="DBNavigator.Project.DatasetFilterManager">
+    <filter-list connection-id="5c68b755-6fb2-4962-811a-cd615e94169c" dataset="public.ledger" active-filter-id="" />
+    <filter-list connection-id="5c68b755-6fb2-4962-811a-cd615e94169c" dataset="public.vars" active-filter-id="EMPTY_FILTER" />
   </component>
   <component name="DBNavigator.Project.EditorStateManager">
     <last-used-providers />
   </component>
   <component name="DBNavigator.Project.FileConnectionMappingManager">
-    <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_1.sql" connection-id="22105869-1598-4fb0-80e5-687ef4b357f6" current-schema="public" />
     <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_0.sql" connection-id="virtual-postgres-connection" current-schema="ROOT" />
+    <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_2.sql" connection-id="5c68b755-6fb2-4962-811a-cd615e94169c" current-schema="public" />
+    <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_1.sql" connection-id="22105869-1598-4fb0-80e5-687ef4b357f6" current-schema="public" />
   </component>
   <component name="DBNavigator.Project.MethodExecutionManager">
     <method-browser />
@@ -67,87 +77,13 @@
     <filters />
   </component>
   <component name="DBNavigator.Project.ScriptExecutionManager" clear-outputs="true">
-    <recently-used-interfaces />
+    <recently-used-interfaces>
+      <mapping database-type="POSTGRES" interface-id="DEFAULT" />
+    </recently-used-interfaces>
   </component>
   <component name="DBNavigator.Project.Settings">
     <connections>
-      <connection id="22105869-1598-4fb0-80e5-687ef4b357f6" active="true">
-        <database>
-          <name value="Connection" />
-          <description value="" />
-          <database-type value="POSTGRES" />
-          <config-type value="BASIC" />
-          <database-version value="9.6" />
-          <driver-source value="BUILTIN" />
-          <driver-library value="" />
-          <driver value="" />
-          <url-type value="DATABASE" />
-          <host value="localhost" />
-          <port value="5432" />
-          <database value="postgres" />
-          <os-authentication value="false" />
-          <empty-password value="true" />
-          <user value="universa_node" />
-          <password value="" />
-        </database>
-        <properties>
-          <auto-commit value="false" />
-        </properties>
-        <ssh-settings>
-          <active value="false" />
-          <proxy-host value="" />
-          <proxy-port value="22" />
-          <proxy-user value="" />
-          <proxy-password value="" />
-          <auth-type value="PASSWORD" />
-          <key-file value="" />
-          <key-passphrase value="" />
-        </ssh-settings>
-        <details>
-          <charset value="UTF-8" />
-          <ddl-file-binding value="true" />
-          <database-logging value="false" />
-          <connect-automatically value="true" />
-          <restore-workspace value="true" />
-          <restore-workspace-deep value="true" />
-          <environment-type value="default" />
-          <idle-time-to-disconnect value="30" />
-          <password-expiry-time value="10" />
-          <max-connection-pool-size value="7" />
-          <alternative-statement-delimiter value="" />
-        </details>
-        <object-filters hide-empty-schemas="false">
-          <object-type-filter use-master-settings="true">
-            <object-type name="SCHEMA" enabled="true" />
-            <object-type name="USER" enabled="true" />
-            <object-type name="ROLE" enabled="true" />
-            <object-type name="PRIVILEGE" enabled="true" />
-            <object-type name="CHARSET" enabled="true" />
-            <object-type name="TABLE" enabled="true" />
-            <object-type name="VIEW" enabled="true" />
-            <object-type name="MATERIALIZED_VIEW" enabled="true" />
-            <object-type name="NESTED_TABLE" enabled="true" />
-            <object-type name="COLUMN" enabled="true" />
-            <object-type name="INDEX" enabled="true" />
-            <object-type name="CONSTRAINT" enabled="true" />
-            <object-type name="DATASET_TRIGGER" enabled="true" />
-            <object-type name="DATABASE_TRIGGER" enabled="true" />
-            <object-type name="SYNONYM" enabled="true" />
-            <object-type name="SEQUENCE" enabled="true" />
-            <object-type name="PROCEDURE" enabled="true" />
-            <object-type name="FUNCTION" enabled="true" />
-            <object-type name="PACKAGE" enabled="true" />
-            <object-type name="TYPE" enabled="true" />
-            <object-type name="TYPE_ATTRIBUTE" enabled="true" />
-            <object-type name="ARGUMENT" enabled="true" />
-            <object-type name="DIMENSION" enabled="true" />
-            <object-type name="CLUSTER" enabled="true" />
-            <object-type name="DBLINK" enabled="true" />
-          </object-type-filter>
-          <object-name-filters />
-        </object-filters>
-      </connection>
-      <connection id="e1253ee1-a0aa-4413-873a-b2dae9e9cf52" active="true">
+      <connection id="5c68b755-6fb2-4962-811a-cd615e94169c" active="true">
         <database>
           <name value="universa_node" />
           <description value="" />
@@ -161,13 +97,13 @@
           <host value="localhost" />
           <port value="5432" />
           <database value="universa_node" />
-          <os-authentication value="false" />
-          <empty-password value="true" />
-          <user value="universa_node" />
+          <os-authentication value="true" />
+          <empty-password value="false" />
+          <user value="" />
           <password value="" />
         </database>
         <properties>
-          <auto-commit value="false" />
+          <auto-commit value="true" />
         </properties>
         <ssh-settings>
           <active value="false" />

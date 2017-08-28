@@ -34,6 +34,7 @@ import java.util.concurrent.Callable;
 public class Db implements Cloneable, AutoCloseable {
 
     private boolean walMode = false;
+    private boolean sqlite = false;
     protected String connectionString;
     private int currentDbVersion = 0;
 
@@ -142,7 +143,8 @@ public class Db implements Cloneable, AutoCloseable {
 //        System.out.println("creating db instance for " + Thread.currentThread().getId());
         this.walMode = true;
         connection.setAutoCommit(true);
-        if (connectionString.contains("jdbc")) {
+        if (connectionString.contains("sqlite")) {
+            sqlite = true;
             queryOne("PRAGMA journal_mode=WAL");
             update("PRAGMA synchronous=OFF");
             queryOne("PRAGMA mmap_size=268435456");
@@ -278,6 +280,17 @@ public class Db implements Cloneable, AutoCloseable {
         return statement;
     }
 
+    public PreparedStatement statementReturningKeys(String sqlText, Object... args) throws SQLException {
+        PreparedStatement statement = null;
+        statement = connection.prepareStatement(sqlText,Statement.RETURN_GENERATED_KEYS);
+        int index = 1;
+        for (Object arg : args) {
+            statement.setObject(index, arg);
+            index++;
+        }
+        return statement;
+    }
+
     public ResultSet queryRow(String sqlText, Object... args) throws SQLException {
         PreparedStatement s = statement(sqlText, args);
         s.closeOnCompletion();
@@ -286,7 +299,8 @@ public class Db implements Cloneable, AutoCloseable {
             return rs;
         }
         else {
-            s.close();
+            if(sqlite)
+                s.close();
             return null;
         }
     }
@@ -340,14 +354,26 @@ public class Db implements Cloneable, AutoCloseable {
                     throw new RuntimeException("failed to get migration: " + name);
                 BufferedReader r = new BufferedReader(new InputStreamReader(resourceStream));
                 String line;
+                boolean inFunction = false;
                 while ((line = r.readLine()) != null) {
                     counter += 1;
                     line = line.trim();
                     sb.append(line + "\n");
-                    if (line.endsWith(";")) {
-                        statement.executeUpdate(sb.toString());
-                        sb = new StringBuilder();
-                        counter = 0;
+                    if( !inFunction ) {
+                        if( line.endsWith("$$")) {
+                            inFunction = true;
+                        }
+                        else {
+                            if (line.endsWith(";")) {
+                                statement.executeUpdate(sb.toString());
+                                sb = new StringBuilder();
+                                counter = 0;
+                            }
+                        }
+                    }
+                    else {
+                        if( line.endsWith("$$"))
+                            inFunction = false;
                     }
                 }
             }

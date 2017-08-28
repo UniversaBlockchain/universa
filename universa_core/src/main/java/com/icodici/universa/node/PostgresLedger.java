@@ -16,8 +16,6 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
@@ -128,16 +126,15 @@ public class PostgresLedger implements Ledger {
         // This simple version requires that database is used exclusively by one localnode - the normal way. As nodes
         // are multithreaded, there is absolutely no use to share database between nodes.
         return protect(() -> {
-            inPool(db -> {
-                db.update(
-                        "INSERT INTO ledger(hash, state, created_at) values(?,?,?) ON CONFLICT (hash) DO NOTHING",
-                        itemId.getDigest(),
-                        ItemState.PENDING.ordinal(),
-                        LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
-                );
-                return null;
-            });
-            return getRecord(itemId);
+            StateRecord record = getFromCache(itemId);
+            if( record == null) {
+                try (ResultSet rs = inPool(db->db.queryRow("select * from sr_find_or_create(?)", itemId.getDigest()))) {
+                    record = new StateRecord(this, rs);
+                    putToCache(record);
+                }
+            }
+            return record;
+
         });
     }
 
