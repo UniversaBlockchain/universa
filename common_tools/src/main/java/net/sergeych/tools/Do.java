@@ -303,4 +303,21 @@ public class Do {
         return new String(hexChars);
     }
 
+    /**
+     * Convert a snake_case_string to CamelCaseString. The first character will always be in upper case
+     *
+     * @param snakeString
+     * @return converted string
+     */
+    public static String snakeToCamelCase(String snakeString) {
+        StringBuilder b = new StringBuilder();
+        for(String s: snakeString.split("_") ) {
+            if(s.length() > 0 ) {
+                b.append(Character.toUpperCase(s.charAt(0)));
+                b.append(s.substring(1, s.length()).toLowerCase());
+            }
+        }
+        return b.toString();
+    }
+
 }

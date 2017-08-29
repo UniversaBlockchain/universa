@@ -42,7 +42,7 @@ public class StructureDescriptor {
      *
      * @param data
      * @param fromOffset
-     *
+     *w
      * @return Binder with map of unpacked fields
      */
     public Binder unpack(byte[] data, int fromOffset) {

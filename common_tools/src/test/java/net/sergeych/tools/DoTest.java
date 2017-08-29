@@ -11,6 +11,14 @@ import static org.junit.Assert.assertEquals;
 
 public class DoTest {
     @Test
+    public void snakeToCamelCase() throws Exception {
+        assertEquals("HelloWorld!", Do.snakeToCamelCase("hello_wORld_!"));
+        assertEquals("Hello", Do.snakeToCamelCase("hello_"));
+        assertEquals("Hello", Do.snakeToCamelCase("hello"));
+        assertEquals("Hello", Do.snakeToCamelCase("_hello"));
+    }
+
+    @Test
     public void sample() throws Exception {
         HashSet<String> x = new HashSet<>(Do.listOf("aa", "bb", "cc", "cd"));
         // RandomAccess-ed lists have different algorithms, so test them separately
