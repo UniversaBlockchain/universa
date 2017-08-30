@@ -49,7 +49,6 @@ public class Db implements Cloneable, AutoCloseable {
 
     public void close() {
         synchronized (connectionString) {
-            System.out.println("clsing db connection " + this);
             if (connection != null) {
                 for (PreparedStatement s : cachedStatements.values()) {
                     try {
@@ -147,7 +146,12 @@ public class Db implements Cloneable, AutoCloseable {
             sqlite = true;
             queryOne("PRAGMA journal_mode=WAL");
             update("PRAGMA synchronous=OFF");
-            queryOne("PRAGMA mmap_size=268435456");
+            try {
+                update("PRAGMA mmap_size=268435456");
+            }
+            catch(java.sql.SQLException e) {
+                queryOne("PRAGMA mmap_size=268435456");
+            }
         }
         if (migrationsResource != null)
             setupDatabase(migrationsResource);

@@ -10,7 +10,9 @@ package net.sergeych.tools;
 import net.sergeych.utils.Bytes;
 
 import javax.annotation.Nonnull;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -285,8 +287,16 @@ public class Binder extends HashMap<String, Object> {
     }
 
     public Integer getInt(String key, Integer defaultValue) {
-        Integer i = (Integer) get(key);
-        return i == null ? defaultValue : i;
+        Object o = get(key);
+        if( o == null )
+            return defaultValue;
+        if( o instanceof String ) {
+            return Integer.valueOf((String)o);
+        }
+        else if( o instanceof Number ) {
+            return ((Number) o).intValue();
+        }
+        throw new IllegalArgumentException("can't convert to integer: "+o.getClass().getCanonicalName());
     }
 
     public ArrayList<?> getArray(String key) {
@@ -384,7 +394,7 @@ public class Binder extends HashMap<String, Object> {
                 t = (String) map.get("__t");
             long ss = (int) map.get("seconds");
             if( t != null ) {
-                return LocalDateTime.ofEpochSecond(ss, 0, ZoneOffset.UTC);
+                return Instant.ofEpochMilli(ss*1000).atZone(ZoneId.systemDefault()).toLocalDateTime();
             }
         }
         if( obj.equals("now()"))
