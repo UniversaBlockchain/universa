@@ -326,6 +326,10 @@ public class Boss {
             treeMode = true;
         }
 
+        public Writer() {
+            this(new ByteArrayOutputStream());
+        }
+
         static private int sizeInBytes(long value) {
             int cnt = 1;
             while (value > 255) {
@@ -560,6 +564,22 @@ public class Boss {
 
         public void close() throws IOException {
             out.close();
+        }
+
+        public OutputStream getOut() {
+            return out;
+        }
+
+        /**
+         * Return packed bytes. Works only if the underlying {@link OutputStream} was a {@link ByteArrayOutputStream}.
+         * The default constructor {@link Writer#Writer()} does so.
+         *
+         * @return boss-packed data
+         */
+        public byte[] toByteArray() {
+            if (out instanceof ByteArrayOutputStream)
+                return ((ByteArrayOutputStream) out).toByteArray();
+            throw new IllegalStateException("underlying OutputStream is not a ByteArrayOutputStream");
         }
     }
 

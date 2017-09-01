@@ -141,10 +141,17 @@ public class PublicKey extends AbstractKey {
     public byte[] fingerprint() {
         synchronized (publicKey) {
             if( _fingerprint == null ) {
+                _fingerprint = new byte[33];
+                _fingerprint[0] = (byte) FINGERPRINT_SHA512;
                 Map<String, Object> a = publicKey.toHash();
-                _fingerprint = new Sha256().update((byte[])a.get("e")).update((byte[])a.get("n")).digest();
+                System.arraycopy(
+                        new Sha256().update((byte[])a.get("e")).update((byte[])a.get("n")).digest(),
+                        0,
+                        _fingerprint,
+                        1,
+                        32);
             }
-            return Boss.dumpToArray(FINGERPRINT_SHA512, _fingerprint);
+            return _fingerprint;
         }
     }
 }

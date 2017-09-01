@@ -9,13 +9,16 @@ package com.icodici.crypto;
 
 import net.sergeych.tools.Bindable;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 
+import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 /**
@@ -26,7 +29,7 @@ import java.util.Collection;
  * Created by sergeych on 17.12.16.
  */
 public abstract class AbstractKey implements Bindable {
-    public static final Object FINGERPRINT_SHA512 = 0;
+    public static final int FINGERPRINT_SHA512 = 7;
 
     protected KeyInfo keyInfo;
 
@@ -208,7 +211,61 @@ public abstract class AbstractKey implements Bindable {
 
     }
 
+    /**
+     * The fingerprint of the key is a uniqie sequence of bytes that matches the key without compromising it. In fact,
+     * only public keys can have it, for symmetric keys the fingerprint will compromise it.
+     * <p>
+     * Therefore, the private key fingerprint is its public key fingerprint. The public key fingerprint is calculated
+     * using some hash over it's parameters, see {@link PublicKey#fingerprint()}
+     *
+     * @return
+     */
     public byte[] fingerprint() {
         throw new RuntimeException("this key does not support fingerprints");
+    }
+
+    /**
+     * Create a random (e.g. every call a different) sequence of bytes that identidy this key. There can almost infinite
+     * number if anonynous ids for e key (more than 1.0E77), so it is really anonymous way to identify some key. The
+     * anonymousId for public and private keys are the same.
+     * <p>
+     * Anonymous ID size is 64 bytes: first are 32 random bytes, last are HMAC(key, sha256) of these random bytes.
+     * <p>
+     * The most important thing about anonymous ids is that every time this call generates new id for the same key,
+     * providing anonymous but exact identification of a key.
+     * <p>
+     * To check that the key matches some anonymousId, use {@link #matchAnonymousId(byte[])}.
+     * <p>
+     * Therefore, the private key fingerprint is its public key fingerprint. The public key fingerprint is calculated
+     * using some hash over it's parameters, see {@link PublicKey#fingerprint()}
+     *
+     * @return
+     */
+    public byte[] createAnonymousId() {
+        byte[] rvector = Do.randomBytes(32);
+        HMAC hmac = new HMAC(fingerprint());
+        hmac.update(rvector);
+        byte[] result = new byte[64];
+        System.arraycopy(rvector, 0, result, 0, 32);
+        System.arraycopy(hmac.digest(), 0, result, 32, 32);
+        return result;
+    }
+
+    /**
+     * Check that the packed anonymousId matches current key. Use {@link #createAnonymousId()} to get a random anonymous
+     * id for this key.
+     *
+     * @param packedId
+     *
+     * @return true if it matches.
+     *
+     * @throws IOException
+     */
+    public boolean matchAnonymousId(@Nonnull byte[] packedId) throws IOException {
+        assert (packedId.length == 64);
+        HMAC hmac = new HMAC(fingerprint());
+        hmac.update(packedId, 0, 32);
+        byte[] idDigest = Arrays.copyOfRange(packedId, 32, 64);
+        return Arrays.equals(hmac.digest(), idDigest);
     }
 }
