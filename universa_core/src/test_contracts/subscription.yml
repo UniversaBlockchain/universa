@@ -26,8 +26,10 @@ definition:
    # issuer name, optional
    name: Universa foundation silver subscription
 
+   # the rate allowed to the contract holder
    subscription_rate: silver
 
+   # to show to the user
    description:
      This contract grants holder specified number of transactional units. Each unit allow
      execute a single transaction with up to 10 ledger wirtes, complex transactions require
@@ -42,13 +44,10 @@ definition:
 
 
  # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
- # consult current Universa state, maximum delayed contract creation time varies.
+ # consult current Universa state, maximum delayed contract creation time varies. This time we make a template
+ # which will be substituted by the creation time on issuing client:
  created_at:
    now()
-   # as yaml has no time type, this notion allow use different formats of time. unix time is number of second
-   # from the unix epoch, in GMT zone (UTC+00:00):
-#   __type: unixtime
-#   seconds: 1501953889
 
  # required. must be in future.
  expires_at:
@@ -61,28 +60,32 @@ definition:
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.
  permissions:
-   # permission consist of the action name and the role allowed to perform it
-   # (standard ror mentioned in roles),
-
    # owner have a right to transfer ownership. Note that if the creator will be mentioned here, only the creator
    # will have permission to change owner, which contract type is of little use
    change_owner: owner
 
    change_number:
+     # owner can decrease units, to pay for performing transactions, maximum one time payment
+     # is also limited (a useful option):
      - role: owner
        min_value: 0
        min_step: -400
        max_step: -1
        field_name: transactional_units_left
 
+    # issuer can recharge (top up) the contract in 1..100000 range:
      - role: issuer
        min_value: 1
        min_step:  1
        max_step:  100000
        field_name: transactional_units_left
 
-   # who can revoke the contract
-   revoke: owner
+   # who can revoke the contract: owner, and issuer. This is "ANY OF" logic, we create 2 permissions,
+   # one for each role. Issuer right is used to block contracts used in positively determined attacks to
+   # the system (e.g. DDOS).
+   revoke:
+     - role: owner
+     - role: issuer
 
  # required section, could be empty. Any immutable structured data issuer might need to include into the contract
  # this data will be also copied without change during any contract changes.
@@ -141,6 +144,6 @@ state:
 
   # required section. any application data that could be changed.
   data:
-    # this is writable section for mutable data
+    # now contract holds 1000 transactinoal units to spend
     transactional_units_left: 1000
 

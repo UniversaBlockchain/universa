@@ -46,7 +46,7 @@ public class SqliteLedgerTest extends TestCase {
         assertSame(r3, r4);
     }
 
-    @Test
+//    @Test
     public void ledgerBenchmark() throws Exception {
         ExecutorService es = Executors.newCachedThreadPool();
 //        ExecutorService es = Executors.newSingleThreadExecutor();
