@@ -3,6 +3,7 @@ package net.sergeych.collections;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.BiConsumer;
 
 /**
  * Multimap (AKA bag) associates any nymber of elements with a key. It could be constructed using any Map and
@@ -22,6 +23,12 @@ public class Multimap<K, V> {
 
     static public <T,U> Multimap newInstance() {
         return new Multimap(HashMap.class,(Class<ArrayList>) ArrayList.class);
+    }
+
+    public Multimap() {
+        collectionClass = (Class<? extends Collection<V>>) (Class) ArrayList.class;
+        map = new HashMap<>();
+
     }
 
     public Multimap(Class<? extends Map> mapClass,
@@ -44,9 +51,15 @@ public class Multimap<K, V> {
      * @return
      */
     @Nullable
-    Collection<V> get(K key) {
+    public Collection<V> get(K key) {
         Collection<V> collection = map.get(key);
         return collection == null ? null : Collections.unmodifiableCollection(collection);
+    }
+
+    @Nullable
+    public V getFirst(K key) {
+        Collection<V> collection = map.get(key);
+        return collection == null ? null : collection.iterator().next();
     }
 
     /**
@@ -56,12 +69,16 @@ public class Multimap<K, V> {
      * @return
      */
     @Nonnull
-    List<V> getList(K key) {
+    public List<V> getList(K key) {
         Collection<V> collection = map.get(key);
         List<V> list = new ArrayList<>();
         if( collection != null && !collection.isEmpty() )
             list.addAll(collection);
         return list;
+    }
+
+    public void forEach(BiConsumer<? super K, ? super Collection<V>> action) {
+        map.forEach(action);
     }
 
     public void put(@Nonnull  K key, @Nonnull V value) {

@@ -40,6 +40,5 @@ public class ChangeOwnerPermission extends Permission {
                     contract.addError(Errors.BAD_VALUE, "state.owner", "improper change");
             }
         }
-        super.checkChanges(contract, stateChanges);
     }
 }

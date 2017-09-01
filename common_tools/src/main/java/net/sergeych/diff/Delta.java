@@ -50,7 +50,10 @@ abstract public class Delta<T, U> {
     protected void registerInParent() {
         if (parent != null && !isEmpty())
             parent.children.add(this);
+    }
 
+    public Delta getParent() {
+        return parent;
     }
 
     /**
@@ -126,5 +129,4 @@ abstract public class Delta<T, U> {
     public List<Delta> getNestedDelta() {
         return children;
     }
-
 }

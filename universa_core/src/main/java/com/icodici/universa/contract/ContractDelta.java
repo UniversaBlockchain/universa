@@ -24,7 +24,7 @@ public class ContractDelta {
     private final Contract existing;
     private final Contract changed;
     private MapDelta stateDelta;
-    private Map<String,Delta> stateChanges;
+    private Map<String, Delta> stateChanges;
     private Role creator;
 
     public ContractDelta(Contract existing, Contract changed) {
@@ -45,13 +45,12 @@ public class ContractDelta {
             }
             // check immutable root area
             // should be only one change here: state
-            if( rootDelta.getChanges().size() > 1)
+            if (rootDelta.getChanges().size() > 1)
                 addError(ILLEGAL_CHANGE, "roo", "root level changes are forbidden except the state");
             // check immutanle definition arer
             checkStateChange();
             // check only permitted changes in data
-        }
-        catch(ClassCastException e) {
+        } catch (ClassCastException e) {
             e.printStackTrace();
             addError(FAILED_CHECK, "", "failed to compare, structure is broken or not supported");
         }
@@ -61,49 +60,58 @@ public class ContractDelta {
         stateChanges = stateDelta.getChanges();
         stateChanges.remove("created_by");
         creator = changed.getRole("creator");
-        if( creator == null ) {
+        if (creator == null) {
             addError(MISSING_CREATOR, "state.created_by", "");
             return;
         }
-        ChangedItem<Integer,Integer> revision = (ChangedItem) stateChanges.get("revision");
-        if( revision == null )
+        ChangedItem<Integer, Integer> revision = (ChangedItem) stateChanges.get("revision");
+        if (revision == null)
             addError(BAD_VALUE, "state,revision", "is not incremented");
         else {
             stateChanges.remove("revision");
-            if( revision.oldValue() + 1 != revision.newValue() )
+            if (revision.oldValue() + 1 != revision.newValue())
                 addError(BAD_VALUE, "state.revision", "wrong revision number");
         }
         Delta creationTimeChange = stateChanges.get("created_at");
-        if( creationTimeChange == null || !(creationTimeChange instanceof ChangedItem) )
+        if (creationTimeChange == null || !(creationTimeChange instanceof ChangedItem))
             addError(BAD_VALUE, "stat.created_at", "invlaid new state");
         else {
             stateChanges.remove("created_at");
-            ChangedItem<LocalDateTime,LocalDateTime> ci = (ChangedItem)creationTimeChange;
-            if( !ci.newValue().isAfter(ci.oldValue()) )
+            ChangedItem<LocalDateTime, LocalDateTime> ci = (ChangedItem) creationTimeChange;
+            if (!ci.newValue().isAfter(ci.oldValue()))
                 addError(BAD_VALUE, "state.created_at", "new creation datetime is before old one");
         }
 
         excludePermittedChanges();
 
-        if( !stateChanges.isEmpty() ) {
-            addError(FORBIDDEN, "state", "not permitted changes: "+
-                    stateChanges.keySet());
-        }
+        // Some changes coud be empty trees, cleared by permissions, which can not remove root
+        // entries, so we should check them all:
+        stateChanges.forEach((field, delta) -> {
+            if (!delta.isEmpty()) {
+                String reason = "";
+                if (delta instanceof MapDelta)
+                    reason = "in " + ((MapDelta) delta).getChanges().keySet();
+                addError(FORBIDDEN,
+                         "state." + field,
+                         "not permitted changes" + reason);
+            }
+        });
+
     }
 
     private void excludePermittedChanges() {
         Set<PublicKey> creatorKeys = creator.getKeys();
-        existing.getPermissions().values().forEach(permission->{
-            if( permission.isAllowedForKeys(creatorKeys))
+        existing.getPermissions().values().forEach(permission -> {
+            if (permission.isAllowedForKeys(creatorKeys))
                 permission.checkChanges(existing, stateChanges);
         });
     }
 
     private void checkOwnerChanged() {
         ChangedItem<Role, Role> oc = (ChangedItem<Role, Role>) stateChanges.get("owner");
-        if( oc != null ) {
+        if (oc != null) {
             stateChanges.remove("owner");
-            if( !existing.isPermitted("change_owner", creator) )
+            if (!existing.isPermitted("change_owner", creator))
                 addError(FORBIDDEN, "state.owner", "creator has no right to change");
         }
     }

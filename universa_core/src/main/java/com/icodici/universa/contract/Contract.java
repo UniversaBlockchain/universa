@@ -15,6 +15,7 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import net.sergeych.boss.Boss;
+import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
@@ -403,17 +404,25 @@ public class Contract implements Approvable {
     }
 
     public boolean isPermitted(String permissionName, PublicKey key) {
-        Permission p = permissions.get(permissionName);
-        if (p == null)
-            return false;
-        return p.isAllowedForKeys(key);
+        Collection<Permission> cp = permissions.get(permissionName);
+        if (cp != null) {
+            for (Permission p : cp) {
+                if (p.isAllowedForKeys(key))
+                    return true;
+            }
+        }
+        return false;
     }
 
     public boolean isPermitted(String permissionName, Collection<PublicKey> keys) {
-        Permission p = permissions.get(permissionName);
-        if (p == null)
-            return false;
-        return p.isAllowedForKeys(keys);
+        Collection<Permission> cp = permissions.get(permissionName);
+        if (cp != null) {
+            for (Permission p : cp) {
+                if (p.isAllowedForKeys(keys))
+                    return true;
+            }
+        }
+        return false;
     }
 
     public boolean isPermitted(String permissionName, Role role) {
@@ -563,8 +572,12 @@ public class Contract implements Approvable {
         return getRole("creator");
     }
 
-    public Map<String, Permission> getPermissions() {
+    public Multimap<String, Permission> getPermissions() {
         return permissions;
+    }
+
+    public Binder getStateData() {
+        return state.getData();
     }
 
     public class State {
@@ -574,6 +587,7 @@ public class Contract implements Approvable {
         //        private Role createdBy;
         private HashId origin;
         private HashId parent;
+        private Binder data;
 
         private State() {
             createdAt = definition.createdAt;
@@ -584,6 +598,7 @@ public class Contract implements Approvable {
             this.state = state;
             createdAt = state.getLocalDateTime("created_at", null);
             revision = state.getIntOrThrow("revision");
+            data = state.getOrCreateBinder("data");
             if (createdAt == null) {
                 if (revision != 1)
                     throw new IllegalArgumentException("state.created_at must be set for revisions > 1");
@@ -614,13 +629,17 @@ public class Contract implements Approvable {
                     "created_at", createdAt,
                     "revision", revision,
                     "owner", getRole("owner"),
-                    "created_by", getRole("creator")
+                    "created_by", getRole("creator"),
+                    "data", data
             );
         }
 
+        public Binder getData() {
+            return data;
+        }
     }
 
-    private Map<String, Permission> permissions = new HashMap<>();
+    private Multimap<String, Permission> permissions = new Multimap<>();
 
     public class Definition {
 
@@ -659,30 +678,43 @@ public class Contract implements Approvable {
             definition.getBinderOrThrow("permissions").forEach((name, params) -> {
                 // this cimplex logic is needed to process both yaml-imported structures
                 // and regular serialized data in the same place
-                String roleName = null;
-                Role role = null;
-                if (params instanceof CharSequence)
-                    // yaml style: permission: role
-                    roleName = params.toString();
-                else {
-                    // extended yaml style or serialized object
-                    Object x = ((Binder) params).getOrThrow("role");
-                    if (x instanceof Role)
-                        // serialized, role object
-                        role = registerRole((Role) x);
-                    else
-                        // yaml, extended form: permission: { role: name, ... }
-                        roleName = x.toString();
-                }
-                if (role == null && roleName != null) {
-                    // we need to create alias to existing role
-                    role = createRole("@" + name, roleName);
-                }
-                if (role == null)
-                    throw new IllegalArgumentException("permission " + name + " refers to missing role: " + roleName);
-                // now we have ready role and probably parameter for custom rights creation
-                permissions.put(name, Permission.forName(name, role, params instanceof String ? null : Binder.from(params)));
+                if(params instanceof  Object[])
+                    for(Object x: (Object[])params)
+                        loadPermission(name, x);
+                else if(params instanceof List)
+                    for(Object x: (List)params)
+                        loadPermission(name, x);
+                else
+                    loadPermission(name, params);
             });
+        }
+
+        private void loadPermission(String name, Object params) {
+            String roleName = null;
+            Role role = null;
+            Binder binderParams = null;
+            if (params instanceof CharSequence)
+                // yaml style: permission: role
+                roleName = params.toString();
+            else {
+                // extended yaml style or serialized object
+                binderParams = Binder.from(params);
+                Object x = binderParams.getOrThrow("role");
+                if (x instanceof Role)
+                    // serialized, role object
+                    role = registerRole((Role) x);
+                else
+                    // yaml, extended form: permission: { role: name, ... }
+                    roleName = x.toString();
+            }
+            if (role == null && roleName != null) {
+                // we need to create alias to existing role
+                role = createRole("@" + name, roleName);
+            }
+            if (role == null)
+                throw new IllegalArgumentException("permission " + name + " refers to missing role: " + roleName);
+            // now we have ready role and probably parameter for custom rights creation
+            permissions.put(name, Permission.forName(name, role, params instanceof String ? null : binderParams));
         }
 
         public Binder getData() {
@@ -703,8 +735,10 @@ public class Contract implements Approvable {
 
         private Binder serializePermissions() {
             Binder perms = new Binder();
-            permissions.forEach((name, permission) -> {
-                perms.put(name, permission.serializeToBinder());
+            permissions.forEach((name, permissions) -> {
+                perms.put(name,
+                    permissions.stream().map(p->p.serializeToBinder()).collect(Collectors.toList())
+                );
             });
             return perms;
         }

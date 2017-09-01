@@ -71,7 +71,11 @@ public class MapDelta<T, V, U> extends Delta {
 
     @Override
     public boolean isEmpty() {
-        return changes.isEmpty();
+        for( Delta d: changes.values() ) {
+            if( !d.isEmpty() )
+                return false;
+        }
+        return true;
     }
 
     /**
@@ -82,4 +86,9 @@ public class MapDelta<T, V, U> extends Delta {
     public Delta getChange(T key) {
         return changes.get(key);
     }
+
+    public void remove(T field) {
+        changes.remove(field);
+    }
+
 }

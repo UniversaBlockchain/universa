@@ -9,8 +9,9 @@ import net.sergeych.utils.LogPrinter;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 
 /**
  * The state of some {@link HashId} - identifiable item (e.g. {@link Approvable} to be sotred in the {@link Ledger}
@@ -62,11 +63,11 @@ public class StateRecord implements HashIdentifiable {
     static public LocalDateTime getTime(long unixTime) {
         if (unixTime == 0)
             return null;
-        return LocalDateTime.ofEpochSecond(unixTime, 0, ZoneOffset.UTC);
+        return Instant.ofEpochMilli(unixTime*1000).atZone(ZoneId.systemDefault()).toLocalDateTime();
     }
 
     static public long unixTime(LocalDateTime time) {
-        return time == null ? 0 : time.toEpochSecond(ZoneOffset.UTC);
+        return time == null ? 0 : time.atZone(ZoneId.systemDefault()).toEpochSecond();
     }
 
     public boolean isDirty() {
