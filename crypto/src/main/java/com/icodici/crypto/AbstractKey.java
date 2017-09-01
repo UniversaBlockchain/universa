@@ -26,6 +26,7 @@ import java.util.Collection;
  * Created by sergeych on 17.12.16.
  */
 public abstract class AbstractKey implements Bindable {
+    public static final Object FINGERPRINT_SHA512 = 0;
 
     protected KeyInfo keyInfo;
 
@@ -208,6 +209,6 @@ public abstract class AbstractKey implements Bindable {
     }
 
     public byte[] fingerprint() {
-        throw new RuntimeException("this key does not support fomgerprints");
+        throw new RuntimeException("this key does not support fingerprints");
     }
 }

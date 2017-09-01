@@ -144,7 +144,7 @@ public class PublicKey extends AbstractKey {
                 Map<String, Object> a = publicKey.toHash();
                 _fingerprint = new Sha256().update((byte[])a.get("e")).update((byte[])a.get("n")).digest();
             }
-            return _fingerprint;
+            return Boss.dumpToArray(FINGERPRINT_SHA512, _fingerprint);
         }
     }
 }

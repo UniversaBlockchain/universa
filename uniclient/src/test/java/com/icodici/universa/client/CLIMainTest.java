@@ -58,6 +58,18 @@ public class CLIMainTest {
         assertEquals(0, errors.size());
     }
 
+    @Test
+    public void fingerprints() throws Exception {
+        callMain(
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
+                "--fingerprints"
+        );
+        assert(output.indexOf("test_files/_xer0yfe2nn1xthc.private.unikey") >= 0);
+        assert(output.indexOf("ALwgbheRU3Ld9IlRkHMuycmjh/5mobBs3EeAGvX3wUg+DLI") >= 0);
+//        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
     private Reporter callMain(String... args) throws Exception {
         output = ConsoleInterceptor.copyOut(() -> {
             CLIMain.main(args);

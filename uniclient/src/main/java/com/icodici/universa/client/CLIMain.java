@@ -14,14 +14,12 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
+import net.sergeych.utils.Base64;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 
@@ -36,14 +34,14 @@ public class CLIMain {
     private static Reporter reporter = new Reporter();
     private static ClientNetwork clientNetwork;
     private static List<String> keyFileNames = new ArrayList<>();
-    private static Set<PrivateKey> privateKeys;
+    private static Map<String,PrivateKey> keyFiles;
 
     static public void main(String[] args) throws IOException {
 //        args = new String[]{"-g", "longkey", "-s", "4096"};
         // when we run untitests, it is important
         reporter.clear();
         // it could be called moe than once from tests
-        privateKeys = null;
+        keyFiles = null;
         parser = new OptionParser() {
             {
                 acceptsAll(asList("?", "h", "help"), "show help").forHelp();
@@ -62,9 +60,10 @@ public class CLIMain {
                 acceptsAll(asList("v", "verbose"), "provide more detailed information");
                 acceptsAll(asList("network"), "check network status");
                 acceptsAll(asList("k", "keys"), "list of comma-separated private key files to" +
-                        "sign contract with, if appropriated")
+                        "use tosign contract with, if appropriated")
                         .withRequiredArg().ofType(String.class)
                         .withValuesSeparatedBy(",").describedAs("key_file");
+                acceptsAll(asList("fingerprints"), "print fingerprints of keys specified with -k");
 //                acceptsAll(asList("show", "s"), "show contract")
 //                        .withRequiredArg().ofType(String.class)
             }
@@ -81,7 +80,10 @@ public class CLIMain {
             if(options.has("k")) {
                 keyFileNames = (List<String>) options.valuesOf("k");
             }
-
+            if( options.has("fingerprints") ) {
+                printFingerprints();
+                finish();
+            }
             if (options.has("j")) {
                 reporter.setQuiet(true);
             }
@@ -119,10 +121,22 @@ public class CLIMain {
 
     }
 
+    private static void printFingerprints() throws IOException {
+        Map<String, PrivateKey> kk = keysMap();
+        if( kk.isEmpty() )
+            report("please specify at least one key file with --fingerprints");
+        else {
+            kk.forEach((name, key)->{
+                report("Fingerprints:");
+                report(name+"\t"+ Base64.encodeCompactString(key.fingerprint()));
+            });
+        }
+    }
+
     private static void createContract() throws IOException {
         String source = (String) options.valueOf("c");
         Contract c = Contract.fromYamlFile(source);
-        getPrivateKeys().forEach(k -> c.addSignerKey(k));
+        keysMap().values().forEach(k -> c.addSignerKey(k));
         byte[] data = c.seal();
         // try sign
         String contractFileName = source.replaceAll("\\.(yml|yaml)$", ".unic");
@@ -194,15 +208,15 @@ public class CLIMain {
         return clientNetwork;
     }
 
-    public static synchronized Set<PrivateKey> getPrivateKeys() throws IOException {
-        if( privateKeys == null ) {
-            privateKeys = new HashSet<>();
+    public static synchronized Map<String,PrivateKey> keysMap() throws IOException {
+        if( keyFiles == null ) {
+            keyFiles = new HashMap<>();
             for(String fileName: keyFileNames) {
                 PrivateKey pk = new PrivateKey(Do.read(fileName));
-                privateKeys.add(pk);
+                keyFiles.put(fileName, pk);
             }
         }
-        return privateKeys;
+        return keyFiles;
     }
 
     public static class Finished extends RuntimeException {

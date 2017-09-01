@@ -119,4 +119,8 @@ public class PrivateKey extends AbstractKey {
         return key[0] + (key[1] << 8) + (key[2] << 16) + (key[3] << 24);
     }
 
+    @Override
+    public byte[] fingerprint() {
+        return getPublicKey().fingerprint();
+    }
 }
