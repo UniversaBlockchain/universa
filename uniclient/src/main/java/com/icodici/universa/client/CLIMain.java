@@ -133,6 +133,18 @@ public class CLIMain {
         }
     }
 
+    private static void anonymousKeyPrints() throws IOException {
+        Map<String, PrivateKey> kk = keysMap();
+        if( kk.isEmpty() )
+            report("please specify at least one key file with --fingerprints");
+        else {
+            kk.forEach((name, key)->{
+                report("Anonymous key prints:");
+                report(name+"\t"+ Base64.encodeCompactString(key.fingerprint()));
+            });
+        }
+    }
+
     private static void createContract() throws IOException {
         String source = (String) options.valueOf("c");
         Contract c = Contract.fromYamlFile(source);

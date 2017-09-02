@@ -27,7 +27,7 @@ public class ContractTestBase extends TestCase {
         KeyRecord issuer = c.getIssuer().getKeyRecords().iterator().next();
         assertNotNull(issuer);
         assertThat(issuer.getPublicKey(), is(instanceOf(PublicKey.class)));
-        assertEquals(issuer.getStringOrThrow("name"), "Universa foundation");
+        assertEquals(issuer.getStringOrThrow("name"), "Universa");
 
         // --- times
         LocalDateTime t = c.getCreatedAt();

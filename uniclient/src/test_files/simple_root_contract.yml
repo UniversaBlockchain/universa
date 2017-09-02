@@ -24,7 +24,7 @@ definition:
    # _xer0yfe2nn1xthc.unikey
 
    # issuer name, optional
-   name: Universa foundation
+   name: Universa
 
  # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
  # consult current Universa state, maximum delayed contract creation time varies.

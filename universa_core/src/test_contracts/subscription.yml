@@ -24,7 +24,7 @@ definition:
    # _xer0yfe2nn1xthc.unikey
 
    # issuer name, optional
-   name: Universa foundation silver subscription
+   name: Universa silver subscription
 
    # the rate allowed to the contract holder
    subscription_rate: silver
