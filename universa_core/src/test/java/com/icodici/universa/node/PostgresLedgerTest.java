@@ -254,6 +254,8 @@ public class PostgresLedgerTest extends TestCase {
         // todo: expired can't be get - it should be dropped by the database
         HashId hashId = HashId.createRandom();
         StateRecord r = ledger.findOrCreate(hashId);
+        assertNotNull(r.getExpiresAt());
+        assert(r.getExpiresAt().isAfter(LocalDateTime.now()));
         long recordId = r.getRecordId();
 
         LocalDateTime inFuture = LocalDateTime.now().plusHours(2);

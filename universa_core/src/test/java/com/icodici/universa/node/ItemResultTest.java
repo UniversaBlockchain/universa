@@ -19,7 +19,7 @@ import static org.junit.Assert.assertEquals;
 public class ItemResultTest extends TestCase {
     @Test
     public void toBinder() throws Exception {
-        ItemResult r1 = new ItemResult(REVOKED, false, LocalDateTime.now(), null);
+        ItemResult r1 = new ItemResult(REVOKED, false, LocalDateTime.now(), inFuture(300));
         ItemResult r2 = new ItemResult(r1.toBinder());
         assertEquals(r1.state, r2.state);
         assertEquals(r1.haveCopy, r2.haveCopy);
@@ -28,9 +28,13 @@ public class ItemResultTest extends TestCase {
         assertEquals(r1, r2);
     }
 
+    LocalDateTime inFuture(int seconds) {
+        return LocalDateTime.now().plusSeconds(seconds);
+    }
+
     @Test
     public void bossSerialization() throws Exception {
-        ItemResult r1 = new ItemResult(APPROVED, false, LocalDateTime.now(), null);
+        ItemResult r1 = new ItemResult(APPROVED, false, LocalDateTime.now(), inFuture(300));
         ItemResult r2 = new ItemResult(Boss.unpack(Boss.pack(r1.toBinder())));
         assertEquals(r1.state, r2.state);
         assertEquals(r1.haveCopy, r2.haveCopy);
@@ -41,7 +45,7 @@ public class ItemResultTest extends TestCase {
 
     @Test
     public void bossFormatter() throws Exception {
-        ItemResult r1 = new ItemResult(APPROVED, false, LocalDateTime.now(), null);
+        ItemResult r1 = new ItemResult(APPROVED, false, LocalDateTime.now(), inFuture(300));
         ItemResult r2 = Boss.load(Boss.pack(r1));
         assertEquals(r1, r2);
     }

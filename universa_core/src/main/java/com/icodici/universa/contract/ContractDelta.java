@@ -90,7 +90,7 @@ public class ContractDelta {
             if (!delta.isEmpty()) {
                 String reason = "";
                 if (delta instanceof MapDelta)
-                    reason = "in " + ((MapDelta) delta).getChanges().keySet();
+                    reason = " in " + ((MapDelta) delta).getChanges().keySet();
                 addError(FORBIDDEN,
                          "state." + field,
                          "not permitted changes" + reason);

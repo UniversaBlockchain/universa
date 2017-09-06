@@ -174,7 +174,7 @@ class Elections {
             return;
         downloader = pool.submit(() -> {
             log.d(localNode + " starts download thread");
-            while (item == null && !stop) {
+            while (item == null && !stop && getMillisLeft() > 0 ) {
 //                log.d(localNode.toString()+" attempt to download "+itemId);
                 Node node = itemSources.take();
                 log.d(localNode + " has a source: " + node);
@@ -283,7 +283,7 @@ class Elections {
             log.d(localNode.toString() + " approved: " + itemId);
             // first we need to flag our state as approved
             record.setState(ItemState.APPROVED);
-            // it may happen that consensu is found earlier than item is download
+            // it may happen that consensus is found earlier than item is download
             // we still need item to fix all its relations:
             if (item == null) {
                 try {
@@ -477,17 +477,27 @@ class Elections {
                     reschedule();
                 }
                 if ((pollers.size() == 0 && getState().isPending()) || LocalDateTime.now().isAfter(record.getExpiresAt())) {
-                    log.d(localNode.toString() + " failing elections, pollers: " + pollers.size());
-                    rollbackChanges(ItemState.UNDEFINED, LocalDateTime.now().plusSeconds(5));
-                    Elections.this.close();
+                    stopOnFailure();
                 }
             }
         }
 
-        private void reschedule() {
-            if( !stop )
-                future = pool.schedule(this, network.getRequeryPause().toMillis(), TimeUnit.MILLISECONDS);
+        private void stopOnFailure() {
+            log.d(localNode.toString() + " failing elections, pollers: " + pollers.size());
+            rollbackChanges(ItemState.UNDEFINED, LocalDateTime.now().plusSeconds(5));
+            Elections.this.close();
+        }
 
+        private void reschedule() {
+            if( !stop ) {
+                long rt = network.getRequeryPause().toMillis();
+                if (rt < getMillisLeft())
+                    future = pool.schedule(this, network.getRequeryPause().toMillis(), TimeUnit.MILLISECONDS);
+                else {
+                    // Elections timed out
+                    stopOnFailure();
+                }
+            }
         }
     }
 
