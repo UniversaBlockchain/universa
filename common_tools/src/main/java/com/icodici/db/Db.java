@@ -148,8 +148,7 @@ public class Db implements Cloneable, AutoCloseable {
             update("PRAGMA synchronous=OFF");
             try {
                 update("PRAGMA mmap_size=268435456");
-            }
-            catch(java.sql.SQLException e) {
+            } catch (java.sql.SQLException e) {
                 queryOne("PRAGMA mmap_size=268435456");
             }
         }
@@ -235,12 +234,12 @@ public class Db implements Cloneable, AutoCloseable {
                 update("update vars set ivalue=? where name='version'", myVersion);
                 return null;
             });
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            log.wtf("Failed to migrate", e);
-            e.printStackTrace();
+            throw new RuntimeException("migrations failed", e);
         }
         log.d("Db migrated successfully");
-//        exec("CREATE TABLE Vars(id integere primary key, name STRING,value")
     }
 
     private int detectMaxMigrationVersion(String migrationResource) {
@@ -286,7 +285,7 @@ public class Db implements Cloneable, AutoCloseable {
 
     public PreparedStatement statementReturningKeys(String sqlText, Object... args) throws SQLException {
         PreparedStatement statement = null;
-        statement = connection.prepareStatement(sqlText,Statement.RETURN_GENERATED_KEYS);
+        statement = connection.prepareStatement(sqlText, Statement.RETURN_GENERATED_KEYS);
         int index = 1;
         for (Object arg : args) {
             statement.setObject(index, arg);
@@ -301,9 +300,8 @@ public class Db implements Cloneable, AutoCloseable {
         ResultSet rs = s.executeQuery();
         if (rs.next()) {
             return rs;
-        }
-        else {
-            if(sqlite)
+        } else {
+            if (sqlite)
                 s.close();
             return null;
         }
@@ -363,20 +361,18 @@ public class Db implements Cloneable, AutoCloseable {
                     counter += 1;
                     line = line.trim();
                     sb.append(line + "\n");
-                    if( !inFunction ) {
-                        if( line.endsWith("$$")) {
+                    if (!inFunction) {
+                        if (line.endsWith("$$")) {
                             inFunction = true;
-                        }
-                        else {
+                        } else {
                             if (line.endsWith(";")) {
                                 statement.executeUpdate(sb.toString());
                                 sb = new StringBuilder();
                                 counter = 0;
                             }
                         }
-                    }
-                    else {
-                        if( line.endsWith("$$"))
+                    } else {
+                        if (line.endsWith("$$"))
                             inFunction = false;
                     }
                 }

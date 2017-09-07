@@ -33,3 +33,4 @@ hs_err_pid*
 /universa_core/src/test_config/system/*
 /universa_core/src/test_config2/system/
 **/testledger
+/.idea/dbnavigator.xml

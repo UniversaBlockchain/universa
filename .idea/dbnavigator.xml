@@ -23,11 +23,7 @@
     <autoscroll-to-editor value="false" />
     <autoscroll-from-editor value="true" />
     <show-object-properties value="true" />
-    <loaded-nodes>
-      <connection connection-id="5c68b755-6fb2-4962-811a-cd615e94169c">
-        <schema name="public" object-types="column, constraint, function, index, sequence, table, dataset trigger, view" />
-      </connection>
-    </loaded-nodes>
+    <loaded-nodes />
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="5c68b755-6fb2-4962-811a-cd615e94169c">
@@ -56,8 +52,8 @@ select * from sr_find_or_create('\x2ca93916ec53606beeba6e6a8833140d65164cdef99c3
     <last-used-providers />
   </component>
   <component name="DBNavigator.Project.FileConnectionMappingManager">
-    <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_0.sql" connection-id="virtual-postgres-connection" current-schema="ROOT" />
     <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_2.sql" connection-id="5c68b755-6fb2-4962-811a-cd615e94169c" current-schema="public" />
+    <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_0.sql" connection-id="virtual-postgres-connection" current-schema="ROOT" />
     <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_3.sql" connection-id="virtual-postgres-connection" current-schema="ROOT" />
     <mapping file-url="file://$PROJECT_DIR$/universa_core/src/main/resources/migrations/postgres/migrate_1.sql" connection-id="22105869-1598-4fb0-80e5-687ef4b357f6" current-schema="public" />
   </component>
