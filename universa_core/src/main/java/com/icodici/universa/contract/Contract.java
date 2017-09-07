@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.icodici.universa.Errors.*;
+import static java.util.Arrays.asList;
 
 public class Contract implements Approvable {
 
@@ -392,7 +393,7 @@ public class Contract implements Approvable {
         return getRole("owner").getKeyRecords().iterator().next();
     }
 
-    protected Role registerRole(Role role) {
+    public Role registerRole(Role role) {
         String name = role.getName();
         roles.put(name, role);
         role.setContract(this);
@@ -401,6 +402,10 @@ public class Contract implements Approvable {
 
     public boolean isPermitted(String permissionName, KeyRecord keyRecord) {
         return isPermitted(permissionName, keyRecord.getPublicKey());
+    }
+
+    public void addPermission(Permission perm) {
+        permissions.put(perm.getName(), perm);
     }
 
     public boolean isPermitted(String permissionName, PublicKey key) {
@@ -481,6 +486,20 @@ public class Contract implements Approvable {
         return sealedBinary;
     }
 
+    /**
+     * Get the last knwon packed representation pf the contract. Should be called if the contract was
+     * contructed from a packed binary ({@link #Contract(byte[])} or was explicitly sealed {@link #seal()}.
+     *
+     * Caution. This method could return out of date binary, if the contract was changed after the {@link #seal()}
+     * call. Before we will add track of changes, use it only if you are sure that {@link #seal()} was called
+     * and contract was not changed since then.
+     *
+     * @return last result of {@link #seal()} call, or the binary from which was constructed.
+     */
+    public byte[] getLastSealedBinary() {
+        return sealedBinary;
+    }
+
     private void setOwnBinary(Binder result) {
         sealedBinary = Boss.pack(result);
         this.id = HashId.of(sealedBinary);
@@ -554,13 +573,18 @@ public class Contract implements Approvable {
     }
 
     @Nonnull
-    Role setOwner(Object keyOrRecord) {
+    public Role setOwnerKey(Object keyOrRecord) {
         return setRole("owner", Do.listOf(keyOrRecord));
     }
 
     @Nonnull
-    public Role setOwner(Collection<?> keys) {
+    public Role setOwnerKeys(Collection<?> keys) {
         return setRole("owner", keys);
+    }
+
+    @Nonnull
+    public Role setOwnerKeys(PublicKey... keys) {
+        return setOwnerKeys(asList(keys));
     }
 
     @Nonnull
@@ -578,6 +602,10 @@ public class Contract implements Approvable {
 
     public Binder getStateData() {
         return state.getData();
+    }
+
+    public Role setIssuerKeys(PublicKey... keys) {
+        return setRole("issuer", asList(keys));
     }
 
     public class State {
@@ -748,6 +776,10 @@ public class Contract implements Approvable {
         errors.forEach(e -> {
             System.out.println("Error: " + e);
         });
+    }
+
+    public String getErrorsString() {
+        return errors.stream().map(Object::toString).collect(Collectors.joining(","));
     }
 
 }

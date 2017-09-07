@@ -109,4 +109,8 @@ public abstract class Permission {
     public Role getRole() {
         return role;
     }
+
+    public String getName() {
+        return name;
+    }
 }

@@ -63,7 +63,7 @@ public class PermissionsTest extends ContractTestBase {
         PrivateKey ownerKey2 = TestKeys.privateKey(1);
         PrivateKey ownerKey3 = TestKeys.privateKey(2);
 
-        c.setOwner(ownerKey1);
+        c.setOwnerKey(ownerKey1);
         assertThat(c.getPermissions().getFirst("change_owner").getRole(), is(instanceOf(RoleLink.class)));
         assertTrue(c.getPermissions().getFirst("change_owner").getRole().isAllowedForKeys(new HashSet(Do.listOf(ownerKey1))));
 
@@ -81,7 +81,7 @@ public class PermissionsTest extends ContractTestBase {
 
         // Bad contract change: owner has no right to change owner ;)
         Contract c1 = c.createRevision(TestKeys.privateKey(0));
-        c1.setOwner(ownerKey2);
+        c1.setOwnerKey(ownerKey2);
         assertNotEquals(c.getOwner(), c1.getOwner());
         c1.seal();
         c1.check();
@@ -100,7 +100,7 @@ public class PermissionsTest extends ContractTestBase {
         assertEquals(c.getOwner(), ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getRole());
         assertEquals(c2, ((RoleLink) c2.getPermissions().getFirst("change_owner").getRole()).getContract());
         assertEquals(c, ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getContract());
-        c2.setOwner(ownerKey3);
+        c2.setOwnerKey(ownerKey3);
         assertNotEquals(c.getOwner(), c2.getOwner());
         assertEquals(c.getOwner(), ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getRole());
 
@@ -117,7 +117,7 @@ public class PermissionsTest extends ContractTestBase {
         PrivateKey ownerKey3 = TestKeys.privateKey(2);
 
         Contract c = Contract.fromYamlFile(rootPath + "subscription.yml");
-        c.setOwner(ownerKey2);
+        c.setOwnerKey(ownerKey2);
 //        c.getPermission("change_value")
 
 
@@ -158,7 +158,7 @@ public class PermissionsTest extends ContractTestBase {
 
 //        // Bad contract change: owner has no right to change owner ;)
 //        Contract c1 = c.createRevision(TestKeys.privateKey(0));
-//        c1.setOwner(ownerKey2);
+//        c1.setOwnerKey(ownerKey2);
 //        assertNotEquals(c.getOwner(), c1.getOwner());
 //        c1.seal();
 //        c1.check();
@@ -177,7 +177,7 @@ public class PermissionsTest extends ContractTestBase {
 //        assertEquals(c.getOwner(), ((RoleLink)c.getPermissions().get("change_owner").getRole()).getRole());
 //        assertEquals(c2, ((RoleLink)c2.getPermissions().get("change_owner").getRole()).getContract());
 //        assertEquals(c, ((RoleLink)c.getPermissions().get("change_owner").getRole()).getContract());
-//        c2.setOwner(ownerKey3);
+//        c2.setOwnerKey(ownerKey3);
 //        assertNotEquals(c.getOwner(), c2.getOwner());
 //        assertEquals(c.getOwner(), ((RoleLink)c.getPermissions().get("change_owner").getRole()).getRole());
 //
