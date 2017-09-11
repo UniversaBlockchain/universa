@@ -11,8 +11,8 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -24,8 +24,7 @@ public class ItemResult {
     /**
      * The current state of the item in question
      */
-    public final @Nonnull
-    ItemState state;
+    public final @NonNull ItemState state;
     /**
      * true if the node has the copy of approvable item at the moment. Note that the node will discard its copy as soon
      * as the consensus of any sort will be found, or the election will fail (timeout, no quorum, etc)
@@ -34,12 +33,12 @@ public class ItemResult {
     /**
      * Time when the item was created on the node. It will be slightly different accross the network
      */
-    public final @Nonnull LocalDateTime createdAt;
+    public final @NonNull LocalDateTime createdAt;
     /**
      * Current expiration time. It could be changed if the state is not final. Expired items are discarded by the
      * network.
      */
-    public final @Nonnull LocalDateTime expiresAt;
+    public final @NonNull LocalDateTime expiresAt;
 
     /**
      * Initialize from a record and posession flag
@@ -76,7 +75,7 @@ public class ItemResult {
         expiresAt = fields.getLocalDateTime("expiresAt", null);
     }
 
-    public ItemResult(ItemState state, boolean haveCopy, @Nonnull LocalDateTime createdAt, @Nonnull LocalDateTime expiresAt) {
+    public ItemResult(ItemState state, boolean haveCopy, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime expiresAt) {
         this.state = state;
         this.haveCopy = haveCopy;
         this.createdAt = createdAt;
@@ -103,7 +102,6 @@ public class ItemResult {
      * precision is of essence, compare these fields separately.
      *
      * @param obj presumably another {@link ItemResult} instance
-     *
      * @return true if instances represent the same state with datetimes fields equal to seconds.
      */
     @Override

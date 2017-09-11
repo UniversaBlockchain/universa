@@ -18,8 +18,8 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 import net.sergeych.utils.Ut;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -324,7 +324,7 @@ public class HttpClient {
         public final int code;
         public final Binder data;
 
-        private Answer(int code, @Nonnull Binder data) {
+        private Answer(int code, @NonNull Binder data) {
             this.code = code;
             this.data = data;
         }

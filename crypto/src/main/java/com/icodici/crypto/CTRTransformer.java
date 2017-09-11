@@ -127,7 +127,7 @@ class CTRTransformer {
 
     /**
      * Helps to create block cipher with a given class and key, by properly initializing it.
-     * @param cipherClass cipher class to instaniate
+     * @param cipherClass cipher class to instantiate
      * @param key
      * @return properly initialized encpytor
      * @throws EncryptionError
@@ -139,7 +139,7 @@ class CTRTransformer {
             cipher.initialize(BlockCipher.Direction.DECRYPT, new SymmetricKey(key));
             return cipher;
         } catch (InstantiationException | IllegalAccessException e) {
-            throw new EncryptionError("failed to instaniate BlockCipher class " + cipherClass
+            throw new EncryptionError("failed to instantiate BlockCipher class " + cipherClass
                     .getName(), e);
         }
 

@@ -1,12 +1,13 @@
 package net.sergeych.collections;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
 import java.util.*;
 import java.util.function.BiConsumer;
 
 /**
- * Multimap (AKA bag) associates any nymber of elements with a key. It could be constructed using any Map and
+ * Multimap (AKA bag) associates any number of elements with a key. It could be constructed using any Map and
  * any Collection using the constructor.
  *
  * Note that this implementation is not synchronized and not yet very well tested.
@@ -37,7 +38,7 @@ public class Multimap<K, V> {
             this.collectionClass = collectionClass;
             map = mapClass.newInstance();
         } catch (Exception e) {
-            throw new RuntimeException("Can'tinstaniate Multimap's map", e);
+            throw new RuntimeException("Can't instantiate Multimap's map", e);
         }
     }
 
@@ -46,7 +47,8 @@ public class Multimap<K, V> {
     }
 
     /**
-     * return possibily empty collection of elements associated with a given key
+     * Return possibly empty collection of elements associated with a given key.
+     *
      * @param key
      * @return
      */
@@ -63,12 +65,12 @@ public class Multimap<K, V> {
     }
 
     /**
-     * Return all associtated element as a list, possibly empty.
+     * Return all associated element as a list, possibly empty.
      *
      * @param key
      * @return
      */
-    @Nonnull
+    @NonNull
     public List<V> getList(K key) {
         Collection<V> collection = map.get(key);
         List<V> list = new ArrayList<>();
@@ -81,14 +83,14 @@ public class Multimap<K, V> {
         map.forEach(action);
     }
 
-    public void put(@Nonnull  K key, @Nonnull V value) {
+    public void put(@NonNull K key, @NonNull V value) {
         Collection<V> collection = map.get(key);
         if (collection == null) {
             try {
                 collection = collectionClass.newInstance();
                 map.put(key,collection);
             } catch (Exception e) {
-                throw new IllegalArgumentException("failed to instaniate collection", e);
+                throw new IllegalArgumentException("failed to instantiate collection", e);
             }
         }
         boolean added = collection.add(value);
@@ -101,7 +103,7 @@ public class Multimap<K, V> {
      * @param key
      * @return collection of just removed elements or null if no elements were actually removed
      */
-    public <C extends Collection<V>> C remove(@Nonnull K key) {
+    public <C extends Collection<V>> C remove(@NonNull K key) {
         Collection<V> collection = map.remove(key);
         if( collection != null ) {
             size -= collection.size();
@@ -116,7 +118,7 @@ public class Multimap<K, V> {
      * @param value
      * @return true if the value was actually removed
      */
-    public boolean removeValue(@Nonnull K key,@Nonnull V value) {
+    public boolean removeValue(@NonNull K key, @NonNull V value) {
         Collection<V> collection = map.get(key);
         if( collection == null )
             return false;
@@ -128,14 +130,14 @@ public class Multimap<K, V> {
         return removed;
     }
 
-    public boolean containsKey(@Nonnull K key) {
+    public boolean containsKey(@NonNull K key) {
         Collection<V> collection = map.get(key);
         if( collection == null )
             return false;
         return collection.contains(key);
     }
 
-    public @Nonnull Set<K> keySet() {
+    public @NonNull Set<K> keySet() {
         return map.keySet();
     }
 
@@ -146,7 +148,7 @@ public class Multimap<K, V> {
      *
      * @return list of all elements
      */
-    public @Nonnull List<V> values() {
+    public @NonNull List<V> values() {
         ArrayList<V> all = new ArrayList<>(size);
         for(Collection<V> collection: map.values()) {
             all.addAll(collection);

@@ -12,8 +12,8 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +40,7 @@ public class Role {
     }
 
 
-    public Role(String name, @Nonnull Collection records) {
+    public Role(String name, @NonNull Collection records) {
         this.name = name;
         records.forEach(x -> {
             KeyRecord kr = null;

@@ -19,9 +19,9 @@ import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
 
-import javax.annotation.Nonnull;
 import java.io.FileReader;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -338,8 +338,8 @@ public class Contract implements Approvable {
      *
      * @return
      */
-    protected @Nonnull
-    Role createRole(String roleName, Object roleObject) {
+    @NonNull
+    protected Role createRole(String roleName, Object roleObject) {
         if (roleObject instanceof CharSequence) {
             return registerRole(new RoleLink(roleName, roleObject.toString()));
         }
@@ -572,22 +572,22 @@ public class Contract implements Approvable {
         return getRole("owner");
     }
 
-    @Nonnull
+    @NonNull
     public Role setOwnerKey(Object keyOrRecord) {
         return setRole("owner", Do.listOf(keyOrRecord));
     }
 
-    @Nonnull
+    @NonNull
     public Role setOwnerKeys(Collection<?> keys) {
         return setRole("owner", keys);
     }
 
-    @Nonnull
+    @NonNull
     public Role setOwnerKeys(PublicKey... keys) {
         return setOwnerKeys(asList(keys));
     }
 
-    @Nonnull
+    @NonNull
     private Role setRole(String name, Collection keys) {
         return registerRole(new Role(name, keys));
     }
