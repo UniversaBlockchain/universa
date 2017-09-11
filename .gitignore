@@ -26,6 +26,7 @@ hs_err_pid*
 .gradle/
 .idea/inspectionProfiles/
 .idea/workspace.xml
+**/build
 **/out
 /uniclient/src/test_files/simple_root_contract.unic
 .DS_Store
