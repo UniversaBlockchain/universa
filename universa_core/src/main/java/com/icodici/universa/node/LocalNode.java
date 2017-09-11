@@ -37,7 +37,11 @@ public class LocalNode extends Node {
      */
     private Object checkLock = new Object();
 
-    // imitate download failed before consensus found
+    /**
+     * Only for tests. Imitate download failure before consensus found.
+     * <p>
+     * DO NOT USE.
+     */
     boolean lateDownload;
 
     public LocalNode(String id, Network network, Ledger ledger) {
@@ -52,6 +56,22 @@ public class LocalNode extends Node {
 
     // Node interface ---------------------------------------------------------------------------------------
 
+    /**
+     * Main entry point for {@link Approvable} item processing called by other nodes in the network. Nodes
+     * <p>
+     * <p>
+     * If the item has solution in the system, what means that elections were performed and some consensus was found,
+     * returns its result. If not, start new elections. See the {@link ItemResult}.
+     *
+     * @param caller   calling Node instance
+     * @param itemId   item HashId
+     * @param state    my state (could be ignored if the caller identity is not trusted)
+     * @param haveCopy true if the caller has a copy of the item and can provide it with {@link #getItem(HashId)} call.
+     *
+     * @return current state of the item. Could be pending.
+     *
+     * @throws IOException
+     */
     @Override
     public ItemResult checkItem(Node caller, HashId itemId, ItemState state, boolean haveCopy) throws IOException {
         // First, we can have it in the ledger
@@ -83,10 +103,12 @@ public class LocalNode extends Node {
         return null;
     }
 
+    /**
+     * Close all pending elections and free any allocated resources in it.
+     */
     @Override
     public void shutdown() {
         allElections.forEach((id, e) -> e.close());
-//        ledger.close();
     }
 
     // Client API interface -----------------------------------------------------------------------------------
@@ -104,23 +126,22 @@ public class LocalNode extends Node {
         return new ItemInfo(itemResult, item);
     }
 
-    public ItemResult registerItemAndWait(Approvable item) throws Elections.Error, InterruptedException {
-        processCheckItem(null, item.getId(), null, false, item, null);
-        return waitForItem(item.getId());
-    }
-
-    public ItemResult waitForItem(HashId itemId) throws InterruptedException {
-        Elections elections = allElections.get(itemId);
-        if (elections == null) {
-            StateRecord r = ledger.getRecord(itemId);
-            return r == null ? null : new ItemResult(r);
-        }
-        elections.waitDone();
-        return new ItemResult(elections.getRecord());
+    /**
+     * Shortcut to {@link #registerItem(Approvable, Consumer)} without onDone callback. Could be called several times
+     * implementing polling item state waiting for consensus.
+     *
+     * @param item to register.
+     *
+     * @return current item state (at the time of calling, either some PENDING state or resovled one)
+     *
+     * @throws IOException
+     */
+    public ItemInfo registerItem(Approvable item) throws IOException {
+        return registerItem(item, null);
     }
 
     /**
-     * Check that the idetified item is known to this node.
+     * Check that the identified item is known to this node.
      * <p>
      * The problem. We might need to start elections to sync our ledger with the network. Or at least mark that we might
      * be out of sync with this item. We might try to ask some random nodes for it and fire elections only if at least
@@ -137,6 +158,42 @@ public class LocalNode extends Node {
     }
 
     // logic ------------------------------------------------------------------------------------------------------
+
+    /**
+     * Wait if need until the netowrk will find solution for the item. If it is not yet found, blocks until then. Do not
+     * expose this method also indirectly to the clietn interface
+     *
+     * @param itemId
+     *
+     * @return
+     *
+     * @throws InterruptedException
+     */
+    public ItemResult waitForItem(HashId itemId) throws InterruptedException {
+        Elections elections = allElections.get(itemId);
+        if (elections == null) {
+            StateRecord r = ledger.getRecord(itemId);
+            return r == null ? null : new ItemResult(r);
+        }
+        elections.waitDone();
+        return new ItemResult(elections.getRecord());
+    }
+
+    /**
+     * For testing purposes only, do not expose in the client interface. May block until the elections are fininshed. If
+     * the item already has the solution, returns it.
+     *
+     * @param item to register/check
+     *
+     * @return
+     *
+     * @throws Elections.Error
+     * @throws InterruptedException
+     */
+    public ItemResult registerItemAndWait(Approvable item) throws Elections.Error, InterruptedException {
+        processCheckItem(null, item.getId(), null, false, item, null);
+        return waitForItem(item.getId());
+    }
 
     /**
      * Process query if the item: the business-logic of the node. Check the consensus, if elections in progress,
@@ -228,10 +285,6 @@ public class LocalNode extends Node {
 
     public Ledger getLedger() {
         return ledger;
-    }
-
-    public ItemInfo registerItem(Approvable item) throws IOException {
-        return registerItem(item, null);
     }
 
     @Override
