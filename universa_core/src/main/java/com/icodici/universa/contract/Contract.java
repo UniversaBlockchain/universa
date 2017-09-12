@@ -14,6 +14,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
@@ -112,6 +113,31 @@ public class Contract implements Approvable {
         definition = new Definition();
         state = new State();
         apiLevel = 1;
+    }
+
+    /**
+     * Create a default empty new contract using a provided key as issuer and owner and sealer. Default expiration is
+     * set to 5 years.
+     * <p>
+     * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
+     * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
+     * creation (but before sealing).
+     *
+     * @param key
+     */
+    public Contract(PrivateKey key) {
+        this();
+        // default expiration date
+        setExpiresAt(LocalDateTime.now().plusYears(5));
+        // issuer role is a key for a new contract
+        Role r = setIssuerKeys(key.getPublicKey());
+        // issuer is owner, link roles
+        registerRole(new RoleLink("owner", "issuer"));
+        registerRole(new RoleLink("creator", "issuer"));
+        // owner can change permission
+        addPermission(new ChangeOwnerPermission(r));
+        // issuer should sign
+        addSignerKey(key);
     }
 
     public List<ErrorRecord> getErrors() {
@@ -487,12 +513,12 @@ public class Contract implements Approvable {
     }
 
     /**
-     * Get the last knwon packed representation pf the contract. Should be called if the contract was
-     * contructed from a packed binary ({@link #Contract(byte[])} or was explicitly sealed {@link #seal()}.
-     *
-     * Caution. This method could return out of date binary, if the contract was changed after the {@link #seal()}
-     * call. Before we will add track of changes, use it only if you are sure that {@link #seal()} was called
-     * and contract was not changed since then.
+     * Get the last knwon packed representation pf the contract. Should be called if the contract was contructed from a
+     * packed binary ({@link #Contract(byte[])} or was explicitly sealed {@link #seal()}.
+     * <p>
+     * Caution. This method could return out of date binary, if the contract was changed after the {@link #seal()} call.
+     * Before we will add track of changes, use it only if you are sure that {@link #seal()} was called and contract was
+     * not changed since then.
      *
      * @return last result of {@link #seal()} call, or the binary from which was constructed.
      */
@@ -608,6 +634,10 @@ public class Contract implements Approvable {
         return setRole("issuer", asList(keys));
     }
 
+    public void setExpiresAt(LocalDateTime dateTime) {
+        definition.setExpiresAt(dateTime);
+    }
+
     public class State {
         private int revision;
         private Binder state;
@@ -706,11 +736,11 @@ public class Contract implements Approvable {
             definition.getBinderOrThrow("permissions").forEach((name, params) -> {
                 // this cimplex logic is needed to process both yaml-imported structures
                 // and regular serialized data in the same place
-                if(params instanceof  Object[])
-                    for(Object x: (Object[])params)
+                if (params instanceof Object[])
+                    for (Object x : (Object[]) params)
                         loadPermission(name, x);
-                else if(params instanceof List)
-                    for(Object x: (List)params)
+                else if (params instanceof List)
+                    for (Object x : (List) params)
                         loadPermission(name, x);
                 else
                     loadPermission(name, params);
@@ -765,7 +795,7 @@ public class Contract implements Approvable {
             Binder perms = new Binder();
             permissions.forEach((name, permissions) -> {
                 perms.put(name,
-                    permissions.stream().map(p->p.serializeToBinder()).collect(Collectors.toList())
+                          permissions.stream().map(p -> p.serializeToBinder()).collect(Collectors.toList())
                 );
             });
             return perms;

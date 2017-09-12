@@ -8,7 +8,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/crypto/crypto.iml" filepath="$PROJECT_DIR$/.idea/modules/crypto/crypto.iml" group="crypto" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/crypto/crypto_main.iml" filepath="$PROJECT_DIR$/.idea/modules/crypto/crypto_main.iml" group="crypto" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/crypto/crypto_test.iml" filepath="$PROJECT_DIR$/.idea/modules/crypto/crypto_test.iml" group="crypto" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient.iml" group="uniclient" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient_main.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient_main.iml" group="uniclient" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient_test.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient_test.iml" group="uniclient" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa.iml" filepath="$PROJECT_DIR$/.idea/modules/universa.iml" />

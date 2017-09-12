@@ -20,6 +20,7 @@ public class MemoryLogger {
     static DateTimeFormatter fmt = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
             .withLocale(Locale.UK)
             .withZone(ZoneId.systemDefault());
+    private PrintStream printStream;
 
     public static class Entry {
         public final Instant instant = Instant.now();
@@ -43,9 +44,15 @@ public class MemoryLogger {
         this.maxLines = maxLines;
     }
 
+    public void printTo(PrintStream ps) {
+        printStream = ps;
+    }
+
     public void log(String message) {
         Entry entry = new Entry(message);
         buffer.add(entry);
+        if( printStream != null )
+            printStream.println(entry.toString());
         synchronized (this) {
             while (buffer.size() > maxLines)
                 buffer.poll();

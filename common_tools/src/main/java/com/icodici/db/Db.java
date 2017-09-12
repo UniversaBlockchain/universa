@@ -189,6 +189,7 @@ public class Db implements Cloneable, AutoCloseable {
             connection.rollback();
         } catch (Exception e) {
             log.e("Exception in transaction: %s", e);
+            e.printStackTrace();
             connection.rollback();
             throw (e);
         } finally {

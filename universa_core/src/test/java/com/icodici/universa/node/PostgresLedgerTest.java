@@ -17,13 +17,14 @@ import java.util.concurrent.Future;
 import static org.junit.Assert.*;
 
 public class PostgresLedgerTest extends TestCase {
+    public static final String CONNECTION_STRING = "jdbc:postgresql://localhost:5432/universa_node";
     private PostgresLedger ledger;
 
     @Before
     public void setUp() throws Exception {
 //        new File("testledger").delete();
 //        Class.forName("org.postgresql.Driver");
-        ledger = new PostgresLedger("jdbc:postgresql://localhost:5432/universa_node");
+        ledger = new PostgresLedger(CONNECTION_STRING);
         ledger.enableCache(false);
     }
 
@@ -55,7 +56,7 @@ public class PostgresLedgerTest extends TestCase {
         assertSame(r3, r4);
     }
 
-//    @Test
+    @Test
     public void ledgerBenchmark() throws Exception {
         ExecutorService es = Executors.newCachedThreadPool();
 //        ExecutorService es = Executors.newSingleThreadExecutor();

@@ -4,9 +4,6 @@ package com.icodici.universa.node.benchmark;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.Role;
-import com.icodici.universa.contract.RoleLink;
-import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import net.sergeych.tools.AsyncEvent;
 
 import java.util.Collection;
@@ -34,23 +31,20 @@ public class TestContracts implements AutoCloseable {
         clear();
         AsyncEvent done = new AsyncEvent();
         for( int i=0; i<nContracts; i++ ) {
-            pool.submit(()->{
-                Contract c = new Contract();
-                // issuer role is a key for a new contract
-                Role r = c.setIssuerKeys(publicKey);
-                // issuer is owner, link roles
-                c.registerRole(new RoleLink("owner", "issuer"));
-                // owner can change permission
-                c.addPermission(new ChangeOwnerPermission(r));
-                // issuer should sign
-                c.addSignerKey(key);
-                // done, let's seal and check
-                c.seal();
-                if( !c.isOk() )
-                    throw new RuntimeException("Failed to create contract: "+c.getErrorsString());
-                contracts.add(c);
-                if( contracts.size() == nContracts)
+            pool.submit(()-> {
+                try {
+                    Contract c = new Contract(key);
+                    c.seal();
+                    if (!c.isOk())
+                        throw new RuntimeException("Failed to create contract: " + c.getErrorsString());
+                    contracts.add(c);
+                    if (contracts.size() == nContracts)
+                        done.fire(null);
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
                     done.fire(null);
+                }
                 return null;
             });
         }
