@@ -28,7 +28,7 @@ hs_err_pid*
 .idea/workspace.xml
 **/build
 **/out
-.idea/**/*.iml
+**/*.iml
 /uniclient/src/test_files/simple_root_contract.unic
 .DS_Store
 
