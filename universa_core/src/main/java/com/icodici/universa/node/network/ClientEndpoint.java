@@ -15,8 +15,8 @@ import fi.iki.elonen.NanoHTTPD;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -354,8 +354,8 @@ public class ClientEndpoint {
     ConcurrentHashMap<PublicKey, Session> sessionsByKey = new ConcurrentHashMap<>();
     ConcurrentHashMap<Long, Session> sessionsById = new ConcurrentHashMap<>();
 
-    private @Nonnull
-    Session getSession(PublicKey key) throws EncryptionError {
+    @NonNull
+    private Session getSession(PublicKey key) throws EncryptionError {
         synchronized (sessionsByKey) {
             Session r = sessionsByKey.get(key);
             if (r == null) {

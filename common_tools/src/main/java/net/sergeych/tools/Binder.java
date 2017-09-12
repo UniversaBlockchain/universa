@@ -8,8 +8,8 @@
 package net.sergeych.tools;
 
 import net.sergeych.utils.Bytes;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -135,11 +135,11 @@ public class Binder extends HashMap<String, Object> {
      *
      * @throws IllegalArgumentException
      */
-    public @Nonnull
-    byte[] getBinaryOrThrow(String key) throws IllegalArgumentException {
+    @NonNull
+    public byte[] getBinaryOrThrow(String key) throws IllegalArgumentException {
         byte[] binary = getBinary(key);
         if (binary == null)
-            throw new IllegalArgumentException("missing requirend parameter: " + key);
+            throw new IllegalArgumentException("missing required parameter: " + key);
         return binary;
     }
 

@@ -10,8 +10,8 @@ package com.icodici.crypto;
 import net.sergeych.tools.Bindable;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -261,7 +261,7 @@ public abstract class AbstractKey implements Bindable {
      *
      * @throws IOException
      */
-    public boolean matchAnonymousId(@Nonnull byte[] packedId) throws IOException {
+    public boolean matchAnonymousId(@NonNull byte[] packedId) throws IOException {
         assert (packedId.length == 64);
         HMAC hmac = new HMAC(fingerprint());
         hmac.update(packedId, 0, 32);

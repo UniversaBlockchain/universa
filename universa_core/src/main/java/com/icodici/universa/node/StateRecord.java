@@ -5,8 +5,8 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -81,8 +81,8 @@ public class StateRecord implements HashIdentifiable {
 
     private ItemState state = ItemState.UNDEFINED;
     private HashId id;
-    private @Nonnull LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(300);
-    private @Nonnull LocalDateTime createdAt = LocalDateTime.now();
+    private @NonNull LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(300);
+    private @NonNull LocalDateTime createdAt = LocalDateTime.now();
 
     public ItemState getState() {
         return state;
@@ -320,7 +320,7 @@ public class StateRecord implements HashIdentifiable {
             throw new IllegalStateException("the record must be created");
     }
 
-    public StateRecord setExpiresAt(@Nonnull LocalDateTime expiresAt) {
+    public StateRecord setExpiresAt(@NonNull LocalDateTime expiresAt) {
         if( !this.expiresAt.equals(expiresAt) ) {
             this.expiresAt = expiresAt;
             dirty = true;
