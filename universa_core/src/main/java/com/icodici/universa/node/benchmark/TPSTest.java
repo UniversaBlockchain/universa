@@ -3,7 +3,7 @@ package com.icodici.universa.node.benchmark;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import net.sergeych.tools.Average;
-import net.sergeych.tools.MemoryLogger;
+import net.sergeych.tools.BufferedLogger;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -21,7 +21,7 @@ import java.util.concurrent.Future;
 public class TPSTest {
 
     private int contractsPerStep = 500;
-    private final MemoryLogger logger = new MemoryLogger(1024);
+    private final BufferedLogger logger = new BufferedLogger(1024);
     private LocalNode node;
     private final int nThreads;
     private final int repetitions;
@@ -48,7 +48,7 @@ public class TPSTest {
         network.setPositiveConsensus(1);
     }
 
-    public MemoryLogger getLogger() {
+    public BufferedLogger getLogger() {
         return logger;
     }
 

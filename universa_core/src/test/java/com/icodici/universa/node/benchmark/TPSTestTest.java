@@ -1,7 +1,7 @@
 package com.icodici.universa.node.benchmark;
 
 import com.icodici.universa.node.PostgresLedgerTest;
-import net.sergeych.tools.MemoryLogger;
+import net.sergeych.tools.BufferedLogger;
 import org.junit.Test;
 
 public class TPSTestTest {
@@ -12,7 +12,7 @@ public class TPSTestTest {
                                   PostgresLedgerTest.CONNECTION_STRING,
                                   64,
                                   10);
-        MemoryLogger logger = tps.getLogger();
+        BufferedLogger logger = tps.getLogger();
         logger.printTo(System.out);
         tps.run();
         System.out.println("done");
