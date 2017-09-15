@@ -4,6 +4,7 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import net.sergeych.tools.Average;
 import net.sergeych.tools.BufferedLogger;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 /**
  * Transactions-per-seconds benchmark. Works in stages: generates test contracts, then approves it with a 1-node
@@ -20,21 +22,31 @@ import java.util.concurrent.Future;
 
 public class TPSTest {
 
-    private int contractsPerStep = 500;
+    private final int contractsPerStep;
     private final BufferedLogger logger = new BufferedLogger(1024);
     private LocalNode node;
     private final int nThreads;
     private final int repetitions;
+    private final @Nullable Consumer<Contract> contractMutator;
     private Ledger ledger;
     private Network network;
     private boolean stop;
     private ExecutorService es;
     private Future<?> mainLoop;
 
-    public TPSTest(int contractsPerStep, String connectionString, int nThreads, int repetitions) throws SQLException {
+    /**
+     * Constructor.
+     *
+     * @param contractsPerStep during each step, how many contracts should be created
+     * @param nThreads         how many threads are in the thread pool
+     * @param contractMutator  (if present) the code that updates/mutates the contract after its generation.
+     *                         For example, it may corrupt its data for stability-testing.
+     */
+    public TPSTest(int contractsPerStep, String connectionString, int nThreads, int repetitions, @Nullable Consumer<Contract> contractMutator) throws SQLException {
         this.contractsPerStep = contractsPerStep;
         this.nThreads = nThreads;
         this.repetitions = repetitions;
+        this.contractMutator = contractMutator;
         es = Executors.newFixedThreadPool(nThreads);
         createTestEnvironment(connectionString);
     }
@@ -58,7 +70,7 @@ public class TPSTest {
         for (int i = 0; i < repetitions && !stop; i++) {
             try {
                 logger.log("generating test contracts");
-                tc.generate(contractsPerStep);
+                tc.generate(contractsPerStep, this.contractMutator);
                 logger.log("test contracts ready, performing transactions");
                 long start = System.currentTimeMillis();
                 Collection<Contract> contracts = tc.getContracts();

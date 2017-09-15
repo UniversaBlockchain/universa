@@ -5,12 +5,14 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import net.sergeych.tools.AsyncEvent;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Generate set of test contracts
@@ -27,13 +29,15 @@ public class TestContracts implements AutoCloseable {
         publicKey = key.getPublicKey();
     }
 
-    public Collection<Contract> generate(int nContracts) throws InterruptedException {
+    public Collection<Contract> generate(int nContracts, @Nullable Consumer<Contract> contractMutator) throws InterruptedException {
         clear();
         AsyncEvent done = new AsyncEvent();
         for( int i=0; i<nContracts; i++ ) {
             pool.submit(()-> {
                 try {
                     Contract c = new Contract(key);
+                    if (contractMutator != null)
+                        contractMutator.accept(c);
                     c.seal();
                     if (!c.isOk())
                         throw new RuntimeException("Failed to create contract: " + c.getErrorsString());

@@ -14,7 +14,7 @@ public class TestContractsTest {
     public void generate() throws Exception {
 
         try(TestContracts tc = new TestContracts(8)) {
-            ArrayList<Contract> cc = new ArrayList<>(tc.generate(100));
+            ArrayList<Contract> cc = new ArrayList<>(tc.generate(100, null));
             assertEquals(100, cc.size());
             cc.forEach(c->{
                 assertTrue(c.isOk());
