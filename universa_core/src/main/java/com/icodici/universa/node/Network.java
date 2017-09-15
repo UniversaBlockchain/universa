@@ -89,6 +89,11 @@ public class Network {
         if (positiveRatio <= 0.5 || positiveRatio > 1)
             throw new IllegalArgumentException("parameter should be positive 0.5 < value <= 1");
         int count = allNodes.size();
+        if( count == 1) {
+            // 1-node test network
+            negativeConsensus = positiveConsensus = 1;
+            return;
+        }
         if( count < 6) {
             positiveConsensus = count / 2 + 1;
             negativeConsensus = count / 2 - 1;

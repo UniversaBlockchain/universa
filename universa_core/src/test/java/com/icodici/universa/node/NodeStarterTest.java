@@ -30,6 +30,7 @@ public class NodeStarterTest extends TestCase {
             assertEquals("127.0.0.1", n4.getStringOrThrow("ip"));
             NodeStarter.shutdown();
         });
+        Thread.sleep(300);
         assertThat(result, matches(".*Universa.*"));
         System.out.println( result);
     }

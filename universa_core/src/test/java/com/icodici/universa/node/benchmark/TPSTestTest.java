@@ -2,10 +2,9 @@ package com.icodici.universa.node.benchmark;
 
 import com.icodici.universa.node.PostgresLedgerTest;
 import net.sergeych.tools.BufferedLogger;
-import org.junit.Test;
 
 public class TPSTestTest {
-    @Test
+//    @Test
     public void start() throws Exception {
 
         TPSTest tps = new TPSTest(5000,
@@ -13,7 +12,7 @@ public class TPSTestTest {
                                   64,
                                   10);
         BufferedLogger logger = tps.getLogger();
-        logger.printTo(System.out);
+        logger.printTo(System.out, false);
         tps.run();
         System.out.println("done");
     }

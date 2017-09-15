@@ -126,7 +126,7 @@ public class NetworkBuilder implements AutoCloseable{
             }
             // very important to create local node when all remote nodes are ready
             createLocalServer(network, privateKey, overrideClietnPort);
-            network.deriveConsensus(0.7);
+            network.deriveConsensus(0.9);
             return network;
         }
 
