@@ -266,7 +266,7 @@ public class BufferedLogger implements AutoCloseable {
      * Start intercepting stdout and log it to the buffer on the fly. Intercepted data will be also printed to the
      * System.out. Use {@link #stopInterceptingStdOut()} to cancel copying to log.
      */
-    void interceptStdOut() {
+    public void interceptStdOut() {
         if (consoleIntercepted.getAndSet(true))
             return;
         try {
