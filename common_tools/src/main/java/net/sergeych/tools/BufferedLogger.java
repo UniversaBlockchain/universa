@@ -3,17 +3,16 @@ package net.sergeych.tools;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.io.PrintStream;
+import java.io.*;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.util.Collections.*;
+import static java.util.Collections.reverse;
 
 /**
  * Navigable fast asynchronous buffered logger, thread safe. It's main features are:
@@ -23,10 +22,17 @@ import static java.util.Collections.*;
  * - it holds lasst records in memory from where it could be easily obtained using {@link #slice(long, int)}, {@link
  * #getLast(int)} and {@link #getCopy()} calls.
  * <p>
- * It is possible to connect a logger to a {@link PrintStream} using {@link #printTo(PrintStream)}.
+ * It is possible to connect a logger to a {@link PrintStream} using {@link #printTo(PrintStream, boolean)}.
+ * <p>
+ * It is also possible to capture the whole stdout with {@link #interceptStdOut()}
  */
-public class BufferedLogger {
+public class BufferedLogger implements AutoCloseable {
 
+
+    private Thread loggerThread;
+    private Thread interceptorThread;
+    private PipedInputStream inPipe;
+    private boolean printTimestamp = false;
 
     /**
      * Log entry structure provides ID to navigate, creation instant and the message.
@@ -55,8 +61,8 @@ public class BufferedLogger {
         }
 
         /**
-         * Default comparator uses {@link #id} as the natural order, not the instant. Usually it is the same
-         * order but there is no guarantees.
+         * Default comparator uses {@link #id} as the natural order, not the instant. Usually it is the same order but
+         * there is no guarantees.
          *
          * @param e
          *
@@ -68,9 +74,7 @@ public class BufferedLogger {
         }
     }
 
-    static DateTimeFormatter fmt = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-            .withLocale(Locale.UK)
-            .withZone(ZoneId.systemDefault());
+    static DateTimeFormatter fmt = DateTimeFormatter.ISO_INSTANT;
     private PrintStream printStream;
 
     private int maxLines;
@@ -87,7 +91,7 @@ public class BufferedLogger {
      */
     public BufferedLogger(int maxEntries) {
         this.maxLines = maxEntries;
-        Thread t = new Thread(() -> {
+        loggerThread = new Thread(() -> {
             while (true) {
                 Entry entry = null;
                 if (queue.size() == 0) {
@@ -106,12 +110,12 @@ public class BufferedLogger {
                         buffer.poll();
                 }
                 if (printStream != null)
-                    printStream.println(entry.toString());
+                    printStream.println(printTimestamp ? entry.toString() : entry.message);
             }
         });
-        t.setName("buffered_logger_" + this);
-        t.setDaemon(true);
-        t.start();
+        loggerThread.setName("BufferedLogger_" + this);
+        loggerThread.setDaemon(true);
+        loggerThread.start();
     }
 
     /**
@@ -150,14 +154,25 @@ public class BufferedLogger {
     /**
      * Copy results to a given PrintStream (to be used with System.out, for example)
      *
-     * @param ps printStream to print to. Use null to cancel.
+     * @param ps             printStream to print to. Use null to cancel.
+     * @param printTimestamp true to add ISO timestamp to each line (like 2017-09-15T14:52:25.287Z)
      *
      * @return null or previously associated PrintStream
      */
-    public PrintStream printTo(PrintStream ps) {
+    public PrintStream printTo(PrintStream ps, boolean printTimestamp) {
+        this.printTimestamp = printTimestamp;
         PrintStream old = printStream;
         printStream = ps;
         return old;
+    }
+
+    /**
+     * When using {@link #printTo(PrintStream, boolean)} allow to change printTimestamp mode.
+     *
+     * @param doPrint add timestamp to each line
+     */
+    void setPrintTimestamp(boolean doPrint) {
+        printTimestamp = doPrint;
     }
 
     /**
@@ -244,4 +259,70 @@ public class BufferedLogger {
         }
     }
 
+    private AtomicBoolean consoleIntercepted = new AtomicBoolean(false);
+    private PrintStream oldOut = null;
+
+    /**
+     * Start intercepting stdout and log it to the buffer on the fly. Intercepted data will be also printed to the
+     * System.out. Use {@link #stopInterceptingStdOut()} to cancel copying to log.
+     */
+    void interceptStdOut() {
+        if (consoleIntercepted.getAndSet(true))
+            return;
+        try {
+            PipedOutputStream outPipe = new PipedOutputStream();
+            oldOut = System.out;
+            printTo(oldOut, false);
+            System.setOut(new PrintStream(outPipe));
+            inPipe = new PipedInputStream(outPipe);
+            BufferedReader r = new BufferedReader(new InputStreamReader(inPipe));
+            interceptorThread = new Thread(() -> {
+                String s;
+                try {
+                    while ((s = r.readLine()) != null && interceptorThread != null) {
+                        log(s);
+                    }
+                } catch (IOException e) {
+                    // pipe closed
+                } catch (Exception e) {
+                    System.err.println("failed to read input" + e);
+                    e.printStackTrace();
+                }
+            });
+            interceptorThread.setDaemon(true);
+            interceptorThread.start();
+            interceptorThread.setName("BufferedLogger_console_interceptor");
+        } catch (Exception e) {
+            throw new RuntimeException("failed to intercept stdout", e);
+        }
+    }
+
+    @Override
+    public void close() throws Exception {
+        stopInterceptingStdOut();
+        synchronized (queue) {
+            queue.add(null);
+        }
+        if (loggerThread != null) {
+            loggerThread.interrupt();
+            loggerThread = null;
+        }
+    }
+
+    public void stopInterceptingStdOut() {
+        if (consoleIntercepted.getAndSet(false)) {
+            System.setOut(oldOut);
+            try {
+                inPipe.close();
+            } catch (IOException e) {
+            }
+            interceptorThread.interrupt();
+            interceptorThread = null;
+        }
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        close();
+    }
 }

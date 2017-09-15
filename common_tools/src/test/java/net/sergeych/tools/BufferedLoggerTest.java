@@ -72,4 +72,23 @@ public class BufferedLoggerTest {
         assertEquals("line 7,line 8,line 9", str(log.getCopy()));
     }
 
+    @Test
+    public void interceptConsoe() throws Exception {
+        String res = ConsoleInterceptor.copyOut(()-> {
+            BufferedLogger log = new BufferedLogger(100);
+            log.interceptStdOut();
+            System.out.println("Hello, world");
+            System.out.println("iCodici rules");
+            System.out.println("last line");
+            // now we need that streams send their data throgh the pipes:
+            while (log.getCopy().size() < 3) Thread.sleep(20);
+            log.flush();
+            log.stopInterceptingStdOut();
+            assertEquals("Hello, world,iCodici rules,last line", str(log.getCopy()));
+        });
+        assertEquals(res, "Hello, world\n" +
+                "iCodici rules\n" +
+                "last line\n");
+    }
+
 }
