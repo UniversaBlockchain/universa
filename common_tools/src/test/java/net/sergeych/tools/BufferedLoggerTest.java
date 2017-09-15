@@ -73,7 +73,7 @@ public class BufferedLoggerTest {
     }
 
     @Test
-    public void interceptConsoe() throws Exception {
+    public void interceptConsole() throws Exception {
         String res = ConsoleInterceptor.copyOut(()-> {
             BufferedLogger log = new BufferedLogger(100);
             log.interceptStdOut();
