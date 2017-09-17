@@ -75,4 +75,11 @@ public class Average {
     public String toString() {
         return "" + average() + "±" + stdev();
     }
+
+    /**
+     * @return coefficient of variation, e.g. σ/µ (where µ is the average value)
+     */
+    public double variation() {
+        return stdev()/average();
+    }
 }

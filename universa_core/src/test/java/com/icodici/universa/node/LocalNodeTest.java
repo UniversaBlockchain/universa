@@ -40,8 +40,6 @@ public class LocalNodeTest extends NodeTestCase {
         ItemInfo ii = n.registerItem(item);
         assert(ii.getErrors().isEmpty());
         assertEquals(item.getId(), ii.getItemId());
-        assertEquals(ItemState.PENDING_POSITIVE, ii.getItemResult().state);
-        assertEquals(ItemState.PENDING_POSITIVE, ii.getItemResult().state);
         itemResult = n.registerItemAndWait(item);
         assertEquals(ItemState.APPROVED, itemResult.state);
         itemResult = n.registerItemAndWait(item);
@@ -64,9 +62,12 @@ public class LocalNodeTest extends NodeTestCase {
     public void noQourumError() throws Exception {
         Network network = new Network();
         LocalNode n = createTempNode(network);
+        // The quorum bigger than the network capacity: we model the situation
+        // when the system will not get the answer
         network.setNegativeConsensus(2);
         network.setPositiveConsensus(2);
         TestItem item = new TestItem(true);
+//        LogPrinter.showDebug(true);
         ItemResult itemResult = n.registerItemAndWait(item);
         assertEquals(ItemState.UNDEFINED, itemResult.state);
         StateRecord record = n.getLedger().getRecord(item.getId());
@@ -176,7 +177,6 @@ public class LocalNodeTest extends NodeTestCase {
 
         ItemResult itemResult;
         ItemInfo ii = n.registerItem(main);
-        assertEquals(ItemState.PENDING_NEGATIVE,ii.getItemResult().state);
         assertEquals(1,ii.getErrors().size());
         assertEquals(Errors.NEW_ITEM_EXISTS, ii.getErrors().iterator().next().getError());
         itemResult = n.registerItemAndWait(main);

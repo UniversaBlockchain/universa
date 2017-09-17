@@ -35,6 +35,7 @@ class Elections {
     private Approvable item;
     private final HashId itemId;
     private AsyncEvent<Void> itemDownloaded = new AsyncEvent<>();
+    private Object startLock = new Object();
 
     public ItemState getState() {
         return record.getState();
@@ -45,7 +46,7 @@ class Elections {
     // Important. number of threads in the pool must be at least 2 to allow download thread to wait for sources
     // otherwise it can block forever. In the test environment it should be greater than the number of voting
     // local nodes + 1
-    static ScheduledThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(16);
+    static ScheduledThreadPoolExecutor pool;
 
     private BlockingQueue<Node> itemSources = new LinkedBlockingQueue<>();
     private Set<Poller> pollers = Collections.newSetFromMap(new ConcurrentHashMap<Poller, Boolean>());
@@ -53,12 +54,19 @@ class Elections {
     private Set<Node> negativeNodes = Collections.newSetFromMap(new ConcurrentHashMap<Node, Boolean>());
     private Future<?> downloader;
     private LocalNode localNode;
-    private StateRecord record;
+    private volatile StateRecord record;
     private Object itemLock = new Object();
     private HashSet<StateRecord> lockedToRevoke = new HashSet<>();
     private HashSet<StateRecord> lockedToCreate = new HashSet<>();
-    private AsyncEvent<ItemResult> doneEvent = new AsyncEvent<>();
+    AsyncEvent<ItemResult> doneEvent = new AsyncEvent<>();
     private boolean started = false;
+
+    static {
+        pool = new ScheduledThreadPoolExecutor(256);
+        pool.setMaximumPoolSize(256);
+        pool.allowsCoreThreadTimeOut();
+        pool.setKeepAliveTime(1, TimeUnit.SECONDS);
+    }
 
     public Elections(LocalNode localNode, HashId itemId) throws Error {
         this.itemId = itemId;
@@ -73,12 +81,12 @@ class Elections {
     }
 
     public void ensureStarted() throws Error {
-        synchronized (this) {
-            if( started )
+        synchronized (startLock) {
+            if (started)
                 return;
+            initWithNode(localNode);
             started = true;
         }
-        initWithNode(localNode);
     }
 
     /**
@@ -88,22 +96,27 @@ class Elections {
      * @param localNode node that creates elections.
      */
     private void initWithNode(LocalNode localNode) throws Error {
+//        log.showDebug(true);
         this.localNode = localNode;
         this.ledger = localNode.getLedger();
         this.network = localNode.getNetwork();
 
         record = ledger.findOrCreate(itemId);
+        if (record == null) {
+            throw new RuntimeException("ledger failed to findOrCreate");
+        }
         if (record.getExpiresAt() == null)
             record.setExpiresAt(LocalDateTime.now().plus(network.getMaxElectionsTime()));
         if (record.getState() != ItemState.PENDING)
             throw new Error("ledger already has a record for " + itemId + " with state " + record.getState());
         if (item != null) {
             checkItem();
+            log.d("starting existing item voting");
+            startVoting();
         } else {
             record.save();
+            startDownload();
         }
-        startDownload();
-        startVoting();
     }
 
     /**
@@ -114,7 +127,7 @@ class Elections {
     private void checkItem() {
         synchronized (itemLock) {
             // Skip check if we're closing of if the network has found the consensus
-            if (stop || getState() == ItemState.APPROVED )
+            if (stop || getState() == ItemState.APPROVED)
                 return;
             assert (item != null);
 
@@ -140,8 +153,7 @@ class Elections {
                     if (r == null) {
                         checkPassed = false;
                         item.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
-                    }
-                    else
+                    } else
                         lockedToRevoke.add(r);
                 }
 
@@ -164,6 +176,7 @@ class Elections {
 
             record.setState(checkPassed ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE);
             record.save();
+            registerVote(localNode, checkPassed);
 //            log.d(localNode.toString()+" checked item "+itemId+" : "+getState());
         }
     }
@@ -174,15 +187,17 @@ class Elections {
             return;
         downloader = pool.submit(() -> {
             log.d(localNode + " starts download thread");
-            while (item == null && !stop && getMillisLeft() > 0 ) {
+            while (item == null && !stop && getMillisLeft() > 0) {
 //                log.d(localNode.toString()+" attempt to download "+itemId);
-                Node node = itemSources.take();
+                Node node = itemSources.poll(getMillisLeft(), TimeUnit.MILLISECONDS);
+                if (node == null)
+                    continue;
                 log.d(localNode + " has a source: " + node);
                 if (localNode.lateDownload) {
-                    log.d("--------------------------------------------------- late download active");
-                    while (!getState().consensusFound())
-                        Thread.sleep(20);
-                    log.d("---------------------------------------------------  consensu found, we can download");
+                    log.d(localNode + "--------------------------------------------------- late download active");
+                    Thread.sleep(200);
+                    localNode.lateDownload = false;
+                    log.d(localNode + "---------------------------------------------------  we can download");
                 }
                 try {
                     item = node.getItem(itemId);
@@ -191,17 +206,23 @@ class Elections {
                         log.d(localNode + " downloaded " + itemId + " from " + node);
                         itemDownloaded.fire(null);
                         checkItem();
+                        log.d("starting downloaded item voting, my state is " + getState());
+                        startVoting();
                         break;
-                    }
-                    else {
-                        log.i("strange: item not found at "+node+", in queue: "+itemSources.size());
+                    } else {
+                        log.i("strange: item not found at " + node + ", in queue: " + itemSources.size());
+                        // We should retry it anyway:
+                        itemSources.add(node);
                     }
                 } catch (IOException ex) {
                     // IOException means that we can retry
-                    log.i("exception loading item: "+node);
+                    log.wtf("exception loading item: " + node + ": ", ex);
                     itemSources.add(node);
+                    log.i("our list of sources: " + itemSources);
                 }
             }
+            if (item == null)
+                checkElectionsFailed();
             return null;
         });
     }
@@ -215,6 +236,17 @@ class Elections {
                 // the pollers collection can not be mutated at this point as all pollers are created in the constructor.
                 // If later this behavior will be changed, this should be rewritten to sync with stop field changes
                 pool.execute(() -> pollers.forEach(x -> x.close()));
+                // Notify network about my solution
+                if (getState() == ItemState.APPROVED) {
+                    log.d("Informing rest of the nodes about my solution");
+                    network.getAllNodes().forEach(node -> {
+                        try {
+                            node.checkItem(localNode, itemId, getState(), item != null);
+                        } catch (Exception e) {
+                            // this time it does not matter
+                        }
+                    });
+                }
 //                try {
 //                    pool.awaitTermination(500,TimeUnit.MILLISECONDS);
 //                } catch (InterruptedException e) {
@@ -234,10 +266,14 @@ class Elections {
         List<Node> nodes = new ArrayList<>(network.getAllNodes());
         Collections.shuffle(nodes);
         // Importand order! first, fill in all pollers pool
-        nodes.forEach(node -> new Poller(node));
+        nodes.forEach(node -> {
+            if (node != localNode) new Poller(node);
+        });
         // only now we can start them to avoid racing conditions
         // that could detect false no quorum error
         pollers.forEach(p -> p.start());
+        // Actually this is a test situation which should be modelled somehow else
+        checkElectionsFailed();
     }
 
     /**
@@ -249,7 +285,23 @@ class Elections {
     public void registerVote(Node node, boolean approve) {
         if (!stop) {
             // process only if the set has been changed
-            if ((approve ? positiveNodes : negativeNodes).add(node)) {
+
+            boolean checkConsensus, voteChanged;
+            if (approve) {
+                voteChanged = negativeNodes.remove(node);
+                checkConsensus = positiveNodes.add(node);
+            } else {
+                voteChanged = positiveNodes.remove(node);
+                checkConsensus = negativeNodes.add(node);
+            }
+
+            if (voteChanged)
+                log.w("" + localNode + ": vote changed from " + node + " now is " + approve);
+
+            log.d("" + localNode + " register vote from " + node + ": " + approve + ": " +
+                          positiveNodes.size() + " / " + negativeNodes.size() + " consensus: " + network.getPositiveConsensus());
+
+            if (checkConsensus) {
                 boolean conesnusFound = false;
                 boolean positive = false;
                 if (negativeNodes.size() >= network.getNegativeConsensus()) {
@@ -288,9 +340,11 @@ class Elections {
             if (item == null) {
                 try {
                     long millisLeft = getMillisLeft();
-                    if( millisLeft > 0 )
+                    if (millisLeft > 0)
                         itemDownloaded.await(millisLeft);
                 } catch (TimeoutException e) {
+                    // TODO: very inlikely case. We should somehow try to restore links
+                    // actually it should not happen
                     e.printStackTrace();
                 }
             }
@@ -317,6 +371,7 @@ class Elections {
                 lockedToRevoke.clear();
             }
         }
+        fireOnDone();
     }
 
     /**
@@ -340,6 +395,7 @@ class Elections {
                 return null;
             });
         }
+        fireOnDone();
     }
 
 
@@ -370,6 +426,7 @@ class Elections {
      * Blocks the caller tree until the election is fininshed (either by consensus found or error)
      *
      * @return result
+     *
      * @throws InterruptedException
      */
     public ItemResult waitDone() throws InterruptedException {
@@ -380,6 +437,17 @@ class Elections {
         return network.getMaxElectionsTime().toMillis() - (System.currentTimeMillis() - electionsStartedMillis);
     }
 
+    private void checkElectionsFailed() {
+        if ((pollers.size() == 0 && getState().isPending()) || getMillisLeft() <= 0 || LocalDateTime.now().isAfter(record.getExpiresAt())) {
+            stopOnFailure();
+        }
+    }
+
+    private void stopOnFailure() {
+        log.d(localNode.toString() + " failing elections, pollers: " + pollers.size());
+        rollbackChanges(ItemState.UNDEFINED, LocalDateTime.now().plusSeconds(5));
+        Elections.this.close();
+    }
 
     /**
      * Poller implements step-retry loginc on polling one node for decision. To avoid occupying thread with retry
@@ -476,20 +544,12 @@ class Elections {
 //                    e.printStackTrace();
                     reschedule();
                 }
-                if ((pollers.size() == 0 && getState().isPending()) || LocalDateTime.now().isAfter(record.getExpiresAt())) {
-                    stopOnFailure();
-                }
+                checkElectionsFailed();
             }
         }
 
-        private void stopOnFailure() {
-            log.d(localNode.toString() + " failing elections, pollers: " + pollers.size());
-            rollbackChanges(ItemState.UNDEFINED, LocalDateTime.now().plusSeconds(5));
-            Elections.this.close();
-        }
-
         private void reschedule() {
-            if( !stop ) {
+            if (!stop) {
                 long rt = network.getRequeryPause().toMillis();
                 if (rt < getMillisLeft())
                     future = pool.schedule(this, network.getRequeryPause().toMillis(), TimeUnit.MILLISECONDS);

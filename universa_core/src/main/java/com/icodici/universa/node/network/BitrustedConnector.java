@@ -107,9 +107,9 @@ public class BitrustedConnector implements Farcall.Target, Connector {
                             "nonce", myNonce
                     ).waitSuccess()
             );
-            // wait ither side sends credentials
-            processHelloAnswer(result);
+            // we can't process hello answer until other side will send us it's hello
             ready.await();
+            processHelloAnswer(result);
             return true;
         });
 
@@ -119,6 +119,7 @@ public class BitrustedConnector implements Farcall.Target, Connector {
         } catch (DeferredResult.Error | ExecutionException e) {
 //            log.wtf("initialization failed", e);
 //            e.printStackTrace();
+            initDone.cancel(true);
             throw new Error("initialization failed", e.getCause());
         } catch (InterruptedException | TimeoutException e) {
             initDone.cancel(true);
@@ -131,15 +132,16 @@ public class BitrustedConnector implements Farcall.Target, Connector {
     }
 
     private void processHelloAnswer(Binder result) throws EncryptionError {
-        byte[] data = result.getBinary("data");
-        byte[] signature = result.getBinary("signature");
+        byte[] data = result.getBinaryOrThrow("data");
+        byte[] signature = result.getBinaryOrThrow("signature");
+        if( remoteKey == null )
+            throw new IllegalStateException("remote key must be set now");
         if (!remoteKey.verify(data, signature, HashType.SHA256))
             throw new EncryptionError("bad signature in hello answer");
         Binder answer = Boss.unpack(myKey.decrypt(data));
-        if (!Arrays.equals(answer.getBinary("nonce"), myNonce))
+        if (!Arrays.equals(answer.getBinaryOrThrow("nonce"), myNonce))
             throw new EncryptionError("nonce mismatch");
         remoteSessionKey = new SymmetricKey(answer.getBinary("session_key"));
-        ready.fire(null);
     }
 
     /**

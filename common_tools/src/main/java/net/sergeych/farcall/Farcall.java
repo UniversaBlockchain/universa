@@ -155,6 +155,7 @@ public class Farcall {
                     Farcall.this.receiveCommands();
                 }
             });
+            worker.setName("farcall receiver for "+Farcall.this);
         }
         worker.start();
     }
@@ -188,6 +189,7 @@ public class Farcall {
                     processCommand(input, serial);
                 }
             } catch (IOException e) {
+                System.err.println("-------------------------- oeee");
                 e.printStackTrace();
                 break;
             }

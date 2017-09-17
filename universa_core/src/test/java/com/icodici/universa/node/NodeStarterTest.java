@@ -17,7 +17,7 @@ public class NodeStarterTest extends TestCase {
     public void createNode() throws Exception {
         String result = ConsoleInterceptor.copyOut(()-> {
             Thread t = new Thread(() -> {
-                NodeStarter.main(new String[]{"-c", "src/test_config2", "-i", "node7", "-p", "15510"});
+                NodeStarter.main(new String[]{"-c", "src/test_config_2", "-i", "node7", "-p", "15510"});
             });
             t.start();
             NodeStarter.waitReady();

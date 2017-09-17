@@ -93,7 +93,7 @@ public class NetworkTest extends NodeTestCase {
     public void testNodeMustDownloadItemBeforeApproval() throws Exception {
         LocalNode n = createLocalConsensus();
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 1; i++) {
             TestItem main = new TestItem(true);
             TestItem new1 = new TestItem(true);
             TestItem new2 = new TestItem(true);
@@ -103,6 +103,7 @@ public class NetworkTest extends NodeTestCase {
             specialNode.emulateLateDownload();
 
             ItemResult itemResult;
+//            LogPrinter.showDebug(true);
             itemResult = n.registerItemAndWait(main);
             checkStrangeError(main, itemResult);
 
@@ -113,7 +114,11 @@ public class NetworkTest extends NodeTestCase {
             assertEquals(ItemState.APPROVED, record.getState());
 
             for (LocalNode n2 : allNodes) {
+                // special node can't fully process yet the result, it is still downloading it
+                if(  n2 == specialNode )
+                    continue;
                 itemResult = n2.registerItemAndWait(main);
+                assertEquals(ItemState.APPROVED, itemResult.state);
                 checkStrangeError(main, itemResult);
                 // show info about the node
                 // it may happen before after the consensus notes stop announsement?
@@ -125,6 +130,16 @@ public class NetworkTest extends NodeTestCase {
                 assertNotNull(record);
                 assertEquals(ItemState.APPROVED, record.getState());
             }
+            // now let's check paused special node... it should finish elections even without downloading:
+            itemResult = specialNode.checkItem(main.getId());
+            assertEquals(ItemState.APPROVED, itemResult.state);
+            // but it yet has no idea about links:
+            record = specialNode.getLedger().getRecord(new1.getId());
+            assertNull(record);
+            // now it should download the links anyway:
+            Thread.sleep(250);
+            record = specialNode.getLedger().getRecord(new1.getId());
+            assertEquals(ItemState.APPROVED, record.getState());
         }
     }
 

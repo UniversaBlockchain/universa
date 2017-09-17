@@ -1,0 +1,2 @@
+use_sqlite: true
+database: 'jdbc:postgresql://localhost:5432/universa_node'

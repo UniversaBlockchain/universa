@@ -122,6 +122,8 @@ public class SqliteLedger implements Ledger {
                     r.setState(ItemState.PENDING);
                     r.save();
                 }
+                if( r == null )
+                    throw new RuntimeException("failure creating new stateReocrd");
                 return r;
             }
         });

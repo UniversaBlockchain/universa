@@ -48,6 +48,9 @@ public class ItemResult {
      *                 Node#getItem(HashId)}  on it
      */
     public ItemResult(StateRecord record, boolean haveCopy) {
+//        if( record == null ) {
+//            throw new IllegalStateException("record can not be null");
+//        }
         state = record.getState();
         this.haveCopy = haveCopy;
         createdAt = record.getCreatedAt();

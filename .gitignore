@@ -34,7 +34,8 @@ hs_err_pid*
 *nogit*
 
 /universa_core/src/test_config/system/*
-/universa_core/src/test_config2/system/
+/universa_core/src/test_config_2/system/
+/universa_core/src/test_config_3/system/
 **/testledger
 
 # Custom JetBrains-specific tweaks
@@ -92,3 +93,4 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
+/universa_core/src/test_config_3/system/

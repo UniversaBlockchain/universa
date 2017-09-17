@@ -82,26 +82,39 @@ public class BitrustedRemoteAdapter extends Node {
     private <T> T inConnection(Function<Farcall,T> block) throws IOException, InterruptedException {
         try {
             synchronized (stateLock) {
-                if (socket == null) {
+                int retry = 0;
+                while (socket == null) {
 //                    log.i("connecting >>>"+getId());
-                    socket = new Socket(host, port);
-                    BitrustedConnector connector = new BitrustedConnector(localKey, socket.getInputStream(), socket.getOutputStream());
+                    Exception lastException = null;
                     try {
+                        socket = new Socket(host, port);
+                        BitrustedConnector connector = new BitrustedConnector(localKey, socket.getInputStream(), socket.getOutputStream());
                         connector.connect(packedKey -> Arrays.equals(packedKey, remoteKey.pack()));
-                    } catch (TimeoutException e) {
-                        socket.close();
-                        socket = null;
-                        throw new IOException("failed to connect to " + host + ":" + port);
+                        farcall = new Farcall(connector);
+                        farcall.asyncCommands();
+                        farcall.start(command -> {
+                            switch (command.getName()) {
+                                case "ping":
+                                    return "pong";
+                            }
+                            return null;
+                        });
                     }
-                    farcall = new Farcall(connector);
-                    farcall.asyncCommands();
-                    farcall.start(command -> {
-                        switch (command.getName()) {
-                            case "ping":
-                                return "pong";
+                    catch(InterruptedException  e) {
+                        // slitently pass out
+                        throw e;
+                    }
+                    catch (Exception e) {
+                        if( socket != null ) {
+                            socket.close();
+                            socket = null;
                         }
-                        return null;
-                    });
+                        log.wtf("Exceptino in BRA:", e);
+                        e.printStackTrace();
+                        lastException = e;
+                    }
+                    if( retry++ > 3 )
+                        throw new IOException("failed to connect to "+host+":"+port, lastException);
                 }
             }
             return block.apply(farcall);
@@ -115,6 +128,7 @@ public class BitrustedRemoteAdapter extends Node {
                 }
                 socket = null;
                 farcall = null;
+//                e.printStackTrace();
                 if( e instanceof IOException)
                     throw (IOException) e;
                 throw new IOException(e);

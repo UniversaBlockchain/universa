@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -32,8 +33,8 @@ import java.util.concurrent.*;
 public class BitrustedLocalAdapter {
 
     private static LogPrinter log = new LogPrinter("BTLA");
-    private static ExecutorService pool = Executors.newFixedThreadPool(16);
-    private Future<?> server;
+//    private static ExecutorService pool = Executors.newFixedThreadPool(16);
+    private Thread server;
     private final LocalNode localNode;
     private final PrivateKey privateKey;
     private Map<HashId, Node> knownNodes;
@@ -55,16 +56,31 @@ public class BitrustedLocalAdapter {
         }
         server = null;
         try {
-            server = pool.submit(() -> serveIncomingConnections());
+            server = new Thread(() -> serveIncomingConnections());
+            server.setName("Bitrusted local adapter port:"+portToListen+" node "+localNode);
+            server.setDaemon(true);
+            server.start();
         }
         catch(RejectedExecutionException e) {
         }
     }
 
-    private Object serveIncomingConnections() throws Exception {
+    private Object serveIncomingConnections() {
         while (!stop) {
-            Socket s = serverSocket.accept();
-            pool.submit(() -> new Connection(s));
+            try {
+                // Connection uses farcall with async target so we needn't any extra parallelism
+                // here, jsuct create connections as they come:
+                new Connection(serverSocket.accept());
+            }
+            catch(SocketException e) {
+                return null;
+            }
+            catch(BitrustedConnector.Error e) {
+                // initialization failed: other side does not work well, no matter.
+            }
+            catch(Exception e) {
+                log.wtf("unexpected in bitrusted connector", e);
+            }
         }
         return null;
     }
@@ -87,14 +103,21 @@ public class BitrustedLocalAdapter {
         @Override
         public Object onCommand(Command command) throws Exception {
             Binder params = Binder.from(command.getKeyParams());
-            switch (command.getName()) {
-                case "getItem":
-                    return doGetItem(params);
-                case "checkItem":
-                    return doCheckItem(params);
-                default:
-                    throw new IllegalArgumentException("unknown command");
+            try {
+                switch (command.getName()) {
+                    case "getItem":
+                        return doGetItem(params);
+                    case "checkItem":
+                        return doCheckItem(params);
+                    default:
+                        throw new IllegalArgumentException("unknown command");
 
+                }
+            }
+            catch(Exception e) {
+                log.e("Passing back exception to the remote caller: "+e);
+                e.printStackTrace();
+                throw e;
             }
         }
 
@@ -125,8 +148,8 @@ public class BitrustedLocalAdapter {
             });
             farcall = new Farcall(connector);
             farcall.asyncCommands();
-            farcall.start(this);
             log.d(localNode.getId()+" established connection from " + remoteNode);
+            farcall.start(this);
         }
     }
 }
