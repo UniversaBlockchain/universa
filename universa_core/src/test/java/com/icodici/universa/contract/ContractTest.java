@@ -7,6 +7,8 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import net.sergeych.boss.Boss;
@@ -18,12 +20,12 @@ import java.util.List;
 import static org.junit.Assert.*;
 
 public class ContractTest extends ContractTestBase {
+
     @Test
     public void fromYamlFile() throws Exception {
         Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
         assertProperSimpleRootContract(c);
     }
-
 
     @Test
     public void serializeToBinder() throws Exception {
@@ -86,5 +88,98 @@ public class ContractTest extends ContractTestBase {
             }
         }
         assertTrue(c.check());
+    }
+
+    @Test
+    public void testRoleFailures() throws Exception {
+        final PrivateKey key = new PrivateKey(2048);
+        final PublicKey publicKey = key.getPublicKey();
+
+        {
+            // Missing issuer
+            final Contract c = new Contract(key);
+            c.getRoles().remove("issuer");
+            c.seal();
+
+            c.check();
+            assertFalse(c.isOk());
+
+            assertNull(c.getIssuer());
+            assertFalse(c.getOwner().isValid());
+            assertFalse(c.getCreator().isValid());
+        }
+        {
+            // Missing creator
+            final Contract c = new Contract(key);
+            c.getRoles().remove("creator");
+            c.seal();
+
+            c.check();
+            assertFalse(c.isOk());
+
+            assertTrue(c.getIssuer().isValid());
+            assertTrue(c.getOwner().isValid());
+            assertNull(c.getCreator());
+        }
+        {
+            // Missing owner
+            final Contract c = new Contract(key);
+            c.getRoles().remove("owner");
+            c.seal();
+
+            c.check();
+            assertFalse(c.isOk());
+
+            assertTrue(c.getIssuer().isValid());
+            assertNull(c.getOwner());
+            assertTrue(c.getCreator().isValid());
+        }
+        {
+            // Test chain of links (good), then test breaking it (bad).
+            // issuer:key, creator->owner, owner->issuer
+            final Contract c = new Contract(key);
+            c.getRoles().remove("creator");
+            c.registerRole(new RoleLink("creator", "owner"));
+            c.seal();
+
+            c.check();
+            assertTrue(c.isOk());
+
+            assertTrue(c.getIssuer().isValid());
+            assertTrue(c.getOwner().isValid());
+            assertTrue(c.getCreator().isValid());
+
+            // Let's break the link in the middle
+            c.getRoles().remove("owner");
+
+            // We haven't called `check` once again, so it's still ok
+            assertTrue(c.isOk());
+
+            c.check(); // and now it is no more ok.
+            assertFalse(c.isOk());
+
+            assertTrue(c.getIssuer().isValid());
+            assertNull(c.getOwner());
+            assertFalse(c.getCreator().isValid());
+            assertFalse(c.getErrors().isEmpty());
+        }
+
+        {
+            // Test loop of links (bad).
+            // issuer->creator, creator->owner, owner->issuer
+            final Contract c = new Contract(key);
+            c.getRoles().clear();
+            c.registerRole(new RoleLink("issuer", "creator"));
+            c.registerRole(new RoleLink("creator", "owner"));
+            c.registerRole(new RoleLink("owner", "issuer"));
+            c.seal();
+
+            c.check(); // and now it is no more ok.
+            assertFalse(c.isOk());
+
+            assertFalse(c.getIssuer().isValid());
+            assertFalse(c.getOwner().isValid());
+            assertFalse(c.getCreator().isValid());
+        }
     }
 }

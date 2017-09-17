@@ -23,7 +23,7 @@ import java.util.Set;
  * Base class for any role combination, e.g. single key, any key from a set, all keys from a set, minimum number of key
  * from a set and so on.
  * <p>
- * IMPORTANT, This class express "any_of" logic, e.g. if any pf the presented keys is listed, then the role is allowed.
+ * IMPORTANT, This class express "any_of" logic, e.g. if any of the presented keys is listed, then the role is allowed.
  */
 public class Role {
     private final String name;
@@ -104,9 +104,12 @@ public class Role {
     }
 
     public boolean equalKeys(Object obj) {
-        if (obj instanceof Role)
-            return ((Role) obj).getKeys().equals(getKeys());
-        return false;
+        if (obj instanceof Role) {
+            Set<PublicKey> keys = ((Role) obj).getKeys();
+            return (keys == null)? false: keys.equals(getKeys());
+        } else {
+            return false;
+        }
     }
 
     static Role fromBinder(String name, Binder serializedRole) {

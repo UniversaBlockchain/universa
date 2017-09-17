@@ -74,7 +74,7 @@ public class Contract implements Approvable {
 
     /**
      * Extract contract from a sealed form, filling signers information. Only valid signatures are kept, invalid are
-     * sliently discarded. It is recommended to call {@link #check()} after construction to see the errors.
+     * silently discarded. It is recommended to call {@link #check()} after construction to see the errors.
      *
      * @param sealed binary sealed contract
      *
@@ -388,7 +388,7 @@ public class Contract implements Approvable {
             if (sealedBinary != null)
                 id = new HashId(sealedBinary);
             else
-                throw new IllegalStateException("the contract has no binary attached, no Id could be caclulated");
+                throw new IllegalStateException("the contract has no binary attached, no Id could be calculated");
         }
         return id;
     }
