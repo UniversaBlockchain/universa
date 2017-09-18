@@ -23,12 +23,12 @@ import java.util.function.Consumer;
 public class TPSTest {
 
     private final int contractsPerStep;
-    private final BufferedLogger logger = new BufferedLogger(1024);
+    private BufferedLogger logger = new BufferedLogger(1024);
     private LocalNode node;
     private final int nThreads;
     private final int repetitions;
     private final @Nullable Consumer<Contract> contractMutator;
-    private Ledger ledger;
+    private PostgresLedger ledger;
     private Network network;
     private boolean stop;
     private ExecutorService es;
@@ -51,6 +51,10 @@ public class TPSTest {
         createTestEnvironment(connectionString);
     }
 
+    public void setLogger(BufferedLogger logger) {
+        this.logger = logger;
+    }
+
     private void createTestEnvironment(String connectionString) throws SQLException {
         network = new Network();
         ledger = new PostgresLedger(connectionString);
@@ -69,6 +73,7 @@ public class TPSTest {
         Average t = new Average();
         for (int i = 0; i < repetitions && !stop; i++) {
             try {
+                logger.log("Ledger now contains "+ledger.countRecords()+" record(s)");
                 logger.log("generating test contracts");
                 tc.generate(contractsPerStep, this.contractMutator);
                 logger.log("test contracts ready, performing transactions");
@@ -98,7 +103,8 @@ public class TPSTest {
                 e.printStackTrace();
                 stop = true;
             }
-            System.out.println("TPS total: "+t);
         }
+        logger.log("----- TOTAL TPS: "+t);
+        logger.log("--- LEDGER SIZE: "+ledger.countRecords());
     }
 }

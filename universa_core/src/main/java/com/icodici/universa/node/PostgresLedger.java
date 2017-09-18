@@ -156,6 +156,16 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public long countRecords() {
+        try {
+            return dbPool.execute((db)->(long)db.queryOne("SELECT COUNT(*) FROM ledger"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+    @Override
     public <T> T transaction(Callable<T> callable) {
         return protect(() -> {
 //            synchronized (transactionLock) {

@@ -97,6 +97,10 @@ public interface Ledger {
 
     default void close() {}
 
+    default long countRecords() {
+        return -1;
+    }
+
     public static class Rollback extends Db.RollbackException {
     }
 

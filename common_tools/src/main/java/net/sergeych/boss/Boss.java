@@ -104,6 +104,11 @@ public class Boss {
         });
     }
 
+    public static Binder toBinder(Object x) {
+        Adapter adapter = adapters.get(x.getClass().getCanonicalName());
+        return adapter == null ? null : adapter.serialize(x);
+    }
+
     public interface Adapter<T> {
         Binder serialize(T object);
 

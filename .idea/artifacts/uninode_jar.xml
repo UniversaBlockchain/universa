@@ -3,10 +3,10 @@
     <output-path>$PROJECT_DIR$/out/artifacts/uninode_jar</output-path>
     <root id="root">
       <element id="archive" name="uninode.jar">
-        <element id="module-output" name="universa_core_main" />
+        <element id="dir-copy" path="$PROJECT_DIR$/universa_core/src/main/resources" />
         <element id="module-output" name="common_tools_main" />
         <element id="module-output" name="crypto_main" />
-        <element id="dir-copy" path="$PROJECT_DIR$/universa_core/src/main/resources" />
+        <element id="module-output" name="new_universa-universa_core_main" />
       </element>
       <element id="library" level="project" name="Gradle: org.nanohttpd:nanohttpd:2.2.0" />
       <element id="library" level="project" name="Gradle: com.eclipsesource.minimal-json:minimal-json:0.9.4" />
@@ -14,6 +14,7 @@
       <element id="library" level="project" name="Gradle: org.yaml:snakeyaml:1.18" />
       <element id="library" level="project" name="Gradle: com.madgag.spongycastle:core:1.54.0.0" />
       <element id="library" level="project" name="Gradle: net.sf.jopt-simple:jopt-simple:4.9" />
+      <element id="library" level="project" name="Gradle: org.postgresql:postgresql:42.1.4.jre7" />
     </root>
   </artifact>
 </component>

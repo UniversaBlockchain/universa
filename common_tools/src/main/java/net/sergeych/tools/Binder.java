@@ -7,6 +7,7 @@
 
 package net.sergeych.tools;
 
+import net.sergeych.boss.Boss;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -351,12 +352,18 @@ public class Binder extends HashMap<String, Object> {
     }
 
     /**
-     * Convert some map to the binder. Do nothing if it is already a binder.
+     * Convert some map to the binder. Do nothing if it is already a binder. Uses {@link Boss} adapters when possible,
+     * see {@link Boss#registerAdapter(Class, Boss.Adapter)} for details
      *
      * @param x source map
      */
     static public Binder from(Object x) {
-        return (x instanceof Binder) ? (Binder) x : new Binder((Map) x);
+        if( x instanceof Binder)
+            return (Binder) x;
+        Binder res = Boss.toBinder(x);
+        if( res != null)
+            return res;
+        return new Binder((Map) x);
     }
 
     /**

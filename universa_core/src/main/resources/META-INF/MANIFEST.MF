@@ -1,4 +1,4 @@
 Manifest-Version: 1.0
-Class-Path: nanohttpd-2.2.0.jar minimal-json-0.9.4.jar sqlite-jdbc-3.8.9.1.jar snakeyaml-1.18.jar core-1.54.0.0.jar jopt-simple-4.9.jar checker-2.1.0.jar
+Class-Path: nanohttpd-2.2.0.jar minimal-json-0.9.4.jar sqlite-jdbc-3.8.9.1.jar snakeyaml-1.18.jar core-1.54.0.0.jar jopt-simple-4.9.jar checker-2.1.0.jar postgresql-42.1.4.jre7.jar
 Main-Class: com.icodici.universa.node.NodeStarter
 

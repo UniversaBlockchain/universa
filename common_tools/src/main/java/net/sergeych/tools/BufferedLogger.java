@@ -1,6 +1,7 @@
 package net.sergeych.tools;
 
 
+import net.sergeych.boss.Boss;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.*;
@@ -47,7 +48,7 @@ public class BufferedLogger implements AutoCloseable {
 
         private Entry(String message) {
             id = serial.getAndIncrement();
-            this.message = message;
+            this.message = message.trim();
         }
 
         private Entry(long id) {
@@ -71,6 +72,29 @@ public class BufferedLogger implements AutoCloseable {
         @Override
         public int compareTo(Entry e) {
             return Long.compare(id, e.id);
+        }
+
+        public Binder toBinder() {
+            return Binder.fromKeysValues(
+                    "id", id,
+                    "instant", instant.getEpochSecond(),
+                    "message", message
+
+            );
+        }
+
+        static {
+            Boss.registerAdapter(Entry.class, new Boss.Adapter() {
+                @Override
+                public Binder serialize(Object object) {
+                    return ((Entry)object).toBinder();
+                }
+
+                @Override
+                public Object deserialize(Binder binder) {
+                    throw new RuntimeException("not implemented");
+                }
+            });
         }
     }
 

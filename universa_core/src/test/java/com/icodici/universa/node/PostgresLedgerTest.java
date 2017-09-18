@@ -35,10 +35,11 @@ public class PostgresLedgerTest extends TestCase {
         assertNull(ledger.getRecord(id));
         StateRecord r = ledger.findOrCreate(id);
         System.out.println(r);
+        System.out.println(ledger.countRecords());
     }
 
     @Test
-    public void checkNegatoveBytesInId() throws Exception {
+    public void checkNegativeBytesInId() throws Exception {
         HashId id = HashId.withDigest(Do.randomNegativeBytes(64));
         StateRecord r1 = ledger.findOrCreate(id);
         r1.setState(ItemState.DECLINED);
