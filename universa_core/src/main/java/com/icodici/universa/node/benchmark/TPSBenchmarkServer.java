@@ -44,19 +44,19 @@ public class TPSBenchmarkServer {
                 Binder params = Binder.from(session.getParms());
                 if (!params.getStringOrThrow("token").equals(token))
                     return errorResponse("invalid token");
-                logger.log("Serving " + session.getUri() + ": " + params);
-
+//                logger.log("Serving " + session.getUri() + ": " + params);
                 List<BufferedLogger.Entry> result;
                 switch (session.getUri()) {
                     case "/log/last": {
-                        int max = params.getInt("max", 100);
+                        int max = params.getInt("max", 10);
                         result = logger.getLast(max);
                         break;
                     }
                     case "/log/slice": {
-                        int id = params.getIntOrThrow("id");
-                        int max = params.getInt("max", 100);
+                        long id = params.getLongOrThrow("id");
+                        int max = params.getInt("max", 10);
                         result = logger.slice(id, max);
+                        break;
                     }
                     default:
                         return errorResponse("unknown command");
@@ -64,11 +64,9 @@ public class TPSBenchmarkServer {
                 return makeResponse(Response.Status.OK,
                                     Binder.fromKeysValues(
                                             "log",
-                                            JsonTool.toJsonString(
-                                                    result.stream()
-                                                            .map(e -> e.toBinder())
-                                                            .toArray()
-                                            )
+                                            result.stream()
+                                                    .map(e -> e.toBinder())
+                                                    .toArray()
                                     ));
             } catch (Exception e) {
                 try {
@@ -109,7 +107,7 @@ public class TPSBenchmarkServer {
 
 
         private Response errorResponse(Response.Status code, ErrorRecord er) {
-            return reponseKeysValues(code, "errors  ",
+            return reponseKeysValues(code, "errors",
                                      asList(Binder.from(er))
             );
         }
@@ -133,20 +131,19 @@ public class TPSBenchmarkServer {
             Binder params = Binder.from(
                     yaml.load(new FileInputStream(basicPath + "/config/config.yaml"))
             );
-            System.out.println("config loaded, "+params.size()+" entries");
+            System.out.println("config loaded, " + params.size() + " entries");
             String dbPath = params.getStringOrThrow("database");
             System.out.println("database connection string found");
-            TPSTest test = new TPSTest(5000, dbPath, 128, 10, null);
+            TPSTest test = new TPSTest(10000, dbPath, 128, 10, null);
             test.setLogger(logger);
-            while(true) {
+            while (true) {
                 logger.log("statring benchmark seqience");
                 test.run();
                 System.out.println("sequence fininshed, cooling down CPU ;)");
                 Thread.sleep(4000);
             }
-        }
-        catch(Exception e) {
-            System.out.println("Failed to start tests: "+ e);
+        } catch (Exception e) {
+            System.out.println("Failed to start tests: " + e);
             e.printStackTrace();
         }
     }

@@ -272,7 +272,8 @@ public class Binder extends HashMap<String, Object> {
      * @return parameter value or throws {@link IllegalArgumentException}.
      */
     public int getIntOrThrow(String key) {
-        Number n = (Number) get(key);
+        Object x = get(key);
+        Number n = x instanceof Number ? (Number) x : Integer.valueOf((String)x);
         if (n == null) throw new IllegalArgumentException("missing integer parameter");
         return n.intValue();
     }
@@ -425,9 +426,10 @@ public class Binder extends HashMap<String, Object> {
     }
 
     public long getLongOrThrow(String key) {
-        Number i = (Number) get(key);
-        if (i == null) throw new IllegalArgumentException("missing long integer parameter: " + key);
-        return i.longValue();
+        Object x = get(key);
+        Number n = x instanceof Number ? (Number) x : Long.valueOf((String)x);
+        if (n == null) throw new IllegalArgumentException("missing long integer parameter: " + key);
+        return n.longValue();
     }
 
     public Bytes getBytesOrThrow(String key) {

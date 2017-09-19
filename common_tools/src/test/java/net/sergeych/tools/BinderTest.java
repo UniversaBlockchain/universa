@@ -29,4 +29,19 @@ public class BinderTest {
         assertFalse(b.equals(e));
     }
 
+    @Test
+    public void getInt() throws Exception {
+        Binder b = Binder.fromKeysValues(
+                "i1", 100,
+                "i2", "101",
+                "l1", "1505774997427",
+                "l2", 1505774997427L
+        );
+        assertEquals(100, (int) b.getInt("i1",222));
+        assertEquals(101, (int) b.getInt("i2",222));
+        assertEquals(100, b.getIntOrThrow("i1"));
+        assertEquals(101, b.getIntOrThrow("i2"));
+        assertEquals(1505774997427L, b.getLongOrThrow("l1"));
+        assertEquals(1505774997427L, b.getLongOrThrow("l2"));
+    }
 }
