@@ -17,7 +17,7 @@ import java.util.Arrays;
  * The object used to search suitable keys in the registry, distinct keys without compromising them,
  * generate right keys from passwords and so on.
  * <p>
- * The KeyIndo is always included in the Capsule when used to encrypt data, so it hash
+ * The KeyInfo is always included in the Capsule when used to encrypt data, so it has
  * binary-effective packed representation, {@link #pack()}, which can be used as a hashtag in the
  * keyring, for example, wrapping it in the {@link net.sergeych.utils.Bytes} instance make possible
  * to use it as a Map key and effectively find matching keys.

@@ -17,7 +17,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongycastle.crypto.*;
 import org.spongycastle.crypto.digests.SHA1Digest;
 import org.spongycastle.crypto.encodings.OAEPEncoding;
-import org.spongycastle.crypto.engines.RSAEngine;
 import org.spongycastle.crypto.generators.RSAKeyPairGenerator;
 import org.spongycastle.crypto.params.ParametersWithRandom;
 import org.spongycastle.crypto.params.RSAKeyGenerationParameters;
@@ -105,19 +104,19 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
      */
     void init(byte[] e, byte[] p, byte[] q, HashType oaepHashType, HashType mgf1HashType, SecureRandom rng) {
 
-        RSAKeyPair keyPair = RSAKeyPair.fromExponents(e, p, q);
+        final RSAKeyPair keyPair = RSAKeyPair.fromExponents(e, p, q);
 
-        RSAPrivateCrtKeyParameters privParameters = new RSAPrivateCrtKeyParameters(
+        final RSAPrivateCrtKeyParameters privParameters = new RSAPrivateCrtKeyParameters(
                 BigIntegers.fromUnsignedByteArray(keyPair.n),
                 BigIntegers.fromUnsignedByteArray(keyPair.e), BigIntegers.fromUnsignedByteArray(keyPair.d),
                 BigIntegers.fromUnsignedByteArray(keyPair.p), BigIntegers.fromUnsignedByteArray(keyPair.q),
                 BigIntegers.fromUnsignedByteArray(keyPair.dP), BigIntegers.fromUnsignedByteArray(keyPair.dQ),
                 BigIntegers.fromUnsignedByteArray(keyPair.qInv));
 
-        AsymmetricBlockCipher decryptor = makeDecryptor(mgf1HashType);
+        final AsymmetricBlockCipher decryptor = makeDecryptor(mgf1HashType);
 
-        /* Private key goes together with its public key. */
-        RSAOAEPPublicKey publicKey = new RSAOAEPPublicKey();
+        // Private key goes together with its public key.
+        final RSAOAEPPublicKey publicKey = new RSAOAEPPublicKey();
         publicKey.init(keyPair.n, keyPair.e, oaepHashType, mgf1HashType, rng);
 
         state = new RSAOAEPPrivateKey.State(decryptor, privParameters, publicKey, oaepHashType, mgf1HashType, rng);
@@ -126,11 +125,11 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
 
     /**
      * Create the proper decryptor engine.
-     * */
+     */
     private AsymmetricBlockCipher makeDecryptor(HashType mgf1HashType) {
-        Digest dummyDigest = new SHA1Digest(); /* Only to satisfy interface. */
+        final Digest dummyDigest = new SHA1Digest(); // Only to satisfy interface.
 
-        return new OAEPEncoding(new RSAEngine(), dummyDigest, mgf1HashType.makeDigest(), new byte[0]);
+        return new OAEPEncoding(RSAOAEPEngine.make(), dummyDigest, mgf1HashType.makeDigest(), new byte[0]);
     }
 
     /**
@@ -166,20 +165,18 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
      * @param mgf1HashType The type of the hash(digest) function used for OAEP MGF1 hash generation.
      */
     public void generate(int bitStrength, byte[] e, int certainty, HashType oaepHashType, HashType mgf1HashType) {
-        RSAKeyPairGenerator keyGen = new RSAKeyPairGenerator();
+        final RSAKeyPairGenerator keyGen = new RSAKeyPairGenerator();
         keyGen.init(new RSAKeyGenerationParameters(
                 BigIntegers.fromUnsignedByteArray(e), new SecureRandom(), bitStrength, certainty));
-        AsymmetricCipherKeyPair keyPair = keyGen.generateKeyPair();
-        RSAPrivateCrtKeyParameters privateKey = (RSAPrivateCrtKeyParameters) keyPair.getPrivate();
+        final AsymmetricCipherKeyPair keyPair = keyGen.generateKeyPair();
+        final RSAPrivateCrtKeyParameters privateKey = (RSAPrivateCrtKeyParameters) keyPair.getPrivate();
 
         if (mgf1HashType == null) {
             mgf1HashType = DEFAULT_MGF1_HASH;
         }
 
-        /*
-        Don't worry we are passing thread-unsafe hash and mgf1Hash Digest instances:
-        init() will clone them anyway.
-        */
+        // Don't worry we are passing thread-unsafe hash and mgf1Hash Digest instances:
+        // init() will clone them anyway.
         init(e, BigIntegers.asUnsignedByteArray(privateKey.getP()), BigIntegers.asUnsignedByteArray(privateKey.getQ()), oaepHashType, mgf1HashType, new SecureRandom());
     }
 
@@ -265,19 +262,19 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
         if (state == null) {
             throw new IllegalStateException();
         } else {
-            Digest primaryDigest = hashType.makeDigest();
+            final Digest primaryDigest = hashType.makeDigest();
 
-            PSSSigner signer;
+            final PSSSigner signer;
             if (salt == null) {
-                /* Use maximum possible salt */
+                // Use maximum possible salt
                 signer = new PSSSigner(
-                        new RSAEngine(),
+                        RSAOAEPEngine.make(),
                         primaryDigest, state.mgf1HashType.makeDigest(),
                         getMaxSaltLength(getBitStrength(), primaryDigest.getDigestSize()));
             } else {
-                /* Use some specific salt */
+                // Use some specific salt
                 signer = new PSSSigner(
-                        new RSAEngine(),
+                        RSAOAEPEngine.make(),
                         primaryDigest, state.mgf1HashType.makeDigest(),
                         salt);
             }
@@ -319,7 +316,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
                 put("p", BigIntegers.asUnsignedByteArray(state.keyParameters.getP()));
                 put("q", BigIntegers.asUnsignedByteArray(state.keyParameters.getQ()));
 
-                /* Optional fields. */
+                // Optional fields.
 
                 if (!state.mgf1HashType.equals(DEFAULT_MGF1_HASH)) {
                     put("mgf1Hash", state.mgf1HashType.getAlgorithmName());
@@ -355,21 +352,33 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
                 throw new Error("q is not available");
             }
 
-            /* Optional fields. */
+            // Optional fields.
 
-            String mgf1HashName = (String) hash.getOrDefault("mgf1Hash", DEFAULT_MGF1_HASH.getAlgorithmName());
-            HashType mgf1HashType = HashType.getByAlgorithmName(mgf1HashName);
+            final String mgf1HashName = (String) hash.getOrDefault("mgf1Hash", DEFAULT_MGF1_HASH.getAlgorithmName());
+            final HashType mgf1HashType = HashType.getByAlgorithmName(mgf1HashName);
             if (mgf1HashType == null) {
                 throw new Error(String.format("MGF1 Hash %s is not available", mgf1HashName));
             }
 
-            /* Reuse previous rng if already defined (good for unit tests). */
-            SecureRandom rng = (this.state == null)? new SecureRandom(): this.state.rng;
+            // Reuse previous rng if already defined (good for unit tests).
+            final SecureRandom rng = (this.state == null)? new SecureRandom(): this.state.rng;
             this.init(e, p, q, DEFAULT_OAEP_HASH, mgf1HashType, rng);
 
         } catch (Exception e) {
             this.state = null;
             throw new Error(String.format("Incorrect data for private key: %s", e.toString()));
         }
+    }
+
+    /**
+     * Given a private key, get the maximum size of the block, considering some digest will be used.
+     * See {@link OAEPEncoding::getInputBlockSize} for details.
+     */
+    int getMaxBlockSize() {
+        final int
+                keySize = getBitStrength(),
+                digestSize = state.oaepHashType.makeDigest().getDigestSize(),
+                maxBlockSize = keySize / 8 - 2 - 2 * digestSize;
+        return maxBlockSize;
     }
 }

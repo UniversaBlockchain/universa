@@ -18,7 +18,6 @@ import org.spongycastle.crypto.InvalidCipherTextException;
 import org.spongycastle.crypto.Signer;
 import org.spongycastle.crypto.digests.SHA1Digest;
 import org.spongycastle.crypto.encodings.OAEPEncoding;
-import org.spongycastle.crypto.engines.RSAEngine;
 import org.spongycastle.crypto.params.ParametersWithRandom;
 import org.spongycastle.crypto.params.RSAKeyParameters;
 import org.spongycastle.crypto.signers.PSSSigner;
@@ -40,10 +39,14 @@ import java.util.Map;
  */
 public class RSAOAEPPublicKey extends AbstractPublicKey {
 
-    /** The default hash algorithm for OAEP. */
+    /**
+     * The default hash algorithm for OAEP.
+     */
     public static final HashType DEFAULT_OAEP_HASH = HashType.SHA1;
 
-    /** The default MGF1 hash algorithm. */
+    /**
+     * The default MGF1 hash algorithm.
+     */
     public static final HashType DEFAULT_MGF1_HASH = HashType.SHA1;
 
     /**
@@ -54,15 +57,14 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
         final @NonNull RSAKeyParameters keyParameters;
         final @NonNull HashType oaepHashType;
         final @NonNull HashType mgf1HashType;
-        final @NonNull
-        SecureRandom rng;
+        final @NonNull SecureRandom rng;
 
         State(AsymmetricBlockCipher encryptor, RSAKeyParameters keyParameters,
               HashType oaepHashType, HashType mgf1HashType, SecureRandom rng) {
             this.encryptor = encryptor;
             this.keyParameters = keyParameters;
             this.oaepHashType = oaepHashType;
-            this.mgf1HashType = mgf1HashType ;
+            this.mgf1HashType = mgf1HashType;
             this.rng = rng;
         }
     }
@@ -91,7 +93,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
      * Hidden (package-private) initializer, for internal/unittest usage.
      */
     void init(byte[] n, byte[] e, HashType oaepHashType, HashType mgf1HashType, SecureRandom rng) {
-        RSAKeyParameters pubParameters = new RSAKeyParameters(
+        final RSAKeyParameters pubParameters = new RSAKeyParameters(
                 false, BigIntegers.fromUnsignedByteArray(n), BigIntegers.fromUnsignedByteArray(e));
 
         state = new State(makeEncryptor(mgf1HashType), pubParameters, oaepHashType, mgf1HashType, rng);
@@ -100,11 +102,11 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
 
     /**
      * Create the proper encryptor engine.
-     * */
+     */
     private AsymmetricBlockCipher makeEncryptor(HashType mgf1HashType) {
-        Digest dummyDigest = new SHA1Digest(); /* Only to satisfy interface. */
+        final Digest dummyDigest = new SHA1Digest(); // Only to satisfy interface.
 
-        return new OAEPEncoding(new RSAEngine(), dummyDigest, mgf1HashType.makeDigest(), new byte[0]);
+        return new OAEPEncoding(RSAOAEPEngine.make(), dummyDigest, mgf1HashType.makeDigest(), new byte[0]);
     }
 
     /**
@@ -152,12 +154,9 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     /**
      * Public-key encryption of the block.
      *
-     * @param plaintext
-     *         data to encrypt.
-     *
-     * @throws EncryptionError
-     *         if the key can't encrypt, data too large for the key or any other error that prevents
-     *         data to be encrypted.
+     * @param plaintext data to encrypt.
+     * @throws EncryptionError if the key can't encrypt, data too large for the key or any other error that prevents
+     *                         data to be encrypted.
      */
     @NonNull
     @Override
@@ -181,15 +180,10 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
      * The method must not throw exception if the signature is bad. e.g. improper, has wrong
      * structure and so on. Instead, it must return false.
      *
-     * @param input
-     *         source data
-     * @param signature
-     *         signature to check
-     *
+     * @param input     source data
+     * @param signature signature to check
      * @return true if the signature is valid, false if not.
-     *
-     * @throws IOException
-     *         failed to read the input stream (including empty stream, EOF at start)
+     * @throws IOException failed to read the input stream (including empty stream, EOF at start)
      */
     @NonNull
     @Override
@@ -199,7 +193,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
         if (state == null) {
             throw new IllegalStateException();
         } else {
-            Digest primaryDigest = hashType.makeDigest();
+            final Digest primaryDigest = hashType.makeDigest();
 
             if (saltLength == MAX_SALT_LENGTH) {
                 saltLength = getMaxSaltLength(getBitStrength(), primaryDigest.getDigestSize());
@@ -208,8 +202,8 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
                 throw new RuntimeException(String.format("Incorrect salt length %s", saltLength));
             }
 
-            Signer signatureChecker = new PSSSigner(
-                    new RSAEngine(),
+            final Signer signatureChecker = new PSSSigner(
+                    RSAOAEPEngine.make(),
                     primaryDigest, state.mgf1HashType.makeDigest(),
                     saltLength);
             signatureChecker.init(false, new ParametersWithRandom(state.keyParameters, state.rng));
@@ -257,7 +251,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
                 put("n", BigIntegers.asUnsignedByteArray(state.keyParameters.getModulus()));
                 put("e", BigIntegers.asUnsignedByteArray(state.keyParameters.getExponent()));
 
-                /* Optional fields. */
+                // Optional fields.
 
                 if (!state.mgf1HashType.equals(DEFAULT_MGF1_HASH)) {
                     put("mgf1Hash", state.mgf1HashType.getAlgorithmName());
@@ -269,11 +263,8 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     /**
      * Load object state from the hash
      *
-     * @param hash
-     *         with data
-     *
-     * @throws Error
-     *         if the data are not suitable to load the object state
+     * @param hash with data
+     * @throws Error if the data are not suitable to load the object state
      */
     @Override
     public void updateFromHash(Map<String, Object> hash) throws Error {
@@ -291,21 +282,20 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
                 throw new Error("e is not available");
             }
 
-            /* Optional fields. */
+            // Optional fields.
 
-            String mgf1HashName = (String) hash.getOrDefault("mgf1Hash", DEFAULT_MGF1_HASH.getAlgorithmName());
-            HashType mgf1HashType = HashType.getByAlgorithmName(mgf1HashName);
+            final String mgf1HashName = (String) hash.getOrDefault("mgf1Hash", DEFAULT_MGF1_HASH.getAlgorithmName());
+            final HashType mgf1HashType = HashType.getByAlgorithmName(mgf1HashName);
             if (mgf1HashType == null) {
                 throw new Error(String.format("MGF1 Hash %s is not available", mgf1HashName));
             }
 
-            /* Reuse previous rng if already defined (good for unit tests). */
-            SecureRandom rng = (this.state == null) ? new SecureRandom() : this.state.rng;
+            // Reuse previous rng if already defined (good for unit tests).
+            final SecureRandom rng = (this.state == null) ? new SecureRandom() : this.state.rng;
             this.init(n, e, DEFAULT_OAEP_HASH, mgf1HashType, rng);
 
         } catch (Exception e) {
             this.state = null;
-//            e.printStackTrace();
             throw new Error(String.format("Incorrect data for public key: %s", e.toString()));
         }
     }

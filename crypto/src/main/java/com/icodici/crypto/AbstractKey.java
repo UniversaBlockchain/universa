@@ -22,9 +22,9 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
- * All the functions that some key should be able to perform. The default implementation throws {@link
- * UnsupportedOperationException} - this is a valid behavoid for the funtion that the key is not able to perform. Well,
- * there could keys that do nothing too. Just for ;)
+ * All the functions that some key should be able to perform. The default implementation throws
+ * {@link UnsupportedOperationException} - this is a valid behaviour for the function that the key is not able to perform.
+ * Well, there could be keys that do nothing too. Just for ;)
  * <p>
  * Created by sergeych on 17.12.16.
  */
@@ -121,7 +121,7 @@ public abstract class AbstractKey implements Bindable {
     }
 
     /**
-     * Serialize key to the {@link Binder}. Due to the multiplatform nature of atttsta items, especially keys that are
+     * Serialize key to the {@link Binder}. Due to the multiplatform nature of attesta items, especially keys that are
      * often part of the {@link Capsule}, it is not possible to use default java serialization mechanics. Instead, we
      * serialize objects to Binders that can be effectively transmitted over the network and reconstructed on the any
      * platform.

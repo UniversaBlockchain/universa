@@ -1,0 +1,1 @@
+This is the modification of [bc-rsa](https://github.com/square/jna-gmp/tree/master/bc-rsa) project, adapted to work with SpongyCastle instead of BouncyCastle.

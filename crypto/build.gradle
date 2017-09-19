@@ -28,6 +28,7 @@ configurations {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile group: 'com.madgag.spongycastle', name: 'core', version: '1.54.0.0'
+    compile group: 'com.squareup.jnagmp', name: 'jnagmp', version: '2.0.0'
     compile project(':common_tools')
 
     // Checker framework

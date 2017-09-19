@@ -8,6 +8,7 @@
 package com.icodici.crypto.rsaoaep;
 
 import com.icodici.crypto.test.RSAOAEPTestVectors;
+import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
 
@@ -15,13 +16,13 @@ import static org.junit.Assert.assertArrayEquals;
  * Created by amyodov on 21.04.16.
  */
 public class RSAKeyPairTest {
-    /** Test vectors from RSA OAEP specification. */
+    // Test vectors from RSA OAEP specification.
     private static final RSAOAEPTestVectors rsaSpec = new RSAOAEPTestVectors();
 
     /**
      * Test {@link RSAKeyPair#fromExponents}.
      */
-    @org.junit.Test
+    @Test
     public void fromExponents() throws Exception {
         RSAKeyPair rsaPair = RSAKeyPair.fromExponents(rsaSpec.e, rsaSpec.p, rsaSpec.q);
         assertArrayEquals(rsaPair.n, rsaSpec.n);

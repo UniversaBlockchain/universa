@@ -7,6 +7,7 @@
 
 package com.icodici.crypto.rsaoaep;
 
+import org.junit.Test;
 import org.spongycastle.crypto.Digest;
 import org.spongycastle.crypto.digests.SHA512Digest;
 import org.spongycastle.util.encoders.Hex;
@@ -31,8 +32,8 @@ public class RSAOAEPDigestFactoryTest {
 
     /**
      * Test {@link RSAOAEPDigestFactory#getDigestByName}.
-     * */
-    @org.junit.Test
+     */
+    @Test
     public void getDigestByName() throws Exception {
         Digest dNoDigest1 = RSAOAEPDigestFactory.getDigestByName("");
         assertNull(dNoDigest1);
@@ -83,7 +84,7 @@ public class RSAOAEPDigestFactoryTest {
     /**
      * Test {@link RSAOAEPDigestFactory#cloneDigest}.
      * */
-    @org.junit.Test
+    @Test
     public void cloneDigest() throws Exception {
         Digest d1Orig = new SHA512Digest();
         Digest d1Clone = RSAOAEPDigestFactory.cloneDigest(d1Orig);

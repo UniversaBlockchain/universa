@@ -7,6 +7,8 @@
 
 package com.icodici.crypto.test;
 
+import com.icodici.crypto.rsaoaep.RSAOAEPEngine;
+import org.junit.Test;
 import org.spongycastle.crypto.AsymmetricBlockCipher;
 import org.spongycastle.crypto.AsymmetricCipherKeyPair;
 import org.spongycastle.crypto.Digest;
@@ -15,7 +17,6 @@ import org.spongycastle.crypto.digests.SHA224Digest;
 import org.spongycastle.crypto.digests.SHA256Digest;
 import org.spongycastle.crypto.digests.SHA512Digest;
 import org.spongycastle.crypto.encodings.OAEPEncoding;
-import org.spongycastle.crypto.engines.RSAEngine;
 import org.spongycastle.crypto.generators.RSAKeyPairGenerator;
 import org.spongycastle.crypto.params.ParametersWithRandom;
 import org.spongycastle.crypto.params.RSAKeyGenerationParameters;
@@ -51,7 +52,7 @@ public class OAEPEncodingTest {
     private static final int[] KEY_SIZES = {1024, 2048, 4096};
 
 
-    @org.junit.Test
+    @Test
     public void testConstants() throws Exception {
         assertEquals(oaepSpec.nInt, oaepSpec.pInt.multiply(oaepSpec.qInt));
         assertEquals(oaepSpec.dPInt, oaepSpec.dInt.remainder(oaepSpec.pInt.subtract(BigInteger.ONE)));
@@ -65,9 +66,9 @@ public class OAEPEncodingTest {
      *
      * @throws Exception
      */
-    @org.junit.Test
+    @Test
     public void encodeBlock() throws Exception {
-        AsymmetricBlockCipher encoder = new OAEPEncoding(new RSAEngine());
+        AsymmetricBlockCipher encoder = new OAEPEncoding(RSAOAEPEngine.make());
         encoder.init(true, new ParametersWithRandom(oaepSpec.pubParameters, oaepSpec.getRandSeed()));
         byte[] encoded = encoder.processBlock(oaepSpec.M, 0, oaepSpec.M.length);
         assertArrayEquals(encoded, oaepSpec.C);
@@ -79,9 +80,9 @@ public class OAEPEncodingTest {
      *
      * @throws Exception
      */
-    @org.junit.Test
+    @Test
     public void decodeBlock() throws Exception {
-        AsymmetricBlockCipher decoder = new OAEPEncoding(new RSAEngine());
+        AsymmetricBlockCipher decoder = new OAEPEncoding(RSAOAEPEngine.make());
         decoder.init(false, oaepSpec.privParameters);
         byte[] decoded = decoder.processBlock(oaepSpec.C, 0, oaepSpec.C.length);
         assertArrayEquals(decoded, oaepSpec.M);
@@ -119,9 +120,9 @@ public class OAEPEncodingTest {
      *
      * @throws Exception
      */
-    @org.junit.Test
+    @Test
     public void maskGeneratorFunction1() throws Exception {
-        OAEPEncoding oaepEncoder = new OAEPEncoding(new RSAEngine(), new SHA1Digest());
+        OAEPEncoding oaepEncoder = new OAEPEncoding(RSAOAEPEngine.make(), new SHA1Digest());
 
         byte[] dbMask_test = MGF(oaepEncoder, oaepSpec.seed, 107);
         assertArrayEquals(dbMask_test, oaepSpec.dbMask);
@@ -163,13 +164,13 @@ public class OAEPEncodingTest {
      *
      * @throws Exception
      */
-    @org.junit.Test
+    @Test
     public void randomEncodeDecode() throws Exception {
         RSAKeyPairGenerator keyGen = new RSAKeyPairGenerator();
 
         for (Digest digest : DIGESTS) {
             for (int i = 0; i < NUMBER_OF_RANDOM_ENCRYPTION_KEY_PAIRS; i++) {
-                /* Create key pair */
+                // Create key pair
                 SecureRandom rng = new SecureRandom();
                 int publicExponent = PUBLIC_EXPONENTS[rng.nextInt(PUBLIC_EXPONENTS.length)];
                 int keySize = KEY_SIZES[rng.nextInt(KEY_SIZES.length)];
@@ -182,7 +183,7 @@ public class OAEPEncodingTest {
                         privateKey = (RSAKeyParameters) keyPair.getPrivate();
 
                 assertEquals(keySize, publicKey.getModulus().bitLength());
-                /* though actually it is sufficient to keysize <= publicKey.getModulus().bitLength() */
+                // though actually it is sufficient to keysize <= publicKey.getModulus().bitLength()
 
                 int
                         maxMessageSize = keySize / 8 - 2 - 2 * digest.getDigestSize(),
@@ -190,25 +191,25 @@ public class OAEPEncodingTest {
                         messageSize = (maxMessageSize >= minMessageSize) ?
                                 rng.nextInt(maxMessageSize - minMessageSize + 1) + minMessageSize :
                                 0;
-                /* messageSize may become negative with too small RSA key size and too large digest. */
+                // messageSize may become negative with too small RSA key size and too large digest.
                 if (messageSize > 0) {
 
-                    /* For each key pair we do multiple encryption-decryption cycles */
+                    // For each key pair we do multiple encryption-decryption cycles
                     for (int j = 0; j < NUMBER_OF_RANDOM_ENCRYPTION_DECRYPTION_CYCLES_PER_KEY_PAIR; j++) {
-                        /* Create random message */
+                        // Create random message
                         byte[] message = new byte[messageSize];
                         rng.nextBytes(message);
 
                         AsymmetricBlockCipher
-                                encoder = new OAEPEncoding(new RSAEngine(), digest),
-                                decoder = new OAEPEncoding(new RSAEngine(), digest);
+                                encoder = new OAEPEncoding(RSAOAEPEngine.make(), digest),
+                                decoder = new OAEPEncoding(RSAOAEPEngine.make(), digest);
                         encoder.init(true, publicKey);
                         decoder.init(false, privateKey);
 
                         byte[] encoded = encoder.processBlock(message, 0, message.length);
                         byte[] decoded = decoder.processBlock(encoded, 0, encoded.length);
 
-                        /* Finally, test the encoding/decoding cycle */
+                        // Finally, test the encoding/decoding cycle
                         String assertMessage = String.format(
                                 "Digest %s,\n message %s,\n public key %s / %s,\n private key %s / %s",
                                 digest, Hex.toHexString(message), publicKey.getExponent(), publicKey.getModulus(), privateKey.getExponent(), privateKey.getModulus());

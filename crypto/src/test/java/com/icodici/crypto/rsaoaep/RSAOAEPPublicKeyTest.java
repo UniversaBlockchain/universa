@@ -13,6 +13,7 @@ import com.icodici.crypto.HashType;
 import com.icodici.crypto.test.RSAOAEPTestVectors;
 import com.icodici.crypto.test.RSASSAPSSTestVectors;
 import net.sergeych.tools.Hashable;
+import org.junit.Test;
 import org.spongycastle.crypto.AsymmetricCipherKeyPair;
 import org.spongycastle.crypto.generators.RSAKeyPairGenerator;
 import org.spongycastle.crypto.params.RSAKeyGenerationParameters;
@@ -61,7 +62,7 @@ public class RSAOAEPPublicKeyTest {
      * {@link RSAOAEPPublicKey#isInitialized},
      * {@link RSAOAEPPublicKey#algorithmTag}.
      */
-    @org.junit.Test
+    @Test
     public void basicMethods() throws Exception {
         AbstractPublicKey goodPublicKey1 = oaepSpec.getPublicKey();
 
@@ -74,9 +75,9 @@ public class RSAOAEPPublicKeyTest {
     /**
      * Test {@link RSAOAEPPublicKey#encrypt}.
      */
-    @org.junit.Test
+    @Test
     public void encrypt() throws Exception {
-        /* Test on RSA vectors. */
+        // Test on RSA vectors.
         AbstractPublicKey rsaPublicKey = oaepSpec.getPublicKey();
         ((RSAOAEPPublicKey) rsaPublicKey).resetEncryptor();
         assertArrayEquals(rsaPublicKey.encrypt(oaepSpec.M), oaepSpec.C);
@@ -85,9 +86,9 @@ public class RSAOAEPPublicKeyTest {
     /**
      * Test {@link RSAOAEPPublicKey#checkSignature}.
      */
-    @org.junit.Test
+    @Test
     public void checkSignature() throws Exception {
-        /* Test sample RSA vectors. */
+        // Test sample RSA vectors.
         AbstractPublicKey rsaPublicKey = pssSpec.getPublicKey();
         AbstractPrivateKey rsaPrivateKey = pssSpec.getPrivateKey();
         assertArrayEquals(
@@ -103,7 +104,7 @@ public class RSAOAEPPublicKeyTest {
     /**
      * Test {@link RSAOAEPPublicKey#checkSignature} with non-usual salt.
      */
-    @org.junit.Test
+    @Test
     public void checkSignatureWithCustomSalt() throws Exception {
         byte[] e = Hex.decode("010001");
         byte[] p = Hex.decode("cd28ffefa9150bd3a8e9b0410e411920ed853c797e41038e9325125bb5fec3258eaba816fcc71ba86a2489da965d825fc0a3dabb31f5190ee80c2a0e7a73c9122e099b8a00c0a819e779e0b2cb07ca71acfb6209d8d607eb58ed314529eced00de559f3201bd3346a64c119cb92290d486a53f77087a232ea3fdb37946ad8e6dc6498da8defc63c30238d2622bcd58f3186e6e3d20f9b2872fd32127236d6eb4b57fa297c9814b2a3881fe2a538ed8d459f7f04faddbffc143f6e02b37d6b648b3c9df51aa7f2425e470ffe105d583c50d1a2da2c89f913a3af90a71ae2fafaff900e09ed4425f2a1c752b7e4f0c54b15640ae9adfd1c9cfcd75717d45a71381");
@@ -117,35 +118,33 @@ public class RSAOAEPPublicKeyTest {
         assertEquals(publicKey.state.keyParameters.getModulus(), BigIntegers.fromUnsignedByteArray(nExpected));
 
         byte[] message = Hex.decode("4655424152206d65616e73204675636b6564205570204265796f756420416c6c205265636f676e6974696f6e");
-        /* Signature using SHA-1 */
+        // Signature using SHA-1
         byte[] signatureExpected = Hex.decode("78def239f5d4809c0557d11407c4825e6afb261873ab9f5d3e3fc22d4faa6c358b81c96d486ae2dbc8ad5ccecec6f49a0d5207579444b85ee4ec9a2d06a737a87717083282c4cf4af1ecc14a4fdfbdaa0d53e139fc77226bc4a01fe55bbc8a29403969911c3599508aaa8701f064b95e7e64b349e320724d6c9e2af5a8556d253bed772fb659bbee0e0a6dfe205d58f71f049b023d9ce8b278eaf3141cec06aab46e78cde55d3c403784819c34741deb681bdc2cee01c41e549f17aeb59ca80b8f045de1cf4ff983599e422bce2e68903d717291d897cf39961577e5fc9af9619379790628dbf369fee707a6a4daa3211ff840b46807351204acb60acc528099f851b8a76b4eaae5f84715ecc971c296f9cf3e058badc544a01e7d1dbef1c353d8704c6cffea9398e7ee6fda895d0dabc8ac18ed88c9497664c867e93e56fbebd4436eb3efa755f8fac3fa627e795be43d92d904fe0a9af989a6c504b1e11617d45b75cb5166795e58e69dfed4bf800f8088b0b48e12600c7f460bdaf34a1999d47ce3f5e11343d1e2b1797fc744aab9fcc938d08f70f91dd30c937e0515f8eb03e1a034044c33fbfbed83df5a1b7145ef0fcbb0f41f909793bd23bd964af1c5a53f72ef7b5920cd77d25cc2d9a7a38cbd86cbb3314222ae1ea3432f1370aefb1ea5780630b5f41c0cd408391537b05e242d0c7e0e6dadfd1de2c6c9500298c3");
         int expectedSaltLength = 490;
 
-        /* If we don't specify the salt size, it should be maximum possible; in our specific case, it's 490. */
+        // If we don't specify the salt size, it should be maximum possible; in our specific case, it's 490.
         assertTrue(publicKey.checkSignature(message, signatureExpected, HashType.SHA1, expectedSaltLength));
         assertTrue(publicKey.checkSignature(message, signatureExpected, HashType.SHA1));
-        /* It should NOT be 0 by default! */
+        // It should NOT be 0 by default!
         assertFalse(publicKey.checkSignature(message, signatureExpected, HashType.SHA1, 0));
-        /*
-         * Nevertheless, a signature made with the default parameters
-         * should be checkable with the default parameters.
-         * */
+        // Nevertheless, a signature made with the default parameters
+        // should be checkable with the default parameters.
         assertTrue(publicKey.checkSignature(message, privateKey.sign(message, HashType.SHA1), HashType.SHA1));
     }
 
     /**
      * Test {@link RSAOAEPPublicKey#toHash}.
      */
-    @org.junit.Test
+    @Test
     public void toHash() throws Exception {
-        /* Test sample RSA vectors. */
+        // Test sample RSA vectors.
         AbstractPublicKey rsaPublicKey = oaepSpec.getPublicKey();
         Map mapRSA = rsaPublicKey.toHash();
         assertArrayEquals((byte[]) mapRSA.get("n"), oaepSpec.n);
         assertArrayEquals((byte[]) mapRSA.get("e"), oaepSpec.e);
-        assertFalse(mapRSA.containsKey("mgf1Hash")); /* SHA-1 is the default value */
+        assertFalse(mapRSA.containsKey("mgf1Hash")); // SHA-1 is the default value
 
-        /* Test random public key. */
+        // Test random public key.
         AbstractPublicKey goodPublicKey1 = new RSAOAEPPublicKey(
                 BigIntegers.asUnsignedByteArray(randomPublicKey1.getModulus()),
                 BigIntegers.asUnsignedByteArray(randomPublicKey1.getExponent()),
@@ -159,9 +158,9 @@ public class RSAOAEPPublicKeyTest {
     /**
      * Test {@link RSAOAEPPublicKey#toHash} where some data is default.
      */
-    @org.junit.Test
+    @Test
     public void toHashWithDefaultData() throws Exception {
-        /* Test random public key. */
+        // Test random public key.
         AbstractPublicKey goodPublicKey1 = new RSAOAEPPublicKey(
                 BigIntegers.asUnsignedByteArray(randomPublicKey1.getModulus()),
                 BigIntegers.asUnsignedByteArray(randomPublicKey1.getExponent()),
@@ -169,10 +168,8 @@ public class RSAOAEPPublicKeyTest {
         Map map1 = goodPublicKey1.toHash();
         assertArrayEquals((byte[]) map1.get("n"), BigIntegers.asUnsignedByteArray(randomPublicKey1.getModulus()));
         assertArrayEquals((byte[]) map1.get("e"), BigIntegers.asUnsignedByteArray(randomPublicKey1.getExponent()));
-        /*
-        With the default values (SHA-256 for hash, SHA-1 for MGF1),
-        hash and mgf1Hash fields should be missing from the hash.
-        */
+        // With the default values (SHA-256 for hash, SHA-1 for MGF1),
+        // hash and mgf1Hash fields should be missing from the hash.
         assertFalse(map1.containsKey("hash"));
         assertFalse(map1.containsKey("mgf1Hash"));
     }
@@ -181,7 +178,7 @@ public class RSAOAEPPublicKeyTest {
      * Test {@link RSAOAEPPublicKey#updateFromHash} on success scenarios,
      * using RSA spec vectors.
      */
-    @org.junit.Test
+    @Test
     public void updateFromHashGoodRSASpec() throws Exception {
         Map mapRSA = new HashMap<String, Object>() {{
             put("n", oaepSpec.n);
@@ -192,17 +189,15 @@ public class RSAOAEPPublicKeyTest {
         AbstractPublicKey rsaPublicKey = new RSAOAEPPublicKey();
         rsaPublicKey.updateFromHash(mapRSA);
 
-        /*
-        We've read the public key from hash;
-        but, to test it over the RSA spec vectors,
-        we need to hack into the state.rng (and substitute it with our custom one),
-        even though it is declared as final.
-        */
+        // We've read the public key from hash;
+        // but, to test it over the RSA spec vectors,
+        // we need to hack into the state.rng (and substitute it with our custom one),
+        // even though it is declared as final.
         RSAOAEPPublicKey.State state = ((RSAOAEPPublicKey) rsaPublicKey).state;
         Field rngField = RSAOAEPPublicKey.State.class.getDeclaredField("rng");
         rngField.setAccessible(true);
         rngField.set(state, oaepSpec.getRandSeed());
-        /* Now we can even test the encryption on the RSA spec vectors. */
+        // Now we can even test the encryption on the RSA spec vectors.
 
         assertTrue(rsaPublicKey.isInitialized());
         assertEquals(rsaPublicKey.getBitStrength(), 1024);
@@ -214,7 +209,7 @@ public class RSAOAEPPublicKeyTest {
      * Test {@link RSAOAEPPublicKey#updateFromHash} on success scenarios,
      * on some sample vector.
      */
-    @org.junit.Test
+    @Test
     public void updateFromHashGoodSample() throws Exception {
         Map map = new HashMap<String, Object>() {{
             put("n", Hex.decode("ad9a9c60d98ee0463f7629675703b23ed4b330ae851c278233a105d120713a6286945f71e6d46f8d9ad0d30e4551a5de8bb9d9a74750645c579c3902266aefecdc111e032048a84ea76220bc570c5cade835909546029a65baff6d29c4207c4b918ff524d80812ecfda388c8cd4ac1878699193040a075bcd4b3987fcbe749bbdfc44665616ff6789f7363b765eb72530e17698d9bd778fd476b3aefc6bce6cec5d44c52e4acb8981390af5174bcb84e3a17e719ba58b93d13bc929d48dbb78d8f5d85002b281159f10e4b801627d3f8acfab100bd2c6380d04ca08bcb9227d84fe282150d71f0660fbbff744800dc6466d47cf5c22d03bac3c0d73dac9bc2a020cb51ca229448c317e73e8f97125a5ff8568b6af0b493b822096021ee1c7eed6d0ad6164e0798055b3b24404983728c2923e9d959c655b2e138650de0ffb5a74b7e612e764fb0e3104ceb5b8df3aaae80a57dbb8f7c305503a51253fc0f1f7a82057c6af262a484f7243f69046c946fd8fc93d71ad90315bfb42467c826dad0253ec83e0ed9b3fa3dca8162f5c691a9e91f69b890b04138de12e0657d8b044f77b455d3ff4257c52e1a33e6792c7a64d9bd8009d79a5fe73dadcd9a80a2f5f51b1c80e6ee41928f0b08a1e9f5d552ec2e5380de554dac97d76aeac2000c4f992eb582532448641d89bbee2334e51d76a3952119093eb5baa545bf1beabd49f5"));
@@ -227,7 +222,7 @@ public class RSAOAEPPublicKeyTest {
         assertTrue(publicKey.isInitialized());
         assertEquals(publicKey.getBitStrength(), 4096);
 
-        RSAOAEPPublicKey.State publicKeyState = ((RSAOAEPPublicKey)publicKey).state;
+        RSAOAEPPublicKey.State publicKeyState = ((RSAOAEPPublicKey) publicKey).state;
         assertEquals(publicKeyState.oaepHashType, HashType.SHA1); /* Default for now */
         assertEquals(publicKeyState.mgf1HashType, HashType.SHA512);
     }
@@ -236,12 +231,12 @@ public class RSAOAEPPublicKeyTest {
      * Test {@link RSAOAEPPublicKey#updateFromHash} on success scenarios,
      * on some sample vector where some data is default.
      */
-    @org.junit.Test
+    @Test
     public void updateFromHashGoodSampleWithDefaultData() throws Exception {
         Map map = new HashMap<String, byte[]>() {{
             put("n", Hex.decode("ad9a9c60d98ee0463f7629675703b23ed4b330ae851c278233a105d120713a6286945f71e6d46f8d9ad0d30e4551a5de8bb9d9a74750645c579c3902266aefecdc111e032048a84ea76220bc570c5cade835909546029a65baff6d29c4207c4b918ff524d80812ecfda388c8cd4ac1878699193040a075bcd4b3987fcbe749bbdfc44665616ff6789f7363b765eb72530e17698d9bd778fd476b3aefc6bce6cec5d44c52e4acb8981390af5174bcb84e3a17e719ba58b93d13bc929d48dbb78d8f5d85002b281159f10e4b801627d3f8acfab100bd2c6380d04ca08bcb9227d84fe282150d71f0660fbbff744800dc6466d47cf5c22d03bac3c0d73dac9bc2a020cb51ca229448c317e73e8f97125a5ff8568b6af0b493b822096021ee1c7eed6d0ad6164e0798055b3b24404983728c2923e9d959c655b2e138650de0ffb5a74b7e612e764fb0e3104ceb5b8df3aaae80a57dbb8f7c305503a51253fc0f1f7a82057c6af262a484f7243f69046c946fd8fc93d71ad90315bfb42467c826dad0253ec83e0ed9b3fa3dca8162f5c691a9e91f69b890b04138de12e0657d8b044f77b455d3ff4257c52e1a33e6792c7a64d9bd8009d79a5fe73dadcd9a80a2f5f51b1c80e6ee41928f0b08a1e9f5d552ec2e5380de554dac97d76aeac2000c4f992eb582532448641d89bbee2334e51d76a3952119093eb5baa545bf1beabd49f5"));
             put("e", Hex.decode("010001"));
-            /* Not putting any of the optional fields. */
+            // Not putting any of the optional fields.
         }};
         AbstractPublicKey publicKey = new RSAOAEPPublicKey();
         publicKey.updateFromHash(map);
@@ -249,7 +244,7 @@ public class RSAOAEPPublicKeyTest {
         assertTrue(publicKey.isInitialized());
         assertEquals(publicKey.getBitStrength(), 4096);
 
-        RSAOAEPPublicKey.State publicKeyState = ((RSAOAEPPublicKey)publicKey).state;
+        RSAOAEPPublicKey.State publicKeyState = ((RSAOAEPPublicKey) publicKey).state;
         assertEquals(publicKeyState.oaepHashType, HashType.SHA1);
         assertEquals(publicKeyState.mgf1HashType, HashType.SHA1);
     }
@@ -257,11 +252,10 @@ public class RSAOAEPPublicKeyTest {
     /**
      * Test {@link RSAOAEPPublicKey#updateFromHash} on failure scenarios.
      */
-    @org.junit.Test
+    @Test
     public void updateFromHashBad() throws Exception {
-        /* No data in map */
-        Map badMapNoData = new HashMap<String, byte[]>() {{
-        }};
+        // No data in map
+        Map badMapNoData = new HashMap<String, byte[]>();
         AbstractPublicKey publicKeyNoData = new RSAOAEPPublicKey();
         try {
             publicKeyNoData.updateFromHash(badMapNoData);
@@ -270,7 +264,7 @@ public class RSAOAEPPublicKeyTest {
         }
         assertFalse(publicKeyNoData.isInitialized());
 
-        /* Partial data in map */
+        // Partial data in map
         Map badMapPartialData = new HashMap<String, byte[]>() {{
             put("hash", Hex.decode("5348412d353132"));
             put("mgf1Hash", Hex.decode("5348412d323536"));
@@ -283,7 +277,7 @@ public class RSAOAEPPublicKeyTest {
         }
         assertFalse(publicKeyPartialData.isInitialized());
 
-        /* Bad string */
+        // Bad string
         Map badMapBadString = new HashMap<String, byte[]>() {{
             put("n", Hex.decode("ad9a9c60d98ee0463f7629675703b23ed4b330ae851c278233a105d120713a6286945f71e6d46f8d9ad0d30e4551a5de8bb9d9a74750645c579c3902266aefecdc111e032048a84ea76220bc570c5cade835909546029a65baff6d29c4207c4b918ff524d80812ecfda388c8cd4ac1878699193040a075bcd4b3987fcbe749bbdfc44665616ff6789f7363b765eb72530e17698d9bd778fd476b3aefc6bce6cec5d44c52e4acb8981390af5174bcb84e3a17e719ba58b93d13bc929d48dbb78d8f5d85002b281159f10e4b801627d3f8acfab100bd2c6380d04ca08bcb9227d84fe282150d71f0660fbbff744800dc6466d47cf5c22d03bac3c0d73dac9bc2a020cb51ca229448c317e73e8f97125a5ff8568b6af0b493b822096021ee1c7eed6d0ad6164e0798055b3b24404983728c2923e9d959c655b2e138650de0ffb5a74b7e612e764fb0e3104ceb5b8df3aaae80a57dbb8f7c305503a51253fc0f1f7a82057c6af262a484f7243f69046c946fd8fc93d71ad90315bfb42467c826dad0253ec83e0ed9b3fa3dca8162f5c691a9e91f69b890b04138de12e0657d8b044f77b455d3ff4257c52e1a33e6792c7a64d9bd8009d79a5fe73dadcd9a80a2f5f51b1c80e6ee41928f0b08a1e9f5d552ec2e5380de554dac97d76aeac2000c4f992eb582532448641d89bbee2334e51d76a3952119093eb5baa545bf1beabd49f5"));
             put("e", Hex.decode("010001"));
