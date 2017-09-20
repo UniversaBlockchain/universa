@@ -3,7 +3,6 @@ package com.icodici.universa.node.benchmark;
 import com.icodici.universa.contract.Role;
 import com.icodici.universa.node.PostgresLedgerTest;
 import net.sergeych.tools.BufferedLogger;
-import org.junit.Test;
 
 import java.util.Map;
 import java.util.Random;
@@ -14,7 +13,7 @@ public class TPSTestTest {
     private static final int nThreads = 64;
     private static final int repetitions = 10;
 
-    @Test
+//    @Test
     public void startStressTest() throws Exception {
         TPSTest tps = new TPSTest(
                 contractsPerStep,

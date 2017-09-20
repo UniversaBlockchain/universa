@@ -107,7 +107,9 @@ public class BitrustedConnector implements Farcall.Target, Connector {
                             "nonce", myNonce
                     ).waitSuccess()
             );
+            // this is an error that
             // we can't process hello answer until other side will send us it's hello
+            // we must be able to do it
             ready.await();
             processHelloAnswer(result);
             return true;

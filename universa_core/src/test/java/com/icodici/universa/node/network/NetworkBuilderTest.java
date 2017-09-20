@@ -46,7 +46,7 @@ public class NetworkBuilderTest {
     }
 
 
-    @Test
+//    @Test
     public void buildNetwork() throws Exception {
 
         Average a = new Average();
