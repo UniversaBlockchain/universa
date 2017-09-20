@@ -23,29 +23,27 @@
     <autoscroll-to-editor value="false" />
     <autoscroll-from-editor value="true" />
     <show-object-properties value="true" />
-    <loaded-nodes />
+    <loaded-nodes>
+      <connection connection-id="5c68b755-6fb2-4962-811a-cd615e94169c">
+        <schema name="information_schema" object-types="function" />
+        <schema name="pg_catalog" object-types="function, table, view" />
+        <schema name="public" object-types="column, constraint, function, index, sequence, table, dataset trigger, view" />
+      </connection>
+    </loaded-nodes>
   </component>
   <component name="DBNavigator.Project.DatabaseConsoleManager">
     <connection id="5c68b755-6fb2-4962-811a-cd615e94169c">
-      <console name="universa_node" type="STANDARD"><![CDATA[CREATE OR REPLACE FUNCTION sr_find_or_create(hash_id bytea)
-RETURNS SETOF ledger AS $$
-BEGIN
-    INSERT INTO ledger(hash, state, created_at)
-    VALUES($1,1,extract(epoch from now()))
-    ON CONFLICT (hash) DO NOTHING;
+      <console name="universa_node" type="STANDARD"><![CDATA[delete from ledger where id in (select id from ledger order by id limit 10000);
 
-    RETURN QUERY SELECT * FROM ledger WHERE hash = $1;
-END;
-$$
-LANGUAGE 'plpgsql';
-
-select * from ledger where hash = '\x2ca93916ec53606beeba6e6a8833140d65164cdef99c327ca74c32cd6389d9aeb34078557cd895ab6ecd7f5f23423d46b7f63760a81b947ffddbaa3c2df77c52';
-
-select * from sr_find_or_create('\x2ca93916ec53606beeba6e6a8833140d65164cdef99c327ca74c32cd6389d9aeb34078557cd895ab6ecd7f5f23423d46b7f63760a81b947ffddbaa3c2df77c51');]]></console>
+select count(*) from ledger;]]></console>
     </connection>
   </component>
   <component name="DBNavigator.Project.DatasetFilterManager">
-    <filter-list connection-id="5c68b755-6fb2-4962-811a-cd615e94169c" dataset="public.ledger" active-filter-id="" />
+    <filter-list connection-id="5c68b755-6fb2-4962-811a-cd615e94169c" dataset="public.ledger" active-filter-id="EMPTY_FILTER">
+      <filter id="3d6e07e4-5ebc-4ebc-9b5f-7a79f873ec30" name="1233" temporary="false" custom-name="false" type="basic" join-type="AND">
+        <condition column="id" operator="=" value="1233" active="true" />
+      </filter>
+    </filter-list>
     <filter-list connection-id="5c68b755-6fb2-4962-811a-cd615e94169c" dataset="public.vars" active-filter-id="EMPTY_FILTER" />
   </component>
   <component name="DBNavigator.Project.EditorStateManager">
