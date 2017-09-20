@@ -15,32 +15,14 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.*;
 
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.is;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 
 public class BitrustedConnectorTest {
     ExecutorService pool = Executors.newCachedThreadPool();
-
-    @Test
-    public void testExceptinosOutOfExecutor() throws Exception {
-        ExecutorService service = Executors.newCachedThreadPool();
-        Future<Integer> future = service.submit(() -> {
-            throw new IOException("just a test");
-        });
-        try {
-            future.get();
-            fail();
-        }
-        catch(Exception e) {
-            assertThat(e.getMessage().indexOf("just a test"),is(greaterThan(0)) );
-        }
-    }
 
     @Test
     public void timoutOnConnection() throws Exception {

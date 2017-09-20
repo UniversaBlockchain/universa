@@ -15,10 +15,10 @@ import net.sergeych.farcall.Connector;
 import net.sergeych.farcall.Farcall;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -33,13 +33,14 @@ import com.icodici.universa.node.network.BitrustedConnector.Error;
 
 public class BitrustedConnector implements Farcall.Target, Connector {
 
-    private static final int MY_VERSION = 1;
+    private static final int MY_VERSION = 2;
     private static LogPrinter log = new LogPrinter("BRCN");
     private static ExecutorService pool = Executors.newCachedThreadPool();
+
     private final PrivateKey myKey;
     private final SymmetricKey mySessionKey = new SymmetricKey();
     private final byte[] myNonce = Do.randomBytes(32);
-    private int handshakeTimeoutMillis = 500000;
+    private int handshakeTimeoutMillis = 2000;
     private Farcall connection;
     private PublicKey remoteKey;
     private SymmetricKey remoteSessionKey;
@@ -54,6 +55,7 @@ public class BitrustedConnector implements Farcall.Target, Connector {
      * @param myKey
      * @param input
      * @param output
+     *
      * @throws IOException
      */
     public BitrustedConnector(PrivateKey myKey,
@@ -107,25 +109,22 @@ public class BitrustedConnector implements Farcall.Target, Connector {
                             "nonce", myNonce
                     ).waitSuccess()
             );
-            // this is an error that
-            // we can't process hello answer until other side will send us it's hello
-            // we must be able to do it
-            ready.await();
             processHelloAnswer(result);
+            ready.await();
             return true;
         });
 
         try {
             initDone.get(handshakeTimeoutMillis, TimeUnit.MILLISECONDS);
             connected = true;
-        } catch (DeferredResult.Error | ExecutionException e) {
+        } catch (InterruptedException | TimeoutException e) {
+            initDone.cancel(true);
+            throw (e);
+        } catch (Exception e) {
 //            log.wtf("initialization failed", e);
 //            e.printStackTrace();
             initDone.cancel(true);
             throw new Error("initialization failed", e.getCause());
-        } catch (InterruptedException | TimeoutException e) {
-            initDone.cancel(true);
-            throw (e);
         }
     }
 
@@ -136,8 +135,7 @@ public class BitrustedConnector implements Farcall.Target, Connector {
     private void processHelloAnswer(Binder result) throws EncryptionError {
         byte[] data = result.getBinaryOrThrow("data");
         byte[] signature = result.getBinaryOrThrow("signature");
-        if( remoteKey == null )
-            throw new IllegalStateException("remote key must be set now");
+        setRemoteKey(result.getBinaryOrThrow("public_key"));
         if (!remoteKey.verify(data, signature, HashType.SHA256))
             throw new EncryptionError("bad signature in hello answer");
         Binder answer = Boss.unpack(myKey.decrypt(data));
@@ -150,7 +148,9 @@ public class BitrustedConnector implements Farcall.Target, Connector {
      * The handshake and transport command processing
      *
      * @param command
+     *
      * @return
+     *
      * @throws Exception
      */
     @Override
@@ -195,11 +195,8 @@ public class BitrustedConnector implements Farcall.Target, Connector {
 
         // checking parameters
         byte[] nonce = params.getBinaryOrThrow("nonce");
+        setRemoteKey(params.getBinaryOrThrow("public_key"));
 
-        byte[] packedKey = params.getBinaryOrThrow("public_key");
-        if (isTrustedKey != null && !isTrustedKey.test(packedKey))
-            throw new IllegalArgumentException("public key is not accepted");
-        remoteKey = new PublicKey(packedKey);
         remoteSessionKey = new SymmetricKey(params.getBinaryOrThrow("session_key"));
 
         // We intentionally do not use capsule here to improve network speed
@@ -211,7 +208,11 @@ public class BitrustedConnector implements Farcall.Target, Connector {
         byte[] signature = myKey.sign(result, HashType.SHA256);
         ready.fire(null);
 //        log.d(toString() + " returning hello");
-        return Binder.fromKeysValues("data", result, "signature", signature);
+        return Binder.fromKeysValues(
+                "data", result,
+                "signature", signature,
+                "public_key", myKey.getPublicKey().pack()
+        );
     }
 
     public int getHandshakeTimeoutMillis() {
@@ -228,6 +229,31 @@ public class BitrustedConnector implements Farcall.Target, Connector {
 
     public SymmetricKey getRemoteSessionKey() {
         return remoteSessionKey;
+    }
+
+    /**
+     * Unpack the remote public key, check if it is trusted, if the {@link #remoteKey} is null, saves new value,
+     * otherwise checks that it is the same key, or throws {@link IllegalArgumentException}.
+     * <p>
+     * Set the remote key and accurately check that it was not spoofed, e.g. only one key could be set event several
+     * times. Because of the p2p nature of the connection we have no guarantee which way the remote key will arrive
+     * first (in the "hello" command from the remote or from the hello answer from the remote), this method allows to
+     * set the remote key in right mode.
+     *
+     * @param packedKey packed remoteKey
+     *
+     * @throws IllegalArgumentException if the {@link #remoteKey} is already set to a different key.
+     */
+    public void setRemoteKey(@NonNull byte[] packedKey) throws EncryptionError {
+        if (isTrustedKey != null && !isTrustedKey.test(packedKey))
+            throw new IllegalArgumentException("public key is not accepted");
+        PublicKey rk = new PublicKey(packedKey);
+        synchronized (ready) {
+            if (remoteKey == null)
+                remoteKey = rk;
+            else if (!rk.equals(remoteKey))
+                throw new IllegalArgumentException("remote key already set to a different value");
+        }
     }
 
     class Error extends IOException {
