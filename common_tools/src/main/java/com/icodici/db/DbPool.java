@@ -9,7 +9,13 @@ public class DbPool implements AutoCloseable {
     private final String connectionString;
     private final Properties properties;
     private final int maximumConnections;
-    private int total = 0;
+    private volatile int total = 0;
+
+    /**
+     * This the per-thread cache of the DB connection.
+     * TODO: should the connection be blindly taken from this cache?
+     * Or only if it is not used already in some other transaction?
+     */
     private ThreadLocal<PooledDb> threadDb = new ThreadLocal<>();
 
     @Override
@@ -39,14 +45,18 @@ public class DbPool implements AutoCloseable {
             PooledDb db = threadDb.get();
             // One thread - one connection, e.g. transactions work with the same db and
             // all other calls in the same thread use same pooled instance
-            if( db != null )
+            if( db != null ) {
+                // TODO: uncomment the next assert line to spot every transaction-inside-transaction.
+                // This will definitely break some unit tests until the code is change to never cause
+                // transaction-inside-transaction DB access!
+                // assert !db.isInTransaction;
                 return db;
+            }
 
             PooledDb pdb = total >= maximumConnections ? pool.take() : pool.poll();
             if( pdb != null ) {
 //                System.out.println("take " + pdb + " pool " + this + " left " + pool.maximumConnections);
-            }
-            else {
+            } else {
                 pdb = new PooledDb(this, connectionString, properties);
                 total++;
 //                System.out.println("new  " + pdb + " pool " + this + " left " + pool.size()+" total "+total);
@@ -65,10 +75,10 @@ public class DbPool implements AutoCloseable {
 
 
     public <T> T execute(DbConsumer<T> consumer) throws Exception {
-        try(PooledDb pdb = db()) { return consumer.accept(pdb); }
+        try (PooledDb pdb = db()) { return consumer.accept(pdb); }
     }
 
     public void execute(VoidDbConsumer consumer) throws Exception {
-        try(PooledDb pdb = db()) { consumer.accept(pdb); }
+        try (PooledDb pdb = db()) { consumer.accept(pdb); }
     }
 }

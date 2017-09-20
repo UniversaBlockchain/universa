@@ -51,7 +51,7 @@ public class PostgresLedger implements Ledger {
     }
 
     /**
-     * Get the instance of the {@link Db} for a calling thread. Safe to call repeatedly (retuns the same instance per
+     * Get the instance of the {@link Db} for a calling thread. Safe to call repeatedly (returns the same instance per
      * thread).
      */
     public final <T> T inPool(DbPool.DbConsumer<T> consumer) throws Exception {
@@ -172,8 +172,7 @@ public class PostgresLedger implements Ledger {
             // as Rollback exception is instanceof Db.Rollback, it will work as supposed by default:
             // rethrow unchecked exceotions and return null on rollback.
             try (Db db = dbPool.db()) {
-                return
-                        db.transaction(() -> callable.call());
+                return db.transaction(() -> callable.call());
             }
 //            }
         });
@@ -202,8 +201,9 @@ public class PostgresLedger implements Ledger {
         if (stateRecord.getLedger() == null) {
             stateRecord.setLedger(this);
         } else if (stateRecord.getLedger() != this)
-            throw new IllegalStateException("can't save with  adifferent ledger (make a copy!)");
+            throw new IllegalStateException("can't save with a different ledger (make a copy!)");
 
+        // TODO: probably, it should take a PooledDb as an argument and reuse it
         try (PooledDb db = dbPool.db()) {
             if (stateRecord.getRecordId() == 0) {
                 try (

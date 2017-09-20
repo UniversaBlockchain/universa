@@ -391,7 +391,7 @@ class Elections {
                 lockedToCreate.clear();
                 record.setState(newState);
                 record.setExpiresAt(expiration);
-                record.save();
+                record.save(); // TODO: current implementation will cause an inner dbPool.db() invokation
                 return null;
             });
         }
