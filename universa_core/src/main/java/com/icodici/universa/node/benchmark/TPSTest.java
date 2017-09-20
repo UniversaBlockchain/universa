@@ -82,6 +82,7 @@ public class TPSTest {
                 ArrayList<Future<?>> tasks = new ArrayList<>();
                 contracts.forEach((c) -> {
                     tasks.add(es.submit(() -> {
+//                        new Contract(c.getLastSealedBinary());
                         ItemResult itemResult = node.registerItemAndWait(c);
                         if (!itemResult.state.isApproved()) {
                             logger.log("Error: contract is not approved");
@@ -106,5 +107,9 @@ public class TPSTest {
         }
         logger.log("----- TOTAL TPS: "+t);
         logger.log("--- LEDGER SIZE: "+ledger.countRecords());
+    }
+
+    public PostgresLedger getLedger() {
+        return ledger;
     }
 }

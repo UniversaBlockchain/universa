@@ -7,8 +7,10 @@
 
 package com.icodici.universa.node.benchmark;
 
+import com.icodici.db.Db;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
+import com.icodici.universa.node.PostgresLedger;
 import fi.iki.elonen.NanoHTTPD;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
@@ -18,6 +20,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -135,12 +138,23 @@ public class TPSBenchmarkServer {
             String dbPath = params.getStringOrThrow("database");
             System.out.println("database connection string found");
             TPSTest test = new TPSTest(10000, dbPath, 128, 10, null);
+//            try(Db db = test.getLedger().getDb() ) {
+//                db.update("DELETE FROM ledger");
+//            }
             test.setLogger(logger);
+            PostgresLedger pl = test.getLedger();
             while (true) {
                 logger.log("statring benchmark seqience");
                 test.run();
-                System.out.println("sequence fininshed, cooling down CPU ;)");
+                logger.log("sequence fininshed, cooling down CPU ;)");
                 Thread.sleep(4000);
+                if (pl.countRecords() > 100000000) {
+                    try (Db db = pl.getDb()) {
+                        db.update("delete from ledger where id in (select id from ledger order by id limit 50000);");
+                    } catch (SQLException e1) {
+                        e1.printStackTrace();
+                    }
+                }
             }
         } catch (Exception e) {
             System.out.println("Failed to start tests: " + e);
