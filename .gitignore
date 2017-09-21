@@ -31,12 +31,13 @@ hs_err_pid*
 **/*.iml
 uniclient/src/test_files/simple_root_contract.unic
 universa_core/src/test_contracts/*.unic
+.idea/dbnavigator.xml
 .DS_Store
 *nogit*
 
 /universa_core/src/test_config/system/*
-/universa_core/src/test_config_2/system
-/universa_core/src/test_config_3/system
+/universa_core/src/test_config_2/system/*
+/universa_core/src/test_config_3/system/*
 **/testledger
 
 # Custom JetBrains-specific tweaks

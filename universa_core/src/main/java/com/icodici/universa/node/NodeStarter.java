@@ -8,7 +8,8 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.node.benchmark.TPSBenchmarkServer;
-import com.icodici.universa.node.network.NetworkBuilder;
+import com.icodici.universa.node.network.NetConfig;
+import com.icodici.universa.node.network.NetworkV1;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -29,9 +30,10 @@ public class NodeStarter {
     private static OptionSet options;
     public static final Reporter reporter = new Reporter();
     private static String NAME_STRING = "Universa node server v" + NODE_VERSION + "\n";
-    private static NetworkBuilder networkBuilder;
+    private static NetConfig netConfig;
     private static AsyncEvent eventReady = new AsyncEvent();
     public static final BufferedLogger logger = new BufferedLogger(4096);
+    private static NetworkV1 network;
 
 
     static public void main(String[] args) {
@@ -105,13 +107,17 @@ public class NodeStarter {
 
     private static void startNetwork() throws IOException, InterruptedException, SQLException, TimeoutException {
         reporter.progress("reading network configuration");
-        networkBuilder = NetworkBuilder.from((String) options.valueOf("config"));
+        netConfig = NetConfig.from((String) options.valueOf("config"));
         int port = (int) options.valueOf("port");
-        networkBuilder.buildNetwork((String) options.valueOf("id"), port);
+        network = netConfig.buildNetworkV1((String) options.valueOf("id"), port);
     }
 
     static public void shutdown() {
-        networkBuilder.shutdown();
+        try {
+            network.close();
+        }
+        catch(Exception e) {}
+
         synchronized (parser) {
             parser.notifyAll();
         }

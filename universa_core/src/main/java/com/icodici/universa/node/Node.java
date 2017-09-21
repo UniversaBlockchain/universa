@@ -64,4 +64,8 @@ public abstract class Node {
         }
         return false;
     }
+
+    public boolean checkConnection() {
+        return true;
+    }
 }

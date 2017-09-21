@@ -51,7 +51,7 @@ public class ClientEndpoint {
     }
 
     private Server instance;
-    private final NetworkBuilder networkBuilder;
+    private final Map<String, NetConfig.NodeInfo> roster;
     private LocalNode localNode;
     private int port;
     private PrivateKey myKey;
@@ -206,7 +206,7 @@ public class ClientEndpoint {
         synchronized (networkDirectoryLock) {
             if (null == networkDirectory) {
                 Binder network = new Binder();
-                networkBuilder.nodeInfo().forEach(ni -> {
+                roster.values().forEach(ni -> {
                     network.put(ni.getNodeId(),
                                 Binder.fromKeysValues(
                                         "port", ni.getClientPort(),
@@ -368,9 +368,9 @@ public class ClientEndpoint {
     }
 
 
-    public ClientEndpoint(PrivateKey privateKey, int port, LocalNode localNode, NetworkBuilder nb) throws IOException {
+    public ClientEndpoint(PrivateKey privateKey, int port, LocalNode localNode, Map<String, NetConfig.NodeInfo> roster) throws IOException {
         this.port = port;
-        this.networkBuilder = nb;
+        this.roster = roster;
         instance = new Server(port);
         this.localNode = localNode;
         instance.start();

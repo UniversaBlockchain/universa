@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * Created by sergeych on 16/07/2017.
  */
-public class Network {
+public class Network implements AutoCloseable {
 
     private Duration votingExpiration = Duration.ofSeconds(10);
     private int negativeConsensus;
@@ -155,5 +155,9 @@ public class Network {
 
     public LocalNode getLocalNode() {
         return localNode;
+    }
+
+    @Override
+    public void close() throws Exception {
     }
 }

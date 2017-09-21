@@ -20,7 +20,6 @@ import net.sergeych.utils.LogPrinter;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 /**
@@ -37,7 +36,7 @@ public class BitrustedRemoteAdapter extends Node {
     private Socket socket;
     private Object stateLock = new Object();
 
-    public BitrustedRemoteAdapter(String remoteId, PrivateKey localKey, PublicKey remoteKey, String host, int port) throws IOException, TimeoutException, InterruptedException {
+    public BitrustedRemoteAdapter(String remoteId, PrivateKey localKey, PublicKey remoteKey, String host, int port) {
         super(remoteId);
         this.localKey = localKey;
         this.remoteKey = remoteKey;
@@ -100,16 +99,14 @@ public class BitrustedRemoteAdapter extends Node {
                             return null;
                         });
                     }
-                    catch(InterruptedException  e) {
-                        // slitently pass out
-                        throw e;
-                    }
                     catch (Exception e) {
                         if( socket != null ) {
                             socket.close();
                             socket = null;
                         }
-                        log.wtf("Exceptino in BRA:", e);
+                        if( e instanceof  InterruptedException )
+                            throw e;
+                        log.wtf("Exception in BRA: ", e);
                         e.printStackTrace();
                         lastException = e;
                     }
@@ -134,18 +131,19 @@ public class BitrustedRemoteAdapter extends Node {
                 throw new IOException(e);
             }
         }
-//        catch(DeferredResult.Error de) {
-//            if(de.getCause() instanceof InterruptedException )
-//                cleanupIoException(new IOException("execution interrupted"));
-//        }
-//        catch(InterruptedException e) {
-//            cleanupIoException(new IOException("execution interrupted"));
-//        }
-//        catch(Exception e) {
-//            log.wtf("Unexpected (bad) exception in inConnection", e);
-//            System.exit(100);
-//            throw new IOException("remote call failed",e);
-//        }
+    }
+
+    @Override
+    public boolean checkConnection() {
+        try {
+            String result = inConnection(f -> (String) f.send("ping").waitSuccess());
+            log.i(":: " + result);
+            return true;
+        } catch(Exception e) {
+            System.err.println("---- exception in checkconnection ---");
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override

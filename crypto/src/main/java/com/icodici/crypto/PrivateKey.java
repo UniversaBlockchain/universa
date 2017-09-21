@@ -10,11 +10,13 @@ package com.icodici.crypto;
 import com.icodici.crypto.rsaoaep.RSAOAEPPrivateKey;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -122,5 +124,9 @@ public class PrivateKey extends AbstractKey {
     @Override
     public byte[] fingerprint() {
         return getPublicKey().fingerprint();
+    }
+
+    public static PrivateKey fromPath(Path path) throws IOException {
+        return new PrivateKey(Do.read(path.toAbsolutePath().toString()));
     }
 }

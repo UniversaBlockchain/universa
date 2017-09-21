@@ -109,7 +109,13 @@ public class BitrustedConnector implements Farcall.Target, Connector {
                             "nonce", myNonce
                     ).waitSuccess()
             );
-            processHelloAnswer(result);
+            try {
+                processHelloAnswer(result);
+            }
+            catch(EncryptionError e) {
+                log.e("Encryption error my k: "+myKey+" remote k: "+remoteKey);
+                return false;
+            }
             ready.await();
             return true;
         });
