@@ -143,22 +143,24 @@ public class NetConfigTest {
             assertEquals(TEST_NODES, n1.getAllNodes().size());
             assertEquals(TEST_NODES, tn.get(1).getAllNodes().size());
 
-            n1.setRequeryPause(Duration.ofMillis(1000));
+            testNetworkConnected(tn, 1);
+
+            n1.setRequeryPause(Duration.ofMillis(500));
             ArrayList<Long> times = new ArrayList<>();
-            for (int n = 0; n < 100; n++) {
+            for (int n = 0; n < 30; n++) {
                 TestItem item1 = new TestItem(true);
                 long t = StopWatch.measure(() -> {
                     ItemResult itemResult = n1.getLocalNode().registerItemAndWait(item1);
                     assertEquals(ItemState.APPROVED, itemResult.state);
                 });
                 // The first cycle is before JIT pass, ignoring it
-                System.out.println(t);
+//                System.out.println(t);
                 if (n > 1)
                     a.update(t);
             }
             System.out.println("Average transaction time: " + a);
             System.out.println("variation:                " + a.variation());
-            assertThat(a.variation(), is(lessThan(0.3)));
+            assertThat(a.variation(), is(lessThan(0.4)));
         }
     }
 }

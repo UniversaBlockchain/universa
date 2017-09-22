@@ -11,16 +11,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Promise-like object to wait for command answer. Is returned by the send methods and provides 3
- * optional callbacks - one for failure and success and one when operation is done anyway. Latter is
- * universal - if it is called with a throwable instance then the operation is failed.
+ * Promise-like object to wait for command answer. Is returned by the send methods and provides 3 optional callbacks -
+ * one for failure and success and one when operation is done anyway. Latter is universal - if it is called with a
+ * throwable instance then the operation is failed.
  * <p>
- * DeferredResult is threadsafe and allows any number of handlers of any type to be added at any
- * time. Handlers added after the {@link #sendSuccess(Object)} or {@link #sendFailure(Object)},
- * could be called immediately if condition is met (success or failure) with the proper data.
+ * DeferredResult is threadsafe and allows any number of handlers of any type to be added at any time. Handlers added
+ * after the {@link #sendSuccess(Object)} or {@link #sendFailure(Object)}, could be called immediately if condition is
+ * met (success or failure) with the proper data.
  * <p>
- * Only first call to {@link #sendSuccess(Object)} or {@link #sendFailure(Object)} matters, more
- * calls are silently ignored.
+ * Only first call to {@link #sendSuccess(Object)} or {@link #sendFailure(Object)} matters, more calls are silently
+ * ignored.
  */
 @SuppressWarnings("unused")
 public class DeferredResult {
@@ -32,16 +32,14 @@ public class DeferredResult {
     private boolean success, done;
 
     /**
-     * Adds the success callback. The callback parameter will get the value passed to the {@link
-     * #sendSuccess(Object)} call. Multiple callbacks allowed; calling in order of registration.
+     * Adds the success callback. The callback parameter will get the value passed to the {@link #sendSuccess(Object)}
+     * call. Multiple callbacks allowed; calling in order of registration.
      * <p>
      * This handler is executed before {@link #done(Handler)}.
      * <p>
-     * If called when {@link #isDone()} and {@link #isSuccess()} the callback is invoked
-     * immediately.
+     * If called when {@link #isDone()} and {@link #isSuccess()} the callback is invoked immediately.
      *
-     * @param handler
-     *         callback
+     * @param handler callback
      */
     public DeferredResult success(Handler handler) {
         synchronized (successHandlers) {
@@ -67,16 +65,14 @@ public class DeferredResult {
     }
 
     /**
-     * Adds failure callback. The parameter is what is passed to the {@link #sendFailure(Object)}
-     * call. Multiple callbacks allowed; calling in order of registration.
+     * Adds failure callback. The parameter is what is passed to the {@link #sendFailure(Object)} call. Multiple
+     * callbacks allowed; calling in order of registration.
      * <p>
      * This handler is executed before {@link #done(Handler)}.
      * <p>
-     * If called when {@link #isDone()} and !{@link #isSuccess()} the callback is invoked
-     * immediately.
+     * If called when {@link #isDone()} and !{@link #isSuccess()} the callback is invoked immediately.
      *
-     * @param handler
-     *         RemoteError instance. callback
+     * @param handler RemoteError instance. callback
      */
     public DeferredResult failure(Handler handler) {
         synchronized (errorHandlers) {
@@ -93,14 +89,13 @@ public class DeferredResult {
     }
 
     /**
-     * Adds the callback that will be called when the operation is done, after success()
-     * or failure() respecive invocation. The operation result can be distinguished by checking
-     * {@link #isSuccess()} value. Multiple callbacks allowed; calling in order of registration.
+     * Adds the callback that will be called when the operation is done, after success() or failure() respecive
+     * invocation. The operation result can be distinguished by checking {@link #isSuccess()} value. Multiple callbacks
+     * allowed; calling in order of registration.
      * <p>
      * If called when {@link #isDone()} == true the callback is invoked immediately.
      *
-     * @param handler
-     *         callback
+     * @param handler callback
      */
     public DeferredResult done(Handler handler) {
         synchronized (doneHandlers) {
@@ -112,13 +107,11 @@ public class DeferredResult {
     }
 
     /**
-     * Trigger the success event and pass argument to all {@link #success(Handler)} and then
-     * {@link #done(Handler)} callbacks. Can be called only once if {@link #sendFailure(Object)}
-     * was not called before. Further calls to this method and to {@link #sendFailure(Object)} are
-     * silently ignored.
+     * Trigger the success event and pass argument to all {@link #success(Handler)} and then {@link #done(Handler)}
+     * callbacks. Can be called only once if {@link #sendFailure(Object)} was not called before. Further calls to this
+     * method and to {@link #sendFailure(Object)} are silently ignored.
      *
-     * @param data
-     *         to pass to callbacks
+     * @param data to pass to callbacks
      */
     public void sendSuccess(Object data) {
         synchronized (access) {
@@ -133,13 +126,11 @@ public class DeferredResult {
     }
 
     /**
-     * Trigger the failure event and pass argument to all {@link #failure(Handler)} and
-     * to {@link #done(Handler)} callbacks. Can be called only once if {@link #sendSuccess(Object)}
-     * was not called before. Further calls to this method and to {@link #sendSuccess(Object)} are
-     * silently ignored.
+     * Trigger the failure event and pass argument to all {@link #failure(Handler)} and to {@link #done(Handler)}
+     * callbacks. Can be called only once if {@link #sendSuccess(Object)} was not called before. Further calls to this
+     * method and to {@link #sendSuccess(Object)} are silently ignored.
      *
-     * @param data
-     *         to pass to callbacks
+     * @param data to pass to callbacks
      */
 
     public void sendFailure(Object data) {
@@ -162,16 +153,14 @@ public class DeferredResult {
     }
 
     /**
-     * Get the result passed with {@link #sendFailure(Object)} or {@link #sendSuccess(Object)}.
-     * Check the state using {@link #isSuccess()} call.
+     * Get the result passed with {@link #sendFailure(Object)} or {@link #sendSuccess(Object)}. Check the state using
+     * {@link #isSuccess()} call.
      * <p>
      * Do not call it when {@link #isDone()} is false.
      *
-     * @param <T>
-     *         result value.
+     * @param <T> result value.
      *
-     * @return result passed with the first {@link #sendSuccess(Object)} or {@link
-     * #sendFailure(Object)} call.
+     * @return result passed with the first {@link #sendSuccess(Object)} or {@link #sendFailure(Object)} call.
      */
     @SuppressWarnings("unchecked")
     public <T> T getResult() {
@@ -181,13 +170,11 @@ public class DeferredResult {
     }
 
     /**
-     * waits until the operation is finished and return it's result on success, or throws an error
-     * on failure.
+     * waits until the operation is finished and return it's result on success, or throws an error on failure.
      *
-     * @throws Error
-     *         or {@link Failure} if operation fails
+     * @throws Error or {@link Failure} if operation fails
      */
-    public <T> T waitSuccess() throws Error {
+    public <T> T waitSuccess() throws Error, InterruptedException {
         join();
         if (isSuccess())
             return (T) result;
@@ -196,19 +183,19 @@ public class DeferredResult {
         throw new Failure(result);
     }
 
-    public <T> T await() {
+    public <T> T await() throws InterruptedException {
         join();
         return (T) result;
     }
 
-    public <T> T await(long millis) {
+    public <T> T await(long millis) throws InterruptedException {
         return join(millis) ? (T) result : null;
     }
 
     /**
      * Wait until the operation is somehow finished
      */
-    public DeferredResult join() {
+    public final DeferredResult join() throws InterruptedException {
         join(0);
         return this;
     }
@@ -223,21 +210,16 @@ public class DeferredResult {
     /**
      * wait until the operation is finished with maximum timeout
      *
-     * @param millis
-     *         time to wait for operation to complete
+     * @param millis time to wait for operation to complete
      *
-     * @return true if the operation is finished, false if timeout expired or thread was interrupted
-     * and the operation is not yet done
+     * @return true if the operation is finished, false if timeout expired or thread was interrupted and the operation
+     *         is not yet done
      */
-    public boolean join(long millis) {
+    public final boolean join(long millis) throws InterruptedException {
         synchronized (access) {
             if (done)
                 return true;
-            try {
-                access.wait(millis);
-            } catch (InterruptedException e) {
-                throw new Error(e);
-            }
+            access.wait(millis);
             return done;
         }
     }
@@ -250,8 +232,8 @@ public class DeferredResult {
     }
 
     /**
-     * Exception raised if operation is failed and {@link #getResult()} returns {@link Throwable},
-     * which is passed as exception cause (with stack trace this way).
+     * Exception raised if operation is failed and {@link #getResult()} returns {@link Throwable}, which is passed as
+     * exception cause (with stack trace this way).
      */
     public static class Error extends RuntimeException {
         Error(Exception inner) {
@@ -264,8 +246,8 @@ public class DeferredResult {
     }
 
     /**
-     * Exception raised when operation is failed and {@link #getResult()} passes non-exception
-     * object, which is available as {@link #failureData}.
+     * Exception raised when operation is failed and {@link #getResult()} passes non-exception object, which is
+     * available as {@link #failureData}.
      */
     public static class Failure extends Error {
         private final Object failureData;

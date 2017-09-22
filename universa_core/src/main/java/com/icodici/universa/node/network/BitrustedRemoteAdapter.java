@@ -16,19 +16,24 @@ import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.Node;
 import net.sergeych.farcall.Farcall;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
 
 /**
  * Interface to the remote Node instance using bitrusted protocol.
  */
 public class BitrustedRemoteAdapter extends Node {
+
+    public interface Processor <T,R> {
+        R apply(T t) throws InterruptedException, IOException;
+    }
 
     private static LogPrinter log = new LogPrinter("BTRA");
     private final PrivateKey localKey;
@@ -81,30 +86,37 @@ public class BitrustedRemoteAdapter extends Node {
         }
     }
 
-    private <T> T inConnection(Function<Farcall, T> block) throws IOException, InterruptedException {
-        IOException last = null;
+    private <T> T inConnection(Processor<Farcall, T> block) throws IOException, InterruptedException {
+        Exception last = null;
         for (int n = 0; n < 3; n++) {
             try {
                 ensureConnected();
                 return block.apply(farcall);
             } catch (InterruptedException e) {
                 throw e;
+            } catch( DeferredResult.Error e) {
+                // remote has sent error, unless it's and EOF:
+                if( !(e.getCause() instanceof EOFException) )
+                    throw new IOException("remote operation failed", e.getCause());
+                last = e;
             } catch (Exception e) {
-                synchronized (stateLock) {
-                    try {
-                        if (socket != null)
-                            socket.close();
-                    } catch (IOException iox) {
-                    }
-                    socket = null;
-                    farcall = null;
-//                e.printStackTrace();
-                    last = (e instanceof IOException) ? (IOException) e : new IOException(e);
-                    log.e("retry " + n + ", failed to perform in connection, " + e);
+                // any other we treat as broken connection and trying to reconnect:
+                last = e;
+            }
+            synchronized (stateLock) {
+                try {
+                    if (socket != null)
+                        socket.close();
+                } catch (IOException iox) {
                 }
+                socket = null;
+                farcall = null;
+//                e.printStackTrace();
+                last = (last instanceof IOException) ? (IOException) last : new IOException("BRA can't reconnect",last);
+                log.e("retry " + n + ", failed to perform in connection, " + last);
             }
         }
-        throw last;
+        throw (IOException)last;
     }
 
     private void ensureConnected() throws IOException, TimeoutException, InterruptedException {
