@@ -188,9 +188,12 @@ public class Farcall {
                 } else {
                     processCommand(input, serial);
                 }
-            } catch (IOException e) {
-                System.err.println("-------------------------- oeee");
-                e.printStackTrace();
+            } catch (EOFException e) {
+                log.i("closing farcall instance on eof encountered");
+                close();
+            }
+            catch (IOException e) {
+                log.wtf("internal error", e);
                 break;
             }
         }
@@ -360,10 +363,11 @@ public class Farcall {
             }
             resultQueue.clear();
 //            }
-            try {
-                t.join();
-            } catch (InterruptedException ignored) {
-            }
+//            try {
+//                t.join();
+//            } catch (InterruptedException ignored) {
+//            }
+            connector.close();
         }
     }
 

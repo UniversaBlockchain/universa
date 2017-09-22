@@ -73,6 +73,8 @@ public class BitrustedConnector implements Farcall.Target, Connector {
         byte[] packed = mySessionKey.etaEncrypt(Boss.pack(data));
         if (!connection.isClosed())
             connection.sendParams("block", packed);
+        else
+            throw new EOFException("connection closed");
     }
 
     @Override
@@ -95,7 +97,7 @@ public class BitrustedConnector implements Farcall.Target, Connector {
             throw new IllegalStateException("connector is not connected");
     }
 
-    public void connect(Predicate<byte[]> isTrustedKey) throws Error, TimeoutException, InterruptedException {
+    public BitrustedConnector connect(Predicate<byte[]> isTrustedKey) throws Error, TimeoutException, InterruptedException {
         Future<?> initDone = pool.submit(() -> {
             this.isTrustedKey = isTrustedKey;
             connection.start(this);
@@ -132,6 +134,7 @@ public class BitrustedConnector implements Farcall.Target, Connector {
             initDone.cancel(true);
             throw new Error("initialization failed", e.getCause());
         }
+        return this;
     }
 
     public boolean isConnected() {

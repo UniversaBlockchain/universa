@@ -13,6 +13,9 @@ import java.io.IOException;
  * Created by sergeych on 15/04/16.
  */
 public class EncryptionError extends IOException {
+    public EncryptionError() {
+    }
+
     public EncryptionError(String reason) {
         super(reason);
     }

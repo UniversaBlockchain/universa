@@ -343,6 +343,7 @@ class Elections {
                     if (millisLeft > 0)
                         itemDownloaded.await(millisLeft);
                 } catch (TimeoutException e) {
+                    log.e("Failed downloading item from "+localNode.getId());
                     // TODO: very inlikely case. We should somehow try to restore links
                     // actually it should not happen
                     e.printStackTrace();

@@ -13,6 +13,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class TestV1Network implements AutoCloseable {
 
@@ -49,4 +50,9 @@ public class TestV1Network implements AutoCloseable {
             }
         });
     }
+
+    public List<NetworkV1> getNetworks() {
+        return networks;
+    }
+
 }

@@ -11,16 +11,14 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
-import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.NodeStarter;
-import com.icodici.universa.node.TestItem;
+import com.icodici.universa.node.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Average;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.Base64;
+import net.sergeych.utils.LogPrinter;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -28,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -96,6 +95,41 @@ public class NetConfigTest {
         try (TestV1Network tn = new TestV1Network("src/test_config_2", 18730)) {
             assertEquals(TEST_NODES, tn.get(0).getAllNodes().size());
             assertEquals(TEST_NODES, tn.get(1).getAllNodes().size());
+            // lets be paranoid
+            testNetworkConnected(tn, 3);
+            // let's ruin the day:
+            BitrustedRemoteAdapter bra = null;
+            for(Node n: tn.get(0).getAllNodes()) {
+                if( n instanceof BitrustedRemoteAdapter ) {
+                    bra = (BitrustedRemoteAdapter) n;
+                    break;
+                }
+            }
+            assertNotNull(bra);
+            bra.diconnectRemote();
+            LogPrinter.showDebug(true);
+            testNetworkConnected(tn, 3);
+        }
+    }
+
+    private void testNetworkConnected(TestV1Network tn,int repetitions) {
+        for(int rep = 0; rep < repetitions; rep ++ ) {
+            AtomicInteger i = new AtomicInteger();
+            tn.getNetworks().forEach(network -> {
+                network.getAllNodes().forEach(n -> {
+                    if (n instanceof BitrustedRemoteAdapter) {
+                        if (!n.checkConnection()) {
+                            fail("Connection failed: network " + network.getLocalNode().getId() +
+                                         " connection to " + n.getId());
+                        } else
+                            i.incrementAndGet();
+                    }
+                });
+
+            });
+            int nn = tn.get(0).getAllNodes().size();
+            // Right number ov connections: each to each, except one to self. so, nn * nn - nn:
+            assertEquals(nn * (nn - 1), i.intValue());
         }
     }
 
@@ -111,7 +145,7 @@ public class NetConfigTest {
 
             n1.setRequeryPause(Duration.ofMillis(1000));
             ArrayList<Long> times = new ArrayList<>();
-            for (int n = 0; n < 5; n++) {
+            for (int n = 0; n < 100; n++) {
                 TestItem item1 = new TestItem(true);
                 long t = StopWatch.measure(() -> {
                     ItemResult itemResult = n1.getLocalNode().registerItemAndWait(item1);

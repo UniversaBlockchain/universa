@@ -201,6 +201,10 @@ public class DeferredResult {
         return (T) result;
     }
 
+    public <T> T await(long millis) {
+        return join(millis) ? (T) result : null;
+    }
+
     /**
      * Wait until the operation is somehow finished
      */

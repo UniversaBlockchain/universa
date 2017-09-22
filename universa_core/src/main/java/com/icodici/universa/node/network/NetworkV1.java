@@ -37,7 +37,7 @@ public class NetworkV1 extends Network implements AutoCloseable {
     public NetworkV1(NetConfig.NodeInfo localNodeInfo, int overrideClientPort) throws IOException, SQLException {
         String nodeId = localNodeInfo.getNodeId();
         Map<String, NetConfig.NodeInfo> roster = localNodeInfo.getRoster();
-        System.out.println("------------- network for "+nodeId+":"+privateKey+" ------------ "+overrideClientPort);
+//        System.out.println("------------- network for "+nodeId+":"+privateKey+" ------------ "+overrideClientPort);
 
         // First, we need our private key
         privateKey = localNodeInfo.getPrivateKey();
@@ -55,7 +55,7 @@ public class NetworkV1 extends Network implements AutoCloseable {
     }
 
 
-    private void createLocalNode(NetConfig.NodeInfo ni, int overrideClientPort) throws SQLException, IOException {
+    private final void createLocalNode(NetConfig.NodeInfo ni, int overrideClientPort) throws SQLException, IOException {
         String rootPath = ni.getRootPath();
 
         // Important: we can have only one local node
@@ -92,7 +92,7 @@ public class NetworkV1 extends Network implements AutoCloseable {
         );
     }
 
-    private void createRemoteNode(NetConfig.NodeInfo ni) {
+    private final void createRemoteNode(NetConfig.NodeInfo ni) {
         synchronized (this) {
             if( getNode(ni.getNodeId()) != null )
                 throw new IllegalStateException("remote node is already created");
@@ -108,5 +108,9 @@ public class NetworkV1 extends Network implements AutoCloseable {
             );
             registerNode(remoteNode);
         }
+    }
+
+    public BitrustedLocalAdapter getLocalAdapter() {
+        return localAdapter;
     }
 }

@@ -11,10 +11,10 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/dev-universa.iml" filepath="$PROJECT_DIR$/.idea/modules/dev-universa.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/dev-universa_main.iml" filepath="$PROJECT_DIR$/.idea/modules/dev-universa_main.iml" group="universa" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/dev-universa_test.iml" filepath="$PROJECT_DIR$/.idea/modules/dev-universa_test.iml" group="universa" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient/new_universa-uniclient.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient/new_universa-uniclient.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient/new_universa-uniclient.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient/new_universa-uniclient.iml" group="uniclient" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient/new_universa-uniclient_main.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient/new_universa-uniclient_main.iml" group="uniclient" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient/new_universa-uniclient_test.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient/new_universa-uniclient_test.iml" group="uniclient" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/new_universa-universa_core.iml" filepath="$PROJECT_DIR$/.idea/modules/new_universa-universa_core.iml" group="universa_core" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/new_universa-universa_core.iml" filepath="$PROJECT_DIR$/.idea/modules/new_universa-universa_core.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/new_universa-universa_core_main.iml" filepath="$PROJECT_DIR$/.idea/modules/new_universa-universa_core_main.iml" group="universa_core" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/new_universa-universa_core_test.iml" filepath="$PROJECT_DIR$/.idea/modules/new_universa-universa_core_test.iml" group="universa_core" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient.iml" group="uniclient" />

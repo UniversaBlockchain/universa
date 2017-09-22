@@ -239,7 +239,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
             try {
                 return state.decryptor.processBlock(ciphertext, 0, ciphertext.length);
             } catch (InvalidCipherTextException e) {
-                throw new EncryptionError(String.format("Cannot decode: %s", e.toString()));
+                throw new EncryptionError("decrypt failed", e);
             }
         }
     }

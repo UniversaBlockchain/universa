@@ -19,6 +19,7 @@ dependencies {
     compile group: 'org.postgresql', name: 'postgresql', version: '42.1.4.jre7'
     compile group: 'org.xerial', name: 'sqlite-jdbc', version: '3.8.9.1'
     compile project(':common_tools')
+    processResources
     processTestResources
     compile project(':crypto')
 }

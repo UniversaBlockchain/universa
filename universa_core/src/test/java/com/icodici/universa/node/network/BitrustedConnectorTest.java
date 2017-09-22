@@ -9,12 +9,16 @@ package com.icodici.universa.node.network;
 
 import net.sergeych.farcall.Farcall;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.tools.StreamConnector;
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.concurrent.*;
 
@@ -36,8 +40,7 @@ public class BitrustedConnectorTest {
         try {
             connector.connect(null);
             fail("must throw TimeoutException");
-        }
-        catch(TimeoutException x) {
+        } catch (TimeoutException x) {
             // all ok
         }
     }
@@ -135,6 +138,9 @@ public class BitrustedConnectorTest {
                 Thread.sleep(3);
                 counts[1]++;
                 return "slow done";
+            } else if (command.getName().equals("stop")) {
+                sca.close();
+                System.out.println("closed!");
             }
             return null;
         });
@@ -142,12 +148,18 @@ public class BitrustedConnectorTest {
         Future<Object> f1 = pool.submit(() -> fb.send("fast").waitSuccess());
         Future<Object> f2 = pool.submit(() -> fb.send("fast").waitSuccess());
         Future<Object> f3 = pool.submit(() -> fb.send("fast").waitSuccess());
-//        Future<Object> f4 = pool.submit(() -> fb.send("fast").waitSuccess());
-//        Future<Object> f5 = pool.submit(() -> fb.send("fast").waitSuccess());
-        f1.get();
+        Future<Object> f4 = pool.submit(() -> fb.send("slow").waitSuccess());
+        Future<Object> f5 = pool.submit(() -> fb.send("slow").waitSuccess());
+        assertEquals("fast done", f1.get());
+        assertEquals("fast done", f2.get());
+        assertEquals("fast done", f3.get());
+        assertEquals("slow done", f4.get());
+        assertEquals("slow done", f5.get());
+        assertEquals(3, counts[0]);
+        assertEquals(2, counts[1]);
     }
 
-        @Test
+    @Test
     public void asyncLoadTest() throws Exception {
         StreamConnector sca = new StreamConnector();
         StreamConnector scb = new StreamConnector();
@@ -174,7 +186,7 @@ public class BitrustedConnectorTest {
         Farcall fa = new Farcall(ca);
         Farcall fb = new Farcall(cb);
 
-        int [] counts = new int[2];
+        int[] counts = new int[2];
 
         fa.start(command -> {
             if (command.getName().equals("fast")) {
@@ -192,7 +204,7 @@ public class BitrustedConnectorTest {
         ExecutorService es = Executors.newWorkStealingPool();
 //        ExecutorService es = Executors.newSingleThreadExecutor();
         ArrayList<Long> times = new ArrayList<>();
-        for( int rep=0; rep < 7; rep++ ) {
+        for (int rep = 0; rep < 7; rep++) {
             ArrayList<Future<?>> futures = new ArrayList<>();
             counts[0] = counts[1] = 0;
             long t = StopWatch.measure(() -> {
@@ -225,8 +237,61 @@ public class BitrustedConnectorTest {
         // the call expenses should not rise with time, and by the 3rd JIT compilation should be done
         // note this test heavily depends on jit behavior!
         long t1 = times.get(2);
-        long t2 = times.get(times.size()-1);
-        long mean = (t1 + t2)/2;
-        assertThat((double) Math.abs(t2-t1) / ((double) mean), CoreMatchers.is(lessThan(0.20)) );
+        long t2 = times.get(times.size() - 1);
+        long mean = (t1 + t2) / 2;
+        assertThat((double) Math.abs(t2 - t1) / ((double) mean), CoreMatchers.is(lessThan(0.20)));
+    }
+
+    @Test
+    public void processSocketClose() throws Exception {
+        ServerSocket ss = new ServerSocket(17710);
+        Thread t = new Thread(() -> {
+            try {
+                Socket in = ss.accept();
+                BitrustedConnector bc = new BitrustedConnector(TestKeys.privateKey(0),
+                                                               in.getInputStream(),
+                                                               in.getOutputStream()
+                );
+                bc.connect(null);
+                Farcall f = new Farcall(bc);
+                f.start(cmd -> {
+                    switch (cmd.getName()) {
+                        case "ping":
+                            return "pong";
+                        case "stop":
+                            in.getOutputStream().close();
+                            in.getInputStream().close();
+                            in.close();
+                    }
+                    return null;
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                fail(e.getMessage());
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+
+        Socket s = new Socket("localhost", 17710);
+        s.setSoTimeout(100);
+        Farcall f = new Farcall(new BitrustedConnector(
+                TestKeys.privateKey(1),
+                s.getInputStream(),
+                s.getOutputStream()
+        ).connect(null));
+        f.start();
+        assertEquals(f.send("ping").waitSuccess(), "pong");
+        f.send("stop").await(20);
+        try {
+            f.send("ping").waitSuccess();
+            fail("must throw EOF");
+        } catch (DeferredResult.Error e) {
+            assertTrue(e.getCause() instanceof EOFException);
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("unexpected exception " + e);
+        }
     }
 }

@@ -35,9 +35,9 @@ universa_core/src/test_contracts/*.unic
 .DS_Store
 *nogit*
 
-/universa_core/src/test_config/system/*
-/universa_core/src/test_config_2/system/*
-/universa_core/src/test_config_3/system/*
+universa_core/src/test_config/system/*
+universa_core/src/test_config_2/system/*
+universa_core/src/test_config_3/system/*
 **/testledger
 
 # Custom JetBrains-specific tweaks

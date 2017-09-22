@@ -62,6 +62,7 @@ public class BitrustedLocalAdapter {
             server.start();
         }
         catch(RejectedExecutionException e) {
+            e.printStackTrace();
         }
     }
 
@@ -73,9 +74,13 @@ public class BitrustedLocalAdapter {
                 new Connection(serverSocket.accept());
             }
             catch(SocketException e) {
+                // This is - socket closed
+                if( !e.getMessage().contains("Socket closed"))
+                    e.printStackTrace();
                 return null;
             }
             catch(BitrustedConnector.Error e) {
+                e.printStackTrace();
                 // initialization failed: other side does not work well, no matter.
             }
             catch(Exception e) {
@@ -98,6 +103,7 @@ public class BitrustedLocalAdapter {
     class Connection implements Farcall.Target {
 
         private final Farcall farcall;
+        private final Socket socket;
         private Node remoteNode;
 
         @Override
@@ -109,8 +115,17 @@ public class BitrustedLocalAdapter {
                         return doGetItem(params);
                     case "checkItem":
                         return doCheckItem(params);
+                    case "ping":
+                        return Binder.fromKeysValues(
+                                "ping", "pong",
+                                "token", params.getBytesOrThrow("token")
+                        );
+                    case "disconnect":
+                        socket.close();
+                        System.out.println("closing bra connection");
+                        return null;
                     default:
-                        throw new IllegalArgumentException("unknown command");
+                        throw new IllegalArgumentException("unknown command: "+command.getName());
 
                 }
             }
@@ -146,6 +161,8 @@ public class BitrustedLocalAdapter {
                 remoteNode = knownNodes.get(HashId.of(key));
                 return remoteNode != null;
             });
+            // we need socket only to imitate connection lost
+            this.socket = socket;
             farcall = new Farcall(connector);
             farcall.asyncCommands();
             log.d(localNode.getId()+" established connection from " + remoteNode);
