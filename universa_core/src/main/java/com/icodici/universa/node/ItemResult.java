@@ -13,7 +13,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
 /**
@@ -33,12 +33,12 @@ public class ItemResult {
     /**
      * Time when the item was created on the node. It will be slightly different accross the network
      */
-    public final @NonNull LocalDateTime createdAt;
+    public final @NonNull ZonedDateTime createdAt;
     /**
      * Current expiration time. It could be changed if the state is not final. Expired items are discarded by the
      * network.
      */
-    public final @NonNull LocalDateTime expiresAt;
+    public final @NonNull ZonedDateTime expiresAt;
 
     /**
      * Initialize from a record and posession flag
@@ -74,11 +74,11 @@ public class ItemResult {
     public ItemResult(Binder fields) {
         state = ItemState.valueOf(fields.getStringOrThrow("state"));
         haveCopy = fields.getBoolean("haveCopy");
-        createdAt = fields.getLocalDateTimeOrThrow("createdAt");
-        expiresAt = fields.getLocalDateTime("expiresAt", null);
+        createdAt = fields.getZonedDateTimeOrThrow("createdAt");
+        expiresAt = fields.getZonedDateTime("expiresAt", null);
     }
 
-    public ItemResult(ItemState state, boolean haveCopy, @NonNull LocalDateTime createdAt, @NonNull LocalDateTime expiresAt) {
+    public ItemResult(ItemState state, boolean haveCopy, @NonNull ZonedDateTime createdAt, @NonNull ZonedDateTime expiresAt) {
         this.state = state;
         this.haveCopy = haveCopy;
         this.createdAt = createdAt;

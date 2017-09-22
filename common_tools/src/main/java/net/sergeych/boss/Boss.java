@@ -13,13 +13,19 @@ package net.sergeych.boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.util.Arrays.asList;
 
 /**
  * BOSS (Binary Object Serialization Specification) protocol version 1.4 final stream mode specification (no-cache).
@@ -71,14 +77,14 @@ import java.util.*;
 public class Boss {
 
     /**
-     * @return true if Boss decodes date to  {@link Date} class instead of {@link LocalDateTime} (default behavior)
+     * @return true if Boss decodes date to  {@link Date} class instead of {@link ZonedDateTime} (default behavior)
      */
     public static boolean isUseOldDates() {
         return useOldDates;
     }
 
     /**
-     * Set to true to use {@link Date} class instead of {@link LocalDateTime} (default)
+     * Set to true to use {@link Date} class instead of {@link ZonedDateTime} (default)
      */
     public static void setUseOldDates(boolean useOldDates) {
         Boss.useOldDates = useOldDates;
@@ -104,9 +110,57 @@ public class Boss {
         });
     }
 
-    public static Binder toBinder(Object x) {
-        Adapter adapter = adapters.get(x.getClass().getCanonicalName());
-        return adapter == null ? null : adapter.serialize(x);
+
+    /**
+     * Try to serialize object to {@link Binder} using curretn set of {@link Boss.Adapter}. See {@link
+     * #registerAdapter(Class, Adapter)} for more.
+     *
+     * @param x   object to serialize (can be array, list, map, binder or any object with registered adapter. processes
+     *            in depth, e.g. all values in the map or items in the list.
+     * @param <T>
+     *
+     * @return either a Binder or a simple object x (e.g. String if x instanceof String).
+     *
+     * @throws IllegalArgumentException if unkonwn ibject ecnountered which can not be serialized.
+     */
+    public static @NonNull <T> T serializeToBinder(Object x) {
+        if (x instanceof String || x instanceof Number || x instanceof Boolean)
+            return (T) x;
+        if (x instanceof Map) {
+            Binder b = new Binder((Map) x);
+            b.replaceAll((k, v) -> serializeToBinder(v));
+            return (T) b;
+        }
+        if (x.getClass().isArray()) {
+            x = asList(x);
+        }
+        if (x instanceof List) {
+            return (T) ((List) x).stream()
+                    .map(i -> serializeToBinder(i))
+                    .collect(Collectors.toList());
+
+        }
+        String canonicalName = x.getClass().getCanonicalName();
+        Adapter adapter = adapters.get(canonicalName);
+        if (adapter == null)
+            throw new IllegalArgumentException("can't convert to binder " + canonicalName + ": " + x);
+        Binder result = adapter.serialize(x);
+        result.put("__type", adapter.typeName());
+        return (T) result;
+    }
+
+    /**
+     * Tro to make binder from deseralized object, e.g. after applying possible adapters, see {@link Boss.Adapter}, see
+     * {@link #serializeToBinder(Object)}.
+     *
+     * @param x any object that {@link Boss} has {@link Adapter} to serialize, or a Mao instance.
+     *
+     * @return binder with seriazlied representation of x
+     *
+     * @throws IllegalArgumentException if unkonwn ibject ecnountered which can not be serialized.
+     */
+    public static @NonNull Binder toBinder(Object x) {
+        return (Binder) serializeToBinder(x);
     }
 
     public interface Adapter<T> {
@@ -460,9 +514,9 @@ public class Boss {
                 writeEncoded(((Date) obj).getTime() / 1000);
                 return this;
             }
-            if (obj instanceof LocalDateTime) {
+            if (obj instanceof ZonedDateTime) {
                 writeHeader(TYPE_EXTRA, XT_TIME);
-                writeEncoded(((LocalDateTime) obj).toEpochSecond(ZoneOffset.UTC));
+                writeEncoded(((ZonedDateTime) obj).toEpochSecond());
                 return this;
             }
             if (obj instanceof Map<?, ?>) {
@@ -809,7 +863,7 @@ public class Boss {
                     return false;
                 case XT_TIME:
                     long seconds = readEncodedLong();
-                    return useOldDates ? new Date(seconds * 1000) : LocalDateTime.ofEpochSecond(seconds, 0, ZoneOffset.UTC);
+                    return useOldDates ? new Date(seconds * 1000) : Instant.ofEpochSecond(seconds).atZone(ZoneId.systemDefault());
                 case XT_STREAM_MODE:
                     setStreamMode();
                     return read();
@@ -876,4 +930,25 @@ public class Boss {
 
     }
 
+    static {
+        Boss.registerAdapter(ZonedDateTime.class, new Boss.Adapter() {
+            @Override
+            public Binder serialize(Object object) {
+                return Binder.fromKeysValues("seconds", ((ZonedDateTime) object).toEpochSecond());
+            }
+
+            @Override
+            public Object deserialize(Binder binder) {
+                return ZonedDateTime.ofInstant(Instant.ofEpochSecond(binder.getLongOrThrow("seconds")),
+                                               ZoneOffset.systemDefault());
+            }
+
+            @Override
+            public String typeName() {
+                return "unixtime";
+            }
+        });
+    }
 }
+
+

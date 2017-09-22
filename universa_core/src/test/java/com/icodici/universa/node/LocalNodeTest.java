@@ -15,7 +15,7 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 
 import static org.hamcrest.Matchers.greaterThan;
@@ -72,7 +72,7 @@ public class LocalNodeTest extends NodeTestCase {
         assertEquals(ItemState.UNDEFINED, itemResult.state);
         StateRecord record = n.getLedger().getRecord(item.getId());
         assertEquals(ItemState.UNDEFINED, record.getState());
-        assertTrue(record.getExpiresAt().isBefore(LocalDateTime.now().plusHours(1)));
+        assertTrue(record.getExpiresAt().isBefore(ZonedDateTime.now().plusHours(1)));
 
         TestItem item2 = new TestItem(false);
         itemResult = n.registerItemAndWait(item2);
@@ -96,8 +96,8 @@ public class LocalNodeTest extends NodeTestCase {
         ItemResult itemResult = n.checkItem(null, item.getId(), ItemState.PENDING, false);
         assertEquals(ItemState.PENDING, itemResult.state);
         assertFalse(itemResult.haveCopy);
-        assertAlmostSame(itemResult.createdAt, LocalDateTime.now());
-        assertThat(itemResult.expiresAt, is(greaterThan(LocalDateTime.now())));
+        assertAlmostSame(itemResult.createdAt, ZonedDateTime.now());
+        assertThat(itemResult.expiresAt, is(greaterThan(ZonedDateTime.now())));
 
         itemResult = n.waitForItem(item.getId());
         assertEquals(ItemState.UNDEFINED, itemResult.state);

@@ -10,7 +10,8 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.node.TestCase;
 
-import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.instanceOf;
@@ -30,13 +31,17 @@ public class ContractTestBase extends TestCase {
         assertEquals(issuer.getStringOrThrow("name"), "Universa");
 
         // --- times
-        LocalDateTime t = c.getCreatedAt();
-        assertAlmostSame(LocalDateTime.now(), c.getCreatedAt());
-        assertEquals("2022-08-05T17:25:37", c.getExpiresAt().toString());
+        ZonedDateTime t = c.getCreatedAt();
+        assertAlmostSame(ZonedDateTime.now(), c.getCreatedAt());
+        assertEquals("2022-08-05T17:25:37Z", c.getExpiresAt().withZoneSameInstant(ZoneOffset.UTC).toString());
 
         // -- data
-        assertThat(c.getDefinition().getData().get("active_since"), is(instanceOf(LocalDateTime.class)));
-        assertEquals("2017-08-05T17:24:49", c.getDefinition().getData().get("active_since").toString());
+        assertThat(c.getDefinition().getData().get("active_since"), is(instanceOf(ZonedDateTime.class)));
+        assertEquals("2017-08-05T17:24:49Z", c.getDefinition()
+                .getData()
+                .getZonedDateTimeOrThrow("active_since")
+                .withZoneSameInstant(ZoneOffset.UTC)
+                .toString());
         assertEquals("access certificate", c.getDefinition().getData().get("type").toString());
 
         // -- state

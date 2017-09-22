@@ -20,8 +20,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -222,7 +221,7 @@ public class ClientEndpoint {
     }
 
     private AtomicLong sessionIds = new AtomicLong(
-            LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) +
+            ZonedDateTime.now().toEpochSecond() +
                     Do.randomInt(0x7FFFffff));
 
     private class Session {

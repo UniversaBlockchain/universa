@@ -12,9 +12,8 @@ import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -393,16 +392,16 @@ public class Binder extends HashMap<String, Object> {
         return this;
     }
 
-    public LocalDateTime getLocalDateTime(String key, LocalDateTime defaultValue) {
+    public ZonedDateTime getZonedDateTime(String key, ZonedDateTime defaultValue) {
         Object obj = get(key);
         if (obj == null)
             return defaultValue;
-        if (obj instanceof LocalDateTime)
-            return (LocalDateTime) obj;
+        if (obj instanceof ZonedDateTime)
+            return (ZonedDateTime) obj;
         if (obj instanceof Date)
-            return LocalDateTime.ofEpochSecond(((Date) obj).getTime() / 1000, 0, ZoneOffset.UTC);
+            return ZonedDateTime.ofInstant(((Date) obj).toInstant(), ZoneOffset.UTC);
         if (obj instanceof Number)
-            return LocalDateTime.ofEpochSecond(((Number) obj).longValue(), 0, ZoneOffset.UTC);
+            return ZonedDateTime.ofInstant(Instant.ofEpochSecond(((Number) obj).longValue()), ZoneOffset.UTC);
         if (obj instanceof Map) {
             Map<String, Object> map = (Map) obj;
             String t = (String) map.get("__type");
@@ -410,16 +409,16 @@ public class Binder extends HashMap<String, Object> {
                 t = (String) map.get("__t");
             long ss = (int) map.get("seconds");
             if (t != null) {
-                return Instant.ofEpochMilli(ss * 1000).atZone(ZoneId.systemDefault()).toLocalDateTime();
+                return ZonedDateTime.ofInstant(Instant.ofEpochSecond(((Number) obj).longValue()), ZoneOffset.UTC);
             }
         }
         if (obj.equals("now()"))
-            return LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
-        throw new IllegalArgumentException("can't convert key " + key + " to LocalDateTime: " + obj);
+            return ZonedDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+        throw new IllegalArgumentException("can't convert key " + key + " to ZonedDateTime: " + obj);
     }
 
-    public LocalDateTime getLocalDateTimeOrThrow(String key) {
-        LocalDateTime t = getLocalDateTime(key, null);
+    public ZonedDateTime getZonedDateTimeOrThrow(String key) {
+        ZonedDateTime t = getZonedDateTime(key, null);
         if (t == null)
             throw new IllegalArgumentException("missing key:" + key);
         return t;

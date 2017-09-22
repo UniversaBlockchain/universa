@@ -13,7 +13,7 @@ import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.Set;
 
@@ -77,7 +77,7 @@ public class ContractDelta {
             addError(BAD_VALUE, "stat.created_at", "invlaid new state");
         else {
             stateChanges.remove("created_at");
-            ChangedItem<LocalDateTime, LocalDateTime> ci = (ChangedItem) creationTimeChange;
+            ChangedItem<ZonedDateTime, ZonedDateTime> ci = (ChangedItem) creationTimeChange;
             if (!ci.newValue().isAfter(ci.oldValue()))
                 addError(BAD_VALUE, "state.created_at", "new creation datetime is before old one");
         }

@@ -6,7 +6,7 @@ import net.sergeych.tools.StopWatch;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -128,7 +128,7 @@ public class PostgresLedgerTest extends TestCase {
         assertNotNull(r);
         assertEquals(id, r.getId());
         assertEquals(ItemState.PENDING, r.getState());
-        assertAlmostSame(LocalDateTime.now(), r.getCreatedAt());
+        assertAlmostSame(ZonedDateTime.now(), r.getCreatedAt());
 
         // returning existing record
         StateRecord r1 = ledger.findOrCreate(id);
@@ -257,10 +257,10 @@ public class PostgresLedgerTest extends TestCase {
         HashId hashId = HashId.createRandom();
         StateRecord r = ledger.findOrCreate(hashId);
         assertNotNull(r.getExpiresAt());
-        assert(r.getExpiresAt().isAfter(LocalDateTime.now()));
+        assert(r.getExpiresAt().isAfter(ZonedDateTime.now()));
         long recordId = r.getRecordId();
 
-        LocalDateTime inFuture = LocalDateTime.now().plusHours(2);
+        ZonedDateTime inFuture = ZonedDateTime.now().plusHours(2);
         r.setExpiresAt(inFuture);
 
         StateRecord r1 = ledger.getRecord(hashId);
@@ -270,7 +270,7 @@ public class PostgresLedgerTest extends TestCase {
         r1 = ledger.getRecord(hashId);
         assertAlmostSame(r.getExpiresAt(), r1.getExpiresAt());
 
-        r.setExpiresAt(LocalDateTime.now().minusHours(1));
+        r.setExpiresAt(ZonedDateTime.now().minusHours(1));
         r.save();
 
         r1 = ledger.getRecord(hashId);

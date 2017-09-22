@@ -12,7 +12,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.Bytes;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 /**
  * The extended signature signs the resource with sha512, timestamp and 32-byte key id, see {@link #keyId}. The signed
@@ -31,7 +31,7 @@ public class ExtendedSignature {
         return keyId;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -39,7 +39,7 @@ public class ExtendedSignature {
      * return keyId (see {@link #keyId} of the key that was used to sign data.
      */
     private Bytes keyId;
-    private LocalDateTime createdAt;
+    private ZonedDateTime createdAt;
 
     /**
      * Sign the data with a given key.
@@ -55,7 +55,7 @@ public class ExtendedSignature {
                     Binder.fromKeysValues(
                             "key", keyId(key),
                             "sha512", new Sha512().digest(data),
-                            "created_at", LocalDateTime.now()
+                            "created_at", ZonedDateTime.now()
                     )
             );
             Binder result = Binder.fromKeysValues(
@@ -119,7 +119,7 @@ public class ExtendedSignature {
             if (key.verify(exts, src.getBinaryOrThrow("sign"), HashType.SHA512)) {
                 Binder b = Boss.unpack(exts);
                 es.keyId = b.getBytesOrThrow("key");
-                es.createdAt = b.getLocalDateTimeOrThrow("created_at");
+                es.createdAt = b.getZonedDateTimeOrThrow("created_at");
                 Bytes hash = b.getBytesOrThrow("sha512");
                 Bytes dataHash = new Bytes(new Sha512().digest(data));
                 if (hash.equals(dataHash))

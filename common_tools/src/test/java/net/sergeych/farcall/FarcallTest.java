@@ -35,7 +35,7 @@ public class FarcallTest {
 
     Object lastObject;
 
-    private void basicTest(Interconnection ic, Farcall a, Farcall b) {
+    private void basicTest(Interconnection ic, Farcall a, Farcall b) throws InterruptedException {
         b.start(new Farcall.Target() {
             @Override
             public Object onCommand(Command command) throws Exception {

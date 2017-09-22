@@ -1,6 +1,10 @@
 package net.sergeych.tools;
 
+import net.sergeych.boss.Boss;
 import org.junit.Test;
+
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 import static org.junit.Assert.*;
 
@@ -43,5 +47,19 @@ public class BinderTest {
         assertEquals(101, b.getIntOrThrow("i2"));
         assertEquals(1505774997427L, b.getLongOrThrow("l1"));
         assertEquals(1505774997427L, b.getLongOrThrow("l2"));
+    }
+
+    @Test
+    public void timeIssues() throws Exception {
+        Binder x = Binder.fromKeysValues(
+                "tt", ZonedDateTime.now()
+        );
+        x = Boss.toBinder(x);
+//        System.out.println(x);
+        x.getBinderOrThrow("tt").put("seconds", 0);
+        Boss.applyDeserealizeAdapters(x);
+        ZonedDateTime t = x.getZonedDateTimeOrThrow("tt");
+        assertEquals( "1970-01-01T00:00Z", t.withZoneSameInstant(ZoneOffset.UTC).toString());
+//        System.out.println(""+Boss.toBinder(x));
     }
 }

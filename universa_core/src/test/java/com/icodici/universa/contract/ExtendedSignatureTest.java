@@ -13,7 +13,7 @@ import com.icodici.universa.node.TestCase;
 import com.icodici.universa.node.network.TestKeys;
 import org.junit.Test;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -36,7 +36,7 @@ public class ExtendedSignatureTest extends TestCase{
         PublicKey pubKey = k.getPublicKey();
         ExtendedSignature es = ExtendedSignature.verify(pubKey, signature, data);
         assertNotNull(es);
-        assertAlmostSame(es.getCreatedAt(), LocalDateTime.now());
+        assertAlmostSame(es.getCreatedAt(), ZonedDateTime.now());
         assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.keyId(pubKey));
         assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.extractKeyId(signature));
     }

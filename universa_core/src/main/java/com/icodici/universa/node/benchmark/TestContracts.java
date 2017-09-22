@@ -7,7 +7,7 @@ import com.icodici.universa.contract.Contract;
 import net.sergeych.tools.AsyncEvent;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -37,7 +37,7 @@ public class TestContracts implements AutoCloseable {
             pool.submit(()-> {
                 try {
                     Contract c = new Contract(key);
-                    c.setExpiresAt(LocalDateTime.now().plusMonths(1));
+                    c.setExpiresAt(ZonedDateTime.now().plusMonths(1));
                     if (contractMutator != null)
                         contractMutator.accept(c);
                     c.seal();

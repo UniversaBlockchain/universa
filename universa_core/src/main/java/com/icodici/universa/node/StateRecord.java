@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.ZoneId;
 
 /**
@@ -58,17 +58,17 @@ public class StateRecord implements HashIdentifiable {
 
     public StateRecord(Ledger ledger) {
         this.ledger = ledger;
-        createdAt = LocalDateTime.now();
+        createdAt = ZonedDateTime.now();
     }
 
-    static public LocalDateTime getTime(long unixTime) {
+    static public ZonedDateTime getTime(long unixTime) {
         if (unixTime == 0)
             return null;
-        return Instant.ofEpochMilli(unixTime*1000).atZone(ZoneId.systemDefault()).toLocalDateTime();
+        return Instant.ofEpochSecond(unixTime).atZone(ZoneId.systemDefault());
     }
 
-    static public long unixTime(LocalDateTime time) {
-        return time == null ? 0 : time.atZone(ZoneId.systemDefault()).toEpochSecond();
+    static public long unixTime(ZonedDateTime time) {
+        return time == null ? 0 : time.toEpochSecond();
     }
 
     public boolean isDirty() {
@@ -81,8 +81,8 @@ public class StateRecord implements HashIdentifiable {
 
     private ItemState state = ItemState.UNDEFINED;
     private HashId id;
-    private @NonNull LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(300);
-    private @NonNull LocalDateTime createdAt = LocalDateTime.now();
+    private @NonNull ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(300);
+    private @NonNull ZonedDateTime createdAt = ZonedDateTime.now();
 
     public ItemState getState() {
         return state;
@@ -107,11 +107,11 @@ public class StateRecord implements HashIdentifiable {
         return id;
     }
 
-    public LocalDateTime getExpiresAt() {
+    public ZonedDateTime getExpiresAt() {
         return this.expiresAt;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return this.createdAt;
     }
 
@@ -320,7 +320,7 @@ public class StateRecord implements HashIdentifiable {
             throw new IllegalStateException("the record must be created");
     }
 
-    public StateRecord setExpiresAt(@NonNull LocalDateTime expiresAt) {
+    public StateRecord setExpiresAt(@NonNull ZonedDateTime expiresAt) {
         if( !this.expiresAt.equals(expiresAt) ) {
             this.expiresAt = expiresAt;
             dirty = true;
@@ -329,7 +329,7 @@ public class StateRecord implements HashIdentifiable {
     }
 
     public boolean isExpired() {
-        return expiresAt.isBefore(LocalDateTime.now());
+        return expiresAt.isBefore(ZonedDateTime.now());
     }
 
     static public class NotFoundException extends IOException {

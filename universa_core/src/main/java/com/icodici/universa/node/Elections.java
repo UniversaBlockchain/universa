@@ -14,7 +14,7 @@ import net.sergeych.tools.AsyncEvent;
 import net.sergeych.utils.LogPrinter;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
@@ -106,7 +106,7 @@ class Elections {
             throw new RuntimeException("ledger failed to findOrCreate");
         }
         if (record.getExpiresAt() == null)
-            record.setExpiresAt(LocalDateTime.now().plus(network.getMaxElectionsTime()));
+            record.setExpiresAt(ZonedDateTime.now().plus(network.getMaxElectionsTime()));
         if (record.getState() != ItemState.PENDING)
             throw new Error("ledger already has a record for " + itemId + " with state " + record.getState());
         if (item != null) {
@@ -316,7 +316,7 @@ class Elections {
                     if (positive)
                         commitAndApprove();
                     else
-                        rollbackChanges(ItemState.DECLINED, LocalDateTime.now().plus(network.getDeclinedExpiration()));
+                        rollbackChanges(ItemState.DECLINED, ZonedDateTime.now().plus(network.getDeclinedExpiration()));
                     close();
                 }
             }
@@ -358,14 +358,14 @@ class Elections {
                     // The record may not exist due to ledger desync, so we create it if need
                     StateRecord r = ledger.findOrCreate(a.getId());
                     r.setState(ItemState.REVOKED);
-                    r.setExpiresAt(LocalDateTime.now().plus(network.getArchiveExpiration()));
+                    r.setExpiresAt(ZonedDateTime.now().plus(network.getArchiveExpiration()));
                     r.save();
                 }
                 for (Approvable item : item.getNewItems()) {
                     // The record may not exist due to ledger desync too, so we create it if need
                     StateRecord r = ledger.findOrCreate(item.getId());
                     r.setState(ItemState.APPROVED);
-                    r.setExpiresAt(LocalDateTime.now().plus(network.getApprovedExpiration()));
+                    r.setExpiresAt(ZonedDateTime.now().plus(network.getApprovedExpiration()));
                     r.save();
                 }
                 lockedToCreate.clear();
@@ -379,7 +379,7 @@ class Elections {
      * Mark this item as {@link ItemState#DECLINED} and update ledger, unlocking and removing connected records in a
      * transaction. Thread safe method.
      */
-    private void rollbackChanges(ItemState newState, LocalDateTime expiration) {
+    private void rollbackChanges(ItemState newState, ZonedDateTime expiration) {
         log.d(localNode.toString() + " rollbacks to: " + itemId + " as " + newState + " consensus: " + positiveNodes.size() + "/" + negativeNodes.size());
         synchronized (itemLock) {
             ledger.transaction(() -> {
@@ -439,14 +439,14 @@ class Elections {
     }
 
     private void checkElectionsFailed() {
-        if ((pollers.size() == 0 && getState().isPending()) || getMillisLeft() <= 0 || LocalDateTime.now().isAfter(record.getExpiresAt())) {
+        if ((pollers.size() == 0 && getState().isPending()) || getMillisLeft() <= 0 || ZonedDateTime.now().isAfter(record.getExpiresAt())) {
             stopOnFailure();
         }
     }
 
     private void stopOnFailure() {
         log.d(localNode.toString() + " failing elections, pollers: " + pollers.size());
-        rollbackChanges(ItemState.UNDEFINED, LocalDateTime.now().plusSeconds(5));
+        rollbackChanges(ItemState.UNDEFINED, ZonedDateTime.now().plusSeconds(5));
         Elections.this.close();
     }
 

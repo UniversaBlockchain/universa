@@ -7,8 +7,7 @@
 
 package com.icodici.universa.node;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.concurrent.Callable;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -18,10 +17,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class TestCase {
-    public void assertAlmostSame(LocalDateTime t1, LocalDateTime t2) {
+    public void assertAlmostSame(ZonedDateTime t1, ZonedDateTime t2) {
         if( t1 == null && t2 == null )
             return ;
-        long delta = Math.abs(t1.toEpochSecond(ZoneOffset.UTC) - t2.toEpochSecond(ZoneOffset.UTC));
+        long delta = Math.abs(t1.toEpochSecond() - t2.toEpochSecond());
         assertThat(delta, is(lessThan(2L)));
     }
 

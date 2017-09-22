@@ -25,9 +25,10 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
-import java.time.chrono.ChronoLocalDateTime;
+import java.time.chrono.ChronoZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -35,25 +36,6 @@ import static com.icodici.universa.Errors.*;
 import static java.util.Arrays.asList;
 
 public class Contract implements Approvable {
-
-    static {
-        Boss.registerAdapter(LocalDateTime.class, new Boss.Adapter() {
-            @Override
-            public Binder serialize(Object object) {
-                return Binder.fromKeysValues("seconds", ((LocalDateTime) object).toEpochSecond(ZoneOffset.UTC));
-            }
-
-            @Override
-            public Object deserialize(Binder binder) {
-                return LocalDateTime.ofEpochSecond(binder.getLongOrThrow("seconds"), 0, ZoneOffset.UTC);
-            }
-
-            @Override
-            public String typeName() {
-                return "unixtime";
-            }
-        });
-    }
 
     private final Set<HashId> referencedItems = new HashSet<>();
     private final Set<Approvable> revokingItems = new HashSet<>();
@@ -128,7 +110,7 @@ public class Contract implements Approvable {
     public Contract(PrivateKey key) {
         this();
         // default expiration date
-        setExpiresAt(LocalDateTime.now().plusYears(5));
+        setExpiresAt(ZonedDateTime.now().plusYears(5));
         // issuer role is a key for a new contract
         Role r = setIssuerKeys(key.getPublicKey());
         // issuer is owner, link roles
@@ -312,16 +294,16 @@ public class Contract implements Approvable {
 
     private void basicCheck() {
         if (definition.createdAt == null ||
-                definition.createdAt.isAfter(LocalDateTime.now()) ||
+                definition.createdAt.isAfter(ZonedDateTime.now()) ||
                 definition.createdAt.isBefore(getEarliestCreationTime())) {
             addError(BAD_VALUE, "definition.created_at", "invalid");
         }
         if (definition.expiresAt == null ||
-                definition.expiresAt.isBefore(LocalDateTime.now())) {
+                definition.expiresAt.isBefore(ZonedDateTime.now())) {
             addError(EXPIRED, "definition.expires_at");
         }
         if (state.createdAt == null ||
-                state.createdAt.isAfter(LocalDateTime.now()) ||
+                state.createdAt.isAfter(ZonedDateTime.now()) ||
                 state.createdAt.isBefore(getEarliestCreationTime())) {
             addError(BAD_VALUE, "state.created_at");
         }
@@ -399,11 +381,11 @@ public class Contract implements Approvable {
         return getRole("issuer");
     }
 
-    public LocalDateTime getCreatedAt() {
+    public ZonedDateTime getCreatedAt() {
         return definition.createdAt;
     }
 
-    public LocalDateTime getExpiresAt() {
+    public ZonedDateTime getExpiresAt() {
         return definition.expiresAt;
     }
 
@@ -466,8 +448,8 @@ public class Contract implements Approvable {
         errors.add(new ErrorRecord(code1, field1, ""));
     }
 
-    public ChronoLocalDateTime<?> getEarliestCreationTime() {
-        return LocalDateTime.now().minusDays(10);
+    public ChronoZonedDateTime<?> getEarliestCreationTime() {
+        return ZonedDateTime.now().minusDays(10);
     }
 
     public Set<PublicKey> getSealedByKeys() {
@@ -545,7 +527,7 @@ public class Contract implements Approvable {
             Contract newRevision = new Contract(Boss.unpack(Boss.pack(serializeToBinder())));
             // modify th edeep copy for a new revision
             newRevision.state.revision = state.revision + 1;
-            newRevision.state.createdAt = LocalDateTime.now();
+            newRevision.state.createdAt = ZonedDateTime.now();
             newRevision.state.parent = getId();
             newRevision.state.origin = state.revision == 1 ? getId() : state.origin;
             revokingItems.add(this);
@@ -634,14 +616,14 @@ public class Contract implements Approvable {
         return setRole("issuer", asList(keys));
     }
 
-    public void setExpiresAt(LocalDateTime dateTime) {
+    public void setExpiresAt(ZonedDateTime dateTime) {
         definition.setExpiresAt(dateTime);
     }
 
     public class State {
         private int revision;
         private Binder state;
-        private LocalDateTime createdAt;
+        private ZonedDateTime createdAt;
         //        private Role createdBy;
         private HashId origin;
         private HashId parent;
@@ -654,7 +636,7 @@ public class Contract implements Approvable {
 
         private State(Binder state) throws EncryptionError {
             this.state = state;
-            createdAt = state.getLocalDateTime("created_at", null);
+            createdAt = state.getZonedDateTime("created_at", null);
             revision = state.getIntOrThrow("revision");
             data = state.getOrCreateBinder("data");
             if (createdAt == null) {
@@ -674,11 +656,11 @@ public class Contract implements Approvable {
             this.revision = revision;
         }
 
-        public LocalDateTime getCreatedAt() {
+        public ZonedDateTime getCreatedAt() {
             return createdAt;
         }
 
-        public void setCreatedAt(LocalDateTime createdAt) {
+        public void setCreatedAt(ZonedDateTime createdAt) {
             this.createdAt = createdAt;
         }
 
@@ -701,9 +683,9 @@ public class Contract implements Approvable {
 
     public class Definition {
 
-        private LocalDateTime createdAt;
+        private ZonedDateTime createdAt;
 
-        public void setExpiresAt(LocalDateTime expiresAt) {
+        public void setExpiresAt(ZonedDateTime expiresAt) {
             this.expiresAt = expiresAt;
         }
 
@@ -711,20 +693,20 @@ public class Contract implements Approvable {
             this.data = data;
         }
 
-        private LocalDateTime expiresAt;
+        private ZonedDateTime expiresAt;
         private Binder definition;
         private Binder data;
 
 
         private Definition() {
-            createdAt = LocalDateTime.now();
+            createdAt = ZonedDateTime.now();
         }
 
         private Definition(Binder definition) throws EncryptionError {
             this.definition = definition;
             Role issuer = createRole("issuer", definition.getOrThrow("issuer"));
-            createdAt = definition.getLocalDateTimeOrThrow("created_at");
-            expiresAt = definition.getLocalDateTimeOrThrow("expires_at");
+            createdAt = definition.getZonedDateTimeOrThrow("created_at");
+            expiresAt = definition.getZonedDateTimeOrThrow("expires_at");
             registerRole(issuer);
             data = definition.getBinder("data");
         }

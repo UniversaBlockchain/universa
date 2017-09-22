@@ -20,8 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
@@ -238,9 +237,9 @@ public class TestBoss {
 		assertEquals(date.getTime() / 1000, 1375965738L);
 		assertEquals("79 2A 24 0E 10 85", Boss.dump(date).toHex());
         Boss.setUseOldDates(false);
-        LocalDateTime d = Boss.load(Bytes.fromHex("79 2A 24 0E 10 85"));
+        ZonedDateTime d = Boss.load(Bytes.fromHex("79 2A 24 0E 10 85"));
         assertEquals(true, date != null);
-        assertEquals(1375965738L, d.toEpochSecond(ZoneOffset.UTC));
+        assertEquals(1375965738L, d.toEpochSecond());
         assertEquals("79 2A 24 0E 10 85", Boss.dump(date).toHex());
 	}
 	
