@@ -9,6 +9,8 @@ package net.sergeych.utils;
 
 //import android.util.Log;
 
+import java.util.concurrent.Callable;
+
 /**
  * Log reporting stub. Platform-dependency crutches. Fuck Java for the lack of conditional
  * compilation!
@@ -36,22 +38,22 @@ public class LogPrinter {
     public void log(char type, String tag, String message, Object... params) {
         if( type == 'd' && !showDebugMessages )
             return;
-        if (params.length > 0)
-            message = String.format(message, params);
-//        switch (type) {
-//            case 'e':
-//                Log.e(tag, message);
-//                break;
-//            case 'i':
-//                Log.i(tag,message);
-//                break;
-//            case 'w':
-//                Log.w(tag, message);
-//                break;
-//            default:
-//                Log.d(tag, message);
-//                break;
-//        }
+        outputLog(tag, String.format(message, params));
+    }
+
+    public void log(char type,String tag,Callable<String> source) {
+        if( type == 'd' && !showDebugMessages )
+            return;
+        try {
+            log(type, tag, source.call());
+        } catch (Exception e) {
+            wtf("Exception in log source callable: ", e);
+        }
+    }
+
+    public void log(char type, String tag, String message) {
+        if( type == 'd' && !showDebugMessages )
+            return;
         outputLog(tag, message);
     }
 
@@ -60,8 +62,18 @@ public class LogPrinter {
 //        Log.d(tag, message);
     }
 
+    public void d(String text) {
+        if( !showDebugMessages )
+            return;
+        log('d', tag, text);
+    }
+    public void d(Callable<String> source) {
+        if( showDebugMessages )
+            log('d', tag, source);
+    }
     public void d(String format, Object... objects) {
-        log('d', tag, format, objects);
+        if( showDebugMessages )
+            log('d', tag, format, objects);
     }
 
     public void w(String format, Object... objects) {
