@@ -12,7 +12,7 @@ import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -399,9 +399,9 @@ public class Binder extends HashMap<String, Object> {
         if (obj instanceof ZonedDateTime)
             return (ZonedDateTime) obj;
         if (obj instanceof Date)
-            return ZonedDateTime.ofInstant(((Date) obj).toInstant(), ZoneOffset.UTC);
+            return ZonedDateTime.ofInstant(((Date) obj).toInstant(), ZoneId.systemDefault());
         if (obj instanceof Number)
-            return ZonedDateTime.ofInstant(Instant.ofEpochSecond(((Number) obj).longValue()), ZoneOffset.UTC);
+            return ZonedDateTime.ofInstant(Instant.ofEpochSecond(((Number) obj).longValue()), ZoneId.systemDefault());
         if (obj instanceof Map) {
             Map<String, Object> map = (Map) obj;
             String t = (String) map.get("__type");
@@ -409,7 +409,7 @@ public class Binder extends HashMap<String, Object> {
                 t = (String) map.get("__t");
             long ss = (int) map.get("seconds");
             if (t != null) {
-                return ZonedDateTime.ofInstant(Instant.ofEpochSecond(((Number) obj).longValue()), ZoneOffset.UTC);
+                return ZonedDateTime.ofInstant(Instant.ofEpochSecond(((Number) obj).longValue()), ZoneId.systemDefault());
             }
         }
         if (obj.equals("now()"))
