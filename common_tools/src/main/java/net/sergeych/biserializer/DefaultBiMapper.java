@@ -8,6 +8,7 @@
 package net.sergeych.biserializer;
 
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Base64;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.Instant;
@@ -16,9 +17,11 @@ import java.time.ZonedDateTime;
 import java.util.Map;
 
 /**
- * Static interface (shortcut) to the default {@link BiMapper} instance, see {@link BiMapper#getDefaultMapper()}.
+ * Static interface (shortcut) to the default {@link BiMapper} instance, see {@link DefaultBiMapper#getDefaultMapper()}.
  */
 public class DefaultBiMapper {
+
+    final static BiMapper defaultInstance = new BiMapper();
 
     public static void deserializeInPlace(Map map) {
         new BiDeserializer().deserializeInPlace(map);
@@ -45,7 +48,7 @@ public class DefaultBiMapper {
     }
 
     public static <T> void registerAdapter(Class<T> klass, BiAdapter adapter) {
-        BiMapper.defaultInstance.registerAdapter(klass, adapter);
+        defaultInstance.registerAdapter(klass, adapter);
     }
 
     /**
@@ -54,7 +57,7 @@ public class DefaultBiMapper {
      * @param klass class to register.
      */
     public static void registerClass(Class<? extends BiSerializable> klass) {
-        BiMapper.defaultInstance.registerClass(klass);
+        defaultInstance.registerClass(klass);
     }
 
     static {
@@ -75,6 +78,31 @@ public class DefaultBiMapper {
                 return "unixtime";
             }
         });
+
+        byte[] dummy = new byte[0];
+        DefaultBiMapper.registerAdapter(dummy.getClass(), new BiAdapter() {
+            @Override
+            public Binder serialize(Object object, BiSerializer serializer) {
+                return Binder.of("base64", Base64.encodeCompactString((byte[]) object));
+            }
+
+            @Override
+            public Object deserialize(Binder binder, BiDeserializer deserializer) {
+                return Base64.decodeCompactString(binder.getStringOrThrow("base64"));
+            }
+
+            @Override
+            public String typeName() {
+                return "binary";
+            }
+        });
     }
 
+    public static BiDeserializer getDeserializer() {
+        return new BiDeserializer(defaultInstance);
+    }
+
+    public static BiMapper getDefaultMapper() {
+         return defaultInstance;
+    }
 }

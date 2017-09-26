@@ -515,9 +515,12 @@ public class Base64 {
 
     public static byte[] decodeCompactString(String s) {
         StringBuilder sb = new StringBuilder(s.trim());
-        int n = sb.length() % 4;
-        while (n-- > 0)
-            sb.append('=');
+        int n = (sb.length() % 4);
+        if( n > 0 ) {
+            n = 4 - n;
+            while (n-- > 0)
+                sb.append('=');
+        }
         return Base64.decodeLines(sb.toString());
     }
 } // end Base64

@@ -143,6 +143,7 @@ public abstract class Role implements BiSerializable {
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         name = data.getStringOrThrow("name");
+        contract = deserializer.getContext();
     }
 
     @Override

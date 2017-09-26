@@ -7,6 +7,7 @@
 
 package net.sergeych.tools;
 
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -122,6 +123,9 @@ public class Binder extends HashMap<String, Object> {
             return ((Bytes) x).toArray();
         if (x instanceof byte[])
             return (byte[]) x;
+        if( x instanceof Map) {
+            return (byte[]) DefaultBiMapper.deserialize((Map)x);
+        }
         throw new ClassCastException("parameter can't be converted to byte[]");
     }
 
@@ -419,9 +423,9 @@ public class Binder extends HashMap<String, Object> {
             String t = (String) map.get("__type");
             if (t == null)
                 t = (String) map.get("__t");
-            long ss = (int) map.get("seconds");
+            long ss = ((Number) map.get("seconds")).longValue();
             if (t != null) {
-                return ZonedDateTime.ofInstant(Instant.ofEpochSecond(((Number) obj).longValue()), ZoneId.systemDefault());
+                return ZonedDateTime.ofInstant(Instant.ofEpochSecond(ss), ZoneId.systemDefault());
             }
         }
         if (obj.equals("now()"))

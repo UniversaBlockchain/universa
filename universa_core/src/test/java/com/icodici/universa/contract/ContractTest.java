@@ -13,7 +13,6 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.roles.RoleLink;
 import net.sergeych.biserializer.DefaultBiMapper;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -28,42 +27,32 @@ public class ContractTest extends ContractTestBase {
     public void fromYamlFile() throws Exception {
         Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
         assertProperSimpleRootContract(c);
-
-        Binder s = DefaultBiMapper.serialize(c);
-
-//        Boss.trace((Object)s.getOrThrow("definition","permissions"));
-        Yaml yaml = new Yaml();
-        System.out.println(yaml.dump(s));
+//
+//        Binder s = DefaultBiMapper.serialize(c);
+//
+////        Boss.trace((Object)s.getOrThrow("definition","permissions"));
+//        Yaml yaml = new Yaml();
+//        System.out.println(yaml.dump(s));
     }
 
     @Test
     public void serializeToBinder() throws Exception {
         Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
         Binder b = c.serializeToBinder();
-        Contract c1 = new Contract(b);
-        assertProperSimpleRootContract(c1);
-        Binder b1 = Boss.load(Boss.dump(b));
-        Contract c2 = new Contract(b1);
-        assertProperSimpleRootContract(c2);
-    }
-
-    @Test
-    public void checkSerializedContractInsights() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
-        Binder b = c.serializeToBinder();
-        Contract c1 = new Contract(b);
-        assertProperSimpleRootContract(c1);
-        b = DefaultBiMapper.serialize(b);
         Yaml yaml = new Yaml();
-        System.out.println(yaml.dump(b));
-        Object x = b.getBinderOrThrow("definition").getBinderOrThrow("issuer");
-        System.out.println(x);
+        Contract c1 = DefaultBiMapper.deserialize(b);
+//        System.out.println(yaml.dump(b));
+//        System.out.println(yaml.dump(c1.serializeToBinder()));
+        assertProperSimpleRootContract(c1);
+        Contract c2 = c.copy();
+        assertProperSimpleRootContract(c2);
     }
 
     @Test
     public void checkCreatingRootContract() throws Exception {
         Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
         boolean ok = c.check();
+        assertFalse(ok);
         List<ErrorRecord> errors = c.getErrors();
         // It is just ok but not signed
         assertEquals(1, errors.size());

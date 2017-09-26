@@ -278,7 +278,7 @@ public class Boss {
         private OutputStream out;
         private HashMap<Object, Integer> cache;
         private boolean treeMode;
-        private final BiSerializer biSerializer;
+//        private final BiSerializer biSerializer;
 
         /**
          * Creates writer to write to the output stream. Upon creation writer is alwais in tree mode.
@@ -290,7 +290,7 @@ public class Boss {
             cache = new HashMap<>();
             cache.put(null, 0);
             treeMode = true;
-            this.biSerializer = biSerializer;
+//            this.biSerializer = biSerializer;
         }
 
         /**
@@ -449,7 +449,7 @@ public class Boss {
                 writeHeader(TYPE_CREF, 0);
                 return this;
             }
-            writeObject(biSerializer.serialize(obj));
+//            writeObject(biSerializer.serialize(obj));
             return this;
         }
 
@@ -567,7 +567,7 @@ public class Boss {
         protected boolean showTrace = false;
         private ArrayList<Object> cache;
         private int maxCacheEntries, maxStringSize;
-        private final BiDeserializer deserializer;
+//        private final BiDeserializer deserializer;
 
         public Reader(byte[] bytes) {
             this(new ByteArrayInputStream(bytes));
@@ -577,7 +577,7 @@ public class Boss {
             in = stream;
             cache = new ArrayList<>();
             treeMode = true;
-            this.deserializer = deserializer;
+//            this.deserializer = deserializer;
         }
 
         public Reader(InputStream stream) {
@@ -722,8 +722,8 @@ public class Boss {
             cacheObject(hash);
             for (int i = 0; i < h.value; i++)
                 hash.put(read(), read());
-            if( hash.containsKey("__type") || hash.containsKey("__t"))
-                return (T) deserializer.deserialize(hash);
+//            if( hash.containsKey("__type") || hash.containsKey("__t"))
+//                return (T) deserializer.deserialize(hash);
 //            trace("Dict: " + hash);
             return (T) hash;
         }

@@ -163,7 +163,8 @@ public class PublicKey extends AbstractKey {
         DefaultBiMapper.registerAdapter(PublicKey.class, new BiAdapter() {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
-                return Binder.fromKeysValues("packed", ((PublicKey) object).pack());
+                return Binder.of("packed",
+                                 serializer.serialize(((PublicKey) object).pack()));
             }
 
             @Override

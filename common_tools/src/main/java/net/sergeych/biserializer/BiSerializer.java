@@ -15,7 +15,7 @@ public class BiSerializer {
     }
 
     public BiSerializer() {
-        this.mapper = BiMapper.getDefaultMapper();
+        this.mapper = DefaultBiMapper.getDefaultMapper();
     }
 
     public <T> T serialize(Object obj) {

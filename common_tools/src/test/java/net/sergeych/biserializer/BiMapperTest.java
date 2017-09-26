@@ -8,6 +8,7 @@
 package net.sergeych.biserializer;
 
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
@@ -15,6 +16,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -151,5 +153,13 @@ public class BiMapperTest {
         Object x = DefaultBiMapper.deserialize(s);
         assertThat(x, instanceOf(Rebinder.class));
         assertEquals("bar", ((Map)x).get("foo"));
+    }
+
+    @Test
+    public void processBytes() throws Exception {
+        byte x[] = Do.randomBytes(10);
+        Binder s = DefaultBiMapper.serialize(x);
+        byte[] result = DefaultBiMapper.deserialize(s);
+        assertArrayEquals(x, result);
     }
 }

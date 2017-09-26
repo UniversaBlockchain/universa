@@ -1,16 +1,15 @@
 /*
  * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
  *
- * Written by Sergey Chernov <real.sergeych@gmail.com>, August 2017.
+ * Written by Sergey Chernov <real.sergeych@gmail.com>
  *
  */
 
-package com.icodici.universa.contract;
+package com.icodici.universa.contract.permissions;
 
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
-import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
-import com.icodici.universa.contract.permissions.RevokePermission;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
@@ -34,6 +33,8 @@ public abstract class Permission implements BiSerializable {
     }
 
     private Binder params;
+
+    protected Permission() {}
 
     protected Permission(String name, Role role) {
         this.name = name;
@@ -86,14 +87,14 @@ public abstract class Permission implements BiSerializable {
         if( params != null )
             results.putAll(params);
         results.put("name", name);
-        results.put("role", role);
+        results.put("role", serializer.serialize(role));
         return results;
     }
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         name = data.getStringOrThrow("name");
-        role = (Role) data.get("role");
+        role = deserializer.deserialize(data.get("role"));
         params = data;
     }
 

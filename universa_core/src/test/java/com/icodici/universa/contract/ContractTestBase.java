@@ -13,6 +13,7 @@ import com.icodici.universa.node.TestCase;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.instanceOf;
@@ -48,7 +49,8 @@ public class ContractTestBase extends TestCase {
         // -- state
         Contract.State state = c.getState();
         assertEquals(1, state.getRevision());
-        assertEquals(c.getCreatedAt(), state.getCreatedAt());
+        assertEquals(c.getCreatedAt().truncatedTo(ChronoUnit.SECONDS),
+                     state.getCreatedAt().truncatedTo(ChronoUnit.SECONDS));
         KeyRecord owner = c.testGetOwner();
         assertNotNull(owner);
         assertEquals("Pupkin", owner.getBinderOrThrow("name").getStringOrThrow("last"));

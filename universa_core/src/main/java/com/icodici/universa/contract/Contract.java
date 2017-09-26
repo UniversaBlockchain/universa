@@ -15,6 +15,7 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
+import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
@@ -36,8 +37,9 @@ import java.util.stream.Collectors;
 
 import static com.icodici.universa.Errors.*;
 import static java.util.Arrays.asList;
-@BiType(name="UniversaContract")
-public class Contract implements Approvable, BiSerializable {
+
+@BiType(name = "UniversaContract")
+public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private final Set<HashId> referencedItems = new HashSet<>();
     private final Set<Approvable> revokingItems = new HashSet<>();
@@ -72,7 +74,10 @@ public class Contract implements Approvable, BiSerializable {
         if (data.getIntOrThrow("version") > 7)
             throw new IllegalArgumentException("version too high");
         byte[] contractBytes = data.getBinaryOrThrow("data");
-        initializeWithDsl(Boss.unpack(contractBytes));
+
+        deserialize(Boss.unpack(contractBytes), new BiDeserializer());
+
+//        initializeWithDsl(Boss.unpack(contractBytes));
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -96,7 +101,6 @@ public class Contract implements Approvable, BiSerializable {
     public Contract() {
         definition = new Definition();
         state = new State();
-        apiLevel = 1;
     }
 
     /**
@@ -130,9 +134,15 @@ public class Contract implements Approvable, BiSerializable {
 
     private final List<ErrorRecord> errors = new ArrayList<>();
 
-    public Contract(Binder root) throws EncryptionError {
-        initializeWithDsl(root);
-    }
+//    /**
+//     * Test use only
+//     * @param root
+//     * @throws EncryptionError
+//     */
+//    Contract(Binder root) throws EncryptionError {
+//        this();
+//        deserialize(root, DefaultBiMapper.getDeserializer());
+//    }
 
     private Contract initializeWithDsl(Binder root) throws EncryptionError {
         apiLevel = root.getIntOrThrow("api_level");
@@ -476,7 +486,7 @@ public class Contract implements Approvable, BiSerializable {
 
     public byte[] seal() {
         byte[] theContract = Boss.pack(serializeToBinder());
-        Binder result = Binder.fromKeysValues("type", "unicapsule", "version", 7, "data", theContract);
+        Binder result = Binder.of("type", "unicapsule", "version", apiLevel, "data", theContract);
         List<byte[]> signatures = new ArrayList<>();
         keysToSignWith.forEach(key -> {
             signatures.add(ExtendedSignature.sign(key, theContract));
@@ -521,7 +531,7 @@ public class Contract implements Approvable, BiSerializable {
         try {
             // We need deep copy, so, simple while not that fast.
             // note that revisions are create on clients where speed it not of big importance!
-            Contract newRevision = new Contract(Boss.unpack(Boss.pack(serializeToBinder())));
+            Contract newRevision = (Contract) clone();
             // modify th edeep copy for a new revision
             newRevision.state.revision = state.revision + 1;
             newRevision.state.createdAt = ZonedDateTime.now();
@@ -619,15 +629,26 @@ public class Contract implements Approvable, BiSerializable {
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
-        throw new RuntimeException("not yet ready");
+        int l = data.getIntOrThrow("api_level");
+        if (l != apiLevel)
+            throw new RuntimeException("contract api level conflict: found " + l + " my level "+apiLevel);
+        deserializer.withContext(this, () -> {
+            if( definition == null )
+                definition = new Definition();
+            definition.deserializeWith(data.getBinderOrThrow("definition"), deserializer);
+            if( state == null )
+                state = new State();
+            state.deserealizeWith(data.getBinderOrThrow("state"), deserializer);
+        });
+//        throw new RuntimeException("not yet ready");
     }
 
     @Override
     public Binder serialize(BiSerializer s) {
         return Binder.of(
                 "api_level", apiLevel,
-                "definition", definition.serializeToBinder(),
-                "state", state.serializeToBinder()
+                "definition", definition.serializeWith(s),
+                "state", state.serializeWith(s)
         );
     }
 
@@ -664,30 +685,38 @@ public class Contract implements Approvable, BiSerializable {
             return revision;
         }
 
-        public void setRevision(int revision) {
-            this.revision = revision;
-        }
-
         public ZonedDateTime getCreatedAt() {
             return createdAt;
         }
 
-        public void setCreatedAt(ZonedDateTime createdAt) {
-            this.createdAt = createdAt;
-        }
-
-        public Binder serializeToBinder() {
-            return Binder.fromKeysValues(
-                    "created_at", createdAt,
-                    "revision", revision,
-                    "owner", getRole("owner"),
-                    "created_by", getRole("creator"),
-                    "data", data
+        public Binder serializeWith(BiSerializer serializer) {
+            return serializer.serialize(
+                    Binder.of(
+                            "created_at", createdAt,
+                            "revision", revision,
+                            "owner", getRole("owner"),
+                            "created_by", getRole("creator"),
+                            "data", data
+                    )
             );
         }
 
         public Binder getData() {
             return data;
+        }
+
+        public void deserealizeWith(Binder data, BiDeserializer d) {
+            createdAt = data.getZonedDateTimeOrThrow("created_at");
+            revision = data.getIntOrThrow("revision");
+            if (revision <= 0)
+                throw new IllegalArgumentException("illegal revision number: " + revision);
+            Role r = registerRole(d.deserialize(data.getBinderOrThrow("owner")));
+            if (!r.getName().equals("owner"))
+                throw new IllegalArgumentException("bad owner role name");
+            r = registerRole(d.deserialize(data.getBinderOrThrow("created_by")));
+            if (!r.getName().equals("creator"))
+                throw new IllegalArgumentException("bad creator role name");
+            this.data = data.getBinderOrThrow("data");
         }
     }
 
@@ -776,8 +805,8 @@ public class Contract implements Approvable, BiSerializable {
             return data;
         }
 
-        public Binder serializeToBinder() {
-            return DefaultBiMapper.serialize(
+        public Binder serializeWith(BiSerializer serializer) {
+            return serializer.serialize(
                     Binder.of(
                             "issuer", getIssuer(),
                             "created_at", createdAt,
@@ -788,16 +817,14 @@ public class Contract implements Approvable, BiSerializable {
             );
         }
 
-//        private Binder serializePermissions() {
-//            permissions.getList()
-//            Binder perms = new Binder();
-//            permissions.forEach((name, permissions) -> {
-//                perms.put(name,
-//                          permissions.stream().map(p -> p.serializeToBinder()).collect(Collectors.toList())
-//                );
-//            });
-//            return perms;
-//        }
+        public void deserializeWith(Binder data, BiDeserializer d) {
+            registerRole(d.deserialize(data.getBinderOrThrow("issuer")));
+            expiresAt = data.getZonedDateTimeOrThrow("expires_at");
+            this.data = d.deserialize(data.getBinderOrThrow("data"));
+            List<Permission> perms = d.deserializeCollection(data.getOrThrow("permissions"));
+            perms.forEach(perm -> permissions.put(perm.getName(), perm));
+        }
+
     }
 
     public void traceErrors() {
@@ -814,4 +841,17 @@ public class Contract implements Approvable, BiSerializable {
         DefaultBiMapper.registerClass(Contract.class);
     }
 
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return copy();
+    }
+
+    /**
+     * Make a valid deep copy of a contract
+     *
+     * @return
+     */
+    public Contract copy() {
+        return DefaultBiMapper.deserialize(DefaultBiMapper.serialize(this));
+    }
 }

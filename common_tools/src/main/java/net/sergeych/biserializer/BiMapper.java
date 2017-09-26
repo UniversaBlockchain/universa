@@ -10,6 +10,7 @@ package net.sergeych.biserializer;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,12 +24,7 @@ import java.util.stream.Collectors;
  * serializer, so your serialization code must do its best to properly reconstruct links in your object tree.
  */
 public class BiMapper {
-    final static BiMapper defaultInstance = new BiMapper();
     private HashMap<String, BiAdapter> adapters = new HashMap<String, BiAdapter>();
-
-    public static BiMapper getDefaultMapper() {
-         return defaultInstance;
-    }
 
 
     public void deserializeInPlace(Map map, BiDeserializer deserializer) {
@@ -71,6 +67,15 @@ public class BiMapper {
         return (T) map;
     }
 
+    public <T> T deserializeObject(Object obj,BiDeserializer deserializer) {
+        if( obj instanceof String || obj instanceof Number || obj instanceof Boolean
+                || obj instanceof ZonedDateTime )
+            return (T)obj;
+        if( obj instanceof Map )
+            return deserialize((Map)obj, deserializer);
+        throw new IllegalArgumentException("don't know how to deserealize "+obj);
+    }
+
     /**
      * Try to serialize object to {@link Binder} using curretn set of {@link BiAdapter}. See {@link
      * #registerAdapter(Class, BiAdapter)} for more.
@@ -86,7 +91,8 @@ public class BiMapper {
     public @NonNull <T> T serialize(Object x,BiSerializer serializer) {
         if (x instanceof String || x instanceof Number || x instanceof Boolean)
             return (T) x;
-        if (x.getClass().isArray()) {
+        Class<?> klass = x.getClass();
+        if (klass.isArray() && !(klass.getComponentType() == byte.class )) {
             x = Arrays.asList(x);
         }
         if (x instanceof Collection) {
@@ -95,7 +101,7 @@ public class BiMapper {
                     .collect(Collectors.toList());
 
         }
-        String canonicalName = x.getClass().getCanonicalName();
+        String canonicalName = klass.getCanonicalName();
         BiAdapter adapter = adapters.get(canonicalName);
         if (adapter == null) {
             if (x instanceof Map) {
