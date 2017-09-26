@@ -10,7 +10,10 @@ package com.icodici.universa.node;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
-import net.sergeych.boss.Boss;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 
@@ -67,14 +70,14 @@ public class TestItem implements Approvable {
     }
 
     static {
-        Boss.registerAdapter(TestItem.class, new Boss.Adapter<TestItem>() {
+        DefaultBiMapper.registerAdapter(TestItem.class, new BiAdapter<TestItem>() {
             @Override
-            public Binder serialize(TestItem item) {
+            public Binder serialize(TestItem item, BiSerializer serializer) {
                 return Binder.fromKeysValues("ok", item.isGood);
             }
 
             @Override
-            public TestItem deserialize(Binder binder) {
+            public TestItem deserialize(Binder binder, BiDeserializer deserializer) {
                 return new TestItem(binder.getBooleanOrThrow("ok"));
             }
         });

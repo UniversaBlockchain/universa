@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.contract.roles.SimpleRole;
 import net.sergeych.tools.Binder;
 
 import java.io.IOException;
@@ -34,7 +35,7 @@ public class TransactionContract extends Contract {
      * @param issuers
      */
     public void setIssuer(PrivateKey... issuers) {
-        Role issuerRole = new Role("issuer");
+        SimpleRole issuerRole = new SimpleRole("issuer");
         for (PrivateKey k : issuers) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);

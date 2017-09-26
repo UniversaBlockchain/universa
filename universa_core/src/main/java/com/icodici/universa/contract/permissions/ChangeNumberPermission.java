@@ -2,7 +2,7 @@ package com.icodici.universa.contract.permissions;
 
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Permission;
-import com.icodici.universa.contract.Role;
+import com.icodici.universa.contract.roles.Role;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;

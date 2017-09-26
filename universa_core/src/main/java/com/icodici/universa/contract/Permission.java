@@ -11,6 +11,10 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.RevokePermission;
+import com.icodici.universa.contract.roles.Role;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializable;
+import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.diff.Delta;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -20,16 +24,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class Permission {
+public abstract class Permission implements BiSerializable {
 
-    private final String name;
-    private final Role role;
+    private String name;
+    private Role role;
 
     public Binder getParams() {
         return params;
     }
 
-    private final Binder params;
+    private Binder params;
 
     protected Permission(String name, Role role) {
         this.name = name;
@@ -76,13 +80,21 @@ public abstract class Permission {
         return keys instanceof Set ? role.isAllowedForKeys((Set) keys) : role.isAllowedForKeys(new HashSet<>(keys));
     }
 
-    public Binder serializeToBinder() {
+    @Override
+    public Binder serialize(BiSerializer serializer) {
         Binder results = new Binder();
         if( params != null )
             results.putAll(params);
         results.put("name", name);
         results.put("role", role);
         return results;
+    }
+
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        name = data.getStringOrThrow("name");
+        role = (Role) data.get("role");
+        params = data;
     }
 
     /**

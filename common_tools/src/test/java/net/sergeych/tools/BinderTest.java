@@ -1,6 +1,6 @@
 package net.sergeych.tools;
 
-import net.sergeych.boss.Boss;
+import net.sergeych.biserializer.DefaultBiMapper;
 import org.junit.Test;
 
 import java.time.ZoneOffset;
@@ -54,12 +54,12 @@ public class BinderTest {
         Binder x = Binder.fromKeysValues(
                 "tt", ZonedDateTime.now()
         );
-        x = Boss.toBinder(x);
+        x = (Binder) DefaultBiMapper.serialize(x);
 //        System.out.println(x);
         x.getBinderOrThrow("tt").put("seconds", 0);
-        Boss.applyDeserealizeAdapters(x);
+        DefaultBiMapper.deserializeInPlace(x);
         ZonedDateTime t = x.getZonedDateTimeOrThrow("tt");
         assertEquals( "1970-01-01T00:00Z", t.withZoneSameInstant(ZoneOffset.UTC).toString());
-//        System.out.println(""+Boss.toBinder(x));
+//        System.out.println(""+Boss.serializeToBinder(x));
     }
 }

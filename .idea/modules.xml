@@ -17,15 +17,6 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/new_universa-universa_core.iml" filepath="$PROJECT_DIR$/.idea/modules/new_universa-universa_core.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/new_universa-universa_core_main.iml" filepath="$PROJECT_DIR$/.idea/modules/new_universa-universa_core_main.iml" group="universa_core" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/new_universa-universa_core_test.iml" filepath="$PROJECT_DIR$/.idea/modules/new_universa-universa_core_test.iml" group="universa_core" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient.iml" group="uniclient" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient_main.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient_main.iml" group="uniclient" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/uniclient_test.iml" filepath="$PROJECT_DIR$/.idea/modules/uniclient_test.iml" group="uniclient" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa.iml" filepath="$PROJECT_DIR$/.idea/modules/universa.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_core.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_core.iml" group="universa_core" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_core_main.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_core_main.iml" group="universa_core" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_core_test.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_core_test.iml" group="universa_core" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_main.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_main.iml" group="universa" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/universa_test.iml" filepath="$PROJECT_DIR$/.idea/modules/universa_test.iml" group="universa" />
     </modules>
   </component>
 </project>

@@ -9,6 +9,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
 import org.junit.Test;
 
@@ -40,7 +41,7 @@ public class TransactionContractTest extends ContractTestBase {
         c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
         // let's make this key among owners
-        c.getRole("owner").addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
         c.seal();
 
         PrivateKey issuer1 = TestKeys.privateKey(1   );

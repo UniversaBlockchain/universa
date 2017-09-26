@@ -1,6 +1,6 @@
 package com.icodici.universa.node.benchmark;
 
-import com.icodici.universa.contract.Role;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.PostgresLedgerTest;
 import net.sergeych.tools.BufferedLogger;
 

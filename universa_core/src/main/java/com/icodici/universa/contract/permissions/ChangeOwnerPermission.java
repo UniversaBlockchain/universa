@@ -10,12 +10,15 @@ package com.icodici.universa.contract.permissions;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Permission;
-import com.icodici.universa.contract.Role;
+import com.icodici.universa.contract.roles.Role;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.BiType;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
 
 import java.util.Map;
 
+@BiType(name="ChangeOwnerPermission")
 public class ChangeOwnerPermission extends Permission {
     public ChangeOwnerPermission(Role role) {
         super("change_owner", role);
@@ -40,5 +43,9 @@ public class ChangeOwnerPermission extends Permission {
                     contract.addError(Errors.BAD_VALUE, "state.owner", "improper change");
             }
         }
+    }
+
+    static {
+        DefaultBiMapper.registerClass(ChangeOwnerPermission.class);
     }
 }

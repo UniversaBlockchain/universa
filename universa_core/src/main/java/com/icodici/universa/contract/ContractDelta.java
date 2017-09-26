@@ -9,6 +9,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
+import com.icodici.universa.contract.roles.Role;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;

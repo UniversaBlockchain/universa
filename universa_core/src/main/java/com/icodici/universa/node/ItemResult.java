@@ -9,7 +9,10 @@ package com.icodici.universa.node;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import net.sergeych.boss.Boss;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -73,7 +76,7 @@ public class ItemResult {
      */
     public ItemResult(Binder fields) {
         state = ItemState.valueOf(fields.getStringOrThrow("state"));
-        haveCopy = fields.getBoolean("haveCopy");
+        haveCopy = fields.getBooleanOrThrow("haveCopy");
         createdAt = fields.getZonedDateTimeOrThrow("createdAt");
         expiresAt = fields.getZonedDateTime("expiresAt", null);
     }
@@ -120,14 +123,14 @@ public class ItemResult {
     }
 
     static {
-        Boss.registerAdapter(ItemResult.class, new Boss.Adapter() {
+        DefaultBiMapper.registerAdapter(ItemResult.class, new BiAdapter() {
             @Override
-            public Binder serialize(Object object) {
+            public Binder serialize(Object object, BiSerializer serializer) {
                 return ((ItemResult) object).toBinder();
             }
 
             @Override
-            public ItemResult deserialize(Binder binder) {
+            public ItemResult deserialize(Binder binder, BiDeserializer deserializer) {
                 return new ItemResult(binder);
             }
 

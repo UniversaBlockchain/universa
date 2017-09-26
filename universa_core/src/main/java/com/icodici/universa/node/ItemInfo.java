@@ -3,7 +3,10 @@ package com.icodici.universa.node;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
-import net.sergeych.boss.Boss;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.tools.Binder;
 
 import java.util.Collection;
@@ -38,9 +41,9 @@ public class ItemInfo {
     }
 
     static {
-        Boss.registerAdapter(ItemInfo.class, new Boss.Adapter() {
+        DefaultBiMapper.registerAdapter(ItemInfo.class, new BiAdapter() {
             @Override
-            public Binder serialize(Object object) {
+            public Binder serialize(Object object, BiSerializer serializer) {
                 ItemInfo ii = (ItemInfo)object;
                 return Binder.fromKeysValues(
                     "item_result", ii.itemResult,
@@ -50,7 +53,7 @@ public class ItemInfo {
             }
 
             @Override
-            public Object deserialize(Binder binder) {
+            public Object deserialize(Binder binder, BiDeserializer deserializer) {
                 return new ItemInfo(
                         binder.getOrThrow("item_result"),
                         binder.getOrThrow("item_id"),

@@ -1,7 +1,10 @@
 package net.sergeych.tools;
 
 
-import net.sergeych.boss.Boss;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.BiAdapter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.*;
@@ -84,14 +87,14 @@ public class BufferedLogger implements AutoCloseable {
         }
 
         static {
-            Boss.registerAdapter(Entry.class, new Boss.Adapter() {
+            DefaultBiMapper.registerAdapter(Entry.class, new BiAdapter() {
                 @Override
-                public Binder serialize(Object object) {
+                public Binder serialize(Object object, BiSerializer serializer) {
                     return ((Entry)object).toBinder();
                 }
 
                 @Override
-                public Object deserialize(Binder binder) {
+                public Object deserialize(Binder binder, BiDeserializer deserializer) {
                     throw new RuntimeException("not implemented");
                 }
             });

@@ -7,7 +7,6 @@
 
 package net.sergeych.tools;
 
-import net.sergeych.boss.Boss;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -197,6 +196,7 @@ public class Binder extends HashMap<String, Object> {
      *
      * @return either the sub-hash or new empty hash.
      */
+    @Deprecated
     public Binder of(String key) {
         HashMap<String, Object> x = (HashMap<String, Object>) get(key);
         Binder b = null;
@@ -206,6 +206,22 @@ public class Binder extends HashMap<String, Object> {
             b = x != null ? new Binder(x) : new Binder();
         if (frozen)
             b.freeze();
+        return b;
+    }
+
+    /**
+     * Just like in Java 9, create a binder of keys and values, but, IMPOTANT, returned Binder is not immutable! Freeze
+     * it if need.
+     *
+     * @param key
+     * @param value
+     * @param keysValues
+     *
+     * @return
+     */
+    public static Binder of(String key, Object value, Object... keysValues) {
+        Binder b = Binder.fromKeysValues(keysValues);
+        b.put(key, value);
         return b;
     }
 
@@ -272,7 +288,7 @@ public class Binder extends HashMap<String, Object> {
      */
     public int getIntOrThrow(String key) {
         Object x = get(key);
-        Number n = x instanceof Number ? (Number) x : Integer.valueOf((String)x);
+        Number n = x instanceof Number ? (Number) x : Integer.valueOf((String) x);
         if (n == null) throw new IllegalArgumentException("missing integer parameter");
         return n.intValue();
     }
@@ -352,17 +368,13 @@ public class Binder extends HashMap<String, Object> {
     }
 
     /**
-     * Convert some map to the binder. Do nothing if it is already a binder. Uses {@link Boss} adapters when possible,
-     * see {@link Boss#registerAdapter(Class, Boss.Adapter)} for details
+     * Convert some map to the binder. Do nothing if it is already a binder. Otherwise pack Map into a Binder.
      *
      * @param x source map
      */
     static public Binder from(Object x) {
-        if( x instanceof Binder)
+        if (x instanceof Binder)
             return (Binder) x;
-        Binder res = Boss.toBinder(x);
-        if( res != null)
-            return res;
         return new Binder((Map) x);
     }
 
@@ -426,7 +438,7 @@ public class Binder extends HashMap<String, Object> {
 
     public long getLongOrThrow(String key) {
         Object x = get(key);
-        Number n = x instanceof Number ? (Number) x : Long.valueOf((String)x);
+        Number n = x instanceof Number ? (Number) x : Long.valueOf((String) x);
         if (n == null) throw new IllegalArgumentException("missing long integer parameter: " + key);
         return n.longValue();
     }
@@ -511,5 +523,57 @@ public class Binder extends HashMap<String, Object> {
         value += delta;
         put(name, value);
         return value;
+    }
+
+    /**
+     * Create binder using a path, e.g. calling {@link #getBinderOrThrow(String)} sequentally to all strings in path
+     * argument array. For example
+     * <p>
+     * <pre><code>
+     *     Binder res = source.getBinderOrThrow("foo", "bar", "baz")
+     * </code></pre>
+     * <p>
+     * does exactly same as
+     * <p>
+     * <pre><code>
+     *     Binder res = source.getBinderOrThrow("foo").getBinderOrThrow("bar").getBinderOrThrow("baz");
+     * </code></pre>
+     *
+     * @param path array of pah components
+     *
+     * @return nonnull Binder instance
+     *
+     * @throws IllegalArgumentException if such a binder does not exist in this Binder
+     */
+    public Binder getBinderOrThrow(String... path) {
+        Binder b = this;
+        for(String p: path) {
+            b = b.getBinderOrThrow(p);
+        }
+        return b;
+    }
+
+    public String getStringOrThrow(String... path) {
+        return getBinderPathOrThrow(path)
+                .getStringOrThrow(path[path.length-1]);
+    }
+
+    /**
+     * Get binders followint the path except the last item. To be used in methods like {@link #getStringOrThrow(String...)}
+     * to get the outmost binder
+     *
+     * @param path
+     * @return the outmost binder
+     */
+    private Binder getBinderPathOrThrow(String[] path) {
+        Binder b = this;
+        for(int i=0; i<path.length-1; i++) {
+            b = b.getBinderOrThrow(path[i]);
+        }
+        return b;
+    }
+
+    public <T> T getOrThrow(String... path) {
+        return (T) getBinderPathOrThrow(path).getOrThrow(path[path.length - 1]);
     }
 }

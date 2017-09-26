@@ -10,7 +10,7 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import net.sergeych.boss.Boss;
+import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
@@ -22,9 +22,12 @@ import net.sergeych.utils.Bytes;
  * <p>
  * Keydata support equality: equal instances are these with equal keys.
  */
-public class KeyRecord extends Binder {
+@BiType(name="KeyRecord")
+public class KeyRecord extends Binder implements BiSerializable {
 
     private PublicKey publicKey;
+
+    private KeyRecord() {}
 
     /**
      * Construct from a builder. Note that on successful construction "key" parameter will be updated with valid {@link
@@ -36,6 +39,10 @@ public class KeyRecord extends Binder {
      */
     public KeyRecord(Binder binder) {
         super(binder);
+        setupKey();
+    }
+
+    private void setupKey() {
         try {
             Object x = getOrThrow("key");
             remove("key");
@@ -76,7 +83,9 @@ public class KeyRecord extends Binder {
 
     /**
      * Equality based on the keys. Instances are equal if keys are equal, other fields are not compared.
+     *
      * @param o object to compare
+     *
      * @return true if both are {@link KeyRecord} instances with equal keys, see {@link PublicKey#equals(Object)}
      */
     @Override
@@ -87,7 +96,8 @@ public class KeyRecord extends Binder {
     }
 
     /**
-     *  hashcode based on the {@link PublicKey#hashCode()}
+     * hashcode based on the {@link PublicKey#hashCode()}
+     *
      * @return has code of the public key
      */
     @Override
@@ -102,37 +112,23 @@ public class KeyRecord extends Binder {
         return data;
     }
 
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        clear();
+        putAll(data);
+        deserializer.deserializeInPlace(this);
+        setupKey();
+    }
+
+    @Override
+    public Binder serialize(BiSerializer s) {
+        Binder result = new Binder();
+        result.putAll(this);
+        result.put("key", s.serialize(publicKey));
+        return result;
+    }
+
     static {
-        Boss.registerAdapter(PrivateKey.class, new Boss.Adapter() {
-            @Override
-            public Binder serialize(Object object) {
-                return Binder.fromKeysValues("packed", ((PrivateKey) object).pack());
-            }
-
-            @Override
-            public Object deserialize(Binder binder) {
-                try {
-                    return new PrivateKey(binder.getBinaryOrThrow("packed"));
-                } catch (EncryptionError encryptionError) {
-                    return null;
-                }
-            }
-        });
-
-        Boss.registerAdapter(PublicKey.class, new Boss.Adapter() {
-            @Override
-            public Binder serialize(Object object) {
-                return Binder.fromKeysValues("packed", ((PublicKey) object).pack());
-            }
-
-            @Override
-            public Object deserialize(Binder binder) {
-                try {
-                    return new PublicKey(binder.getBinaryOrThrow("packed"));
-                } catch (EncryptionError encryptionError) {
-                    return null;
-                }
-            }
-        });
+        DefaultBiMapper.registerClass(KeyRecord.class);
     }
 }

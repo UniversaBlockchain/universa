@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.TestCase;
 
 import java.time.ZoneOffset;

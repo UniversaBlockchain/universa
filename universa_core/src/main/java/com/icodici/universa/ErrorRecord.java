@@ -1,6 +1,9 @@
 package com.icodici.universa;
 
-import net.sergeych.boss.Boss;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.tools.Binder;
 
 public class ErrorRecord {
@@ -37,9 +40,9 @@ public class ErrorRecord {
     }
 
     static {
-        Boss.registerAdapter(ErrorRecord.class, new Boss.Adapter() {
+        DefaultBiMapper.registerAdapter(ErrorRecord.class, new BiAdapter() {
             @Override
-            public Binder serialize(Object object) {
+            public Binder serialize(Object object, BiSerializer serializer) {
                 ErrorRecord er = (ErrorRecord) object;
                 return Binder.fromKeysValues(
                         "error", er.error.name(),
@@ -49,7 +52,7 @@ public class ErrorRecord {
             }
 
             @Override
-            public Object deserialize(Binder binder) {
+            public Object deserialize(Binder binder, BiDeserializer deserializer) {
                 return new ErrorRecord(
                         Errors.valueOf(binder.getStringOrThrow("error")),
                         binder.getStringOrThrow("object"),

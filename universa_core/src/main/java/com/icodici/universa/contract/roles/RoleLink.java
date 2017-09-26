@@ -1,19 +1,24 @@
 /*
  * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
  *
- * Written by Sergey Chernov <real.sergeych@gmail.com>, August 2017.
+ * Written by Sergey Chernov <real.sergeych@gmail.com>
  *
  */
 
-package com.icodici.universa.contract;
+package com.icodici.universa.contract.roles;
 
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PublicKey;
-import net.sergeych.boss.Boss;
+import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.KeyRecord;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.BiType;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,9 +28,13 @@ import java.util.Set;
  * <p>
  * This is used to assign roles to roles, and to create special roles for permissions, etc.
  */
+@BiType(name = "RoleLink")
 public class RoleLink extends Role {
 
-    private final String roleName;
+    private String roleName;
+
+    private RoleLink() {
+    }
 
     /**
      * Create a link to a named role. Note that such links can be created ahead of time, e.g. when there is no bound
@@ -43,8 +52,9 @@ public class RoleLink extends Role {
     }
 
     /**
-     * Return the resolved role taken from a bound contract.
-     * A resolved role may be a {@link RoleLink} itself, or null (if a link is incorrect).
+     * Return the resolved role taken from a bound contract. A resolved role may be a {@link RoleLink} itself, or null
+     * (if a link is incorrect).
+     *
      * @return
      */
     @Nullable
@@ -53,9 +63,17 @@ public class RoleLink extends Role {
     }
 
     @Override
-    public void addKeyRecord(KeyRecord keyRecord) {
-        badOperation();
-        getRole().addKeyRecord(keyRecord);
+    public <T extends Role> @NonNull T resolve() {
+        int maxDepth = 40;
+        for (Role r = this; maxDepth > 0; maxDepth--) {
+            if (r instanceof RoleLink) {
+                r = ((RoleLink) r).getRole();
+                if (r == null)
+                    throw new IllegalStateException("role " + this + " can't be resolved");
+            } else
+                return (T) r;
+        }
+        throw new IllegalStateException("RoleLink depth exceeded, possible circular references");
     }
 
     private void badOperation() {
@@ -63,44 +81,39 @@ public class RoleLink extends Role {
     }
 
     @Override
-    public KeyRecord getKeyRecord() {
-        return getRole().getKeyRecord();
-    }
-
-    @Override
-    public Collection<KeyRecord> getKeyRecords() {
+    public Set<KeyRecord> getKeyRecords() {
         return getRole().getKeyRecords();
     }
 
     @Override
     public Set<PublicKey> getKeys() {
-        final Role role = getFinalLinkedRole(null);
-        return (role == null)? null: role.getKeys();
+        final Role role = getRole();
+        return (role == null) ? null : role.getKeys();
     }
 
     @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        final Role role = getFinalLinkedRole(null);
-        return (role == null)? false : role.isAllowedForKeys(keys);
+        final Role role = getRole();
+        return (role == null) ? false : role.isAllowedForKeys(keys);
     }
 
     @Override
     public boolean isValid() {
-        final Role role = getFinalLinkedRole(null);
-        return (role == null)? false : role.isValid();
+        final Role role = getRole();
+        return (role == null) ? false : role.isValid();
     }
 
     /**
-     * In (possible) case if our linked role refers to another {@link RoleLink},
-     * this method allows to find the {@link Role} linked by the final link in a chain.
+     * In (possible) case if our linked role refers to another {@link RoleLink}, this method allows to find the {@link
+     * Role} linked by the final link in a chain.
      *
-     * @param intermLinks a set of all intermediate links on the way to the final role;
-     *                    used to detect loops.
-     *                    Attention: this set will change after traversing the links
-     *                    (cause in Java, there is no high performance set arithmetic on immutable sets,
-     *                    with operations like {@link Set#add} returning resulting {@link Set}).
-     * @return the {@Role} which is final in the chain of {@link RoleLink} objects. May be null,
-     * if a loop was found or something failed.
+     * @param intermLinks a set of all intermediate links on the way to the final role; used to detect loops. Attention:
+     *                    this set will change after traversing the links (cause in Java, there is no high performance
+     *                    set arithmetic on immutable sets, with operations like {@link Set#add} returning resulting
+     *                    {@link Set}).
+     *
+     * @return the {@Role} which is final in the chain of {@link RoleLink} objects. May be null, if a loop was found or
+     *         something failed.
      */
     @Nullable
     private Role getFinalLinkedRole(@Nullable Set<RoleLink> intermLinks) {
@@ -128,19 +141,9 @@ public class RoleLink extends Role {
     }
 
     @Override
-    public boolean equalKeys(Object obj) {
-        final Role role = getFinalLinkedRole(null);
-        return (role == null)? false: role.equalKeys(obj);
-    }
-
-    @Override
-    public Role cloneAs(String name) {
-        return new RoleLink(name, roleName);
-    }
-
-    @Override
-    public boolean isAllowedForKeys(Role anotherRole) {
-        return getRole().isAllowedForKeys(anotherRole);
+    public boolean equalKeys(Role otherRole) {
+        final Role role = getRole();
+        return (role == null) ? false : role.equalKeys(otherRole);
     }
 
     @Override
@@ -168,23 +171,21 @@ public class RoleLink extends Role {
         return false;
     }
 
-    static {
-        Boss.registerAdapter(RoleLink.class, new Boss.Adapter() {
-            @Override
-            public Binder serialize(Object object) {
-                RoleLink r = (RoleLink) object;
-                return Binder.fromKeysValues(
-                        "name", r.getName(),
-                        "target_name", r.roleName
-                );
-            }
+    @Override
+    public Binder serialize(BiSerializer s) {
+        return Binder.fromKeysValues(
+                "name", getName(),
+                "target_name", roleName
+        );
+    }
 
-            @Override
-            public Object deserialize(Binder binder) {
-                return new RoleLink(binder.getStringOrThrow("name"),
-                                    binder.getStringOrThrow("target_name")
-                );
-            }
-        });
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        super.deserialize(data, deserializer);
+        roleName = data.getStringOrThrow("target_name");
+    }
+
+    static {
+        DefaultBiMapper.registerClass(RoleLink.class);
     }
 }

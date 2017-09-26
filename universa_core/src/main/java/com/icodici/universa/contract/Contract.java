@@ -15,6 +15,10 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
+import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.contract.roles.SimpleRole;
+import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
@@ -25,17 +29,15 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.time.ZoneOffset;
 import java.time.chrono.ChronoZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.icodici.universa.Errors.*;
 import static java.util.Arrays.asList;
-
-public class Contract implements Approvable {
+@BiType(name="UniversaContract")
+public class Contract implements Approvable, BiSerializable {
 
     private final Set<HashId> referencedItems = new HashSet<>();
     private final Set<Approvable> revokingItems = new HashSet<>();
@@ -44,7 +46,7 @@ public class Contract implements Approvable {
     private final Map<String, Role> roles = new HashMap<>();
     private State state;
     private byte[] sealedBinary;
-    private int apiLevel = 1;
+    private int apiLevel = 2;
 
     /**
      * true if the contract was imported from sealed capsule
@@ -70,7 +72,7 @@ public class Contract implements Approvable {
         if (data.getIntOrThrow("version") > 7)
             throw new IllegalArgumentException("version too high");
         byte[] contractBytes = data.getBinaryOrThrow("data");
-        initializeWith(Boss.unpack(contractBytes));
+        initializeWithDsl(Boss.unpack(contractBytes));
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -129,34 +131,25 @@ public class Contract implements Approvable {
     private final List<ErrorRecord> errors = new ArrayList<>();
 
     public Contract(Binder root) throws EncryptionError {
-        initializeWith(root);
+        initializeWithDsl(root);
     }
 
-    private void initializeWith(Binder root) throws EncryptionError {
+    private Contract initializeWithDsl(Binder root) throws EncryptionError {
         apiLevel = root.getIntOrThrow("api_level");
-        definition = new Definition(root.getBinder("definition"));
-        state = new State(root.getBinder("state"));
+        definition = new Definition().initializeWithDsl(root.getBinder("definition"));
+        state = new State().initializeWithDsl(root.getBinder("state"));
         // now we have all roles, we can build permissions:
-        definition.scanPermissions();
+        definition.scanDslPermissions();
+        return this;
     }
 
     public static Contract fromYamlFile(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         try (FileReader r = new FileReader(fileName)) {
-            Binder binder = new Binder((Map) yaml.load(r));
-            Boss.applyDeserealizeAdapters(binder);
-            return new Contract(binder);
+            Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(r)));
+            return new Contract().initializeWithDsl(binder);
         }
     }
-
-    public Binder serializeToBinder() {
-        return Binder.fromKeysValues(
-                "api_level", apiLevel,
-                "definition", definition.serializeToBinder(),
-                "state", state.serializeToBinder()
-        );
-    }
-
 
     public State getState() {
         return state;
@@ -352,9 +345,9 @@ public class Contract implements Approvable {
             return registerRole(new RoleLink(roleName, roleObject.toString()));
         }
         if (roleObject instanceof Role)
-            return registerRole((Role) ((Role) roleObject).cloneAs(roleName));
+            return registerRole(((Role) roleObject).linkAs(roleName));
         if (roleObject instanceof Map) {
-            Role r = Role.fromBinder(roleName, Binder.from(roleObject));
+            Role r = Role.fromDslBinder(roleName, Binder.from(roleObject));
             return registerRole(r);
         }
         throw new IllegalArgumentException("cant make role from " + roleObject);
@@ -494,6 +487,10 @@ public class Contract implements Approvable {
         return sealedBinary;
     }
 
+    protected Binder serializeToBinder() {
+        return DefaultBiMapper.serialize(this);
+    }
+
     /**
      * Get the last knwon packed representation pf the contract. Should be called if the contract was contructed from a
      * packed binary ({@link #Contract(byte[])} or was explicitly sealed {@link #seal()}.
@@ -597,7 +594,7 @@ public class Contract implements Approvable {
 
     @NonNull
     private Role setRole(String name, Collection keys) {
-        return registerRole(new Role(name, keys));
+        return registerRole(new SimpleRole(name, keys));
     }
 
     public Role getCreator() {
@@ -620,6 +617,20 @@ public class Contract implements Approvable {
         definition.setExpiresAt(dateTime);
     }
 
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        throw new RuntimeException("not yet ready");
+    }
+
+    @Override
+    public Binder serialize(BiSerializer s) {
+        return Binder.of(
+                "api_level", apiLevel,
+                "definition", definition.serializeToBinder(),
+                "state", state.serializeToBinder()
+        );
+    }
+
     public class State {
         private int revision;
         private Binder state;
@@ -634,7 +645,7 @@ public class Contract implements Approvable {
             revision = 1;
         }
 
-        private State(Binder state) throws EncryptionError {
+        private State initializeWithDsl(Binder state) {
             this.state = state;
             createdAt = state.getZonedDateTime("created_at", null);
             revision = state.getIntOrThrow("revision");
@@ -646,6 +657,7 @@ public class Contract implements Approvable {
             }
             createRole("owner", state.get("owner"));
             createRole("creator", state.getOrThrow("created_by"));
+            return this;
         }
 
         public int getRevision() {
@@ -702,34 +714,35 @@ public class Contract implements Approvable {
             createdAt = ZonedDateTime.now();
         }
 
-        private Definition(Binder definition) throws EncryptionError {
+        private Definition initializeWithDsl(Binder definition) {
             this.definition = definition;
             Role issuer = createRole("issuer", definition.getOrThrow("issuer"));
             createdAt = definition.getZonedDateTimeOrThrow("created_at");
             expiresAt = definition.getZonedDateTimeOrThrow("expires_at");
             registerRole(issuer);
             data = definition.getBinder("data");
+            return this;
         }
 
         /**
          * Collect all permissions and create links to roles or new roles as appropriate
          */
-        private void scanPermissions() {
+        private void scanDslPermissions() {
             definition.getBinderOrThrow("permissions").forEach((name, params) -> {
                 // this cimplex logic is needed to process both yaml-imported structures
                 // and regular serialized data in the same place
                 if (params instanceof Object[])
                     for (Object x : (Object[]) params)
-                        loadPermission(name, x);
+                        loadDslPermission(name, x);
                 else if (params instanceof List)
                     for (Object x : (List) params)
-                        loadPermission(name, x);
+                        loadDslPermission(name, x);
                 else
-                    loadPermission(name, params);
+                    loadDslPermission(name, params);
             });
         }
 
-        private void loadPermission(String name, Object params) {
+        private void loadDslPermission(String name, Object params) {
             String roleName = null;
             Role role = null;
             Binder binderParams = null;
@@ -764,24 +777,27 @@ public class Contract implements Approvable {
         }
 
         public Binder serializeToBinder() {
-            return Binder.fromKeysValues(
-                    "issuer", getIssuer(),
-                    "created_at", createdAt,
-                    "expires_at", expiresAt,
-                    "data", data,
-                    "permissions", serializePermissions()
+            return DefaultBiMapper.serialize(
+                    Binder.of(
+                            "issuer", getIssuer(),
+                            "created_at", createdAt,
+                            "expires_at", expiresAt,
+                            "data", data,
+                            "permissions", permissions.values()
+                    )
             );
         }
 
-        private Binder serializePermissions() {
-            Binder perms = new Binder();
-            permissions.forEach((name, permissions) -> {
-                perms.put(name,
-                          permissions.stream().map(p -> p.serializeToBinder()).collect(Collectors.toList())
-                );
-            });
-            return perms;
-        }
+//        private Binder serializePermissions() {
+//            permissions.getList()
+//            Binder perms = new Binder();
+//            permissions.forEach((name, permissions) -> {
+//                perms.put(name,
+//                          permissions.stream().map(p -> p.serializeToBinder()).collect(Collectors.toList())
+//                );
+//            });
+//            return perms;
+//        }
     }
 
     public void traceErrors() {
@@ -792,6 +808,10 @@ public class Contract implements Approvable {
 
     public String getErrorsString() {
         return errors.stream().map(Object::toString).collect(Collectors.joining(","));
+    }
+
+    static {
+        DefaultBiMapper.registerClass(Contract.class);
     }
 
 }

@@ -8,6 +8,10 @@
 package com.icodici.crypto;
 
 import com.icodici.crypto.rsaoaep.RSAOAEPPrivateKey;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -128,5 +132,28 @@ public class PrivateKey extends AbstractKey {
 
     public static PrivateKey fromPath(Path path) throws IOException {
         return new PrivateKey(Do.read(path.toAbsolutePath().toString()));
+    }
+
+    static {
+        DefaultBiMapper.registerAdapter(PrivateKey.class, new BiAdapter() {
+            @Override
+            public Binder serialize(Object object, BiSerializer serializer) {
+                return Binder.fromKeysValues("packed", ((PrivateKey) object).pack());
+            }
+
+            @Override
+            public Object deserialize(Binder binder, BiDeserializer deserializer) {
+                try {
+                    return new PrivateKey(binder.getBinaryOrThrow("packed"));
+                } catch (EncryptionError encryptionError) {
+                    return null;
+                }
+            }
+
+            @Override
+            public String typeName() {
+                return "RSAPrivateKey";
+            }
+        });
     }
 }

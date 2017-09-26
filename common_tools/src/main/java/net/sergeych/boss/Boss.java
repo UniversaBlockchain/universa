@@ -10,22 +10,18 @@
  */
 package net.sergeych.boss;
 
+import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
-import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
-
-import static java.util.Arrays.asList;
 
 /**
  * BOSS (Binary Object Serialization Specification) protocol version 1.4 final stream mode specification (no-cache).
@@ -91,96 +87,6 @@ public class Boss {
     }
 
     static private boolean useOldDates = false;
-
-    public static void applyDeserealizeAdapters(Map map) {
-        map.forEach((key, value) -> {
-            if (value instanceof Map) {
-                String typeName = (String) ((Map) value).get("__type");
-                if (typeName == null)
-                    typeName = (String) ((Map) value).get("__t");
-                if (typeName == null)
-                    applyDeserealizeAdapters((Map) value);
-                else {
-                    Adapter adapter = adapters.get(typeName);
-                    if (adapter != null) {
-                        map.put(key, adapter.deserialize(Binder.from(value)));
-                    }
-                }
-            }
-        });
-    }
-
-
-    /**
-     * Try to serialize object to {@link Binder} using curretn set of {@link Boss.Adapter}. See {@link
-     * #registerAdapter(Class, Adapter)} for more.
-     *
-     * @param x   object to serialize (can be array, list, map, binder or any object with registered adapter. processes
-     *            in depth, e.g. all values in the map or items in the list.
-     * @param <T>
-     *
-     * @return either a Binder or a simple object x (e.g. String if x instanceof String).
-     *
-     * @throws IllegalArgumentException if unkonwn ibject ecnountered which can not be serialized.
-     */
-    public static @NonNull <T> T serializeToBinder(Object x) {
-        if (x instanceof String || x instanceof Number || x instanceof Boolean)
-            return (T) x;
-        if (x instanceof Map) {
-            Binder b = new Binder((Map) x);
-            b.replaceAll((k, v) -> serializeToBinder(v));
-            return (T) b;
-        }
-        if (x.getClass().isArray()) {
-            x = asList(x);
-        }
-        if (x instanceof List) {
-            return (T) ((List) x).stream()
-                    .map(i -> serializeToBinder(i))
-                    .collect(Collectors.toList());
-
-        }
-        String canonicalName = x.getClass().getCanonicalName();
-        Adapter adapter = adapters.get(canonicalName);
-        if (adapter == null)
-            throw new IllegalArgumentException("can't convert to binder " + canonicalName + ": " + x);
-        Binder result = adapter.serialize(x);
-        result.put("__type", adapter.typeName());
-        return (T) result;
-    }
-
-    /**
-     * Tro to make binder from deseralized object, e.g. after applying possible adapters, see {@link Boss.Adapter}, see
-     * {@link #serializeToBinder(Object)}.
-     *
-     * @param x any object that {@link Boss} has {@link Adapter} to serialize, or a Mao instance.
-     *
-     * @return binder with seriazlied representation of x
-     *
-     * @throws IllegalArgumentException if unkonwn ibject ecnountered which can not be serialized.
-     */
-    public static @NonNull Binder toBinder(Object x) {
-        return (Binder) serializeToBinder(x);
-    }
-
-    public interface Adapter<T> {
-        Binder serialize(T object);
-
-        T deserialize(Binder binder);
-
-        default String typeName() {
-            return null;
-        }
-    }
-
-    static private HashMap<String, Adapter> adapters = new HashMap<>();
-
-    static public <T> void registerAdapter(Class<T> klass, Adapter adapter) {
-        adapters.put(klass.getCanonicalName(), adapter);
-        String typeName = adapter.typeName();
-        if (typeName != null)
-            adapters.put(typeName, adapter);
-    }
 
 
     static private final int TYPE_INT = 0;
@@ -249,7 +155,7 @@ public class Boss {
     }
 
     /**
-     * Load boss-encoded object tree from binary data. See {@link Boss.Adapter} on how to serialize any types.
+     * Load boss-encoded object tree from binary data. See {@link BiAdapter} on how to serialize any types.
      *
      * @param bytes data to load
      *
@@ -260,7 +166,7 @@ public class Boss {
     }
 
     /**
-     * Load boss-encoded object tree from binary data. See {@link Boss.Adapter} on how to serialize any types.
+     * Load boss-encoded object tree from binary data. See {@link BiAdapter} on how to serialize any types.
      *
      * @param data binary data to decode
      *
@@ -372,6 +278,20 @@ public class Boss {
         private OutputStream out;
         private HashMap<Object, Integer> cache;
         private boolean treeMode;
+        private final BiSerializer biSerializer;
+
+        /**
+         * Creates writer to write to the output stream. Upon creation writer is alwais in tree mode.
+         *
+         * @param outputStream See {@link #setStreamMode()}
+         */
+        public Writer(OutputStream outputStream,BiSerializer biSerializer) {
+            out = outputStream;
+            cache = new HashMap<>();
+            cache.put(null, 0);
+            treeMode = true;
+            this.biSerializer = biSerializer;
+        }
 
         /**
          * Creates writer to write to the output stream. Upon creation writer is alwais in tree mode.
@@ -379,10 +299,7 @@ public class Boss {
          * @param outputStream See {@link #setStreamMode()}
          */
         public Writer(OutputStream outputStream) {
-            out = outputStream;
-            cache = new HashMap<>();
-            cache.put(null, 0);
-            treeMode = true;
+            this(outputStream, new BiSerializer());
         }
 
         public Writer() {
@@ -532,15 +449,8 @@ public class Boss {
                 writeHeader(TYPE_CREF, 0);
                 return this;
             }
-            String className = obj.getClass().getCanonicalName();
-            Adapter adapter = adapters.get(className);
-            if (adapter != null) {
-                Binder serialized = adapter.serialize(obj);
-                String typeName = adapter.typeName();
-                serialized.put("__type", typeName == null ? className : typeName);
-                return writeObject(serialized);
-            }
-            throw new IllegalArgumentException("unknown type: " + obj.getClass());
+            writeObject(biSerializer.serialize(obj));
+            return this;
         }
 
         private void writeMap(Object obj) throws IOException {
@@ -657,18 +567,25 @@ public class Boss {
         protected boolean showTrace = false;
         private ArrayList<Object> cache;
         private int maxCacheEntries, maxStringSize;
+        private final BiDeserializer deserializer;
 
         public Reader(byte[] bytes) {
             this(new ByteArrayInputStream(bytes));
         }
 
-        public Reader(InputStream stream) {
+        public Reader(InputStream stream,BiDeserializer deserializer) {
             in = stream;
             cache = new ArrayList<>();
             treeMode = true;
+            this.deserializer = deserializer;
         }
 
-        public void traceObject() throws IOException {
+        public Reader(InputStream stream) {
+            this(stream, new BiDeserializer());
+        }
+
+
+            public void traceObject() throws IOException {
             Header h = readHeader();
             System.out.println(h);
         }
@@ -805,12 +722,8 @@ public class Boss {
             cacheObject(hash);
             for (int i = 0; i < h.value; i++)
                 hash.put(read(), read());
-            String typeName = hash.getString("__type", null);
-            if (typeName != null) {
-                Adapter adapter = adapters.get(typeName);
-                if (adapter != null)
-                    return (T) adapter.deserialize(hash);
-            }
+            if( hash.containsKey("__type") || hash.containsKey("__t"))
+                return (T) deserializer.deserialize(hash);
 //            trace("Dict: " + hash);
             return (T) hash;
         }
@@ -928,26 +841,6 @@ public class Boss {
             return (Map<String, Object>) read();
         }
 
-    }
-
-    static {
-        Boss.registerAdapter(ZonedDateTime.class, new Boss.Adapter() {
-            @Override
-            public Binder serialize(Object object) {
-                return Binder.fromKeysValues("seconds", ((ZonedDateTime) object).toEpochSecond());
-            }
-
-            @Override
-            public Object deserialize(Binder binder) {
-                return ZonedDateTime.ofInstant(Instant.ofEpochSecond(binder.getLongOrThrow("seconds")),
-                                               ZoneOffset.systemDefault());
-            }
-
-            @Override
-            public String typeName() {
-                return "unixtime";
-            }
-        });
     }
 }
 
