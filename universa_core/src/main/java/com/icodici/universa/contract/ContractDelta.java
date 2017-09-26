@@ -75,7 +75,7 @@ public class ContractDelta {
         }
         Delta creationTimeChange = stateChanges.get("created_at");
         if (creationTimeChange == null || !(creationTimeChange instanceof ChangedItem))
-            addError(BAD_VALUE, "stat.created_at", "invlaid new state");
+            addError(BAD_VALUE, "state.created_at", "invlaid new state");
         else {
             stateChanges.remove("created_at");
             ChangedItem<ZonedDateTime, ZonedDateTime> ci = (ChangedItem) creationTimeChange;

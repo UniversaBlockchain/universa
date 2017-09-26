@@ -695,10 +695,10 @@ public class Boss {
                     return (T) bb;
                 }
                 case TYPE_LIST: {
-                    Object[] data = new Object[(int) h.value];
+                    ArrayList data = new ArrayList((int)(h.value < 0x10000 ? h.value : 4096));
                     cacheObject(data);
-                    for (int i = 0; i < data.length; i++)
-                        data[i] = read();
+                    for (int i = 0; i < h.value; i++)
+                        data.add(read());
                     return (T) data;
                 }
                 case TYPE_DICT: {

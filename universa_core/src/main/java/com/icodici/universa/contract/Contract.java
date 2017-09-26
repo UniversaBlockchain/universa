@@ -85,7 +85,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
         });
 
-        for (Object signature : (Object[]) data.getOrThrow("signatures")) {
+        for (Object signature : (List)data.getOrThrow("signatures")) {
             byte[] s = ((Bytes) signature).toArray();
             Bytes keyId = ExtendedSignature.extractKeyId(s);
             PublicKey key = keys.get(keyId);
@@ -211,8 +211,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private void checkRootContract() {
         // root contract must be issued ny the issuer
         Role issuer = getRole("issuer");
+        if(issuer == null || !issuer.isValid()) {
+            addError(BAD_VALUE, "definition.issuer", "missing issuer");
+            return;
+        }
         // the bad case - no issuer - should be processed normally without exceptions:
         Role createdBy = getRole("creator");
+        if( createdBy == null || !createdBy.isValid() ) {
+            addError(BAD_VALUE, "state.created_by", "invalid creator");
+            return;
+        }
         if (issuer != null && !issuer.equalKeys(createdBy))
             addError(ISSUER_MUST_CREATE, "state.created_by");
         if (state.revision != 1)
@@ -819,6 +827,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public void deserializeWith(Binder data, BiDeserializer d) {
             registerRole(d.deserialize(data.getBinderOrThrow("issuer")));
+            createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTimeOrThrow("expires_at");
             this.data = d.deserialize(data.getBinderOrThrow("data"));
             List<Permission> perms = d.deserializeCollection(data.getOrThrow("permissions"));

@@ -24,7 +24,7 @@ public class ContractTestBase extends TestCase {
     protected String rootPath = "./src/test_contracts/";
 
     protected void assertProperSimpleRootContract(Contract c) {
-        assertEquals(1, c.getApiLevel());
+        assertEquals(2, c.getApiLevel());
 
         // -- issuer
         KeyRecord issuer = c.getIssuer().getKeyRecords().iterator().next();

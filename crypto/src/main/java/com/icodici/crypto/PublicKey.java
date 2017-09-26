@@ -8,10 +8,10 @@
 package com.icodici.crypto;
 
 import com.icodici.crypto.rsaoaep.RSAOAEPPublicKey;
+import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
-import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Hashable;
@@ -21,6 +21,7 @@ import net.sergeych.utils.Ut;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -59,13 +60,13 @@ public class PublicKey extends AbstractKey {
     }
 
     public void unpack(byte[] bytes, KeyInfo info) throws EncryptionError {
-        Object[] parts = (Object[]) Boss.load(bytes);
-        if ((Integer) parts[0] != 1)
+        List parts = Boss.load(bytes);
+        if ((Integer) parts.get(0) != 1)
             throw new EncryptionError("invalid packed public key");
         try {
             // e, n
-            Binder pp = new Binder("e", ((Bytes) parts[1]).toArray(),
-                                   "n", ((Bytes) parts[2]).toArray());
+            Binder pp = new Binder("e", ((Bytes) parts.get(1)).toArray(),
+                                   "n", ((Bytes) parts.get(2)).toArray());
             setComponents(pp);
         } catch (Exception error) {
             error.printStackTrace();

@@ -89,7 +89,7 @@ public class BiMapper {
      * @throws IllegalArgumentException if unkonwn ibject ecnountered which can not be serialized.
      */
     public @NonNull <T> T serialize(Object x,BiSerializer serializer) {
-        if (x instanceof String || x instanceof Number || x instanceof Boolean)
+        if (x instanceof String || x instanceof Number || x instanceof Boolean || x == null)
             return (T) x;
         Class<?> klass = x.getClass();
         if (klass.isArray() && !(klass.getComponentType() == byte.class )) {

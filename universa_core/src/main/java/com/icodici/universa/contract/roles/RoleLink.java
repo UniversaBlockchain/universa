@@ -16,7 +16,6 @@ import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Set;
@@ -62,17 +61,18 @@ public class RoleLink extends Role {
     }
 
     @Override
-    public <T extends Role> @NonNull T resolve() {
+    public <T extends Role> T resolve() {
         int maxDepth = 40;
         for (Role r = this; maxDepth > 0; maxDepth--) {
             if (r instanceof RoleLink) {
                 r = ((RoleLink) r).getRole();
                 if (r == null)
-                    throw new IllegalStateException("role " + this + " can't be resolved");
+                    return null;
             } else
                 return (T) r;
         }
-        throw new IllegalStateException("RoleLink depth exceeded, possible circular references");
+        return null;
+//        throw new IllegalStateException("RoleLink depth exceeded, possible circular references");
     }
 
     private void badOperation() {

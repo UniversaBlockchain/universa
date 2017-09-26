@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,13 +41,13 @@ public class PrivateKey extends AbstractKey {
     }
 
     public PrivateKey(byte[] packedBinaryKey) throws EncryptionError {
-        Object[] parts = (Object[]) Boss.load(packedBinaryKey);
-        if ((Integer) parts[0] == 0) {
+        List parts = Boss.load(packedBinaryKey);
+        if ((Integer) parts.get(0) == 0) {
             // e, p, q: private key
             try {
-                Binder pp = new Binder("e", ((Bytes) parts[1]).toArray(),
-                                       "p", ((Bytes) parts[2]).toArray(),
-                                       "q", ((Bytes) parts[3]).toArray());
+                Binder pp = new Binder("e", ((Bytes) parts.get(1)).toArray(),
+                                       "p", ((Bytes) parts.get(2)).toArray(),
+                                       "q", ((Bytes) parts.get(3)).toArray());
                 privateKey.updateFromHash(pp);
             } catch (Exception error) {
                 error.printStackTrace();
