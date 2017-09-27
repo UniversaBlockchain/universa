@@ -2,6 +2,7 @@ package com.icodici.universa.contract.permissions;
 
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
@@ -17,11 +18,11 @@ import java.util.Map;
 
 public class ChangeNumberPermission extends Permission {
 
-    private final int minValue;
-    private final int maxValue;
-    private final int minStep;
-    private final int maxStep;
-    private final String fieldName;
+    private int minValue;
+    private int maxValue;
+    private int minStep;
+    private int maxStep;
+    private String fieldName;
     private int newValue;
 
     public ChangeNumberPermission(Role role, Binder params) {
@@ -31,6 +32,10 @@ public class ChangeNumberPermission extends Permission {
         minStep = params.getInt("min_step", Integer.MIN_VALUE);
         maxStep = params.getInt("max_step", Integer.MAX_VALUE);
         maxValue = params.getInt("max_value", Integer.MAX_VALUE);
+    }
+
+    private ChangeNumberPermission() {
+        super();
     }
 
     /**
@@ -67,6 +72,10 @@ public class ChangeNumberPermission extends Permission {
                 return;
             }
         }
+    }
+
+    static {
+        DefaultBiMapper.registerClass(ChangeNumberPermission.class);
     }
 
 }

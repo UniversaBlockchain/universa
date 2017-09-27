@@ -87,6 +87,7 @@ public class PermissionsTest extends ContractTestBase {
         assertNotEquals(c.getOwner(), c1.getOwner());
         c1.seal();
         c1.check();
+        c1.traceErrors();
         assertEquals(1, c1.getErrors().size());
         ErrorRecord error = c1.getErrors().get(0);
         assertEquals(Errors.FORBIDDEN, error.getError());
@@ -147,7 +148,7 @@ public class PermissionsTest extends ContractTestBase {
         c1.seal();
         c1.check();
         c1.traceErrors();
-        assert(c1.isOk());
+        assertTrue(c1.isOk());
 
         // not valid: increment by owner
         d.addToInt("transactional_units_left", +11);

@@ -65,6 +65,39 @@ public class DeltaTest {
         CreatedItem ci = (CreatedItem) d1.getChange(4);
         assertEquals(777, ci.newValue());
         assertEquals(999, d1.getChange(5).newValue());
+    }@Test
+    public void compareSimpleArrays() throws Exception {
+        byte a[] = new byte[] { 3, 2, 10, 1};
+        byte b[] = new byte[] { 3, 2, 10, 1};
+        Delta d = Delta.between(a, b);
+        assertNull(d);
+        b[0] = 0;
+        b[3] = 3;
+        ByteArrayDelta d1 = (ByteArrayDelta) Delta.between(a, b);
+        assertNotNull(d1);
+        Map<Integer,Delta> changes = d1.getChanges();
+        assertEquals(2, changes.size());
+        assertEquals(3, changes.get(0).oldValue());
+        assertEquals(0, changes.get(0).newValue());
+        assertEquals(1, changes.get(3).oldValue());
+        assertEquals(3, changes.get(3).newValue());
+
+        // removed array item
+        byte c[] = new byte[] { 3, 2, 10};
+        d1 = Delta.between(a, c);
+        assertFalse(d1.isEmpty());
+        RemovedItem rd = (RemovedItem) d1.getChange(3);
+        assertTrue(rd instanceof RemovedItem);
+        assertEquals(1, rd.oldValue());
+
+        c = new byte[] { 3, 2, 10, 1, -77, -99};
+        d1 = Delta.between(a, c);
+        assertNotNull(d1);
+        assertFalse(d1.isEmpty());
+        assertEquals(2, d1.getChanges().size());
+        CreatedItem ci = (CreatedItem) d1.getChange(4);
+        assertEquals(-77, ci.newValue());
+        assertEquals(-99, d1.getChange(5).newValue());
     }
 
     @Test

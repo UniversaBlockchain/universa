@@ -12,6 +12,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.roles.RoleLink;
+import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.junit.Test;
@@ -38,7 +39,7 @@ public class ContractTest extends ContractTestBase {
     @Test
     public void serializeToBinder() throws Exception {
         Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
-        Binder b = c.serializeToBinder();
+        Binder b = BossBiMapper.serialize(c);
         Yaml yaml = new Yaml();
         Contract c1 = DefaultBiMapper.deserialize(b);
 //        System.out.println(yaml.dump(b));

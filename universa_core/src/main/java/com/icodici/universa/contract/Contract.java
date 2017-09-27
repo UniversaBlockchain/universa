@@ -493,7 +493,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public byte[] seal() {
-        byte[] theContract = Boss.pack(serializeToBinder());
+        byte[] theContract = Boss.pack(BossBiMapper.serialize(this));
         Binder result = Binder.of("type", "unicapsule", "version", apiLevel, "data", theContract);
         List<byte[]> signatures = new ArrayList<>();
         keysToSignWith.forEach(key -> {
@@ -505,9 +505,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return sealedBinary;
     }
 
-    protected Binder serializeToBinder() {
-        return DefaultBiMapper.serialize(this);
-    }
+//    protected Binder serializeToBinder() {
+//        return DefaultBiMapper.serialize(this);
+//    }
 
     /**
      * Get the last knwon packed representation pf the contract. Should be called if the contract was contructed from a
@@ -814,13 +814,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         public Binder serializeWith(BiSerializer serializer) {
+            List<Permission> pp = permissions.values();
+            Collections.sort(pp);
             return serializer.serialize(
                     Binder.of(
                             "issuer", getIssuer(),
                             "created_at", createdAt,
                             "expires_at", expiresAt,
                             "data", data,
-                            "permissions", permissions.values()
+                            "permissions",
+                            pp
                     )
             );
         }
@@ -861,6 +864,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return
      */
     public Contract copy() {
-        return DefaultBiMapper.deserialize(DefaultBiMapper.serialize(this));
+        BiMapper m = BossBiMapper.getInstance();
+        return m.deserialize(m.serialize(this));
     }
 }

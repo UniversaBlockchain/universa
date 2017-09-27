@@ -84,7 +84,10 @@ abstract public class Delta<T, U> {
 //        if( oldValue instanceof Collection && newValue instanceof Collection )
 //            return (D) compareCollections(parent, (Collection)oldValue, (Collection)newValue);
 
-        if (oldValue.getClass().isArray() && newValue.getClass().isArray()) {
+        Class<?> oldValueClass = oldValue.getClass();
+        if (oldValueClass.isArray() && newValue.getClass().isArray()) {
+            if( oldValueClass.getComponentType() == byte.class )
+                return (D) ByteArrayDelta.compare(parent, (byte[]) oldValue, (byte[]) newValue);
             return (D) ArrayDelta.compare(parent, (T[]) oldValue, (U[]) newValue);
         }
         return oldValue.equals(newValue) ? null : (D) new ChangedItem(parent, oldValue, newValue);

@@ -10,6 +10,8 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.roles.Role;
+import net.sergeych.biserializer.BiMapper;
+import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
@@ -35,7 +37,8 @@ public class ContractDelta {
 
     public void check() {
         try {
-            MapDelta rootDelta = Delta.between(existing.serializeToBinder(), changed.serializeToBinder());
+            BiMapper mapper = BossBiMapper.getInstance();
+            MapDelta rootDelta = Delta.between(mapper.serialize(existing), mapper.serialize(changed));
             MapDelta definitionDelta = (MapDelta) rootDelta.getChange("definition");
             if (definitionDelta != null) {
                 addError(ILLEGAL_CHANGE, "definition", "definition must not be changed");
@@ -74,9 +77,8 @@ public class ContractDelta {
                 addError(BAD_VALUE, "state.revision", "wrong revision number");
         }
         Delta creationTimeChange = stateChanges.get("created_at");
-        if (creationTimeChange == null || !(creationTimeChange instanceof ChangedItem))
-            addError(BAD_VALUE, "state.created_at", "invlaid new state");
-        else {
+        // if time is changed, it must be past:
+        if (creationTimeChange != null ) {
             stateChanges.remove("created_at");
             ChangedItem<ZonedDateTime, ZonedDateTime> ci = (ChangedItem) creationTimeChange;
             if (!ci.newValue().isAfter(ci.oldValue()))

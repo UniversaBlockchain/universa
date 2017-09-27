@@ -25,7 +25,13 @@ import java.util.stream.Collectors;
  */
 public class BiMapper {
     private HashMap<String, BiAdapter> adapters = new HashMap<String, BiAdapter>();
+    private int revision = 0;
 
+    public BiMapper() {}
+
+    public BiMapper(BiMapper parent) {
+        adapters.putAll(parent.adapters);
+    }
 
     public void deserializeInPlace(Map map, BiDeserializer deserializer) {
         map.forEach((key, value) -> {
@@ -66,6 +72,11 @@ public class BiMapper {
         deserializeInPlace(map,deserializer);
         return (T) map;
     }
+
+    public <T> T deserialize(Map map) {
+        return deserialize(map, new BiDeserializer(this));
+    }
+
 
     public <T> T deserializeObject(Object obj,BiDeserializer deserializer) {
         if( obj instanceof String || obj instanceof Number || obj instanceof Boolean
@@ -109,7 +120,9 @@ public class BiMapper {
                 b.replaceAll((String k, Object v) -> serialize(v,serializer));
                 return (T) b;
             }
-            throw new IllegalArgumentException("can't convert to binder " + canonicalName + ": " + x);
+            // just leave it as it is
+            return (T) x;
+//            throw new IllegalArgumentException("can't convert to binder " + canonicalName + ": " + x);
         }
         Binder result = adapter.serialize(x, serializer);
         String tn = adapter.typeName();
@@ -117,11 +130,31 @@ public class BiMapper {
         return (T) result;
     }
 
+    public @NonNull <T> T serialize(Object x) {
+        return serialize(x, new BiSerializer(this));
+    }
+
     public <T> void registerAdapter(Class<T> klass, BiAdapter adapter) {
         adapters.put(klass.getCanonicalName(), adapter);
         String typeName = adapter.typeName();
         if (typeName != null)
             adapters.put(typeName, adapter);
+        revision++;
+    }
+
+    int getRevision() { return revision; }
+
+    public boolean unregister(Class klass) {
+        String key = klass.getCanonicalName();
+        BiAdapter a = adapters.get(key);
+        if( a == null )
+            return false;
+        adapters.remove(key);
+        key = a.typeName();
+        if( key != null )
+            adapters.remove(key);
+        revision++;
+        return true;
     }
 
     public void registerClass(Class<? extends BiSerializable> klass) {

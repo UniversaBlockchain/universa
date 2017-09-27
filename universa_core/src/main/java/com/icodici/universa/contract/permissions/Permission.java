@@ -23,7 +23,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class Permission implements BiSerializable {
+public abstract class Permission implements BiSerializable, Comparable<Permission> {
 
     private String name;
     private Role role;
@@ -125,5 +125,17 @@ public abstract class Permission implements BiSerializable {
 
     public String getName() {
         return name;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if( obj instanceof Permission )
+            return compareTo((Permission) obj) == 0;
+        return super.equals(obj);
+    }
+
+    @Override
+    public int compareTo(Permission o) {
+        return name.compareTo(o.name);
     }
 }
