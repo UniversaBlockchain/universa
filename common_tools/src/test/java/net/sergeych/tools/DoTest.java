@@ -37,7 +37,7 @@ public class DoTest {
     @Test
     public void randomInt() throws Exception {
         double sum = 0;
-        int repetitions = 10000;
+        int repetitions = 20000;
         int min = 10000, max = -1000;
         for(int i=0; i < repetitions; i++ ) {
             int x = Do.randomInt(100);

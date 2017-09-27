@@ -10,7 +10,10 @@
  */
 package net.sergeych.boss;
 
-import net.sergeych.biserializer.*;
+import net.sergeych.biserializer.BiAdapter;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
@@ -180,6 +183,14 @@ public class Boss {
         }
     }
 
+    static public <T> T load(byte[] data, BiDeserializer mapper) {
+        try {
+            return (T) new Reader(new ByteArrayInputStream(data), mapper).read();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Boss: can't parse data", e);
+        }
+    }
+
     /**
      * Load boss-encoded object and cast ti to {@link Binder}.
      *
@@ -278,19 +289,19 @@ public class Boss {
         private OutputStream out;
         private HashMap<Object, Integer> cache;
         private boolean treeMode;
-//        private final BiSerializer biSerializer;
+        private final BiSerializer biSerializer;
 
         /**
          * Creates writer to write to the output stream. Upon creation writer is alwais in tree mode.
          *
          * @param outputStream See {@link #setStreamMode()}
          */
-        public Writer(OutputStream outputStream,BiSerializer biSerializer) {
+        public Writer(OutputStream outputStream, BiSerializer biSerializer) {
             out = outputStream;
             cache = new HashMap<>();
             cache.put(null, 0);
             treeMode = true;
-//            this.biSerializer = biSerializer;
+            this.biSerializer = biSerializer;
         }
 
         /**
@@ -299,7 +310,7 @@ public class Boss {
          * @param outputStream See {@link #setStreamMode()}
          */
         public Writer(OutputStream outputStream) {
-            this(outputStream, new BiSerializer());
+            this(outputStream, BossBiMapper.getSerializer());
         }
 
         public Writer() {
@@ -345,7 +356,7 @@ public class Boss {
          */
         public Writer write(Object... objects) throws IOException {
             for (Object x : objects)
-                writeObject(x);
+                put(x);
             return this;
         }
 
@@ -360,6 +371,17 @@ public class Boss {
          * @throws IOException
          */
         public Writer writeObject(Object obj) throws IOException {
+            if (biSerializer != null && !(
+                    obj instanceof Number || obj instanceof String || obj instanceof ZonedDateTime
+                            || obj instanceof Boolean
+            ))
+                put(biSerializer.serialize(obj));
+            else
+                put(obj);
+            return this;
+        }
+
+        private Writer put(Object obj) throws IOException {
             if (obj instanceof Number) {
                 Number n = (Number) obj;
                 if ((obj instanceof Integer) || (obj instanceof Long)) {
@@ -449,8 +471,9 @@ public class Boss {
                 writeHeader(TYPE_CREF, 0);
                 return this;
             }
-//            writeObject(biSerializer.serialize(obj));
-            return this;
+            throw new IllegalArgumentException("unknown type: " + obj.getClass());
+//            put(biSerializer.serialize(obj));
+//            return this;
         }
 
         private void writeMap(Object obj) throws IOException {
@@ -458,8 +481,8 @@ public class Boss {
                 Map<?, ?> map = (Map<?, ?>) obj;
                 writeHeader(TYPE_DICT, map.size());
                 for (Map.Entry<?, ?> e : map.entrySet()) {
-                    writeObject(e.getKey());
-                    writeObject(e.getValue());
+                    put(e.getKey());
+                    put(e.getValue());
                 }
             }
         }
@@ -468,7 +491,7 @@ public class Boss {
             if (!tryWriteReference(array)) {
                 writeHeader(TYPE_LIST, array.length);
                 for (Object x : array)
-                    writeObject(x);
+                    put(x);
             }
         }
 
@@ -476,7 +499,7 @@ public class Boss {
             if (!tryWriteReference(collection)) {
                 writeHeader(TYPE_LIST, collection.size());
                 for (Object x : collection)
-                    writeObject(x);
+                    put(x);
             }
         }
 
@@ -567,25 +590,25 @@ public class Boss {
         protected boolean showTrace = false;
         private ArrayList<Object> cache;
         private int maxCacheEntries, maxStringSize;
-//        private final BiDeserializer deserializer;
+        private final BiDeserializer deserializer;
 
         public Reader(byte[] bytes) {
             this(new ByteArrayInputStream(bytes));
         }
 
-        public Reader(InputStream stream,BiDeserializer deserializer) {
+        public Reader(InputStream stream, BiDeserializer deserializer) {
             in = stream;
             cache = new ArrayList<>();
             treeMode = true;
-//            this.deserializer = deserializer;
+            this.deserializer = deserializer;
         }
 
         public Reader(InputStream stream) {
-            this(stream, new BiDeserializer());
+            this(stream, BossBiMapper.getDeserializer());
         }
 
 
-            public void traceObject() throws IOException {
+        public void traceObject() throws IOException {
             Header h = readHeader();
             System.out.println(h);
         }
@@ -671,8 +694,15 @@ public class Boss {
          *
          * @throws IOException
          */
-        @SuppressWarnings("unchecked")
         public <T> T read() throws IOException {
+            Object x = get();
+            if (deserializer == null || !(x instanceof Binder || x instanceof Collection))
+                return (T) x;
+            return deserializer.deserialize(x);
+        }
+
+        @SuppressWarnings("unchecked")
+        private <T> T get() throws IOException {
             Header h = readHeader();
             trace("Header " + h);
             switch (h.code) {
@@ -695,10 +725,10 @@ public class Boss {
                     return (T) bb;
                 }
                 case TYPE_LIST: {
-                    ArrayList data = new ArrayList((int)(h.value < 0x10000 ? h.value : 4096));
+                    ArrayList data = new ArrayList((int) (h.value < 0x10000 ? h.value : 4096));
                     cacheObject(data);
                     for (int i = 0; i < h.value; i++)
-                        data.add(read());
+                        data.add(get());
                     return (T) data;
                 }
                 case TYPE_DICT: {
@@ -721,7 +751,7 @@ public class Boss {
             Dictionary hash = new Dictionary();
             cacheObject(hash);
             for (int i = 0; i < h.value; i++)
-                hash.put(read(), read());
+                hash.put(get(), get());
 //            if( hash.containsKey("__type") || hash.containsKey("__t"))
 //                return (T) deserializer.deserialize(hash);
 //            trace("Dict: " + hash);
@@ -729,7 +759,7 @@ public class Boss {
         }
 
         public int readInt() throws IOException {
-            Number n = read();
+            Number n = get();
             return n.intValue();
         }
 
@@ -779,7 +809,7 @@ public class Boss {
                     return useOldDates ? new Date(seconds * 1000) : Instant.ofEpochSecond(seconds).atZone(ZoneId.systemDefault());
                 case XT_STREAM_MODE:
                     setStreamMode();
-                    return read();
+                    return get();
                 case XT_DOUBLE:
                     return new Bytes(in, 8).toDouble();
             }
@@ -800,7 +830,7 @@ public class Boss {
          * @throws IOException
          */
         public Bytes readBytes() throws IOException {
-            return (Bytes) read();
+            return (Bytes) get();
         }
 
         /**
@@ -811,7 +841,7 @@ public class Boss {
          * @throws IOException
          */
         public byte[] readBinary() throws IOException {
-            Object x = read();
+            Object x = get();
             if (x == null)
                 return null;
             if (x.getClass().isArray())
@@ -820,7 +850,7 @@ public class Boss {
         }
 
         public Object[] readArray() throws IOException {
-            return (Object[]) read();
+            return (Object[]) get();
         }
 
         /**
@@ -829,7 +859,7 @@ public class Boss {
          * @throws IOException
          */
         public BigInteger readBigInteger() throws IOException {
-            return (BigInteger) read();
+            return (BigInteger) get();
         }
 
         public void close() throws IOException {
@@ -838,7 +868,7 @@ public class Boss {
 
         @SuppressWarnings("unchecked")
         public Map<String, Object> readMap() throws IOException {
-            return (Map<String, Object>) read();
+            return (Map<String, Object>) get();
         }
 
     }

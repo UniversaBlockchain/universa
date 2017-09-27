@@ -12,12 +12,8 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.junit.Test;
 
-import static com.icodici.universa.RegexMatcher.matches;
-import static junit.framework.TestCase.fail;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertSame;
+import static junit.framework.TestCase.assertNull;
+import static org.junit.Assert.*;
 
 public class RoleLinkTest {
     @Test
@@ -40,14 +36,7 @@ public class RoleLinkTest {
         RoleLink r2 = new RoleLink("foo", "bar");
         c.registerRole(r1);
         c.registerRole(r2);
-        try {
-            r2.resolve();
-            fail("exception must be thrown");
-        }
-        catch(IllegalStateException e) {
-            assertThat(e.toString(), matches(".*depth.exceeded.*"));
-        }
-
+        assertNull(r2.resolve());
     }
 
     @Test

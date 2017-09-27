@@ -141,53 +141,30 @@ public class PermissionsTest extends ContractTestBase {
 
         // valid decrement: by owner
         Contract c1 = c.createRevision(ownerKey2);
-        d = c1.getStateData();
+        Binder d1 = c1.getStateData();
+
+        assertNotSame(c, c1);
+        assertNotSame(d, d1);
+
         assertEquals(1000, d.getIntOrThrow("transactional_units_left"));
-        d.addToInt("transactional_units_left", -10);
-        assertEquals(990, d.getIntOrThrow("transactional_units_left"));
+        assertEquals(1000, d1.getIntOrThrow("transactional_units_left"));
+        d1.addToInt("transactional_units_left", -10);
+        assertEquals(990, d1.getIntOrThrow("transactional_units_left"));
+        assertEquals(1000, d.getIntOrThrow("transactional_units_left"));
         c1.seal();
         c1.check();
         c1.traceErrors();
         assertTrue(c1.isOk());
 
         // not valid: increment by owner
-        d.addToInt("transactional_units_left", +11);
-        assertEquals(1001, d.getIntOrThrow("transactional_units_left"));
+        d1.addToInt("transactional_units_left", +11);
+        assertEquals(1001, d1.getIntOrThrow("transactional_units_left"));
+        assertEquals(1000, d.getIntOrThrow("transactional_units_left"));
         c1.seal();
         c1.check();
         c1.traceErrors();
         assertFalse(c1.isOk());
 
-
-//        // Bad contract change: owner has no right to change owner ;)
-//        Contract c1 = c.createRevision(TestKeys.privateKey(0));
-//        c1.setOwnerKey(ownerKey2);
-//        assertNotEquals(c.getOwner(), c1.getOwner());
-//        c1.seal();
-//        c1.check();
-//        assertEquals(1, c1.getErrors().size());
-//        ErrorRecord error = c1.getErrors().get(0);
-//        assertEquals(Errors.FORBIDDEN, error.getError());
-//
-//        // good contract change: creator is an owner
-//
-//        Contract c2 = c.createRevision(TestKeys.privateKey(0), ownerKey1);
-//        assertEquals(c, ((RoleLink)c.getPermissions().get("change_owner").getRole()).getContract());
-//
-////        System.out.println("c owner   : "+c.getRole("owner"));
-////        System.out.println("c2 creator: "+c2.getRole("creator"));
-//
-//        assertEquals(c.getOwner(), ((RoleLink)c.getPermissions().get("change_owner").getRole()).getRole());
-//        assertEquals(c2, ((RoleLink)c2.getPermissions().get("change_owner").getRole()).getContract());
-//        assertEquals(c, ((RoleLink)c.getPermissions().get("change_owner").getRole()).getContract());
-//        c2.setOwnerKey(ownerKey3);
-//        assertNotEquals(c.getOwner(), c2.getOwner());
-//        assertEquals(c.getOwner(), ((RoleLink)c.getPermissions().get("change_owner").getRole()).getRole());
-//
-//
-//        c2.seal();
-//        c2.check();
-//        c2.traceErrors();
-//        assertTrue(c2.isOk());
+        // todo: check valid increment by issuer
     }
 }

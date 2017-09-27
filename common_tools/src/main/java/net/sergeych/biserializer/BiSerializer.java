@@ -19,6 +19,13 @@ public class BiSerializer {
     }
 
     public <T> T serialize(Object obj) {
-        return (T) mapper.serialize(obj, this);
+        return mapper.serialize(obj, this);
+    }
+
+    public <T> T serializeOrThrow(Object obj) {
+        T result = mapper.serialize(obj, this);
+        if( result == obj )
+            throw new BiSerializationException("can't serialize "+obj);
+        return result;
     }
 }

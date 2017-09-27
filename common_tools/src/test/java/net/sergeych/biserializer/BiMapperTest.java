@@ -149,7 +149,6 @@ public class BiMapperTest {
         DefaultBiMapper.registerClass(Rebinder.class);
         b.put("foo", "bar");
         Binder s = DefaultBiMapper.serialize(b);
-        System.out.println(s);
         Object x = DefaultBiMapper.deserialize(s);
         assertThat(x, instanceOf(Rebinder.class));
         assertEquals("bar", ((Map)x).get("foo"));

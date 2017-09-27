@@ -8,13 +8,11 @@
 package net.sergeych.biserializer;
 
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -48,6 +46,13 @@ public class BiMapper {
                     }
                 }
             }
+            else if(value instanceof Collection) {
+                map.put(key,
+                        ((Collection) value).stream()
+                        .map(x->deserializer.deserialize(x))
+                        .collect(Collectors.toList())
+                );
+            }
         });
     }
 
@@ -77,14 +82,23 @@ public class BiMapper {
         return deserialize(map, new BiDeserializer(this));
     }
 
+    public <T> T deserializeObject(Object x) {
+        return x == null ? null : deserializeObject(x, new BiDeserializer(this));
+    }
+
 
     public <T> T deserializeObject(Object obj,BiDeserializer deserializer) {
         if( obj instanceof String || obj instanceof Number || obj instanceof Boolean
-                || obj instanceof ZonedDateTime )
+                || obj instanceof ZonedDateTime || obj instanceof Bytes)
             return (T)obj;
         if( obj instanceof Map )
             return deserialize((Map)obj, deserializer);
-        throw new IllegalArgumentException("don't know how to deserealize "+obj);
+        if( obj instanceof Collection) {
+            return (T) ((Collection) obj).stream()
+                    .map(x->deserializeObject(x))
+                    .collect(Collectors.toList());
+        }
+        throw new IllegalArgumentException("don't know how to deserealize "+obj.getClass().getCanonicalName());
     }
 
     /**
@@ -104,7 +118,7 @@ public class BiMapper {
             return (T) x;
         Class<?> klass = x.getClass();
         if (klass.isArray() && !(klass.getComponentType() == byte.class )) {
-            x = Arrays.asList(x);
+            x = Arrays.asList( (Object[])x);
         }
         if (x instanceof Collection) {
             return (T) ((Collection) x).stream()
@@ -116,9 +130,8 @@ public class BiMapper {
         BiAdapter adapter = adapters.get(canonicalName);
         if (adapter == null) {
             if (x instanceof Map) {
-                Binder b = new Binder((Map) x);
-                b.replaceAll((String k, Object v) -> serialize(v,serializer));
-                return (T) b;
+                ((Map) x).replaceAll((k,v) -> serialize(v,serializer));
+                return (T) x;
             }
             // just leave it as it is
             return (T) x;

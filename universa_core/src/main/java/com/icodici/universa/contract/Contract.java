@@ -75,9 +75,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             throw new IllegalArgumentException("version too high");
         byte[] contractBytes = data.getBinaryOrThrow("data");
 
-        deserialize(Boss.unpack(contractBytes), new BiDeserializer());
-
-//        initializeWithDsl(Boss.unpack(contractBytes));
+        // This must be explained. By default, Boss.load will apply contract transformation in place
+        // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
+        // data without BiSerializer and then do it by hand calling deserialize:
+        deserialize(Boss.load(contractBytes, null),
+                    BossBiMapper.getDeserializer());
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -539,7 +541,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         try {
             // We need deep copy, so, simple while not that fast.
             // note that revisions are create on clients where speed it not of big importance!
-            Contract newRevision = (Contract) clone();
+            Contract newRevision = copy();
             // modify th edeep copy for a new revision
             newRevision.state.revision = state.revision + 1;
             newRevision.state.createdAt = ZonedDateTime.now();
@@ -864,7 +866,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return
      */
     public Contract copy() {
-        BiMapper m = BossBiMapper.getInstance();
-        return m.deserialize(m.serialize(this));
+        return Boss.load(Boss.dump(this));
     }
 }

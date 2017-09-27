@@ -111,6 +111,7 @@ public class ClientEndpoint {
                 } catch (ClientError e) {
                     s.errors.add(e.errorRecord);
                 } catch (Exception e) {
+//                    e.printStackTrace();
                     s.errors.add(new ErrorRecord(Errors.FAILURE, "", e.getMessage()));
                 }
                 return s.answer(null);

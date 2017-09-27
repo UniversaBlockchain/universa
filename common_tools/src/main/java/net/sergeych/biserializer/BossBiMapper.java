@@ -53,7 +53,7 @@ public class BossBiMapper {
      * @throws IllegalArgumentException if unkonwn ibject ecnountered which can not be serialized.
      */
     public static @NonNull <T> T serialize(Object x) {
-        return new BiSerializer().serialize(x);
+        return getSerializer().serialize(x);
     }
 
     public static <T> void registerAdapter(Class<T> klass, BiAdapter adapter) {
@@ -62,5 +62,9 @@ public class BossBiMapper {
 
     public static BiDeserializer getDeserializer() {
         return new BiDeserializer(getInstance());
+    }
+
+    public static BiSerializer getSerializer() {
+        return new BiSerializer(getInstance());
     }
 }
