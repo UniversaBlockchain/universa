@@ -270,7 +270,6 @@ public class Boss {
 
         @Override
         public String toString() {
-            // TODO Auto-generated method stub
             return String.format("BH: code=%d value=%d bigValue=%s", code, value, bigValue);
         }
     }
@@ -310,7 +309,7 @@ public class Boss {
          * @param outputStream See {@link #setStreamMode()}
          */
         public Writer(OutputStream outputStream) {
-            this(outputStream, BossBiMapper.getSerializer());
+            this(outputStream, BossBiMapper.newSerializer());
         }
 
         public Writer() {
@@ -604,7 +603,7 @@ public class Boss {
         }
 
         public Reader(InputStream stream) {
-            this(stream, BossBiMapper.getDeserializer());
+            this(stream, BossBiMapper.newDeserializer());
         }
 
 

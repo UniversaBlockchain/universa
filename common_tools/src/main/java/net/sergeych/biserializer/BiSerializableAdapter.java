@@ -12,9 +12,9 @@ import net.sergeych.tools.Binder;
 import java.lang.reflect.Constructor;
 
 /**
- * Adapter that automatically processes classes implementing BiSerializable.
+ * Adapter that de/serializes classes implementing BiSerializable. For internal use by this package.
  */
-public class BiSerializableAdapter implements BiAdapter {
+class BiSerializableAdapter implements BiAdapter {
 
     private Class<? extends BiSerializable> objectClass;
     private String typeAlias = null;

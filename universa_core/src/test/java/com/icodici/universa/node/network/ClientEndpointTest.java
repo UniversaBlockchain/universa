@@ -39,7 +39,7 @@ public class ClientEndpointTest extends TestCase {
             l.add(new ErrorRecord(Errors.NOT_SUPPORTED, "t1", "message_"+i));
         }
 
-        Object s = BossBiMapper.getSerializer().serialize(l);
+        Object s = BossBiMapper.newSerializer().serialize(l);
         Object x = BossBiMapper.getInstance().deserializeObject(s);
         assertThat(x, instanceOf(List.class));
         assertThat(((List)x).get(0), instanceOf(ErrorRecord.class));
@@ -48,7 +48,7 @@ public class ClientEndpointTest extends TestCase {
         assertThat(((List)x).get(0), instanceOf(ErrorRecord.class));
 
         Binder b = Binder.of("errors", l);
-        s = BossBiMapper.getSerializer().serialize(b);
+        s = BossBiMapper.newSerializer().serialize(b);
         x = BossBiMapper.getInstance().deserializeObject(s);
         x = ((Map)x).get("errors");
         assertThat(x, instanceOf(List.class));

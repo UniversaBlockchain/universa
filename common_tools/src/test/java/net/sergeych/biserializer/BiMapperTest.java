@@ -117,7 +117,6 @@ public class BiMapperTest {
 
     @Test
     public void autoSerializable() throws Exception {
-        // TODO: autoserialize class hierarchy
         Test1 t1 = new Test1("foo");
         DefaultBiMapper.registerClass(Test1.class);
         Binder s = DefaultBiMapper.serialize(t1);
@@ -130,7 +129,6 @@ public class BiMapperTest {
 
     @Test
     public void autoSerializableInheritance() throws Exception {
-        // TODO: autoserialize class hierarchy
         Test1 t1 = new Test2("foo");
         DefaultBiMapper.registerClass(Test2.class);
         Binder s = DefaultBiMapper.serialize(t1);

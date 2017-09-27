@@ -79,7 +79,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
         // data without BiSerializer and then do it by hand calling deserialize:
         deserialize(Boss.load(contractBytes, null),
-                    BossBiMapper.getDeserializer());
+                    BossBiMapper.newDeserializer());
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -143,7 +143,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 //     */
 //    Contract(Binder root) throws EncryptionError {
 //        this();
-//        deserialize(root, DefaultBiMapper.getDeserializer());
+//        deserialize(root, DefaultBiMapper.newDeserializer());
 //    }
 
     private Contract initializeWithDsl(Binder root) throws EncryptionError {
@@ -273,8 +273,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             ContractDelta delta = new ContractDelta(parent, this);
             delta.check();
         }
-        // todo: check state change (chan
-//        addError(NOT_SUPPORTED, "");
     }
 
     /**

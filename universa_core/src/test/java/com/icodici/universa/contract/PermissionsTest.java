@@ -41,9 +41,6 @@ public class PermissionsTest extends ContractTestBase {
 
         c2.seal();
 
-        // todo: ensure state-change check works
-        // todo: ensure there are no other changes.
-
         Contract c3 = c2.createRevision(TestKeys.privateKey(0), TestKeys.privateKey(3));
         assertEquals(1, c3.getRevokingItems().size());
         assertEquals(c2, c3.getRevokingItems().iterator().next());

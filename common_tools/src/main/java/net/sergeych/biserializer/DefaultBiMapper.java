@@ -17,11 +17,27 @@ import java.time.ZonedDateTime;
 import java.util.Map;
 
 /**
- * Static interface (shortcut) to the default {@link BiMapper} instance, see {@link DefaultBiMapper#getDefaultMapper()}.
+ * Default {@link BiMapper} provider, constructs instances, see {@link #getInstance()}, and utility functions.
+ * <p>
+ * Usually you register your classes and adapters here, see {@link BiMapper} for details on how to.
+ * <p>
+ * Provides out of the box support for
+ * <p>
+ * <dl>
+ *     <dt>{@link ZonedDateTime}</dt>
+ *     <dd>convert them to {"__type": "unixtime", "seconds", 123456778} timestamps</dd>
+ *
+ *     <dt>byte[] binary data</dt>
+ *     <dd>convert them to the {"__type":"binary","base64":"kjhlhjl=="} type structures</dd>
+ * </dl>
  */
 public class DefaultBiMapper {
 
     final static BiMapper defaultInstance = new BiMapper();
+
+    public static BiMapper getInstance() {
+        return defaultInstance;
+    }
 
     public static void deserializeInPlace(Map map) {
         new BiDeserializer().deserializeInPlace(map);
@@ -63,7 +79,7 @@ public class DefaultBiMapper {
     static {
         DefaultBiMapper.registerAdapter(ZonedDateTime.class, new BiAdapter() {
             @Override
-            public Binder serialize(Object object,BiSerializer serializer) {
+            public Binder serialize(Object object, BiSerializer serializer) {
                 return Binder.fromKeysValues("seconds", ((ZonedDateTime) object).toEpochSecond());
             }
 
@@ -83,12 +99,12 @@ public class DefaultBiMapper {
         DefaultBiMapper.registerAdapter(dummy.getClass(), new BiAdapter() {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
-                return Binder.of("base64", Base64.encodeCompactString((byte[]) object));
+                return Binder.of("base64", Base64.encodeLines((byte[]) object));
             }
 
             @Override
             public Object deserialize(Binder binder, BiDeserializer deserializer) {
-                return Base64.decodeCompactString(binder.getStringOrThrow("base64"));
+                return Base64.decodeLines(binder.getStringOrThrow("base64"));
             }
 
             @Override
@@ -98,11 +114,4 @@ public class DefaultBiMapper {
         });
     }
 
-    public static BiDeserializer getDeserializer() {
-        return new BiDeserializer(defaultInstance);
-    }
-
-    public static BiMapper getDefaultMapper() {
-         return defaultInstance;
-    }
 }

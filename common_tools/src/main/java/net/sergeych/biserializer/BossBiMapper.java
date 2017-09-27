@@ -7,6 +7,7 @@
 
 package net.sergeych.biserializer;
 
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -14,7 +15,17 @@ import java.time.ZonedDateTime;
 import java.util.Map;
 
 /**
- * Static interface (shortcut) to the default {@link BiMapper} instance, see {@link BossBiMapper#getDefaultMapper()}.
+ * Default {@link BiMapper} provider to be used with the {@link Boss} protocol. It uses all
+ * serialization rules known to {@link DefaultBiMapper}, excepting some types natively supported by {@link
+ * net.sergeych.boss.Boss}:
+ * <p>
+ * <ul>
+ * <p>
+ * <li>it does not serialize {@link ZonedDateTime}</li>
+ * <p>
+ * <li>it does not serialize binary data (byte[])</li>
+ * <p>
+ * </ul>
  */
 public class BossBiMapper {
 
@@ -26,8 +37,8 @@ public class BossBiMapper {
     private static int lastRevision = 0;
 
     public static synchronized BiMapper getInstance() {
-        BiMapper full = DefaultBiMapper.getDefaultMapper();
-        if( mapper == null || lastRevision < full.getRevision() ) {
+        BiMapper full = DefaultBiMapper.getInstance();
+        if (mapper == null || lastRevision < full.getRevision()) {
             mapper = new BiMapper(full);
             lastRevision = full.getRevision();
             mapper.unregister(ZonedDateTime.class);
@@ -53,18 +64,44 @@ public class BossBiMapper {
      * @throws IllegalArgumentException if unkonwn ibject ecnountered which can not be serialized.
      */
     public static @NonNull <T> T serialize(Object x) {
-        return getSerializer().serialize(x);
+        return newSerializer().serialize(x);
     }
 
-    public static <T> void registerAdapter(Class<T> klass, BiAdapter adapter) {
+    /**
+     * Register serialization adapter in the default Boss mapper only. See {@link BiMapper#registerAdapter(Class,
+     * BiAdapter)} for more information.
+     *
+     * @param klass
+     * @param adapter
+     */
+    public static void registerAdapter(Class<?> klass, BiAdapter adapter) {
         getInstance().registerAdapter(klass, adapter);
     }
 
-    public static BiDeserializer getDeserializer() {
+    /**
+     * Register serializabble class in the default Boss mapper only. See {@link BiMapper#registerClass(Class)} for more
+     * information.
+     *
+     * @param klass
+     * @param adapter
+     */
+    public static void registerClass(Class<? extends BiSerializable> klass) {
+        getInstance().registerClass(klass);
+    }
+
+    /**
+     * Create new deserializer based on default {@link Boss} - optimized {@link BiMapper}.
+     * @return
+     */
+    public static BiDeserializer newDeserializer() {
         return new BiDeserializer(getInstance());
     }
 
-    public static BiSerializer getSerializer() {
+    /**
+     * Create new serializer based on default {@link Boss} - optimized {@link BiMapper}.
+     * @return
+     */
+    public static BiSerializer newSerializer() {
         return new BiSerializer(getInstance());
     }
 }
