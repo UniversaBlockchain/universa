@@ -18,6 +18,8 @@ import net.sergeych.tools.Binder;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -72,6 +74,11 @@ public class ContractTest extends ContractTestBase {
             }
         }
         assertTrue(c.check());
+        Files.write(Paths.get(rootPath+"simple_root_contract.unc"), c.seal());
+        Yaml yaml = new Yaml();
+        Files.write(Paths.get(rootPath+"simple_root_contract.raw.yaml"),
+                    yaml.dump(DefaultBiMapper.serialize(c)).getBytes()
+        );
     }
 
     @Test
