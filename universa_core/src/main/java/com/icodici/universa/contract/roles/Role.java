@@ -113,25 +113,6 @@ public abstract class Role implements BiSerializable {
         return kr.iterator().next();
     }
 
-//    /**
-//     * Clone the role with a different names, using the same (not copied) key records, in the new copy of the container.
-//     * So, it is safe to edit cloned keyRecords, while keys itself are not copied and are packed with Boss effeciently.
-//     * More or less ;)
-//     *
-//     * @param name
-//     *
-//     * @return
-//     */
-//    public Role cloneAs(String name) {
-//        Role r = new Role(name);
-//        keyRecords.values().forEach(kr -> r.addKeyRecord(kr));
-//        return r;
-//    }
-
-//    public boolean isAllowedForKeys(Role anotherRole) {
-//        return isAllowedForKeys(anotherRole.key);
-//    }
-
     public void setContract(Contract contract) {
         this.contract = contract;
     }
