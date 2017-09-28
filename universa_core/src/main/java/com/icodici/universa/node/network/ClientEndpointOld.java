@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
  *
- * Written by Sergey Chernov <real.sergeych@gmail.com>, August 2017.
+ * Written by Sergey Chernov <real.sergeych@gmail.com>
  *
  */
 
@@ -11,22 +11,22 @@ import com.icodici.crypto.*;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.node.LocalNode;
-import com.icodici.universa.node.network.microhttpd.InMemoryTempFile;
-import com.icodici.universa.node.network.microhttpd.MicroHTTPD;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
-import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.nanohttpd.protocols.http.HTTPSession;
 import org.nanohttpd.protocols.http.IHTTPSession;
+import org.nanohttpd.protocols.http.NanoHTTPD;
 import org.nanohttpd.protocols.http.response.IStatus;
 import org.nanohttpd.protocols.http.response.Response;
 import org.nanohttpd.protocols.http.response.Status;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,22 +42,15 @@ import static java.util.Arrays.asList;
  * connect(my_public_key, client_salt) -> server_nonce get_token(signed(my_public_key, server_nonce, client_nonce)) ->
  * signed(node_key, server_nonce, encrypted(my_public_key, session_key))
  * <p>
- * Threadpool is used, and controlled by setting THREAD_LIMIT to some specific value,
- * or to null for CachedThreadPool.
+ * We might need to use threadpool later (https://github.com/NanoHttpd/nanohttpd/wiki/Example:-Using-a-ThreadPool)
  */
-public class ClientEndpoint {
-
-    static private LogPrinter log = new LogPrinter("CLEP");
+public class ClientEndpointOld {
 
     /**
      * Any uploads larger than HARD_UPLOAD_LIMIT (verified against "content-length" header)
      * will be forcibly cut off.
      */
     private static final long HARD_UPLOAD_LIMIT = 2 * 1024 * 1024;
-    /**
-     * Limit of threads in threadpool; set to null for no limit (to use CachedThreadPool).
-     * */
-    private static final Integer THREAD_LIMIT = 16;
 
     public void changeKeyFor(PublicKey clientKey) throws EncryptionError {
         Session session = sessionsByKey.get(clientKey);
@@ -69,7 +62,7 @@ public class ClientEndpoint {
         Binder apply(Session session) throws Exception;
     }
 
-    private Server instance;
+    private ClientEndpointOld.Server instance;
     private final Map<String, NetConfig.NodeInfo> roster;
     private LocalNode localNode;
     private int port;
@@ -83,9 +76,12 @@ public class ClientEndpoint {
             }
     }
 
-    public class Server extends MicroHTTPD {
+    // todo: get rid of Nanohttpd - it SAVES TEMP FILE - and this can't be avoided
+    // as a variant, we can reqrite it to make proper use of the TempFileFactory which
+    // capability to substitute temp files it partially ignores
+    public class Server extends NanoHTTPD {
         Server(int portToListen) {
-            super(portToListen, THREAD_LIMIT);
+            super(portToListen);
         }
 
         class BinaryResponse extends Response {
@@ -110,26 +106,18 @@ public class ClientEndpoint {
                 try {
                     session.parseBody(filesMap);
                     String tempFileName = filesMap.get("requestData");
-                    if (tempFileName == null) {
+                    if (tempFileName != null) {
+                        byte[] data = Do.read(new FileInputStream(tempFileName));
+                        Binder params = Boss.unpack(data);
+                        return processRequest(session.getUri(), params);
+                    } else {
                         return errorResponse(
                                 Status.OK,
                                 new ErrorRecord(Errors.FAILURE, "", "No requestData")
                         );
                     }
-
-                    @Nullable InMemoryTempFile tempFile = InMemoryTempFile.getFileByName(tempFileName);
-                    if (tempFile == null) {
-                        return errorResponse(
-                                Status.OK,
-                                new ErrorRecord(Errors.FAILURE, "", "tempfile missing")
-                        );
-                    }
-                    byte[] data = Do.read(tempFile.getInputByteStream());
-                    Binder params = Boss.unpack(data);
-                    return processRequest(session.getUri(), params);
-
                 } catch (IOException | ResponseException e) {
-                    log.wtf("Problem in client endpoint handle", e);
+                    e.printStackTrace();
                     return errorResponse(e);
                 }
             }
@@ -162,7 +150,7 @@ public class ClientEndpoint {
 
         private Response processRequest(String uri, Binder params) {
             try {
-                final Binder result;
+                Binder result = null;
                 switch (uri) {
                     case "/ping":
                         result = Binder.fromKeysValues("ping", "pong");
@@ -217,7 +205,7 @@ public class ClientEndpoint {
         }
 
         private Response errorResponse(Throwable t) {
-            log.wtf("Error response", t);
+            t.printStackTrace();
             return errorResponse(
                     Status.OK,
                     new ErrorRecord(Errors.FAILURE, "", t.getMessage())
@@ -406,7 +394,7 @@ public class ClientEndpoint {
     }
 
 
-    public ClientEndpoint(PrivateKey privateKey, int port, LocalNode localNode, Map<String, NetConfig.NodeInfo> roster) throws IOException {
+    public ClientEndpointOld(PrivateKey privateKey, int port, LocalNode localNode, Map<String, NetConfig.NodeInfo> roster) throws IOException {
         this.port = port;
         this.roster = roster;
         instance = new Server(port);

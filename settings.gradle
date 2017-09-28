@@ -1,5 +1,6 @@
 rootProject.name = 'universa'
 include ':common_tools'
 include ':crypto'
+include ':contrib/nanohttpd/core'
 include ':universa_core'
 include ':uniclient'

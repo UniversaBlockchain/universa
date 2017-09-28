@@ -11,11 +11,15 @@ import com.icodici.db.Db;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.node.PostgresLedger;
-import fi.iki.elonen.NanoHTTPD;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.JsonTool;
+import org.nanohttpd.protocols.http.IHTTPSession;
+import org.nanohttpd.protocols.http.NanoHTTPD;
+import org.nanohttpd.protocols.http.response.IStatus;
+import org.nanohttpd.protocols.http.response.Response;
+import org.nanohttpd.protocols.http.response.Status;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.ByteArrayInputStream;
@@ -41,7 +45,7 @@ public class TPSBenchmarkServer {
         }
 
         @Override
-        public Response serve(IHTTPSession session) {
+        public Response handle(IHTTPSession session) {
             Map<String, String> filesMap = new HashMap<>();
             try {
                 Binder params = Binder.from(session.getParms());
@@ -64,7 +68,7 @@ public class TPSBenchmarkServer {
                     default:
                         return errorResponse("unknown command");
                 }
-                return makeResponse(Response.Status.OK,
+                return makeResponse(Status.OK,
                                     Binder.fromKeysValues(
                                             "log",
                                             result.stream()
@@ -93,29 +97,29 @@ public class TPSBenchmarkServer {
 
         private Response errorResponse(Throwable t) {
             t.printStackTrace();
-            return errorResponse(Response.Status.NOT_ACCEPTABLE,
+            return errorResponse(Status.NOT_ACCEPTABLE,
                                  new ErrorRecord(Errors.FAILURE, "", t.getMessage())
             );
         }
 
         private Response errorResponse(String error) {
-            return errorResponse(Response.Status.NOT_ACCEPTABLE,
+            return errorResponse(Status.NOT_ACCEPTABLE,
                                  new ErrorRecord(Errors.FAILURE, "", error)
             );
         }
 
-        private Response reponseKeysValues(Response.Status status, Object... data) {
+        private Response reponseKeysValues(IStatus status, Object... data) {
             return makeResponse(status, Binder.fromKeysValues(data));
         }
 
 
-        private Response errorResponse(Response.Status code, ErrorRecord er) {
+        private Response errorResponse(IStatus code, ErrorRecord er) {
             return reponseKeysValues(code, "errors",
                                      asList(Binder.from(er))
             );
         }
 
-        private Response makeResponse(Response.Status status, Object o) {
+        private Response makeResponse(IStatus status, Object o) {
             Binder sourceData = Binder.from(o);
             return new JsonResponse(status, JsonTool.toJsonString(sourceData).getBytes());
         }
