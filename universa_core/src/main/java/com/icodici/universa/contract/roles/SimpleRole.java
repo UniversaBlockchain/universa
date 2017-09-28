@@ -11,7 +11,6 @@ import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.KeyRecord;
-import com.sun.istack.internal.NotNull;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
@@ -32,7 +31,7 @@ public class SimpleRole extends Role {
 
     private final Map<PublicKey, KeyRecord> keyRecords = new HashMap<>();
 
-    public SimpleRole(String name, @NotNull KeyRecord keyRecord) {
+    public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
         keyRecords.put(keyRecord.getPublicKey(), keyRecord);
     }
