@@ -17,16 +17,48 @@ import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.diff.Delta;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Abstract permission for the Universa contract. The permission implements the right of a {@link
+ * com.icodici.universa.contract.roles.Role} player (e.g. Universa party, set of keys used in signing the contract) to
+ * perform some change over the contract state. The real permissions are all superclasses of it.
+ * <p>
+ * The actualy permission implementation must implement {@link #checkChanges(Contract, Map)}, see this method for
+ * information on how to approve changes with the permission.
+ */
 public abstract class Permission implements BiSerializable, Comparable<Permission> {
 
     private String name;
     private Role role;
+
+    /**
+     * Get the permission id or null if is not yet set.
+     */
+    @Nullable
+    public String getId() {
+        return id;
+    }
+
+    /**
+     * Set the permission id. Id is used to simplify detection of the permission changes. Each permission must have a unique per-contract
+     * id set while serializing the contract. Once permission id is set, it must never bbe changed.
+     *
+     * @return permission id or null
+     */
+    public void setId(@NonNull String id) {
+        if( this.id != null)
+            throw new IllegalStateException("permission id is already set");
+        this.id = id;
+    }
+
+    private String id;
 
     public Binder getParams() {
         return params;
@@ -34,7 +66,8 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
 
     private Binder params;
 
-    protected Permission() {}
+    protected Permission() {
+    }
 
     protected Permission(String name, Role role) {
         this.name = name;
@@ -42,7 +75,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         params = null;
     }
 
-    protected Permission(String name, Role role,Binder params) {
+    protected Permission(String name, Role role, Binder params) {
         this.name = name;
         this.role = role;
         this.params = params;
@@ -84,7 +117,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
     @Override
     public Binder serialize(BiSerializer serializer) {
         Binder results = new Binder();
-        if( params != null )
+        if (params != null)
             results.putAll(params);
         results.put("name", name);
         results.put("role", serializer.serialize(role));
@@ -129,7 +162,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
 
     @Override
     public boolean equals(Object obj) {
-        if( obj instanceof Permission )
+        if (obj instanceof Permission)
             return compareTo((Permission) obj) == 0;
         return super.equals(obj);
     }

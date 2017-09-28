@@ -9,13 +9,15 @@ definition:
     active_since: {seconds: 1501953889, __type: unixtime}
     type: access certificate
   permissions:
-  - role: {target_name: owner, __type: RoleLink, name: '@change_owner'}
-    __type: ChangeOwnerPermission
-    name: change_owner
-  - role: {target_name: owner, __type: RoleLink, name: '@revoke'}
-    __type: RevokePermission
-    name: revoke
-  created_at: {seconds: 1506519814, __type: unixtime}
+    h_5Blg:
+      role: {target_name: owner, __type: RoleLink, name: '@revoke'}
+      __type: RevokePermission
+      name: revoke
+    l4B5GK:
+      role: {target_name: owner, __type: RoleLink, name: '@change_owner'}
+      __type: ChangeOwnerPermission
+      name: change_owner
+  created_at: {seconds: 1506604057, __type: unixtime}
   issuer:
     keys:
     - name: Universa
@@ -60,6 +62,6 @@ state:
     __type: SimpleRole
     name: owner
   data: {}
-  created_at: {seconds: 1506519814, __type: unixtime}
+  created_at: {seconds: 1506604057, __type: unixtime}
   created_by: {target_name: issuer, __type: RoleLink, name: creator}
   revision: 1

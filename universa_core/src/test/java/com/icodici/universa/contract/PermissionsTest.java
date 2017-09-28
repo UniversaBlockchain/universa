@@ -13,6 +13,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
@@ -52,6 +53,16 @@ public class PermissionsTest extends ContractTestBase {
 
 //        c2.check();
 //        c2.traceErrors();
+    }
+
+    @Test
+    public void validPermissionIds() throws Exception {
+        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        byte[] sealed = c.seal();
+        assertTrue(c.check());
+        Binder s = DefaultBiMapper.serialize(c);
+        s.getBinderOrThrow("definition","permissions");
     }
 
     @Test

@@ -25,6 +25,7 @@ import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
 
@@ -423,7 +424,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return isPermitted(permissionName, keyRecord.getPublicKey());
     }
 
+    private Set<String> permissionIds;
+
     public void addPermission(Permission perm) {
+        // We need to assign contract-uniqie id
+        if( perm.getId() == null ) {
+            if (permissionIds == null) {
+                permissionIds =
+                        getPermissions().values().stream()
+                                .map(x -> x.getId())
+                                .collect(Collectors.toSet());
+            }
+            while (true) {
+                String id = Ut.randomString(6);
+                if (!permissionIds.contains(id)) {
+                    permissionIds.add(id);
+                    perm.setId(id);
+                    break;
+                }
+            }
+        }
         permissions.put(perm.getName(), perm);
     }
 
@@ -804,7 +824,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (role == null)
                 throw new IllegalArgumentException("permission " + name + " refers to missing role: " + roleName);
             // now we have ready role and probably parameter for custom rights creation
-            permissions.put(name, Permission.forName(name, role, params instanceof String ? null : binderParams));
+            addPermission(Permission.forName(name, role, params instanceof String ? null : binderParams));
         }
 
         public Binder getData() {
@@ -815,6 +835,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public Binder serializeWith(BiSerializer serializer) {
             List<Permission> pp = permissions.values();
+            Binder pb = new Binder();
+            int lastId = 0;
+
+            // serialize permissions with a valid id
+            permissions.values().forEach(perm->{
+                String pid = perm.getId();
+                if( pid == null )
+                    throw new IllegalStateException("permission without id: "+perm);
+                    if( pb.containsKey(pid))
+                        throw new IllegalStateException("permission: duplicate permission id found: "+perm);
+                    pb.put(pid, perm);
+            });
+
             Collections.sort(pp);
             return serializer.serialize(
                     Binder.of(
@@ -823,7 +856,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                             "expires_at", expiresAt,
                             "data", data,
                             "permissions",
-                            pp
+                            pb
                     )
             );
         }
@@ -833,8 +866,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTimeOrThrow("expires_at");
             this.data = d.deserialize(data.getBinderOrThrow("data"));
-            List<Permission> perms = d.deserializeCollection(data.getOrThrow("permissions"));
-            perms.forEach(perm -> permissions.put(perm.getName(), perm));
+            Map<String,Permission> perms = d.deserialize(data.getOrThrow("permissions"));
+            perms.forEach((id,perm) -> {
+                perm.setId(id);
+                addPermission(perm);
+            });
         }
 
     }
