@@ -26,6 +26,7 @@ import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import java.lang.management.ManagementFactory;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ClientEndpointTest extends TestCase {
@@ -75,7 +76,7 @@ public class ClientEndpointTest extends TestCase {
     @Test
     public void ping() throws Exception {
         ep = new ClientEndpoint(null, DEFAULT_PORT, null, null);
-        client = new HttpClient("testnode1", "http://localhost:" + DEFAULT_PORT);
+        client = new HttpClient("testnode1", ROOT_URL);
         HttpClient.Answer a = client.request("ping", "hello", "world");
         assertEquals(a.code, 200);
         System.out.println(a.data);
@@ -91,9 +92,9 @@ public class ClientEndpointTest extends TestCase {
         PublicKey nodeKey = TestKeys.publicKey(0);
         PrivateKey clientKey = TestKeys.privateKey(1);
         client.start(clientKey, nodeKey);
-        assert(client.ping());
+        assertTrue(client.ping());
         ep.changeKeyFor(clientKey.getPublicKey());
-        assert(client.ping());
+        assertTrue(client.ping());
         try {
             client.command("test_error");
             fail("expected exception wasn't thrown");

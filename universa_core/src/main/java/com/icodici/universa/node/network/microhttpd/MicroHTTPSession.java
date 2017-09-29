@@ -10,7 +10,6 @@ package com.icodici.universa.node.network.microhttpd;
 import org.nanohttpd.protocols.http.ClientHandler;
 import org.nanohttpd.protocols.http.HTTPSession;
 import org.nanohttpd.protocols.http.NanoHTTPD;
-import org.nanohttpd.protocols.http.tempfiles.ITempFile;
 import org.nanohttpd.protocols.http.tempfiles.ITempFileManager;
 
 import java.io.InputStream;
