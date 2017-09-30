@@ -2,18 +2,152 @@
  * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
  *
  * Written by Sergey Chernov <real.sergeych@gmail.com>
+ * Written by Maxim Pogorelov <pogorelovm23@gmail.com>, 9/28/17.
  *
  */
 
 package com.icodici.universa.contract.roles;
 
+import com.icodici.crypto.AbstractKey;
+import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.KeyRecord;
+import com.sun.istack.internal.NotNull;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.tools.Binder;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Role combining other roles (sub-roles) in the "and", "or" and "any N of" principle.
  */
 @BiType(name = "ListRole")
-public abstract class ListRole extends Role {
+public class ListRole extends Role {
+
+    private Mode mode;
+
+    private Set<Role> roles = new HashSet<>();
+
+    private int quorumSize = 0;
+
+    public ListRole() {
+    }
+
+    public ListRole(String name) {
+        super(name);
+    }
+
+    public ListRole(String name, Mode mode, @NotNull Collection<Role> roles) {
+        super(name);
+        setMode(mode);
+        addAll(roles);
+    }
+
+    public ListRole(String name, int quorumSize, @NotNull Collection<Role> roles) {
+        super(name);
+        this.mode = Mode.QUORUM;
+        this.quorumSize = quorumSize;
+        addAll(roles);
+    }
+
+    public void addAll(Collection<Role> roles) {
+        this.roles.addAll(roles);
+    }
+
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    public ListRole addRole(Role role) {
+        this.roles.add(role);
+        return this;
+    }
+
+    /**
+     * Set mode to {@link Mode#QUORUM} and quorum size to any n roles.
+     *
+     * @param n how many subroles set of key must be able to play to play this role
+     */
+    public void setQuorum(int n) {
+        mode = Mode.QUORUM;
+        quorumSize = n;
+    }
+
+    /**
+     * @return quorum size if in quorum mode, otherwise 0
+     */
+    public int getQuorum() {
+        return this.mode == Mode.QUORUM ? this.quorumSize : 0;
+    }
+
+    /**
+     * Set mode to either {@link Mode#ALL} or {@link Mode#ANY}, Quorum mode could be set only with {@link #setQuorum(int)}
+     * call,
+     *
+     * @param newMode mode to set
+     * @throws IllegalArgumentException if mode other than ANY/ALL is specified
+     */
+    public void setMode(Mode newMode) {
+        if (newMode != Mode.QUORUM)
+            this.mode = newMode;
+        else
+            throw new IllegalArgumentException("Only ANY or ALL of the modes should be set.");
+    }
+
+
+    @Override
+    public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
+        return this.mode == Mode.ANY && this.processAnyMode(keys) ||
+                this.mode == Mode.ALL && this.processAllMode(keys) ||
+                this.mode == Mode.QUORUM && this.processQuorumMode(keys);
+    }
+
+//    private boolean processQuorumMode(Set<? extends AbstractKey> keys) {
+//        long matchNumber = this.roles.stream().filter(role -> role.isAllowedForKeys(keys)).count();
+//        return matchNumber >= this.quorumSize;
+//    }
+
+    private boolean processQuorumMode(Set<? extends AbstractKey> keys) {
+        int counter = this.quorumSize;
+        boolean result = counter == 0;
+
+        Set<Role> roles = this.roles;
+
+        for (Role role : roles) {
+            if (result) break;
+
+            if (role != null && role.isAllowedForKeys(keys) && --counter == 0) {
+                result = true;
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    private boolean processAllMode(Set<? extends AbstractKey> keys) {
+        return this.roles.stream().allMatch(role -> role.isAllowedForKeys(keys));
+    }
+
+    private boolean processAnyMode(Set<? extends AbstractKey> keys) {
+        return this.roles.stream().anyMatch(role -> role.isAllowedForKeys(keys));
+    }
+
+    @Override
+    public boolean isValid() {
+        return !this.roles.isEmpty();
+    }
+
+    @Override
+    public Set<PublicKey> getKeys() {
+        return this.roles.stream()
+                .flatMap(role -> role.getKeyRecords().stream()
+                        .map(KeyRecord::getPublicKey))
+                .collect(Collectors.toSet());
+    }
 
     /**
      * Mode of combining roles
@@ -34,27 +168,42 @@ public abstract class ListRole extends Role {
         QUORUM
     }
 
-    private int quorumSize = 0;
+    @Override
+    public String toString() {
+        return String.format("ListRole<%s:%s:%s:%s>", System.identityHashCode(this), getName(),
+                this.mode == null ? "" : this.mode == Mode.QUORUM ? this.mode.name().toLowerCase() + "_" + this.quorumSize
+                        : this.mode.name().toLowerCase(), this.roles);
+    }
 
-    /**
-     * Set mode to {@link Mode#QUORUM} and quorum size to any n roles.
-     *
-     * @param n how many subroles set of key must be able to play to play this role
-     */
-    abstract void setQuorum(int n);
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        super.deserialize(data, deserializer);
 
-    /**
-     * @return quorum size if in quorum mode, otherwise 0
-     */
-    abstract int getQuorum();
+        this.quorumSize = data.getInt("quorumSize", 0);
 
-    /**
-     * Set mode to either {@link Mode#ALL} or {@link Mode#ANY}, Quorum mode could be set only with {@link #setQuorum(int)}
-     * call,
-     *
-     * @param newMode mode to set
-     *
-     * @throws IllegalArgumentException if mode other than ANY/ALL is specified
-     */
-    abstract void setMode(Mode newMode);
+        Object mode = data.getOrDefault("mode", null);
+        if (mode != null && mode instanceof Mode) {
+            this.mode = (Mode) mode;
+        }
+
+        List<Binder> roles = data.getList("roles", null);
+        if (roles != null) {
+            this.roles.clear();
+            roles.forEach(role -> addRole(deserializer.deserialize(role)));
+        }
+
+
+    }
+
+    @Override
+    public Binder serialize(BiSerializer s) {
+        return super.serialize(s).putAll(
+                "quorumSize", s.serialize(this.quorumSize),
+                "mode", s.serialize(this.mode),
+                "roles", s.serialize(this.roles));
+    }
+
+    static {
+        DefaultBiMapper.registerClass(ListRole.class);
+    }
 }
