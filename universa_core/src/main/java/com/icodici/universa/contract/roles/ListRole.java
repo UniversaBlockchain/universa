@@ -80,7 +80,7 @@ public class ListRole extends Role {
      * @return quorum size if in quorum mode, otherwise 0
      */
     public int getQuorum() {
-        return Mode.QUORUM.equals(mode) ? this.quorumSize : 0;
+        return this.mode == Mode.QUORUM ? this.quorumSize : 0;
     }
 
     /**
@@ -91,7 +91,7 @@ public class ListRole extends Role {
      * @throws IllegalArgumentException if mode other than ANY/ALL is specified
      */
     public void setMode(Mode newMode) {
-        if (!Mode.QUORUM.equals(newMode))
+        if (newMode != Mode.QUORUM)
             this.mode = newMode;
         else
             throw new IllegalArgumentException("Only ANY or ALL of the modes should be set.");
@@ -100,14 +100,32 @@ public class ListRole extends Role {
 
     @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        return Mode.ANY.equals(this.mode) && this.processAnyMode(keys) ||
-                Mode.ALL.equals(this.mode) && this.processAllMode(keys) ||
-                Mode.QUORUM.equals(this.mode) && this.processQuorumMode(keys);
+        return this.mode == Mode.ANY && this.processAnyMode(keys) ||
+                this.mode == Mode.ALL && this.processAllMode(keys) ||
+                this.mode == Mode.QUORUM && this.processQuorumMode(keys);
     }
 
+//    private boolean processQuorumMode(Set<? extends AbstractKey> keys) {
+//        long matchNumber = this.roles.stream().filter(role -> role.isAllowedForKeys(keys)).count();
+//        return matchNumber >= this.quorumSize;
+//    }
+
     private boolean processQuorumMode(Set<? extends AbstractKey> keys) {
-        long matchNumber = this.roles.stream().filter(role -> role.isAllowedForKeys(keys)).count();
-        return matchNumber >= this.quorumSize;
+        int counter = this.quorumSize;
+        boolean result = counter == 0;
+
+        Set<Role> roles = this.roles;
+
+        for (Role role : roles) {
+            if (result) break;
+
+            if (role != null && role.isAllowedForKeys(keys) && --counter == 0) {
+                result = true;
+                break;
+            }
+        }
+
+        return result;
     }
 
     private boolean processAllMode(Set<? extends AbstractKey> keys) {
@@ -138,48 +156,30 @@ public class ListRole extends Role {
         /**
          * Role could be performed only if set of keys could play all sub-roles
          */
-        ALL("all"),
+        ALL,
         /**
          * Role could be performed if set of keys could play any role of the list
          */
-        ANY("any"),
+        ANY,
         /**
          * Role could be played if set of keys could play any quorrum set of roles, e.g. at least any N subroles,
          * controlled by the {@link #setQuorum(int)} method
          */
-        QUORUM("quorum");
-
-        private String value;
-
-        Mode(String v) {
-            this.value = v;
-        }
-
-        @Override
-        public String toString() {
-            return value;
-        }
+        QUORUM
     }
 
     @Override
     public String toString() {
         return String.format("ListRole<%s:%s:%s:%s>", System.identityHashCode(this), getName(),
-                Mode.QUORUM.equals(this.mode) ? this.mode + "_" + this.quorumSize : this.mode, this.roles);
+                this.mode == null ? "" : this.mode == Mode.QUORUM ? this.mode.name().toLowerCase() + "_" + this.quorumSize
+                        : this.mode.name().toLowerCase(), this.roles);
     }
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         super.deserialize(data, deserializer);
 
-        Object quorumSize = data.getOrDefault("quorumSize", null);
-        if (quorumSize != null) {
-            try {
-                this.quorumSize = quorumSize instanceof Integer ? (Integer) quorumSize
-                        : quorumSize instanceof String ? Integer.parseInt((String) quorumSize)
-                        : 0;
-            } catch (NumberFormatException ignored) {
-            }
-        }
+        this.quorumSize = data.getInt("quorumSize", 0);
 
         Object mode = data.getOrDefault("mode", null);
         if (mode != null && mode instanceof Mode) {

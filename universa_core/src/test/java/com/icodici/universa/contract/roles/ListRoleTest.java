@@ -10,10 +10,12 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
+import org.yaml.snakeyaml.Yaml;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,9 +46,10 @@ public class ListRoleTest {
         Contract c = new Contract();
 
         SimpleRole s1 = new SimpleRole("owner");
-        RoleLink s2 = new RoleLink("master", "owner");
+        SimpleRole s2 = new SimpleRole("owner2");
 
         s1.addKeyRecord(new KeyRecord(keys.get(1).getPublicKey()));
+        s2.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
 
         c.registerRole(s1);
         c.registerRole(s2);
@@ -61,9 +64,10 @@ public class ListRoleTest {
         Contract c = new Contract();
 
         SimpleRole s1 = new SimpleRole("owner");
-        RoleLink s2 = new RoleLink("master", "owner");
+        SimpleRole s2 = new SimpleRole("owner2");
 
         s1.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
+        s2.addKeyRecord(new KeyRecord(keys.get(2).getPublicKey()));
 
         c.registerRole(s1);
         c.registerRole(s2);
@@ -82,10 +86,10 @@ public class ListRoleTest {
         Contract c = new Contract();
 
         SimpleRole s1 = new SimpleRole("owner");
-        RoleLink s2 = new RoleLink("master", "owner");
+        SimpleRole s2 = new SimpleRole("owner2");
 
         s1.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
-        s1.addKeyRecord(new KeyRecord(keys.get(1).getPublicKey()));
+        s2.addKeyRecord(new KeyRecord(keys.get(1).getPublicKey()));
 
         c.registerRole(s1);
         c.registerRole(s2);
@@ -108,15 +112,12 @@ public class ListRoleTest {
         Contract c = new Contract();
 
         SimpleRole s1 = new SimpleRole("owner");
-        RoleLink l1 = new RoleLink("master", "owner");
+        SimpleRole s2 = new SimpleRole("owner2");
 
         s1.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
-
-        SimpleRole s2 = new SimpleRole("owner2");
         s2.addKeyRecord(new KeyRecord(keys.get(1).getPublicKey()));
 
         c.registerRole(s1);
-        c.registerRole(l1);
         c.registerRole(s2);
 
         ListRole roleList = new ListRole("listAllMode", ListRole.Mode.ALL, Do.listOf(s1, s2));
@@ -156,22 +157,18 @@ public class ListRoleTest {
         Contract c = new Contract();
 
         SimpleRole s1 = new SimpleRole("owner");
-        RoleLink l1 = new RoleLink("master", "owner");
+        SimpleRole s2 = new SimpleRole("owner2");
+        SimpleRole s3 = new SimpleRole("owner3");
 
         s1.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
-
-        SimpleRole s2 = new SimpleRole("owner2");
-        s2.addKeyRecord(new KeyRecord(keys.get(1).getPublicKey()));
-
-        SimpleRole s3 = new SimpleRole("owner3");
+        s2.addKeyRecord(new KeyRecord(keys.get(2).getPublicKey()));
         s3.addKeyRecord(new KeyRecord(keys.get(3).getPublicKey()));
 
         c.registerRole(s1);
-        c.registerRole(l1);
         c.registerRole(s2);
         c.registerRole(s3);
 
-        ListRole roleList = new ListRole("listQuorumMode", 2, Do.listOf(s1, s2, s3, l1));
+        ListRole roleList = new ListRole("listQuorumMode", 2, Do.listOf(s1, s3, s2));
 
 
         HashSet<AbstractKey> keys = new HashSet<>(Do.listOf(
@@ -186,20 +183,19 @@ public class ListRoleTest {
         Contract c = new Contract();
 
         SimpleRole s1 = new SimpleRole("owner");
-        RoleLink l1 = new RoleLink("master", "owner");
+        SimpleRole s2 = new SimpleRole("owner2");
 
         s1.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
-
-        SimpleRole s2 = new SimpleRole("owner2");
         s2.addKeyRecord(new KeyRecord(keys.get(1).getPublicKey()));
 
         c.registerRole(s1);
-        c.registerRole(l1);
         c.registerRole(s2);
 
         ListRole roleList = new ListRole("listQuorumMode");
         roleList.setQuorum(2);
-        roleList.addAll(Do.listOf(s1, s2, l1));
+        roleList.addAll(Do.listOf(s1, s2));
+
+        c.registerRole(roleList);
 
 
         HashSet<AbstractKey> keys = new HashSet<>(Do.listOf(
@@ -210,11 +206,15 @@ public class ListRoleTest {
 
     @Test
     public void serializeAll() throws Exception {
-        SimpleRole s1 = new SimpleRole("owner");
+        Contract c = new Contract();
 
+        SimpleRole s1 = new SimpleRole("owner");
         s1.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
 
         ListRole roleList = new ListRole("listAllMode", ListRole.Mode.ALL, Do.listOf(s1));
+
+        c.registerRole(s1);
+        c.registerRole(roleList);
 
         Binder serialized = DefaultBiMapper.serialize(roleList);
         Role r1 = DefaultBiMapper.deserialize(serialized);
@@ -241,18 +241,49 @@ public class ListRoleTest {
     public void serializeQuorum() throws Exception {
         SimpleRole s1 = new SimpleRole("owner");
         SimpleRole s2 = new SimpleRole("owner2");
-        RoleLink l1 = new RoleLink("link1", "owner");
-
+        SimpleRole s3 = new SimpleRole("owner3");
 
         s1.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
         s2.addKeyRecord(new KeyRecord(keys.get(2).getPublicKey()));
+        s3.addKeyRecord(new KeyRecord(keys.get(1).getPublicKey()));
 
-        ListRole roleList = new ListRole("listAnyMode", 2, Do.listOf(s1, s2, l1));
+        ListRole roleList = new ListRole("listAnyMode", 2, Do.listOf(s1, s2, s3));
 
         Binder serialized = DefaultBiMapper.serialize(roleList);
         Role r1 = DefaultBiMapper.deserialize(serialized);
         assertEquals(r1, roleList);
     }
 
+    @Test
+    public void serializeContractWithListRole() throws Exception {
+        Contract c = Contract.fromYamlFile("./src/test_contracts/simple_root_contract.yml");
+
+        SimpleRole s1 = new SimpleRole("role");
+        ListRole listRole = new ListRole("owner", 1, Do.listOf(s1));
+        c.registerRole(listRole);
+
+        Binder b = BossBiMapper.serialize(c);
+        Contract c1 = DefaultBiMapper.deserialize(b);
+        assertEquals(c.getRole("owner"), c1.getRole("owner"));
+    }
+
+    @Test
+    public void serializeWithMoreRoles() {
+        SimpleRole s1 = new SimpleRole("s1");
+        SimpleRole s2 = new SimpleRole("s2");
+
+        ListRole lr1 = new ListRole("lr1", ListRole.Mode.ALL, Do.listOf(s1, s2));
+        ListRole lr2 = new ListRole("lr2", ListRole.Mode.ANY, Do.listOf(s1, s2));
+
+        assertEquals(lr1.getRoles(), lr2.getRoles());
+
+        Binder blr = BossBiMapper.serialize(lr1);
+        ListRole slr1 = DefaultBiMapper.deserialize(blr);
+
+        blr = BossBiMapper.serialize(lr1);
+        ListRole slr2 = DefaultBiMapper.deserialize(blr);
+
+        assertEquals(slr1.getRoles(), slr2.getRoles());
+    }
 
 }
