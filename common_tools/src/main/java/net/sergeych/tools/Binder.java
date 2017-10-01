@@ -11,6 +11,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -20,7 +21,9 @@ import java.util.*;
 /**
  * Created by sergeych on 02/12/16.
  */
-public class Binder extends HashMap<String, Object> {
+public class Binder extends HashMap<String, Object> implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * An empty, unmodifiable Binder can be used as a returned value, for example, in an effective way
