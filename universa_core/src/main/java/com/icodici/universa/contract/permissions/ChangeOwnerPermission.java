@@ -28,7 +28,7 @@ public class ChangeOwnerPermission extends Permission {
     /**
      * Check and remove change of state.owner, if any.
      *
-     * @param contract, valid contracr state
+     * @param contract, valid contract state
      * @param stateChanges changes in its state section
      */
     @Override

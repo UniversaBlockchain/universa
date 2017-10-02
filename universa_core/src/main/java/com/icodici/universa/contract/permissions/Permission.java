@@ -87,6 +87,8 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
                 return new RevokePermission(role);
             case "change_owner":
                 return new ChangeOwnerPermission(role);
+            case "modify_data":
+                return new ModifyDataPermission(role, params);
             default:
                 try {
                     String className = "com.icodici.universa.contract.permissions." +
