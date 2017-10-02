@@ -1,5 +1,13 @@
+/*
+ * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
+ *
+ * Written by Sergey Chernov <real.sergeych@gmail.com>
+ *
+ */
+
 package com.icodici.universa.contract.permissions;
 
+import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -16,25 +24,21 @@ import java.util.Map;
  * change in different range and directions.
  */
 
-public class ChangeNumberPermission extends Permission {
+public class SplitJoinPermission extends Permission {
 
-    private int minValue;
-    private int maxValue;
-    private int minStep;
-    private int maxStep;
+    private Decimal minValue;
+    private Decimal minUnit;
     private String fieldName;
     private int newValue;
 
-    public ChangeNumberPermission(Role role, Binder params) {
-        super("decrement_permission", role, params);
+    public SplitJoinPermission(Role role, Binder params) {
+        super("split_join", role, params);
         fieldName = params.getStringOrThrow("field_name");
-        minValue = params.getInt("min_value", 0);
-        minStep = params.getInt("min_step", Integer.MIN_VALUE);
-        maxStep = params.getInt("max_step", Integer.MAX_VALUE);
-        maxValue = params.getInt("max_value", Integer.MAX_VALUE);
+        minValue = new Decimal(params.getString("min_value", "0"));
+        minUnit = new Decimal(params.getString("min_value", "1e-9"));
     }
 
-    private ChangeNumberPermission() {
+    private SplitJoinPermission() {
         super();
     }
 
@@ -56,26 +60,25 @@ public class ChangeNumberPermission extends Permission {
             if( !(delta instanceof ChangedItem) )
                 return;
             try {
-                int valueDelta = (int)delta.newValue() - (int)delta.oldValue();
-                if( valueDelta < minStep || valueDelta > maxStep )
-                    return;
-                else {
-                    newValue = (int) delta.newValue();
-                    if( newValue > maxValue || newValue < minValue )
-                        return;
-                    else {
-                        dataChanges.remove(fieldName);
-                    }
-                }
+                // We need to find the splitted contracts
+                Decimal sum = new Decimal(delta.newValue().toString());
+                for(Contract s: changed.getSiblings())
+                    sum = sum.add(new Decimal(s.getStateData().getString(fieldName)));
+                // total value should not be changed:
+                Decimal oldValue = new Decimal(delta.oldValue().toString());
+                System.out.println(">> "+sum+"<=>"+oldValue+" = "+sum.equals(oldValue));
+                if( sum.equals(oldValue) )
+                    dataChanges.remove(fieldName);
             }
             catch(Exception e) {
+                e.printStackTrace();
                 return;
             }
         }
     }
 
     static {
-        DefaultBiMapper.registerClass(ChangeNumberPermission.class);
+        DefaultBiMapper.registerClass(SplitJoinPermission.class);
     }
 
 }

@@ -39,6 +39,7 @@ universa_core/src/test_config/system/*
 universa_core/src/test_config_2/system/*
 universa_core/src/test_config_3/system/*
 **/testledger
+**/testledger-*
 
 # Custom JetBrains-specific tweaks
 

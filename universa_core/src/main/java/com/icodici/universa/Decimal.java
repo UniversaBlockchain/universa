@@ -143,7 +143,11 @@ public class Decimal extends Number implements Comparable<Number> {
 
     @Override
     public boolean equals(Object x) {
-        return value.equals(x);
+        if (x instanceof BigDecimal)
+            return value.equals(x);
+        if( x instanceof Decimal )
+            return value.equals(((Decimal) x).value);
+        return false;
     }
 
     @Override
