@@ -82,6 +82,11 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     public RSAOAEPPublicKey() {
     }
 
+    @Override
+    public String toString() {
+        return String.format("RSAOAEPPublicKey#%s", System.identityHashCode(this));
+    }
+
     /**
      * Hidden (package-private) constructor, for internal/unittest usage.
      */

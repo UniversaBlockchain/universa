@@ -92,10 +92,21 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     public RSAOAEPPrivateKey() {
     }
 
+    @Override
+    public String toString() {
+        return String.format("RSAOAEPPrivateKey#%s", System.identityHashCode(this));
+    }
+
     /**
      * Hidden (package-private) constructor, for internal/unittest usage.
      */
     public RSAOAEPPrivateKey(byte[] e, byte[] p, byte[] q, HashType oaepHashType, HashType mgf1HashType, SecureRandom rng) {
+        assert e != null;
+        assert p != null;
+        assert q != null;
+        assert oaepHashType != null;
+        assert mgf1HashType != null;
+
         init(e, p, q, oaepHashType, mgf1HashType, rng);
     }
 
