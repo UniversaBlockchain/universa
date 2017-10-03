@@ -201,6 +201,101 @@ public class PermissionsTest extends ContractTestBase {
         sealCheckTrace(c1, true);
     }
 
+    @Test
+    public void shouldPopulateWithEmptyStateDataValues() throws  Exception {
+        PrivateKey ownerKey2 = TestKeys.privateKey(1);
+
+        Contract c = basicContractCreation(SUBSCRIPTION_WITH_DATA, PRIVATE_KEY, ownerKey2);
+        Binder d = c.getStateData();
+
+        Contract c1 = c.createRevision(ownerKey2);
+        Binder d1 = c1.getStateData();
+
+        final String oldValue = "An example of smart contract.";
+        final String newValue = "";
+        final String field = "description";
+
+        setAndCheckOldNewValues(d, d1, oldValue, newValue, field);
+
+        sealCheckTrace(c1, true);
+    }
+
+    @Test
+    public void shouldNotPopulateWithEmptyStateDataValues() throws  Exception {
+        PrivateKey ownerKey2 = TestKeys.privateKey(1);
+
+        Contract c = basicContractCreation(SUBSCRIPTION_WITH_DATA, PRIVATE_KEY, ownerKey2);
+        Binder d = c.getStateData();
+
+        Contract c1 = c.createRevision(ownerKey2);
+        Binder d1 = c1.getStateData();
+
+        final String oldValue = "2";
+        final String newValue = "";
+        final String field = "direction";
+
+        setAndCheckOldNewValues(d, d1, oldValue, newValue, field);
+
+        sealCheckTrace(c1, false);
+    }
+
+    @Test
+    public void shouldNotPopulateWithNullStateDataValues() throws  Exception {
+        PrivateKey ownerKey2 = TestKeys.privateKey(1);
+
+        Contract c = basicContractCreation(SUBSCRIPTION_WITH_DATA, PRIVATE_KEY, ownerKey2);
+        Binder d = c.getStateData();
+
+        Contract c1 = c.createRevision(ownerKey2);
+        Binder d1 = c1.getStateData();
+
+        final String oldValue = "2";
+        final String newValue = null;
+        final String field = "direction";
+
+        setAndCheckOldNewValues(d, d1, oldValue, newValue, field);
+
+        sealCheckTrace(c1, false);
+    }
+
+    @Test
+    public void shouldNotModifyDescEmptyStateDataValues() throws  Exception {
+        PrivateKey ownerKey2 = TestKeys.privateKey(1);
+
+        Contract c = basicContractCreation(SUBSCRIPTION_WITH_DATA, PRIVATE_KEY, ownerKey2);
+        Binder d = c.getStateData();
+
+        Contract c1 = c.createRevision(ownerKey2);
+        Binder d1 = c1.getStateData();
+
+        final String oldValue = "An example of smart contract.";
+        final String newValue = "wrong value.";
+        final String field = "description";
+
+        setAndCheckOldNewValues(d, d1, oldValue, newValue, field);
+
+        sealCheckTrace(c1, false);
+    }
+
+    @Test
+    public void shouldModifyDescNullStateDataValues() throws  Exception {
+        PrivateKey ownerKey2 = TestKeys.privateKey(1);
+
+        Contract c = basicContractCreation(SUBSCRIPTION_WITH_DATA, PRIVATE_KEY, ownerKey2);
+        Binder d = c.getStateData();
+
+        Contract c1 = c.createRevision(ownerKey2);
+        Binder d1 = c1.getStateData();
+
+        final String oldValue = "An example of smart contract.";
+        final String newValue = null;
+        final String field = "description";
+
+        setAndCheckOldNewValues(d, d1, oldValue, newValue, field);
+
+        sealCheckTrace(c1, true);
+    }
+
 
     @Test
     public void shouldNotModifyStateDataValues() throws  Exception {
@@ -243,8 +338,7 @@ public class PermissionsTest extends ContractTestBase {
 
         setAndCheckOldNewValues(d, d1, oldValue, newValue, field);
 
-        d1.addToInt("transactional_units_left", -50);
-        d1.addToInt("direction", 5);
+        d1.addToInt("direction", 3);
 
         sealCheckTrace(c1, true);
     }
@@ -285,7 +379,7 @@ public class PermissionsTest extends ContractTestBase {
         d1.put(field, newValue);
 
         assertEquals(oldValue, d.getString(field));
-        assertEquals(newValue, d1.getString(field));
+        assertEquals(newValue, d1.getString(field, null));
     }
 
     private void sealCheckTrace(Contract c, boolean isOkShouldBeTrue) {

@@ -78,7 +78,7 @@ public class BiMapper {
             } else if (value instanceof Collection) {
                 map.put(key,
                         ((Collection) value).stream()
-                                .map(x -> deserializer.deserialize(x))
+                                .map(x -> x != null ? deserializer.deserialize(x) : null)
                                 .collect(Collectors.toList())
                 );
             }

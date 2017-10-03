@@ -90,13 +90,23 @@ definition:
    modify_data:
      - role: owner
        fields:
-        - transactional_units_left
-        - description
-        - direction
-        - partner_name
+          description:
+            - ~
+            - UniversaSmartContract
+            - An example of smart contract.
+          direction:
+            - 2
+            - 5
+          partner_name:
+            - ~
+            - blockchain-partnership.
+            - blockchain-universa.
      - role: issuer
        fields:
-        - option
+          option:
+            - ~
+            - 1
+            - 0
 
 
  # required section, could be empty. Any immutable structured data issuer might need to include into the contract
