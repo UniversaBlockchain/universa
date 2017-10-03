@@ -142,7 +142,7 @@ public class BiMapper {
      */
     public <T> T deserializeObject(Object obj, BiDeserializer deserializer) {
         if (obj instanceof String || obj instanceof Number || obj instanceof Boolean
-                || obj instanceof ZonedDateTime || obj instanceof Bytes)
+                || obj instanceof ZonedDateTime || obj instanceof Bytes || obj == null)
             return (T) obj;
         if (obj instanceof Map)
             return deserialize((Map) obj, deserializer);

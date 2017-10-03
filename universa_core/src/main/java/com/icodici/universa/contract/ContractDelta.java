@@ -17,10 +17,12 @@ import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
 
 import java.time.ZonedDateTime;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import static com.icodici.universa.Errors.*;
+import static java.util.Arrays.asList;
 
 public class ContractDelta {
 
@@ -40,29 +42,41 @@ public class ContractDelta {
             BiMapper mapper = BossBiMapper.getInstance();
             MapDelta rootDelta = Delta.between(mapper.serialize(existing), mapper.serialize(changed));
             MapDelta definitionDelta = (MapDelta) rootDelta.getChange("definition");
+            stateDelta = (MapDelta) rootDelta.getChange("state");
             if (definitionDelta != null) {
                 addError(ILLEGAL_CHANGE, "definition", "definition must not be changed");
-            }
-            stateDelta = (MapDelta) rootDelta.getChange("state");
-            if (rootDelta.isEmpty()) {
-                addError(BADSTATE, "", "new state is identical");
             }
             // check immutable root area
             // should be only one change here: state
             if (rootDelta.getChanges().size() > 1)
-                addError(ILLEGAL_CHANGE, "roo", "root level changes are forbidden except the state");
-            // check immutanle definition arer
-            checkStateChange();
+                addError(ILLEGAL_CHANGE, "root", "root level changes are forbidden except the state");
+
             // check only permitted changes in data
+            checkStateChange();
         } catch (ClassCastException e) {
             e.printStackTrace();
             addError(FAILED_CHECK, "", "failed to compare, structure is broken or not supported");
         }
     }
 
+    static private final  Set<String> insignificantKeys = new HashSet<>(asList("created_at", "created_by",
+                                                                               "revision", "branch_id", "parent",
+                                                                               "origin"));
     private void checkStateChange() {
         stateChanges = stateDelta.getChanges();
         stateChanges.remove("created_by");
+
+        // todo: check siblings have different and proper branch ids
+        stateChanges.remove("branch_id");
+
+        // todo: these changes should be already checked
+        stateChanges.remove("parent");
+        stateChanges.remove("origin");
+
+        if ( insignificantKeys.containsAll(stateChanges.keySet()) ) {
+            addError(BADSTATE, "", "new state is identical");
+        }
+
         creator = changed.getRole("creator");
         if (creator == null) {
             addError(MISSING_CREATOR, "state.created_by", "");
@@ -96,7 +110,7 @@ public class ContractDelta {
                     reason = " in " + ((MapDelta) delta).getChanges().keySet();
                 addError(FORBIDDEN,
                          "state." + field,
-                         "not permitted changes" + reason);
+                         "not permitted changes" + reason+": "+delta.oldValue()+" -> " + delta.newValue());
             }
         });
 
@@ -106,7 +120,7 @@ public class ContractDelta {
         Set<PublicKey> creatorKeys = creator.getKeys();
         existing.getPermissions().values().forEach(permission -> {
             if (permission.isAllowedForKeys(creatorKeys))
-                permission.checkChanges(existing, stateChanges);
+                permission.checkChanges(existing, changed, stateChanges);
         });
     }
 

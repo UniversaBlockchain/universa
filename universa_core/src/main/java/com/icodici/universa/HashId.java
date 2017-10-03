@@ -134,7 +134,7 @@ public class HashId implements Comparable<HashId> {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
                 return Binder.fromKeysValues(
-                        "sha152", ((HashId)object).getDigest()
+                        "sha512", ((HashId)object).getDigest()
                 );
             }
 
@@ -145,7 +145,7 @@ public class HashId implements Comparable<HashId> {
 
             @Override
             public String typeName() {
-                return "hashid";
+                return "HashId";
             }
         });
     }

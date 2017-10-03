@@ -25,7 +25,7 @@ public class RevokePermission extends Permission {
     }
 
     @Override
-    public void checkChanges(Contract contract, Map<String, Delta> stateChanges) {
+    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges) {
         // this permission checks no changes, it's about the whole contract
     }
 

@@ -27,12 +27,12 @@ public class ChangeOwnerPermission extends Permission {
 
     /**
      * Check and remove change of state.owner, if any.
-     *
-     * @param contract, valid contract state
+     *  @param contract, valid contracr state
+     * @param changed
      * @param stateChanges changes in its state section
      */
     @Override
-    public void checkChanges(Contract contract, Map<String, Delta> stateChanges) {
+    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges) {
         Object x = stateChanges.get("owner");
         if( x != null ) {
             stateChanges.remove("owner");

@@ -4,6 +4,8 @@
     <bytecodeTargetLevel>
       <module name="common_tools_main" target="1.8" />
       <module name="common_tools_test" target="1.8" />
+      <module name="contrib_nanohttpd_core_main" target="1.8" />
+      <module name="contrib_nanohttpd_core_test" target="1.8" />
       <module name="crypto_main" target="1.8" />
       <module name="crypto_test" target="1.8" />
       <module name="dev-universa_main" target="1.8" />

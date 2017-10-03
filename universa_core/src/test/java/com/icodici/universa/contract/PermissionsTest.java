@@ -16,6 +16,7 @@ import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.HashSet;
@@ -26,16 +27,27 @@ import static org.junit.Assert.*;
 
 public class PermissionsTest extends ContractTestBase {
 
+
     private final String ROOT_CONTRACT = rootPath + "simple_root_contract.yml";
 
     public static final String SUBSCRIPTION = "subscription.yml";
     public static final String SUBSCRIPTION_WITH_DATA = "subscription_with_data.yml";
     public static final String PRIVATE_KEY = "_xer0yfe2nn1xthc.private.unikey";
 
-
     private final String SUBSCRIPTION_PATH = rootPath + SUBSCRIPTION;
     private final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
 
+    private PrivateKey ownerKey1;
+    private PrivateKey ownerKey2;
+    private PrivateKey ownerKey3;
+
+
+    @Before
+    public void setUp() throws Exception {
+        ownerKey1 = TestKeys.privateKey(3);
+        ownerKey2 = TestKeys.privateKey(1);
+        ownerKey3 = TestKeys.privateKey(2);
+    }
 
     @Test
     public void newRevision() throws Exception {
@@ -50,7 +62,7 @@ public class PermissionsTest extends ContractTestBase {
         assertEquals(2, c2.getKeysToSignWith().size());
         assertEquals(2, c2.getRevision());
         assertEquals(c.getId(), c2.getParent());
-        assertEquals(c.getId(), c2.getOrigin());
+        assertEquals(c.getId(), c2.getRawOrigin());
 
         c2.seal();
 
@@ -60,7 +72,7 @@ public class PermissionsTest extends ContractTestBase {
         assertEquals(2, c3.getKeysToSignWith().size());
         assertEquals(3, c3.getRevision());
         assertEquals(c2.getId(), c3.getParent());
-        assertEquals(c.getId(), c3.getOrigin());
+        assertEquals(c.getId(), c3.getRawOrigin());
 
 
 //        c2.check();
@@ -81,9 +93,6 @@ public class PermissionsTest extends ContractTestBase {
     public void changeOwner() throws Exception {
         Contract c = Contract.fromYamlFile(ROOT_CONTRACT);
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        PrivateKey ownerKey1 = TestKeys.privateKey(3);
-        PrivateKey ownerKey2 = TestKeys.privateKey(1);
-        PrivateKey ownerKey3 = TestKeys.privateKey(2);
 
         c.setOwnerKey(ownerKey1);
         assertThat(c.getPermissions().getFirst("change_owner").getRole(), is(instanceOf(RoleLink.class)));
@@ -132,10 +141,6 @@ public class PermissionsTest extends ContractTestBase {
 
     @Test
     public void changeNumber() throws Exception {
-        PrivateKey ownerKey1 = TestKeys.privateKey(3);
-        PrivateKey ownerKey2 = TestKeys.privateKey(1);
-        PrivateKey ownerKey3 = TestKeys.privateKey(2);
-
         Contract c = Contract.fromYamlFile(SUBSCRIPTION_PATH);
         c.setOwnerKey(ownerKey2);
 //        c.getPermission("change_value")
@@ -370,6 +375,56 @@ public class PermissionsTest extends ContractTestBase {
         d1.addToInt("option", -1);
 
         sealCheckTrace(c1, false);
+    }
+
+    @Test
+    public void testInvalidChild() throws Exception {
+        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+
+        c.setOwnerKey(ownerKey1);
+        assertThat(c.getPermissions().getFirst("change_owner").getRole(), is(instanceOf(RoleLink.class)));
+        assertTrue(c.getPermissions().getFirst("change_owner").getRole().isAllowedForKeys(new HashSet(Do.listOf(ownerKey1))));
+
+//        System.out.println("Owner now :" + c.getOwner());
+//        System.out.println("change owner permission :" + c.getPermissions().get("change_owner"));
+
+        c.seal();
+        assertTrue(c.check());
+
+        Contract c2 = c.createRevision(TestKeys.privateKey(0), ownerKey1);
+        c2.setOwnerKey(ownerKey3);
+
+        // Let's attach a just a bad contract. not properly signed in our case.
+        Contract badc = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        badc.addSignerKey(ownerKey1);
+        badc.setOwnerKey(ownerKey1);
+        badc.seal();
+        assertFalse(badc.check());
+
+        c2.addNewItem(badc);
+        // now c2 should be bad: it tries to create a bad contract!
+        c2.seal();
+        c2.check();
+//        c2.traceErrors();
+        assertFalse(c2.isOk());
+
+        // and now let's add bad contract as a child. Actually it is a good contract, but, it is the same revision
+        // as the parent. This should not be allowed too.
+        Contract c3 = c.createRevision(ownerKey1);
+        c3.setOwnerKey(ownerKey2);
+        c3.seal();
+        assertTrue(c3.isOk());
+
+        c2.getNewItems().clear();
+        c2.addNewItem(c3);
+
+        assertEquals(1, c2.getNewItems().size());
+        c2.seal();
+        c2.check();
+        c2.traceErrors();
+        assertFalse(c2.isOk());
+
     }
 
     private void setAndCheckOldNewValues(Binder d, Binder d1, String oldValue, String newValue, String field) {

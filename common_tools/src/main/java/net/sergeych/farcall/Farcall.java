@@ -168,7 +168,7 @@ public class Farcall {
         start(new Target() {
             @Override
             public Object onCommand(Command command) throws Exception {
-                throw new RemoteException("unknown_command", "command is not knwon");
+                throw new RemoteException("unknown_command", "command is not known");
             }
         });
     }

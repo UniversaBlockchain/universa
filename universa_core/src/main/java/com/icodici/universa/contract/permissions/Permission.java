@@ -30,7 +30,7 @@ import java.util.Set;
  * com.icodici.universa.contract.roles.Role} player (e.g. Universa party, set of keys used in signing the contract) to
  * perform some change over the contract state. The real permissions are all superclasses of it.
  * <p>
- * The actualy permission implementation must implement {@link #checkChanges(Contract, Map)}, see this method for
+ * The actualy permission implementation must implement {@link #checkChanges(Contract, Contract, Map)}, see this method for
  * information on how to approve changes with the permission.
  */
 public abstract class Permission implements BiSerializable, Comparable<Permission> {
@@ -143,11 +143,11 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * could be specified several times for different roles and with different parameter, implementation should do
      * nothing on the error and let others porceed. Unprocessed changes will cause error if no permission will clear
      * it.
-     *
-     * @param contract     source (valid) contract
+     *  @param contract     source (valid) contract
+     * @param changed
      * @param stateChanges map of changes, see {@link Delta} for details
      */
-    public abstract void checkChanges(Contract contract, Map<String, Delta> stateChanges);
+    public abstract void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges);
 
     @Override
     public String toString() {
@@ -173,4 +173,5 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
     public int compareTo(Permission o) {
         return name.compareTo(o.name);
     }
+
 }

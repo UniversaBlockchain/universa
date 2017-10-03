@@ -10,10 +10,7 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.Approvable;
-import com.icodici.universa.ErrorRecord;
-import com.icodici.universa.Errors;
-import com.icodici.universa.HashId;
+import com.icodici.universa.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
@@ -88,7 +85,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
         });
 
-        for (Object signature : (List)data.getOrThrow("signatures")) {
+        for (Object signature : (List) data.getOrThrow("signatures")) {
             byte[] s = ((Bytes) signature).toArray();
             Bytes keyId = ExtendedSignature.extractKeyId(s);
             PublicKey key = keys.get(keyId);
@@ -205,7 +202,44 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             e.printStackTrace();
             addError(FAILED_CHECK, "", e.toString());
         }
+        int index = 0;
+        for (Contract c : newItems) {
+            c.check();
+            if (!c.isOk()) {
+                String prefix = "new[" + index + "]";
+                c.errors.forEach(e -> {
+                    String name = e.getObjectName();
+                    name = name != null || name.isEmpty() ? prefix : prefix + "." + name;
+                    addError(e.getError(), name, e.getMessage());
+                });
+            }
+            index++;
+        }
+        checkDupesCreation();
         return errors.size() == 0;
+    }
+
+    /**
+     * All new items and self must have uniqie identication for its level, e.g. origin + revision + branch should always
+     * ve different.
+     */
+    private void checkDupesCreation() {
+        if(  newItems.isEmpty() )
+            return;
+        Set<String> revisionIds = new HashSet<>();
+        revisionIds.add(getRevisionId());
+        for(Contract c: newItems) {
+            String i = c.getRevisionId();
+            if( revisionIds.contains(i) ) {
+                addError(Errors.BAD_VALUE, "new["+i+"]", "duplicated revision id");
+            }
+            else
+                revisionIds.add(i);
+        }
+    }
+
+    public String getRevisionId() {
+        return getOrigin().toBase64String() + "/" + state.revision + "/" + (state.branchRevision != null ? state.branchRevision.toString() : "");
     }
 
     /**
@@ -214,13 +248,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private void checkRootContract() {
         // root contract must be issued ny the issuer
         Role issuer = getRole("issuer");
-        if(issuer == null || !issuer.isValid()) {
+        if (issuer == null || !issuer.isValid()) {
             addError(BAD_VALUE, "definition.issuer", "missing issuer");
             return;
         }
         // the bad case - no issuer - should be processed normally without exceptions:
         Role createdBy = getRole("creator");
-        if( createdBy == null || !createdBy.isValid() ) {
+        if (createdBy == null || !createdBy.isValid()) {
             addError(BAD_VALUE, "state.created_by", "invalid creator");
             return;
         }
@@ -265,7 +299,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             // checking parent:
             // proper origin
             HashId rootId = parent.getRootId();
-            if (!rootId.equals(getOrigin())) {
+            if (!rootId.equals(getRawOrigin())) {
                 addError(BAD_VALUE, "state.origin", "wrong origin, should be root");
             }
             if (!getParent().equals(parent.getId()))
@@ -284,7 +318,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return id of the root contract.
      */
     protected HashId getRootId() {
-        HashId origin = getOrigin();
+        HashId origin = getRawOrigin();
         return origin == null ? getId() : origin;
     }
 
@@ -428,7 +462,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public void addPermission(Permission perm) {
         // We need to assign contract-uniqie id
-        if( perm.getId() == null ) {
+        if (perm.getId() == null) {
             if (permissionIds == null) {
                 permissionIds =
                         getPermissions().values().stream()
@@ -514,6 +548,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public byte[] seal() {
         byte[] theContract = Boss.pack(BossBiMapper.serialize(this));
+        newItems.forEach(c->c.seal());
         Binder result = Binder.of("type", "unicapsule", "version", apiLevel, "data", theContract);
         List<byte[]> signatures = new ArrayList<>();
         keysToSignWith.forEach(key -> {
@@ -565,7 +600,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             newRevision.state.createdAt = ZonedDateTime.now();
             newRevision.state.parent = getId();
             newRevision.state.origin = state.revision == 1 ? getId() : state.origin;
-            revokingItems.add(this);
+            newRevision.revokingItems.add(this);
             return newRevision;
         } catch (Exception e) {
             throw new IllegalStateException("failed to create revision", e);
@@ -580,8 +615,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return state.parent;
     }
 
-    public HashId getOrigin() {
+    public HashId getRawOrigin() {
         return state.origin;
+    }
+
+    public HashId getOrigin() {
+        HashId o = state.origin;
+        return o == null ? getId() : o;
     }
 
     public Contract createRevision(PrivateKey... keys) {
@@ -596,7 +636,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             newRevision.addSignerKey(k);
         });
         newRevision.setCreator(krs);
-        newRevision.revokingItems.add(this);
         return newRevision;
     }
 
@@ -659,12 +698,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public void deserialize(Binder data, BiDeserializer deserializer) {
         int l = data.getIntOrThrow("api_level");
         if (l != apiLevel)
-            throw new RuntimeException("contract api level conflict: found " + l + " my level "+apiLevel);
+            throw new RuntimeException("contract api level conflict: found " + l + " my level " + apiLevel);
         deserializer.withContext(this, () -> {
-            if( definition == null )
+            if (definition == null)
                 definition = new Definition();
             definition.deserializeWith(data.getBinderOrThrow("definition"), deserializer);
-            if( state == null )
+            if (state == null)
                 state = new State();
             state.deserealizeWith(data.getBinderOrThrow("state"), deserializer);
         });
@@ -680,6 +719,82 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         );
     }
 
+    /**
+     * Split one or more siblings from this revision. This must be a new revision (use {@link
+     * #createRevision(PrivateKey...)} first. We recommend setting up signing keys before calling split, otherwise
+     * caller must explicitly set signing keys on each contract.
+     * <p>
+     * It the new revision is already split, it can't be split again.
+     * <p>
+     * It is important to understant that this revision become a contract that has to be registered with Universa
+     * service, which will automatically register all requested siblings in a trancaction. Do not register siblings
+     * themselves: registering this contract will do all the work.
+     *
+     * @param count number of siblings to split
+     *
+     * @return array of just created siblings, to modify their state only.
+     */
+    public Contract[] split(int count) {
+        // we can split only the new revision and only once this time
+        if (state.getBranchRevision() == state.revision)
+            throw new IllegalArgumentException("this revision is already split");
+        if (count < 1)
+            throw new IllegalArgumentException("split: count snould be > 0");
+
+        state.setBranchNumber(0);
+        Contract[] results = new Contract[count];
+        for (int i = 0; i < count; i++) {
+            // we can't create revision as this is already a new revision, so we copy self:
+            Contract c = copy();
+            // keys are not copied by default
+            c.setKeysToSignWith(getKeysToSignWith());
+            // save branch information
+            c.getState().setBranchNumber(i + 1);
+            newItems.add(c);
+            results[i] = c;
+        }
+        return results;
+    }
+
+    /**
+     * Split this contract extracting specified value from a named field. The contract must have suitable {@link
+     * com.icodici.universa.contract.permissions.SplitJoinPermission} and be signed with proper keys to pass checks.
+     * <p>
+     * Important. This contract must be a new revision: call {@link #createRevision(PrivateKey...)} first.
+     *
+     * @param fieldName      field to extract from
+     * @param valueToExtract how much to extract
+     *
+     * @return new sibling contract with the extracted value.
+     */
+    public Contract splitValue(String fieldName, Decimal valueToExtract) {
+        Contract sibling = split(1)[0];
+        Binder stateData = getStateData();
+        Decimal value = new Decimal(stateData.getStringOrThrow(fieldName));
+        stateData.set(fieldName, value.subtract(valueToExtract));
+        sibling.getStateData().put(fieldName, valueToExtract.toString());
+        return sibling;
+    }
+
+    /**
+     * If the contract is creating siblings, e.g. contracts with the same origin and parent but different branch ids,
+     * this method will return them all. Note that siblings do not include this contract.
+     *
+     * @return list of siblings to be created together with this contract.
+     */
+    public List<Contract> getSiblings() {
+        ArrayList<Contract> sibs = new ArrayList<>();
+        newItems.forEach(i -> {
+            if (i.getParent().equals(getParent()))
+                sibs.add(i);
+        });
+        return sibs;
+    }
+
+    public void addNewItem(Contract newContract) {
+        newItems.add(newContract);
+    }
+
     public class State {
         private int revision;
         private Binder state;
@@ -688,6 +803,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private HashId origin;
         private HashId parent;
         private Binder data;
+        private String branchId;
+
+        transient Integer branchRevision;
 
         private State() {
             createdAt = definition.createdAt;
@@ -724,6 +842,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                             "revision", revision,
                             "owner", getRole("owner"),
                             "created_by", getRole("creator"),
+                            "branch_id", branchId,
+                            "origin", serializer.serialize(origin),
+                            "parent", serializer.serialize(parent),
                             "data", data
                     )
             );
@@ -745,6 +866,29 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (!r.getName().equals("creator"))
                 throw new IllegalArgumentException("bad creator role name");
             this.data = data.getBinderOrThrow("data");
+            branchId = data.getString("branch_id", null);
+            parent = d.deserialize(data.get("parent"));
+            origin = d.deserialize(data.get("origin"));
+        }
+
+        public Integer getBranchRevision() {
+            if (branchRevision == null) {
+                if (branchId == null)
+                    branchRevision = 0;
+                else
+                    // we usually don't need sibling number here
+                    branchRevision = Integer.valueOf(branchId.split(":")[0]);
+            }
+            return branchRevision;
+        }
+
+        public String getBranchId() {
+            return branchId;
+        }
+
+        public void setBranchNumber(int number) {
+            branchId = revision + ":" + number;
+            branchRevision = number;
         }
     }
 
@@ -839,13 +983,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             int lastId = 0;
 
             // serialize permissions with a valid id
-            permissions.values().forEach(perm->{
+            permissions.values().forEach(perm -> {
                 String pid = perm.getId();
-                if( pid == null )
-                    throw new IllegalStateException("permission without id: "+perm);
-                    if( pb.containsKey(pid))
-                        throw new IllegalStateException("permission: duplicate permission id found: "+perm);
-                    pb.put(pid, perm);
+                if (pid == null)
+                    throw new IllegalStateException("permission without id: " + perm);
+                if (pb.containsKey(pid))
+                    throw new IllegalStateException("permission: duplicate permission id found: " + perm);
+                pb.put(pid, perm);
             });
 
             Collections.sort(pp);
@@ -866,8 +1010,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTimeOrThrow("expires_at");
             this.data = d.deserialize(data.getBinderOrThrow("data"));
-            Map<String,Permission> perms = d.deserialize(data.getOrThrow("permissions"));
-            perms.forEach((id,perm) -> {
+            Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
+            perms.forEach((id, perm) -> {
                 perm.setId(id);
                 addPermission(perm);
             });
