@@ -25,16 +25,18 @@ definition:
 
      # to show to the user
      description:
-       This is a sample currencty that could be split, joined and used as a payable value
-       just like a regular coin.
+       This contract represent a on-time emission of a coin-like object, that could be splot to pieces up to the
+       specified amount (like small changed) or joined back. This contract does not allow emit more joinable coins.
+       Unlike paper money, this contrace is singlue emission only. Coins of this type could be only splitted from this
+       contract, and the joined together to form any necessary sum.
 
   # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
   # consult current Universa state, maximum delayed contract creation time varies. This time we make a template
   # which will be substituted by the creation time on issuing client:
   created_at:
-   now()
+   now() # will keep the time of root controact creatopm
 
-  # required. must be in future.
+  # required. must be in distant future.
   expires_at:
     __t: unixtime
     seconds: 1659720337
@@ -45,20 +47,27 @@ definition:
 
   # required key, if left empty, the contract can not be changed or revoked. Be careful.
   permissions:
-   # owner have a right to transfer ownership. Note that if the creator will be mentioned here, only the creator
-   # will have permission to change owner, which contract type is of little use
-
+     # owner have a right to transfer ownership. Note that if the creator will be mentioned here, only the creator
+     # will have permission to change owner. It is very important to allow it, so the owner can pay with a coin, or
+     # split a part of it for another beneficiary
     change_owner: owner
 
+    # This is a main permission of money-like contract
     split_join:
-      # owner can decrease units, to pay for performing transactions, maximum one time payment
+      # owner can split and join coins, e.g. manipulate to pay and receive payments.
+
       # is also limited (a useful option):
       - role: owner
+        # Mimimum splittable value. It means that we can split 10 coints to 9.99 and 0.01. Note that the system now
+        # only allow values not lessser tha. 0.000`000`001, e.g. 1E-9, 1 nano-unit of something.
         min_value: 0.01 # one cent is a minimum
         # all splitted values must not differ to a value less than this unit. Actually, it should always
-        # be a 1e(-x) from, e.g. negatowe power of tenth, and the system checks that any splitted calue ULP
-        # is greated tham this.
-        min_unit: 0.01
+        # be a power of 10, like 0.0001 The system checks that any splitted value's ULP is no less than that
+        # (ULP is Unit in Last Position, common term. For example ULP(117.223 os 0.001)
+        # is greated tham this. In out case, it allows splitting 10 to 5.001 and 4.999, in most cases
+        # it is practical to have min_unit be equal to min_value
+        min_unit: 0.001
+        # The name of the field to change
         field_name: amount
 
         # this way we forbid any later emissions: only parts splitted from this conract could be joined.
@@ -66,25 +75,28 @@ definition:
         join_match_fields:
           - state.origin
 
-    # who can revoke the contract: owner, and issuer. This is "ANY OF" logic, we create 2 permissions,
-    # one for each role. Issuer right is used to block contracts used in positively determined attacks to
-    # the system (e.g. DDOS).
+    # who can revoke the contract: owner, and issuer altogether. Usually it means - when the issuer posess the contract
+    # for example by bying it back from the customer, it is possible ro revoke it. Very much like destroying banknotes
+    # by its owner - but we require also issuer signature on it:
     revoke:
-      - role: owner
-      - role: issuer
+      - role:
+        name: list_role
+        type: ALL_OF
+        roles:
+          - issuer
+          - owner
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract
   # this data will be also copied without change during any contract changes.
   data:
+    # optional, but almost always needed name or four currency
     name: Test cryptocurrency
-    currentcy_code: TUNC
-    currency_name: Test cryptocurrencty
+    # optional, we recommend this field to be defined in a practical and meamningful way to avoid future collisions
+    currency_code: TUNC
+    # the human-readable version of currency-code
+    currency_name: Test Univerca Cryptocurrencty
 
-    active_since: # note we can issue contract with other activity period
-      __type: unixtime
-      seconds: 1501953889
-
-    description: this contract emits some initiali amount of test cryptocurrency
+    description: this contract emits initial amount of test cryptocurrency to be payable just like electronic money
 
 # required section. Data that represent current contract state, could be modified in accordance with
 # 'permissions' section above
@@ -130,7 +142,9 @@ state:
 
   # required section. any application data that could be changed.
   data:
-    # initially emitted value: one million test coins.
+    # initially emitted value: one million test coins. Note that this contract will not allow any additional emissions,
+    # so the sum fo all coins of this type across the system will necer exceed 1 000 000. It, still, could be less -
+    # issuer, when is the owner of the coin, ccan revoke it (see permissions) effectively implementing deflation
     amount: 1000000
 
 
