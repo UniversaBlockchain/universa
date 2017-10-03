@@ -1,10 +1,10 @@
 package com.icodici.crypto.rsaoaep;
 
+import com.icodici.crypto.PrivateKey;
 import net.sergeych.boss.Boss;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongycastle.util.BigIntegers;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public class UnikeyFactory {
      * Given the .unikey-format byte array with the private key, create the {@link RSAOAEPPrivateKey}.
      */
     @Nullable
-    public static RSAOAEPPrivateKey fromUnikey(@NonNull byte[] bytes) {
+    static RSAOAEPPrivateKey rsaOaepPKFromUnikey(@NonNull byte[] bytes) {
         assert bytes != null;
 
         try {
@@ -42,19 +42,33 @@ public class UnikeyFactory {
     }
 
     /**
+     * Given the .unikey-format byte array with the private key, create the {@link PrivateKey}.
+     */
+    @Nullable
+    public static PrivateKey fromUnikey(@NonNull byte[] bytes) {
+        assert bytes != null;
+        try {
+            return new PrivateKey(bytes);
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
+    /**
      * Given the {@link RSAOAEPPrivateKey}, create the .unikey-format byte array.
      */
     @NonNull
-    public static byte[] toUnikey(@NonNull RSAOAEPPrivateKey privateKey) {
+    static byte[] toUnikey(@NonNull RSAOAEPPrivateKey privateKey) {
         assert privateKey != null;
+        return privateKey.pack();
+    }
 
-        final ArrayList result = new ArrayList();
-
-        result.add(0);
-        result.add(BigIntegers.asUnsignedByteArray(privateKey.state.keyParameters.getPublicExponent()));
-        result.add(BigIntegers.asUnsignedByteArray(privateKey.state.keyParameters.getP()));
-        result.add(BigIntegers.asUnsignedByteArray(privateKey.state.keyParameters.getQ()));
-
-        return Boss.pack(result);
+    /**
+     * Given the {@link RSAOAEPPrivateKey}, create the .unikey-format byte array.
+     */
+    @NonNull
+    public static byte[] toUnikey(@NonNull PrivateKey privateKey) {
+        assert privateKey != null;
+        return privateKey.pack();
     }
 }

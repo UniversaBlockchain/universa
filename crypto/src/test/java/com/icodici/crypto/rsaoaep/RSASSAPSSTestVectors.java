@@ -5,13 +5,11 @@
  *
  */
 
-package com.icodici.crypto.test;
+package com.icodici.crypto.rsaoaep;
 
 import com.icodici.crypto.AbstractPrivateKey;
 import com.icodici.crypto.AbstractPublicKey;
 import com.icodici.crypto.HashType;
-import com.icodici.crypto.rsaoaep.RSAOAEPPrivateKey;
-import com.icodici.crypto.rsaoaep.RSAOAEPPublicKey;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.spongycastle.util.encoders.Hex;
 

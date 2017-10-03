@@ -1,6 +1,7 @@
 package com.icodici.crypto.rsaoaep;
 
 import com.icodici.crypto.HashType;
+import com.icodici.crypto.PrivateKey;
 import net.sergeych.boss.Boss;
 import net.sergeych.utils.Bytes;
 import org.junit.Test;
@@ -85,8 +86,8 @@ public class UnikeyFactoryTest {
     }
 
     @Test
-    public void testFromUnikey() throws Exception {
-        final RSAOAEPPrivateKey pk1 = UnikeyFactory.fromUnikey(pk1Bytes);
+    public void testFromUnikeyRSAOAEP() throws Exception {
+        final RSAOAEPPrivateKey pk1 = UnikeyFactory.rsaOaepPKFromUnikey(pk1Bytes);
         assertNotNull(pk1);
         assertArrayEquals(
                 pk1E,
@@ -100,7 +101,7 @@ public class UnikeyFactoryTest {
     }
 
     @Test
-    public void testToUnikey() throws Exception {
+    public void testToUnikeyRSAOAEP() throws Exception {
         final RSAOAEPPrivateKey pk1 = new RSAOAEPPrivateKey(
                 pk1E, pk1P, pk1Q,
                 HashType.SHA1, HashType.SHA1,
@@ -109,5 +110,16 @@ public class UnikeyFactoryTest {
         assertArrayEquals(
                 pk1Bytes,
                 UnikeyFactory.toUnikey(pk1));
+    }
+
+    @Test
+    public void testFromToUnikeyPublicMethods() throws Exception {
+        final PrivateKey pk1 = new PrivateKey(pk1Bytes);
+        assertArrayEquals(pk1Bytes, pk1.pack());
+
+        final PrivateKey pk2 = UnikeyFactory.fromUnikey(pk1Bytes);
+        assertEquals(pk1, pk2);
+
+        assertArrayEquals(pk1Bytes, UnikeyFactory.toUnikey(pk2));
     }
 }

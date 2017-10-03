@@ -5,9 +5,8 @@
  *
  */
 
-package com.icodici.crypto.test;
+package com.icodici.crypto.rsaoaep;
 
-import com.icodici.crypto.rsaoaep.RSAOAEPEngine;
 import org.junit.Test;
 import org.spongycastle.crypto.AsymmetricBlockCipher;
 import org.spongycastle.crypto.AsymmetricCipherKeyPair;

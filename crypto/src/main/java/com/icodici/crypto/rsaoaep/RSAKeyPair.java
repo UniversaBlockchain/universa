@@ -50,7 +50,7 @@ public class RSAKeyPair {
      * Generate from the exponents.
      */
     public static RSAKeyPair fromExponents(byte[] e, byte[] p, byte[] q) {
-        BigInteger
+        final BigInteger
                 eInt = BigIntegers.fromUnsignedByteArray(e),
                 pInt = BigIntegers.fromUnsignedByteArray(p),
                 qInt = BigIntegers.fromUnsignedByteArray(q),
@@ -60,7 +60,7 @@ public class RSAKeyPair {
                 dPInt = dInt.remainder(pInt.subtract(BigInteger.ONE)),
                 dQInt = dInt.remainder(qInt.subtract(BigInteger.ONE)),
                 qInvInt = qInt.modInverse(pInt);
-        byte[]
+        final byte[]
                 n = BigIntegers.asUnsignedByteArray(nInt),
                 d = BigIntegers.asUnsignedByteArray(dInt),
                 dP = BigIntegers.asUnsignedByteArray(dPInt),
