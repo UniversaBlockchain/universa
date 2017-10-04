@@ -16,6 +16,8 @@ import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by sergeych on 15/02/16.
@@ -23,6 +25,8 @@ import java.util.*;
 public class Do {
 
     static Charset utf8 = Charset.forName("utf-8");
+
+    static final ExecutorService threadPool = Executors.newCachedThreadPool();
 
     public static byte[] read(String fileName) throws IOException {
         try (FileInputStream f = new FileInputStream(fileName)) {
@@ -140,7 +144,7 @@ public class Do {
     }
 
     static public void delay(long millis, Action action) {
-        new Thread(
+        threadPool.execute(
                 () -> {
                     try {
                         if (millis > 0)
@@ -150,7 +154,7 @@ public class Do {
                         e.printStackTrace();
                     }
                 }
-        ).start();
+        );
     }
 
     static public void later(Action action) {
@@ -273,14 +277,13 @@ public class Do {
      */
     static public DeferredResult inParallel(final Task task) {
         final DeferredResult deferredResult = new DeferredResult();
-        Thread thread = new Thread(() -> {
+        threadPool.execute(() -> {
             try {
                 deferredResult.sendSuccess(task.perform());
             } catch (Exception e) {
                 deferredResult.sendFailure(e);
             }
         });
-        thread.start();
         return deferredResult;
     }
 
