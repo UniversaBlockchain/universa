@@ -28,7 +28,7 @@ definition:
      description: >
        This contract represent a on-time emission of a coin-like object, that could be splot to pieces up to the
        specified amount (like small changed) or joined back. This contract does not allow emit more joinable coins.
-       Unlike paper money, this contrace is singlue emission only. Coins of this type could be only splitted from this
+       Unlike paper money, this contrace is singlue emission only. Coins of this type could be only split from this
        contract, and the joined together to form any necessary sum.
 
   # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
@@ -63,16 +63,18 @@ definition:
         # Mimimum splittable value. It means that we can split 10 coints to 9.99 and 0.01. Note that the system now
         # only allow values not lessser tha. 0.000`000`001, e.g. 1E-9, 1 nano-unit of something.
         min_value: 0.01 # one cent is a minimum
-        # all splitted values must not differ to a value less than this unit. Actually, it should always
-        # be a power of 10, like 0.0001 The system checks that any splitted value's ULP is no less than that
-        # (ULP is Unit in Last Position, common term. For example ULP(117.223 os 0.001)
-        # is greated tham this. In out case, it allows splitting 10 to 5.001 and 4.999, in most cases
-        # it is practical to have min_unit be equal to min_value
+        # all split values must not differ to a value less than this unit. Actually, it should always
+        # be a power of 10, like 0.0001 The system checks that any split value's ULP is no less than that
+        # (ULP is Unit in Last Position, common term. For example ULP(117.223) is 0.001
+        # is greated tham this. In our case, it allows splitting 10 to 5.001 and 4.999, but not to 5.1234 and 4.9866
+        # as the ulp will be 0.0001 for 4.8966. In most cases it is practical to have same min_unit and to min_value
+        # as the 10th power
         min_unit: 0.001
+
         # The name of the field to change
         field_name: amount
 
-        # this way we forbid any later emissions: only parts splitted from this conract could be joined.
+        # this way we forbid any later emissions: only parts from this contract could be joined.
         # adding other field to this allow additional emission:
         join_match_fields:
           - state.origin
