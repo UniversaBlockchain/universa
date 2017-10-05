@@ -42,7 +42,7 @@ public class ModifyDataPermission extends Permission {
     }
 
     @Override
-    public void checkChanges(Contract contract, Map<String, Delta> stateChanges) {
+    public void checkChanges(Contract contract, Contract changedContract, Map<String, Delta> stateChanges) {
         Delta data = stateChanges.get("data");
         if (data != null && data instanceof MapDelta) {
             Map mapChanges = ((MapDelta) data).getChanges();

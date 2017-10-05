@@ -7,32 +7,20 @@
 
 package com.icodici.universa.contract.permissions;
 
-import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.PermissionsTest;
-import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.tools.Binder;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public class SplitJoinPermissionTest extends PermissionsTest {
-    private PrivateKey ownerKey1;
-    private PrivateKey ownerKey2;
-    private PrivateKey ownerKey3;
-
-    @Before
-    public void setUp() throws Exception {
-        ownerKey1 = TestKeys.privateKey(3);
-        ownerKey2 = TestKeys.privateKey(1);
-        ownerKey3 = TestKeys.privateKey(2);
-    }
 
     @Test
     public void checkChanges() throws Exception {
@@ -76,10 +64,35 @@ public class SplitJoinPermissionTest extends PermissionsTest {
         // TODO: check smae branch spoofing
     }
 
-    private Contract createCoin() throws IOException {
-        Contract c = Contract.fromYamlFile(rootPath + "coin.yml");
-        c.setOwnerKey(ownerKey2);
-        return c;
+    @Test
+    public void shouldSplitWithChangedOwner() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+
+        Contract c2 = c.split(1)[0];
+        c2.setOwnerKey(ownerKey1);
+
+        sealCheckTrace(c2, true);
+        assertNotEquals(c.getOwner(), c2.getOwner());
+    }
+
+
+    @Test
+    public void shouldSplitWithChangedOwnerAndNewValue() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        Binder d = c.getStateData();
+
+        Contract c2 = c.splitValue("amount", new Decimal(85));
+        c2.setOwnerKey(ownerKey1);
+        Binder d2 = c2.getStateData();
+
+        sealCheckTrace(c2, true);
+        assertNotEquals(c.getOwner(), c2.getOwner());
+
+        int a = 1000000;
+        assertEquals(1000000, d.getIntOrThrow("amount"));
+        assertEquals(a - 85, d2.getIntOrThrow("amount"));
     }
 
     @Test
@@ -107,6 +120,7 @@ public class SplitJoinPermissionTest extends PermissionsTest {
         assertFalse(c1.isOk());
 
     }
+
     @Test
     public void cheatCreateValue2() throws Exception {
         Contract c = createCoin();
@@ -125,5 +139,11 @@ public class SplitJoinPermissionTest extends PermissionsTest {
         c1.traceErrors();
         assertFalse(c1.isOk());
 
+    }
+
+    private Contract createCoin() throws IOException {
+        Contract c = Contract.fromYamlFile(rootPath + "coin.yml");
+        c.setOwnerKey(ownerKey2);
+        return c;
     }
 }

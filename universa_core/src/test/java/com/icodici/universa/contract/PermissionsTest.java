@@ -2,6 +2,7 @@
  * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
  *
  * Written by Sergey Chernov <real.sergeych@gmail.com>, August 2017.
+ * Written by Maxim Pogorelov <pogorelovm23@gmail.com>, 10/02/17.
  *
  */
 
@@ -37,9 +38,10 @@ public class PermissionsTest extends ContractTestBase {
     private final String SUBSCRIPTION_PATH = rootPath + SUBSCRIPTION;
     private final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
 
-    private PrivateKey ownerKey1;
-    private PrivateKey ownerKey2;
-    private PrivateKey ownerKey3;
+
+    protected PrivateKey ownerKey1;
+    protected PrivateKey ownerKey2;
+    protected PrivateKey ownerKey3;
 
 
     @Before
@@ -48,6 +50,7 @@ public class PermissionsTest extends ContractTestBase {
         ownerKey2 = TestKeys.privateKey(1);
         ownerKey3 = TestKeys.privateKey(2);
     }
+
 
     @Test
     public void newRevision() throws Exception {
@@ -189,8 +192,6 @@ public class PermissionsTest extends ContractTestBase {
 
     @Test
     public void shouldModifyStateDataValues() throws  Exception {
-        PrivateKey ownerKey2 = TestKeys.privateKey(1);
-
         Contract c = basicContractCreation(SUBSCRIPTION_WITH_DATA, PRIVATE_KEY, ownerKey2);
         Binder d = c.getStateData();
 
@@ -403,11 +404,9 @@ public class PermissionsTest extends ContractTestBase {
         assertFalse(badc.check());
 
         c2.addNewItem(badc);
+
         // now c2 should be bad: it tries to create a bad contract!
-        c2.seal();
-        c2.check();
-//        c2.traceErrors();
-        assertFalse(c2.isOk());
+        sealCheckTrace(c2, false);
 
         // and now let's add bad contract as a child. Actually it is a good contract, but, it is the same revision
         // as the parent. This should not be allowed too.
@@ -420,10 +419,8 @@ public class PermissionsTest extends ContractTestBase {
         c2.addNewItem(c3);
 
         assertEquals(1, c2.getNewItems().size());
-        c2.seal();
-        c2.check();
-        c2.traceErrors();
-        assertFalse(c2.isOk());
+
+        sealCheckTrace(c2, false);
 
     }
 
@@ -437,7 +434,7 @@ public class PermissionsTest extends ContractTestBase {
         assertEquals(newValue, d1.getString(field, null));
     }
 
-    private void sealCheckTrace(Contract c, boolean isOkShouldBeTrue) {
+    protected void sealCheckTrace(Contract c, boolean isOkShouldBeTrue) {
         c.seal();
         c.check();
         c.traceErrors();

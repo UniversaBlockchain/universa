@@ -84,11 +84,11 @@ definition:
     # by its owner - but we require also issuer signature on it:
     revoke:
       - role:
-        name: list_role
-        type: ALL_OF
-        roles:
-          - issuer
-          - owner
+          name: list_role
+          type: ALL_OF
+          roles:
+            - issuer
+            - owner
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract
   # this data will be also copied without change during any contract changes.
