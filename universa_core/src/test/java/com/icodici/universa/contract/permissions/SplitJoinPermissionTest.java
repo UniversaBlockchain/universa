@@ -10,7 +10,7 @@ package com.icodici.universa.contract.permissions;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.PermissionsTest;
+import com.icodici.universa.contract.ContractTestBase;
 import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.tools.Binder;
 import org.junit.Before;
@@ -22,7 +22,7 @@ import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class SplitJoinPermissionTest extends PermissionsTest {
+public class SplitJoinPermissionTest extends ContractTestBase {
     private PrivateKey ownerKey1;
     private PrivateKey ownerKey2;
     private PrivateKey ownerKey3;
@@ -69,6 +69,12 @@ public class SplitJoinPermissionTest extends PermissionsTest {
         c1.check();
         c1.traceErrors();
         assertTrue(c1.isOk());
+
+        // and it should be the same after seriazling:
+        Contract restored = new Contract(c1.getLastSealedBinary());
+        restored.check();
+        restored.traceErrors();
+        assertTrue(restored.isOk());
 
         // TODO: check that value can't be just changed
         // TODO: check that the sum must be equal

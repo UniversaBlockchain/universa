@@ -40,13 +40,14 @@ import static java.util.Arrays.asList;
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private final Set<HashId> referencedItems = new HashSet<>();
-    private final Set<Approvable> revokingItems = new HashSet<>();
+    private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
     private Definition definition;
     private final Map<String, Role> roles = new HashMap<>();
     private State state;
     private byte[] sealedBinary;
     private int apiLevel = 2;
+    private Context context = null;
 
     /**
      * true if the contract was imported from sealed capsule
@@ -76,8 +77,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // This must be explained. By default, Boss.load will apply contract transformation in place
         // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
         // data without BiSerializer and then do it by hand calling deserialize:
-        deserialize(Boss.load(contractBytes, null),
-                    BossBiMapper.newDeserializer());
+        Binder payload = Boss.load(contractBytes, null);
+        BiDeserializer bm = BossBiMapper.newDeserializer();
+        deserialize(payload.getBinderOrThrow("contract"), bm);
+
+        for (Object r : payload.getListOrThrow("revoking"))
+            revokingItems.add(new Contract(((Bytes) r).toArray()));
+
+        for (Object r : payload.getListOrThrow("new"))
+            newItems.add(new Contract(((Bytes) r).toArray()));
+
+        getContext();
+        newItems.forEach(i->i.context = context);
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -180,12 +191,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public Set<Approvable> getRevokingItems() {
-        return revokingItems;
+        return (Set) revokingItems;
     }
 
     @Override
-    public Set<? extends Approvable> getNewItems() {
-        return newItems;
+    public Set<Approvable> getNewItems() {
+        return (Set)newItems;
     }
 
     @Override
@@ -224,22 +235,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * ve different.
      */
     private void checkDupesCreation() {
-        if(  newItems.isEmpty() )
+        if (newItems.isEmpty())
             return;
         Set<String> revisionIds = new HashSet<>();
         revisionIds.add(getRevisionId());
-        for(Contract c: newItems) {
+        int count = 0;
+        for (Contract c : newItems) {
             String i = c.getRevisionId();
-            if( revisionIds.contains(i) ) {
-                addError(Errors.BAD_VALUE, "new["+i+"]", "duplicated revision id");
-            }
-            else
+            if (revisionIds.contains(i)) {
+                addError(Errors.BAD_VALUE, "new[" + count + "]", "duplicated revision id: "+ i);
+            } else
                 revisionIds.add(i);
+            count++;
         }
     }
 
     public String getRevisionId() {
-        return getOrigin().toBase64String() + "/" + state.revision + "/" + (state.branchRevision != null ? state.branchRevision.toString() : "");
+        StringBuilder sb = new StringBuilder(getOrigin().toBase64String() + "/" + state.revision);
+        if( state.branchId != null )
+            sb.append("/"+state.branchId.toString());
+        return sb.toString();
     }
 
     /**
@@ -292,7 +307,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private void checkChangedContract() {
         // get the previous version
-        Contract parent = getRevokingItem(getParent());
+        Contract parent = getContext().base;
         if (parent == null) {
             addError(BAD_REF, "parent", "parent contract must be included");
         } else {
@@ -547,9 +562,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public byte[] seal() {
-        byte[] theContract = Boss.pack(BossBiMapper.serialize(this));
-        newItems.forEach(c->c.seal());
-        Binder result = Binder.of("type", "unicapsule", "version", apiLevel, "data", theContract);
+        byte[] theContract = Boss.pack(
+                BossBiMapper.serialize(
+                        Binder.of(
+                                "contract", this,
+                                "revoking", revokingItems.stream()
+                                        .map(i -> i.getLastSealedBinary())
+                                        .collect(Collectors.toList()),
+                                "new", newItems.stream()
+                                        .map(i -> i.seal())
+                                        .collect(Collectors.toList())
+                        )
+                )
+        );
+        newItems.forEach(c -> c.seal());
+        Binder result = Binder.of(
+                "type", "unicapsule",
+                "version", apiLevel,
+                "data", theContract
+        );
         List<byte[]> signatures = new ArrayList<>();
         keysToSignWith.forEach(key -> {
             signatures.add(ExtendedSignature.sign(key, theContract));
@@ -559,10 +590,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         setOwnBinary(result);
         return sealedBinary;
     }
-
-//    protected Binder serializeToBinder() {
-//        return DefaultBiMapper.serialize(this);
-//    }
 
     /**
      * Get the last knwon packed representation pf the contract. Should be called if the contract was contructed from a
@@ -741,6 +768,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (count < 1)
             throw new IllegalArgumentException("split: count snould be > 0");
 
+        // initialize context if not yet
+        getContext();
+
         state.setBranchNumber(0);
         Contract[] results = new Contract[count];
         for (int i = 0; i < count; i++) {
@@ -750,6 +780,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             c.setKeysToSignWith(getKeysToSignWith());
             // save branch information
             c.getState().setBranchNumber(i + 1);
+            // and it should refer the same parent to and set of siblings
+            c.context = context;
+            context.siblings.add(c);
             newItems.add(c);
             results[i] = c;
         }
@@ -782,13 +815,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return list of siblings to be created together with this contract.
      */
-    public List<Contract> getSiblings() {
-        ArrayList<Contract> sibs = new ArrayList<>();
-        newItems.forEach(i -> {
-            if (i.getParent().equals(getParent()))
-                sibs.add(i);
-        });
-        return sibs;
+    public Set<Contract> getSiblings() {
+        return context.siblings;
     }
 
     public void addNewItem(Contract newContract) {
@@ -804,8 +832,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private HashId parent;
         private Binder data;
         private String branchId;
-
-        transient Integer branchRevision;
 
         private State() {
             createdAt = definition.createdAt;
@@ -871,6 +897,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             origin = d.deserialize(data.get("origin"));
         }
 
+        private Integer branchRevision = null;
+        /**
+         * Revision at which this branch was splitted
+         * @return
+         */
         public Integer getBranchRevision() {
             if (branchRevision == null) {
                 if (branchId == null)
@@ -1045,5 +1076,32 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public Contract copy() {
         return Boss.load(Boss.dump(this));
+    }
+
+    protected Context getContext() {
+        if (context == null) {
+            context = new Context(getRevokingItem(getParent()));
+            context.siblings.add(this);
+            newItems.forEach(i -> {
+                if (i.getParent().equals(getParent()))
+                    context.siblings.add(i);
+            });
+
+        }
+        return context;
+    }
+
+    /**
+     * Transction context. Holds temporary information about a context transaction relevant to create sibling, e.g.
+     * contract splitting. Allow new items being created to get the base contract (that is creating) and get the
+     * full list of siblings.
+     */
+    protected class Context {
+        private final Set<Contract> siblings = new HashSet<>();
+        private final Contract base;
+
+        public Context(@NonNull Contract base) {
+            this.base = base;
+        }
     }
 }

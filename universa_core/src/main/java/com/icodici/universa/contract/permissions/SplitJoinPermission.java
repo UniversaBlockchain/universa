@@ -10,6 +10,7 @@ package com.icodici.universa.contract.permissions;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
@@ -33,6 +34,10 @@ public class SplitJoinPermission extends Permission {
 
     public SplitJoinPermission(Role role, Binder params) {
         super("split_join", role, params);
+        initFromParams();
+    }
+
+    protected void initFromParams() {
         fieldName = params.getStringOrThrow("field_name");
         minValue = new Decimal(params.getString("min_value", "0"));
         minUnit = new Decimal(params.getString("min_value", "1e-9"));
@@ -40,6 +45,12 @@ public class SplitJoinPermission extends Permission {
 
     private SplitJoinPermission() {
         super();
+    }
+
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        super.deserialize(data, deserializer);
+        initFromParams();
     }
 
     /**
@@ -61,12 +72,11 @@ public class SplitJoinPermission extends Permission {
                 return;
             try {
                 // We need to find the splitted contracts
-                Decimal sum = new Decimal(delta.newValue().toString());
+                Decimal sum = Decimal.ZERO;
                 for(Contract s: changed.getSiblings())
                     sum = sum.add(new Decimal(s.getStateData().getString(fieldName)));
                 // total value should not be changed:
                 Decimal oldValue = new Decimal(delta.oldValue().toString());
-                System.out.println(">> "+sum+"<=>"+oldValue+" = "+sum.equals(oldValue));
                 if( sum.equals(oldValue) )
                     dataChanges.remove(fieldName);
             }

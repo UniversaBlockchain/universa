@@ -53,7 +53,7 @@ public interface Approvable extends HashIdentifiable {
      *
      * @return list of items to approve.
      */
-    default Set<? extends Approvable> getNewItems() {
+    default Set<Approvable> getNewItems() {
         return new HashSet<Approvable>();
     }
 

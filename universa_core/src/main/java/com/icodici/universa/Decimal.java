@@ -144,9 +144,9 @@ public class Decimal extends Number implements Comparable<Number> {
     @Override
     public boolean equals(Object x) {
         if (x instanceof BigDecimal)
-            return value.equals(x);
+            return value.compareTo((BigDecimal) x) == 0;
         if( x instanceof Decimal )
-            return value.equals(((Decimal) x).value);
+            return value.compareTo(((Decimal) x).value) == 0;
         return false;
     }
 
