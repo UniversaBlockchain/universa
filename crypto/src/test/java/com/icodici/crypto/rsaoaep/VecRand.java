@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.crypto.test;
+package com.icodici.crypto.rsaoaep;
 
 import java.security.SecureRandom;
 

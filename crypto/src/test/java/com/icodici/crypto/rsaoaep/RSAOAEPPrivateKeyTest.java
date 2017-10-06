@@ -10,8 +10,6 @@ package com.icodici.crypto.rsaoaep;
 import com.icodici.crypto.AbstractPrivateKey;
 import com.icodici.crypto.AbstractPublicKey;
 import com.icodici.crypto.HashType;
-import com.icodici.crypto.test.RSAOAEPTestVectors;
-import com.icodici.crypto.test.RSASSAPSSTestVectors;
 import org.junit.Test;
 import org.spongycastle.crypto.params.RSAKeyParameters;
 import org.spongycastle.crypto.params.RSAPrivateCrtKeyParameters;

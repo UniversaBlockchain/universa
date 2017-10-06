@@ -11,6 +11,7 @@ import com.icodici.crypto.AbstractPrivateKey;
 import com.icodici.crypto.AbstractPublicKey;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.HashType;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Hashable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -93,9 +94,23 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return String.format("RSAOAEPPrivateKey#%s", System.identityHashCode(this));
+    }
+
+    /**
      * Hidden (package-private) constructor, for internal/unittest usage.
      */
-    public RSAOAEPPrivateKey(byte[] e, byte[] p, byte[] q, HashType oaepHashType, HashType mgf1HashType, SecureRandom rng) {
+    RSAOAEPPrivateKey(byte[] e, byte[] p, byte[] q, HashType oaepHashType, HashType mgf1HashType, SecureRandom rng) {
+        assert e != null;
+        assert p != null;
+        assert q != null;
+        assert oaepHashType != null;
+        assert mgf1HashType != null;
+
         init(e, p, q, oaepHashType, mgf1HashType, rng);
     }
 
@@ -144,12 +159,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
-     * Generate a new key pair of the specified bit strength.
-     * <p>
-     * The private key instance should have empty constructor (non initialized instance).
-     *
-     * @param bitStrength bit strength of the key, e.g. 2048 for RSA.
-     * @param mgf1HashType hash function used for MGF1 (normally this is SHA1).
+     * {@inheritDoc}
      */
     @Override
     public void generate(int bitStrength, HashType mgf1HashType) {
@@ -181,8 +191,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
-     * True if the key is properly initialized. The key is initialized after generate
-     * is called or loaded from the hash (see {@link Hashable}
+     * {@inheritDoc}
      */
     @Override
     public boolean isInitialized() {
@@ -190,7 +199,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
-     * @return bit strength of the key, e.g. 2048 for RSA.
+     * {@inheritDoc}
      */
     @Override
     public int getBitStrength() throws IllegalStateException {
@@ -202,7 +211,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
-     * @return corresponding public key
+     * {@inheritDoc}
      */
     @Override
     public AbstractPublicKey getPublicKey() throws IllegalStateException {
@@ -214,10 +223,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
-     * Check that this key instance is suitable for decryption too (some keys can provide
-     * sign only functionality).
-     *
-     * @return true if this key can be used for decryption.
+     * {@inheritDoc}
      */
     @Override
     public boolean canDecrypt() {
@@ -225,11 +231,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
-     * Decrypt the ciphertext.
-     *
-     * @param ciphertext to decrypt
-     * @return decrypted plaintext
-     * @throws EncryptionError if any error prevents decryption (incorrect block data, block too short and like)
+     * {@inheritDoc}
      */
     @Override
     public byte[] decrypt(byte[] ciphertext) throws EncryptionError {
@@ -245,16 +247,9 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
-     * Sign the source document represented by the input stream. The document can be way too large to
-     * load the whole into memory, so implementations should calculate the signature by reading
-     * portions of it from the stream.
+     * {@inheritDoc}
      * <p>
      * Signature is created using RSA-PSS as described in PKCS# 1 v 2.1.
-     *
-     * @param input document to sign
-     * @param salt salt to use; may be null, then it is generated automatically with the maximum possible size.
-     * @return digital signature of the document
-     * @throws IOException if the document can't be read, is empty and like.
      */
     @Override
     public byte[] sign(InputStream input, HashType hashType, @Nullable byte[] salt) throws IllegalStateException, IOException {
@@ -305,6 +300,9 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NonNull
     @Override
     public Map<String, Object> toHash() throws IllegalStateException {
@@ -326,10 +324,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     }
 
     /**
-     * Load object state from the hash.
-     *
-     * @param hash with data
-     * @throws Error if the data are not suitable to load the object state
+     * {@inheritDoc}
      */
     @Override
     public void updateFromHash(Map<String, Object> hash) throws Error {
@@ -368,6 +363,20 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
             this.state = null;
             throw new Error(String.format("Incorrect data for private key: %s", e.toString()));
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public byte[] pack() {
+        @NonNull final Map<String, Object> params = toHash();
+        return Boss.dumpToArray(new Object[]{
+                0,
+                params.get("e"),
+                params.get("p"),
+                params.get("q")
+        });
     }
 
     /**

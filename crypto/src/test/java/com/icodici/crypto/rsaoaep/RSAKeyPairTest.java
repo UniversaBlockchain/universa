@@ -7,7 +7,6 @@
 
 package com.icodici.crypto.rsaoaep;
 
-import com.icodici.crypto.test.RSAOAEPTestVectors;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
