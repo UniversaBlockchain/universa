@@ -14,7 +14,6 @@ import org.spongycastle.util.encoders.Hex;
 
 import static org.junit.Assert.*;
 
-
 /**
  * Created by amyodov on 18.04.16.
  */
