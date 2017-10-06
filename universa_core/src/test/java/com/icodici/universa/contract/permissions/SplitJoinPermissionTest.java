@@ -79,20 +79,21 @@ public class SplitJoinPermissionTest extends PermissionsTest {
 
     @Test
     public void shouldSplitWithChangedOwnerAndNewValue() throws Exception {
+        int defaultValue = 1000000;
+        int valueForSplit = 85;
+
         Contract c = createCoin();
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         Binder d = c.getStateData();
 
-        Contract c2 = c.splitValue("amount", new Decimal(85));
+        Contract c2 = c.splitValue("amount", new Decimal(valueForSplit));
         c2.setOwnerKey(ownerKey1);
         Binder d2 = c2.getStateData();
-
         sealCheckTrace(c2, true);
-        assertNotEquals(c.getOwner(), c2.getOwner());
 
-        int a = 1000000;
-        assertEquals(1000000, d.getIntOrThrow("amount"));
-        assertEquals(a - 85, d2.getIntOrThrow("amount"));
+
+        assertEquals(defaultValue - valueForSplit, d.getIntOrThrow("amount"));
+        assertEquals(valueForSplit, d2.getIntOrThrow("amount"));
     }
 
     @Test
@@ -114,10 +115,8 @@ public class SplitJoinPermissionTest extends PermissionsTest {
         assertEquals(a - 500, c1.getStateData().getIntOrThrow("amount"));
         assertEquals(500, c2.getStateData().getIntOrThrow("amount"));
         c2.getStateData().set("amount", "500.00000001");
-        c1.seal();
-        c1.check();
-        c1.traceErrors();
-        assertFalse(c1.isOk());
+
+        sealCheckTrace(c1, false);
 
     }
 
