@@ -82,6 +82,49 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         // TODO: check smae branch spoofing
     }
 
+    @Test
+    public void testJoinSum() throws Exception {
+
+        Contract c = createCoin();
+
+        c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        Binder d = c.getStateData();
+        int a = 1000000;
+        assertEquals(a, d.getIntOrThrow("amount"));
+        c.seal();
+        c.check();
+        c.traceErrors();
+        assertTrue(c.check());
+
+        // bad split: no changes
+        Contract c1 = c.createRevision(ownerKey2);
+
+        c1.seal();
+        c1.check();
+//        c1.traceErrors();
+        assertFalse(c1.isOk());
+
+        // Good split
+        Contract c2 = c1.splitValue("amount", new Decimal(500));
+        assertEquals(a - 500, c1.getStateData().getIntOrThrow("amount"));
+        assertEquals(500, c2.getStateData().getIntOrThrow("amount"));
+
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+        assertTrue(c1.isOk());
+
+        Contract c3 = c1.createRevision(ownerKey2);
+        c3.getRevokingItems().add(c2);
+        c3.getStateData().set("amount", new Decimal(a));
+
+        c3.seal();
+        c3.check();
+        c3.traceErrors();
+        assertTrue(c3.isOk());
+
+    }
+
     private Contract createCoin() throws IOException {
         Contract c = Contract.fromYamlFile(rootPath + "coin.yml");
         c.setOwnerKey(ownerKey2);

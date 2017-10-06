@@ -88,7 +88,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             newItems.add(new Contract(((Bytes) r).toArray()));
 
         getContext();
-        newItems.forEach(i->i.context = context);
+        newItems.forEach(i -> i.context = context);
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -196,7 +196,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public Set<Approvable> getNewItems() {
-        return (Set)newItems;
+        return (Set) newItems;
     }
 
     @Override
@@ -243,7 +243,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         for (Contract c : newItems) {
             String i = c.getRevisionId();
             if (revisionIds.contains(i)) {
-                addError(Errors.BAD_VALUE, "new[" + count + "]", "duplicated revision id: "+ i);
+                addError(Errors.BAD_VALUE, "new[" + count + "]", "duplicated revision id: " + i);
             } else
                 revisionIds.add(i);
             count++;
@@ -252,8 +252,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public String getRevisionId() {
         StringBuilder sb = new StringBuilder(getOrigin().toBase64String() + "/" + state.revision);
-        if( state.branchId != null )
-            sb.append("/"+state.branchId.toString());
+        if (state.branchId != null)
+            sb.append("/" + state.branchId.toString());
         return sb.toString();
     }
 
@@ -823,6 +823,50 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         newItems.add(newContract);
     }
 
+    /**
+     * Get the named field in 'dotted' notation, e.g. 'state.data.name', or 'state.origin', 'definition.issuer' and so
+     * on.
+     *
+     * @param name
+     *
+     * @return
+     */
+    public <T> T get(String name) {
+        if (name.startsWith("definition.")) {
+            name = name.substring(11);
+            switch (name) {
+                case "expires_at":
+                    return (T) definition.expiresAt;
+                case "created_at":
+                    return (T) definition.createdAt;
+                case "issuer":
+                    return (T) getRole("issuer");
+                case "origin":
+                    return (T) getOrigin();
+                default:
+                    if (name.startsWith("data."))
+                        return definition.data.getOrNull(name.substring(5));
+            }
+        } else if (name.startsWith("state.")) {
+            name = name.substring(6);
+            switch (name) {
+                case "origin":
+                    return (T) getOrigin();
+                case "created_at":
+                    return (T) state.createdAt;
+                default:
+                    if (name.startsWith("data."))
+                        return state.data.getOrNull(name.substring(5));
+            }
+        } else switch (name) {
+            case "id":
+                return (T) getId();
+            case "origin":
+                return (T) getOrigin();
+        }
+        throw new IllegalArgumentException("bad root: " + name);
+    }
+
     public class State {
         private int revision;
         private Binder state;
@@ -898,8 +942,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         private Integer branchRevision = null;
+
         /**
          * Revision at which this branch was splitted
+         *
          * @return
          */
         public Integer getBranchRevision() {
@@ -1093,8 +1139,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     /**
      * Transction context. Holds temporary information about a context transaction relevant to create sibling, e.g.
-     * contract splitting. Allow new items being created to get the base contract (that is creating) and get the
-     * full list of siblings.
+     * contract splitting. Allow new items being created to get the base contract (that is creating) and get the full
+     * list of siblings.
      */
     protected class Context {
         private final Set<Contract> siblings = new HashSet<>();
