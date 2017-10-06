@@ -1129,7 +1129,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             context = new Context(getRevokingItem(getParent()));
             context.siblings.add(this);
             newItems.forEach(i -> {
-                if (i.getParent().equals(getParent()))
+                if (i.getParent() != null && i.getParent().equals(getParent()))
                     context.siblings.add(i);
             });
 

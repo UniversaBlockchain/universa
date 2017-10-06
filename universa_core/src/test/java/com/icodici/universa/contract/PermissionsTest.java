@@ -28,30 +28,6 @@ import static org.junit.Assert.*;
 
 public class PermissionsTest extends ContractTestBase {
 
-
-    private final String ROOT_CONTRACT = rootPath + "simple_root_contract.yml";
-
-    public static final String SUBSCRIPTION = "subscription.yml";
-    public static final String SUBSCRIPTION_WITH_DATA = "subscription_with_data.yml";
-    public static final String PRIVATE_KEY = "_xer0yfe2nn1xthc.private.unikey";
-
-    private final String SUBSCRIPTION_PATH = rootPath + SUBSCRIPTION;
-    private final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
-
-
-    protected PrivateKey ownerKey1;
-    protected PrivateKey ownerKey2;
-    protected PrivateKey ownerKey3;
-
-
-    @Before
-    public void setUp() throws Exception {
-        ownerKey1 = TestKeys.privateKey(3);
-        ownerKey2 = TestKeys.privateKey(1);
-        ownerKey3 = TestKeys.privateKey(2);
-    }
-
-
     @Test
     public void newRevision() throws Exception {
         Contract c = Contract.fromYamlFile(ROOT_CONTRACT);
@@ -432,17 +408,6 @@ public class PermissionsTest extends ContractTestBase {
 
         assertEquals(oldValue, d.getString(field));
         assertEquals(newValue, d1.getString(field, null));
-    }
-
-    protected void sealCheckTrace(Contract c, boolean isOkShouldBeTrue) {
-        c.seal();
-        c.check();
-        c.traceErrors();
-
-        if (isOkShouldBeTrue)
-            assertTrue(c.isOk());
-        else
-            assertFalse(c.isOk());
     }
 
     private Contract basicContractCreation(final String fileName, final String keyFileName, final PrivateKey key) throws Exception {
