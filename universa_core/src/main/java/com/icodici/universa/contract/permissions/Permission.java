@@ -53,7 +53,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * @return permission id or null
      */
     public void setId(@NonNull String id) {
-        if( this.id != null)
+        if( this.id != null && !this.id.equals(id) )
             throw new IllegalStateException("permission id is already set");
         this.id = id;
     }
@@ -64,7 +64,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         return params;
     }
 
-    private Binder params;
+    protected Binder params;
 
     protected Permission() {
     }

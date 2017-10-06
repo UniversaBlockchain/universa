@@ -501,7 +501,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
     public <T> List<T> getList(String key, List<T> defaultValue) {
         Object x = get(key);
         if (x == null)
-            return null;
+            return defaultValue;
         List<T> list = Do.list(x);
         if (x == null)
             throw new IllegalArgumentException("can't make list for " + key + " from " + x);
@@ -582,5 +582,9 @@ public class Binder extends HashMap<String, Object> implements Serializable {
 
     public <T> T getOrThrow(String... path) {
         return (T) getBinderPathOrThrow(path).getOrThrow(path[path.length - 1]);
+    }
+
+    public <T> T getOrNull(String... path) {
+        return (T) getBinderPathOrThrow(path).get(path[path.length - 1]);
     }
 }

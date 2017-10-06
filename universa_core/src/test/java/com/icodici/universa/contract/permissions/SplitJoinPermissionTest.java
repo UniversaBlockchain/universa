@@ -7,20 +7,32 @@
 
 package com.icodici.universa.contract.permissions;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.PermissionsTest;
+import com.icodici.universa.contract.ContractTestBase;
+import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.tools.Binder;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
-public class SplitJoinPermissionTest extends PermissionsTest {
+public class SplitJoinPermissionTest extends ContractTestBase {
+    private PrivateKey ownerKey1;
+    private PrivateKey ownerKey2;
+    private PrivateKey ownerKey3;
+
+    @Before
+    public void setUp() throws Exception {
+        ownerKey1 = TestKeys.privateKey(3);
+        ownerKey2 = TestKeys.privateKey(1);
+        ownerKey3 = TestKeys.privateKey(2);
+    }
 
     @Test
     public void checkChanges() throws Exception {
@@ -58,6 +70,12 @@ public class SplitJoinPermissionTest extends PermissionsTest {
         c1.traceErrors();
         assertTrue(c1.isOk());
 
+        // and it should be the same after seriazling:
+        Contract restored = new Contract(c1.getLastSealedBinary());
+        restored.check();
+        restored.traceErrors();
+        assertTrue(restored.isOk());
+
         // TODO: check that value can't be just changed
         // TODO: check that the sum must be equal
         // TODO: check children have different branches
@@ -65,35 +83,52 @@ public class SplitJoinPermissionTest extends PermissionsTest {
     }
 
     @Test
-    public void shouldSplitWithChangedOwner() throws Exception {
-        Contract c = createCoin();
-        c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
-
-        Contract c2 = c.split(1)[0];
-        c2.setOwnerKey(ownerKey1);
-
-        sealCheckTrace(c2, true);
-        assertNotEquals(c.getOwner(), c2.getOwner());
-    }
-
-
-    @Test
-    public void shouldSplitWithChangedOwnerAndNewValue() throws Exception {
-        int defaultValue = 1000000;
-        int valueForSplit = 85;
+    public void testJoinSum() throws Exception {
 
         Contract c = createCoin();
+
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         Binder d = c.getStateData();
+        int a = 1000000;
+        assertEquals(a, d.getIntOrThrow("amount"));
+        c.seal();
+        c.check();
+        c.traceErrors();
+        assertTrue(c.check());
 
-        Contract c2 = c.splitValue("amount", new Decimal(valueForSplit));
-        c2.setOwnerKey(ownerKey1);
-        Binder d2 = c2.getStateData();
-        sealCheckTrace(c2, true);
+        // bad split: no changes
+        Contract c1 = c.createRevision(ownerKey2);
 
+        c1.seal();
+        c1.check();
+//        c1.traceErrors();
+        assertFalse(c1.isOk());
 
-        assertEquals(defaultValue - valueForSplit, d.getIntOrThrow("amount"));
-        assertEquals(valueForSplit, d2.getIntOrThrow("amount"));
+        // Good split
+        Contract c2 = c1.splitValue("amount", new Decimal(500));
+        assertEquals(a - 500, c1.getStateData().getIntOrThrow("amount"));
+        assertEquals(500, c2.getStateData().getIntOrThrow("amount"));
+
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+        assertTrue(c1.isOk());
+
+        Contract c3 = c1.createRevision(ownerKey2);
+        c3.getRevokingItems().add(c2);
+        c3.getStateData().set("amount", new Decimal(a));
+
+        c3.seal();
+        c3.check();
+        c3.traceErrors();
+        assertTrue(c3.isOk());
+
+    }
+
+    private Contract createCoin() throws IOException {
+        Contract c = Contract.fromYamlFile(rootPath + "coin.yml");
+        c.setOwnerKey(ownerKey2);
+        return c;
     }
 
     @Test
@@ -115,11 +150,12 @@ public class SplitJoinPermissionTest extends PermissionsTest {
         assertEquals(a - 500, c1.getStateData().getIntOrThrow("amount"));
         assertEquals(500, c2.getStateData().getIntOrThrow("amount"));
         c2.getStateData().set("amount", "500.00000001");
-
-        sealCheckTrace(c1, false);
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+        assertFalse(c1.isOk());
 
     }
-
     @Test
     public void cheatCreateValue2() throws Exception {
         Contract c = createCoin();
@@ -138,11 +174,5 @@ public class SplitJoinPermissionTest extends PermissionsTest {
         c1.traceErrors();
         assertFalse(c1.isOk());
 
-    }
-
-    private Contract createCoin() throws IOException {
-        Contract c = Contract.fromYamlFile(rootPath + "coin.yml");
-        c.setOwnerKey(ownerKey2);
-        return c;
     }
 }

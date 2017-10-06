@@ -20,6 +20,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -36,6 +37,19 @@ public class ContractTest extends ContractTestBase {
 ////        Boss.trace((Object)s.getOrThrow("definition","permissions"));
 //        Yaml yaml = new Yaml();
 //        System.out.println(yaml.dump(s));
+    }
+
+    @Test
+    public void getPath() throws Exception {
+        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        c.seal();
+        assertNull(c.get("state.data.hello.world"));
+        assertAlmostSame(ZonedDateTime.now(), c.get("definition.created_at"));
+        assertAlmostSame(ZonedDateTime.now(), c.get("state.created_at"));
+        assertEquals(c.getId(), c.get("id"));
+        assertEquals(c.getId(), c.get("state.origin"));
+        assertEquals(c.getId(), c.get("definition.origin"));
+        assertEquals("access certificate", c.get("definition.data.type"));
     }
 
     @Test
