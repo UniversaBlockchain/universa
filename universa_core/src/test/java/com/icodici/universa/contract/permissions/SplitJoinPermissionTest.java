@@ -8,21 +8,215 @@
 package com.icodici.universa.contract.permissions;
 
 import com.icodici.universa.Decimal;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTestBase;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.io.IOException;
 
-import static junit.framework.TestCase.assertFalse;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class SplitJoinPermissionTest extends ContractTestBase {
 
     @Test
     public void checkChanges() throws Exception {
+    }
+
+    @Test
+    public void shouldNotSplitWithWrongDataAmount() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        Contract c2 = c.split(1)[0];
+
+        sealCheckTrace(c2, true);
+
+        Binder sd2 = DefaultBiMapper.serialize(c2);
+        Binder state = (Binder) sd2.get("state");
+
+        assertNotNull(state);
+        assertTrue(state.size() > 0);
+
+        Binder data = (Binder) state.get("data");
+
+        assertNotNull(data);
+        assertTrue(data.size() > 0);
+
+        data.remove("amount");
+
+        Contract dc2 = DefaultBiMapper.deserialize(sd2);
+
+        sealCheckTrace(dc2, false);
+
+
+
+    }
+
+    @Test
+    public void shouldNotSplitWithWrongCreatedBy() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        Contract c2 = c.split(1)[0];
+
+        sealCheckTrace(c2, true);
+
+        Binder sd2 = DefaultBiMapper.serialize(c2);
+        Binder state = (Binder) sd2.get("state");
+
+        assertNotNull(state);
+        assertTrue(state.size() > 0);
+
+        state.set("createdBy", "other");
+
+        Contract dc2 = DefaultBiMapper.deserialize(sd2);
+
+        sealCheckTrace(dc2, false);
+
+
+        state.set("createdBy", "owner");
+
+        Contract dc3 = DefaultBiMapper.deserialize(sd2);
+
+        sealCheckTrace(dc3, false);
+
+
+        state.remove("createdBy");
+
+        Contract dc4 = DefaultBiMapper.deserialize(sd2);
+
+        sealCheckTrace(dc4, false);
+    }
+
+    @Test
+    public void shouldNotSplitWithWrongOrigin() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        Contract c2 = c.split(1)[0];
+
+        sealCheckTrace(c2, true);
+
+        Binder sd2 = DefaultBiMapper.serialize(c2);
+        Binder state = (Binder) sd2.get("state");
+
+        assertNotNull(state);
+        assertTrue(state.size() > 0);
+
+        HashId origin = HashId.withDigest(Do.randomNegativeBytes(64));
+        Binder originB = DefaultBiMapper.serialize(origin);
+
+        state.set("origin", originB);
+
+        Contract dc2 = DefaultBiMapper.deserialize(sd2);
+
+        sealCheckTrace(dc2, false);
+
+
+        state.remove("origin");
+
+        Contract dc3 = DefaultBiMapper.deserialize(sd2);
+
+        sealCheckTrace(dc3, false);
+    }
+
+    @Test
+    public void shouldNotSplitWithWrongParent() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        Contract c2 = c.split(1)[0];
+
+        sealCheckTrace(c2, true);
+
+
+        Binder sd2 = DefaultBiMapper.serialize(c2);
+        Binder state = (Binder) sd2.get("state");
+
+        assertNotNull(state);
+        assertTrue(state.size() > 0);
+
+        HashId parent = HashId.withDigest(Do.randomNegativeBytes(64));
+        Binder parentB = DefaultBiMapper.serialize(parent);
+
+        state.set("parent", parentB);
+
+        Contract dc2 = DefaultBiMapper.deserialize(sd2);
+
+        sealCheckTrace(dc2, false);
+
+
+        state.remove("parent");
+
+        Contract dc3 = DefaultBiMapper.deserialize(sd2);
+
+        sealCheckTrace(dc3, false);
+    }
+
+    @Test
+    public void shouldNotSplitWithNegativeCount() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        try {
+            c.split(-1);
+
+            fail("Expected exception to be thrown.");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().equalsIgnoreCase("split: count snould be > 0"));
+        }
+
+        try {
+            c.split(0);
+
+            fail("Expected exception to be thrown.");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().equalsIgnoreCase("split: count snould be > 0"));
+        }
+    }
+
+    @Test
+    public void shouldNotSplitWithAnotherRevision() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        c.getState().setBranchNumber(1);
+
+        try {
+            Contract c2 = c.split(1)[0];
+
+            fail("Expected exception to be thrown.");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().equalsIgnoreCase("this revision is already split"));
+        }
+
+    }
+
+    @Test
+    public void shouldNotSplitWithAnotherIssuer() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        Contract c2 = c.splitValue("amount", new Decimal(50));
+        c2.setIssuerKeys(ownerKey1.getPublicKey());
+
+        sealCheckTrace(c2, false);
     }
 
     @Test
@@ -139,6 +333,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         sealCheckTrace(c1, false);
 
     }
+
     @Test
     public void cheatCreateValue2() throws Exception {
         Contract c = createCoin();
