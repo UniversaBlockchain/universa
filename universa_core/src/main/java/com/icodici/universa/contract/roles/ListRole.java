@@ -105,6 +105,10 @@ public class ListRole extends Role {
                 this.mode == Mode.QUORUM && this.processQuorumMode(keys);
     }
 
+    /**
+     * @param keys to check the roles by mode
+     * @return
+     */
     private boolean processQuorumMode(Set<? extends AbstractKey> keys) {
         int counter = this.quorumSize;
         boolean result = counter == 0;

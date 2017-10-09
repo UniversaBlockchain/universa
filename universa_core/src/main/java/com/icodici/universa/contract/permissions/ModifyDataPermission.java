@@ -19,13 +19,15 @@ import java.util.*;
 @BiType(name = "ModifyDataPermission")
 public class ModifyDataPermission extends Permission {
 
+    public static final String FIELD_NAME = "modify_data";
+
     private Map<String, List<String>> fields = new HashMap<>();
 
     public ModifyDataPermission() {
     }
 
     public ModifyDataPermission(Role role, Binder params) {
-        super("modify_data", role);
+        super(FIELD_NAME, role);
         Object fields = params.get("fields");
         if (fields != null && fields instanceof Map) {
             this.fields.putAll((Map) fields);
@@ -41,6 +43,13 @@ public class ModifyDataPermission extends Permission {
         this.fields.putAll(fields);
     }
 
+    /**
+     * checkChanges processes the map of changes with the list of fields with predefined data options for a role.
+     *
+     * @param contract     source (valid) contract
+     * @param changedContract
+     * @param stateChanges map of changes, see {@link Delta} for details
+     */
     @Override
     public void checkChanges(Contract contract, Contract changedContract, Map<String, Delta> stateChanges) {
         Delta data = stateChanges.get("data");

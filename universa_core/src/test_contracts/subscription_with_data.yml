@@ -86,7 +86,11 @@ definition:
    revoke:
      - role: owner
      - role: issuer
-#
+
+  # who can modify the data and the list of fields with predefined data options for a role.
+  # at the current stage, owner can modify: 'description', 'direction', 'partner_name'
+  # and issuer can modify the field 'option'.
+  # ~ - is an empty value.
    modify_data:
      - role: owner
        fields:
