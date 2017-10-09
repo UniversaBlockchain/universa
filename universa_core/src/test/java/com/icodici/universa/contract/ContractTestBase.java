@@ -96,12 +96,12 @@ public class ContractTestBase extends TestCase {
     }
 
 
-    protected void sealCheckTrace(Contract c, boolean isOkShouldBeTrue) {
+    protected void sealCheckTrace(Contract c, boolean isOkShouldBe) {
         c.seal();
         c.check();
         c.traceErrors();
 
-        if (isOkShouldBeTrue)
+        if (isOkShouldBe)
             assertTrue(c.isOk());
         else
             assertFalse(c.isOk());

@@ -1150,4 +1150,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             this.base = base;
         }
     }
+
+    final public class ContractDev {
+
+        private Contract c;
+
+        public ContractDev(Contract c) throws Exception {
+            this.c = c;
+        }
+
+        public void setOrigin(HashId origin) {
+            this.c.getState().origin = origin;
+        }
+
+        public void setParent(HashId parent) {
+            this.c.getState().parent = parent;
+        }
+
+        public Contract getContract() {
+            return this.c;
+        }
+    }
 }

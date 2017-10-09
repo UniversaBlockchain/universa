@@ -22,20 +22,70 @@ import static org.junit.Assert.*;
 
 public class SplitJoinPermissionTest extends ContractTestBase {
 
+
     @Test
-    public void checkChanges() throws Exception {
+    public void shouldNotJoinWithWrongParent() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        Contract c1 = c.splitValue("amount", new Decimal(1));
+
+        Contract.ContractDev dev = c1.new ContractDev(c1);
+
+        //Check after split.
+        sealCheckTrace(c, true);
+
+        //Set wrong parent
+        HashId parent = HashId.withDigest(Do.randomNegativeBytes(64));
+        HashId origin = HashId.withDigest(Do.randomNegativeBytes(64));
+        dev.setParent(parent);
+        dev.setOrigin(origin);
+
+        c.getRevokingItems().add(dev.getContract());
+
+        sealCheckTrace(c, false);
     }
 
     @Test
-    public void shouldNotSplitWithWrongDataAmount() throws Exception {
+    public void shouldNotJoinWithWrongAmount() throws Exception {
+        int amount = 1000000;
+        int v = 1;
+
         Contract c = createCoin();
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(c, true);
 
+        // Split with 1
+        Contract c2 = c.splitValue("amount", new Decimal(v));
+        assertEquals(amount - v, c.getStateData().getIntOrThrow("amount"));
+        assertEquals(v, c2.getStateData().getIntOrThrow("amount"));
+
+        sealCheckTrace(c2, true);
+
+        Contract c3 = c.createRevision(ownerKey2);
+        c3.getRevokingItems().add(c2);
+
+        //Trying to hack the join and get bigger amount
+        c3.getStateData().set("amount", new Decimal(v + 1));
+        assertEquals(amount - v, c.getStateData().getIntOrThrow("amount"));
+        assertEquals(v + 1, c3.getStateData().getIntOrThrow("amount"));
+
+        sealCheckTrace(c3, false);
+    }
+
+    @Test
+    public void shouldNotSplitWithWrongDataAmountSerialize() throws Exception {
+        Contract c = createCoin();
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+
         Contract c2 = c.split(1)[0];
 
         sealCheckTrace(c2, true);
+
 
         Binder sd2 = DefaultBiMapper.serialize(c2);
         Binder state = (Binder) sd2.get("state");
@@ -54,12 +104,10 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
         sealCheckTrace(dc2, false);
 
-
-
     }
 
     @Test
-    public void shouldNotSplitWithWrongCreatedBy() throws Exception {
+    public void shouldNotSplitWithWrongCreatedBySerialize() throws Exception {
         Contract c = createCoin();
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
@@ -97,7 +145,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
     }
 
     @Test
-    public void shouldNotSplitWithWrongOrigin() throws Exception {
+    public void shouldNotSplitWithWrongOriginSerialize() throws Exception {
         Contract c = createCoin();
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
@@ -131,7 +179,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
     }
 
     @Test
-    public void shouldNotSplitWithWrongParent() throws Exception {
+    public void shouldNotSplitWithWrongParentSerialize() throws Exception {
         Contract c = createCoin();
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
@@ -207,7 +255,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
     }
 
     @Test
-    public void shouldNotSplitWithAnotherIssuer() throws Exception {
+    public void shouldNotSplitWithAnotherIssuerSerialize() throws Exception {
         Contract c = createCoin();
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
@@ -220,7 +268,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
     }
 
     @Test
-    public void shouldSplitWithChangedOwnerAndNewValue() throws Exception {
+    public void shouldSplitWithChangedOwnerAndNewValueSerialize() throws Exception {
         int defaultValue = 1000000;
         int valueForSplit = 85;
 
