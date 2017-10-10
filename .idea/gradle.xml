@@ -11,6 +11,7 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/common_tools" />
+            <option value="$PROJECT_DIR$/contrib/nanohttpd/core" />
             <option value="$PROJECT_DIR$/crypto" />
             <option value="$PROJECT_DIR$/uniclient" />
             <option value="$PROJECT_DIR$/universa_core" />

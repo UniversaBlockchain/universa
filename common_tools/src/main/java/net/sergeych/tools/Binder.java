@@ -41,7 +41,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Convert "key, value" pairs from varargs into a Params.
      *
      * @param args key, value pairs.Can be 0 length or any even length.
-     *
      * @return filled Map instance
      */
     static public Binder fromKeysValues(Object... args) {
@@ -84,9 +83,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Get the parameter as string. Throws exception if it is missing.
      *
      * @param key
-     *
      * @return string paramter
-     *
      * @throws IllegalArgumentException if the parameter does not exist
      */
     public String getStringOrThrow(String key) throws IllegalArgumentException {
@@ -115,7 +112,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Get the binary as byte[]. If the data are in the improper format, throws exception.
      *
      * @param key
-     *
      * @return data or null if key is missing
      */
     public byte[] getBinary(String key) {
@@ -126,8 +122,8 @@ public class Binder extends HashMap<String, Object> implements Serializable {
             return ((Bytes) x).toArray();
         if (x instanceof byte[])
             return (byte[]) x;
-        if( x instanceof Map) {
-            return (byte[]) DefaultBiMapper.deserialize((Map)x);
+        if (x instanceof Map) {
+            return (byte[]) DefaultBiMapper.deserialize((Map) x);
         }
         throw new ClassCastException("parameter can't be converted to byte[]");
     }
@@ -136,9 +132,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Get the binary parameter as byte[] and throws exception if it is missing
      *
      * @param key
-     *
      * @return
-     *
      * @throws IllegalArgumentException
      */
     @NonNull
@@ -154,7 +148,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * #getBoolean(String, Boolean)} } or {@link #getBinaryOrThrow(String)} to resolve this ambigity.
      *
      * @param key
-     *
      * @return
      */
     @Deprecated
@@ -168,7 +161,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      *
      * @param key          name of the parameter
      * @param defaultValue value to return if missing
-     *
      * @return value found in mao or the defaultValue
      */
     public Boolean getBoolean(String key, Boolean defaultValue) {
@@ -180,9 +172,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Get the boolean value of the specivied key or throw
      *
      * @param key to search
-     *
      * @return value as boolean
-     *
      * @throws IllegalArgumentException if key not found
      */
     public Boolean getBooleanOrThrow(String key) throws IllegalArgumentException {
@@ -200,7 +190,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * will work as expected.
      *
      * @param key key name
-     *
      * @return either the sub-hash or new empty hash.
      */
     @Deprecated
@@ -223,7 +212,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * @param key
      * @param value
      * @param keysValues
-     *
      * @return
      */
     public static Binder of(String key, Object value, Object... keysValues) {
@@ -249,7 +237,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Return Binder for the key, or empty binder if it does not exist.
      *
      * @param key
-     *
      * @return
      */
     public Binder getBinder(String key) {
@@ -280,7 +267,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Use {@link #getIntOrThrow(String)} instead.
      *
      * @param key parameter name
-     *
      * @return parameter value or throws {@link IllegalArgumentException}.
      */
     @Deprecated
@@ -290,7 +276,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
 
     /**
      * @param key parameter name
-     *
      * @return parameter value or throws {@link IllegalArgumentException}.
      */
     public int getIntOrThrow(String key) {
@@ -304,7 +289,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Use {@link #getLongOrThrow(String)} instead.
      *
      * @param key
-     *
      * @return
      */
     @Deprecated
@@ -355,7 +339,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      *
      * @param key
      * @param object
-     *
      * @return
      */
     public <T extends Object> T set(String key, T object) {
@@ -398,7 +381,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * Put several keys and values from array varargs. Sample: <code>setKeysValues("foo", 1, "bar", 2);</code>
      *
      * @param keyValueParis
-     *
      * @return self
      */
     public Binder putAll(Object... keyValueParis) {
@@ -473,7 +455,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      *
      * @param key
      * @param <T>
-     *
      * @return
      */
     public <T> T getOrThrow(String key) {
@@ -488,7 +469,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      *
      * @param key
      * @param <T>
-     *
      * @return list instance, not null.
      */
     public <T> List<T> getOrCreateList(String key) {
@@ -502,11 +482,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
         Object x = get(key);
         if (x == null)
             return defaultValue;
-        List<T> list = Do.list(x);
-        if (x == null)
-            throw new IllegalArgumentException("can't make list for " + key + " from " + x);
-        return list;
-
+        return Do.list(x);
     }
 
     public <T> List<T> getListOrThrow(String key) {
@@ -522,7 +498,6 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      *
      * @param name
      * @param delta
-     *
      * @return new value
      */
     public int addToInt(String name, int delta) {
@@ -547,14 +522,12 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      * </code></pre>
      *
      * @param path array of pah components
-     *
      * @return nonnull Binder instance
-     *
      * @throws IllegalArgumentException if such a binder does not exist in this Binder
      */
     public Binder getBinderOrThrow(String... path) {
         Binder b = this;
-        for(String p: path) {
+        for (String p : path) {
             b = b.getBinderOrThrow(p);
         }
         return b;
@@ -562,7 +535,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
 
     public String getStringOrThrow(String... path) {
         return getBinderPathOrThrow(path)
-                .getStringOrThrow(path[path.length-1]);
+                .getStringOrThrow(path[path.length - 1]);
     }
 
     /**
@@ -574,7 +547,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
      */
     private Binder getBinderPathOrThrow(String[] path) {
         Binder b = this;
-        for(int i=0; i<path.length-1; i++) {
+        for (int i = 0; i < path.length - 1; i++) {
             b = b.getBinderOrThrow(path[i]);
         }
         return b;

@@ -1129,7 +1129,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             context = new Context(getRevokingItem(getParent()));
             context.siblings.add(this);
             newItems.forEach(i -> {
-                if (i.getParent().equals(getParent()))
+                if (i.getParent() != null && i.getParent().equals(getParent()))
                     context.siblings.add(i);
             });
 
@@ -1148,6 +1148,27 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public Context(@NonNull Contract base) {
             this.base = base;
+        }
+    }
+
+    final public class ContractDev {
+
+        private Contract c;
+
+        public ContractDev(Contract c) throws Exception {
+            this.c = c;
+        }
+
+        public void setOrigin(HashId origin) {
+            this.c.getState().origin = origin;
+        }
+
+        public void setParent(HashId parent) {
+            this.c.getState().parent = parent;
+        }
+
+        public Contract getContract() {
+            return this.c;
         }
     }
 }
