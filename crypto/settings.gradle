@@ -1,4 +1,3 @@
 rootProject.name = 'crypto'
 include ':common_tools'
 project(':common_tools').projectDir = new File(settingsDir, '../common_tools')
-
