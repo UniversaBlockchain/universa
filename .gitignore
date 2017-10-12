@@ -67,6 +67,10 @@ universa_core/src/test_config_3/system/*
 # Gradle:
 .idea/**/gradle.xml
 .idea/**/libraries
+.idea/gradle.xml
+.idea/misc.xml
+.idea/modules.xml
+
 
 # CMake
 cmake-build-debug/
