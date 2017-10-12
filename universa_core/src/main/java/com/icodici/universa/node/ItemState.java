@@ -122,4 +122,8 @@ public enum ItemState {
     public boolean isPending() {
         return this == PENDING || this == PENDING_NEGATIVE || this == PENDING_POSITIVE;
     }
+
+    public boolean isPositive() {
+        return isApproved() || this == PENDING_POSITIVE;
+    }
 }

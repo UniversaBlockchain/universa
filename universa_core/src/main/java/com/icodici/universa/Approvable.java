@@ -7,6 +7,7 @@
 
 package com.icodici.universa;
 
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -68,6 +69,10 @@ public interface Approvable extends HashIdentifiable {
     default void addError(ErrorRecord r) {
     }
 
+    default ZonedDateTime getCreatedAt() {
+        return ZonedDateTime.now();
+    }
+
     default void addError(Errors code,String object,String message) {
         addError(new ErrorRecord(code, object, message));
     }
@@ -75,4 +80,6 @@ public interface Approvable extends HashIdentifiable {
     default Collection<ErrorRecord> getErrors() {
         return Collections.emptyList();
     }
+
+    default ZonedDateTime getExpiresAt() { return ZonedDateTime.now().plusHours(5);}
 }
