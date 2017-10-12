@@ -9,13 +9,17 @@ package com.icodici.universa.node;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
-import net.sergeych.biserializer.BiAdapter;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -88,6 +92,13 @@ public class ItemResult {
         this.expiresAt = expiresAt;
     }
 
+    public ItemResult(Boss.Reader br) throws IOException {
+        state = ItemState.values()[br.readInt()];
+        createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(br.readLong()), ZoneId.systemDefault());
+        expiresAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(br.readLong()), ZoneId.systemDefault());
+        haveCopy = br.read();
+    }
+
     public Binder toBinder() {
         return Binder.fromKeysValues(
                 "state", state.name(),
@@ -139,5 +150,12 @@ public class ItemResult {
                 return "ItemResult";
             }
         });
+    }
+
+    public void writeTo(Boss.Writer bw) throws IOException {
+        bw.writeObject(state.ordinal());
+        bw.writeObject(createdAt.toEpochSecond());
+        bw.writeObject(expiresAt.toEpochSecond());
+        bw.writeObject(haveCopy);
     }
 }

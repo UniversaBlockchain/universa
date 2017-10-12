@@ -870,6 +870,10 @@ public class Boss {
             return (Map<String, Object>) get();
         }
 
+        public long readLong() throws IOException {
+            Number n = get();
+            return n.longValue();
+        }
     }
 }
 
