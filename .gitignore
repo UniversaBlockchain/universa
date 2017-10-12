@@ -31,7 +31,6 @@ hs_err_pid*
 **/*.iml
 uniclient/src/test_files/simple_root_contract.unic
 universa_core/src/test_contracts/*.unic
-.idea/dbnavigator.xml
 .DS_Store
 *nogit*
 
@@ -54,6 +53,11 @@ universa_core/src/test_config_3/system/*
 .idea/**/workspace.xml
 .idea/**/tasks.xml
 .idea/dictionaries
+.idea/misc.xml
+.idea/modules.xml
+.idea/dbnavigator.xml
+.idea/vcs.xml
+.idea/.*
 
 # Sensitive or high-churn files:
 .idea/**/dataSources/
@@ -68,8 +72,6 @@ universa_core/src/test_config_3/system/*
 .idea/**/gradle.xml
 .idea/**/libraries
 .idea/gradle.xml
-.idea/misc.xml
-.idea/modules.xml
 
 
 # CMake
