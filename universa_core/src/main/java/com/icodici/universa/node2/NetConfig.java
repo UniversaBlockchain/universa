@@ -14,9 +14,21 @@ import java.util.Map;
 public class NetConfig {
 
     private final Map<Integer,NodeInfo> byNumber = new HashMap<>();
+    private final Map<String,NodeInfo> byName = new HashMap<>();
 
     public NetConfig(Collection<NodeInfo> nodes) {
-        nodes.forEach(n->byNumber.put(n.getId(), n));
+        nodes.forEach(n->{
+            byNumber.put(n.getId(), n);
+            byName.put(n.getName(), n);
+        });
+    }
+
+    public NodeInfo getInfo(String nodeName) {
+        return byName.get(nodeName);
+    }
+
+    public NodeInfo getInfo(int nodeId) {
+        return byNumber.get(nodeId);
     }
 
 }

@@ -27,7 +27,7 @@ public abstract class DatagramAdapter {
     /**
      * the queue where to put incoming data
      */
-    BlockingQueue<Datagram> inputQueue = new LinkedBlockingQueue<>();
+    BlockingQueue<byte[]> inputQueue = new LinkedBlockingQueue<>();
 
     /**
      * Maximum packet size in bytes. Adapter should try to send several blocks together as long as the overall encoded
@@ -35,7 +35,7 @@ public abstract class DatagramAdapter {
      */
     static public final int MAX_PACKET_SIZE = 512;
     private NodeInfo myNodeInfo;
-    private Consumer<Datagram> receiver = null;
+    private Consumer<byte[]> receiver = null;
     private final SymmetricKey sessionKey;
 
     /**
@@ -49,16 +49,16 @@ public abstract class DatagramAdapter {
         this.sessionKey = sessionKey;
     }
 
-    public abstract void send(Datagram dgram);
+    public abstract void send(NodeInfo destination, byte[] payload);
 
-    public void receive(Consumer<Datagram> receiver) {
-        Datagram d;
+    public void receive(Consumer<byte[]> receiver) {
+        byte[] payload;
         // first set the receiver so the queue won't be grow
         // the order does not matter anyway
         this.receiver = receiver;
         // now let's drain the buffer
-        while((d = inputQueue.poll()) != null ) {
-            receiver.accept(d);
+        while((payload = inputQueue.poll()) != null ) {
+            receiver.accept(payload);
         }
     }
 }
