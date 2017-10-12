@@ -381,7 +381,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
 
     /**
      * Given a private key, get the maximum size of the block, considering some digest will be used.
-     * See {@link OAEPEncoding::getInputBlockSize} for details.
+     * See {@link OAEPEncoding#getInputBlockSize} for details.
      */
     int getMaxBlockSize() {
         final int
