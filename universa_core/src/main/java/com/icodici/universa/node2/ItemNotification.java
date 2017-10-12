@@ -30,7 +30,7 @@ public class ItemNotification {
         this.requestResult = requestResult;
     }
 
-    public void packTo(Boss.Writer bw) throws IOException {
+    public void writeTo(Boss.Writer bw) throws IOException {
         bw.writeObject(itemId.getDigest());
         itemResult.writeTo(bw);
         bw.writeObject(requestResult);
@@ -41,5 +41,27 @@ public class ItemNotification {
         itemId = HashId.withDigest(br.readBinary());
         itemResult = new ItemResult(br);
         requestResult = br.read();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ItemNotification that = (ItemNotification) o;
+
+        if (requestResult != that.requestResult) return false;
+        if (!from.equals(that.from)) return false;
+        if (!itemId.equals(that.itemId)) return false;
+        return itemResult.equals(that.itemResult);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = from.hashCode();
+        result = 31 * result + itemId.hashCode();
+        result = 31 * result + itemResult.hashCode();
+        result = 31 * result + (requestResult ? 1 : 0);
+        return result;
     }
 }

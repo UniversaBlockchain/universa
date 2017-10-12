@@ -11,10 +11,13 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.boss.Boss;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+
+import static org.junit.Assert.assertEquals;
 
 public class ItemNotificationTest {
     @Test
@@ -26,6 +29,11 @@ public class ItemNotificationTest {
         ZonedDateTime expiresAt = now.plusDays(30);
         ItemResult ir = new ItemResult(ItemState.PENDING, false, now, expiresAt);
         n = new ItemNotification(ni, id1, ir, true);
+
+        Boss.Writer w = new Boss.Writer();
+        n.writeTo(w);
+        ItemNotification n1 = new ItemNotification(ni, new Boss.Reader(w.toByteArray()));
+        assertEquals(n, n1);
     }
 
 }
