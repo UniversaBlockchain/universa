@@ -10,6 +10,7 @@ package com.icodici.universa.node2;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class NetConfig {
 
@@ -29,6 +30,10 @@ public class NetConfig {
 
     public NodeInfo getInfo(int nodeId) {
         return byNumber.get(nodeId);
+    }
+
+    public void forEachNode(Consumer<NodeInfo> consumer) {
+        byNumber.forEach((i,n)->consumer.accept(n));
     }
 
 }

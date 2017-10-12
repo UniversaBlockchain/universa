@@ -442,10 +442,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return getRole("issuer");
     }
 
+    @Override
     public ZonedDateTime getCreatedAt() {
         return definition.createdAt;
     }
 
+    @Override
     public ZonedDateTime getExpiresAt() {
         return definition.expiresAt;
     }

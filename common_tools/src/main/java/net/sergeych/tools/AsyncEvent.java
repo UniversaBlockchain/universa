@@ -78,6 +78,7 @@ public class AsyncEvent<T> {
      *
      * @throws InterruptedException
      */
+    @Deprecated
     public T waitFired() throws InterruptedException {
         return await();
     }
@@ -111,14 +112,10 @@ public class AsyncEvent<T> {
      * @throws InterruptedException
      * @throws TimeoutException     if the event was not fired during the specified time
      */
-    public T await(long milliseconds) throws TimeoutException {
+    public T await(long milliseconds) throws TimeoutException, InterruptedException {
         synchronized (mutex) {
             if (!fired) {
-                try {
-                    mutex.wait(milliseconds);
-                } catch (InterruptedException e) {
-                    Thread.interrupted();
-                }
+                mutex.wait(milliseconds);
                 if (!fired)
                     throw new TimeoutException();
             }
@@ -126,4 +123,7 @@ public class AsyncEvent<T> {
         return result;
     }
 
+    public final void fire() {
+        fire(null);
+    }
 }
