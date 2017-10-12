@@ -17,7 +17,6 @@ public class Datagram {
     public byte[] getPayload() {
         return payload;
     }
-
     private final NodeInfo destination;
     private final byte[] payload;
 

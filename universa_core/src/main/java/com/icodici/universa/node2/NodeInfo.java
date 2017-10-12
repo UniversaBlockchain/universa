@@ -23,15 +23,15 @@ public class NodeInfo {
     private final InetSocketAddress nodeAddress;
     private final InetSocketAddress clientAddress;
     private final int id;
-    private final String nodeId;
+    private final String nodeName;
 
-    public NodeInfo(@NonNull PublicKey publicKey, int id, @NonNull String nodeId, @NonNull String host, int datagramPort, int clientHttpPort) {
+    public NodeInfo(@NonNull PublicKey publicKey, int id, @NonNull String nodeName, @NonNull String host, int datagramPort, int clientHttpPort) {
         assert id > 0;
         assert datagramPort > 0;
         assert clientHttpPort > 0;
         this.publicKey = publicKey;
         this.id = id;
-        this.nodeId = nodeId;
+        this.nodeName = nodeName;
         nodeAddress = new InetSocketAddress(host, datagramPort);
         clientAddress = new InetSocketAddress(host, clientHttpPort);
     }
@@ -48,12 +48,20 @@ public class NodeInfo {
         return clientAddress;
     }
 
+    /**
+     * Integer node it is now the preferred way to identify nodes
+     * @return
+     */
     public int getId() {
         return id;
     }
 
-    public String getNodeId() {
-        return nodeId;
+    /**
+     * String node name is now a secondary identificator
+     * @return
+     */
+    public String getName() {
+        return nodeName;
     }
 
     @Override
