@@ -83,9 +83,17 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return String.format("RSAOAEPPublicKey#%s", System.identityHashCode(this));
+    }
+
+    /**
      * Hidden (package-private) constructor, for internal/unittest usage.
      */
-    public RSAOAEPPublicKey(byte[] n, byte[] e, HashType oaepHashType, HashType mgf1HashType, SecureRandom rng) {
+    RSAOAEPPublicKey(byte[] n, byte[] e, HashType oaepHashType, HashType mgf1HashType, SecureRandom rng) {
         init(n, e, oaepHashType, mgf1HashType, rng);
     }
 
@@ -121,10 +129,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     }
 
     /**
-     * Check that this key instance is suitable for encryption too (some keys can provide
-     * checkSignature only functionality).
-     *
-     * @return true if this key can encrypt.
+     * {@inheritDoc}
      */
     @Override
     public boolean canEncrypt() {
@@ -132,7 +137,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     }
 
     /**
-     * @return bit strength of the key, e.g. 2048 ro RSA.
+     * {@inheritDoc}
      */
     @Override
     public int getBitStrength() throws IllegalStateException {
@@ -144,7 +149,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     }
 
     /**
-     * True if the key is properly initialized
+     * {@inheritDoc}
      */
     @Override
     public boolean isInitialized() {
@@ -152,11 +157,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     }
 
     /**
-     * Public-key encryption of the block.
-     *
-     * @param plaintext data to encrypt.
-     * @throws EncryptionError if the key can't encrypt, data too large for the key or any other error that prevents
-     *                         data to be encrypted.
+     * {@inheritDoc}
      */
     @NonNull
     @Override
@@ -173,17 +174,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     }
 
     /**
-     * Check the digital signature. As very large documents can be signed, we represent them as
-     * streams. The document can be way too large to load the whole into memory, so implementations
-     * should calculate the signature by reading portions of it from the stream.
-     * <p>
-     * The method must not throw exception if the signature is bad. e.g. improper, has wrong
-     * structure and so on. Instead, it must return false.
-     *
-     * @param input     source data
-     * @param signature signature to check
-     * @return true if the signature is valid, false if not.
-     * @throws IOException failed to read the input stream (including empty stream, EOF at start)
+     * {@inheritDoc}
      */
     @NonNull
     @Override
@@ -229,11 +220,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     }
 
     /**
-     * Any encryption type has an unique tag. For RSAES-OAEP the tag is r1. For elliptic curve
-     * variant used in bitcoin, "e1" and so on. The tag is not intended to be human readable, it is
-     * used to properly select decryption method and not waste package space.
-     *
-     * @return encryption method tag
+     * {@inheritDoc}
      */
     @NonNull
     @Override
@@ -241,6 +228,9 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
         return "r1";
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @NonNull
     @Override
     public Map<String, Object> toHash() throws IllegalStateException {
@@ -261,10 +251,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     }
 
     /**
-     * Load object state from the hash
-     *
-     * @param hash with data
-     * @throws Error if the data are not suitable to load the object state
+     * {@inheritDoc}
      */
     @Override
     public void updateFromHash(Map<String, Object> hash) throws Error {

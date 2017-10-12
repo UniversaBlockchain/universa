@@ -15,7 +15,6 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
-import org.yaml.snakeyaml.Yaml;
 
 import java.util.ArrayList;
 import java.util.Collections;

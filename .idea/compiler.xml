@@ -4,10 +4,14 @@
     <bytecodeTargetLevel>
       <module name="common_tools_main" target="1.8" />
       <module name="common_tools_test" target="1.8" />
+      <module name="contrib_nanohttpd_core_main" target="1.8" />
+      <module name="contrib_nanohttpd_core_test" target="1.8" />
       <module name="crypto_main" target="1.8" />
       <module name="crypto_test" target="1.8" />
       <module name="dev-universa_main" target="1.8" />
       <module name="dev-universa_test" target="1.8" />
+      <module name="nanohttpd_main" target="1.8" />
+      <module name="nanohttpd_test" target="1.8" />
       <module name="new_universa-uniclient_main" target="1.8" />
       <module name="new_universa-uniclient_test" target="1.8" />
       <module name="new_universa-universa_core_main" target="1.8" />
