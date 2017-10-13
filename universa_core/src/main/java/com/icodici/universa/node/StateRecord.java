@@ -79,7 +79,7 @@ public class StateRecord implements HashIdentifiable {
         this.id = id;
     }
 
-    private ItemState state = ItemState.UNDEFINED;
+    private volatile ItemState state = ItemState.UNDEFINED;
     private HashId id;
     private @NonNull ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(300);
     private @NonNull ZonedDateTime createdAt = ZonedDateTime.now();
@@ -93,7 +93,7 @@ public class StateRecord implements HashIdentifiable {
         dirty = true;
     }
 
-    public StateRecord setState(ItemState newState) {
+    public final StateRecord setState(ItemState newState) {
         if (state != newState) {
             state = newState;
             setDirty();

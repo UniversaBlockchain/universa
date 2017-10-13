@@ -8,13 +8,17 @@
 package com.icodici.universa.node2;
 
 import com.icodici.universa.node.*;
-import net.sergeych.utils.LogPrinter;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
@@ -53,14 +57,23 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void registerGoodItem() throws Exception {
-        TestItem ok = new TestItem(true);
-        LogPrinter.showDebug(true);
-        node.registerItem(ok);
-        for(Node n: nodes) {
-            System.out.println("--- checking node "+n);
-            ItemResult r = n.waitItem(ok.getId(), 1500);
-            assertEquals(ItemState.APPROVED, r.state);
-            System.out.println("--- processed "+n+" / "+System.identityHashCode(n));
+        int N = 10;
+        for(int k=0; k<10; k++ ) {
+//            StopWatch.measure(true, () -> {
+                for (int i = 0; i < N; i++) {
+                    TestItem ok = new TestItem(true);
+                    node.registerItem(ok);
+                    for (Node n : nodes) {
+                        try {
+                            ItemResult r = n.waitItem(ok.getId(), 2500);
+                            assertEquals(ItemState.APPROVED, r.state);
+                        } catch (TimeoutException e) {
+                            fail("timeout");
+                        }
+                    }
+                }
+//            });
+            assertThat(node.countElections(), is(lessThan(10)));
         }
     }
 
