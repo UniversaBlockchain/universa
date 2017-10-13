@@ -10,6 +10,7 @@ package com.icodici.universa.node2;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.utils.LogPrinter;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -18,23 +19,25 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.Consumer;
 
-public class TestEmulatedNetwork extends Network{
+public class TestEmulatedNetwork extends Network {
 
     private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(8);
-    private Map<NodeInfo,Node> nodes = new HashMap<>();
-    private HashMap<NodeInfo,Consumer<Notification>> consumers = new HashMap<>();
+    private Map<NodeInfo, Node> nodes = new HashMap<>();
+    private HashMap<NodeInfo, Consumer<Notification>> consumers = new HashMap<>();
+
+    private static LogPrinter log = new LogPrinter("TEMN");
 
     public TestEmulatedNetwork(NetConfig netConfig) {
         super(netConfig);
     }
 
-    public void addNode(NodeInfo ni,Node node) {
+    public void addNode(NodeInfo ni, Node node) {
         nodes.put(ni, node);
     }
 
     @Override
     public void deliver(NodeInfo toNode, Notification notification) {
-        executorService.submit( ()-> {
+        executorService.submit(() -> {
             Consumer<Notification> consumer = consumers.get(toNode);
             assert consumer != null;
             consumer.accept(notification);
@@ -42,8 +45,8 @@ public class TestEmulatedNetwork extends Network{
     }
 
     @Override
-    public void subscribe(NodeInfo info,Consumer<Notification> notificationConsumer) {
-        consumers.put(info,notificationConsumer);
+    public void subscribe(NodeInfo info, Consumer<Notification> notificationConsumer) {
+        consumers.put(info, notificationConsumer);
     }
 
     @Override

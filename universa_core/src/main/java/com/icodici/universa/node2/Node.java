@@ -45,7 +45,7 @@ public class Node {
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
 
-    private static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(256);
+    private static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
         this.config = config;
@@ -109,7 +109,7 @@ public class Node {
             if (x instanceof ItemResult) {
                 ItemResult r = (ItemResult) x;
                 // we have solution and need not answer, we answer if requested:
-                if( in.answerIsRequested() ) {
+                if (in.answerIsRequested()) {
                     network.deliver(
                             from,
                             new ItemNotification(myInfo, in.getItemId(), r, false)
@@ -120,20 +120,23 @@ public class Node {
             if (x instanceof ItemProcessor) {
                 ItemProcessor ip = (ItemProcessor) x;
                 ItemResult result = in.getItemResult();
-                if( result.state != ItemState.PENDING )
+                debug("notification from " + in.getFrom() + ": " + in.getItemId() + ": " + in.getItemResult() + ", " + in.answerIsRequested());
+                if (result.haveCopy) {
+//                    debug("reported source for "+ip.itemId+": "+in.getFrom());
+                    ip.addToSources(from);
+                }
+                if (result.state != ItemState.PENDING)
                     ip.vote(from, result.state);
                 else
-                    log.e("-- pending vote on "+in.getItemId()+" from "+from);
-                if (result.haveCopy)
-                    ip.addToSources(from);
+                    log.e("-- pending vote on " + in.getItemId() + " from " + from);
                 // We answer only if (1) answer is requested and (2) we have position on the subject:
-                if( in.answerIsRequested() && ip.record.getState() != ItemState.PENDING ) {
+                if (in.answerIsRequested() && ip.record.getState() != ItemState.PENDING) {
                     network.deliver(
                             from,
                             new ItemNotification(myInfo,
                                                  in.getItemId(),
                                                  ip.getResult(),
-                                                 ip.hasVoteFrom(from))
+                                                 ip.needsVoteFrom(from))
                     );
                 }
                 return;
@@ -213,6 +216,10 @@ public class Node {
         return cache.get(itemId);
     }
 
+    public int countElections() {
+        return processors.size();
+    }
+
     private class ItemProcessor {
 
         private Approvable item;
@@ -241,12 +248,8 @@ public class Node {
             record = ledger.findOrCreate(itemId);
             expiresAt = Instant.now().plus(config.getMaxCacheAge());
             consensusFound = false;
-            executorService.submit(() -> {
-                if( this.item != null )
-                    itemDownloaded();
-                else
-                    download();
-            });
+            if (this.item != null)
+                executorService.submit(() -> itemDownloaded());
         }
 
         private boolean isExpired() {
@@ -258,38 +261,47 @@ public class Node {
         }
 
         private void download() {
-            if (isExpired() || item != null)
-                return;
-            debug("download "+itemId+" sources: "+sources);
-            if (!sources.isEmpty()) {
-                try {
-                    // first we have to wait for sources
-                    NodeInfo source = Do.sample(sources);
-                    item = network.getItem(itemId, source, config.getMaxGetItemTime());
-                    if (item != null) {
-                        itemDownloaded();
-                        return;
+            while (!isExpired() && item == null) {
+                if (sources.isEmpty()) {
+                    log.e("empty sources for download taks, stopping");
+                    return;
+                } else {
+                    try {
+                        // first we have to wait for sources
+                        NodeInfo source;
+                        // Important: it could be disturbed by notifications
+                        synchronized (sources) {
+                            source = Do.sample(sources);
+                        }
+                        item = network.getItem(itemId, source, config.getMaxGetItemTime());
+                        if (item != null) {
+                            debug("downloaded " + itemId + " from " + source);
+                            itemDownloaded();
+                            return;
+                        } else {
+                            debug("failed to download " + itemId + " from " + source);
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
-                } catch (InterruptedException e) {
                 }
             }
-            // reschedule self
-            rescheduleDownload(config.getPollTime().toMillis());
         }
 
         private final void itemDownloaded() {
-            debug("downloaded: "+itemId);
             cache.put(item);
             checkItem();
             downloadedEvent.fire();
             startPolling();
         }
 
-        private void rescheduleDownload(long delayMillis) {
-            if (downloader != null && !downloader.isDone())
-                downloader.cancel(false);
-            downloader = executorService.schedule(() -> download(), delayMillis, TimeUnit.MILLISECONDS);
-
+        private void pulseDownload() {
+            synchronized (mutex) {
+                if (item == null && (downloader == null || downloader.isDone())) {
+                    debug("submitting download");
+                    downloader = (ScheduledFuture<?>) executorService.submit(() -> download());
+                }
+            }
         }
 
         private final void startPolling() {
@@ -298,12 +310,14 @@ public class Node {
             poller = executorService.scheduleAtFixedRate(() -> poll(), millis, millis, TimeUnit.MILLISECONDS);
         }
 
+        private boolean checkStarted = false;
+
         private final void checkItem() {
-            if( record.getState() != ItemState.PENDING) {
-                log.e(Node.this.toString()+": re-checking item "+itemId+" ignored");
-                return;
-            }
-            debug("Checking "+itemId);
+            if (checkStarted)
+                throw new RuntimeException("double check!");
+
+            ItemState newState;
+            debug("Checking " + itemId + " state was " + record.getState());
             // Check the internal state
             // Too bad if basic check isn't passed, we will not process it further
             if (item.check()) {
@@ -336,11 +350,15 @@ public class Node {
                 }
             }
             boolean checkPassed = item.getErrors().isEmpty();
-            ItemState s = checkPassed ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE;
-            record.setState(s);
+            synchronized (mutex) {
+                if (record.getState() == ItemState.PENDING) {
+                    newState = checkPassed ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE;
+                    setState(newState);
+                }
+            }
             record.setExpiresAt(item.getExpiresAt());
             record.save();
-            vote(myInfo, s);
+            vote(myInfo, record.getState());
             broadcastMyState();
         }
 
@@ -356,7 +374,7 @@ public class Node {
                     poller.cancel(false);
                     if (downloader != null)
                         downloader.cancel(false);
-                    doneEvent.fire();
+                    close();
                     return;
                 }
             }
@@ -374,6 +392,7 @@ public class Node {
 
         private final void vote(NodeInfo node, ItemState state) {
             boolean positiveConsenus = false;
+            boolean negativeConsenus = false;
             synchronized (mutex) {
                 if (consensusFound)
                     return;
@@ -389,31 +408,28 @@ public class Node {
                 remove.remove(node);
                 if (negativeNodes.size() >= config.getNegativeConsensus()) {
                     consensusFound = true;
-                    positiveConsenus = false;
+                    negativeConsenus = true;
                 } else if (positiveNodes.size() >= config.getPositiveConsensus()) {
                     consensusFound = positiveConsenus = true;
                 }
+                debug("vote for " + itemId + " from " + node + ": " + state + " > " + positiveNodes.size() + "/" +
+                              negativeNodes.size() + " consFound=" + consensusFound + ": positive=" + positiveConsenus);
+                if (!consensusFound)
+                    return;
             }
-            debug("vote for "+itemId+" from " + node + ": " + state + " > " + positiveNodes.size() + "/" +
-                          negativeNodes.size() + " consFound=" + consensusFound + ": positive=" + positiveConsenus);
-            if (consensusFound) {
-                if (positiveConsenus)
-                    approveAndCommit();
-                else
-                    rollbackChanges(ItemState.DECLINED);
-            }
-        }
-
-        private final void stop() {
-            poller.cancel(false);
+            if (positiveConsenus) {
+                approveAndCommit();
+            } else if (negativeConsenus) {
+                rollbackChanges(ItemState.DECLINED);
+            } else
+                throw new RuntimeException("error: consensus reported without consensus");
         }
 
         private final void approveAndCommit() {
             // todo: fix logic to surely copy approving item dependency. e.g. download original or at least dependencies
-            debug("Approved: " + itemId);
             // first we need to flag our state as approved
-            record.setState(ItemState.APPROVED);
-            executorService.submit(() -> downloadAndCommit());
+            setState(ItemState.APPROVED);
+            executorService.submit(()->downloadAndCommit());
         }
 
         private void downloadAndCommit() {
@@ -424,11 +440,6 @@ public class Node {
                     // If positive consensus os found, we can spend more time for final download, and can try
                     // all the network as the source:
                     expiresAt = Instant.now().plus(config.getMaxDownloadOnApproveTime());
-                    network.eachNode(n -> {
-                        if (!sources.contains(n))
-                            sources.add(n);
-                    });
-                    rescheduleDownload(0);
                     downloadedEvent.await(getMillisLeft());
                 }
                 // We use the caching capability of ledger so we do not get records from
@@ -451,16 +462,29 @@ public class Node {
                 lockedToCreate.clear();
                 lockedToRevoke.clear();
                 record.save();
-                if( record.getState() != ItemState.APPROVED ) {
+                if (record.getState() != ItemState.APPROVED) {
                     log.e("record is not approved2 " + record.getState());
                 }
-                debug("done commit on approved for "+itemId);
+                debug("approval done for " + itemId);
             } catch (TimeoutException | InterruptedException e) {
                 debug("commit: failed to load item " + itemId + " ledger will not be altered, the record will be destroyed");
-                record.setState(ItemState.UNDEFINED);
+                setState(ItemState.UNDEFINED);
                 record.destroy();
             }
+            close();
+        }
+
+        private void close() {
             doneEvent.fire();
+            if( poller!= null )
+                poller.cancel(false);
+            processors.remove(itemId);
+        }
+
+        private final void setState(ItemState newState) {
+            synchronized (mutex) {
+                record.setState(newState);
+            }
         }
 
         private void rollbackChanges(ItemState newState) {
@@ -473,7 +497,7 @@ public class Node {
                 for (StateRecord r : lockedToCreate)
                     r.unlock().save();
                 lockedToCreate.clear();
-                record.setState(newState);
+                setState(newState);
                 ZonedDateTime expiration = ZonedDateTime.now()
                         .plus(newState == ItemState.REVOKED ?
                                       config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
@@ -481,7 +505,7 @@ public class Node {
                 record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
                 return null;
             });
-            doneEvent.fire();
+            close();
         }
 
 
@@ -489,8 +513,15 @@ public class Node {
             return new ItemResult(record, item != null);
         }
 
-        private final boolean hasVoteFrom(NodeInfo from) {
-            return positiveNodes.contains(from) || negativeNodes.contains(from);
+        /**
+         * true if we need to get vote from a node
+         *
+         * @param node we might need vote from
+         *
+         * @return
+         */
+        private final boolean needsVoteFrom(NodeInfo node) {
+            return record.getState().isPending() && !positiveNodes.contains(node) && !negativeNodes.contains(node);
         }
 
         private final void addToSources(NodeInfo node) {
@@ -498,8 +529,8 @@ public class Node {
                 return;
             synchronized (sources) {
                 if (sources.add(node)) {
-                    if (downloader != null && !downloader.isDone())
-                        rescheduleDownload(0);
+                    debug("added source: "+sources);
+                    pulseDownload();
                 }
             }
         }
