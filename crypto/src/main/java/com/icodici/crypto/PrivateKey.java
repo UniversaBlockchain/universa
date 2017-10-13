@@ -76,8 +76,12 @@ public class PrivateKey extends AbstractKey {
         return privateKey.decrypt(encrypted);
     }
 
+    private PublicKey cachedPublicKey;
+
     public PublicKey getPublicKey() {
-        return new PublicKey(privateKey.getPublicKey());
+        if( cachedPublicKey == null )
+           cachedPublicKey = new PublicKey(privateKey.getPublicKey());
+        return cachedPublicKey;
     }
 
     public byte[] pack() {

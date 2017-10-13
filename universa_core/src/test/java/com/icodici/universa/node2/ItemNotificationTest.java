@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 public class ItemNotificationTest {
     @Test
     public void packUnpack() throws Exception {
-        NodeInfo ni = new NodeInfo(TestKeys.publicKey(0),1, "test1", "localhost", 17101, 17102);
+        NodeInfo ni = new NodeInfo(TestKeys.publicKey(0),1, "test1", "localhost", 17101, 17102, 17104);
         HashId id1 = HashId.createRandom();
         ZonedDateTime now = ZonedDateTime.now().truncatedTo(ChronoUnit.SECONDS);
         ZonedDateTime expiresAt = now.plusDays(30);

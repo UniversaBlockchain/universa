@@ -53,7 +53,7 @@ public class Node {
         this.ledger = ledger;
         this.network = network;
         cache = new ItemCache(config.getMaxCacheAge());
-        network.subscribe(notification -> onNotification(notification));
+        network.subscribe(myInfo, notification -> onNotification(notification));
     }
 
     /**
@@ -87,15 +87,16 @@ public class Node {
      * returns state immediately.
      *
      * @param itemId item ti check or wait for
+     *
      * @return item state
      */
-    public ItemResult waitItem(HashId itemId,long millisToWait) throws TimeoutException, InterruptedException {
+    public ItemResult waitItem(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
         Object x = checkItemInternal(itemId, null, false);
         if (x instanceof ItemProcessor) {
             ((ItemProcessor) x).doneEvent.await(millisToWait);
             return ((ItemProcessor) x).getResult();
         }
-        return (ItemResult)x;
+        return (ItemResult) x;
     }
 
     private final void onNotification(Notification notification) {
@@ -107,27 +108,37 @@ public class Node {
             NodeInfo from = in.getFrom();
             if (x instanceof ItemResult) {
                 ItemResult r = (ItemResult) x;
-                // we have solution and need not answer
-                network.deliver(
-                        from,
-                        new ItemNotification(myInfo, in.getItemId(), r, false)
-                );
+                // we have solution and need not answer, we answer if requested:
+                if( in.answerIsRequested() ) {
+                    network.deliver(
+                            from,
+                            new ItemNotification(myInfo, in.getItemId(), r, false)
+                    );
+                }
+                return;
             }
             if (x instanceof ItemProcessor) {
                 ItemProcessor ip = (ItemProcessor) x;
                 ItemResult result = in.getItemResult();
-                ip.vote(from, result.state);
+                if( result.state != ItemState.PENDING )
+                    ip.vote(from, result.state);
+                else
+                    log.e("-- pending vote on "+in.getItemId()+" from "+from);
                 if (result.haveCopy)
                     ip.addToSources(from);
-                network.deliver(
-                        from,
-                        new ItemNotification(myInfo,
-                                             in.getItemId(),
-                                             ip.getResult(),
-                                             ip.hasVoteFrom(from))
-                );
+                // We answer only if (1) answer is requested and (2) we have position on the subject:
+                if( in.answerIsRequested() && ip.record.getState() != ItemState.PENDING ) {
+                    network.deliver(
+                            from,
+                            new ItemNotification(myInfo,
+                                                 in.getItemId(),
+                                                 ip.getResult(),
+                                                 ip.hasVoteFrom(from))
+                    );
+                }
+                return;
             }
-            debug("impossible state: onNotification can't have invalid state from local check");
+            debug("impossible state: onNotification can't have invalid state from local check\n" + x);
         }
     }
 
@@ -191,6 +202,17 @@ public class Node {
         return "Node(" + myInfo.getId() + ")";
     }
 
+    /**
+     * Get the cached item.
+     *
+     * @param itemId
+     *
+     * @return cached item or null if it is missing
+     */
+    public Approvable getItem(HashId itemId) {
+        return cache.get(itemId);
+    }
+
     private class ItemProcessor {
 
         private Approvable item;
@@ -201,8 +223,8 @@ public class Node {
 
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
-        private List<StateRecord> lockedToRevoke;
-        private List<StateRecord> lockedToCreate;
+        private List<StateRecord> lockedToRevoke = new ArrayList<>();
+        private List<StateRecord> lockedToCreate = new ArrayList<>();
         private boolean consensusFound;
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
@@ -219,7 +241,12 @@ public class Node {
             record = ledger.findOrCreate(itemId);
             expiresAt = Instant.now().plus(config.getMaxCacheAge());
             consensusFound = false;
-            executorService.submit(() -> download());
+            executorService.submit(() -> {
+                if( this.item != null )
+                    itemDownloaded();
+                else
+                    download();
+            });
         }
 
         private boolean isExpired() {
@@ -231,12 +258,9 @@ public class Node {
         }
 
         private void download() {
-            if (isExpired())
+            if (isExpired() || item != null)
                 return;
-            if( item != null ) {
-                itemDownloaded();
-                return;
-            }
+            debug("download "+itemId+" sources: "+sources);
             if (!sources.isEmpty()) {
                 try {
                     // first we have to wait for sources
@@ -254,6 +278,7 @@ public class Node {
         }
 
         private final void itemDownloaded() {
+            debug("downloaded: "+itemId);
             cache.put(item);
             checkItem();
             downloadedEvent.fire();
@@ -274,9 +299,11 @@ public class Node {
         }
 
         private final void checkItem() {
-            lockedToRevoke = new ArrayList<>();
-            lockedToCreate = new ArrayList<>();
-
+            if( record.getState() != ItemState.PENDING) {
+                log.e(Node.this.toString()+": re-checking item "+itemId+" ignored");
+                return;
+            }
+            debug("Checking "+itemId);
             // Check the internal state
             // Too bad if basic check isn't passed, we will not process it further
             if (item.check()) {
@@ -367,10 +394,14 @@ public class Node {
                     consensusFound = positiveConsenus = true;
                 }
             }
-            if (positiveConsenus)
-                approveAndCommit();
-            else
-                rollbackChanges(ItemState.DECLINED);
+            debug("vote for "+itemId+" from " + node + ": " + state + " > " + positiveNodes.size() + "/" +
+                          negativeNodes.size() + " consFound=" + consensusFound + ": positive=" + positiveConsenus);
+            if (consensusFound) {
+                if (positiveConsenus)
+                    approveAndCommit();
+                else
+                    rollbackChanges(ItemState.DECLINED);
+            }
         }
 
         private final void stop() {
@@ -379,7 +410,7 @@ public class Node {
 
         private final void approveAndCommit() {
             // todo: fix logic to surely copy approving item dependency. e.g. download original or at least dependencies
-            debug(" approved: " + itemId);
+            debug("Approved: " + itemId);
             // first we need to flag our state as approved
             record.setState(ItemState.APPROVED);
             executorService.submit(() -> downloadAndCommit());
@@ -419,6 +450,11 @@ public class Node {
                 }
                 lockedToCreate.clear();
                 lockedToRevoke.clear();
+                record.save();
+                if( record.getState() != ItemState.APPROVED ) {
+                    log.e("record is not approved2 " + record.getState());
+                }
+                debug("done commit on approved for "+itemId);
             } catch (TimeoutException | InterruptedException e) {
                 debug("commit: failed to load item " + itemId + " ledger will not be altered, the record will be destroyed");
                 record.setState(ItemState.UNDEFINED);
@@ -450,7 +486,7 @@ public class Node {
 
 
         public @NonNull ItemResult getResult() {
-            return new ItemResult(record);
+            return new ItemResult(record, item != null);
         }
 
         private final boolean hasVoteFrom(NodeInfo from) {

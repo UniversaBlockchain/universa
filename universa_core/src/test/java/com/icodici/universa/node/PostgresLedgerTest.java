@@ -60,7 +60,6 @@ public class PostgresLedgerTest extends TestCase {
 //    @Test
     public void ledgerBenchmark() throws Exception {
         ExecutorService es = Executors.newCachedThreadPool();
-//        ExecutorService es = Executors.newSingleThreadExecutor();
         List<Future<?>> ff = new ArrayList<>();
         int nMax = 32;
         int nIds = 4000;
