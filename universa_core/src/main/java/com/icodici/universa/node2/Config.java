@@ -8,11 +8,13 @@
 package com.icodici.universa.node2;
 
 import java.time.Duration;
+import java.time.temporal.TemporalAmount;
 
 public class Config {
 
     private Duration maxItemCreationAge = Duration.ofDays(5);
     private Duration revokedItemExpiration = maxItemCreationAge.plusDays(10);
+    private TemporalAmount maxDownloadOnApproveTime = Duration.ofMinutes(5);
 
     public Duration getDeclinedItemExpiration() {
         return declinedItemExpiration;
@@ -80,5 +82,13 @@ public class Config {
 
     public void setPollTime(Duration pollTime) {
         this.pollTime = pollTime;
+    }
+
+    public TemporalAmount getMaxDownloadOnApproveTime() {
+        return maxDownloadOnApproveTime;
+    }
+
+    public void setMaxDownloadOnApproveTime(TemporalAmount maxDownloadOnApproveTime) {
+        this.maxDownloadOnApproveTime = maxDownloadOnApproveTime;
     }
 }

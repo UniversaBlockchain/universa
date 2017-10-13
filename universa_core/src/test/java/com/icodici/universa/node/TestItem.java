@@ -9,6 +9,7 @@ package com.icodici.universa.node;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
+import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -35,6 +36,8 @@ public class TestItem implements Approvable {
 
     public TestItem(boolean isOk) {
         isGood = isOk;
+        if( !isOk)
+            addError(new ErrorRecord(Errors.BAD_VALUE,"me", "I'm bad"));
     }
 
     @Override
