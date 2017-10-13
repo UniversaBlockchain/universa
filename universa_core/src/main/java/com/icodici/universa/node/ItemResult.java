@@ -28,6 +28,8 @@ import java.time.temporal.ChronoUnit;
  * expose local data in direct mode. It is a "structure" of final members, to simplify access and avoid getters.
  */
 public class ItemResult {
+    public static final ItemResult DISCARDED = new ItemResult(ItemState.DISCARDED, false, null, null);
+    public static final ItemResult UNDEFINED = new ItemResult(ItemState.UNDEFINED, false, null, null);
     /**
      * The current state of the item in question
      */

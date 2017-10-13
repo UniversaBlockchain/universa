@@ -56,12 +56,54 @@ public class Node {
         network.subscribe(notification -> onNotification(notification));
     }
 
+    /**
+     * Asynchronous (non blocking) check/register item state. IF the item is new and eligible to process with the
+     * consensus, the processing will be started immediately. If it is already processing, the current state will be
+     * returned.
+     *
+     * @param item to register/check state
+     *
+     * @return current (or last known) item state
+     */
+    public @NonNull ItemResult registerItem(Approvable item) {
+        Object x = checkItemInternal(item.getId(), item, true);
+        return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+    }
+
+    /**
+     * Check the state of the item. This method does not start elections and can be safely called from a client.
+     *
+     * @param itemId item to check
+     *
+     * @return last known state
+     */
+    public @NonNull ItemResult checkItem(HashId itemId) {
+        Object x = checkItemInternal(itemId, null, false);
+        return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+    }
+
+    /**
+     * Test use only. It the item is being elected, block until the item is processed with the consenus. Otherwise
+     * returns state immediately.
+     *
+     * @param itemId item ti check or wait for
+     * @return item state
+     */
+    public ItemResult waitItem(HashId itemId,long millisToWait) throws TimeoutException, InterruptedException {
+        Object x = checkItemInternal(itemId, null, false);
+        if (x instanceof ItemProcessor) {
+            ((ItemProcessor) x).doneEvent.await(millisToWait);
+            return ((ItemProcessor) x).getResult();
+        }
+        return (ItemResult)x;
+    }
+
     private final void onNotification(Notification notification) {
         if (notification instanceof ItemNotification) {
             ItemNotification in = (ItemNotification) notification;
             // get processor, create if need
             // register my vote
-            Object x = checkItemInternal(in.getItemId(), null);
+            Object x = checkItemInternal(in.getItemId(), null, true);
             NodeInfo from = in.getFrom();
             if (x instanceof ItemResult) {
                 ItemResult r = (ItemResult) x;
@@ -91,16 +133,17 @@ public class Node {
 
     /**
      * Optimized for various usages, check the item, start processing as need, return object depending on the current
-     * state.
+     * state. Note that actuall error codes are set to the item itself.
      *
-     * @param itemId item to check the state
-     * @param item   provide item if any, can be null
+     * @param itemId    item to check the state
+     * @param item      provide item if any, can be null
+     * @param autoStart
      *
      * @return instance od {@link ItemProcessor} if the item is being processed (also if it was started by the call),
-     *         {@link ItemResult} if it is already processed (consensu found and processing done), null if the item
-     *         can't be processed, e.g. attempt to recreate revoked and so on.
+     *         {@link ItemResult} if it is already processed or can't be processed, say, created_at field is too far in
+     *         the past, in which case result state will be {@link ItemState#DISCARDED}.
      */
-    private Object checkItemInternal(@NonNull HashId itemId, Approvable item) {
+    protected Object checkItemInternal(@NonNull HashId itemId, Approvable item, boolean autoStart) {
         try {
             // first, let's lock to the item id:
             return ItemLock.synchronize(itemId, () -> {
@@ -120,15 +163,19 @@ public class Node {
                 if (item != null &&
                         item.getCreatedAt().isBefore(ZonedDateTime.now().minus(config.getMaxItemCreationAge()))) {
                     // it is too old - client must manually check other nodes. For us it's unknown
-                    return null;
+                    item.addError(Errors.EXPIRED, "created_at", "too old");
+                    return ItemResult.DISCARDED;
                 }
 
-                // now we should try to get consensus
-                if (item != null)
-                    cache.put(item);
-                ItemProcessor processor = new ItemProcessor(itemId, item);
-                processors.put(itemId, processor);
-                return processor;
+                if (autoStart) {
+                    if (item != null)
+                        cache.put(item);
+                    ItemProcessor processor = new ItemProcessor(itemId, item);
+                    processors.put(itemId, processor);
+                    return processor;
+                } else {
+                    return ItemResult.UNDEFINED;
+                }
             });
         } catch (Exception e) {
             throw new RuntimeException("failed to checkItem", e);
@@ -150,7 +197,7 @@ public class Node {
         private final StateRecord record;
         private final HashId itemId;
         private Set<NodeInfo> sources = new HashSet<>();
-        private final Instant expiresAt;
+        private Instant expiresAt;
 
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
@@ -158,9 +205,11 @@ public class Node {
         private List<StateRecord> lockedToCreate;
         private boolean consensusFound;
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
+        private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
 
         private final Object mutex = new Object();
         private ScheduledFuture<?> poller;
+        private ScheduledFuture<?> downloader;
 
         public ItemProcessor(HashId itemId, Approvable item) {
             this.itemId = itemId;
@@ -168,9 +217,9 @@ public class Node {
                 item = cache.get(itemId);
             this.item = item;
             record = ledger.findOrCreate(itemId);
-            executorService.submit(() -> download());
             expiresAt = Instant.now().plus(config.getMaxCacheAge());
             consensusFound = false;
+            executorService.submit(() -> download());
         }
 
         private boolean isExpired() {
@@ -182,47 +231,46 @@ public class Node {
         }
 
         private void download() {
-            if (item != null)
-                startVoting();
-            else {
+            if (isExpired())
+                return;
+            if( item != null ) {
+                itemDownloaded();
+                return;
+            }
+            if (!sources.isEmpty()) {
                 try {
-                    while (!isExpired()) {
-                        // first we have to wait for sources
-                        NodeInfo source = null;
-                        synchronized (sources) {
-                            if (sources.isEmpty()) {
-                                // we don't take channce on RC:
-                                long left = getMillisLeft();
-                                if (left > 0)
-                                    sources.wait(left);
-                            }
-                            // it still can be empty!
-                            if (!sources.isEmpty()) {
-                                // lets pick a random source
-                                source = Do.sample(sources);
-                            }
-                        }
-                        if (source != null) {
-                            item = network.getItem(itemId, source, config.getMaxGetItemTime());
-                        }
-                        if (item != null) {
-                            cache.put(item);
-                            downloadedEvent.fire();
-                            return;
-                        }
-                        // and continue the loop...
+                    // first we have to wait for sources
+                    NodeInfo source = Do.sample(sources);
+                    item = network.getItem(itemId, source, config.getMaxGetItemTime());
+                    if (item != null) {
+                        itemDownloaded();
+                        return;
                     }
                 } catch (InterruptedException e) {
-                    // just die die
                 }
             }
+            // reschedule self
+            rescheduleDownload(config.getPollTime().toMillis());
         }
 
-        private final void startVoting() {
-            // at this poing the item is with us, so we can start
+        private final void itemDownloaded() {
+            cache.put(item);
             checkItem();
-            vote(myInfo, record.getState());
-            broadcastMyState();
+            downloadedEvent.fire();
+            startPolling();
+        }
+
+        private void rescheduleDownload(long delayMillis) {
+            if (downloader != null && !downloader.isDone())
+                downloader.cancel(false);
+            downloader = executorService.schedule(() -> download(), delayMillis, TimeUnit.MILLISECONDS);
+
+        }
+
+        private final void startPolling() {
+            // at this poing the item is with us, so we can start
+            long millis = config.getPollTime().toMillis();
+            poller = executorService.scheduleAtFixedRate(() -> poll(), millis, millis, TimeUnit.MILLISECONDS);
         }
 
         private final void checkItem() {
@@ -261,11 +309,12 @@ public class Node {
                 }
             }
             boolean checkPassed = item.getErrors().isEmpty();
-            record.setState(checkPassed ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE);
+            ItemState s = checkPassed ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE;
+            record.setState(s);
             record.setExpiresAt(item.getExpiresAt());
             record.save();
-            long millis = config.getPollTime().toMillis();
-            poller = executorService.scheduleAtFixedRate(() -> poll(), millis, millis, TimeUnit.MILLISECONDS);
+            vote(myInfo, s);
+            broadcastMyState();
         }
 
         private final void poll() {
@@ -278,6 +327,9 @@ public class Node {
                     consensusFound = true;
                     rollbackChanges(ItemState.UNDEFINED);
                     poller.cancel(false);
+                    if (downloader != null)
+                        downloader.cancel(false);
+                    doneEvent.fire();
                     return;
                 }
             }
@@ -315,7 +367,6 @@ public class Node {
                     consensusFound = positiveConsenus = true;
                 }
             }
-            stop();
             if (positiveConsenus)
                 approveAndCommit();
             else
@@ -323,7 +374,7 @@ public class Node {
         }
 
         private final void stop() {
-            poller.cancel(true);
+            poller.cancel(false);
         }
 
         private final void approveAndCommit() {
@@ -339,12 +390,15 @@ public class Node {
             // we still need item to fix all its relations:
             try {
                 if (item == null) {
-                    long left = getMillisLeft();
-                    if (left > 0)
-                        downloadedEvent.await();
-                    if (item == null) {
-                        throw new TimeoutException();
-                    }
+                    // If positive consensus os found, we can spend more time for final download, and can try
+                    // all the network as the source:
+                    expiresAt = Instant.now().plus(config.getMaxDownloadOnApproveTime());
+                    network.eachNode(n -> {
+                        if (!sources.contains(n))
+                            sources.add(n);
+                    });
+                    rescheduleDownload(0);
+                    downloadedEvent.await(getMillisLeft());
                 }
                 // We use the caching capability of ledger so we do not get records from
                 // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
@@ -370,23 +424,28 @@ public class Node {
                 record.setState(ItemState.UNDEFINED);
                 record.destroy();
             }
+            doneEvent.fire();
         }
 
         private void rollbackChanges(ItemState newState) {
             debug(" rollbacks to: " + itemId + " as " + newState + " consensus: " + positiveNodes.size() + "/" + negativeNodes.size());
-            for (StateRecord r : lockedToRevoke)
-                r.unlock().save();
-            lockedToRevoke.clear();
-            // form created records, we touch only these that we have actually created
-            for (StateRecord r : lockedToCreate)
-                r.unlock().save();
-            lockedToCreate.clear();
-            record.setState(newState);
-            ZonedDateTime expiration = ZonedDateTime.now()
-                    .plus(newState == ItemState.REVOKED ?
-                                  config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
-            record.setExpiresAt(expiration);
-            record.save(); // TODO: current implementation will cause an inner dbPool.db() invokation
+            ledger.transaction(() -> {
+                for (StateRecord r : lockedToRevoke)
+                    r.unlock().save();
+                lockedToRevoke.clear();
+                // form created records, we touch only these that we have actually created
+                for (StateRecord r : lockedToCreate)
+                    r.unlock().save();
+                lockedToCreate.clear();
+                record.setState(newState);
+                ZonedDateTime expiration = ZonedDateTime.now()
+                        .plus(newState == ItemState.REVOKED ?
+                                      config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
+                record.setExpiresAt(expiration);
+                record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+                return null;
+            });
+            doneEvent.fire();
         }
 
 
@@ -399,9 +458,13 @@ public class Node {
         }
 
         private final void addToSources(NodeInfo node) {
+            if (item != null)
+                return;
             synchronized (sources) {
-                if (sources.add(node))
-                    sources.notifyAll();
+                if (sources.add(node)) {
+                    if (downloader != null && !downloader.isDone())
+                        rescheduleDownload(0);
+                }
             }
         }
     }
