@@ -39,10 +39,11 @@ public abstract class Network {
      * Subscribe ot incoming norifications. Old subscriber must be discarded. New consumer should receive notifications
      * received from the moment it is registered. The method must not block.
      *
+     * @param forNode              node to which receive notifications
      * @param notificationConsumer the consumer that process incoming notifications in non-blocking manner, e.g.
      *                             returnung without waiting anything.
      */
-    public abstract void subscribe(Consumer<Notification> notificationConsumer);
+    public abstract void subscribe(NodeInfo forNode, Consumer<Notification> notificationConsumer);
 
     /**
      * Block until the item will be available from a specified node non excessing specified timeout.
@@ -60,12 +61,13 @@ public abstract class Network {
 
     /**
      * Deliver notification to all nodes except one
-     * @param exceptNode if not null, do not deliver to it.
+     *
+     * @param exceptNode   if not null, do not deliver to it.
      * @param notification notification fo deliver
      */
     public void broadcast(NodeInfo exceptNode, Notification notification) {
-        netConfig.forEachNode(node->{
-            if( exceptNode != null && !exceptNode.equals(node))
+        netConfig.forEachNode(node -> {
+            if (exceptNode != null && !exceptNode.equals(node))
                 deliver(node, notification);
         });
     }
@@ -76,6 +78,6 @@ public abstract class Network {
      * @param consumer
      */
     public void eachNode(Consumer<NodeInfo> consumer) {
-        netConfig.forEachNode(n->consumer.accept(n));
+        netConfig.forEachNode(n -> consumer.accept(n));
     }
 }

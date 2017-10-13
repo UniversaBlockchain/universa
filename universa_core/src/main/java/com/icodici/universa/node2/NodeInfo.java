@@ -22,11 +22,13 @@ public class NodeInfo {
     private final PublicKey publicKey;
     private final InetSocketAddress nodeAddress;
     private final InetSocketAddress clientAddress;
+    private final InetSocketAddress serverAddress;
     private final int id;
     private final String nodeName;
 
-    public NodeInfo(@NonNull PublicKey publicKey, int id, @NonNull String nodeName, @NonNull String host, int datagramPort, int clientHttpPort) {
-        assert id > 0;
+    public NodeInfo(@NonNull PublicKey publicKey, int id, @NonNull String nodeName, @NonNull String host,
+                    int datagramPort, int clientHttpPort,int serverHttpPort) {
+        assert id >= 0;
         assert datagramPort > 0;
         assert clientHttpPort > 0;
         this.publicKey = publicKey;
@@ -34,6 +36,7 @@ public class NodeInfo {
         this.nodeName = nodeName;
         nodeAddress = new InetSocketAddress(host, datagramPort);
         clientAddress = new InetSocketAddress(host, clientHttpPort);
+        serverAddress = new InetSocketAddress(host, serverHttpPort);
     }
 
     public PublicKey getPublicKey() {
@@ -77,5 +80,10 @@ public class NodeInfo {
     @Override
     public int hashCode() {
         return id;
+    }
+
+    @Override
+    public String toString() {
+        return "NI("+id+")";
     }
 }

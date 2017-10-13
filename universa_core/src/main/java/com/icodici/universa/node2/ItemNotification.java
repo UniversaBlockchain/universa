@@ -33,7 +33,7 @@ public class ItemNotification extends Notification {
      *
      * @return
      */
-    public boolean requestsAnswer() {
+    public boolean answerIsRequested() {
         return requestResult;
     }
 

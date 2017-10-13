@@ -16,16 +16,6 @@ import java.util.function.Consumer;
 
 public class TestSingleNetwork extends Network {
 
-    public Node getLocalNode() {
-        return localNode;
-    }
-
-    public void setLocalNode(Node localNode) {
-        this.localNode = localNode;
-    }
-
-    private Node localNode;
-
     public TestSingleNetwork(NetConfig nc) {
         super(nc);
     }
@@ -36,7 +26,7 @@ public class TestSingleNetwork extends Network {
     }
 
     @Override
-    public void subscribe(Consumer<Notification> notificationConsumer) {
+    public void subscribe(NodeInfo info,Consumer<Notification> notificationConsumer) {
 
     }
 

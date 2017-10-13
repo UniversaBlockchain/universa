@@ -17,11 +17,17 @@ public class NetConfig {
     private final Map<Integer,NodeInfo> byNumber = new HashMap<>();
     private final Map<String,NodeInfo> byName = new HashMap<>();
 
+    public NetConfig() {}
+
     public NetConfig(Collection<NodeInfo> nodes) {
         nodes.forEach(n->{
-            byNumber.put(n.getId(), n);
-            byName.put(n.getName(), n);
+            addNode(n);
         });
+    }
+
+    public void addNode(NodeInfo n) {
+        byNumber.put(n.getId(), n);
+        byName.put(n.getName(), n);
     }
 
     public NodeInfo getInfo(String nodeName) {

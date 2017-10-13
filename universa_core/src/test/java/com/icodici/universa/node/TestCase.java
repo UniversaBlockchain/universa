@@ -7,7 +7,15 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -18,8 +26,8 @@ import static org.junit.Assert.fail;
 
 public class TestCase {
     public void assertAlmostSame(ZonedDateTime t1, ZonedDateTime t2) {
-        if( t1 == null && t2 == null )
-            return ;
+        if (t1 == null && t2 == null)
+            return;
         long delta = Math.abs(t1.toEpochSecond() - t2.toEpochSecond());
         assertThat(delta, is(lessThan(2L)));
     }
@@ -47,4 +55,29 @@ public class TestCase {
     protected void assertThrows(Callable<?> callable) {
         assertThrows(Exception.class, callable);
     }
+
+    static List<PrivateKey> nodeKeys = new ArrayList<>();
+
+    protected PrivateKey getNodeKey(int index) throws IOException {
+        if (nodeKeys.size() == 0) {
+            Files.list(Paths.get("src/test_config_2/tmp"))
+                    .filter(Files::isRegularFile)
+                    .forEach(fn -> {
+                        if (!fn.toString().endsWith(".private.unikey"))
+                            return;
+                        PrivateKey prk = null;
+                        try {
+                            nodeKeys.add(PrivateKey.fromPath(fn));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+        }
+        return nodeKeys.get(index);
+    }
+
+    protected PublicKey getNodePublicKey(int index) throws IOException {
+        return getNodeKey(index).getPublicKey();
+    }
+
 }
