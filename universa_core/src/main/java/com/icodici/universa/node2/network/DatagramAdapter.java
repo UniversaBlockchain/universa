@@ -7,6 +7,8 @@
 
 package com.icodici.universa.node2.network;
 
+import com.icodici.crypto.EncryptionError;
+import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.node2.NodeInfo;
 
@@ -34,9 +36,23 @@ public abstract class DatagramAdapter {
      * packet sie is no more than MAX_PACKET_SIZE with all extra data attached.
      */
     static public final int MAX_PACKET_SIZE = 512;
-    private NodeInfo myNodeInfo;
-    private Consumer<byte[]> receiver = null;
-    private final SymmetricKey sessionKey;
+
+    /**
+     * Max number of attempts to retransmit a block, defaults to 10
+     */
+    static public final int RETRANSMIT_MAX_ATTEMPTS = 10;
+
+    /**
+     * Time between attempts to retransmit a DATA block, in milliseconds
+     */
+    static public final int RETRANSMIT_TIME = 10000;
+
+    protected NodeInfo myNodeInfo;
+    protected Consumer<byte[]> receiver = null;
+    protected final SymmetricKey sessionKey;
+    protected final PrivateKey ownPrivateKey;
+
+    protected int testMode = TestModes.NONE;
 
     /**
      * Create an instance that listens for the incoming datagrams using the specified configurations. The adapter should
@@ -44,12 +60,19 @@ public abstract class DatagramAdapter {
      *
      * @param myNodeInfo
      */
-    public DatagramAdapter(SymmetricKey sessionKey,NodeInfo myNodeInfo) {
+    public DatagramAdapter(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo) {
         this.myNodeInfo = myNodeInfo;
         this.sessionKey = sessionKey;
+        this.ownPrivateKey = ownPrivateKey;
     }
 
-    public abstract void send(NodeInfo destination, byte[] payload);
+    public abstract void send(NodeInfo destination, byte[] payload) throws EncryptionError, InterruptedException;
+
+
+    /**
+     * Close socket and stop threads/
+     */
+    public abstract void shutdown();
 
     public void receive(Consumer<byte[]> receiver) {
         byte[] payload;
@@ -60,5 +83,17 @@ public abstract class DatagramAdapter {
         while((payload = inputQueue.poll()) != null ) {
             receiver.accept(payload);
         }
+    }
+
+    public void seTestMode(int testMode) {
+        this.testMode = testMode;
+    }
+
+
+    public class TestModes
+    {
+        static public final int NONE =              0;
+        static public final int LOST_PACKETS =      1;
+        static public final int SHUFFLE_PACKETS =   2;
     }
 }
