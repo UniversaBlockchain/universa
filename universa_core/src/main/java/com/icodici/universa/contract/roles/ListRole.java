@@ -11,12 +11,12 @@ package com.icodici.universa.contract.roles;
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.KeyRecord;
-import com.sun.istack.internal.NotNull;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,13 +40,13 @@ public class ListRole extends Role {
         super(name);
     }
 
-    public ListRole(String name, Mode mode, @NotNull Collection<Role> roles) {
+    public ListRole(String name, Mode mode, @NonNull Collection<Role> roles) {
         super(name);
         setMode(mode);
         addAll(roles);
     }
 
-    public ListRole(String name, int quorumSize, @NotNull Collection<Role> roles) {
+    public ListRole(String name, int quorumSize, @NonNull Collection<Role> roles) {
         super(name);
         this.mode = Mode.QUORUM;
         this.quorumSize = quorumSize;
