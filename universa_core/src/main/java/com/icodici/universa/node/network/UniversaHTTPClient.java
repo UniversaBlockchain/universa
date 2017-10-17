@@ -30,7 +30,9 @@ import java.net.URLConnection;
 import java.util.Arrays;
 import java.util.List;
 
-public class HttpClient {
+public class UniversaHTTPClient {
+
+    private final static int DEFAULT_RECONNECT_TIMES = 3;
 
     static private LogPrinter log = new LogPrinter("HTCL");
     private String connectMessage;
@@ -41,7 +43,7 @@ public class HttpClient {
     private String url;
     private PublicKey nodePublicKey;
 
-    public HttpClient(String nodeId, String rootUrlString) {
+    public UniversaHTTPClient(String nodeId, String rootUrlString) {
         this.url = rootUrlString;
         this.nodeId = nodeId;
     }
@@ -56,38 +58,52 @@ public class HttpClient {
      */
     public void start(PrivateKey privateKey, PublicKey nodePublicKey) throws IOException {
         this.nodePublicKey = nodePublicKey;
+
         if (sessionKey != null)
             throw new IllegalStateException("session already started");
+
         this.privateKey = privateKey;
+
         Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
+
         sessionId = a.data.getLongOrThrow("session_id");
+
         byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
         byte[] client_nonce = Do.randomBytes(47);
         byte[] data = Boss.pack(Binder.fromKeysValues(
                 "client_nonce", client_nonce,
                 "server_nonce", server_nonce
         ));
+
         a = requestOrThrow("get_token",
                            "signature", privateKey.sign(data, HashType.SHA512),
                            "data", data,
                            "session_id", sessionId
         );
+
         data = a.data.getBinaryOrThrow("data");
+
         if (!nodePublicKey.verify(data, a.data.getBinaryOrThrow("signature"), HashType.SHA512))
             throw new IOException("node signature failed");
+
         Binder params = Boss.unpack(data);
+
         if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
             throw new IOException("client nonce mismatch");
+
         byte[] key = Boss.unpack(
                 privateKey.decrypt(
                         params.getBinaryOrThrow("encrypted_token")
                 )
         )
                 .getBinaryOrThrow("sk");
+
         sessionKey = new SymmetricKey(key);
 
         Binder result = command("hello");
+
         this.connectMessage = result.getStringOrThrow("message");
+
         if (!result.getStringOrThrow("status").equals("OK"))
             throw new ConnectionFailedException("" + result);
     }
@@ -129,7 +145,7 @@ public class HttpClient {
                 "command", name,
                 "params", params
         );
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < DEFAULT_RECONNECT_TIMES; i++) {
             ErrorRecord er = null;
             try {
                 Answer a = requestOrThrow("command",
@@ -258,8 +274,8 @@ public class HttpClient {
             super(cause);
         }
 
-        public HttpClient getClient() {
-            return HttpClient.this;
+        public UniversaHTTPClient getClient() {
+            return UniversaHTTPClient.this;
         }
     }
 

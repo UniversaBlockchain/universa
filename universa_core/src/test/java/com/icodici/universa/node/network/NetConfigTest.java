@@ -79,8 +79,8 @@ public class NetConfigTest {
     @Test
     public void createNode() throws Exception {
         NodeStarter.main(new String[]{"-c", "src/test_config_2", "-i", "node3", "-p", "15510", "--test"});
-        HttpClient client = new HttpClient("test", "http://127.0.0.1:15510");
-        HttpClient.Answer answer = client.request("network");
+        UniversaHTTPClient client = new UniversaHTTPClient("test", "http://127.0.0.1:15510");
+        UniversaHTTPClient.Answer answer = client.request("network");
         assertTrue(answer.isOk());
         Binder n4 = answer.data.getBinderOrThrow("node4");
         assertEquals(2086, n4.getIntOrThrow("port"));

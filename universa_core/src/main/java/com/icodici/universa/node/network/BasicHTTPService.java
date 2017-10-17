@@ -137,4 +137,12 @@ public interface BasicHTTPService extends AutoCloseable {
     interface Handler {
         void handle(Request request, Response response);
     }
+
+    interface BinderHandler {
+        void handle(Binder request, Binder response);
+    }
+
+    interface RequestPreprocessor {
+        Binder handle(Binder request);
+    }
 }

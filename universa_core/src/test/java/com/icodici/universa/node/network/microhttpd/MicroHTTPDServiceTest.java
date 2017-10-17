@@ -8,7 +8,7 @@
 package com.icodici.universa.node.network.microhttpd;
 
 import com.icodici.universa.node.network.BasicHTTPService;
-import com.icodici.universa.node.network.HttpClient;
+import com.icodici.universa.node.network.UniversaHTTPClient;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -92,22 +92,22 @@ public class MicroHTTPDServiceTest {
         });
 
         {
-            HttpClient client = new HttpClient("testnode1", ROOT_URL);
-            HttpClient.Answer a = client.request("ping1", "hello", "world");
+            UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
+            UniversaHTTPClient.Answer a = client.request("ping1", "hello", "world");
 
             assertEquals(a.code, 200);
             assertEquals("pong1", a.data.getStringOrThrow("ping"));
         }
         {
-            HttpClient client = new HttpClient("testnode1", ROOT_URL);
-            HttpClient.Answer a = client.request("ping2", "hello", "world");
+            UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
+            UniversaHTTPClient.Answer a = client.request("ping2", "hello", "world");
 
             assertEquals(a.code, 200);
             assertEquals("pong2", a.data.getStringOrThrow("ping"));
         }
         {
-            HttpClient client = new HttpClient("testnode1", ROOT_URL);
-            HttpClient.Answer a = client.request("ping", "hello", "world");
+            UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
+            UniversaHTTPClient.Answer a = client.request("ping", "hello", "world");
 
             assertEquals(a.code, 200);
             assertTrue(a.data.getListOrThrow("errors").contains("Unsupported URL: /ping"));
@@ -146,8 +146,8 @@ public class MicroHTTPDServiceTest {
         });
 
         {
-            HttpClient client = new HttpClient("testnode1", ROOT_URL);
-            HttpClient.Answer a = client.request("ping1", "hello", "world");
+            UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
+            UniversaHTTPClient.Answer a = client.request("ping1", "hello", "world");
 
             assertEquals(a.code, 200);
             assertEquals("pong1", a.data.getStringOrThrow("ping"));
@@ -199,8 +199,8 @@ public class MicroHTTPDServiceTest {
             }
         });
         {
-            HttpClient client = new HttpClient("testnode1", ROOT_URL);
-            HttpClient.Answer a = client.request("ping1?a=url1&a=url2&b=url1&cUrl=cUrl1", "hello", "world");
+            UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
+            UniversaHTTPClient.Answer a = client.request("ping1?a=url1&a=url2&b=url1&cUrl=cUrl1", "hello", "world");
 
             assertEquals(a.code, 200);
             assertEquals("pong1", a.data.getStringOrThrow("ping"));
@@ -213,6 +213,7 @@ public class MicroHTTPDServiceTest {
     @Test
     public void testRequestWithParamsMergingComplex() throws IOException {
         service.on("/ping2", (request, response) -> {
+            System.out.println("req. " + Thread.currentThread().getName());
             try {
                 final Binder params = request.getParams();
 
@@ -256,6 +257,7 @@ public class MicroHTTPDServiceTest {
         });
 
         {
+            System.out.println(Thread.currentThread().getName());
             final String path = "/ping2?a=url1&a=url2&b=url1&cUrl=cUrl1";
 
             // For this test, we create a HTTP request fully manually.

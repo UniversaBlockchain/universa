@@ -1,6 +1,6 @@
 package com.icodici.universa.client;
 
-import com.icodici.universa.node.network.HttpClient;
+import com.icodici.universa.node.network.UniversaHTTPClient;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -16,7 +16,7 @@ public class ClientNetwork {
 
     private Binder netConfig;
 
-    ArrayList<HttpClient> clients = new ArrayList<>();
+    ArrayList<UniversaHTTPClient> clients = new ArrayList<>();
 
     public ClientNetwork() {
         try {
@@ -31,7 +31,7 @@ public class ClientNetwork {
                 String host = nodeData.getStringOrThrow("ip");
                 int port = nodeData.getIntOrThrow("client_port");
                 String url = "http://" + host + ":" + port;
-                HttpClient client = new HttpClient(nodeId, url);
+                UniversaHTTPClient client = new UniversaHTTPClient(nodeId, url);
                 clients.add(client);
             });
         } catch (IOException e) {
@@ -57,7 +57,7 @@ public class ClientNetwork {
                     es.submit(() -> {
                         try {
                             reporter.verbose("checking " + client);
-                            HttpClient.Answer answer = client.request("ping", "foo", "bar");
+                            UniversaHTTPClient.Answer answer = client.request("ping", "foo", "bar");
                             if (answer.code == 200) {
                                 reporter.verbose(client.toString() + " OK");
                                 int cnt = okNodes.incrementAndGet();

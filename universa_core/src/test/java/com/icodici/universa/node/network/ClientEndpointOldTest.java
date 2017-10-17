@@ -11,8 +11,6 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.node.TestCase;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.management.ManagementFactory;
@@ -26,7 +24,7 @@ public class ClientEndpointOldTest extends TestCase {
     private static final String ROOT_URL = "http://localhost:" + DEFAULT_PORT;
 
     private ClientEndpointOld ep;
-    private HttpClient client;
+    private UniversaHTTPClient client;
 
 //    @Test
     public void runServer() throws Exception {
@@ -39,8 +37,8 @@ public class ClientEndpointOldTest extends TestCase {
     @Test
     public void ping() throws Exception {
         ep = new ClientEndpointOld(null, DEFAULT_PORT, null, null);
-        client = new HttpClient("testnode1", "http://localhost:" + DEFAULT_PORT);
-        HttpClient.Answer a = client.request("ping", "hello", "world");
+        client = new UniversaHTTPClient("testnode1", "http://localhost:" + DEFAULT_PORT);
+        UniversaHTTPClient.Answer a = client.request("ping", "hello", "world");
         assertEquals(a.code, 200);
         System.out.println(a.data);
         assertEquals("pong", a.data.getStringOrThrow("ping"));
@@ -51,7 +49,7 @@ public class ClientEndpointOldTest extends TestCase {
     @Test
     public void handshake() throws Exception {
         ep = new ClientEndpointOld(TestKeys.privateKey(0), DEFAULT_PORT, null, null);
-        client = new HttpClient("testnode1", ROOT_URL);
+        client = new UniversaHTTPClient("testnode1", ROOT_URL);
         PublicKey nodeKey = TestKeys.publicKey(0);
         PrivateKey clientKey = TestKeys.privateKey(1);
         client.start(clientKey, nodeKey);
@@ -62,7 +60,7 @@ public class ClientEndpointOldTest extends TestCase {
             client.command("test_error");
             fail("expected exception wasn't thrown");
         }
-        catch(HttpClient.CommandFailedException e) {
+        catch(UniversaHTTPClient.CommandFailedException e) {
             assertEquals(Errors.COMMAND_FAILED, e.getError().getError());
             assertEquals("test_error", e.getError().getObjectName());
             assertEquals("sample error", e.getError().getMessage());

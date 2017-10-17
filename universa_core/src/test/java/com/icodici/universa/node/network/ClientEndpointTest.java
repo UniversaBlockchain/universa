@@ -35,7 +35,7 @@ public class ClientEndpointTest extends TestCase {
     private static final String ROOT_URL = "http://localhost:" + DEFAULT_PORT;
 
     private ClientEndpoint ep;
-    private HttpClient client;
+    private UniversaHTTPClient client;
 
     @Test
     public void packing() throws Exception {
@@ -76,8 +76,8 @@ public class ClientEndpointTest extends TestCase {
     @Test
     public void ping() throws Exception {
         ep = new ClientEndpoint(null, DEFAULT_PORT, null, null);
-        client = new HttpClient("testnode1", ROOT_URL);
-        HttpClient.Answer a = client.request("ping", "hello", "world");
+        client = new UniversaHTTPClient("testnode1", ROOT_URL);
+        UniversaHTTPClient.Answer a = client.request("ping", "hello", "world");
         assertEquals(a.code, 200);
         System.out.println(a.data);
         assertEquals("pong", a.data.getStringOrThrow("ping"));
@@ -88,7 +88,7 @@ public class ClientEndpointTest extends TestCase {
     @Test
     public void handshake() throws Exception {
         ep = new ClientEndpoint(TestKeys.privateKey(0), DEFAULT_PORT, null, null);
-        client = new HttpClient("testnode1", ROOT_URL);
+        client = new UniversaHTTPClient("testnode1", ROOT_URL);
         PublicKey nodeKey = TestKeys.publicKey(0);
         PrivateKey clientKey = TestKeys.privateKey(1);
         client.start(clientKey, nodeKey);
@@ -99,7 +99,7 @@ public class ClientEndpointTest extends TestCase {
             client.command("test_error");
             fail("expected exception wasn't thrown");
         }
-        catch(HttpClient.CommandFailedException e) {
+        catch(UniversaHTTPClient.CommandFailedException e) {
             assertEquals(Errors.COMMAND_FAILED, e.getError().getError());
             assertEquals("test_error", e.getError().getObjectName());
             assertEquals("sample error", e.getError().getMessage());

@@ -1,6 +1,6 @@
 package com.icodici.universa.node;
 
-import com.icodici.universa.node.network.HttpClient;
+import com.icodici.universa.node.network.UniversaHTTPClient;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import org.junit.Test;
@@ -21,8 +21,8 @@ public class NodeStarterTest extends TestCase {
             });
             t.start();
             NodeStarter.waitReady();
-            HttpClient client = new HttpClient("test", "http://127.0.0.1:15510");
-            HttpClient.Answer answer = client.request("network");
+            UniversaHTTPClient client = new UniversaHTTPClient("test", "http://127.0.0.1:15510");
+            UniversaHTTPClient.Answer answer = client.request("network");
             assertTrue(answer.isOk());
 //        System.out.println(answer.data);
             Binder n4 = answer.data.getBinderOrThrow("node4");
