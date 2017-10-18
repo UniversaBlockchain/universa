@@ -103,3 +103,6 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 /universa_core/src/test_config_3/system/
+
+## Local developer files
+/.idea/copyright/Stipan.xml
