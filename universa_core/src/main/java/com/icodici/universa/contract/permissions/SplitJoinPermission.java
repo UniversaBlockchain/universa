@@ -44,7 +44,7 @@ public class SplitJoinPermission extends Permission {
     protected void initFromParams() {
         fieldName = params.getStringOrThrow("field_name");
         minValue = new Decimal(params.getString("min_value", "0"));
-        minUnit = new Decimal(params.getString("min_value", "1e-9"));
+        minUnit = new Decimal(params.getString("min_unit", "1e-9"));
         mergeFields = params.getList("join_match_fields", asList("state.origin"));
     }
 
