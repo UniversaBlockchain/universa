@@ -14,7 +14,9 @@ import java.io.InputStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Created by sergeych on 14/02/16.
@@ -27,6 +29,7 @@ public class Syntex1Test {
         s.update("Hello world");
         byte[] d1 = s.digest();
         assertEquals(36, s.getLength());
+//        System.out.println(Base64.encodeString(d1));
         byte[] d2 = new Syntex1().digest("Fello world");
         assertEquals(36, d2.length);
         byte[] d3 = new Syntex1().digest("Hello world");

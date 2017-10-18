@@ -8,6 +8,7 @@
 package com.icodici.crypto;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.zip.CRC32;
 
 /**
@@ -24,7 +25,7 @@ public class Crc32 extends Digest {
 
     @Override
     protected byte[] _digest() {
-        return ByteBuffer.allocate(4).putInt((int)crc.getValue()).array();
+        return ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt((int)crc.getValue()).array();
     }
 
     @Override

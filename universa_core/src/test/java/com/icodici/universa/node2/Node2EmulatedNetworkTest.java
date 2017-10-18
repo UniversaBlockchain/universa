@@ -77,7 +77,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         }
     }
 
-//    @Test
+    @Test
     public void registerBadItem() throws Exception {
         TestItem bad = new TestItem(false);
         node.registerItem(bad);
@@ -85,7 +85,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
             assertEquals(ItemState.DECLINED, r.state);
     }
 
-//    @Test
+    @Test
     public void checkItem() throws Exception {
         TestItem ok = new TestItem(true);
         TestItem bad = new TestItem(false);
