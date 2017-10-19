@@ -10,6 +10,7 @@ package com.icodici.universa.node2.network;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.NodeInfo;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -366,7 +367,7 @@ public class DatagramAdapterTest {
 
     @Test
     public void testReconnectWithLostAndShuffle() throws Exception {
-        // Tottaly hard test with reconnect, shuffled and lost packets and tripple send.
+        // Tottaly hard test with reconnect, shuffled and lost packets and multiple send.
 
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
@@ -377,8 +378,10 @@ public class DatagramAdapterTest {
         d1.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
         d2.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
 
-        byte[] payload1 = "test data set 1".getBytes();
-        byte[] payload2 = "test data set 2".getBytes();
+//        byte[] payload1 = "test data set with rnd: ".getBytes();
+
+        String payloadtring;
+        final int timesToSend = 1;
 
         ArrayList<byte[]> receviedFor1 = new ArrayList<>();
         ArrayList<byte[]> receviedFor2 = new ArrayList<>();
@@ -387,7 +390,9 @@ public class DatagramAdapterTest {
         d2.receive(d-> {
             receviedFor2.add(d);
             try {
-                waitStatusQueue.put("DONE");
+                if(receviedFor2.size() >= timesToSend) {
+                    waitStatusQueue.put("DONE");
+                }
             } catch (InterruptedException e) {
                 e.printStackTrace();
                 System.out.println("DONE error");
@@ -395,25 +400,30 @@ public class DatagramAdapterTest {
         });
 
 
-        // send from adapter d1, to d2 as it is connected with node2 credentials:
-        d1.send(node2, payload1);
+        // send from adapter d1, to d2 as it is connected with node2 credentials, ten times:
+        for (int i = 0; i < timesToSend; i++) {
+            payloadtring  = "test data set with rnd: " + Do.randomInt(10000);
+            d1.send(node2, payloadtring.getBytes());
+        }
 
         while (!((waitStatusQueue.take()).equals("DONE"))){
             // wait until it is delivered
         }
 
-        assertEquals(1, receviedFor2.size());
-        byte[] data = receviedFor2.get(0);
-
-        // receiver must s
-        assertArrayEquals(payload1, data);
+        assertEquals(timesToSend, receviedFor2.size());
+//        byte[] data = receviedFor2.get(0);
+//
+//        // receiver must s
+//        assertArrayEquals(payload1, data);
 
         // send data back
 
         d1.receive(d-> {
             receviedFor1.add(d);
             try {
-                waitStatusQueue.put("DONE");
+                if(receviedFor1.size() >= timesToSend) {
+                    waitStatusQueue.put("DONE");
+                }
             } catch (InterruptedException e) {
                 e.printStackTrace();
                 System.out.println("DONE error");
@@ -421,18 +431,21 @@ public class DatagramAdapterTest {
         });
 
 
-        // send from adapter d2, to d1
-        d2.send(node1, payload2);
+        // send from adapter d2, to d1, ten times:
+        for (int i = 0; i < timesToSend; i++) {
+            payloadtring  = "test data set with rnd: " + Do.randomInt(10000);
+            d2.send(node1, payloadtring.getBytes());
+        }
 
         while (!((waitStatusQueue.take()).equals("DONE"))){
             // wait until it is delivered
         }
 
-        assertEquals(1, receviedFor1.size());
-        data = receviedFor1.get(0);
-
-        // receiver must s
-        assertArrayEquals(payload2, data);
+        assertEquals(timesToSend, receviedFor1.size());
+//        data = receviedFor1.get(0);
+//
+//        // receiver must s
+//        assertArrayEquals(payload2, data);
 
         // test with close and reopen socket
         System.out.println("-------");
@@ -450,7 +463,9 @@ public class DatagramAdapterTest {
         d3.receive(d-> {
             receviedFor3.add(d);
             try {
-                waitStatusQueue.put("DONE");
+                if(receviedFor3.size() >= timesToSend) {
+                    waitStatusQueue.put("DONE");
+                }
             } catch (InterruptedException e) {
                 e.printStackTrace();
                 System.out.println("DONE error");
@@ -459,17 +474,20 @@ public class DatagramAdapterTest {
 
 
         // send from adapter d1, to d3
-        d1.send(node2, payload1);
+        for (int i = 0; i < timesToSend; i++) {
+            payloadtring  = "test data set with rnd: " + Do.randomInt(10000);
+            d1.send(node2, payloadtring.getBytes());
+        }
 
         while (!((waitStatusQueue.take()).equals("DONE"))){
             // wait until it is delivered
         }
 
-        assertEquals(1, receviedFor3.size());
-        data = receviedFor3.get(0);
+        assertEquals(timesToSend, receviedFor3.size());
+//        data = receviedFor3.get(0);
 
         // receiver must s
-        assertArrayEquals(payload1, data);
+//        assertArrayEquals(payload1, data);
 
 
         d1.shutdown();
