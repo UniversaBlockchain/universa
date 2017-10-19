@@ -18,6 +18,7 @@ import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -29,6 +30,9 @@ public class TestItem implements Approvable {
     private Set<HashId> referencedItems = new HashSet<>();
     private Set<Approvable> revokingItems = new HashSet<>();
     private List<ErrorRecord> errors = new ArrayList<>();
+
+    private boolean expiresAtPlusFive = true;
+
     @Override
     public Set<HashId> getReferencedItems() {
         return referencedItems;
@@ -94,5 +98,14 @@ public class TestItem implements Approvable {
     @Override
     public Collection<ErrorRecord> getErrors() {
         return errors;
+    }
+
+    @Override
+    public ZonedDateTime getExpiresAt() {
+        return expiresAtPlusFive ? ZonedDateTime.now().plusHours(5) : ZonedDateTime.now();
+    }
+
+    public void setExpiresAtPlusFive(boolean expiresAtPlusFive) {
+        this.expiresAtPlusFive = expiresAtPlusFive;
     }
 }

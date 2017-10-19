@@ -246,7 +246,7 @@ public class Node {
                 item = cache.get(itemId);
             this.item = item;
             record = ledger.findOrCreate(itemId);
-            expiresAt = Instant.now().plus(config.getMaxCacheAge());
+            expiresAt = Instant.now().plus(config.getMaxElectionsTime());
             consensusFound = false;
             if (this.item != null)
                 executorService.submit(() -> itemDownloaded());

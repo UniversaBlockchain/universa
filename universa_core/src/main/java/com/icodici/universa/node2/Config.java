@@ -52,6 +52,10 @@ public class Config {
         return maxElectionsTime;
     }
 
+    public void setMaxElectionsTime(Duration maxElectionsTime) {
+        this.maxElectionsTime = maxElectionsTime;
+    }
+
     public Duration getMaxCacheAge() {
         return maxCacheAge;
     }

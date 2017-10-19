@@ -29,6 +29,9 @@ import java.util.concurrent.Callable;
  * Created by sergeych on 16/07/2017.
  */
 public class PostgresLedger implements Ledger {
+
+    private final static int MAX_CONNECTIONS = 32;
+
     private final DbPool dbPool;
 
     private boolean sqlite = false;
@@ -38,9 +41,18 @@ public class PostgresLedger implements Ledger {
     private Map<HashId, WeakReference<StateRecord>> cachedRecords = new WeakHashMap<>();
     private boolean useCache = true;
 
+    public PostgresLedger(String connectionString, Properties properties) throws SQLException {
+        dbPool = new DbPool(connectionString, properties, MAX_CONNECTIONS);
+        init(dbPool);
+    }
+
     public PostgresLedger(String connectionString) throws SQLException {
         Properties properties = new Properties();
-        dbPool = new DbPool(connectionString, properties, 32);
+        dbPool = new DbPool(connectionString, properties, MAX_CONNECTIONS);
+        init(dbPool);
+    }
+
+    private void init(DbPool dbPool) throws SQLException {
         try {
             dbPool.execute(db -> {
                 db.setupDatabase("/migrations/postgres/migrate_");
