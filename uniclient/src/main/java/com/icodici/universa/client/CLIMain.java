@@ -9,16 +9,21 @@ package com.icodici.universa.client;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.Contract;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.xml.DomDriver;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.tools.JsonTool;
 import net.sergeych.tools.Reporter;
 import net.sergeych.utils.Base64;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static java.util.Arrays.asList;
@@ -40,32 +45,48 @@ public class CLIMain {
 //        args = new String[]{"-g", "longkey", "-s", "4096"};
         // when we run untitests, it is important
         reporter.clear();
-        // it could be called moe than once from tests
+        // it could be called more than once from tests
         keyFiles = null;
         parser = new OptionParser() {
             {
-                acceptsAll(asList("?", "h", "help"), "show help").forHelp();
-                acceptsAll(asList("g", "generate"), "generate new key pair and store in a files starting " +
-                        "with a given prefix")
+                acceptsAll(asList("?", "h", "help"), "Show help.").forHelp();
+                acceptsAll(asList("g", "generate"), "Generate new key pair and store in a files starting " +
+                        "with a given prefix.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("name_prefix");
-                accepts("s", "with -g, specify key strength")
+                accepts("s", "With -g, specify key strength.")
                         .withRequiredArg()
                         .ofType(Integer.class)
                         .defaultsTo(2048);
-                acceptsAll(asList("c", "create"), "create smart contract from yaml template")
+                acceptsAll(asList("c", "create"), "Create smart contract from yaml template.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file.yml");
-                acceptsAll(asList("j", "json"), "return result in json format");
-                acceptsAll(asList("v", "verbose"), "provide more detailed information");
-                acceptsAll(asList("network"), "check network status");
-                acceptsAll(asList("k", "keys"), "list of comma-separated private key files to" +
-                        "use tosign contract with, if appropriated")
+                acceptsAll(asList("j", "json"), "Return result in json format.");
+                acceptsAll(asList("v", "verbose"), "Provide more detailed information.");
+                acceptsAll(asList("network"), "Check network status.");
+                acceptsAll(asList("k", "keys"), "List of comma-separated private key files to" +
+                        "use tosign contract with, if appropriated.")
                         .withRequiredArg().ofType(String.class)
                         .withValuesSeparatedBy(",").describedAs("key_file");
-                acceptsAll(asList("fingerprints"), "print fingerprints of keys specified with -k");
+                acceptsAll(asList("fingerprints"), "Print fingerprints of keys specified with -k.");
 //                acceptsAll(asList("show", "s"), "show contract")
 //                        .withRequiredArg().ofType(String.class)
+                acceptsAll(asList("e", "export"), "Export specified contract. " +
+                        "Default export format is XML. " +
+                        "Use '-as' option with values 'json', 'xml' for export as specified format.")
+                        .withRequiredArg().ofType(String.class)
+                        .describedAs("file");
+                accepts("as", "Use with -e, --export command. Specify format for export contract.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .defaultsTo("xml");
+                acceptsAll(asList("i", "import"), "Import contract from specified xml or json file.")
+                        .withRequiredArg().ofType(String.class)
+                        .describedAs("file");
+                accepts("name", "Use with -e, --export or -i, --import commands. " +
+                        "Specify name of destination file.")
+                        .withRequiredArg()
+                        .ofType(String.class);
             }
         };
         try {
@@ -87,7 +108,6 @@ public class CLIMain {
             if (options.has("j")) {
                 reporter.setQuiet(true);
             }
-
             if (options.has("network")) {
                 ClientNetwork n = getClientNetwork();
                 int total = n.size();
@@ -96,14 +116,39 @@ public class CLIMain {
                 reporter.message("status: suspended for maintenance");
                 finish();
             }
-
             if (options.has("g")) {
                 generateKeyPair();
                 return;
             }
-
             if (options.has("c")) {
                 createContract();
+            }
+            if (options.has("e")) {
+                String source = (String) options.valueOf("e");
+                String format = (String) options.valueOf("as");
+                String name = (String) options.valueOf("name");
+                Contract contract = Contract.fromYamlFile(source);
+                if (name == null)
+                {
+                    File file = new File(source);
+                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+                }
+                exportContract(contract, name, format);
+                finish();
+            }
+            if (options.has("i")) {
+                String source = (String) options.valueOf("i");
+
+                Contract contract = importContract(source);
+
+                String name = (String) options.valueOf("name");
+                if (name == null)
+                {
+                    File file = new File(source);
+                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
+                }
+                saveContract(contract, name);
+                finish();
             }
 
             usage(null);
@@ -165,6 +210,162 @@ public class CLIMain {
         c.getErrors().forEach(error -> {
             addError(error.getError().toString(), error.getObjectName(), error.getMessage());
         });
+    }
+
+    private static Contract importContract(String sourceName) throws IOException {
+
+        String stringData = "";
+        BufferedReader in = new BufferedReader(new FileReader(sourceName));
+        String str;
+        while ((str = in.readLine()) != null)
+            stringData += str;
+        in.close();
+
+        Binder binder;
+
+        String extension = "";
+        int i = sourceName.lastIndexOf('.');
+        if (i > 0) {
+            extension = sourceName.substring(i+1);
+        }
+
+        if("json".equals(extension)) {
+            binder = (Binder) convertAllMapsToBinder(JsonTool.fromJson(stringData));
+        } else {
+            XStream xstream = new XStream(new DomDriver());
+//            magicApi.registerConverter(new MapEntryConverter());
+            xstream.alias("root", Binder.class);
+            binder = (Binder) xstream.fromXML(stringData);
+
+        }
+//        traceAllMapsToBinder(binder2, 0);
+
+        BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
+        Contract contract = new Contract();
+        contract.deserialize(binder, bm);
+
+//        keysMap().values().forEach(k -> contract.addSignerKey(k));
+//        checkContract(contract);
+
+        report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()));
+
+        if("json".equals(extension)) {
+            report("import from json ok");
+        } else {
+            report("import ok");
+
+        }
+
+        return contract;
+    }
+
+    private static void exportContract(Contract contract, String name, String format) throws IOException {
+        report("export format: " + format);
+
+        if (name == null)
+        {
+            name = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+        }
+
+        Binder binder = contract.serialize(DefaultBiMapper.getInstance().newSerializer());
+
+        byte[] data;
+        if("json".equals(format)) {
+            String jsonString = JsonTool.toJsonString(binder);
+            data = jsonString.getBytes();
+
+        } else {
+            XStream xstream = new XStream(new DomDriver());
+//            magicApi.registerConverter(new MapEntryConverter());
+            xstream.alias("root", Binder.class);
+            data = xstream.toXML(binder).getBytes();
+//            data = "xml".getBytes();
+        }
+        try (FileOutputStream fs = new FileOutputStream(name + "." + format)) {
+            fs.write(data);
+            fs.close();
+        }
+
+        if("json".equals(format)) {
+            report(name + " export as json ok");
+        } else {
+            report(name + " export ok");
+        }
+    }
+
+    private static Contract loadContract(String fileName) throws IOException {
+        String stringData = "";
+        Contract contract;
+        BufferedReader in = new BufferedReader(new FileReader(stringData));
+        String str;
+        while ((str = in.readLine()) != null)
+            stringData += str;
+        in.close();
+
+        contract = new Contract(stringData.getBytes());
+
+        return contract;
+    }
+
+    private static void saveContract(Contract contract, String fileName) throws IOException {
+        if (fileName == null)
+        {
+            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
+        }
+
+        byte[] data = contract.seal();
+        try (FileOutputStream fs = new FileOutputStream(fileName)) {
+            fs.write(data);
+            fs.close();
+        }
+    }
+
+    private static Object convertAllMapsToBinder(Object object) {
+
+        if(object != null) {
+            if (object instanceof List) {
+                List list = (List) object;
+                for (int i = 0; i < list.size(); i++) {
+                    list.set(i, convertAllMapsToBinder(list.get(i)));
+                }
+            }
+
+            if (object instanceof Map) {
+                object = Binder.from(object);
+                Map map = (Map) object;
+                for (Object key : map.keySet()) {
+                    map.replace(key, convertAllMapsToBinder(map.get(key)));
+                }
+            }
+        }
+
+        return object;
+    }
+
+    private static void traceAllMapsToBinder(Object object, int level) {
+        String shift = level + "";
+        for (int i = 0; i < level; i++) {
+            shift += "-";
+        }
+
+        if(object != null) {
+            report(shift + "object is: " + object.getClass());
+
+            if (object instanceof List) {
+                List list = (List) object;
+                for (Object item : list) {
+                    traceAllMapsToBinder(item, level + 1);
+                }
+            }
+
+            if (object instanceof Map) {
+                object = Binder.from(object);
+                Map map = (Map) object;
+                for (Object key : map.keySet()) {
+                    traceAllMapsToBinder(map.get(key), level + 1);
+                }
+            }
+        }
     }
 
     private static void finish() {

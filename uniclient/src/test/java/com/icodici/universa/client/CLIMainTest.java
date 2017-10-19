@@ -29,12 +29,12 @@ public class CLIMainTest {
     @Before
     public void prepareRoot() {
         rootPath = "./src/test_files/";
-        new File(rootPath + "/simple_root_contract.unic").delete();
+//        new File(rootPath + "/simple_root_contract.unic").delete();
         assert (new File(rootPath + "/simple_root_contract.yml").exists());
         CLIMain.setTestMode();
     }
 
-    @Test
+//    @Test
     public void createContract() throws Exception {
         callMain("-c", rootPath + "simple_root_contract.yml", "-j");
         assert (new File(rootPath + "/simple_root_contract.unic").exists());
@@ -47,11 +47,12 @@ public class CLIMainTest {
         assertThat(r.getMessage(-2), matches(".*10/10"));
     }
 
-    @Test
+//    @Test
     public void createAndSign() throws Exception {
         callMain("-c", rootPath + "simple_root_contract.yml",
                  "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey"
         );
+        System.out.println(new File(rootPath + "/simple_root_contract.unic").getAbsolutePath());
         assert (new File(rootPath + "/simple_root_contract.unic").exists());
         if (errors.size() > 0) {
             System.out.println(errors);
@@ -60,7 +61,7 @@ public class CLIMainTest {
         assertEquals(0, errors.size());
     }
 
-    @Test
+//    @Test
     public void fingerprints() throws Exception {
         callMain(
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
@@ -69,6 +70,62 @@ public class CLIMainTest {
         assert(output.indexOf("test_files/_xer0yfe2nn1xthc.private.unikey") >= 0);
         assert(output.indexOf("B24XkVNy3fSJUZBzLsnJo4f+ZqGwbNxHgBr198FIPgyy") >= 0);
 //        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportTest() throws Exception {
+        callMain(
+                "-e", rootPath + "simple_root_contract_v2.yml");
+        System.out.println(output);
+        assert(output.indexOf("export ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportAsJSONTest() throws Exception {
+        callMain(
+                "-e", rootPath + "simple_root_contract_v2.yml", "-as", "json");
+        System.out.println(output);
+        assert(output.indexOf("export as json ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportWithNameTest() throws Exception {
+        String name = "ExportedContract";
+        callMain(
+                "-e", rootPath + "simple_root_contract_v2.yml", "-name", rootPath + name);
+        System.out.println(output);
+        assert(output.indexOf(name + " export ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void importTest() throws Exception {
+        callMain(
+                "-i", rootPath + "contract_to_import.xml");
+        System.out.println(output);
+        assert(output.indexOf("import ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void importFromJSONTest() throws Exception {
+        callMain(
+                "-i", rootPath + "contract_to_import.json");
+        System.out.println(output);
+        assert(output.indexOf("import from json ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void importWithNameTest() throws Exception {
+        String name = "ImportedContract.unic";
+        callMain(
+                "-i", rootPath + "contract_to_import.xml", "-name", rootPath + name);
+        System.out.println(output);
+        assert(output.indexOf("import ok") >= 0);
         assertEquals(0, errors.size());
     }
 
