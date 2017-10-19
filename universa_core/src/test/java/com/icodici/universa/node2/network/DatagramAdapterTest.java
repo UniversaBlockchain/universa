@@ -67,6 +67,49 @@ public class DatagramAdapterTest {
         d2.shutdown();
         d3.shutdown();
     }
+    @Test
+    public void sendBigData() throws Exception {
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+        NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+
+        byte[] payload1 = Do.randomBytes(1024 * 32);
+
+        ArrayList<byte[]> receviedFor2 = new ArrayList<>();
+        BlockingQueue<String> waitStatusQueue = new ArrayBlockingQueue<String>(1, true);
+
+        d2.receive(d-> {
+            receviedFor2.add(d);
+            try {
+                waitStatusQueue.put("DONE");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                System.out.println("DONE error");
+            }
+        });
+
+
+        // send from adapter d1, to d2 as it is connected with node2 credentials:
+        d1.send(node2, payload1);
+
+        while (!((waitStatusQueue.take()).equals("DONE"))){
+            // wait until it is delivered
+        }
+
+        assertEquals(1, receviedFor2.size());
+        byte[] data = receviedFor2.get(0);
+
+        // receiver must s
+        assertArrayEquals(payload1, data);
+
+        // And test it for all interfaceces and big arrays of data
+
+        d1.shutdown();
+        d2.shutdown();
+    }
 
 
     @Test
@@ -128,7 +171,7 @@ public class DatagramAdapterTest {
 
 
     @Test
-    public void testReconnect() throws Exception {
+    public void reconnect() throws Exception {
         // create pair of connected adapters
         // ensure data are circulating between them in both directions
         // delete one adapter (ensure the socket is closed)
@@ -241,7 +284,7 @@ public class DatagramAdapterTest {
 
 
     @Test
-    public void testLostPackets() throws Exception {
+    public void lostPackets() throws Exception {
         // create pair of connected adapters
         // and simulate lost paclets and packets received in random order
 
@@ -317,7 +360,7 @@ public class DatagramAdapterTest {
 
 
     @Test
-    public void testShufflePackets() throws Exception {
+    public void shufflePackets() throws Exception {
         // create pair of connected adapters
         // and simulate packets received in random order
 
@@ -366,7 +409,7 @@ public class DatagramAdapterTest {
 
 
     @Test
-    public void testReconnectWithLostAndShuffle() throws Exception {
+    public void reconnectWithLostAndShuffle() throws Exception {
         // Tottaly hard test with reconnect, shuffled and lost packets and multiple send.
 
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
