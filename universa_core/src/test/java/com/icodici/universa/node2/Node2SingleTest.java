@@ -16,6 +16,8 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -31,6 +33,7 @@ import static org.junit.Assert.*;
 public class Node2SingleTest extends TestCase {
 
     private static final String ROOT_PATH = "./src/test_contracts/";
+    private static final String CONFIG_2_PATH = "./src/test_config_2/";
 
     Network network;
     NetConfig nc;
@@ -432,19 +435,20 @@ public class Node2SingleTest extends TestCase {
         }
     }
 
-    //TODO max elections time is not implemented yet
-    //@Test
+    @Test
     public void itemsCachedThenPurged() throws Exception {
-        config.setMaxElectionsTime(Duration.ofMillis(50));
+        config.setMaxElectionsTime(Duration.ofMillis(100));
 
         TestItem main = new TestItem(true);
+        main.setExpiresAtPlusFive(false);
+
         node.registerItem(main);
         ItemResult itemResult = node.waitItem(main.getId(), 100);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         assertEquals(main, node.getItem(main.getId()));
         Thread.sleep(110);
-        assertNull(node.getItem(main.getId()));
+        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
     }
 
     @Test
@@ -474,8 +478,10 @@ public class Node2SingleTest extends TestCase {
         network = new TestSingleNetwork(nc);
 
         Properties properties = new Properties();
-        properties.setProperty("user", "postgres");
-        properties.setProperty("password", "Abcd1234");
+
+        File file = new File(CONFIG_2_PATH + "config/config.yaml");
+        if (file.exists())
+            properties.load(new FileReader(file));
 
         ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING, properties);
         node = new Node(config, myInfo, ledger, network);
