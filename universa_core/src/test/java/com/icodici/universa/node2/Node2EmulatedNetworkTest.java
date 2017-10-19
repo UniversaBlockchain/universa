@@ -34,7 +34,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         nc = new NetConfig();
         TestEmulatedNetwork en = new TestEmulatedNetwork(nc);
         for(int i=0; i<NODES; i++) {
-            legder = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING+"_t"+i);
+            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING+"_t"+i);
             int offset = 7100 + 10*i;
             NodeInfo info =
                     new NodeInfo(
@@ -47,7 +47,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
                             offset+2
                     );
             nc.addNode(info);
-            Node n = new Node(config, info, legder, en);
+            Node n = new Node(config, info, ledger, en);
             nodes.add(n);
             en.addNode(info, n);
         }
