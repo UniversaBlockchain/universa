@@ -45,7 +45,7 @@ public abstract class DatagramAdapter {
     /**
      * Time between attempts to retransmit a DATA block, in milliseconds
      */
-    static public final int RETRANSMIT_TIME = 10000;
+    static public final int RETRANSMIT_TIME = 3000;
 
     protected NodeInfo myNodeInfo;
     protected Consumer<byte[]> receiver = null;
@@ -92,8 +92,9 @@ public abstract class DatagramAdapter {
 
     public class TestModes
     {
-        static public final int NONE =              0;
-        static public final int LOST_PACKETS =      1;
-        static public final int SHUFFLE_PACKETS =   2;
+        static public final int NONE =                      0;
+        static public final int LOST_PACKETS =              1;
+        static public final int SHUFFLE_PACKETS =           2;
+        static public final int LOST_AND_SHUFFLE_PACKETS =  3;
     }
 }

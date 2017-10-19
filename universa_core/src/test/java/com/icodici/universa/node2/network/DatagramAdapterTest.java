@@ -362,4 +362,118 @@ public class DatagramAdapterTest {
         d1.shutdown();
         d2.shutdown();
     }
+
+
+    @Test
+    public void testReconnectWithLostAndShuffle() throws Exception {
+        // Tottaly hard test with reconnect, shuffled and lost packets and tripple send.
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+        NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+
+        d1.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+        d2.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+
+        byte[] payload1 = "test data set 1".getBytes();
+        byte[] payload2 = "test data set 2".getBytes();
+
+        ArrayList<byte[]> receviedFor1 = new ArrayList<>();
+        ArrayList<byte[]> receviedFor2 = new ArrayList<>();
+        BlockingQueue<String> waitStatusQueue = new ArrayBlockingQueue<String>(1, true);
+
+        d2.receive(d-> {
+            receviedFor2.add(d);
+            try {
+                waitStatusQueue.put("DONE");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                System.out.println("DONE error");
+            }
+        });
+
+
+        // send from adapter d1, to d2 as it is connected with node2 credentials:
+        d1.send(node2, payload1);
+
+        while (!((waitStatusQueue.take()).equals("DONE"))){
+            // wait until it is delivered
+        }
+
+        assertEquals(1, receviedFor2.size());
+        byte[] data = receviedFor2.get(0);
+
+        // receiver must s
+        assertArrayEquals(payload1, data);
+
+        // send data back
+
+        d1.receive(d-> {
+            receviedFor1.add(d);
+            try {
+                waitStatusQueue.put("DONE");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                System.out.println("DONE error");
+            }
+        });
+
+
+        // send from adapter d2, to d1
+        d2.send(node1, payload2);
+
+        while (!((waitStatusQueue.take()).equals("DONE"))){
+            // wait until it is delivered
+        }
+
+        assertEquals(1, receviedFor1.size());
+        data = receviedFor1.get(0);
+
+        // receiver must s
+        assertArrayEquals(payload2, data);
+
+        // test with close and reopen socket
+        System.out.println("-------");
+        System.out.println("close socket and reopen with new adapter");
+        System.out.println("-------");
+
+        d2.shutdown();
+
+        // create new adapter with d2 credentials
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+        ArrayList<byte[]> receviedFor3 = new ArrayList<>();
+
+        d3.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+
+        d3.receive(d-> {
+            receviedFor3.add(d);
+            try {
+                waitStatusQueue.put("DONE");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                System.out.println("DONE error");
+            }
+        });
+
+
+        // send from adapter d1, to d3
+        d1.send(node2, payload1);
+
+        while (!((waitStatusQueue.take()).equals("DONE"))){
+            // wait until it is delivered
+        }
+
+        assertEquals(1, receviedFor3.size());
+        data = receviedFor3.get(0);
+
+        // receiver must s
+        assertArrayEquals(payload1, data);
+
+
+        d1.shutdown();
+        d2.shutdown();
+        d3.shutdown();
+    }
 }
