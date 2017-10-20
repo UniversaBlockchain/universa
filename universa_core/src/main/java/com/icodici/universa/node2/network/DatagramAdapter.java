@@ -53,6 +53,7 @@ public abstract class DatagramAdapter {
     protected final PrivateKey ownPrivateKey;
 
     protected int testMode = TestModes.NONE;
+    protected int verboseLevel = VerboseLevel.NOTHING;
 
     /**
      * Create an instance that listens for the incoming datagrams using the specified configurations. The adapter should
@@ -89,6 +90,10 @@ public abstract class DatagramAdapter {
         this.testMode = testMode;
     }
 
+    public void setVerboseLevel(int level) {
+        this.verboseLevel = level;
+    }
+
 
     public class TestModes
     {
@@ -96,5 +101,13 @@ public abstract class DatagramAdapter {
         static public final int LOST_PACKETS =              1;
         static public final int SHUFFLE_PACKETS =           2;
         static public final int LOST_AND_SHUFFLE_PACKETS =  3;
+    }
+
+
+    public class VerboseLevel
+    {
+        static public final int NOTHING =           0;
+        static public final int BASE =              1;
+        static public final int DETAILED =          2;
     }
 }
