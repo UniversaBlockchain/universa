@@ -74,7 +74,10 @@ public class UDPAdapter extends DatagramAdapter {
 
         Session session = sessionsById.get(destination.getId());
 
-        Block rawBlock = new Block(myNodeInfo.getId(), destination.getId(), new Random().nextInt(Integer.MAX_VALUE), PacketTypes.RAW_DATA, payload);
+        Block rawBlock = new Block(myNodeInfo.getId(), destination.getId(),
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.RAW_DATA,
+                destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
+                payload);
 
         if (session != null && session.isValid()) {
             if(session.state == Session.EXCHANGING) {
@@ -115,7 +118,10 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     protected void sendBlock(Block block, Session session) throws InterruptedException {
-        List<DatagramPacket> outs = makeDatagramPacketsFromBlock(block, session.address, session.port);
+
+        block.splitByPackets(MAX_PACKET_SIZE);
+//        List<DatagramPacket> outs = makeDatagramPacketsFromBlock(block, session.address, session.port);
+        List<DatagramPacket> outs = new ArrayList(block.datagrams.values());
 
         block.sendAttempts++;
         try {
@@ -152,7 +158,10 @@ public class UDPAdapter extends DatagramAdapter {
                 "data", encrypted
         );
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId, rawDataBlock.blockId, PacketTypes.DATA, Boss.pack(binder));
+        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
+                rawDataBlock.blockId, PacketTypes.DATA,
+                session.address, session.port,
+                Boss.pack(binder));
         sendBlock(block, session);
     }
 
@@ -160,7 +169,10 @@ public class UDPAdapter extends DatagramAdapter {
     protected void sendHello(Session session) throws EncryptionError, InterruptedException {
         System.out.println(getLabel() + "send hello to " + session.remoteNodeId);
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId, new Random().nextInt(Integer.MAX_VALUE), PacketTypes.HELLO, myNodeInfo.getPublicKey().pack());
+        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.HELLO,
+                session.address, session.port,
+                myNodeInfo.getPublicKey().pack());
         sendBlock(block, session);
     }
 
@@ -168,7 +180,10 @@ public class UDPAdapter extends DatagramAdapter {
     protected void sendWelcome(Session session) throws InterruptedException {
         System.out.println(getLabel() + "send welcome to " + session.remoteNodeId);
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId, new Random().nextInt(Integer.MAX_VALUE), PacketTypes.WELCOME, session.localNonce);
+        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.WELCOME,
+                session.address, session.port,
+                session.localNonce);
         sendBlock(block, session);
     }
 
@@ -186,7 +201,10 @@ public class UDPAdapter extends DatagramAdapter {
                     "signature", signed
             );
 
-            Block block = new Block(myNodeInfo.getId(), session.remoteNodeId, new Random().nextInt(Integer.MAX_VALUE), PacketTypes.KEY_REQ, Boss.pack(binder));
+            Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
+                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.KEY_REQ,
+                    session.address, session.port,
+                    Boss.pack(binder));
             sendBlock(block, session);
         } catch (EncryptionError encryptionError) {
             encryptionError.printStackTrace();
@@ -208,7 +226,10 @@ public class UDPAdapter extends DatagramAdapter {
                     "signature", signed
             );
 
-            Block block = new Block(myNodeInfo.getId(), session.remoteNodeId, new Random().nextInt(Integer.MAX_VALUE), PacketTypes.SESSION, Boss.pack(binder));
+            Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
+                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.SESSION,
+                    session.address, session.port,
+                    Boss.pack(binder));
             sendBlock(block, session);
         } catch (EncryptionError encryptionError) {
             encryptionError.printStackTrace();
@@ -220,7 +241,10 @@ public class UDPAdapter extends DatagramAdapter {
         System.out.println(getLabel() + "send packet_ack to " + session.remoteNodeId);
 
         List data = asList(blockId, packetId);
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId, new Random().nextInt(Integer.MAX_VALUE), PacketTypes.PACKET_ACK, Boss.pack(data));
+        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.PACKET_ACK,
+                session.address, session.port,
+                Boss.pack(data));
         sendBlock(block, session);
     }
 
@@ -228,7 +252,10 @@ public class UDPAdapter extends DatagramAdapter {
     protected void sendAck(Session session, int blockId) throws InterruptedException {
         System.out.println(getLabel() + "send ack to " + session.remoteNodeId);
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId, new Random().nextInt(Integer.MAX_VALUE), PacketTypes.ACK, Boss.pack(blockId));
+        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.ACK,
+                session.address, session.port,
+                Boss.pack(blockId));
         sendBlock(block, session);
     }
 
@@ -236,30 +263,21 @@ public class UDPAdapter extends DatagramAdapter {
     protected void sendNack(Session session, int blockId) throws InterruptedException {
         System.out.println(getLabel() + "send nack to " + session.remoteNodeId);
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId, new Random().nextInt(Integer.MAX_VALUE), PacketTypes.NACK, Boss.pack(blockId));
+        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.NACK,
+                session.address, session.port,
+                Boss.pack(blockId));
         sendBlock(block, session);
     }
 
 
-    protected List<DatagramPacket> makeDatagramPacketsFromBlock(Block block, InetAddress address, int port) {
-
-        block.splitByPackets(MAX_PACKET_SIZE);
-
-        List<DatagramPacket> datagramPackets = new ArrayList<>();
-
-        byte[] blockByteArray;
-        DatagramPacket datagramPacket;
-
-        for (Packet packet : block.packets.values()) {
-            blockByteArray = packet.makeByteArray();
-
-            datagramPacket = new DatagramPacket(blockByteArray, blockByteArray.length, address, port);
-            datagramPackets.add(datagramPacket);
-        }
-
-        return datagramPackets;
-
-    }
+//    protected List<DatagramPacket> makeDatagramPacketsFromBlock(Block block, InetAddress address, int port) {
+//
+//        block.splitByPackets(MAX_PACKET_SIZE);
+//
+//        return datagramPackets;
+//
+//    }
 
 
     protected Session createSession(int remoteId, InetAddress address, int port) throws EncryptionError {
@@ -362,14 +380,6 @@ public class UDPAdapter extends DatagramAdapter {
                 try {
                     packet.parseFromByteArray(data);
 
-                    if(packet.type != PacketTypes.PACKET_ACK) {
-                        Session session = sessionsById.get(packet.senderNodeId);
-                        if (session == null) {
-                            session = createSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
-                        }
-                        sendPacketAck(session, packet.blockId, packet.packetId);
-                    }
-
                     if (waitingBlocks.containsKey(packet.blockId)) {
                         waitingBlock = waitingBlocks.get(packet.blockId);
                     } else {
@@ -377,7 +387,9 @@ public class UDPAdapter extends DatagramAdapter {
                             // Do nothing, cause we got and obtained this block already
                             System.out.println(getLabel() + " warning: repeated block given, with id " + packet.blockId);
                         } else {
-                            waitingBlock = new Block(packet.senderNodeId, packet.receiverNodeId, packet.blockId, packet.type);
+                            waitingBlock = new Block(packet.senderNodeId, packet.receiverNodeId,
+                                    packet.blockId, packet.type,
+                                    receivedDatagram.getAddress(), receivedDatagram.getPort());
                             waitingBlocks.put(waitingBlock.blockId, waitingBlock);
                         }
 //                        waitingBlock = new Block(packet.senderNodeId, packet.receiverNodeId, packet.blockId, packet.type);
@@ -391,6 +403,14 @@ public class UDPAdapter extends DatagramAdapter {
                             moveWaitingBlockToObtained(waitingBlock);
                             waitingBlock.reconstruct();
                             obtainSolidBlock(waitingBlock);
+                        } else {
+                            if(packet.type != PacketTypes.PACKET_ACK) {
+                                Session session = sessionsById.get(packet.senderNodeId);
+                                if (session == null) {
+                                    session = createSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                                }
+                                sendPacketAck(session, packet.blockId, packet.packetId);
+                            }
                         }
                     }
 
@@ -565,12 +585,13 @@ public class UDPAdapter extends DatagramAdapter {
                     break;
 
                 case PacketTypes.PACKET_ACK:
-                    System.out.println(getLabel() + " got packet_ack from " + block.senderNodeId);
                     ackList = Boss.load(block.payload);
                     ackBlockId = (int) ackList.get(0);
                     ackPacketId = (int) ackList.get(1);
+                    System.out.println(getLabel() + " got packet_ack from " + block.senderNodeId + " for block id " + ackBlockId);
                     session = sessionsById.get(block.senderNodeId);
-                    if(session != null && session.isValid()) {
+                    if(session != null) {
+                        System.out.println(getLabel() + " num packets was in queue: " + session.sendingPacketsQueue.size());
                         session.removePacketFromSendingQueue(ackBlockId, ackPacketId);
                         session.incremetWaitIndexForPacketsFromSendingQueue();
                         System.out.println(getLabel() + " num packets in queue: " + session.sendingPacketsQueue.size());
@@ -668,8 +689,11 @@ public class UDPAdapter extends DatagramAdapter {
         private int type;
         private byte[] payload;
         private int sendAttempts;
+        private InetAddress address;
+        private int port;
 
         private ConcurrentHashMap<Integer, Packet> packets;
+        private ConcurrentHashMap<Integer, DatagramPacket> datagrams;
 
         private Boolean delivered = false;
 
@@ -677,31 +701,40 @@ public class UDPAdapter extends DatagramAdapter {
             packets = new ConcurrentHashMap<>();
         }
 
-        public Block(int senderNodeId, int receiverNodeId, int blockId, int type, byte[] payload) {
+        public Block(int senderNodeId, int receiverNodeId, int blockId, int type, InetAddress address, int port, byte[] payload) {
             this.senderNodeId = senderNodeId;
             this.receiverNodeId = receiverNodeId;
             this.blockId = blockId;
             this.type = type;
+            this.address = address;
+            this.port = port;
             this.payload = payload;
 
             packets = new ConcurrentHashMap<>();
+            datagrams = new ConcurrentHashMap<>();
         }
 
-        public Block(int senderNodeId, int receiverNodeId, int blockId, int type) {
+        public Block(int senderNodeId, int receiverNodeId, int blockId, int type, InetAddress address, int port) {
             this.senderNodeId = senderNodeId;
             this.receiverNodeId = receiverNodeId;
             this.blockId = blockId;
             this.type = type;
+            this.address = address;
+            this.port = port;
 
             packets = new ConcurrentHashMap<>();
+            datagrams = new ConcurrentHashMap<>();
         }
 
         public ConcurrentHashMap<Integer, Packet> splitByPackets(int packetSize) {
             packets = new ConcurrentHashMap<>();
+            datagrams = new ConcurrentHashMap<>();
 
             List headerData = asList(0, 0, senderNodeId, receiverNodeId, blockId, type);
             int headerSize = Boss.dump(headerData).size() + 3; // 3 - Boss artefact
 
+            byte[] blockByteArray;
+            DatagramPacket datagramPacket;
             Packet packet;
             byte[] cutPayload;
             int offset = 0;
@@ -716,9 +749,17 @@ public class UDPAdapter extends DatagramAdapter {
                 cutPayload = Arrays.copyOfRange(payload, offset, offset + copySize);
                 packet = new Packet(packetsNum, packetId, senderNodeId, receiverNodeId, blockId, type, cutPayload);
                 packets.putIfAbsent(packetId, packet);
+
+                blockByteArray = packet.makeByteArray();
+                datagramPacket = new DatagramPacket(blockByteArray, blockByteArray.length, address, port);
+                datagrams.putIfAbsent(packetId, datagramPacket);
+
                 offset += copySize;
                 packetId++;
             }
+
+//            for (Packet packet : packets.values()) {
+//            }
 
             return packets;
         }
@@ -854,6 +895,10 @@ public class UDPAdapter extends DatagramAdapter {
         public void removeBlockFromSendingQueue(Block block) throws InterruptedException {
             if(sendingBlocksQueue.contains(block))
                 sendingBlocksQueue.remove(block);
+
+            for (Packet p : block.packets.values()) {
+                removePacketFromSendingQueue(p);
+            }
         }
 
         public void removePacketFromSendingQueue(Packet packet) throws InterruptedException {
