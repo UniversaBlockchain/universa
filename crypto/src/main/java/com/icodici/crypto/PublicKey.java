@@ -14,7 +14,9 @@ import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import net.sergeych.tools.Hashable;
+import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.Ut;
 
@@ -80,7 +82,7 @@ public class PublicKey extends AbstractKey {
 
     private void setupInfo(byte[] bytes) {
         keyInfo = new KeyInfo(KeyInfo.Algorythm.RSAPublic,
-                              Arrays.copyOf(new Sha256().digest(bytes), 5),
+                              Arrays.copyOfRange(fingerprint(), 1, 6),
                               publicKey.getBitStrength() / 8);
     }
 
