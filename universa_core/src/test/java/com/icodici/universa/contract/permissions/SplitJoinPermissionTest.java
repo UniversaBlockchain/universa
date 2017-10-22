@@ -11,12 +11,16 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTestBase;
+import com.icodici.universa.wallet.Wallet;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -399,9 +403,4 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
     }
 
-    private Contract createCoin() throws IOException {
-        Contract c = Contract.fromYamlFile(rootPath + "coin.yml");
-        c.setOwnerKey(ownerKey2);
-        return c;
-    }
 }

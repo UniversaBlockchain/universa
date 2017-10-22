@@ -14,6 +14,7 @@ import com.icodici.universa.node.TestCase;
 import com.icodici.universa.node.network.TestKeys;
 import org.junit.Before;
 
+import java.io.IOException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -96,14 +97,20 @@ public class ContractTestBase extends TestCase {
     }
 
 
-    protected void sealCheckTrace(Contract c, boolean isOkShouldBe) {
+    protected void sealCheckTrace(Contract c, boolean isOk) {
         c.seal();
         c.check();
         c.traceErrors();
 
-        if (isOkShouldBe)
+        if (isOk)
             assertTrue(c.isOk());
         else
             assertFalse(c.isOk());
+    }
+
+    protected Contract createCoin() throws IOException {
+        Contract c = Contract.fromYamlFile(rootPath + "coin.yml");
+        c.setOwnerKey(ownerKey2);
+        return c;
     }
 }
