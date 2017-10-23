@@ -8,7 +8,9 @@
 package com.icodici.universa.client;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.roles.Role;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 import joptsimple.OptionException;
@@ -91,6 +93,10 @@ public class CLIMain {
                         "Specify name of destination file.")
                         .withRequiredArg()
                         .ofType(String.class);
+                accepts("extract-key", "Use with -e, --export command. " +
+                        "Extracts any public key(s) from specified role into external file.")
+                        .withRequiredArg()
+                        .ofType(String.class);
             }
         };
         try {
@@ -131,14 +137,18 @@ public class CLIMain {
                 String source = (String) options.valueOf("e");
                 String format = (String) options.valueOf("as");
                 String name = (String) options.valueOf("name");
+                String extractKeyRole = (String) options.valueOf("extract-key");
 //                Contract contract = Contract.fromYamlFile(source);
                 Contract contract = loadContract(source);
-                if (name == null)
-                {
+                if (name == null) {
                     File file = new File(source);
                     name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
                 }
-                exportContract(contract, name, format);
+                if(extractKeyRole == null) {
+                    exportContract(contract, name, format);
+                } else {
+                    exportPublicKeys(contract, extractKeyRole, name);
+                }
                 finish();
             }
             if (options.has("i")) {
@@ -270,6 +280,22 @@ public class CLIMain {
         return contract;
     }
 
+    private static Contract loadContract(String fileName) throws IOException {
+        // TODO: resolve Contract bug: Contract cannot be initiated from sealed data until
+        // Permissions beaing created or initialized or something like that.
+        loadContractHook();
+
+        Contract contract;
+
+        Path path = Paths.get(fileName);
+        byte[] data = Files.readAllBytes(path);
+        report("load contract, data size: " + data.length);
+
+        contract = new Contract(data);
+
+        return contract;
+    }
+
     private static void exportContract(Contract contract, String name, String format) throws IOException {
         report("export format: " + format);
 
@@ -304,26 +330,31 @@ public class CLIMain {
         }
     }
 
-    private static Contract loadContract(String fileName) throws IOException {
-        // TODO: resolve Contract bug: Contract cannot be initiated from sealed data until
-        // Permissions beaing created or initialized or something like that.
-        loadContractHook();
+    private static void exportPublicKeys(Contract contract, String roleName, String fileName) throws IOException {
 
-        Contract contract;
+        if (fileName == null)
+        {
+            fileName = "Universa_" + roleName + "_public_key";
+        }
 
-        Path path = Paths.get(fileName);
-        byte[] data = Files.readAllBytes(path);
-        report("load contract, data size: " + data.length);
+        Role role = contract.getRole(roleName);
 
-        contract = new Contract(data);
+        if(role != null) {
+            Set<PublicKey> keys = role.getKeys();
 
-        return contract;
-    }
+            int index = 0;
+            byte[] data;
+            for (PublicKey key : keys) {
+                index++;
+                data = key.pack();
+                try (FileOutputStream fs = new FileOutputStream(fileName + "_" + index + ".pub")) {
+                    fs.write(data);
+                    fs.close();
+                }
+            }
 
-    // This method is a hook, it resolve Contract bug: Contract cannot be initiated from sealed data until
-    // Permissions beaing created or initialized or something like that.
-    private static void loadContractHook() throws IOException {
-        Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
+            report(roleName + " export public keys ok");
+        }
     }
 
     private static void saveContract(Contract contract, String fileName) throws IOException {
@@ -338,6 +369,12 @@ public class CLIMain {
             fs.write(data);
             fs.close();
         }
+    }
+
+    // This method is a hook, it resolve Contract bug: Contract cannot be initiated from sealed data until
+    // Permissions beaing created or initialized or something like that.
+    private static void loadContractHook() throws IOException {
+        Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
     }
 
     private static Object convertAllMapsToBinder(Object object) {

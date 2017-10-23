@@ -104,6 +104,26 @@ public class CLIMainTest {
     }
 
     @Test
+    public void exportPublicKeys() throws Exception {
+        String role = "owner";
+        callMain(
+                "-e", rootPath + "contract_to_export.unic", "-extract-key", role);
+        System.out.println(output);
+        assert(output.indexOf(role + " export public keys ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportPublicKeysWrongRole() throws Exception {
+        String role = "ownerss";
+        callMain(
+                "-e", rootPath + "contract_to_export.unic", "-extract-key", role);
+        System.out.println(output);
+        assert(output.indexOf(role + " export public keys ok") < 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
     public void importTest() throws Exception {
         callMain(
                 "-i", rootPath + "contract_to_import.xml");
