@@ -41,6 +41,7 @@ public class CLIMain {
     private static OptionParser parser;
     private static OptionSet options;
     private static boolean testMode;
+    private static String testRootPath;
 
     private static Reporter reporter = new Reporter();
     private static ClientNetwork clientNetwork;
@@ -97,6 +98,10 @@ public class CLIMain {
                         "Extracts any public key(s) from specified role into external file.")
                         .withRequiredArg()
                         .ofType(String.class);
+                accepts("get", "Use with -e, --export command. " +
+                        "Extracts any field of the contract into external file.")
+                        .withRequiredArg()
+                        .ofType(String.class);
             }
         };
         try {
@@ -138,16 +143,19 @@ public class CLIMain {
                 String format = (String) options.valueOf("as");
                 String name = (String) options.valueOf("name");
                 String extractKeyRole = (String) options.valueOf("extract-key");
+                List extractField = options.valuesOf("get");
 //                Contract contract = Contract.fromYamlFile(source);
                 Contract contract = loadContract(source);
-                if (name == null) {
-                    File file = new File(source);
-                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
-                }
-                if(extractKeyRole == null) {
-                    exportContract(contract, name, format);
-                } else {
+//                if (name == null) {
+//                    File file = new File(source);
+//                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+//                }
+                if(extractKeyRole != null) {
                     exportPublicKeys(contract, extractKeyRole, name);
+                } else if(extractField != null && extractField.size() > 0) {
+                    exportFields(contract, extractField, name, format);
+                } else {
+                    exportContract(contract, name, format);
                 }
                 finish();
             }
@@ -296,12 +304,16 @@ public class CLIMain {
         return contract;
     }
 
-    private static void exportContract(Contract contract, String name, String format) throws IOException {
+    private static void exportContract(Contract contract, String fileName, String format) throws IOException {
         report("export format: " + format);
 
-        if (name == null)
+        if (fileName == null)
         {
-            name = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+            if(testMode && testRootPath != null) {
+                fileName = testRootPath + "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+            } else {
+                fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+            }
         }
 
         Binder binder = contract.serialize(DefaultBiMapper.getInstance().newSerializer());
@@ -318,15 +330,15 @@ public class CLIMain {
             data = xstream.toXML(binder).getBytes();
 //            data = "xml".getBytes();
         }
-        try (FileOutputStream fs = new FileOutputStream(name + "." + format)) {
+        try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
             fs.write(data);
             fs.close();
         }
 
         if("json".equals(format)) {
-            report(name + " export as json ok");
+            report(fileName + " export as json ok");
         } else {
-            report(name + " export ok");
+            report(fileName + " export ok");
         }
     }
 
@@ -334,7 +346,11 @@ public class CLIMain {
 
         if (fileName == null)
         {
-            fileName = "Universa_" + roleName + "_public_key";
+            if(testMode && testRootPath != null) {
+                fileName = testRootPath + "Universa_" + roleName + "_public_key";
+            } else {
+                fileName = "Universa_" + roleName + "_public_key";
+            }
         }
 
         Role role = contract.getRole(roleName);
@@ -354,6 +370,55 @@ public class CLIMain {
             }
 
             report(roleName + " export public keys ok");
+        } else {
+            report("export public keys error, role does not exist: " + roleName);
+        }
+    }
+
+    private static void exportFields(Contract contract, List<String> fieldNames, String fileName, String format) throws IOException {
+        report("export format: " + format);
+
+        if (fileName == null)
+        {
+            if(testMode && testRootPath != null) {
+                fileName = testRootPath + "Universa_fields_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+            } else {
+                fileName = "Universa_fields_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+            }
+        }
+
+//        Binder binder = contract.serialize(DefaultBiMapper.getInstance().newSerializer());
+        Binder hm = new Binder();
+
+        try {
+            for (String fieldName : fieldNames) {
+                report("export field: " + fieldName + " -> " + contract.get(fieldName));
+                hm.put(fieldName, contract.get(fieldName));
+            }
+
+            Binder binder =  DefaultBiMapper.getInstance().newSerializer().serialize(hm);
+
+            byte[] data;
+            if ("json".equals(format)) {
+                String jsonString = JsonTool.toJsonString(binder);
+                data = jsonString.getBytes();
+            } else {
+                XStream xstream = new XStream(new DomDriver());
+                xstream.alias("root", Binder.class);
+                data = xstream.toXML(binder).getBytes();
+            }
+            try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
+                fs.write(data);
+                fs.close();
+            }
+
+            if ("json".equals(format)) {
+                report("export fields as json ok");
+            } else {
+                report("export fields ok");
+            }
+        } catch (IllegalArgumentException e) {
+            report("export fields error: " + e.getMessage());
         }
     }
 
@@ -466,6 +531,10 @@ public class CLIMain {
 
     public static void setTestMode() {
         testMode = true;
+    }
+
+    public static void setTestRootPath(String rootPath) {
+        testRootPath = rootPath;
     }
 
     public static Reporter getReporter() {

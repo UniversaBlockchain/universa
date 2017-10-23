@@ -34,6 +34,7 @@ public class CLIMainTest {
 //        new File(rootPath + "/simple_root_contract.unic").delete();
         assert (new File(rootPath + "/simple_root_contract.yml").exists());
         CLIMain.setTestMode();
+        CLIMain.setTestRootPath(rootPath);
     }
 
 //    @Test
@@ -115,11 +116,43 @@ public class CLIMainTest {
 
     @Test
     public void exportPublicKeysWrongRole() throws Exception {
-        String role = "ownerss";
+        String role = "wrongRole";
         callMain(
                 "-e", rootPath + "contract_to_export.unic", "-extract-key", role);
         System.out.println(output);
         assert(output.indexOf(role + " export public keys ok") < 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportFields() throws Exception {
+        String field1 = "definition.issuer";
+        String field2 = "state.origin";
+        callMain(
+                "-e", rootPath + "contract_to_export.unic", "-get", field1, "-get", field2);
+        System.out.println(output);
+        assert(output.indexOf("export fields ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportFieldsAsJSON() throws Exception {
+        String field1 = "definition.issuer";
+        String field2 = "state.origin";
+        callMain(
+                "-e", rootPath + "contract_to_export.unic", "-get", field1, "-get", field2, "-as", "json");
+        System.out.println(output);
+        assert(output.indexOf("export fields as json ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportWrongFields() throws Exception {
+        String field = "definition.wrong";
+        callMain(
+                "-e", rootPath + "contract_to_export.unic", "-get", field, "-as", "json");
+        System.out.println(output);
+        assert(output.indexOf("export fields as json ok") < 0);
         assertEquals(0, errors.size());
     }
 
