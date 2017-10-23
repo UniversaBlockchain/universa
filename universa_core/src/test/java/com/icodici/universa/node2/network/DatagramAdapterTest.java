@@ -14,6 +14,7 @@ import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -134,9 +135,9 @@ public class DatagramAdapterTest {
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
         DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3); // create implemented class with node1
 
-        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
-        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
-        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2222".getBytes();
@@ -208,6 +209,7 @@ public class DatagramAdapterTest {
         byte[] payload3 = "test data set 333333333333333".getBytes();
 
         int attempts = 100;
+        int numSends = 5;
 
         for (int i = 0; i < attempts; i++) {
             System.out.println("Send part: " + i);
@@ -218,7 +220,7 @@ public class DatagramAdapterTest {
             d2.receive(d-> {
                 receviedFor2.add(d);
                 try {
-                    if(receviedFor2.size() >= 3) {
+                    if(receviedFor2.size() >= numSends) {
                         waitStatusQueue.put("DONE");
                     }
                 } catch (InterruptedException e) {
@@ -229,15 +231,21 @@ public class DatagramAdapterTest {
 
 
             // send from adapter d1, to d2 as it is connected with node2 credentials:
-            d1.send(node2, payload1);
-            d1.send(node2, payload2);
-            d1.send(node2, payload3);
+            for (int j = 0; j < numSends; j++) {
+                int rnd = new Random().nextInt(3);
+                if(i == 0)
+                    d1.send(node2, payload1);
+                else if(i == 1)
+                    d1.send(node2, payload2);
+                else
+                    d1.send(node2, payload3);
+            }
 
             while (!((waitStatusQueue.take()).equals("DONE"))){
                 // wait until it is delivered
             }
 
-            assertEquals(3, receviedFor2.size());
+            assertEquals(numSends, receviedFor2.size());
 //            byte[] data1 = receviedFor2.get(0);
 //            byte[] data2 = receviedFor2.get(1);
 //            byte[] data3 = receviedFor2.get(2);
