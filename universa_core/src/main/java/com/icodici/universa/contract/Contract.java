@@ -30,6 +30,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -865,6 +866,60 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 return (T) getId();
             case "origin":
                 return (T) getOrigin();
+        }
+        throw new IllegalArgumentException("bad root: " + name);
+    }
+
+    /**
+     * Set the named field in 'dotted' notation, e.g. 'state.data.name', or 'state.origin', 'definition.issuer' and so
+     * on.
+     *
+     * @param name
+     *
+     * @param value
+     */
+    public void set(String name, Binder value) {
+        if (name.startsWith("definition.")) {
+            name = name.substring(11);
+            switch (name) {
+                case "expires_at":
+                    definition.expiresAt = value.getZonedDateTimeOrThrow("data");
+                    return;
+                case "created_at":
+                    definition.createdAt = value.getZonedDateTimeOrThrow("data");
+                    return;
+                case "issuer":
+                    setRole("issuer", ((SimpleRole) value.get("data")).getKeys());
+                    return;
+//                case "origin":
+//                    setOrigin();
+//                return;
+                default:
+                    if (name.startsWith("data."))
+                        definition.data.set(name.substring(5), value.getOrThrow("data"));
+                    return;
+            }
+        } else if (name.startsWith("state.")) {
+            name = name.substring(6);
+            switch (name) {
+//                case "origin":
+//                    setOrigin();
+//                return;
+                case "created_at":
+                    state.createdAt = value.getZonedDateTimeOrThrow("data");
+                    return;
+                default:
+                    if (name.startsWith("data."))
+                        state.data.set(name.substring(5), value.getOrThrow("data"));
+                    return;
+            }
+        } else switch (name) {
+//            case "id":
+//                setId();
+//                return;
+//            case "origin":
+//                setOrigin();
+//            return;
         }
         throw new IllegalArgumentException("bad root: " + name);
     }

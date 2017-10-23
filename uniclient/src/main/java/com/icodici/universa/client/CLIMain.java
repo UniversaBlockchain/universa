@@ -16,6 +16,7 @@ import com.thoughtworks.xstream.io.xml.DomDriver;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
@@ -102,6 +103,14 @@ public class CLIMain {
                         "Extracts any field of the contract into external file.")
                         .withRequiredArg()
                         .ofType(String.class);
+                accepts("set", "Use with -e, --export command. " +
+                        "Specify field of the contract for update.")
+                        .withRequiredArg()
+                        .ofType(String.class);
+                accepts("value", "Use with -e, --export command and after -set argument. " +
+                        "Update specified with -set argument field of the contract.")
+                        .withRequiredArg()
+                        .ofType(String.class);
             }
         };
         try {
@@ -143,17 +152,31 @@ public class CLIMain {
                 String format = (String) options.valueOf("as");
                 String name = (String) options.valueOf("name");
                 String extractKeyRole = (String) options.valueOf("extract-key");
-                List extractField = options.valuesOf("get");
+                List extractFields = options.valuesOf("get");
+
+                List updateFields = options.valuesOf("set");
+                List updateValues = options.valuesOf("value");
+                HashMap<String, String> updateFieldsHashMap = new HashMap<>();
 //                Contract contract = Contract.fromYamlFile(source);
                 Contract contract = loadContract(source);
 //                if (name == null) {
 //                    File file = new File(source);
 //                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
 //                }
+                try {
+                    for (int i = 0; i < updateFields.size(); i++) {
+                        updateFieldsHashMap.put((String) updateFields.get(i), (String) updateValues.get(i));
+                    }
+                } catch (Exception e) {
+
+                }
+                if(updateFieldsHashMap != null && updateFieldsHashMap.size() > 0) {
+                    updateFields(contract, updateFieldsHashMap);
+                }
                 if(extractKeyRole != null) {
                     exportPublicKeys(contract, extractKeyRole, name);
-                } else if(extractField != null && extractField.size() > 0) {
-                    exportFields(contract, extractField, name, format);
+                } else if(extractFields != null && extractFields.size() > 0) {
+                    exportFields(contract, extractFields, name, format);
                 } else {
                     exportContract(contract, name, format);
                 }
@@ -420,6 +443,43 @@ public class CLIMain {
         } catch (IllegalArgumentException e) {
             report("export fields error: " + e.getMessage());
         }
+    }
+
+    private static void updateFields(Contract contract, HashMap<String, String> fields) throws IOException {
+
+        for (String fieldName : fields.keySet()) {
+            report("update field: " + fieldName + " -> " + fields.get(fieldName) );
+
+            Binder binder = new Binder();
+            Binder data = null;
+
+
+            try {
+                XStream xstream = new XStream(new DomDriver());
+                xstream.alias("root", Binder.class);
+                data = (Binder) xstream.fromXML(fields.get(fieldName));
+            } catch (Exception xmlEx) {
+                try {
+                    data = (Binder) convertAllMapsToBinder(JsonTool.fromJson(fields.get(fieldName)));
+                } catch (Exception jsonEx) {
+
+                }
+            }
+
+            if(data != null) {
+                BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
+
+                binder.put("data", bm.deserialize(data));
+
+                contract.set(fieldName, binder);
+
+                report("update field " + fieldName + " ok");
+            } else {
+                report("update field " + fieldName + " error: no valid data");
+            }
+        }
+
+        report("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getExpiresAt()));
     }
 
     private static void saveContract(Contract contract, String fileName) throws IOException {
