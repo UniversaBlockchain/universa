@@ -7,6 +7,7 @@
 
 package com.icodici.universa.client;
 
+import com.icodici.universa.contract.Contract;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -19,6 +20,7 @@ import java.util.List;
 import static com.icodici.universa.client.RegexMatcher.matches;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public class CLIMainTest {
 
@@ -76,7 +78,7 @@ public class CLIMainTest {
     @Test
     public void exportTest() throws Exception {
         callMain(
-                "-e", rootPath + "simple_root_contract_v2.yml");
+                "-e", rootPath + "contract_to_export.unic");
         System.out.println(output);
         assert(output.indexOf("export ok") >= 0);
         assertEquals(0, errors.size());
@@ -85,7 +87,7 @@ public class CLIMainTest {
     @Test
     public void exportAsJSONTest() throws Exception {
         callMain(
-                "-e", rootPath + "simple_root_contract_v2.yml", "-as", "json");
+                "-e", rootPath + "contract_to_export.unic", "-as", "json");
         System.out.println(output);
         assert(output.indexOf("export as json ok") >= 0);
         assertEquals(0, errors.size());
@@ -95,7 +97,7 @@ public class CLIMainTest {
     public void exportWithNameTest() throws Exception {
         String name = "ExportedContract";
         callMain(
-                "-e", rootPath + "simple_root_contract_v2.yml", "-name", rootPath + name);
+                "-e", rootPath + "contract_to_export.unic", "-name", rootPath + name);
         System.out.println(output);
         assert(output.indexOf(name + " export ok") >= 0);
         assertEquals(0, errors.size());
@@ -116,6 +118,15 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.json");
         System.out.println(output);
         assert(output.indexOf("import from json ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void importFromYamlTest() throws Exception {
+        callMain(
+                "-i", rootPath + "simple_root_contract_v2.yml");
+        System.out.println(output);
+        assert(output.indexOf("import from yaml ok") >= 0);
         assertEquals(0, errors.size());
     }
 

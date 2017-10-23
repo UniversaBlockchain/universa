@@ -21,8 +21,12 @@ import net.sergeych.tools.Do;
 import net.sergeych.tools.JsonTool;
 import net.sergeych.tools.Reporter;
 import net.sergeych.utils.Base64;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -127,7 +131,8 @@ public class CLIMain {
                 String source = (String) options.valueOf("e");
                 String format = (String) options.valueOf("as");
                 String name = (String) options.valueOf("name");
-                Contract contract = Contract.fromYamlFile(source);
+//                Contract contract = Contract.fromYamlFile(source);
+                Contract contract = loadContract(source);
                 if (name == null)
                 {
                     File file = new File(source);
@@ -214,42 +219,48 @@ public class CLIMain {
 
     private static Contract importContract(String sourceName) throws IOException {
 
-        String stringData = "";
-        BufferedReader in = new BufferedReader(new FileReader(sourceName));
-        String str;
-        while ((str = in.readLine()) != null)
-            stringData += str;
-        in.close();
-
-        Binder binder;
-
         String extension = "";
         int i = sourceName.lastIndexOf('.');
         if (i > 0) {
-            extension = sourceName.substring(i+1);
+            extension = sourceName.substring(i + 1);
         }
 
-        if("json".equals(extension)) {
-            binder = (Binder) convertAllMapsToBinder(JsonTool.fromJson(stringData));
+        Contract contract;
+        if("yaml".equals(extension) || "yml".equals(extension)) {
+            contract = Contract.fromYamlFile(sourceName);
         } else {
-            XStream xstream = new XStream(new DomDriver());
-//            magicApi.registerConverter(new MapEntryConverter());
-            xstream.alias("root", Binder.class);
-            binder = (Binder) xstream.fromXML(stringData);
+            String stringData = "";
+            BufferedReader in = new BufferedReader(new FileReader(sourceName));
+            String str;
+            while ((str = in.readLine()) != null)
+                stringData += str;
+            in.close();
 
-        }
+            Binder binder;
+
+            if ("json".equals(extension)) {
+                binder = (Binder) convertAllMapsToBinder(JsonTool.fromJson(stringData));
+            } else {
+                XStream xstream = new XStream(new DomDriver());
+//            magicApi.registerConverter(new MapEntryConverter());
+                xstream.alias("root", Binder.class);
+                binder = (Binder) xstream.fromXML(stringData);
+
+            }
 //        traceAllMapsToBinder(binder2, 0);
 
-        BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
-        Contract contract = new Contract();
-        contract.deserialize(binder, bm);
+            BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
+            contract = new Contract();
+            contract.deserialize(binder, bm);
 
 //        keysMap().values().forEach(k -> contract.addSignerKey(k));
 //        checkContract(contract);
-
+        }
         report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()));
 
-        if("json".equals(extension)) {
+        if("yaml".equals(extension) || "yml".equals(extension)) {
+            report("import from yaml ok");
+        } else if("json".equals(extension)) {
             report("import from json ok");
         } else {
             report("import ok");
@@ -294,17 +305,25 @@ public class CLIMain {
     }
 
     private static Contract loadContract(String fileName) throws IOException {
-        String stringData = "";
-        Contract contract;
-        BufferedReader in = new BufferedReader(new FileReader(stringData));
-        String str;
-        while ((str = in.readLine()) != null)
-            stringData += str;
-        in.close();
+        // TODO: resolve Contract bug: Contract cannot be initiated from sealed data until
+        // Permissions beaing created or initialized or something like that.
+        loadContractHook();
 
-        contract = new Contract(stringData.getBytes());
+        Contract contract;
+
+        Path path = Paths.get(fileName);
+        byte[] data = Files.readAllBytes(path);
+        report("load contract, data size: " + data.length);
+
+        contract = new Contract(data);
 
         return contract;
+    }
+
+    // This method is a hook, it resolve Contract bug: Contract cannot be initiated from sealed data until
+    // Permissions beaing created or initialized or something like that.
+    private static void loadContractHook() throws IOException {
+        Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
     }
 
     private static void saveContract(Contract contract, String fileName) throws IOException {
@@ -314,6 +333,7 @@ public class CLIMain {
         }
 
         byte[] data = contract.seal();
+        report("save contract, seal size: " + data.length);
         try (FileOutputStream fs = new FileOutputStream(fileName)) {
             fs.write(data);
             fs.close();
