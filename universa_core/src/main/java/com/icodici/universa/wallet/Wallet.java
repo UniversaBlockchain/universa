@@ -12,7 +12,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
-import com.sun.istack.internal.NotNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.*;
 
@@ -37,7 +37,7 @@ public class Wallet {
      * @param value     value to have in a one contract
      * @return
      */
-    public synchronized Contract buildContractWithValue(String fieldName, @NotNull Decimal value) {
+    public synchronized Contract buildContractWithValue(String fieldName, @NonNull Decimal value) {
         if (value == null || Decimal.ZERO.equals(value) || this.contracts.size() == 0) return null;
 
         Contract result = null;
