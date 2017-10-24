@@ -16,7 +16,6 @@ import com.thoughtworks.xstream.io.xml.DomDriver;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import joptsimple.OptionSpec;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
@@ -24,7 +23,6 @@ import net.sergeych.tools.Do;
 import net.sergeych.tools.JsonTool;
 import net.sergeych.tools.Reporter;
 import net.sergeych.utils.Base64;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -157,12 +155,7 @@ public class CLIMain {
                 List updateFields = options.valuesOf("set");
                 List updateValues = options.valuesOf("value");
                 HashMap<String, String> updateFieldsHashMap = new HashMap<>();
-//                Contract contract = Contract.fromYamlFile(source);
                 Contract contract = loadContract(source);
-//                if (name == null) {
-//                    File file = new File(source);
-//                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
-//                }
                 try {
                     for (int i = 0; i < updateFields.size(); i++) {
                         updateFieldsHashMap.put((String) updateFields.get(i), (String) updateValues.get(i));
@@ -280,7 +273,7 @@ public class CLIMain {
             Binder binder;
 
             if ("json".equals(extension)) {
-                binder = (Binder) convertAllMapsToBinder(JsonTool.fromJson(stringData));
+                binder = Binder.convertAllMapsToBinders(JsonTool.fromJson(stringData));
             } else {
                 XStream xstream = new XStream(new DomDriver());
 //            magicApi.registerConverter(new MapEntryConverter());
@@ -288,14 +281,10 @@ public class CLIMain {
                 binder = (Binder) xstream.fromXML(stringData);
 
             }
-//        traceAllMapsToBinder(binder2, 0);
 
             BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
             contract = new Contract();
             contract.deserialize(binder, bm);
-
-//        keysMap().values().forEach(k -> contract.addSignerKey(k));
-//        checkContract(contract);
         }
         report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()));
 
@@ -351,7 +340,6 @@ public class CLIMain {
 //            magicApi.registerConverter(new MapEntryConverter());
             xstream.alias("root", Binder.class);
             data = xstream.toXML(binder).getBytes();
-//            data = "xml".getBytes();
         }
         try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
             fs.write(data);
@@ -410,7 +398,6 @@ public class CLIMain {
             }
         }
 
-//        Binder binder = contract.serialize(DefaultBiMapper.getInstance().newSerializer());
         Binder hm = new Binder();
 
         try {
@@ -453,14 +440,13 @@ public class CLIMain {
             Binder binder = new Binder();
             Binder data = null;
 
-
             try {
                 XStream xstream = new XStream(new DomDriver());
                 xstream.alias("root", Binder.class);
                 data = (Binder) xstream.fromXML(fields.get(fieldName));
             } catch (Exception xmlEx) {
                 try {
-                    data = (Binder) convertAllMapsToBinder(JsonTool.fromJson(fields.get(fieldName)));
+                    data = Binder.convertAllMapsToBinders(JsonTool.fromJson(fields.get(fieldName)));
                 } catch (Exception jsonEx) {
 
                 }
@@ -500,54 +486,6 @@ public class CLIMain {
     // Permissions beaing created or initialized or something like that.
     private static void loadContractHook() throws IOException {
         Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
-    }
-
-    private static Object convertAllMapsToBinder(Object object) {
-
-        if(object != null) {
-            if (object instanceof List) {
-                List list = (List) object;
-                for (int i = 0; i < list.size(); i++) {
-                    list.set(i, convertAllMapsToBinder(list.get(i)));
-                }
-            }
-
-            if (object instanceof Map) {
-                object = Binder.from(object);
-                Map map = (Map) object;
-                for (Object key : map.keySet()) {
-                    map.replace(key, convertAllMapsToBinder(map.get(key)));
-                }
-            }
-        }
-
-        return object;
-    }
-
-    private static void traceAllMapsToBinder(Object object, int level) {
-        String shift = level + "";
-        for (int i = 0; i < level; i++) {
-            shift += "-";
-        }
-
-        if(object != null) {
-            report(shift + "object is: " + object.getClass());
-
-            if (object instanceof List) {
-                List list = (List) object;
-                for (Object item : list) {
-                    traceAllMapsToBinder(item, level + 1);
-                }
-            }
-
-            if (object instanceof Map) {
-                object = Binder.from(object);
-                Map map = (Map) object;
-                for (Object key : map.keySet()) {
-                    traceAllMapsToBinder(map.get(key), level + 1);
-                }
-            }
-        }
     }
 
     private static void finish() {

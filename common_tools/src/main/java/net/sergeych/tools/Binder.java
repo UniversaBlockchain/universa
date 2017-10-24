@@ -369,6 +369,33 @@ public class Binder extends HashMap<String, Object> implements Serializable {
     }
 
     /**
+     * Convert all maps in the object to binders and do it recursively.
+     *
+     * @param object source map
+     */
+    static public <T> T convertAllMapsToBinders(Object object) {
+
+        if(object != null) {
+            if (object instanceof List) {
+                List list = (List) object;
+                for (int i = 0; i < list.size(); i++) {
+                    list.set(i, convertAllMapsToBinders(list.get(i)));
+                }
+            }
+
+            if (object instanceof Map) {
+                object = Binder.from(object);
+                Map map = (Map) object;
+                for (Object key : map.keySet()) {
+                    map.replace(key, convertAllMapsToBinders(map.get(key)));
+                }
+            }
+        }
+
+        return (T) object;
+    }
+
+    /**
      * Convert some map to the binder. Do nothing if it is already a binder.
      *
      * @param x source map
