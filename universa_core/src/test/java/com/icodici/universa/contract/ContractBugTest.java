@@ -1,5 +1,6 @@
 package com.icodici.universa.contract;
 
+import com.icodici.universa.Decimal;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -33,6 +34,23 @@ public class ContractBugTest extends ContractTestBase {
         }
 
         assertNotEquals(contract, null);
+    }
+
+    @Test
+    public void createFromSealedWithRealContract() throws Exception {
+        String fileName = "./src/test_contracts/subscription.yml";
+
+        Contract c = Contract.fromYamlFile(fileName);
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        // Contract from seal
+        byte[] seal = c.seal();
+        Contract sealedContract = new Contract(seal);
+        sealedContract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(sealedContract, true);
     }
 
     // This method is a hook, it resolve Contract bug: Contract cannot be initiated from sealed data until
