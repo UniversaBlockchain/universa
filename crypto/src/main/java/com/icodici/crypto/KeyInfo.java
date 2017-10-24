@@ -8,6 +8,7 @@
 package com.icodici.crypto;
 
 import net.sergeych.boss.Boss;
+import net.sergeych.utils.Base64;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -85,6 +86,10 @@ public class KeyInfo {
 
     public void setTag(byte[] tag) {
         this.tag = tag;
+    }
+
+    public String getBase64Tag() {
+        return Base64.encodeCompactString(getTag());
     }
 
     public enum Algorythm {
