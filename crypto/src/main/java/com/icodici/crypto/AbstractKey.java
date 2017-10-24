@@ -189,7 +189,7 @@ public abstract class AbstractKey implements Bindable {
     @Override
     public String toString() {
         AbstractKey k = this instanceof PrivateKey ? getPublicKey() : this;
-        return info().toString() + ":" + Integer.toHexString(k.hashCode());
+        return info().toString() + ":" + info().getBase64Tag();
     }
 
     /**

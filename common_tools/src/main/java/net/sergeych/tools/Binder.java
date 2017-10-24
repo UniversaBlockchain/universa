@@ -125,6 +125,13 @@ public class Binder extends HashMap<String, Object> implements Serializable {
         if (x instanceof Map) {
             return (byte[]) DefaultBiMapper.deserialize((Map) x);
         }
+        if(x instanceof String) {
+            char[] cc = ((String) x).toCharArray();
+            byte[] bb = new byte[cc.length];
+            for(int i=0; i<cc.length; i++)
+                bb[i] = (byte) (((int)cc[i]) & 0xFF);
+            return bb;
+        }
         throw new ClassCastException("parameter can't be converted to byte[]");
     }
 

@@ -15,6 +15,7 @@ import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -37,7 +38,8 @@ public class PrivateKey extends AbstractKey {
 
     public PrivateKey(byte[] packedBinaryKey, KeyInfo info) throws EncryptionError {
         this(packedBinaryKey);
-        this.keyInfo = info;
+        // the tag is changed. so we can't use it
+//        this.keyInfo = info;
     }
 
     public PrivateKey(byte[] packedBinaryKey) throws EncryptionError {
