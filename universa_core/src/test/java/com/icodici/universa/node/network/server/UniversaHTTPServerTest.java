@@ -11,14 +11,24 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
+import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node.network.UniversaHTTPClient;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node.network.microhttpd.MicroHTTPDService;
+import net.sergeych.biserializer.BossBiMapper;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.junit.After;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static org.junit.Assert.*;
 
@@ -56,6 +66,114 @@ public class UniversaHTTPServerTest {
         universaHTTPServer.shutdown();
     }
 
+    @Test
+    public void shouldDeliverContract() throws Exception {
+        setMicroHTTPDUp(null);
+        universaHTTPServer.start();
+
+        addUploadEndpoint();
+
+        Contract contractToSend = Contract.fromYamlFile("./src/test_contracts/id_1.yml");
+        Binder binder = BossBiMapper.serialize(contractToSend);
+
+        UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
+        UniversaHTTPClient.Answer a = client.request("uploadContract", "contract", binder);
+
+        assertEquals(a.code, 200);
+    }
+
+    @Test
+    public void shouldGetContract() throws Exception {
+        setMicroHTTPDUp(null);
+        universaHTTPServer.start();
+
+        addGetEndpoint();
+
+        UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
+        UniversaHTTPClient.Answer a = client.request("getContract", "id", "1");
+
+        assertEquals(a.code, 200);
+
+        Object contract = a.data.get("contract");
+        assertNotNull(contract);
+        assertTrue(contract instanceof Contract);
+    }
+
+    @Test
+    public void shouldUploadAndGetContractThen() throws Exception {
+        setMicroHTTPDUp(null);
+        universaHTTPServer.start();
+
+        addGetEndpoint();
+
+        addUploadEndpoint();
+
+
+        Contract contractToSend = Contract.fromYamlFile("./src/test_contracts/id_1.yml");
+        Binder binder = BossBiMapper.serialize(contractToSend);
+
+        UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
+        UniversaHTTPClient.Answer upload = client.request("uploadContract", "contract", binder, "id", "2");
+
+        assertEquals(upload.code, 200);
+
+        UniversaHTTPClient.Answer get = client.request("getContract", "id", "2");
+
+        assertEquals(get.code, 200);
+        Object contract = get.data.get("contract");
+        assertNotNull(contract);
+        assertTrue(contract instanceof Contract);
+    }
+
+    private void addUploadEndpoint() {
+        // require 2 params: contract (Binder) and id (String)
+        universaHTTPServer.addEndpoint("/uploadContract", (request, response) -> {
+            try {
+                Object contractObj = request.get("contract");
+
+                assertNotNull(contractObj);
+                assertTrue(contractObj instanceof Contract);
+                Contract contract = (Contract) contractObj;
+
+                Object id = request.get("id");
+
+                final String fileName = String.format("%s/id_%s.unc", "./src/test_contracts", id);
+
+                File contractFileName = new File(fileName);
+
+                if (!contractFileName.exists()) contractFileName.createNewFile();
+
+                try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
+                    fileOutputStream.write(contract.seal());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void addGetEndpoint() {
+        // require 1 param: id (String)
+        universaHTTPServer.addEndpoint("/getContract", (request, response) -> {
+            Object id = request.get("id");
+
+            Contract contract = null;
+
+            Path path = Paths.get(String.format("%s/id_%s.unc","./src/test_contracts", id));
+
+            try {
+                byte[] data = Files.readAllBytes(path);
+
+                contract = new Contract(data);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            Binder binder = BossBiMapper.serialize(contract);
+
+            response.set("contract", binder);
+        });
+    }
 
     @Test
     public void shouldRunServerWithTestEndpoint() throws Exception {
@@ -82,7 +200,6 @@ public class UniversaHTTPServerTest {
         assertEquals(a.code, 200);
         assertEquals("world", a.data.getStringOrThrow("ping"));
     }
-
 
     @Test
     public void shouldRunServerWithSeveralEndpoints() throws Exception {
