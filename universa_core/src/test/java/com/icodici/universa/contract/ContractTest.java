@@ -18,7 +18,10 @@ import net.sergeych.tools.Binder;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -37,6 +40,68 @@ public class ContractTest extends ContractTestBase {
 ////        Boss.trace((Object)s.getOrThrow("definition","permissions"));
 //        Yaml yaml = new Yaml();
 //        System.out.println(yaml.dump(s));
+    }
+
+
+    @Test
+    public void createFromSealed() throws Exception {
+        String fileName = "./src/test_contracts/simple_root_contract.unc";
+
+        readContract(fileName);
+    }
+
+    @Test
+    public void createFromBinaryWithRealContract() throws Exception {
+        String fileName = "./src/test_contracts/simple_root_contract.yml";
+
+        Contract c = Contract.fromYamlFile(fileName);
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        fileName = "./src/test_contracts/binaryContract.unc";
+
+        FileOutputStream stream = new FileOutputStream(fileName);
+        try {
+            stream.write(c.seal());
+        } finally {
+            stream.close();
+        }
+
+        readContract(fileName);
+    }
+
+    @Test
+    public void createFromSealedWithRealContract() throws Exception {
+        String fileName = "./src/test_contracts/subscription.yml";
+
+        Contract c = Contract.fromYamlFile(fileName);
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(c, true);
+
+        // Contract from seal
+        byte[] seal = c.seal();
+        Contract sealedContract = new Contract(seal);
+        sealedContract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(sealedContract, true);
+    }
+
+    private void readContract(String fileName) throws Exception {
+        Contract contract = null;
+
+        Path path = Paths.get(fileName);
+        byte[] data = Files.readAllBytes(path);
+
+        try {
+            contract = new Contract(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        assertNotEquals(contract, null);
+
     }
 
     @Test

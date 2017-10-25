@@ -11,8 +11,8 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
-import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
-import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.permissions.*;
+import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
@@ -30,10 +30,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.icodici.crypto.PublicKey.PUBLIC_KEY_BI_ADAPTER;
 import static com.icodici.universa.Errors.*;
 import static java.util.Arrays.asList;
 
@@ -75,6 +75,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             throw new IllegalArgumentException("version too high");
         byte[] contractBytes = data.getBinaryOrThrow("data");
 
+        registerAdapters();
+
+
         // This must be explained. By default, Boss.load will apply contract transformation in place
         // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
         // data without BiSerializer and then do it by hand calling deserialize:
@@ -108,6 +111,24 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 }
             }
         }
+    }
+
+    private void registerAdapters() {
+        // init permissions
+        DefaultBiMapper.registerClass(ChangeNumberPermission.class);
+        DefaultBiMapper.registerClass(ChangeOwnerPermission.class);
+        DefaultBiMapper.registerClass(ModifyDataPermission.class);
+        DefaultBiMapper.registerClass(RevokePermission.class);
+        DefaultBiMapper.registerClass(SplitJoinPermission.class);
+        // roles
+        DefaultBiMapper.registerClass(ListRole.class);
+        DefaultBiMapper.registerClass(Role.class);
+        DefaultBiMapper.registerClass(RoleLink.class);
+        DefaultBiMapper.registerClass(SimpleRole.class);
+        // other
+        DefaultBiMapper.registerClass(KeyRecord.class);
+        DefaultBiMapper.registerClass(TransactionContract.class);
+        DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
     }
 
     public Contract() {

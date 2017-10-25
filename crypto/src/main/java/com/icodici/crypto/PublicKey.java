@@ -14,9 +14,7 @@ import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
 import net.sergeych.tools.Hashable;
-import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.Ut;
 
@@ -162,27 +160,30 @@ public class PublicKey extends AbstractKey {
         }
     }
 
+    public static final BiAdapter PUBLIC_KEY_BI_ADAPTER = new BiAdapter() {
+
+        @Override
+        public Binder serialize(Object object, BiSerializer serializer) {
+            return Binder.of("packed",
+                    serializer.serialize(((PublicKey) object).pack()));
+        }
+
+        @Override
+        public Object deserialize(Binder binder, BiDeserializer deserializer) {
+            try {
+                return new PublicKey(binder.getBinaryOrThrow("packed"));
+            } catch (EncryptionError encryptionError) {
+                return null;
+            }
+        }
+
+        @Override
+        public String typeName() {
+            return "RSAPublicKey";
+        }
+    };
+
     static {
-        DefaultBiMapper.registerAdapter(PublicKey.class, new BiAdapter() {
-            @Override
-            public Binder serialize(Object object, BiSerializer serializer) {
-                return Binder.of("packed",
-                                 serializer.serialize(((PublicKey) object).pack()));
-            }
-
-            @Override
-            public Object deserialize(Binder binder, BiDeserializer deserializer) {
-                try {
-                    return new PublicKey(binder.getBinaryOrThrow("packed"));
-                } catch (EncryptionError encryptionError) {
-                    return null;
-                }
-            }
-
-            @Override
-            public String typeName() {
-                return "RSAPublicKey";
-            }
-        });
+        DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
     }
 }
