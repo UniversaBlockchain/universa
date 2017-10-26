@@ -78,7 +78,7 @@ public class UniversaHTTPServerTest {
         Binder binder = BossBiMapper.serialize(contractToSend);
 
         UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
-        UniversaHTTPClient.Answer a = client.request("uploadContract", "contract", binder);
+        UniversaHTTPClient.Answer a = client.request("uploadContract", "contract", binder, "id", "3");
 
         assertEquals(a.code, 200);
     }
