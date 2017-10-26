@@ -215,6 +215,10 @@ public class BufferedLogger implements AutoCloseable {
         return entry;
     }
 
+    public @NonNull Entry d(String message) {
+        return log(message);
+    }
+
     /**
      * Return most recent record up to specified number of entries.
      *
@@ -306,8 +310,10 @@ public class BufferedLogger implements AutoCloseable {
             interceptorThread = new Thread(() -> {
                 String s;
                 try {
-                    while ((s = r.readLine()) != null && interceptorThread != null) {
+                    while ((s = r.readLine()) != null ) {
                         log(s);
+                        if( !consoleIntercepted.get() )
+                            break;
                     }
                 } catch (IOException e) {
                     // pipe closed
@@ -327,9 +333,6 @@ public class BufferedLogger implements AutoCloseable {
     @Override
     public void close() throws Exception {
         stopInterceptingStdOut();
-        synchronized (queue) {
-            queue.add(null);
-        }
         if (loggerThread != null) {
             loggerThread.interrupt();
             loggerThread = null;

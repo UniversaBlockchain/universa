@@ -7,13 +7,13 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
+import com.icodici.universa.node2.network.ClientHTTPServer;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import net.sergeych.tools.AsyncEvent;
-import net.sergeych.tools.Binder;
-import net.sergeych.tools.BufferedLogger;
-import net.sergeych.tools.Reporter;
+import net.sergeych.tools.*;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
@@ -49,16 +49,16 @@ public class Main {
         };
         try {
             options = parser.parse(args);
-            if (!options.has("nolog"))
-                logger.interceptStdOut();
-
+            logger.interceptStdOut();//options.has("nolog"));
             if (options.has("?")) {
                 usage(null);
             }
-            logger.log(NAME_STRING);
-            logger.log("Starting client interface");
+            log(NAME_STRING);
+            log("Starting client interface");
             reporter.message("System started");
-            logger.log("-- "+loadNodeConfig());
+            loadNodeConfig();
+            startClientHttpServer();
+
             startAndWaitEnd();
         } catch (OptionException e) {
             usage("Unrecognized parameter: " + e.getMessage());
@@ -98,22 +98,51 @@ public class Main {
     static public void shutdown() {
         try {
 //            network.close();
+            log("shutting down");
         } catch (Exception e) {
         }
 
         synchronized (parser) {
             parser.notifyAll();
         }
+        try {
+            logger.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    private static Binder loadNodeConfig() throws IOException {
+    static private PrivateKey nodeKey;
+    static private Binder settings;
+
+    static public PublicKey getNodePublicKey() {
+        return nodeKey.getPublicKey();
+    }
+
+    private static void loadNodeConfig() throws IOException {
         Yaml yaml = new Yaml();
-        String root = (String)options.valueOf("config");
-        return Binder.of(yaml.load(new FileInputStream(root + "/config/config.yaml")));
+        String root = (String) options.valueOf("config");
+
+        nodeKey = null;
+        settings = Binder.of(yaml.load(new FileInputStream(root + "/config/config.yaml")));
+        log("node settings: " + settings);
+        String nodeKeyFileName = root + "/tmp/" + settings.getStringOrThrow("node_name") + ".private.unikey";
+        log(nodeKeyFileName);
+        nodeKey = new PrivateKey(Do.read(nodeKeyFileName));
+
+        log("key loaded: " + nodeKey.info());
     }
 
-    private static void startClientServer(Binder settings) {
+    private static ClientHTTPServer clientHTTPServer;
 
+    private static void startClientHttpServer() throws Exception {
+        clientHTTPServer = new ClientHTTPServer(nodeKey, settings.getIntOrThrow("http_client_port"),logger);
+        clientHTTPServer.start();
+        log("http client service started");
+    }
+
+    private static void log(String msg) {
+        logger.log(msg);
     }
 
 

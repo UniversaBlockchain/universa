@@ -258,6 +258,6 @@ public class KeyInfo {
 
     @Override
     public String toString() {
-        return String.format("Key(%s,%s)", algorythm, prf);
+        return String.format("Key(%s,%s,%s)", algorythm, prf, tag == null ? "null" : Base64.encodeCompactString(tag));
     }
 }

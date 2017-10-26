@@ -74,8 +74,8 @@ public class BufferedLoggerTest {
 
     @Test
     public void interceptConsole() throws Exception {
+        BufferedLogger log = new BufferedLogger(100);
         String res = ConsoleInterceptor.copyOut(()-> {
-            BufferedLogger log = new BufferedLogger(100);
             log.interceptStdOut();
             System.out.println("Hello, world");
             System.out.println("iCodici rules");
@@ -84,11 +84,15 @@ public class BufferedLoggerTest {
             while (log.getCopy().size() < 3) Thread.sleep(20);
             log.flush();
             log.stopInterceptingStdOut();
+            log.close();
             assertEquals("Hello, world,iCodici rules,last line", str(log.getCopy()));
         });
-        assertEquals(res, "Hello, world\n" +
+        assertEquals("Hello, world\n" +
                 "iCodici rules\n" +
-                "last line\n");
+                "last line",
+                     log.getCopy().stream()
+                             .map(x->x.message)
+                             .collect(Collectors.joining("\n")));
     }
 
 }
