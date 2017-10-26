@@ -119,9 +119,9 @@ public class UniversaHTTPServerTest {
     private TestHTTPServer universaHTTPServer;
 
 
-    public void setMicroHTTPDUp(PrivateKey privateKey) throws Exception {
-        universaHTTPServer = new TestHTTPServer(new MicroHTTPDService(), privateKey,
-                                                    DEFAULT_PORT, DEFAULT_WORKER_THREADS);
+    public void setMicroHTTPDUp() throws Exception {
+        universaHTTPServer = new TestHTTPServer(new MicroHTTPDService(), TestKeys.privateKey(0),
+                DEFAULT_PORT, DEFAULT_WORKER_THREADS);
 
         universaHTTPServer.setStorage("./src/test_contracts");
 
@@ -130,7 +130,7 @@ public class UniversaHTTPServerTest {
 
             if (!(requestData instanceof BasicHTTPService.FileUpload))
                 return new Binder(Errors.FAILURE.name(),
-                                  new ErrorRecord(Errors.FAILURE, "", "requestData is wrong"));
+                        new ErrorRecord(Errors.FAILURE, "", "requestData is wrong"));
 
 
             byte[] data = ((BasicHTTPService.FileUpload) request.get("requestData")).getBytes();
@@ -147,7 +147,7 @@ public class UniversaHTTPServerTest {
 
     @Test
     public void shouldDeliverContract() throws Exception {
-        setMicroHTTPDUp(null);
+        setMicroHTTPDUp();
         universaHTTPServer.start();
 
         Contract contractToSend = Contract.fromYamlFile("./src/test_contracts/id_1.yml");
@@ -155,19 +155,27 @@ public class UniversaHTTPServerTest {
         Binder binder = BossBiMapper.serialize(contractToSend);
 
         UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
-        UniversaHTTPClient.Answer a = client.request("uploadContract", "contract", binder, "id", "3");
+        PublicKey nodeKey = TestKeys.publicKey(0);
+        UniversaHTTPClient.Answer a = client.request("uploadContract",
+                "contract", binder,
+                "id", "3",
+                "client_key", nodeKey.pack());
 
         assertEquals(a.code, 200);
     }
 
     @Test
     public void shouldGetContract() throws Exception {
-        setMicroHTTPDUp(null);
+        setMicroHTTPDUp();
         universaHTTPServer.start();
 
 
         UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
-        UniversaHTTPClient.Answer a = client.request("getContract", "id", "1");
+
+        PublicKey nodeKey = TestKeys.publicKey(0);
+
+        UniversaHTTPClient.Answer a = client.request("getContract", "id", "1",
+                "client_key", nodeKey.pack());
 
         assertEquals(a.code, 200);
 
@@ -178,7 +186,7 @@ public class UniversaHTTPServerTest {
 
     @Test
     public void shouldUploadAndGetContractThen() throws Exception {
-        setMicroHTTPDUp(null);
+        setMicroHTTPDUp();
         universaHTTPServer.start();
 
 
@@ -187,11 +195,16 @@ public class UniversaHTTPServerTest {
         Binder binder = BossBiMapper.serialize(contractToSend);
 
         UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
-        UniversaHTTPClient.Answer upload = client.request("uploadContract", "contract", binder, "id", "2");
+
+        PublicKey nodeKey = TestKeys.publicKey(0);
+
+        UniversaHTTPClient.Answer upload = client.request("uploadContract", "contract", binder, "id", "2",
+                "client_key", nodeKey.pack());
 
         assertEquals(upload.code, 200);
 
-        UniversaHTTPClient.Answer get = client.request("getContract", "id", "2");
+        UniversaHTTPClient.Answer get = client.request("getContract", "id", "2",
+                "client_key", nodeKey.pack());
 
         assertEquals(get.code, 200);
         Object contract = get.data.get("contract");
@@ -201,7 +214,7 @@ public class UniversaHTTPServerTest {
 
     @Test
     public void shouldRunServerWithTestEndpoint() throws Exception {
-        setMicroHTTPDUp(null);
+        setMicroHTTPDUp();
         universaHTTPServer.start();
 
         universaHTTPServer.addEndpoint("/test", (request, response) -> {
@@ -219,7 +232,10 @@ public class UniversaHTTPServerTest {
         });
 
         UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
-        UniversaHTTPClient.Answer a = client.request("test", "hello", "world");
+
+        PublicKey nodeKey = TestKeys.publicKey(0);
+        UniversaHTTPClient.Answer a = client.request("test", "hello", "world",
+                "client_key", nodeKey.pack());
 
         assertEquals(a.code, 200);
         assertEquals("world", a.data.getStringOrThrow("ping"));
@@ -227,7 +243,7 @@ public class UniversaHTTPServerTest {
 
     @Test
     public void shouldRunServerWithSeveralEndpoints() throws Exception {
-        setMicroHTTPDUp(null);
+        setMicroHTTPDUp();
         universaHTTPServer.start();
 
         universaHTTPServer
@@ -245,7 +261,10 @@ public class UniversaHTTPServerTest {
 
         UniversaHTTPClient client = new UniversaHTTPClient("node1", ROOT_URL);
 
-        UniversaHTTPClient.Answer a = client.request("getNumber");
+        PublicKey nodeKey = TestKeys.publicKey(0);
+
+        UniversaHTTPClient.Answer a = client.request("getNumber",
+                "client_key", nodeKey.pack());
 
         assertEquals(a.code, 200);
         assertEquals(100500, a.data.getIntOrThrow("number"));
@@ -264,7 +283,7 @@ public class UniversaHTTPServerTest {
 
     @Test
     public void handshake() throws Exception {
-        setMicroHTTPDUp(TestKeys.privateKey(0));
+        setMicroHTTPDUp();
         StopWatch.measure(true, () -> {
             universaHTTPServer.start();
             client = new UniversaHTTPClient("testnode1", ROOT_URL);
@@ -281,7 +300,7 @@ public class UniversaHTTPServerTest {
 
     @Test
     public void handshakeWithChangingKeys() throws Exception {
-        setMicroHTTPDUp(TestKeys.privateKey(0));
+        setMicroHTTPDUp();
         universaHTTPServer.start();
 
         UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
@@ -305,7 +324,7 @@ public class UniversaHTTPServerTest {
 
     @Test
     public void handshakeWithoutKeysShouldFail() throws Exception {
-        setMicroHTTPDUp(null);
+        setMicroHTTPDUp();
         universaHTTPServer.start();
 
         UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);

@@ -101,9 +101,18 @@ public class UniversaHTTPServer {
 
             Binder requestParams = runPreprocessorIfExists(request.getParams());
 
-            handler.handle(requestParams, result);
+            try {
 
-            response.setBody(Boss.pack(result));
+                PublicKey client_key = new PublicKey(requestParams.getBinaryOrThrow("client_key"));
+                Binder params = inSession(client_key, (s) -> Binder.of(requestParams));
+
+                handler.handle(params, result);
+
+                response.setBody(Boss.pack(result));
+            } catch (Exception e) {
+                log.wtf("Error response", e);
+                response.setBody(Boss.pack(new ErrorRecord(Errors.FAILURE, "", e.getMessage())));
+            }
         }));
 
         return this;
