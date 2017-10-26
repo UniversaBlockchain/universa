@@ -118,9 +118,17 @@ public class UniversaHTTPServerTest {
 
     private TestHTTPServer universaHTTPServer;
 
-
     public void setMicroHTTPDUp() throws Exception {
-        universaHTTPServer = new TestHTTPServer(new MicroHTTPDService(), TestKeys.privateKey(0),
+        setMicroHTTPDUpK(TestKeys.privateKey(0));
+    }
+
+    public void setMicroHTTPDUp(PrivateKey key) throws Exception {
+        setMicroHTTPDUpK(key);
+    }
+
+
+    public void setMicroHTTPDUpK(PrivateKey key) throws Exception {
+        universaHTTPServer = new TestHTTPServer(new MicroHTTPDService(), key,
                 DEFAULT_PORT, DEFAULT_WORKER_THREADS);
 
         universaHTTPServer.setStorage("./src/test_contracts");
@@ -269,12 +277,14 @@ public class UniversaHTTPServerTest {
         assertEquals(a.code, 200);
         assertEquals(100500, a.data.getIntOrThrow("number"));
 
-        a = client.request("getProjectName");
+        a = client.request("getProjectName",
+                "client_key", nodeKey.pack());
 
         assertEquals(a.code, 200);
         assertEquals("Universa", a.data.getStringOrThrow("name"));
 
-        a = client.request("putSiteName", "name", "Universa.io");
+        a = client.request("putSiteName", "name", "Universa.io",
+                "client_key", nodeKey.pack());
 
         assertEquals(a.code, 200);
     }
@@ -324,7 +334,7 @@ public class UniversaHTTPServerTest {
 
     @Test
     public void handshakeWithoutKeysShouldFail() throws Exception {
-        setMicroHTTPDUp();
+        setMicroHTTPDUp(null);
         universaHTTPServer.start();
 
         UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
