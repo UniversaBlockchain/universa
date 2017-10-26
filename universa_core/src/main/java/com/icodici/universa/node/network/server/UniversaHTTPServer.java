@@ -13,23 +13,15 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
-import com.icodici.universa.contract.Contract;
 import com.icodici.universa.exception.ClientError;
 import com.icodici.universa.node.network.BasicHTTPService;
-import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -42,13 +34,7 @@ public class UniversaHTTPServer {
      */
     private static final Integer DEFAULT_THREAD_LIMIT = 16;
 
-    public static final String DEFAULT_STORAGE_TEST_CONTRACTS = "./src/test_contracts";
-
     private static LogPrinter log = new LogPrinter("UHTP");
-
-
-    private String storage = DEFAULT_STORAGE_TEST_CONTRACTS;
-
 
     private BasicHTTPService httpService;
 
@@ -82,6 +68,21 @@ public class UniversaHTTPServer {
         this.threadLimit = DEFAULT_THREAD_LIMIT;
     }
 
+    protected void setupRequestPreprocessor() {
+        setRequestPreprocessor(((request) -> {
+            Object requestData = request.get("requestData");
+
+            if (!(requestData instanceof BasicHTTPService.FileUpload))
+                return new Binder(Errors.FAILURE.name(),
+                                  new ErrorRecord(Errors.FAILURE, "", "requestData is wrong"));
+
+
+            byte[] data = ((BasicHTTPService.FileUpload) request.get("requestData")).getBytes();
+
+            return Boss.unpack(data);
+        }));
+    }
+
     public void setRequestPreprocessor(BasicHTTPService.RequestPreprocessor preprocessor) {
         this.preprocessor = preprocessor;
     }
@@ -89,6 +90,7 @@ public class UniversaHTTPServer {
 
     public void start() throws Exception {
         this.httpService.start(this.port, this.threadLimit);
+        setupRequestPreprocessor();
         this.addDefaultEndpoints();
     }
 
@@ -107,7 +109,7 @@ public class UniversaHTTPServer {
         return this;
     }
 
-    private void addDefaultEndpoints() {
+    protected void addDefaultEndpoints() {
         this.httpService.on("/connect", (request, response) -> {
             Binder requestParams = runPreprocessorIfExists(request.getParams());
 
@@ -139,62 +141,8 @@ public class UniversaHTTPServer {
 
             response.setBody(Boss.pack(result));
         }));
-
-        addUploadEndpoint();
-        addGetEndpoint();
     }
 
-
-    // require 2 params: contract (Binder) and id (String)
-    private void addUploadEndpoint() {
-        this.addEndpoint("/uploadContract", (request, response) -> {
-            try {
-                Object contractObj = request.get("contract");
-
-                if (contractObj == null || !(contractObj instanceof Contract))
-                    return;
-
-                Contract contract = (Contract) contractObj;
-
-                Object id = request.get("id");
-
-                final String fileName = String.format("%s/id_%s.unc", storage, id);
-
-                File contractFileName = new File(fileName);
-
-                if (!contractFileName.exists()) contractFileName.createNewFile();
-
-                try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
-                    fileOutputStream.write(contract.seal());
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    // require 1 param: id (String)
-    private void addGetEndpoint() {
-        this.addEndpoint("/getContract", (request, response) -> {
-            Object id = request.get("id");
-
-            Contract contract = null;
-
-            Path path = Paths.get(String.format("%s/id_%s.unc", storage, id));
-
-            try {
-                byte[] data = Files.readAllBytes(path);
-
-                contract = new Contract(data);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            Binder binder = BossBiMapper.serialize(contract);
-
-            response.set("contract", binder);
-        });
-    }
 
     public void shutdown() throws Exception {
         this.httpService.close();
@@ -250,8 +198,4 @@ public class UniversaHTTPServer {
         }
     }
 
-    public UniversaHTTPServer setStorage(String storage) {
-        this.storage = storage;
-        return this;
-    }
 }

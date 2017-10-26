@@ -12,20 +12,20 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.node.network.BasicHTTPService;
-import com.icodici.universa.node.network.UniversaHTTPClient;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node.network.UniversaHTTPClient;
 import com.icodici.universa.node.network.microhttpd.MicroHTTPDService;
 import net.sergeych.biserializer.BossBiMapper;
-import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.StopWatch;
 import org.junit.After;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,18 +33,95 @@ import java.nio.file.Paths;
 import static org.junit.Assert.*;
 
 
+class TestHTTPServer extends UniversaHTTPServer {
+    @Override
+    protected void addDefaultEndpoints() {
+        super.addDefaultEndpoints();
+        addUploadEndpoint();
+        addGetEndpoint();
+    }
+
+    public TestHTTPServer(BasicHTTPService httpService, PrivateKey privateKey, int port, int threadLimit) throws IOException {
+        super(httpService, privateKey, port, threadLimit);
+    }
+
+    public TestHTTPServer(BasicHTTPService httpService, PrivateKey privateKey, int port) throws IOException {
+        super(httpService, privateKey, port);
+    }
+
+    // require 2 params: contract (Binder) and id (String)
+    private void addUploadEndpoint() {
+        this.addEndpoint("/uploadContract", (request, response) -> {
+            try {
+                Object contractObj = request.get("contract");
+
+                if (contractObj == null || !(contractObj instanceof Contract))
+                    return;
+
+                Contract contract = (Contract) contractObj;
+
+                Object id = request.get("id");
+
+                final String fileName = String.format("%s/id_%s.unc", storage, id);
+
+                File contractFileName = new File(fileName);
+
+                if (!contractFileName.exists()) contractFileName.createNewFile();
+
+                try (FileOutputStream fileOutputStream = new FileOutputStream(fileName)) {
+                    fileOutputStream.write(contract.seal());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    // require 1 param: id (String)
+    private void addGetEndpoint() {
+        this.addEndpoint("/getContract", (request, response) -> {
+            Object id = request.get("id");
+
+            Contract contract = null;
+
+            Path path = Paths.get(String.format("%s/id_%s.unc", storage, id));
+
+            try {
+                byte[] data = Files.readAllBytes(path);
+
+                contract = new Contract(data);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            Binder binder = BossBiMapper.serialize(contract);
+
+            response.set("contract", binder);
+        });
+    }
+
+    public UniversaHTTPServer setStorage(String storage) {
+        this.storage = storage;
+        return this;
+    }
+
+    public static final String DEFAULT_STORAGE_TEST_CONTRACTS = "./src/test_contracts";
+    private String storage = DEFAULT_STORAGE_TEST_CONTRACTS;
+
+}
+
 public class UniversaHTTPServerTest {
 
     private static final int DEFAULT_PORT = 17174;
     private static final String ROOT_URL = "http://localhost:" + DEFAULT_PORT;
     private static final int DEFAULT_WORKER_THREADS = 4;
 
-    private UniversaHTTPServer universaHTTPServer;
+    private TestHTTPServer universaHTTPServer;
 
 
     public void setMicroHTTPDUp(PrivateKey privateKey) throws Exception {
-        universaHTTPServer = new UniversaHTTPServer(new MicroHTTPDService(), privateKey,
-                DEFAULT_PORT, DEFAULT_WORKER_THREADS);
+        universaHTTPServer = new TestHTTPServer(new MicroHTTPDService(), privateKey,
+                                                    DEFAULT_PORT, DEFAULT_WORKER_THREADS);
 
         universaHTTPServer.setStorage("./src/test_contracts");
 
@@ -53,7 +130,7 @@ public class UniversaHTTPServerTest {
 
             if (!(requestData instanceof BasicHTTPService.FileUpload))
                 return new Binder(Errors.FAILURE.name(),
-                        new ErrorRecord(Errors.FAILURE, "", "requestData is wrong"));
+                                  new ErrorRecord(Errors.FAILURE, "", "requestData is wrong"));
 
 
             byte[] data = ((BasicHTTPService.FileUpload) request.get("requestData")).getBytes();
@@ -183,17 +260,22 @@ public class UniversaHTTPServerTest {
         assertEquals(a.code, 200);
     }
 
+    UniversaHTTPClient client;
+
     @Test
     public void handshake() throws Exception {
         setMicroHTTPDUp(TestKeys.privateKey(0));
-        universaHTTPServer.start();
-
-        UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
-        PublicKey nodeKey = TestKeys.publicKey(0);
-        PrivateKey clientKey = TestKeys.privateKey(1);
-        client.start(clientKey, nodeKey);
-        assertTrue(client.ping());
-        assertEquals("welcome to the Universa", client.command("hello").getStringOrThrow("message"));
+        StopWatch.measure(true, () -> {
+            universaHTTPServer.start();
+            client = new UniversaHTTPClient("testnode1", ROOT_URL);
+            PublicKey nodeKey = TestKeys.publicKey(0);
+            PrivateKey clientKey = TestKeys.privateKey(1);
+            client.start(clientKey, nodeKey);
+        });
+        StopWatch.measure(true, () -> {
+            assertTrue(client.ping());
+            assertEquals("welcome to the Universa", client.command("hello").getStringOrThrow("message"));
+        });
     }
 
 
