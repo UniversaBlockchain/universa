@@ -10,7 +10,6 @@ package com.icodici.universa.client;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.wallet.Wallet;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -358,7 +357,7 @@ public class CLIMainTest  {
     }
 
     @Test
-    public void shouldShowAllWalletBalances() throws Exception {
+    public void findContractsInPath() throws Exception {
 
         // Create contract files (coins and some non-coins)
         File dirFile = new File(rootPath + "contract_subfolder/");
@@ -409,6 +408,14 @@ public class CLIMainTest  {
             total += i;
         }
         assert(output.indexOf(total + " (TUNC)") >= 0);
+    }
+
+    @Test
+    public void downloadContract() throws Exception {
+        callMain("-d", "www.universa.io");
+        System.out.println(output);
+        assert(output.indexOf("downloading from www.universa.io") >= 0);
+        assertEquals(0, errors.size());
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {

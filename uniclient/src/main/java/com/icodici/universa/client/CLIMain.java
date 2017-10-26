@@ -116,6 +116,9 @@ public class CLIMain {
                 acceptsAll(asList("f", "find"), "Search all contracts in the specified path including subpaths.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("path");
+                acceptsAll(asList("d", "download"), "Download contract from the specified url.")
+                        .withRequiredArg().ofType(String.class)
+                        .describedAs("url");
             }
         };
         try {
@@ -200,61 +203,17 @@ public class CLIMain {
                 String source = (String) options.valueOf("f");
 
                 List<Contract> allFoundContracts = findContracts(source);
-
                 List<Wallet> wallets = Wallet.determineWallets(allFoundContracts);
 
-                reporter.message("---");
-                reporter.message("");
+                printWallets(wallets);
+                printContracts(allFoundContracts);
 
-                List<Contract> foundContracts = new ArrayList<>();
-                for(Wallet wallet : wallets) {
-                    foundContracts.addAll(wallet.getContracts());
+                finish();
+            }
+            if (options.has("d")) {
+                String source = (String) options.valueOf("d");
 
-                    reporter.message("found wallet: " + wallet.toString());
-                    reporter.verbose("");
-
-                    HashMap<String, Integer> balance = new HashMap<String, Integer>();
-                    Integer numcoins;
-                    String currency;
-                    for (Contract contract : wallet.getContracts()) {
-                        try {
-                            numcoins = contract.getStateData().getIntOrThrow(AMOUNT_FIELD_NAME);
-                            currency = contract.getDefinition().getData().getOrThrow("currency_code");
-                            if(balance.containsKey(currency)) {
-                                balance.replace(currency, balance.get(currency) + numcoins);
-                            } else {
-                                balance.put(currency, numcoins);
-                            }
-                            reporter.verbose("found coins: " +
-                                    contract.getDefinition().getData().getOrThrow("name") +
-                                    " -> " + numcoins + " (" + currency + ") ");
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    reporter.verbose("");
-                    reporter.message("total in the wallet: " );
-                    for (String c : balance.keySet()) {
-                        reporter.message( balance.get(c) + " (" + c + ") ");
-                    }
-                }
-
-                reporter.verbose("");
-                reporter.verbose("---");
-                reporter.verbose("");
-                reporter.verbose("found contracts list: ");
-                reporter.verbose("");
-                for (Contract contract : allFoundContracts) {
-                    try {
-                        reporter.verbose("Contract created at " +
-                                        DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) +
-                                        ": " +
-                                        contract.getDefinition().getData().getString("description")
-                                );
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
+                downloadContract(source);
 
                 finish();
             }
@@ -566,8 +525,6 @@ public class CLIMain {
      * @return
      */
     public static List<Contract> findContracts(String path) {
-        // TODO: Check if necessary to move function to Contract class.
-
         List<Contract> foundContracts = new ArrayList<>();
         List<File> foundContractFiles = new ArrayList<>();
 
@@ -585,6 +542,19 @@ public class CLIMain {
         return foundContracts;
     }
 
+    /**
+     * Download contract from the specified url.
+     *
+     * @param url
+     *
+     * @return
+     */
+    public static Contract downloadContract(String url) {
+        // TODO: Download and check contract.
+        report("downloading from " + url);
+        return null;
+    }
+
 
     /**
      * Fill given List with contract files, found in given path recursively.
@@ -595,8 +565,6 @@ public class CLIMain {
      * @param path
      */
     private static void fillWithContractsFiles(List<File> foundContractFiles, String path) {
-        // TODO: Check if necessary to move function to Contract class.
-
         File pathFile = new File(path);
 
         if(pathFile.exists()) {
@@ -615,6 +583,63 @@ public class CLIMain {
                 if (filter.accept(pathFile)) {
                     foundContractFiles.add(pathFile);
                 }
+            }
+        }
+    }
+
+    private static void printWallets(List<Wallet> wallets) {
+        reporter.message("---");
+        reporter.message("");
+
+        List<Contract> foundContracts = new ArrayList<>();
+        for(Wallet wallet : wallets) {
+            foundContracts.addAll(wallet.getContracts());
+
+            reporter.message("found wallet: " + wallet.toString());
+            reporter.verbose("");
+
+            HashMap<String, Integer> balance = new HashMap<String, Integer>();
+            Integer numcoins;
+            String currency;
+            for (Contract contract : wallet.getContracts()) {
+                try {
+                    numcoins = contract.getStateData().getIntOrThrow(AMOUNT_FIELD_NAME);
+                    currency = contract.getDefinition().getData().getOrThrow("currency_code");
+                    if(balance.containsKey(currency)) {
+                        balance.replace(currency, balance.get(currency) + numcoins);
+                    } else {
+                        balance.put(currency, numcoins);
+                    }
+                    reporter.verbose("found coins: " +
+                            contract.getDefinition().getData().getOrThrow("name") +
+                            " -> " + numcoins + " (" + currency + ") ");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            reporter.verbose("");
+            reporter.message("total in the wallet: " );
+            for (String c : balance.keySet()) {
+                reporter.message( balance.get(c) + " (" + c + ") ");
+            }
+        }
+    }
+
+    private static void printContracts(List<Contract> contracts) {
+        reporter.verbose("");
+        reporter.verbose("---");
+        reporter.verbose("");
+        reporter.verbose("found contracts list: ");
+        reporter.verbose("");
+        for (Contract contract : contracts) {
+            try {
+                reporter.verbose("Contract created at " +
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) +
+                        ": " +
+                        contract.getDefinition().getData().getString("description")
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }
