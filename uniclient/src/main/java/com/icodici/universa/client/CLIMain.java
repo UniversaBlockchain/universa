@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 import joptsimple.OptionException;
@@ -46,6 +47,9 @@ public class CLIMain {
     private static ClientNetwork clientNetwork;
     private static List<String> keyFileNames = new ArrayList<>();
     private static Map<String,PrivateKey> keyFiles;
+
+
+    public static final String AMOUNT_FIELD_NAME = "amount";
 
     static public void main(String[] args) throws IOException {
 //        args = new String[]{"-g", "longkey", "-s", "4096"};
@@ -109,6 +113,9 @@ public class CLIMain {
                         "Update specified with -set argument field of the contract.")
                         .withRequiredArg()
                         .ofType(String.class);
+                acceptsAll(asList("f", "find"), "Search all contracts in the specified path including subpaths.")
+                        .withRequiredArg().ofType(String.class)
+                        .describedAs("path");
             }
         };
         try {
@@ -187,6 +194,68 @@ public class CLIMain {
                     name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
                 }
                 saveContract(contract, name);
+                finish();
+            }
+            if (options.has("f")) {
+                String source = (String) options.valueOf("f");
+
+                List<Contract> allFoundContracts = findContracts(source);
+
+                List<Wallet> wallets = Wallet.determineWallets(allFoundContracts);
+
+                reporter.message("---");
+                reporter.message("");
+
+                List<Contract> foundContracts = new ArrayList<>();
+                for(Wallet wallet : wallets) {
+                    foundContracts.addAll(wallet.getContracts());
+
+                    reporter.message("found wallet: " + wallet.toString());
+                    reporter.verbose("");
+
+                    HashMap<String, Integer> balance = new HashMap<String, Integer>();
+                    Integer numcoins;
+                    String currency;
+                    for (Contract contract : wallet.getContracts()) {
+                        try {
+                            numcoins = contract.getStateData().getIntOrThrow(AMOUNT_FIELD_NAME);
+                            currency = contract.getDefinition().getData().getOrThrow("currency_code");
+                            if(balance.containsKey(currency)) {
+                                balance.replace(currency, balance.get(currency) + numcoins);
+                            } else {
+                                balance.put(currency, numcoins);
+                            }
+                            reporter.verbose("found coins: " +
+                                    contract.getDefinition().getData().getOrThrow("name") +
+                                    " -> " + numcoins + " (" + currency + ") ");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    reporter.verbose("");
+                    reporter.message("total in the wallet: " );
+                    for (String c : balance.keySet()) {
+                        reporter.message( balance.get(c) + " (" + c + ") ");
+                    }
+                }
+
+                reporter.verbose("");
+                reporter.verbose("---");
+                reporter.verbose("");
+                reporter.verbose("found contracts list: ");
+                reporter.verbose("");
+                for (Contract contract : allFoundContracts) {
+                    try {
+                        reporter.verbose("Contract created at " +
+                                        DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) +
+                                        ": " +
+                                        contract.getDefinition().getData().getString("description")
+                                );
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
                 finish();
             }
 
@@ -309,7 +378,7 @@ public class CLIMain {
 
         Path path = Paths.get(fileName);
         byte[] data = Files.readAllBytes(path);
-        report("load contract, data size: " + data.length);
+        reporter.verbose("load contract, data size: " + data.length);
 
         contract = new Contract(data);
 
@@ -488,6 +557,84 @@ public class CLIMain {
         Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
     }
 
+
+
+    /**
+     * Find wallets in the given path including all subfolders. Looking for files with .unic and .unc extensions.
+     *
+     * @param path
+     *
+     * @return
+     */
+
+    public static List<Wallet> findWallets(String path) {
+        return Wallet.determineWallets(findContracts(path));
+    }
+
+
+
+    /**
+     * Find contracts in the given path including all subfolders. Looking for files with .unic and .unc extensions.
+     *
+     * @param path
+     *
+     * @return
+     */
+
+    public static List<Contract> findContracts(String path) {
+        // TODO: Check if necessary to move function to Contract class.
+
+        List<Contract> foundContracts = new ArrayList<>();
+        List<File> foundContractFiles = new ArrayList<>();
+
+        fillWithContractsFiles(foundContractFiles, path);
+
+        Contract contract;
+        for (File file : foundContractFiles) {
+            try {
+                contract = loadContract(file.getAbsolutePath());
+                foundContracts.add(contract);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return foundContracts;
+    }
+
+
+    /**
+     * Fill given List with contract files, found in given path recursively.
+     *
+     * Does not return new Lists but put found files into the given List for optimisation purposes.
+     *
+     * @param foundContractFiles
+     * @param path
+     */
+    private static void fillWithContractsFiles(List<File> foundContractFiles, String path) {
+        // TODO: Check if necessary to move function to Contract class.
+
+        File pathFile = new File(path);
+
+        if(pathFile.exists()) {
+            ContractFilesFilter filter = new ContractFilesFilter();
+            DirsFilter dirsFilter = new DirsFilter();
+
+            if (pathFile.isDirectory()) {
+                File[] foundFiles = pathFile.listFiles(filter);
+                foundContractFiles.addAll(Arrays.asList(foundFiles));
+
+                File[] foundDirs = pathFile.listFiles(dirsFilter);
+                for (File file : foundDirs) {
+                    fillWithContractsFiles(foundContractFiles, file.getPath());
+                }
+            } else {
+                if (filter.accept(pathFile)) {
+                    foundContractFiles.add(pathFile);
+                }
+            }
+        }
+    }
+
     private static void finish() {
         // print reports if need
         throw new Finished();
@@ -557,5 +704,44 @@ public class CLIMain {
     }
 
     public static class Finished extends RuntimeException {
+    }
+
+    static class ContractFilesFilter implements FileFilter {
+
+        List<String> extensions = Arrays.asList("unic", "unc");
+
+        ContractFilesFilter() {
+        }
+
+        public boolean accept(File pathname) {
+            String extension = getExtension(pathname);
+            for (String unc : extensions) {
+                if(unc.equals(extension)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private String getExtension(File pathname) {
+            String filename = pathname.getPath();
+            int i = filename.lastIndexOf('.');
+            if ( i>0 && i<filename.length()-1 ) {
+                return filename.substring(i+1).toLowerCase();
+            }
+            return "";
+        }
+
+    }
+
+    static class DirsFilter implements FileFilter {
+
+        DirsFilter() {
+        }
+
+        public boolean accept(File pathname) {
+            return pathname.isDirectory();
+        }
+
     }
 }

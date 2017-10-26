@@ -7,7 +7,10 @@
 
 package com.icodici.universa.client;
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.wallet.Wallet;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -15,26 +18,43 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 import static com.icodici.universa.client.RegexMatcher.matches;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
-public class CLIMainTest {
+public class CLIMainTest  {
 
-    String rootPath;
+    protected String rootPath = "./src/test_files/";
     private List<Binder> errors;
     private String output;
 
+    protected PrivateKey ownerKey1;
+    protected PrivateKey ownerKey2;
+    protected PrivateKey ownerKey3;
+
+    public static final String FIELD_NAME = "amount";
+
+    protected static final String PRIVATE_KEY = "_xer0yfe2nn1xthc.private.unikey";
+
+    protected final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
+
     @Before
-    public void prepareRoot() {
-        rootPath = "./src/test_files/";
+    public void prepareRoot() throws Exception {
 //        new File(rootPath + "/simple_root_contract.unic").delete();
         assert (new File(rootPath + "/simple_root_contract.yml").exists());
         CLIMain.setTestMode();
         CLIMain.setTestRootPath(rootPath);
+
+        ownerKey1 = TestKeys.privateKey(3);
+        ownerKey2 = TestKeys.privateKey(1);
+        ownerKey3 = TestKeys.privateKey(2);
     }
 
 //    @Test
@@ -337,11 +357,118 @@ public class CLIMainTest {
         assertEquals(0, errors.size());
     }
 
+    @Test
+    public void shouldShowAllWalletBalances() throws Exception {
+
+        // Create contract files (coins and some non-coins)
+        File dirFile = new File(rootPath + "contract_subfolder/");
+        if(!dirFile.exists()) dirFile.mkdir();
+        dirFile = new File(rootPath + "contract_subfolder/contract_subfolder_level2/");
+        if(!dirFile.exists()) dirFile.mkdir();
+
+        List<Integer> coinValues = Arrays.asList(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60);
+        List<Contract> listOfCoinsWithAmount = createListOfCoinsWithAmount(coinValues);
+        for (Contract coin : listOfCoinsWithAmount) {
+            int rnd = new Random().nextInt(2);
+            String dir = "";
+            switch (rnd) {
+                case 0:
+                    dir += "contract_subfolder/";
+                    break;
+                case 1:
+                    dir += "contract_subfolder/contract_subfolder_level2/";
+                    break;
+            }
+            saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unic");
+        }
+
+        Contract nonCoin = Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
+        saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unic");
+        saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unic");
+
+        // Found wallets
+
+        callMain("-f", rootPath + "contract_subfolder/", "-v");
+        System.out.println(output);
+
+
+        // Clean up files
+
+        File[] filesToRemove = new File(rootPath + "contract_subfolder/").listFiles();
+        for(File file : filesToRemove) {
+            file.delete();
+        }
+
+        filesToRemove = new File(rootPath + "contract_subfolder/contract_subfolder_level2/").listFiles();
+        for(File file : filesToRemove) {
+            file.delete();
+        }
+
+        Integer total = 0;
+        for (Integer i : coinValues) {
+            total += i;
+        }
+        assert(output.indexOf(total + " (TUNC)") >= 0);
+    }
+
+    private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
+        List<Contract> contracts = new ArrayList<>();
+
+
+        for (Integer value : values) {
+            Contract contract = createCoin();
+            contract.getStateData().set(FIELD_NAME, new Decimal(value));
+            contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+            sealCheckTrace(contract, true);
+
+            contracts.add(contract);
+        }
+
+        return contracts;
+    }
+
+    private void saveContract(Contract contract, String fileName) throws IOException {
+
+        if (fileName == null)
+        {
+            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
+        }
+
+        byte[] data = contract.seal();
+        try (FileOutputStream fs = new FileOutputStream(fileName)) {
+            fs.write(data);
+            fs.close();
+        }
+    }
+
     private Reporter callMain(String... args) throws Exception {
         output = ConsoleInterceptor.copyOut(() -> {
             CLIMain.main(args);
             errors = CLIMain.getReporter().getErrors();
         });
         return CLIMain.getReporter();
+    }
+
+
+    protected void sealCheckTrace(Contract c, boolean isOk) {
+        c.seal();
+        c.check();
+        c.traceErrors();
+
+        if (isOk)
+            assertTrue(c.isOk());
+        else
+            assertFalse(c.isOk());
+    }
+
+    protected Contract createCoin() throws IOException {
+        return createCoin(rootPath + "coin.yml");
+    }
+
+    protected Contract createCoin(String yamlFilePath) throws IOException {
+        Contract c = Contract.fromYamlFile(yamlFilePath);
+        c.setOwnerKey(ownerKey2);
+        return c;
     }
 }
