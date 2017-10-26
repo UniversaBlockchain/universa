@@ -97,7 +97,7 @@ public class Farcall {
 
         @Override
         public String toString() {
-            return "Farcall.RemoteException " + Ut.mapToString(data);
+            return "Farcall.RemoteException " + ((data == null)? "null" :  Ut.mapToString(data));
         }
     }
 

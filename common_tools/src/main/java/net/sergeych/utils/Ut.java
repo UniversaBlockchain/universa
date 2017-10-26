@@ -216,9 +216,10 @@ public class Ut {
      * Convert map to {key: value,...} string
      */
     public static <K, V> String mapToString(Map<K, V> map) {
-        StringBuilder sb = new StringBuilder("{");
+        assert map != null;
+        final StringBuilder sb = new StringBuilder("{");
         boolean first = true;
-        for (Map.Entry<K, V> entry : map.entrySet()) {
+        for (final Map.Entry<K, V> entry : map.entrySet()) {
             if (first)
                 first = false;
             else
