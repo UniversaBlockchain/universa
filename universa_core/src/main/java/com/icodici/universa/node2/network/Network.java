@@ -41,7 +41,7 @@ public abstract class Network {
      *
      * @param forNode              node to which receive notifications
      * @param notificationConsumer the consumer that process incoming notifications in non-blocking manner, e.g.
-     *                             returnung without waiting anything.
+     *                             it should return without waiting
      */
     public abstract void subscribe(NodeInfo forNode, Consumer<Notification> notificationConsumer);
 

@@ -21,12 +21,10 @@ import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-
 
 
 public class UniversaHTTPServer {
@@ -36,9 +34,7 @@ public class UniversaHTTPServer {
      */
     private static final Integer DEFAULT_THREAD_LIMIT = 16;
 
-
     private static LogPrinter log = new LogPrinter("UHTP");
-
 
     private BasicHTTPService httpService;
 
@@ -72,6 +68,21 @@ public class UniversaHTTPServer {
         this.threadLimit = DEFAULT_THREAD_LIMIT;
     }
 
+    protected void setupRequestPreprocessor() {
+        setRequestPreprocessor(((request) -> {
+            Object requestData = request.get("requestData");
+
+            if (!(requestData instanceof BasicHTTPService.FileUpload))
+                return new Binder(Errors.FAILURE.name(),
+                                  new ErrorRecord(Errors.FAILURE, "", "requestData is wrong"));
+
+
+            byte[] data = ((BasicHTTPService.FileUpload) request.get("requestData")).getBytes();
+
+            return Boss.unpack(data);
+        }));
+    }
+
     public void setRequestPreprocessor(BasicHTTPService.RequestPreprocessor preprocessor) {
         this.preprocessor = preprocessor;
     }
@@ -79,6 +90,7 @@ public class UniversaHTTPServer {
 
     public void start() throws Exception {
         this.httpService.start(this.port, this.threadLimit);
+        setupRequestPreprocessor();
         this.addDefaultEndpoints();
     }
 
@@ -97,7 +109,7 @@ public class UniversaHTTPServer {
         return this;
     }
 
-    private void addDefaultEndpoints() {
+    protected void addDefaultEndpoints() {
         this.httpService.on("/connect", (request, response) -> {
             Binder requestParams = runPreprocessorIfExists(request.getParams());
 
@@ -130,6 +142,7 @@ public class UniversaHTTPServer {
             response.setBody(Boss.pack(result));
         }));
     }
+
 
     public void shutdown() throws Exception {
         this.httpService.close();
@@ -184,4 +197,5 @@ public class UniversaHTTPServer {
             return r;
         }
     }
+
 }

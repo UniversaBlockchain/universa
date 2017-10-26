@@ -113,7 +113,7 @@ public class Wallet {
 
             if (splitJoinCollection == null || splitJoinCollection.size() == 0) continue;
 
-            Object split_join = contract.getPermissions().get("split_join").toArray()[0];
+            Object split_join = splitJoinCollection.toArray()[0];
 
             if (!(split_join instanceof SplitJoinPermission)) continue;
 

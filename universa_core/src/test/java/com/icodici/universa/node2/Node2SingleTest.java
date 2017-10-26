@@ -32,8 +32,8 @@ import static org.junit.Assert.*;
 
 public class Node2SingleTest extends TestCase {
 
-    private static final String ROOT_PATH = "./src/test_contracts/";
-    private static final String CONFIG_2_PATH = "./src/test_config_2/";
+    protected static final String ROOT_PATH = "./src/test_contracts/";
+    protected static final String CONFIG_2_PATH = "./src/test_config_2/";
 
     Network network;
     NetConfig nc;
