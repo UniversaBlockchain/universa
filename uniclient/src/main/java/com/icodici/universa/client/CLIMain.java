@@ -370,10 +370,6 @@ public class CLIMain {
     }
 
     private static Contract loadContract(String fileName) throws IOException {
-        // TODO: resolve Contract bug: Contract cannot be initiated from sealed data until
-        // Permissions beaing created or initialized or something like that.
-        loadContractHook();
-
         Contract contract;
 
         Path path = Paths.get(fileName);
@@ -551,14 +547,6 @@ public class CLIMain {
         }
     }
 
-    // This method is a hook, it resolve Contract bug: Contract cannot be initiated from sealed data until
-    // Permissions beaing created or initialized or something like that.
-    private static void loadContractHook() throws IOException {
-        Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
-    }
-
-
-
     /**
      * Find wallets in the given path including all subfolders. Looking for files with .unic and .unc extensions.
      *
@@ -566,12 +554,9 @@ public class CLIMain {
      *
      * @return
      */
-
     public static List<Wallet> findWallets(String path) {
         return Wallet.determineWallets(findContracts(path));
     }
-
-
 
     /**
      * Find contracts in the given path including all subfolders. Looking for files with .unic and .unc extensions.
@@ -580,7 +565,6 @@ public class CLIMain {
      *
      * @return
      */
-
     public static List<Contract> findContracts(String path) {
         // TODO: Check if necessary to move function to Contract class.
 
