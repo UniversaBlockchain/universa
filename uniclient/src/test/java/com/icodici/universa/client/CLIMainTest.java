@@ -46,7 +46,7 @@ public class CLIMainTest  {
 
     @Before
     public void prepareRoot() throws Exception {
-//        new File(rootPath + "/simple_root_contract.unic").delete();
+//        new File(rootPath + "/simple_root_contract.unicon").delete();
         assert (new File(rootPath + "/simple_root_contract.yml").exists());
         CLIMain.setTestMode();
         CLIMain.setTestRootPath(rootPath);
@@ -59,7 +59,7 @@ public class CLIMainTest  {
 //    @Test
     public void createContract() throws Exception {
         callMain("-c", rootPath + "simple_root_contract.yml", "-j");
-        assert (new File(rootPath + "/simple_root_contract.unic").exists());
+        assert (new File(rootPath + "/simple_root_contract.unicon").exists());
     }
 
     // we are moving the network so this test do not pass as for now
@@ -69,13 +69,13 @@ public class CLIMainTest  {
         assertThat(r.getMessage(-2), matches(".*10/10"));
     }
 
-//    @Test
+    @Test
     public void createAndSign() throws Exception {
-        callMain("-c", rootPath + "simple_root_contract.yml",
+        callMain("-c", rootPath + "simple_root_contract_v2.yml",
                  "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey"
         );
-        System.out.println(new File(rootPath + "/simple_root_contract.unic").getAbsolutePath());
-        assert (new File(rootPath + "/simple_root_contract.unic").exists());
+        System.out.println(new File(rootPath + "/simple_root_contract_v2.unicon").getAbsolutePath());
+        assert (new File(rootPath + "/simple_root_contract_v2.unicon").exists());
         if (errors.size() > 0) {
             System.out.println(errors);
         }
@@ -98,7 +98,7 @@ public class CLIMainTest  {
     @Test
     public void exportTest() throws Exception {
         callMain(
-                "-e", rootPath + "contract_to_export.unic");
+                "-e", rootPath + "contract_to_export.unicon");
         System.out.println(output);
         assert(output.indexOf("export ok") >= 0);
         assertEquals(0, errors.size());
@@ -107,7 +107,7 @@ public class CLIMainTest  {
     @Test
     public void exportAsJSONTest() throws Exception {
         callMain(
-                "-e", rootPath + "contract_to_export.unic", "-as", "json");
+                "-e", rootPath + "contract_to_export.unicon", "-as", "json");
         System.out.println(output);
         assert(output.indexOf("export as json ok") >= 0);
         assertEquals(0, errors.size());
@@ -117,7 +117,7 @@ public class CLIMainTest  {
     public void exportWithNameTest() throws Exception {
         String name = "ExportedContract";
         callMain(
-                "-e", rootPath + "contract_to_export.unic", "-name", rootPath + name);
+                "-e", rootPath + "contract_to_export.unicon", "-name", rootPath + name);
         System.out.println(output);
         assert(output.indexOf(name + " export ok") >= 0);
         assertEquals(0, errors.size());
@@ -127,7 +127,7 @@ public class CLIMainTest  {
     public void exportPublicKeys() throws Exception {
         String role = "owner";
         callMain(
-                "-e", rootPath + "contract_to_export.unic", "-extract-key", role);
+                "-e", rootPath + "contract_to_export.unicon", "-extract-key", role);
         System.out.println(output);
         assert(output.indexOf(role + " export public keys ok") >= 0);
         assertEquals(0, errors.size());
@@ -137,7 +137,7 @@ public class CLIMainTest  {
     public void exportPublicKeysWrongRole() throws Exception {
         String role = "wrongRole";
         callMain(
-                "-e", rootPath + "contract_to_export.unic", "-extract-key", role);
+                "-e", rootPath + "contract_to_export.unicon", "-extract-key", role);
         System.out.println(output);
         assert(output.indexOf(role + " export public keys ok") < 0);
         assertEquals(0, errors.size());
@@ -148,7 +148,7 @@ public class CLIMainTest  {
         String field1 = "definition.issuer";
         String field2 = "state.origin";
         callMain(
-                "-e", rootPath + "contract_to_export.unic", "-get", field1, "-get", field2);
+                "-e", rootPath + "contract_to_export.unicon", "-get", field1, "-get", field2);
         System.out.println(output);
         assert(output.indexOf("export fields ok") >= 0);
         assertEquals(0, errors.size());
@@ -271,7 +271,7 @@ public class CLIMainTest  {
                 "          </root>\n" +
                 "        </root>";
         callMain(
-                "-e", rootPath + "contract_to_export.unic",
+                "-e", rootPath + "contract_to_export.unicon",
                 "-set", field1, "-value", value1,
                 "-set", field2, "-value", value2);
         System.out.println(output);
@@ -288,7 +288,7 @@ public class CLIMainTest  {
         String field2 = "definition.expires_at";
         String value2 = "{\"seconds\":1519772317,\"__type\":\"unixtime\"}";
         callMain(
-                "-e", rootPath + "contract_to_export.unic",
+                "-e", rootPath + "contract_to_export.unicon",
                 "-set", field1, "-value", value1,
                 "-set", field2, "-value", value2);
         System.out.println(output);
@@ -303,7 +303,7 @@ public class CLIMainTest  {
         String field1 = "definition.issuer";
         String field2 = "state.origin";
         callMain(
-                "-e", rootPath + "contract_to_export.unic", "-get", field1, "-get", field2, "-as", "json");
+                "-e", rootPath + "contract_to_export.unicon", "-get", field1, "-get", field2, "-as", "json");
         System.out.println(output);
         assert(output.indexOf("export fields as json ok") >= 0);
         assertEquals(0, errors.size());
@@ -313,7 +313,7 @@ public class CLIMainTest  {
     public void exportWrongFields() throws Exception {
         String field = "definition.wrong";
         callMain(
-                "-e", rootPath + "contract_to_export.unic", "-get", field, "-as", "json");
+                "-e", rootPath + "contract_to_export.unicon", "-get", field, "-as", "json");
         System.out.println(output);
         assert(output.indexOf("export fields as json ok") < 0);
         assertEquals(0, errors.size());
@@ -348,7 +348,7 @@ public class CLIMainTest  {
 
     @Test
     public void importWithNameTest() throws Exception {
-        String name = "ImportedContract.unic";
+        String name = "ImportedContract.unicon";
         callMain(
                 "-i", rootPath + "contract_to_import.xml", "-name", rootPath + name);
         System.out.println(output);
@@ -378,16 +378,16 @@ public class CLIMainTest  {
                     dir += "contract_subfolder/contract_subfolder_level2/";
                     break;
             }
-            saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unic");
+            saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
         }
 
         Contract nonCoin = Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
-        saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unic");
-        saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unic");
+        saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unicon");
+        saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unicon");
 
         // Found wallets
 
-        callMain("-f", rootPath + "contract_subfolder/", "-v");
+        callMain("-f", rootPath + "contract_subfolder/", "-v", "-r");
         System.out.println(output);
 
 
@@ -418,6 +418,93 @@ public class CLIMainTest  {
         assertEquals(0, errors.size());
     }
 
+    @Test
+    public void checkDataIsValidContract() throws Exception {
+        callMain("-ch", rootPath + "simple_root_contract_v2.yml", "--binary");
+        System.out.println(output);
+        assert(output.indexOf("Contract is valid") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkContract() throws Exception {
+        callMain("-ch", rootPath + "contract_to_export.unicon");
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkContractInPath() throws Exception {
+        // check contracts
+        callMain("-ch", rootPath, "-v");
+        System.out.println(output);
+//        assertEquals(3, errors.size());
+    }
+
+    @Test
+    public void checkContractInPathRecursively() throws Exception {
+
+        // Create contract files (coins and some non-coins)
+
+        File dirFile = new File(rootPath + "contract_subfolder/");
+        if(!dirFile.exists()) dirFile.mkdir();
+        dirFile = new File(rootPath + "contract_subfolder/contract_subfolder_level2/");
+        if(!dirFile.exists()) dirFile.mkdir();
+
+        List<Integer> coinValues = Arrays.asList(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60);
+        List<Contract> listOfCoinsWithAmount = createListOfCoinsWithAmount(coinValues);
+        for (Contract coin : listOfCoinsWithAmount) {
+            int rnd = new Random().nextInt(2);
+            String dir = "";
+            switch (rnd) {
+                case 0:
+                    dir += "contract_subfolder/";
+                    break;
+                case 1:
+                    dir += "contract_subfolder/contract_subfolder_level2/";
+                    break;
+            }
+            saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
+        }
+
+        Contract nonCoin = Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
+        saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unicon");
+        saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unicon");
+
+        // check contracts
+
+        callMain("-ch", rootPath, "-v", "-r");
+        System.out.println(output);
+//        assertEquals(5, errors.size());
+
+
+        // Clean up files
+
+        File[] filesToRemove = new File(rootPath + "contract_subfolder/").listFiles();
+        for(File file : filesToRemove) {
+            file.delete();
+        }
+
+        filesToRemove = new File(rootPath + "contract_subfolder/contract_subfolder_level2/").listFiles();
+        for(File file : filesToRemove) {
+            file.delete();
+        }
+    }
+
+    @Test
+    public void checkNotSignedContract() throws Exception {
+        callMain("-ch", rootPath + "not_signed_contract.unicon");
+        System.out.println(output);
+        assertEquals(1, errors.size());
+    }
+
+    @Test
+    public void checkOldContract() throws Exception {
+        callMain("-ch", rootPath + "old_api_contract.unicon", "-v");
+        System.out.println(output);
+        assertEquals(1, errors.size());
+    }
+
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
         List<Contract> contracts = new ArrayList<>();
 
@@ -439,7 +526,7 @@ public class CLIMainTest  {
 
         if (fileName == null)
         {
-            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
+            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
         }
 
         byte[] data = contract.seal();

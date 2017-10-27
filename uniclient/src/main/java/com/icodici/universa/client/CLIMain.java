@@ -9,6 +9,7 @@ package com.icodici.universa.client;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.wallet.Wallet;
@@ -113,12 +114,21 @@ public class CLIMain {
                         "Update specified with -set argument field of the contract.")
                         .withRequiredArg()
                         .ofType(String.class);
-                acceptsAll(asList("f", "find"), "Search all contracts in the specified path including subpaths.")
+                acceptsAll(asList("f", "find"), "Search all contracts in the specified path including subpaths." +
+                        "Use -r key to check all contracts in the path recursively.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("path");
                 acceptsAll(asList("d", "download"), "Download contract from the specified url.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("url");
+                acceptsAll(asList("ch", "check"), "Check contract for validness. " +
+                        "Use -r key to check all contracts in the path recursively.")
+                        .withRequiredArg().ofType(String.class)
+                        .describedAs("file/path");
+                accepts("r", "Use with --ch, --check or -f, --find command. " +
+                        "Specify to check contracts in the path and do it recursively.");
+                accepts("binary", "Use with --ch, --check. " +
+                        "Specify to check contracts from binary data.");
             }
         };
         try {
@@ -194,7 +204,7 @@ public class CLIMain {
                 if (name == null)
                 {
                     File file = new File(source);
-                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
+                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
                 }
                 saveContract(contract, name);
                 finish();
@@ -202,8 +212,9 @@ public class CLIMain {
             if (options.has("f")) {
                 String source = (String) options.valueOf("f");
 
-                List<Contract> allFoundContracts = findContracts(source);
-                List<Wallet> wallets = Wallet.determineWallets(allFoundContracts);
+                HashMap<String, Contract> allFoundContracts = findContracts(source, options.has("r"));
+
+                List<Wallet> wallets = Wallet.determineWallets(new ArrayList<>(allFoundContracts.values()));
 
                 printWallets(wallets);
                 printContracts(allFoundContracts);
@@ -214,6 +225,30 @@ public class CLIMain {
                 String source = (String) options.valueOf("d");
 
                 downloadContract(source);
+
+                finish();
+            }
+            if (options.has("ch")) {
+                String source = (String) options.valueOf("ch");
+
+                if(options.has("binary")) {
+                    // TODO: load bytes from source and check it in the checkBytesIsValidContract()
+                    Contract contract = Contract.fromYamlFile(source);
+                    keysMap().values().forEach(k -> contract.addSignerKey(k));
+                    byte[] data = contract.seal();
+                    checkBytesIsValidContract(data);
+                } else {
+                    HashMap<String, Contract> contracts = findContracts(source, options.has("r"));
+
+                    report("");
+                    report("Checking loaded contracts");
+                    report("---");
+                    for (String key : contracts.keySet()) {
+                        report("Checking contract at " + key);
+                        checkContract(contracts.get(key));
+                        report("---");
+                    }
+                }
 
                 finish();
             }
@@ -263,7 +298,7 @@ public class CLIMain {
         keysMap().values().forEach(k -> c.addSignerKey(k));
         byte[] data = c.seal();
         // try sign
-        String contractFileName = source.replaceAll("\\.(yml|yaml)$", ".unic");
+        String contractFileName = source.replaceAll("\\.(yml|yaml)$", ".unicon");
         try (FileOutputStream fs = new FileOutputStream(contractFileName)) {
             fs.write(data);
         }
@@ -272,13 +307,53 @@ public class CLIMain {
         finish();
     }
 
+    /**
+     * Check contract for errors. Print erors if found.
+     *
+     * @param c - contarct to check.
+     *
+     */
     private static void checkContract(Contract c) {
+        c.seal();
         c.check();
         c.getErrors().forEach(error -> {
             addError(error.getError().toString(), error.getObjectName(), error.getMessage());
         });
+        if(c.getErrors().size() == 0) {
+            report("Contract is valid");
+        }
     }
 
+    /**
+     * Check bytes is contract. And if bytes is, check contract for errors. Print errors if found.
+     *
+     * @param data - data to check.
+     *
+     * @return true if bytes is Contract and Contract is valid.
+     *
+     */
+    private static Boolean checkBytesIsValidContract(byte[] data) {
+        try {
+            Contract contract = new Contract(data);
+            checkContract(contract);
+        } catch (RuntimeException e) {
+            addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+            return false;
+        } catch (IOException e) {
+            addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Import contract from specified yaml, xml or json file.
+     *
+     * @param sourceName
+     *
+     * @return loaded and from loaded data created Contract.
+     */
     private static Contract importContract(String sourceName) throws IOException {
 
         String extension = "";
@@ -328,18 +403,35 @@ public class CLIMain {
         return contract;
     }
 
+    /**
+     * Load contract from specified path.
+     *
+     * @param fileName
+     *
+     * @return loaded and from loaded data created Contract.
+     */
     private static Contract loadContract(String fileName) throws IOException {
         Contract contract;
 
+        reporter.verbose("---");
+        reporter.verbose("Loading contract from: " + fileName);
         Path path = Paths.get(fileName);
         byte[] data = Files.readAllBytes(path);
-        reporter.verbose("load contract, data size: " + data.length);
 
         contract = new Contract(data);
+        reporter.verbose("Contract has loaded");
 
         return contract;
     }
 
+    /**
+     * Export contract to specified xml or json file.
+     *
+     * @param contract - contract to export.
+     * @param fileName - name of file to export to.
+     * @param format - format of file to export to. Can be xml or json.
+     *
+     */
     private static void exportContract(Contract contract, String fileName, String format) throws IOException {
         report("export format: " + format);
 
@@ -377,6 +469,14 @@ public class CLIMain {
         }
     }
 
+    /**
+     * Export public keys from specified contract.
+     *
+     * @param contract - contract to export.
+     * @param roleName - from which role keys should be exported.
+     * @param fileName - name of file to export to.
+     *
+     */
     private static void exportPublicKeys(Contract contract, String roleName, String fileName) throws IOException {
 
         if (fileName == null)
@@ -410,6 +510,15 @@ public class CLIMain {
         }
     }
 
+    /**
+     * Export fields from specified contract.
+     *
+     * @param contract - contract to export.
+     * @param fieldNames - list of field names to export.
+     * @param fileName - name of file to export to.
+     * @param format - format of file to export to. Can be xml or json.
+     *
+     */
     private static void exportFields(Contract contract, List<String> fieldNames, String fileName, String format) throws IOException {
         report("export format: " + format);
 
@@ -456,6 +565,13 @@ public class CLIMain {
         }
     }
 
+    /**
+     * Update fields for specified contract.
+     *
+     * @param contract - contract for update.
+     * @param fields - map of field names and values.
+     *
+     */
     private static void updateFields(Contract contract, HashMap<String, String> fields) throws IOException {
 
         for (String fieldName : fields.keySet()) {
@@ -492,10 +608,17 @@ public class CLIMain {
         report("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getExpiresAt()));
     }
 
+    /**
+     * Save specified contract to file.
+     *
+     * @param contract - contract for update.
+     * @param fileName - name of file to save to.
+     *
+     */
     private static void saveContract(Contract contract, String fileName) throws IOException {
         if (fileName == null)
         {
-            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
+            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
         }
 
         byte[] data = contract.seal();
@@ -507,36 +630,50 @@ public class CLIMain {
     }
 
     /**
-     * Find wallets in the given path including all subfolders. Looking for files with .unic and .unc extensions.
+     * Find wallets in the given path including all subfolders. Looking for files with .unicon extensions.
      *
      * @param path
      *
      * @return
      */
     public static List<Wallet> findWallets(String path) {
-        return Wallet.determineWallets(findContracts(path));
+        return Wallet.determineWallets(new ArrayList<>(findContracts(path).values()));
     }
 
     /**
-     * Find contracts in the given path including all subfolders. Looking for files with .unic and .unc extensions.
+     * Find contracts in the given path including all subfolders. Looking for files with .unicon extensions.
      *
      * @param path
      *
      * @return
      */
-    public static List<Contract> findContracts(String path) {
-        List<Contract> foundContracts = new ArrayList<>();
+    public static HashMap<String, Contract> findContracts(String path) {
+        return findContracts(path, true);
+    }
+
+    /**
+     * Find contracts in the given path. Looking for files with .unicon extensions.
+     *
+     * @param path
+     * @param recursively - make search in subfolders too.
+     *
+     * @return
+     */
+    public static HashMap<String, Contract> findContracts(String path, Boolean recursively) {
+        HashMap<String, Contract> foundContracts = new HashMap<>();
         List<File> foundContractFiles = new ArrayList<>();
 
-        fillWithContractsFiles(foundContractFiles, path);
+        fillWithContractsFiles(foundContractFiles, path, recursively);
 
         Contract contract;
         for (File file : foundContractFiles) {
             try {
                 contract = loadContract(file.getAbsolutePath());
-                foundContracts.add(contract);
+                foundContracts.put(file.getAbsolutePath(), contract);
+            } catch (RuntimeException e) {
+                addError(Errors.BAD_VALUE.name(), "", e.getMessage());
             } catch (IOException e) {
-                e.printStackTrace();
+                addError(Errors.BAD_VALUE.name(), "", e.getMessage());
             }
         }
         return foundContracts;
@@ -564,7 +701,7 @@ public class CLIMain {
      * @param foundContractFiles
      * @param path
      */
-    private static void fillWithContractsFiles(List<File> foundContractFiles, String path) {
+    private static void fillWithContractsFiles(List<File> foundContractFiles, String path, Boolean recursively) {
         File pathFile = new File(path);
 
         if(pathFile.exists()) {
@@ -575,9 +712,11 @@ public class CLIMain {
                 File[] foundFiles = pathFile.listFiles(filter);
                 foundContractFiles.addAll(Arrays.asList(foundFiles));
 
-                File[] foundDirs = pathFile.listFiles(dirsFilter);
-                for (File file : foundDirs) {
-                    fillWithContractsFiles(foundContractFiles, file.getPath());
+                if(recursively) {
+                    File[] foundDirs = pathFile.listFiles(dirsFilter);
+                    for (File file : foundDirs) {
+                        fillWithContractsFiles(foundContractFiles, file.getPath(), true);
+                    }
                 }
             } else {
                 if (filter.accept(pathFile)) {
@@ -587,6 +726,12 @@ public class CLIMain {
         }
     }
 
+    /**
+     * Just print wallets info to console.
+     *
+     * @param wallets
+     *
+     */
     private static void printWallets(List<Wallet> wallets) {
         reporter.message("---");
         reporter.message("");
@@ -625,18 +770,25 @@ public class CLIMain {
         }
     }
 
-    private static void printContracts(List<Contract> contracts) {
+    /**
+     * Just print contracts info to console.
+     *
+     * @param contracts
+     *
+     */
+    private static void printContracts(HashMap<String, Contract> contracts) {
         reporter.verbose("");
         reporter.verbose("---");
         reporter.verbose("");
         reporter.verbose("found contracts list: ");
         reporter.verbose("");
-        for (Contract contract : contracts) {
+        for (String key : contracts.keySet()) {
             try {
-                reporter.verbose("Contract created at " +
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) +
+                reporter.verbose(key + ": " +
+                        "contract created at " +
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contracts.get(key).getCreatedAt()) +
                         ": " +
-                        contract.getDefinition().getData().getString("description")
+                        contracts.get(key).getDefinition().getData().getString("description")
                 );
             } catch (Exception e) {
                 e.printStackTrace();
@@ -717,7 +869,7 @@ public class CLIMain {
 
     static class ContractFilesFilter implements FileFilter {
 
-        List<String> extensions = Arrays.asList("unic", "unc");
+        List<String> extensions = Arrays.asList("unicon");
 
         ContractFilesFilter() {
         }
