@@ -74,25 +74,20 @@ public class Reference implements BiSerializable {
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
 
-        this.name = data.getString("name");
-        /*
-        "roles", s.serialize(this.roles),
-                "origin", s.serialize(this.origin),
-                "fields", s.serialize(this.fields));
-         */
+        this.name = data.getString("name", null);
 
-        this.origin = data.getString("origin");
+        this.origin = data.getString("origin", null);
 
-        List<Binder> roles = data.getList("roles", null);
+        List<String> roles = data.getList("roles", null);
         if (roles != null) {
             this.roles.clear();
-            roles.forEach(role -> this.roles.add(deserializer.deserialize(role)));
+            roles.forEach(this::addRole);
         }
 
-        List<Binder> fields = data.getList("fields", null);
+        List<String> fields = data.getList("fields", null);
         if (fields != null) {
             this.fields.clear();
-            fields.forEach(field -> this.fields.add(deserializer.deserialize(field)));
+            fields.forEach(this::addField);
         }
 
 

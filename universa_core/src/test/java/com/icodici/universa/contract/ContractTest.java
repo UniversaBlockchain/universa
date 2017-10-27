@@ -200,6 +200,19 @@ public class ContractTest extends ContractTestBase {
     }
 
     @Test
+    public void shouldFindWithValidReferenceSeal() throws Exception {
+        Contract c = Contract.fromYamlFile(rootPath + "references/subscriptionReference.yml");
+        Contract c2 = Contract.fromYamlFile(rootPath + "references/subscriptionRoot.yml");
+
+        c = new Contract(c.seal());
+        c2 = new Contract(c2.seal());
+
+        List<Contract> contracts = c2.extractByValidReference(Arrays.asList(c));
+        assertNotNull(contracts);
+        assertEquals(1, contracts.size());
+    }
+
+    @Test
     public void testRoleFailures() throws Exception {
         final PrivateKey key = new PrivateKey(2048);
         final PublicKey publicKey = key.getPublicKey();
