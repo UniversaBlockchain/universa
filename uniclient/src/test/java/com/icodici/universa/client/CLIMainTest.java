@@ -69,13 +69,13 @@ public class CLIMainTest  {
         assertThat(r.getMessage(-2), matches(".*10/10"));
     }
 
-//    @Test
+    @Test
     public void createAndSign() throws Exception {
-        callMain("-c", rootPath + "simple_root_contract.yml",
+        callMain("-c", rootPath + "simple_root_contract_v2.yml",
                  "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey"
         );
-        System.out.println(new File(rootPath + "/simple_root_contract.unic").getAbsolutePath());
-        assert (new File(rootPath + "/simple_root_contract.unic").exists());
+        System.out.println(new File(rootPath + "/simple_root_contract_v2.unic").getAbsolutePath());
+        assert (new File(rootPath + "/simple_root_contract_v2.unic").exists());
         if (errors.size() > 0) {
             System.out.println(errors);
         }
@@ -387,7 +387,7 @@ public class CLIMainTest  {
 
         // Found wallets
 
-        callMain("-f", rootPath + "contract_subfolder/", "-v");
+        callMain("-f", rootPath + "contract_subfolder/", "-v", "-r");
         System.out.println(output);
 
 
@@ -416,6 +416,93 @@ public class CLIMainTest  {
         System.out.println(output);
         assert(output.indexOf("downloading from www.universa.io") >= 0);
         assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkDataIsValidContract() throws Exception {
+        callMain("-ch", rootPath + "simple_root_contract_v2.yml", "--binary");
+        System.out.println(output);
+        assert(output.indexOf("Contract is valid") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkContract() throws Exception {
+        callMain("-ch", rootPath + "contract_to_export.unic");
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkContractInPath() throws Exception {
+        // check contracts
+        callMain("-ch", rootPath, "-v");
+        System.out.println(output);
+//        assertEquals(3, errors.size());
+    }
+
+    @Test
+    public void checkContractInPathRecursively() throws Exception {
+
+        // Create contract files (coins and some non-coins)
+
+        File dirFile = new File(rootPath + "contract_subfolder/");
+        if(!dirFile.exists()) dirFile.mkdir();
+        dirFile = new File(rootPath + "contract_subfolder/contract_subfolder_level2/");
+        if(!dirFile.exists()) dirFile.mkdir();
+
+        List<Integer> coinValues = Arrays.asList(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60);
+        List<Contract> listOfCoinsWithAmount = createListOfCoinsWithAmount(coinValues);
+        for (Contract coin : listOfCoinsWithAmount) {
+            int rnd = new Random().nextInt(2);
+            String dir = "";
+            switch (rnd) {
+                case 0:
+                    dir += "contract_subfolder/";
+                    break;
+                case 1:
+                    dir += "contract_subfolder/contract_subfolder_level2/";
+                    break;
+            }
+            saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unic");
+        }
+
+        Contract nonCoin = Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
+        saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unic");
+        saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unic");
+
+        // check contracts
+
+        callMain("-ch", rootPath, "-v", "-r");
+        System.out.println(output);
+//        assertEquals(5, errors.size());
+
+
+        // Clean up files
+
+        File[] filesToRemove = new File(rootPath + "contract_subfolder/").listFiles();
+        for(File file : filesToRemove) {
+            file.delete();
+        }
+
+        filesToRemove = new File(rootPath + "contract_subfolder/contract_subfolder_level2/").listFiles();
+        for(File file : filesToRemove) {
+            file.delete();
+        }
+    }
+
+    @Test
+    public void checkNotSignedContract() throws Exception {
+        callMain("-ch", rootPath + "not_signed_contract.unic");
+        System.out.println(output);
+        assertEquals(1, errors.size());
+    }
+
+    @Test
+    public void checkOldContract() throws Exception {
+        callMain("-ch", rootPath + "old_api_contract.unic", "-v");
+        System.out.println(output);
+        assertEquals(1, errors.size());
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
