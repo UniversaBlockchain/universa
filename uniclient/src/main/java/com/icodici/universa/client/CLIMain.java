@@ -204,7 +204,7 @@ public class CLIMain {
                 if (name == null)
                 {
                     File file = new File(source);
-                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
+                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
                 }
                 saveContract(contract, name);
                 finish();
@@ -298,7 +298,7 @@ public class CLIMain {
         keysMap().values().forEach(k -> c.addSignerKey(k));
         byte[] data = c.seal();
         // try sign
-        String contractFileName = source.replaceAll("\\.(yml|yaml)$", ".unic");
+        String contractFileName = source.replaceAll("\\.(yml|yaml)$", ".unicon");
         try (FileOutputStream fs = new FileOutputStream(contractFileName)) {
             fs.write(data);
         }
@@ -618,7 +618,7 @@ public class CLIMain {
     private static void saveContract(Contract contract, String fileName) throws IOException {
         if (fileName == null)
         {
-            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unic";
+            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
         }
 
         byte[] data = contract.seal();
@@ -630,7 +630,7 @@ public class CLIMain {
     }
 
     /**
-     * Find wallets in the given path including all subfolders. Looking for files with .unic and .unc extensions.
+     * Find wallets in the given path including all subfolders. Looking for files with .unicon extensions.
      *
      * @param path
      *
@@ -641,7 +641,7 @@ public class CLIMain {
     }
 
     /**
-     * Find contracts in the given path including all subfolders. Looking for files with .unic and .unc extensions.
+     * Find contracts in the given path including all subfolders. Looking for files with .unicon extensions.
      *
      * @param path
      *
@@ -652,7 +652,7 @@ public class CLIMain {
     }
 
     /**
-     * Find contracts in the given path. Looking for files with .unic and .unc extensions.
+     * Find contracts in the given path. Looking for files with .unicon extensions.
      *
      * @param path
      * @param recursively - make search in subfolders too.
@@ -869,7 +869,7 @@ public class CLIMain {
 
     static class ContractFilesFilter implements FileFilter {
 
-        List<String> extensions = Arrays.asList("unic", "unc");
+        List<String> extensions = Arrays.asList("unicon");
 
         ContractFilesFilter() {
         }
