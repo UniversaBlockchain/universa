@@ -570,6 +570,7 @@ public class UDPAdapter extends DatagramAdapter {
                         }
                     } catch (EncryptionError e) {
                         System.out.println(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
+                        throw new EncryptionError(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
                     }
                     break;
 
@@ -581,7 +582,7 @@ public class UDPAdapter extends DatagramAdapter {
                     session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
                     unbossedPayload = Boss.load(block.payload);
                     signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
-//                    try {
+                    try {
                         if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
 
                             report(" successfully verified ");
@@ -623,9 +624,10 @@ public class UDPAdapter extends DatagramAdapter {
                             System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
                             throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
                         }
-//                    } catch (EncryptionError e) {
-//                        System.out.println(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
-//                    }
+                    } catch (EncryptionError e) {
+                        System.out.println(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
+                        throw new EncryptionError(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
+                    }
                     break;
 
                 case PacketTypes.DATA:
