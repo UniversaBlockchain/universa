@@ -73,6 +73,8 @@ public class MicroHTTPDServiceTest {
             try {
                 final Binder result = Binder.fromKeysValues("ping", "pong2");
                 response.setBody(Boss.pack(result));
+                Binder headers = response.getHeaders();
+                headers.put("X-Foo-Bar", "Bar Foo X");
             } catch (AssertionError e) {
                 e.printStackTrace();
             }

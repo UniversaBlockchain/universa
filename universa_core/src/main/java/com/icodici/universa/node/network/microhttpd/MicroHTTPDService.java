@@ -92,25 +92,16 @@ public class MicroHTTPDService implements BasicHTTPService {
             this.session = session;
         }
 
-        /**
-         * {@inheritDoc}
-         */
         @Override
         public String getPath() {
             return session.getUri();
         }
 
-        /**
-         * {@inheritDoc}
-         */
         @Override
         public String getDomain() {
             return session.getRemoteHostName();
         }
 
-        /**
-         * {@inheritDoc}
-         */
         @Override
         public Binder getParams() {
             final Binder result = new Binder();
@@ -150,17 +141,11 @@ public class MicroHTTPDService implements BasicHTTPService {
             return result;
         }
 
-        /**
-         * {@inheritDoc}
-         */
         @Override
         public Binder getHeaders() {
             return new Binder(session.getHeaders());
         }
 
-        /**
-         * {@inheritDoc}
-         */
         @Override
         public String getMethod() {
             return session.getMethod().toString();
@@ -185,17 +170,11 @@ public class MicroHTTPDService implements BasicHTTPService {
         MicroHTTPDServiceResponse() {
         }
 
-        /**
-         * {@inheritDoc}
-         */
         @Override
         public Binder getHeaders() {
             return headers;
         }
 
-        /**
-         * {@inheritDoc}
-         */
         @Override
         public void setBody(String bodyAsString) {
             assert bodyAsString != null;
@@ -210,9 +189,6 @@ public class MicroHTTPDService implements BasicHTTPService {
             setBody(bytes);
         }
 
-        /**
-         * {@inheritDoc}
-         */
         @Override
         public void setBody(byte[] bodyAsBytes) {
             assert bodyAsBytes != null;
@@ -238,9 +214,6 @@ public class MicroHTTPDService implements BasicHTTPService {
     private static final IStatus GOOD = Status.OK;
     private static final IStatus BAD = Status.BAD_REQUEST;
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void start(int port, int maxResponseThreads) throws IOException {
         assert microHTTPD == null : "Trying to start already started service";
@@ -337,9 +310,6 @@ public class MicroHTTPDService implements BasicHTTPService {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void close() throws Exception {
         assert microHTTPD != null;
@@ -347,9 +317,6 @@ public class MicroHTTPDService implements BasicHTTPService {
         microHTTPD = null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void on(String pathStart, Handler handler) {
         assert pathStart != null;

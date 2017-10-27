@@ -102,16 +102,13 @@ public interface BasicHTTPService extends AutoCloseable {
          * Get mutable headers object. It means that if the caller mutate returned Binder, it should
          * change the response headers sent to the network. All calls to this method should return the
          * same instance!
-         * <p>
-         * If called after {@link #setBody(byte[])} must throw {@link IllegalStateException}
          *
          * @return response headers.
          */
         Binder getHeaders();
 
         /**
-         * Set the body and closes the response processing. After call to this method no other methods of
-         * the response could be called - or {@link IllegalStateException} must be thrown.
+         * Set the body to specific value.
          *
          * @param bodyAsString body in the form of String. Must return in UTF-8 encoding and set appropriate headers.
          *                     if the mime-type header was not set, set it to application/text
@@ -119,8 +116,7 @@ public interface BasicHTTPService extends AutoCloseable {
         void setBody(String bodyAsString);
 
         /**
-         * Set the body and closes the response processing. After call to this method no other methods of
-         * the response could be called - or {@link IllegalStateException} must be thrown.
+         * Set the body to specific value.
          *
          * @param bodyAsBytes body in the form of byte array.
          *                    if the mime-type header was not set, set it to application/octet-stream
