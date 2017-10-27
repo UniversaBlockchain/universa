@@ -40,8 +40,9 @@ public class TestLocalNetwork extends Network {
         this.myKey = myKey;
 
         adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo);
-//        adapter.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+        adapter.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
         adapter.receive(bytes -> onReceived(bytes));
+        adapter.addExceptionsCallback(this::exceptionCallback);
     }
 
     private final void onReceived(byte[] packedNotifications) {
@@ -129,5 +130,10 @@ public class TestLocalNetwork extends Network {
     public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         Node node = nodes.get(nodeInfo);
         return node.getItem(itemId);
+    }
+
+    private String exceptionCallback(String message) {
+        System.out.println(message);
+        return message;
     }
 }

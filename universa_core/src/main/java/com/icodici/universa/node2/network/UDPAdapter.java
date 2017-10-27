@@ -24,6 +24,7 @@ import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Function;
 
 import static java.util.Arrays.asList;
 
@@ -393,6 +394,14 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+
+    protected void callCallbacks(String message) {
+        for(Function<String, String> fn : callbacks) {
+            fn.apply(message);
+        }
+    }
+
+
 //    public byte[] serialize(Object obj) throws IOException {
 //        try(ByteArrayOutputStream b = new ByteArrayOutputStream()){
 //            try(ObjectOutputStream o = new ObjectOutputStream(b)){
@@ -487,6 +496,8 @@ public class UDPAdapter extends DatagramAdapter {
                     e.printStackTrace();
                 } catch (InterruptedException e) {
 //                    e.printStackTrace();
+                } catch (EncryptionError e) {
+                    callCallbacks("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -542,35 +553,31 @@ public class UDPAdapter extends DatagramAdapter {
                     session.makeBlockDeliveredByType(PacketTypes.WELCOME);
                     unbossedPayload = Boss.load(block.payload);
                     signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
-                    try {
-                        if (session.publicKey != null) {
-                            if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
+                    if (session.publicKey != null) {
+                        if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
 
-                                report("successfully verified ");
+                            report("successfully verified ");
 
-                                List receivedData = Boss.load(signedUnbossed);
-                                byte[] senderNonce = ((Bytes) receivedData.get(0)).toArray();
-                                byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
+                            List receivedData = Boss.load(signedUnbossed);
+                            byte[] senderNonce = ((Bytes) receivedData.get(0)).toArray();
+                            byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
 
-                                // if remote nonce from received data equals with own nonce
-                                // (means request sent after welcome from known and expected node)
-                                if (Arrays.equals(receiverNonce, session.localNonce)) {
-                                    session.remoteNonce = senderNonce;
-                                    session.createSessionKey();
-                                    report(" check session " + session.isValid());
-                                    sendSessionKey(session);
+                            // if remote nonce from received data equals with own nonce
+                            // (means request sent after welcome from known and expected node)
+                            if (Arrays.equals(receiverNonce, session.localNonce)) {
+                                session.remoteNonce = senderNonce;
+                                session.createSessionKey();
+                                report(" check session " + session.isValid());
+                                sendSessionKey(session);
 //                                    session.makeBlockDeliveredByType(PacketTypes.SESSION);
-                                } else {
-                                    System.out.println(Errors.BAD_VALUE + " got nonce is not valid");
-                                }
                             } else {
-                                System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
-                                throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
+                                System.out.println(Errors.BAD_VALUE + ": got nonce is not valid");
+                                throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid");
                             }
+                        } else {
+                            System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
+                            throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
                         }
-                    } catch (EncryptionError e) {
-                        System.out.println(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
-                        throw new EncryptionError(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
                     }
                     break;
 
@@ -582,51 +589,47 @@ public class UDPAdapter extends DatagramAdapter {
                     session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
                     unbossedPayload = Boss.load(block.payload);
                     signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
-                    try {
-                        if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
+                    if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
 
-                            report(" successfully verified ");
+                        report(" successfully verified ");
 
-                            byte[] decryptedData = ownPrivateKey.decrypt(signedUnbossed);
-                            List receivedData = Boss.load(decryptedData);
-                            byte[] sessionKey = ((Bytes) receivedData.get(0)).toArray();
-                            byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
+                        byte[] decryptedData = ownPrivateKey.decrypt(signedUnbossed);
+                        List receivedData = Boss.load(decryptedData);
+                        byte[] sessionKey = ((Bytes) receivedData.get(0)).toArray();
+                        byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
 
-                            // if remote nonce from received data equals with own nonce
-                            // (means session sent as answer to key request from known and expected node)
-                            if(Arrays.equals(receiverNonce, session.localNonce)) {
-                                session.reconstructSessionKey(sessionKey);
-                                report(" check session " + session.isValid());
+                        // if remote nonce from received data equals with own nonce
+                        // (means session sent as answer to key request from known and expected node)
+                        if(Arrays.equals(receiverNonce, session.localNonce)) {
+                            session.reconstructSessionKey(sessionKey);
+                            report(" check session " + session.isValid());
 
-                                // Tell remote nonce we got session and no need to resend it.
-                                answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                            // Tell remote nonce we got session and no need to resend it.
+                            answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
 
-                                if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
-                                    report(" waiting blocks num " + session.waitingBlocksQueue.size());
-                                    try {
-                                        for (Block waitingBlock : session.waitingBlocksQueue) {
-                                            report(" waitingBlock " + waitingBlock.blockId + " type " + waitingBlock.type);
-                                            if (waitingBlock.type == PacketTypes.RAW_DATA) {
-                                                sendAsDataBlock(waitingBlock, session);
-                                            } else {
-                                                sendBlock(waitingBlock, session);
-                                            }
-                                            session.removeBlockFromWaitingQueue(waitingBlock);
+                            if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
+                                report(" waiting blocks num " + session.waitingBlocksQueue.size());
+                                try {
+                                    for (Block waitingBlock : session.waitingBlocksQueue) {
+                                        report(" waitingBlock " + waitingBlock.blockId + " type " + waitingBlock.type);
+                                        if (waitingBlock.type == PacketTypes.RAW_DATA) {
+                                            sendAsDataBlock(waitingBlock, session);
+                                        } else {
+                                            sendBlock(waitingBlock, session);
                                         }
-                                    } catch (InterruptedException e) {
-                                        System.out.println(Errors.BAD_VALUE + " send encryption error, " + e.getMessage());
+                                        session.removeBlockFromWaitingQueue(waitingBlock);
                                     }
+                                } catch (InterruptedException e) {
+                                    System.out.println(Errors.BAD_VALUE + " send encryption error, " + e.getMessage());
                                 }
-                            } else {
-                                System.out.println(Errors.BAD_VALUE + " got nonce is not valid");
                             }
                         } else {
-                            System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
-                            throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
+                            System.out.println(Errors.BAD_VALUE + ": got nonce is not valid");
+                            throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid");
                         }
-                    } catch (EncryptionError e) {
-                        System.out.println(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
-                        throw new EncryptionError(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
+                    } else {
+                        System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
+                        throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
                     }
                     break;
 

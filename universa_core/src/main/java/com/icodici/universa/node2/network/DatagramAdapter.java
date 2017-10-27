@@ -12,9 +12,12 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.node2.NodeInfo;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Adapter to the Universa Node UDP protocol v2.
@@ -55,6 +58,8 @@ public abstract class DatagramAdapter {
     protected int testMode = TestModes.NONE;
     protected int verboseLevel = VerboseLevel.NOTHING;
 
+    protected List<Function<String, String>> callbacks = new ArrayList<>();
+
     /**
      * Create an instance that listens for the incoming datagrams using the specified configurations. The adapter should
      * start serving incoming datagrams immediately upon creation.
@@ -74,6 +79,13 @@ public abstract class DatagramAdapter {
      * Close socket and stop threads/
      */
     public abstract void shutdown();
+
+    /**
+     * Add callback for exceptions.
+     */
+    public void addExceptionsCallback(Function<String, String> fn) {
+        callbacks.add(fn);
+    }
 
     public void receive(Consumer<byte[]> receiver) {
         byte[] payload;
