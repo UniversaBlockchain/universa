@@ -913,7 +913,7 @@ public class UDPAdapter extends DatagramAdapter {
         private int port;
         private byte[] localNonce;
         private byte[] remoteNonce;
-        private int remoteNodeId = 0;
+        private int remoteNodeId = -1;
 
         private int state;
 
@@ -959,8 +959,8 @@ public class UDPAdapter extends DatagramAdapter {
 //            if (publicKey == null) {
 //                return false;
 //            }
-            if (remoteNodeId == 0) {
-                report("session validness check: remoteNodeId is 0");
+            if (remoteNodeId < 0) {
+                report("session validness check: remoteNodeId is not defined");
                 return false;
             }
 //            if (state != EXCHANGING) {
