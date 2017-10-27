@@ -101,7 +101,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
                 node.registerItem(ok);
                 for (Node n : nodes) {
                     try {
-                        ItemResult r = n.waitItem(ok.getId(), 25000);
+                        ItemResult r = n.waitItem(ok.getId(), 2500);
                         assertEquals(ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
                         fail("timeout");
