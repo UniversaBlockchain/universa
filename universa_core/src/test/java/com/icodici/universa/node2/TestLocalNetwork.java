@@ -28,7 +28,7 @@ public class TestLocalNetwork extends Network {
     private final NodeInfo myInfo;
     private final PrivateKey myKey;
     private final UDPAdapter adapter;
-//    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(8);
+    //    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(8);
     private Map<NodeInfo, Node> nodes = new HashMap<>();
 
     private static LogPrinter log = new LogPrinter("TLN");
@@ -47,7 +47,7 @@ public class TestLocalNetwork extends Network {
 
     private final void onReceived(byte[] packedNotifications) {
         try {
-            if( consumer != null ) {
+            if (consumer != null) {
                 List<Notification> nn = unpack(packedNotifications);
                 for (Notification n : nn) {
                     consumer.accept(n);
@@ -110,20 +110,17 @@ public class TestLocalNetwork extends Network {
     @Override
     public void deliver(NodeInfo toNode, Notification notification) {
         try {
-            log.d("will send "+notification+" to "+toNode);
-            adapter.send(toNode, packNotifications(myInfo,Do.listOf(notification)));
-            log.d("sent: "+notification+" to "+toNode);
+            log.d("will send " + notification + " to " + toNode);
+            adapter.send(toNode, packNotifications(myInfo, Do.listOf(notification)));
+            log.d("sent: " + notification + " to " + toNode);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void subscribe(NodeInfo info, Consumer<Notification> notificationConsumer) {
-        if( info.equals(myInfo))
-            consumer = notificationConsumer;
-        else
-            throw new IllegalArgumentException("this type of Network only allow one consumer and one local node");
+    public void subscribe(NodeInfo _info, Consumer<Notification> notificationConsumer) {
+        consumer = notificationConsumer;
     }
 
     @Override

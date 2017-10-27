@@ -7,7 +7,9 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.universa.HashId;
 import com.icodici.universa.node.*;
+import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.LogPrinter;
 import org.junit.Test;
@@ -15,6 +17,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileReader;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -71,26 +74,47 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
             nc.addNode(info);
         }
 
-        network = null;
-
         for (int i = 0; i < NODES; i++) {
 
             NodeInfo info = nc.getInfo(i);
 
-            TestLocalNetwork ln = new TestLocalNetwork(nc, info, getNodeKey(0));
-            if( network == null )
-                network = ln;
-
+            TestLocalNetwork ln = new TestLocalNetwork(nc, info, getNodeKey(i));
             ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
 //            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
             Node n = new Node(config, info, ledger, ln);
             ln.addNode(info, n);
             nodes.add(n);
+            networks.add(ln);
         }
         node = nodes.get(0);
     }
 
+    private List<TestLocalNetwork> networks = new ArrayList<>();
+
     @Test
+    public void networkPassesData() throws Exception {
+        AsyncEvent<Void> ae = new AsyncEvent<>();
+        TestLocalNetwork n0 = networks.get(0);
+        TestLocalNetwork n1 = networks.get(0);
+        NodeInfo i1 = n0.getInfo(1);
+        NodeInfo i0 = n0.getInfo(0);
+
+        n1.subscribe(null, n -> {
+            System.out.println("received n: " + n);
+            ae.fire();
+        });
+        n0.deliver(i1, new ItemNotification(i0,
+                                            HashId.createRandom(),
+                                            new ItemResult(ItemState.PENDING,
+                                                           false,
+                                                           ZonedDateTime.now(),
+                                                           ZonedDateTime.now()),
+                                            false)
+        );
+        ae.await(500);
+    }
+
+    //    @Test
     public void registerGoodItem() throws Exception {
         int N = 10;
         LogPrinter.showDebug(true);
