@@ -73,9 +73,7 @@ public class Farcall {
         RemoteException(Map<String, Object> data) {
             this.data = data;
             remoteErrorClass = (String) data.get("class");
-            String text = (String) data.get("text");
-            if (text != null)
-                remoteErrorText = text;
+            remoteErrorText = data.get("text").toString();
         }
 
         public String getRemoteErrorClass() {
