@@ -484,11 +484,11 @@ public class UDPAdapter extends DatagramAdapter {
                     }
 
                 } catch (IllegalArgumentException e) {
-//                    e.printStackTrace();
+                    e.printStackTrace();
                 } catch (InterruptedException e) {
 //                    e.printStackTrace();
                 } catch (IOException e) {
-//                    e.printStackTrace();
+                    e.printStackTrace();
                 }
             }
         }
@@ -520,6 +520,9 @@ public class UDPAdapter extends DatagramAdapter {
                     report("got hello from " + block.senderNodeId, VerboseLevel.BASE);
                     PublicKey key = new PublicKey(block.payload);
                     session = sessionsById.get(block.senderNodeId);
+                    if (session == null) {
+                        session = createSession(block.senderNodeId, block.address, block.port);
+                    }
                     session.publicKey = key;
                     sendWelcome(session);
                     break;
@@ -561,7 +564,8 @@ public class UDPAdapter extends DatagramAdapter {
                                     System.out.println(Errors.BAD_VALUE + " got nonce is not valid");
                                 }
                             } else {
-                                System.out.println(Errors.BAD_VALUE + " no public key");
+                                System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
+                                throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
                             }
                         }
                     } catch (EncryptionError e) {
@@ -577,7 +581,7 @@ public class UDPAdapter extends DatagramAdapter {
                     session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
                     unbossedPayload = Boss.load(block.payload);
                     signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
-                    try {
+//                    try {
                         if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
 
                             report(" successfully verified ");
@@ -615,10 +619,13 @@ public class UDPAdapter extends DatagramAdapter {
                             } else {
                                 System.out.println(Errors.BAD_VALUE + " got nonce is not valid");
                             }
+                        } else {
+                            System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
+                            throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with wrong public key.");
                         }
-                    } catch (EncryptionError e) {
-                        System.out.println(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
-                    }
+//                    } catch (EncryptionError e) {
+//                        System.out.println(Errors.BAD_VALUE + " sign has not verified, " + e.getMessage());
+//                    }
                     break;
 
                 case PacketTypes.DATA:

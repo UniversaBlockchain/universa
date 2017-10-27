@@ -40,6 +40,7 @@ public class TestLocalNetwork extends Network {
         this.myKey = myKey;
 
         adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo);
+//        adapter.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
         adapter.receive(bytes -> onReceived(bytes));
     }
 
