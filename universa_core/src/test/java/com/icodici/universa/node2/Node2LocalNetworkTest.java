@@ -47,7 +47,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         if (file.exists())
             settings = Binder.from(yaml.load(new FileReader(file)));
 
-        properties.setProperty("database", settings.getStringOrThrow("database"));
+//        properties.setProperty("database", settings.getStringOrThrow("database"));
 
         /* test loading onfig should be in other place
         NetConfig ncNet = new NetConfig(CONFIG_2_PATH+"config/nodes");
@@ -81,7 +81,8 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
             if( network == null )
                 network = ln;
 
-            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
+            ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
+//            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
             Node n = new Node(config, info, ledger, ln);
             ln.addNode(info, n);
             nodes.add(n);

@@ -40,7 +40,7 @@ public class Node2SingleTest extends TestCase {
     Config config;
     Node node;
     NodeInfo myInfo;
-    PostgresLedger ledger;
+    Ledger ledger;
 
     @Before
     public void setUp() throws Exception {
