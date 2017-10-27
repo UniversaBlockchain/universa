@@ -95,7 +95,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     public void networkPassesData() throws Exception {
         AsyncEvent<Void> ae = new AsyncEvent<>();
         TestLocalNetwork n0 = networks.get(0);
-        TestLocalNetwork n1 = networks.get(0);
+        TestLocalNetwork n1 = networks.get(1);
         NodeInfo i1 = n0.getInfo(1);
         NodeInfo i0 = n0.getInfo(0);
 
