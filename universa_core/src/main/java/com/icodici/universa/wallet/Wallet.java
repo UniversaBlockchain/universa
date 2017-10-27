@@ -117,16 +117,21 @@ public class Wallet {
 
             if (!(split_join instanceof SplitJoinPermission)) continue;
 
-            Object field_name = ((SplitJoinPermission) split_join).getParams().get("field_name");
+            Object join_match_fields = ((SplitJoinPermission) split_join).getParams().get("join_match_fields");
 
-            Wallet wallet = wallets.get(field_name);
+            Object field;
+
+            if (join_match_fields instanceof List) field = ((List) join_match_fields).get(0);
+            else field = join_match_fields;
+
+            Wallet wallet = wallets.get(field);
 
             if (wallet == null) {
                 wallet = new Wallet();
             }
 
             wallet.addContract(contract);
-            wallets.put(field_name, wallet);
+            wallets.put(field, wallet);
         }
 
 

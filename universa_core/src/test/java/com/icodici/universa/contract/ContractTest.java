@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -186,6 +187,16 @@ public class ContractTest extends ContractTestBase {
             }
         }
         assertTrue(c.check());
+    }
+
+    @Test
+    public void shouldFindWithValidReference() throws Exception {
+        Contract c = Contract.fromYamlFile(rootPath + "references/subscriptionReference.yml");
+        Contract c2 = Contract.fromYamlFile(rootPath + "references/subscriptionRoot.yml");
+
+        List<Contract> contracts = c2.extractByValidReference(Arrays.asList(c));
+        assertNotNull(contracts);
+        assertEquals(1, contracts.size());
     }
 
     @Test
