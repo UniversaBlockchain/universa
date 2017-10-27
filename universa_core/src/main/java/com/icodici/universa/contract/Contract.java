@@ -85,10 +85,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         BiDeserializer bm = BossBiMapper.newDeserializer();
         deserialize(payload.getBinderOrThrow("contract"), bm);
 
-        for (Object r : payload.getListOrThrow("revoking"))
+        for (Object r : payload.getList("revoking", Collections.EMPTY_LIST))
             revokingItems.add(new Contract(((Bytes) r).toArray()));
 
-        for (Object r : payload.getListOrThrow("new"))
+        for (Object r : payload.getList("new", Collections.EMPTY_LIST))
             newItems.add(new Contract(((Bytes) r).toArray()));
 
         getContext();
