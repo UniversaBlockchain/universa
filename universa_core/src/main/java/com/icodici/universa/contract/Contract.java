@@ -57,13 +57,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private final Map<PublicKey, ExtendedSignature> sealedByKeys = new HashMap<>();
     private Set<PrivateKey> keysToSignWith = new HashSet<>();
     private HashId id;
+    private Reference reference;
 
     /**
      * Extract contract from a sealed form, filling signers information. Only valid signatures are kept, invalid are
      * silently discarded. It is recommended to call {@link #check()} after construction to see the errors.
      *
      * @param sealed binary sealed contract
-     *
      * @throws IllegalArgumentException on the various format errors
      */
     public Contract(byte[] sealed) throws IOException {
@@ -129,6 +129,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(KeyRecord.class);
         DefaultBiMapper.registerClass(TransactionContract.class);
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
+        DefaultBiMapper.registerClass(Reference.class);
     }
 
     public Contract() {
@@ -364,7 +365,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * will not be found, null will be returned.
      *
      * @param id to find
-     *
      * @return matching Contract instance or null if not found.
      */
     private Contract getRevokingItem(HashId id) {
@@ -426,7 +426,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * is register and return it, if it is a Map, tries to contruct and register {@link Role} thent return it.
      *
      * @param roleObject
-     *
      * @return
      */
     @NonNull
@@ -782,7 +781,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * themselves: registering this contract will do all the work.
      *
      * @param count number of siblings to split
-     *
      * @return array of just created siblings, to modify their state only.
      */
     public Contract[] split(int count) {
@@ -821,7 +819,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @param fieldName      field to extract from
      * @param valueToExtract how much to extract
-     *
      * @return new sibling contract with the extracted value.
      */
     public Contract splitValue(String fieldName, Decimal valueToExtract) {
@@ -852,7 +849,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * on.
      *
      * @param name
-     *
      * @return
      */
     public <T> T get(String name) {
@@ -896,7 +892,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * on.
      *
      * @param name
-     *
      * @param value
      */
     public void set(String name, Binder value) {
@@ -943,6 +938,48 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 //            return;
         }
         throw new IllegalArgumentException("bad root: " + name);
+    }
+
+    public List<Contract> extractByValidReference(List<Contract> contracts) {
+        return contracts.stream()
+                .filter(this::isValidReference)
+                .collect(Collectors.toList());
+    }
+
+    private boolean isValidReference(Contract contract) {
+        boolean result = true;
+
+        reference = this.getDefinition().getReference();
+
+        if (reference == null) result = false;
+
+        //check roles
+        if (result) {
+            List<String> roles = reference.getRoles();
+            Map<String, Role> contractRoles = contract.getRoles();
+            result = roles.stream()
+                    .filter(role -> contractRoles.containsKey(role))
+                    .collect(Collectors.toList()).size() > 0;
+        }
+
+        //check origin
+        if (result) {
+            final String origin = reference.getOrigin();
+            result = (origin == null || !(contract.getOrigin().equals(this.getOrigin())));
+        }
+
+
+        //check fields
+        if (result) {
+            List<String> fields = reference.getFields();
+            Binder stateData = contract.getStateData();
+            result = fields.stream()
+                    .filter(field -> stateData.get(field) != null)
+                    .collect(Collectors.toList()).size() > 0;
+        }
+
+
+        return result;
     }
 
     public class State {
@@ -1064,6 +1101,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private ZonedDateTime expiresAt;
         private Binder definition;
         private Binder data;
+        private Reference reference;
 
 
         private Definition() {
@@ -1077,7 +1115,34 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             expiresAt = definition.getZonedDateTimeOrThrow("expires_at");
             registerRole(issuer);
             data = definition.getBinder("data");
+            reference = processReference(definition.getBinder("reference"));
             return this;
+        }
+
+        private Reference processReference(Binder binder) {
+            Reference result = new Reference();
+
+            if (binder.size() == 0) return result;
+
+            Binder conditions = binder.getBinder("conditions");
+
+            List<Object> roles = conditions.getList("roles", null);
+            if (roles != null && roles.size() > 0)
+                roles.forEach(role -> result.addRole((String) role));
+
+            List<Object> fields = conditions.getList("fields", null);
+            if (fields != null && fields.size() > 0)
+                fields.forEach(field -> result.addField((String) field));
+
+            final String origin = conditions.getString("origin", null);
+            if (origin != null)
+                result.setOrigin(origin);
+
+            return result;
+        }
+
+        public Reference getReference() {
+            return this.reference;
         }
 
         /**
@@ -1154,8 +1219,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                             "created_at", createdAt,
                             "expires_at", expiresAt,
                             "data", data,
-                            "permissions",
-                            pb
+                            "permissions", pb,
+                            "reference", reference
                     )
             );
         }
@@ -1165,6 +1230,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTimeOrThrow("expires_at");
             this.data = d.deserialize(data.getBinderOrThrow("data"));
+            this.reference = d.deserialize(data.getBinder("reference"));
             Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
             perms.forEach((id, perm) -> {
                 perm.setId(id);

@@ -11,6 +11,7 @@
 package net.sergeych.boss;
 
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.JsonTool;
 import net.sergeych.utils.Bytes;
 import org.junit.After;
 import org.junit.Before;
@@ -46,6 +47,15 @@ public class TestBoss {
      */
     @After
     public void tearDown() throws Exception {
+    }
+
+    @Test
+    public void emptyStrings() throws Exception {
+        Object xo = JsonTool.fromJson("{\"text\":\"\",\"type\":\"p2pchat\",\"from_party_id\":\"1271\"}");
+        Binder b = Binder.from(xo);
+        Bytes bb = Boss.dump(b);
+        String x = (String)Boss.unpack(bb.toArray()).getStringOrThrow("text");
+        assertEquals("", x);
     }
 
     @Test

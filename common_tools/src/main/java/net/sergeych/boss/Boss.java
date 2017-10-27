@@ -712,7 +712,7 @@ public class Boss {
                     return (T) h.smallestNumber(true);
                 case TYPE_BIN:
                 case TYPE_TEXT: {
-                    Bytes bb = new Bytes(in, (int) h.value);
+                    Bytes bb = h.value > 0 ? new Bytes(in, (int) h.value) : new Bytes();
                     if (h.code == TYPE_TEXT) {
                         String s = bb.toString();
                         cacheObject(s);
