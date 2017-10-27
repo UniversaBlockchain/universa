@@ -117,12 +117,7 @@ abstract public class Notification {
         try {
             while (true) {
                 // boss reader throws EOFException
-                int code = r.readInt();
-                Constructor c = classes.get(code).getDeclaredConstructor();
-                c.setAccessible(true);
-                Notification n = (Notification) c.newInstance();
-                n.readFrom(r);
-                n.from = from;
+                Notification n = unpackNotification(from, r);
                 notifications.add(n);
             }
         } catch (EOFException x) {
@@ -131,6 +126,16 @@ abstract public class Notification {
             throw new IOException("Failed to decoded notification", e);
         }
         return notifications;
+    }
+
+    public static Notification unpackNotification(NodeInfo from, Boss.Reader r) throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+        int code = r.readInt();
+        Constructor c = classes.get(code).getDeclaredConstructor();
+        c.setAccessible(true);
+        Notification n = (Notification) c.newInstance();
+        n.readFrom(r);
+        n.from = from;
+        return n;
     }
 
 }

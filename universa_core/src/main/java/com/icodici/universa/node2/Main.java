@@ -23,7 +23,7 @@ import java.io.PrintStream;
 import static java.util.Arrays.asList;
 
 public class Main {
-    private static final String NODE_VERSION = "2.0.0";
+    private static final String NODE_VERSION = "2.0.1";
     private static OptionParser parser;
     private static OptionSet options;
     public static final Reporter reporter = new Reporter();
@@ -35,7 +35,8 @@ public class Main {
 
 
     static public void main(String[] args) {
-//        args = new String[] { "--bmsingle", "1234", "-c", "universa_core/src/test_config_3"};
+//        args = new String[] { };
+//        args = new String[] { "--bmsingle", "1234", "-c", "universa_core/src/test_node_config_v2"};
         parser = new OptionParser() {
             {
                 acceptsAll(asList("?", "h", "help"), "show help").forHelp();
@@ -49,7 +50,10 @@ public class Main {
         };
         try {
             options = parser.parse(args);
-            logger.interceptStdOut();//options.has("nolog"));
+            if (!options.has("nolog"))
+                logger.interceptStdOut();
+            else
+                logger.printTo(System.out, false);
             if (options.has("?")) {
                 usage(null);
             }
@@ -57,7 +61,10 @@ public class Main {
             log("Starting client interface");
             reporter.message("System started");
             loadNodeConfig();
+
             startClientHttpServer();
+
+
 
             startAndWaitEnd();
         } catch (OptionException e) {
@@ -136,8 +143,7 @@ public class Main {
     private static ClientHTTPServer clientHTTPServer;
 
     private static void startClientHttpServer() throws Exception {
-        clientHTTPServer = new ClientHTTPServer(nodeKey, settings.getIntOrThrow("http_client_port"),logger);
-        clientHTTPServer.start();
+        clientHTTPServer = new ClientHTTPServer(nodeKey, settings.getIntOrThrow("http_client_port"), logger);
         log("http client service started");
     }
 

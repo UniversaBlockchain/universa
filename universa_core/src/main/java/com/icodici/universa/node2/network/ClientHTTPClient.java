@@ -9,20 +9,14 @@ package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.node.network.UniversaHTTPClient;
-import net.sergeych.tools.Binder;
 
 import java.io.IOException;
 
-public class ClientHTTPClient extends UniversaHTTPClient {
+public class ClientHTTPClient extends BasicHTTPClient {
 
-    public ClientHTTPClient(String nodeName, String rootUrlString, PrivateKey clientPrivateKey,
+    public ClientHTTPClient(String rootUrlString, PrivateKey clientPrivateKey,
                             PublicKey nodePublicKey) throws IOException {
-        super(nodeName, rootUrlString);
+        super(rootUrlString);
         start(clientPrivateKey, nodePublicKey);
-    }
-
-    public Binder getState() throws IOException {
-        return command("state");
     }
 }

@@ -109,9 +109,13 @@ public class BasicHttpServer {
     }
 
     public Binder extractParams(BasicHTTPService.Request request) {
-        byte[] data = ((BasicHTTPService.FileUpload) request.getParams().get("requestData"))
-                .getBytes();
-        return Boss.unpack(data);
+        BasicHTTPService.FileUpload rd = (BasicHTTPService.FileUpload) request.getParams().get("requestData");
+        if( rd != null ) {
+            byte[] data = rd.getBytes();
+            return Boss.unpack(data);
+        }
+        else
+            return Binder.EMPTY;
     }
 
     private Binder onPing(Binder params) {

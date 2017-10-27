@@ -202,7 +202,7 @@ public class Node {
 
     @Override
     public String toString() {
-        return "Node(" + myInfo.getId() + ")";
+        return "Node(" + myInfo.getNumber() + ")";
     }
 
     /**

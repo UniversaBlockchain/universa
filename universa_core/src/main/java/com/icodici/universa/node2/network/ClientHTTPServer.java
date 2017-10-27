@@ -8,19 +8,23 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.node.network.microhttpd.MicroHTTPDService;
-import com.icodici.universa.node.network.server.UniversaHTTPServer;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 
 import java.io.IOException;
 
-public class ClientHTTPServer extends UniversaHTTPServer {
+public class ClientHTTPServer extends BasicHttpServer {
 
-    private final BufferedLogger logger;
+    private final BufferedLogger log;
 
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
-        super(new MicroHTTPDService(), privateKey, port, 32);
-        this.logger = logger;
+        super(privateKey, port, 64, logger);
+        log = logger;
+
+        addSecureEndpoint("status", (params, session)->Binder.of(
+                "status", "initializing",
+                "log", log.getLast(10)
+        ));
     }
 
 //    @Override

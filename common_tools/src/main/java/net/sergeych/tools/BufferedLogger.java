@@ -46,17 +46,25 @@ public class BufferedLogger implements AutoCloseable {
         static private AtomicLong serial = new AtomicLong(System.currentTimeMillis());
 
         public final long id;
-        public final Instant instant = Instant.now();
+        public final Instant instant;
         public final String message;
 
         private Entry(String message) {
             id = serial.getAndIncrement();
             this.message = message.trim();
+            instant = Instant.now();
+        }
+
+        protected Entry(Binder b) {
+            id = b.getLongOrThrow("id");
+            instant = Instant.ofEpochSecond(b.getLongOrThrow("instant"));
+            message = b.getString("message");
         }
 
         private Entry(long id) {
             this.id = id;
             message = "";
+            instant = Instant.now();
         }
 
         @Override
@@ -95,7 +103,7 @@ public class BufferedLogger implements AutoCloseable {
 
                 @Override
                 public Object deserialize(Binder binder, BiDeserializer deserializer) {
-                    throw new RuntimeException("not implemented");
+                    return new Entry(binder);
                 }
             });
         }

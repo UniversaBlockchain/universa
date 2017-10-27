@@ -28,6 +28,11 @@ public abstract class Network {
         this.netConfig = netConfig;
     }
 
+    public NodeInfo getInfo(int number) {
+        return netConfig.getInfo(number);
+    }
+
+
     /**
      * Put the notification to the delivery queue. Must not block the calling thread.
      *

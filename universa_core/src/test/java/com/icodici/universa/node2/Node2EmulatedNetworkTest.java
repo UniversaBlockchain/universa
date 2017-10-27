@@ -17,7 +17,6 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileReader;
 import java.time.Duration;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,8 +29,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
@@ -430,11 +427,11 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         main.setExpiresAtPlusFive(false);
 
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 3000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         assertEquals(main, node.getItem(main.getId()));
-        Thread.sleep(110);
+        Thread.sleep(200);
         assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
     }
 

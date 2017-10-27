@@ -34,6 +34,7 @@ public class BasicHttpServerTest extends TestCase {
         PrivateKey nodeKey = TestKeys.privateKey(1);
         PrivateKey clientKey = TestKeys.privateKey(2);
         BasicHttpServer s = new BasicHttpServer(nodeKey, 15600, 32, log);
+
         BasicHTTPClient c = new BasicHTTPClient("http://localhost:15600");
         c.start(clientKey, nodeKey.getPublicKey());
 

@@ -70,14 +70,14 @@ public class UDPAdapter extends DatagramAdapter {
 
     @Override
     public void send(NodeInfo destination, byte[] payload) throws EncryptionError, InterruptedException {
-        report("send to " + destination.getId(), VerboseLevel.BASE);
+        report("send to " + destination.getNumber(), VerboseLevel.BASE);
 
-        Session session = sessionsById.get(destination.getId());
+        Session session = sessionsById.get(destination.getNumber());
 
-        Block rawBlock = new Block(myNodeInfo.getId(), destination.getId(),
-                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.RAW_DATA,
-                destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
-                payload);
+        Block rawBlock = new Block(myNodeInfo.getNumber(), destination.getNumber(),
+                                   new Random().nextInt(Integer.MAX_VALUE), PacketTypes.RAW_DATA,
+                                   destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
+                                   payload);
 
         if (session != null) {
             if(session.isValid()) {
@@ -93,11 +93,11 @@ public class UDPAdapter extends DatagramAdapter {
             } else {
                 if (session.state == Session.EXCHANGING) {
                     report("session not valid for exchanging, recreate");
-                    session = createSession(destination.getId(),
+                    session = createSession(destination.getNumber(),
                             destination.getNodeAddress().getAddress(),
                             destination.getNodeAddress().getPort());
                     session.publicKey = destination.getPublicKey();
-                    session.remoteNodeId = destination.getId();
+                    session.remoteNodeId = destination.getNumber();
                     session.addBlockToWaitingQueue(rawBlock);
                     sendHello(session);
                 } else {
@@ -107,11 +107,11 @@ public class UDPAdapter extends DatagramAdapter {
             }
         } else {
             report("session not exist");
-            session = createSession(destination.getId(),
+            session = createSession(destination.getNumber(),
                     destination.getNodeAddress().getAddress(),
                     destination.getNodeAddress().getPort());
             session.publicKey = destination.getPublicKey();
-            session.remoteNodeId = destination.getId();
+            session.remoteNodeId = destination.getNumber();
             session.addBlockToWaitingQueue(rawBlock);
             sendHello(session);
         }
@@ -129,7 +129,7 @@ public class UDPAdapter extends DatagramAdapter {
 
     public String getLabel()
     {
-        return myNodeInfo.getId() + "-0: ";
+        return myNodeInfo.getNumber() + "-0: ";
     }
 
 
@@ -190,10 +190,10 @@ public class UDPAdapter extends DatagramAdapter {
                 "data", encrypted
         );
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
-                rawDataBlock.blockId, PacketTypes.DATA,
-                session.address, session.port,
-                Boss.pack(binder));
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                                rawDataBlock.blockId, PacketTypes.DATA,
+                                session.address, session.port,
+                                Boss.pack(binder));
         sendBlock(block, session);
     }
 
@@ -201,10 +201,10 @@ public class UDPAdapter extends DatagramAdapter {
     protected void sendHello(Session session) throws EncryptionError, InterruptedException {
         report("send hello to " + session.remoteNodeId, VerboseLevel.BASE);
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
-                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.HELLO,
-                session.address, session.port,
-                myNodeInfo.getPublicKey().pack());
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.HELLO,
+                                session.address, session.port,
+                                myNodeInfo.getPublicKey().pack());
         sendBlock(block, session);
     }
 
@@ -212,10 +212,10 @@ public class UDPAdapter extends DatagramAdapter {
     protected void sendWelcome(Session session) throws InterruptedException {
         report("send welcome to " + session.remoteNodeId, VerboseLevel.BASE);
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
-                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.WELCOME,
-                session.address, session.port,
-                session.localNonce);
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.WELCOME,
+                                session.address, session.port,
+                                session.localNonce);
         sendBlock(block, session);
     }
 
@@ -233,10 +233,10 @@ public class UDPAdapter extends DatagramAdapter {
                     "signature", signed
             );
 
-            Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
-                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.KEY_REQ,
-                    session.address, session.port,
-                    Boss.pack(binder));
+            Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.KEY_REQ,
+                                    session.address, session.port,
+                                    Boss.pack(binder));
             sendBlock(block, session);
         } catch (EncryptionError encryptionError) {
             encryptionError.printStackTrace();
@@ -258,10 +258,10 @@ public class UDPAdapter extends DatagramAdapter {
                     "signature", signed
             );
 
-            Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
-                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.SESSION,
-                    session.address, session.port,
-                    Boss.pack(binder));
+            Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.SESSION,
+                                    session.address, session.port,
+                                    Boss.pack(binder));
             sendBlock(block, session);
         } catch (EncryptionError encryptionError) {
             encryptionError.printStackTrace();
@@ -273,10 +273,10 @@ public class UDPAdapter extends DatagramAdapter {
         report("send packet_ack to " + session.remoteNodeId);
 
         List data = asList(blockId, packetId);
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
-                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.PACKET_ACK,
-                session.address, session.port,
-                Boss.pack(data));
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.PACKET_ACK,
+                                session.address, session.port,
+                                Boss.pack(data));
         sendBlock(block, session);
     }
 
@@ -284,10 +284,10 @@ public class UDPAdapter extends DatagramAdapter {
     protected void sendAck(Session session, int blockId) throws InterruptedException {
         report("send ack to " + session.remoteNodeId, VerboseLevel.BASE);
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
-                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.ACK,
-                session.address, session.port,
-                Boss.pack(blockId));
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.ACK,
+                                session.address, session.port,
+                                Boss.pack(blockId));
         sendBlock(block, session);
     }
 
@@ -295,10 +295,10 @@ public class UDPAdapter extends DatagramAdapter {
     protected void sendNack(Session session, int blockId) throws InterruptedException {
         report("send nack to " + session.remoteNodeId, VerboseLevel.BASE);
 
-        Block block = new Block(myNodeInfo.getId(), session.remoteNodeId,
-                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.NACK,
-                session.address, session.port,
-                Boss.pack(blockId));
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.NACK,
+                                session.address, session.port,
+                                Boss.pack(blockId));
         sendBlock(block, session);
     }
 
@@ -502,7 +502,7 @@ public class UDPAdapter extends DatagramAdapter {
 
         public String getLabel()
         {
-            return myNodeInfo.getId() + "-" + getName() + ": ";
+            return myNodeInfo.getNumber() + "-" + getName() + ": ";
         }
 
 
