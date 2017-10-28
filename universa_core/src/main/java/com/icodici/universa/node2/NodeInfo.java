@@ -117,7 +117,8 @@ public class NodeInfo implements BiSerializable {
             int count = fileName.getNameCount();
             String n = fileName.getName(count - 1).toString();
             n = n.substring(0, n.length() - 5) + ".public.unikey";
-            String keyPath = fileName.subpath(0, count - 2) + "/keys/" + n;
+            String keyPath = "/"+fileName.subpath(0, count - 2) + "/keys/" + n;
+            System.out.println("expected key file path: <" + keyPath + ">");
 //            System.out.println(keyPath);
 //            System.out.println(b);
 
@@ -139,8 +140,9 @@ public class NodeInfo implements BiSerializable {
         return null;
     }
 
-    public String urlString() {
-        return "http://" + publicHost + ":" + clientAddress.getPort();
+    public String publicUrlString() {
+        return "http://" + publicHost + ":8080";
+//        return "http://" + publicHost + ":" + clientAddress.getPort();
     }
 
     @Override

@@ -12,6 +12,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.BasicHTTPClient;
 import com.icodici.universa.node2.network.ClientHTTPClient;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
@@ -20,12 +21,14 @@ import org.junit.Test;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
 public class MainTest {
     @Test
-    public void waitReady() throws Exception {
+    public void startNode() throws Exception {
         String[] args = new String[] { "--test", "--config", "../../deploy/samplesrv", "--nolog"};
         Main.main(args);
         Main.waitReady();
@@ -72,6 +75,19 @@ public class MainTest {
         byte[] data2 = Do.read(con.getInputStream());
 
         assertArrayEquals(c.getLastSealedBinary(), data2);
+
+        url = new URL("http://localhost:2052/network");
+        con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod("GET");
+        assertEquals(200, con.getResponseCode());
+        System.out.println(con.getResponseCode());
+        System.out.println(con.getHeaderFields());
+        Binder bres = Boss.unpack((Do.read(con.getInputStream())))
+                .getBinderOrThrow("response");
+        List<Binder> ni = bres.getBinders("nodes");
+        System.out.println("\n\n" +
+                ni.stream().map(x->x.getStringOrThrow("url"))
+                           .collect(Collectors.toList()));
 
         Main.shutdown();
         Thread.sleep(100);

@@ -12,15 +12,19 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.ItemCache;
+import com.icodici.universa.node2.NetConfig;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ClientHTTPServer extends BasicHttpServer {
 
     private final BufferedLogger log;
     private ItemCache cache;
+    private NetConfig netConfig;
 
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
         super(privateKey, port, 64, logger);
@@ -49,17 +53,37 @@ public class ClientHTTPServer extends BasicHttpServer {
                     }
                 }
             }
-            if( data != null ) {
+            if (data != null) {
                 // contracts are immutable: cache forever
                 Binder hh = response.getHeaders();
                 hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
                 hh.put("Cache-Control", "max-age=315360000");
                 response.setBody(data);
-            }
-            else
+            } else
                 response.setResponeCode(404);
         });
+
+        addEndpoint("/network", (Binder params, Result result) -> {
+            if (networkData == null) {
+                List<Binder> nodes = new ArrayList<Binder>();
+                result.putAll(
+                        "version", "2.0.0",
+                        "nodes", nodes
+                );
+                if( netConfig != null ) {
+                    netConfig.forEachNode(node->{
+                        nodes.add(Binder.of(
+                           "url", node.publicUrlString(),
+                           "key", node.getPublicKey().pack()
+                        ));
+                    });
+                }
+            }
+
+        });
     }
+
+    static private Binder networkData = null;
 
     @Override
     public void on(String path, BasicHTTPService.Handler handler) {
@@ -79,6 +103,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setCache(ItemCache cache) {
         this.cache = cache;
+    }
+
+    public void setNetConfig(NetConfig netConfig) {
+        this.netConfig = netConfig;
     }
 
     //    @Override

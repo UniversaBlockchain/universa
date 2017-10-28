@@ -24,7 +24,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    private static final String NODE_VERSION = "2.0.5";
+    private static final String NODE_VERSION = "2.0.6";
     private static OptionParser parser;
     private static OptionSet options;
     public static final Reporter reporter = new Reporter();
@@ -33,6 +33,7 @@ public class Main {
 
     private static AsyncEvent eventReady = new AsyncEvent();
     public static final BufferedLogger logger = new BufferedLogger(4096);
+    private static String configRoot;
 
 
     static public void main(String[] args) {
@@ -64,11 +65,13 @@ public class Main {
             loadNodeConfig();
 
             System.out.println("--------------- step 2 --------------------");
-            startClientHttpServer();
+            log("loading network configuration...");
+            loadNetConfig();
 
             System.out.println("--------------- step 3 --------------------");
-            System.out.println("testing SHA1PRNG");
-            System.out.println("--- random: "+Do.randomInt(177));
+            log("Starting the client HTTP server...");
+            startClientHttpServer();
+
             System.out.println("all initialization is done -----------------------------------");
             startAndWaitEnd();
         } catch (OptionException e) {
@@ -83,6 +86,12 @@ public class Main {
             e.printStackTrace();
             usage(e.getMessage());
         }
+    }
+
+    public static NetConfig netConfig;
+    private static void loadNetConfig() throws IOException {
+        netConfig = new NetConfig(configRoot+"/config/nodes");
+        log("Network configuration is loaded from "+configRoot+", "+netConfig.size() + " nodes.");
     }
 
     /**
@@ -138,12 +147,12 @@ public class Main {
 
     private static void loadNodeConfig() throws IOException {
         Yaml yaml = new Yaml();
-        String root = (String) options.valueOf("config");
+        configRoot = (String) options.valueOf("config");
 
         nodeKey = null;
-        settings = Binder.of(yaml.load(new FileInputStream(root + "/config/config.yaml")));
+        settings = Binder.of(yaml.load(new FileInputStream(configRoot + "/config/config.yaml")));
         log("node settings: " + settings);
-        String nodeKeyFileName = root + "/tmp/" + settings.getStringOrThrow("node_name") + ".private.unikey";
+        String nodeKeyFileName = configRoot + "/tmp/" + settings.getStringOrThrow("node_name") + ".private.unikey";
         log(nodeKeyFileName);
         nodeKey = new PrivateKey(Do.read(nodeKeyFileName));
 
@@ -158,7 +167,7 @@ public class Main {
         );
 
         log("key loaded: " + nodeKey.info());
-        log( "node local URL: "+ myInfo.urlString());
+        log( "node local URL: "+ myInfo.publicUrlString());
         log( "node info: "+ myInfo.toBinder());
     }
 
@@ -178,6 +187,7 @@ public class Main {
         System.out.println("prepare to start client HTTP server on "+settings.getIntOrThrow("http_client_port"));
         clientHTTPServer = new ClientHTTPServer(nodeKey, settings.getIntOrThrow("http_client_port"), logger);
         clientHTTPServer.setCache(cache);
+        clientHTTPServer.setNetConfig(netConfig);
 //        node = new Node()
     }
 

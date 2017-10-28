@@ -79,12 +79,21 @@ public class BasicHttpServer {
         }
     }
 
+    class Result extends Binder {
+        private int status = 200;
+        public void setStatus(int code) { status = code; }
+    }
+
     public interface Endpoint {
-        public Binder execute(Binder params) throws Exception;
+        public void execute(Binder params,Result result) throws Exception;
+    }
+
+    public interface SimpleEndpoint {
+        Binder execute(Binder params) throws Exception;
     }
 
     public interface SecureEndpoint {
-        public Binder execute(Binder params,Session session);
+        Binder execute(Binder params,Session session);
     }
 
     private final ConcurrentHashMap<String,SecureEndpoint> secureEncpoins = new ConcurrentHashMap<>();
@@ -97,10 +106,11 @@ public class BasicHttpServer {
         on(path, (request, response) -> {
             Binder result;
             try {
+                Result epResult = new Result();
+                ep.execute(extractParams(request), epResult);
                 result = Binder.of(
                         "result", "ok",
-                        "response", ep.execute(extractParams(request))
-                );
+                        "response", epResult);
             } catch (Exception e) {
                 result = Binder.of(
                         "result", "error",
@@ -109,6 +119,12 @@ public class BasicHttpServer {
                 );
             }
             response.setBody(Boss.pack(result));
+        });
+    }
+
+    void addEndpoint(String path,SimpleEndpoint sep) {
+        addEndpoint(path, (params,result) -> {
+            result.putAll(sep.execute(params));
         });
     }
 

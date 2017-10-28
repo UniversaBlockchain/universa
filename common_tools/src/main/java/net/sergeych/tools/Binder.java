@@ -67,9 +67,7 @@ public class Binder extends HashMap<String, Object> implements Serializable {
     }
 
     public Binder(Object... keyValuePairs) {
-        for (int i = 0; i < keyValuePairs.length; i += 2) {
-            put((String) keyValuePairs[i], keyValuePairs[i + 1]);
-        }
+        putAll(keyValuePairs);
     }
 
     public Double getDouble(String key) {
@@ -519,8 +517,8 @@ public class Binder extends HashMap<String, Object> implements Serializable {
         return Do.list(x);
     }
 
-    public <T> List<T> getListOrThrow(String key) {
-        List<T> list = getList(key, null);
+    public List getListOrThrow(String key) {
+        List list = getList(key, null);
         if (list == null)
             throw new IllegalArgumentException("missing list parameter: " + key);
         return list;
