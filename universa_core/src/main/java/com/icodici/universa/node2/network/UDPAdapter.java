@@ -697,7 +697,7 @@ public class UDPAdapter extends DatagramAdapter {
                     report(getLabel(), " blockId: " + ackBlockId);
 
                     session = sessionsById.get(block.senderNodeId);
-                    if(session != null && session.isValid()) {
+                    if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
                         session.moveBlocksFromSendingToWaiting();
                         session.state = Session.HANDSHAKE;
                         report(getLabel(), "sessionKey was " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
