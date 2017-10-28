@@ -40,8 +40,8 @@ public class TestLocalNetwork extends Network {
         this.myKey = myKey;
 
         adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo);
-        adapter.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
-        adapter.receive(bytes -> onReceived(bytes));
+//        adapter.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+        adapter.receive(this::onReceived);
         adapter.addExceptionsCallback(this::exceptionCallback);
     }
 
@@ -62,35 +62,43 @@ public class TestLocalNetwork extends Network {
 
     private List<Notification> unpack(byte[] packedNotifications) throws IOException {
         List<Notification> nn = new ArrayList<>();
-        Boss.Reader r = new Boss.Reader(packedNotifications);
-        if (r.readInt() != 1)
-            throw new IOException("invalid packed notification type code");
-        int number = r.readInt();
-        NodeInfo from = getInfo(number);
-        if (from == null)
-            throw new IOException("unknown node number: " + number);
-        int count = r.readInt();
-        if (count < 0 || count > 1000)
-            throw new IOException("unvalid packed notifications count: " + count);
-        for (int i = 0; i < count; i++) {
-            try {
-                nn.add(Notification.unpackNotification(from, r));
-            } catch (Exception e) {
-                throw new IOException("notifiaction unpack failure", e);
+
+        try {
+            // packet type code
+            Boss.Reader r = new Boss.Reader(packedNotifications);
+            if (r.readInt() != 1)
+                throw new IOException("invalid packed notification type code");
+
+            // from node number
+            int number = r.readInt();
+            NodeInfo from = getInfo(number);
+            if (from == null)
+                throw new IOException("unknown node number: " + number);
+
+            // number of notifications in the packet
+            int count = r.readInt();
+            if (count < 0 || count > 1000)
+                throw new IOException("unvalid packed notifications count: " + count);
+
+            for (int i = 0; i < count; i++) {
+                nn.add(Notification.read(from, r));
             }
+            return nn;
+        } catch (Exception e) {
+            System.err.println("failed to unpack notification: " + e);
+            throw new IOException("failed to unpack notifications");
         }
-        return nn;
     }
 
     private final byte[] packNotifications(NodeInfo from, Collection<Notification> notifications) {
         Boss.Writer w = new Boss.Writer();
         try {
-            w.write(1)
-                    .write(from.getNumber())
-                    .write(notifications.size());
+            w.write(1)                                      // packet type code
+                    .write(from.getNumber())                // from number
+                    .write(notifications.size());           // count notifications
             notifications.forEach(n -> {
                 try {
-                    n.writeTo(w);
+                    Notification.write(w, n);
                 } catch (IOException e) {
                     throw new RuntimeException("notificaiton pack failure", e);
                 }
@@ -110,9 +118,15 @@ public class TestLocalNetwork extends Network {
     @Override
     public void deliver(NodeInfo toNode, Notification notification) {
         try {
-            log.d("will send " + notification + " to " + toNode);
-            adapter.send(toNode, packNotifications(myInfo, Do.listOf(notification)));
-            log.d("sent: " + notification + " to " + toNode);
+            byte[] data = packNotifications(myInfo, Do.listOf(notification));
+            try {
+                unpack(data);
+            } catch (Exception e) {
+                System.err.println("-- pack test failed -- " + e);
+                e.printStackTrace();
+                System.exit(75);
+            }
+            adapter.send(toNode, data);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -132,5 +146,9 @@ public class TestLocalNetwork extends Network {
     private String exceptionCallback(String message) {
         System.out.println(message);
         return message;
+    }
+
+    public void setNodes(Map<NodeInfo, Node> nodes) {
+        this.nodes = nodes;
     }
 }

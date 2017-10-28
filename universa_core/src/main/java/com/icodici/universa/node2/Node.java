@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 /**
  * The v2 Node.
@@ -120,25 +121,30 @@ public class Node {
             if (x instanceof ItemProcessor) {
                 ItemProcessor ip = (ItemProcessor) x;
                 ItemResult result = in.getItemResult();
-                debug("notification from " + in.getFrom() + ": " + in.getItemId() + ": " + in.getItemResult() + ", " + in.answerIsRequested());
-                if (result.haveCopy) {
+                ip.lock( ()-> {
+                    debug("notification from " + in.getFrom() + ": " + in.getItemId() + ": " + in.getItemResult() + ", " + in.answerIsRequested());
+                    debug("my state in it " + ip.getState() + " and I have a copy: " + (ip.item != null));
+                    // we might still need to download and process it
+                    if (result.haveCopy) {
 //                    debug("reported source for "+ip.itemId+": "+in.getFrom());
-                    ip.addToSources(from);
-                }
-                if (result.state != ItemState.PENDING)
-                    ip.vote(from, result.state);
-                else
-                    log.e("-- pending vote on " + in.getItemId() + " from " + from);
-                // We answer only if (1) answer is requested and (2) we have position on the subject:
-                if (in.answerIsRequested() && ip.record.getState() != ItemState.PENDING) {
-                    network.deliver(
-                            from,
-                            new ItemNotification(myInfo,
-                                                 in.getItemId(),
-                                                 ip.getResult(),
-                                                 ip.needsVoteFrom(from))
-                    );
-                }
+                        ip.addToSources(from);
+                    }
+                    if (result.state != ItemState.PENDING)
+                        ip.vote(from, result.state);
+                    else
+                        log.e("-- pending vote on " + in.getItemId() + " from " + from);
+                    // We answer only if (1) answer is requested and (2) we have position on the subject:
+                    if (in.answerIsRequested() && ip.record.getState() != ItemState.PENDING) {
+                        network.deliver(
+                                from,
+                                new ItemNotification(myInfo,
+                                                     in.getItemId(),
+                                                     ip.getResult(),
+                                                     ip.needsVoteFrom(from))
+                        );
+                    }
+                    return null;
+                });
                 return;
             }
             debug("impossible state: onNotification can't have invalid state from local check\n" + x);
@@ -160,10 +166,12 @@ public class Node {
     protected Object checkItemInternal(@NonNull HashId itemId, Approvable item, boolean autoStart) {
         try {
             // first, let's lock to the item id:
-            return ItemLock.synchronize(itemId, () -> {
+            return ItemLock.synchronize(itemId, (lock) -> {
                 ItemProcessor ip = processors.get(itemId);
-                if (ip != null)
+                if (ip != null) {
+                    debug("existing IP found for "+itemId);
                     return ip;
+                }
 
                 StateRecord r = ledger.getRecord(itemId);
                 // if it is not pending, it means it is already processed:
@@ -171,6 +179,8 @@ public class Node {
                     // it is, and we may still have it cached - we do not put it again:
                     return new ItemResult(r, cache.get(itemId) != null);
                 }
+
+                debug("no record in ledger found for "+itemId);
 
                 // we have no consensus on it. We might need to find one, after some precheck.
                 // The contract should not be too old to process:
@@ -184,7 +194,7 @@ public class Node {
                 if (autoStart) {
                     if (item != null)
                         cache.put(item);
-                    ItemProcessor processor = new ItemProcessor(itemId, item);
+                    ItemProcessor processor = new ItemProcessor(itemId, item, lock);
                     processors.put(itemId, processor);
                     return processor;
                 } else {
@@ -236,11 +246,12 @@ public class Node {
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
 
-        private final Object mutex = new Object();
+        private final Object mutex;
         private ScheduledFuture<?> poller;
         private ScheduledFuture<?> downloader;
 
-        public ItemProcessor(HashId itemId, Approvable item) {
+        public ItemProcessor(HashId itemId, Approvable item,Object lock) {
+            mutex = lock;
             this.itemId = itemId;
             if (item == null)
                 item = cache.get(itemId);
@@ -306,8 +317,12 @@ public class Node {
 
         private final void startPolling() {
             // at this poing the item is with us, so we can start
-            long millis = config.getPollTime().toMillis();
-            poller = executorService.scheduleAtFixedRate(() -> poll(), millis, millis, TimeUnit.MILLISECONDS);
+            synchronized (mutex) {
+                if (!consensusFound) {
+                    long millis = config.getPollTime().toMillis();
+                    poller = executorService.scheduleAtFixedRate(() -> poll(), millis, millis, TimeUnit.MILLISECONDS);
+                }
+            }
         }
 
         private boolean checkStarted = false;
@@ -429,7 +444,7 @@ public class Node {
             // todo: fix logic to surely copy approving item dependency. e.g. download original or at least dependencies
             // first we need to flag our state as approved
             setState(ItemState.APPROVED);
-            executorService.submit(()->downloadAndCommit());
+            executorService.submit(() -> downloadAndCommit());
         }
 
         private void downloadAndCommit() {
@@ -465,7 +480,7 @@ public class Node {
                 if (record.getState() != ItemState.APPROVED) {
                     log.e("record is not approved2 " + record.getState());
                 }
-                debug("approval done for " + itemId);
+                debug("approval done for " + itemId+ " : "+getState() + " have copy " + (item == null));
             } catch (TimeoutException | InterruptedException e) {
                 debug("commit: failed to load item " + itemId + " ledger will not be altered, the record will be destroyed");
                 setState(ItemState.UNDEFINED);
@@ -475,10 +490,16 @@ public class Node {
         }
 
         private void close() {
+            debug("closing "+itemId+" : "+getState());
             doneEvent.fire();
-            if( poller!= null )
+            if (poller != null)
                 poller.cancel(false);
             processors.remove(itemId);
+            debug("closed "+itemId);
+        }
+
+        private ItemState getState() {
+            return record.getState();
         }
 
         private final void setState(ItemState newState) {
@@ -529,9 +550,15 @@ public class Node {
                 return;
             synchronized (sources) {
                 if (sources.add(node)) {
-                    debug("added source: "+sources);
+                    debug("added source: " + sources);
                     pulseDownload();
                 }
+            }
+        }
+
+        public <T> T lock(Supplier<T> c) {
+            synchronized (mutex) {
+                return (T) c.get();
             }
         }
     }

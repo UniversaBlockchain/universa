@@ -48,6 +48,7 @@ public class ItemCache {
     public void put(Approvable item) {
         // this will plainly override current if any
         new Record(item);
+        System.out.println("cache: stored item "+item.getId());
     }
 
     private ConcurrentHashMap<HashId,Record> records = new ConcurrentHashMap();
@@ -63,8 +64,10 @@ public class ItemCache {
         }
 
         private void checkExpiration(Instant now) {
-            if( expiresAt.isBefore(now) )
+            if( expiresAt.isBefore(now) ) {
+                System.out.println("cache expired "+item.getId());
                 records.remove(item.getId());
+            }
         }
     }
 }

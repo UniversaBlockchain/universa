@@ -20,9 +20,9 @@ public class ItemLockTest {
     public void lock() throws Exception {
         HashId id = HashId.createRandom();
 
-        ItemLock.synchronize(id, () -> count++);
-        ItemLock.synchronize(id, () -> count++);
-        ItemLock.synchronize(id, () -> count++);
+        ItemLock.synchronize(id, (__) -> count++);
+        ItemLock.synchronize(id, (__) -> count++);
+        ItemLock.synchronize(id, (__) -> count++);
 
         assertEquals(3, count);
         assertEquals(1, ItemLock.size());

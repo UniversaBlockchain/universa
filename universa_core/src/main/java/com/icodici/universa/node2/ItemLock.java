@@ -9,8 +9,10 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.HashId;
 
+import java.util.HashMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 /**
  * The smart lock, allow global synchronize on per-hashId operation. Just call {@link #synchronize(HashId, Callable)}
@@ -33,7 +35,7 @@ public final class ItemLock {
      *
      * @throws Exception whatever callable throws
      */
-    static public <T> T synchronize(HashId id, Callable<T> callable) throws Exception {
+    static public <T> T synchronize(HashId id, Function<Object, T> callable) throws Exception {
         ItemLock lock = null;
 
         // short exclusive mutex: obtaning a lock
@@ -46,11 +48,11 @@ public final class ItemLock {
         }
         // now we only lock the item:
         synchronized (lock) {
-            return (T) callable.call();
+            return (T) callable.apply(lock);
         }
     }
 
-    static private WeakHashMap<HashId, ItemLock> monitors = new WeakHashMap<>();
+    static private HashMap<HashId, ItemLock> monitors = new HashMap<>();
 
     /**
      * Niber of cached locks. Not all of them are acquired. Locks are cached as long as corresponding {@link HashId} is

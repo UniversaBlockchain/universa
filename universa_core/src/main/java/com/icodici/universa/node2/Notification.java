@@ -92,13 +92,17 @@ abstract public class Notification {
         Boss.Writer writer = new Boss.Writer();
         try {
             for (Notification n : notifications) {
-                writer.write(n.getTypeCode());
-                n.writeTo(writer);
+                write(writer, n);
             }
             return writer.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("failed to pack notification", e);
         }
+    }
+
+    public static void write(Boss.Writer writer, Notification n) throws IOException {
+        writer.write(n.getTypeCode());
+        n.writeTo(writer);
     }
 
     /**
@@ -117,7 +121,7 @@ abstract public class Notification {
         try {
             while (true) {
                 // boss reader throws EOFException
-                Notification n = unpackNotification(from, r);
+                Notification n = read(from, r);
                 notifications.add(n);
             }
         } catch (EOFException x) {
@@ -128,7 +132,7 @@ abstract public class Notification {
         return notifications;
     }
 
-    public static Notification unpackNotification(NodeInfo from, Boss.Reader r) throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    public static Notification read(NodeInfo from, Boss.Reader r) throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
         int code = r.readInt();
         Constructor c = classes.get(code).getDeclaredConstructor();
         c.setAccessible(true);

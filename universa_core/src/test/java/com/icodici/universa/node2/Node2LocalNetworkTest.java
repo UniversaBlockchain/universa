@@ -8,7 +8,10 @@
 package com.icodici.universa.node2;
 
 import com.icodici.universa.HashId;
-import com.icodici.universa.node.*;
+import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node.SqliteLedger;
+import com.icodici.universa.node.TestItem;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.LogPrinter;
@@ -18,9 +21,7 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.File;
 import java.io.FileReader;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -33,7 +34,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     public static int NODES = 3;
 
-    public static List<Node> nodes = new ArrayList<>();
+    Map<NodeInfo,Node> nodes = new HashMap<>();
 
     public static String CONFIG_2_PATH = "../../deploy/samplesrv/";
 
@@ -79,14 +80,14 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
             NodeInfo info = nc.getInfo(i);
 
             TestLocalNetwork ln = new TestLocalNetwork(nc, info, getNodeKey(i));
+            ln.setNodes(nodes);
             ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
 //            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
             Node n = new Node(config, info, ledger, ln);
-            ln.addNode(info, n);
-            nodes.add(n);
+            nodes.put(info, n);
             networks.add(ln);
         }
-        node = nodes.get(0);
+        node = nodes.values().iterator().next();
     }
 
     private List<TestLocalNetwork> networks = new ArrayList<>();
@@ -114,26 +115,27 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         ae.await(500);
     }
 
-    //    @Test
+        @Test
     public void registerGoodItem() throws Exception {
         int N = 10;
         LogPrinter.showDebug(true);
-        for (int k = 0; k < 10; k++) {
+        for (int k = 0; k < 1; k++) {
 //            StopWatch.measure(true, () -> {
             for (int i = 0; i < N; i++) {
                 TestItem ok = new TestItem(true);
                 node.registerItem(ok);
-                for (Node n : nodes) {
+                for (Node n : nodes.values()) {
                     try {
-                        ItemResult r = n.waitItem(ok.getId(), 2500);
-                        assertEquals(ItemState.APPROVED, r.state);
+                        ItemResult r = n.waitItem(ok.getId(), 5500);
+                        assertEquals("In node "+n+" item "+ok.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
                         fail("timeout");
                     }
                 }
+                System.out.println("\n\n--------------------------\n\n");
+                assertThat(node.countElections(), is(lessThan(10)));
             }
 //            });
-            assertThat(node.countElections(), is(lessThan(10)));
         }
     }
 
