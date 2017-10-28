@@ -48,7 +48,7 @@ public abstract class DatagramAdapter {
     /**
      * Time between attempts to retransmit a DATA block, in milliseconds
      */
-    static public final int RETRANSMIT_TIME = 5000;
+    static public final int RETRANSMIT_TIME = 750;
 
     protected NodeInfo myNodeInfo;
     protected Consumer<byte[]> receiver = null;
