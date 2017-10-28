@@ -150,51 +150,51 @@ public class UDPAdapter extends DatagramAdapter {
 
     protected synchronized void sendBlock(Block block, Session session) throws InterruptedException {
 
-        if(block.type == PacketTypes.DATA) {
-            try {
-                Block rawBlock = session.getRawDataBlockFromWaitingQueue(block.blockId);
-                Binder unbossedPayload = Boss.load(block.payload);
-                byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
-                byte[] crc32Local = new Crc32().digest(decrypted);
-                report(getLabel(), "sendBlock: Crc32 id is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
-            } catch (EncryptionError encryptionError) {
-                encryptionError.printStackTrace();
-            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
-                authenticationFailed.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+//        if(block.type == PacketTypes.DATA) {
+//            try {
+//                Block rawBlock = session.getRawDataBlockFromWaitingQueue(block.blockId);
+//                Binder unbossedPayload = Boss.load(block.payload);
+//                byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
+//                byte[] crc32Local = new Crc32().digest(decrypted);
+//                report(getLabel(), "sendBlock: Crc32 id is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
+//            } catch (EncryptionError encryptionError) {
+//                encryptionError.printStackTrace();
+//            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
+//                authenticationFailed.printStackTrace();
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }
         if(!block.isValidToSend()) {
             block.prepareToSend(MAX_PACKET_SIZE);
         }
 
-        if(block.type == PacketTypes.DATA) {
-            try {
-                Block recBlock = new Block(block.senderNodeId, block.receiverNodeId,
-                        block.blockId, block.type,
-                        block.address, block.port);
-                for(Packet p : block.packets.values()) {
-                    recBlock.addToPackets(p);
-                }
-
-                recBlock.reconstruct();
-
-                Block rawBlock = session.getRawDataBlockFromWaitingQueue(recBlock.blockId);
-                Binder unbossedPayload = Boss.load(recBlock.payload);
-                byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
-                byte[] crc32Local = new Crc32().digest(decrypted);
-                report(getLabel(), "reconstructed block before send check: Crc32 is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
-            } catch (EncryptionError encryptionError) {
-                encryptionError.printStackTrace();
-            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
-                authenticationFailed.printStackTrace();
-            } catch (IOException ioError) {
-                ioError.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+//        if(block.type == PacketTypes.DATA) {
+//            try {
+//                Block recBlock = new Block(block.senderNodeId, block.receiverNodeId,
+//                        block.blockId, block.type,
+//                        block.address, block.port);
+//                for(Packet p : block.packets.values()) {
+//                    recBlock.addToPackets(p);
+//                }
+//
+//                recBlock.reconstruct();
+//
+//                Block rawBlock = session.getRawDataBlockFromWaitingQueue(recBlock.blockId);
+//                Binder unbossedPayload = Boss.load(recBlock.payload);
+//                byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
+//                byte[] crc32Local = new Crc32().digest(decrypted);
+//                report(getLabel(), "reconstructed block before send check: Crc32 is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
+//            } catch (EncryptionError encryptionError) {
+//                encryptionError.printStackTrace();
+//            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
+//                authenticationFailed.printStackTrace();
+//            } catch (IOException ioError) {
+//                ioError.printStackTrace();
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }
         //        List<DatagramPacket> outs = makeDatagramPacketsFromBlock(block, session.address, session.port);
         List<DatagramPacket> outs = new ArrayList(block.datagrams.values());
 
