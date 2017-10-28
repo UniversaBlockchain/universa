@@ -19,11 +19,12 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.time.Duration;
 
 import static java.util.Arrays.asList;
 
 public class Main {
-    private static final String NODE_VERSION = "2.0.1";
+    private static final String NODE_VERSION = "2.0.5";
     private static OptionParser parser;
     private static OptionSet options;
     public static final Reporter reporter = new Reporter();
@@ -50,28 +51,35 @@ public class Main {
         };
         try {
             options = parser.parse(args);
-            if (!options.has("nolog"))
-                logger.interceptStdOut();
-            else
+//            if (options.has("nolog"))
+//                logger.interceptStdOut();
+//            else
+//                logger.printTo(System.out, false);
                 logger.printTo(System.out, false);
             if (options.has("?")) {
                 usage(null);
             }
             log(NAME_STRING);
             log("Starting client interface");
-            reporter.message("System started");
             loadNodeConfig();
 
+            System.out.println("--------------- step 2 --------------------");
             startClientHttpServer();
 
-
-
+            System.out.println("--------------- step 3 --------------------");
+            System.out.println("testing SHA1PRNG");
+            System.out.println("--- random: "+Do.randomInt(177));
+            System.out.println("all initialization is done -----------------------------------");
             startAndWaitEnd();
         } catch (OptionException e) {
             usage("Unrecognized parameter: " + e.getMessage());
         } catch (InterruptedException e) {
-
+            e.printStackTrace();
+            System.out.println("interrupted exception, leaving");
+            System.err.println("interrupted exception, leaving");
         } catch (Exception e) {
+            System.out.println("exception "+e);
+            System.err.println("exception "+e);
             e.printStackTrace();
             usage(e.getMessage());
         }
@@ -126,6 +134,8 @@ public class Main {
         return nodeKey.getPublicKey();
     }
 
+    static public NodeInfo myInfo;
+
     private static void loadNodeConfig() throws IOException {
         Yaml yaml = new Yaml();
         String root = (String) options.valueOf("config");
@@ -137,22 +147,47 @@ public class Main {
         log(nodeKeyFileName);
         nodeKey = new PrivateKey(Do.read(nodeKeyFileName));
 
+        myInfo = new NodeInfo(nodeKey.getPublicKey(),
+                              settings.getIntOrThrow("node_number"),
+                              settings.getStringOrThrow("node_name"),
+                              (String) settings.getListOrThrow("ip").get(0),
+                              settings.getStringOrThrow("public_host"),
+                              settings.getIntOrThrow("udp_server_port"),
+                              settings.getIntOrThrow("http_client_port"),
+                              settings.getIntOrThrow("http_server_port")
+        );
+
         log("key loaded: " + nodeKey.info());
+        log( "node local URL: "+ myInfo.urlString());
+        log( "node info: "+ myInfo.toBinder());
     }
 
     private static ClientHTTPServer clientHTTPServer;
 
+    public static Node node;
+    public static final Config config = new Config();
+    public static ItemCache cache = new ItemCache(Duration.ofMinutes(30));
+
+    private static void setupNode() {
+        config.setNegativeConsensus(1);
+        config.setPositiveConsensus(1);
+//        node = new Node(config, )
+    }
+
     private static void startClientHttpServer() throws Exception {
+        System.out.println("prepare to start client HTTP server on "+settings.getIntOrThrow("http_client_port"));
         clientHTTPServer = new ClientHTTPServer(nodeKey, settings.getIntOrThrow("http_client_port"), logger);
-        log("http client service started");
+        clientHTTPServer.setCache(cache);
+//        node = new Node()
     }
 
     private static void log(String msg) {
-        logger.log(msg);
+        System.out.println(msg);
+//        logger.log(msg);
     }
 
-
     static private void usage(String text) {
+        System.out.println("usafe called");
         boolean error = false;
         PrintStream out = System.out;
         if (text != null) {
@@ -167,8 +202,7 @@ public class Main {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (!options.has("test"))
+        if (options != null && !options.has("test"))
             System.exit(100);
     }
-
 }

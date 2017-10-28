@@ -149,4 +149,8 @@ public class HashId implements Comparable<HashId> {
             }
         });
     }
+
+    public static HashId withDigest(String encodedString) {
+        return withDigest(Base64u.decodeCompactString(encodedString));
+    }
 }

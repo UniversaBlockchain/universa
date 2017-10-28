@@ -19,6 +19,7 @@ import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -97,6 +98,7 @@ public class Node {
             ((ItemProcessor) x).doneEvent.await(millisToWait);
             return ((ItemProcessor) x).getResult();
         }
+        debug("it is not processor: "+x);
         return (ItemResult) x;
     }
 
@@ -180,7 +182,7 @@ public class Node {
                     return new ItemResult(r, cache.get(itemId) != null);
                 }
 
-                debug("no record in ledger found for "+itemId);
+                debug("no record in ledger found for "+itemId.toBase64String());
 
                 // we have no consensus on it. We might need to find one, after some precheck.
                 // The contract should not be too old to process:
@@ -192,8 +194,10 @@ public class Node {
                 }
 
                 if (autoStart) {
-                    if (item != null)
-                        cache.put(item);
+                    if (item != null) {
+                        synchronized (cache) { cache.put(item); }
+//                        cache.put(item);
+                    }
                     ItemProcessor processor = new ItemProcessor(itemId, item, lock);
                     processors.put(itemId, processor);
                     return processor;
@@ -223,7 +227,14 @@ public class Node {
      * @return cached item or null if it is missing
      */
     public Approvable getItem(HashId itemId) {
-        return cache.get(itemId);
+        synchronized (cache) {
+            @Nullable Approvable i = cache.get(itemId);
+            if (i == null) {
+                debug("cache miss: ");
+            }
+            return i;
+        }
+//        return cache.get(itemId);
     }
 
     public int countElections() {
@@ -300,7 +311,7 @@ public class Node {
         }
 
         private final void itemDownloaded() {
-            cache.put(item);
+            synchronized (cache) { cache.put(item); }
             checkItem();
             downloadedEvent.fire();
             startPolling();
@@ -495,7 +506,7 @@ public class Node {
             if (poller != null)
                 poller.cancel(false);
             processors.remove(itemId);
-            debug("closed "+itemId);
+            debug("closed "+itemId.toBase64String());
         }
 
         private ItemState getState() {

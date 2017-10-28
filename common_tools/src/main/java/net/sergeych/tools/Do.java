@@ -79,7 +79,9 @@ public class Do {
         if (prng == null) {
             try {
                 prng = SecureRandom.getInstance("SHA1PRNG");
+                System.out.println("SHA1PRGN for Do has been created");
             } catch (NoSuchAlgorithmException e) {
+                System.out.println("no SHA1PRNG found");
                 throw new RuntimeException("no suitable RNG found", e);
             }
         }

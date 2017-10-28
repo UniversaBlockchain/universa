@@ -37,4 +37,8 @@ public interface BiSerializable {
      * @return Binder with serialized state data
      */
     public Binder serialize(BiSerializer serializer);
+
+    default Binder toBinder() {
+        return DefaultBiMapper.serialize(this);
+    }
 }

@@ -49,7 +49,7 @@ public class BasicHttpServer {
         Binder apply(Session session) throws Exception;
     }
 
-    private BasicHTTPService service;
+    protected BasicHTTPService service;
     private final BufferedLogger log;
     private PrivateKey myKey;
 
@@ -64,6 +64,10 @@ public class BasicHttpServer {
         addEndpoint("/command", params -> inSession(params.getLongOrThrow("session_id"), s -> s.command(params)));
 
         service.start(port, maxTrheads);
+    }
+
+    public void on(String path, BasicHTTPService.Handler handler) {
+        service.on(path, handler);
     }
 
     private Binder onConnect(Binder params) throws ClientError {
@@ -90,7 +94,7 @@ public class BasicHttpServer {
     }
 
     public void addEndpoint(String path, Endpoint ep) {
-        service.on(path, (request, response) -> {
+        on(path, (request, response) -> {
             Binder result;
             try {
                 result = Binder.of(

@@ -165,6 +165,8 @@ public class MicroHTTPDService implements BasicHTTPService {
         @Nullable
         String error = null;
 
+        int responseCode = 200;
+
         private final Binder headers = new Binder();
 
         MicroHTTPDServiceResponse() {
@@ -193,6 +195,11 @@ public class MicroHTTPDService implements BasicHTTPService {
         public void setBody(byte[] bodyAsBytes) {
             assert bodyAsBytes != null;
             this.body = bodyAsBytes;
+        }
+
+        @Override
+        public void setResponeCode(int code) {
+            responseCode = code;
         }
 
         void setError(String error) {
@@ -270,7 +277,7 @@ public class MicroHTTPDService implements BasicHTTPService {
                 byte[] body = responsePlaceholder.body;
 
                 final org.nanohttpd.protocols.http.response.Response response = org.nanohttpd.protocols.http.response.Response.newFixedLengthResponse(
-                        GOOD,
+                        Status.lookup(responsePlaceholder.responseCode),
                         "application/octet-stream",
                         body
                 );

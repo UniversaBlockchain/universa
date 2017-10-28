@@ -1050,7 +1050,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             r = registerRole(d.deserialize(data.getBinderOrThrow("created_by")));
             if (!r.getName().equals("creator"))
                 throw new IllegalArgumentException("bad creator role name");
-            this.data = data.getBinderOrThrow("data");
+            this.data = data.getBinder("data", Binder.EMPTY);
             branchId = data.getString("branch_id", null);
             parent = d.deserialize(data.get("parent"));
             origin = d.deserialize(data.get("origin"));
@@ -1229,8 +1229,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             registerRole(d.deserialize(data.getBinderOrThrow("issuer")));
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTimeOrThrow("expires_at");
-            this.data = d.deserialize(data.getBinderOrThrow("data"));
-            this.reference = d.deserialize(data.getBinder("reference"));
+            this.data = d.deserialize(data.getBinder("data",Binder.EMPTY));
+//            this.reference = d.deserialize(data.getBinder("reference"));
             Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
             perms.forEach((id, perm) -> {
                 perm.setId(id);

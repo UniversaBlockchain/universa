@@ -38,7 +38,10 @@ public class LogPrinter {
     public void log(char type, String tag, String message, Object... params) {
         if( type == 'd' && !showDebugMessages )
             return;
-        outputLog(tag, String.format(message, params));
+        if( params.length == 0 )
+            outputLog(tag, message);
+        else
+            outputLog(tag, String.format(message, params));
     }
 
     public void log(char type,String tag,Callable<String> source) {

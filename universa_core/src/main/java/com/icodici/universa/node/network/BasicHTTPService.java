@@ -122,6 +122,8 @@ public interface BasicHTTPService extends AutoCloseable {
          *                    if the mime-type header was not set, set it to application/octet-stream
          */
         void setBody(byte[] bodyAsBytes);
+
+        void setResponeCode(int code);
     }
 
     /**

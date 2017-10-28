@@ -9,6 +9,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import net.sergeych.utils.Base64;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.time.Duration;
@@ -42,16 +43,30 @@ public class ItemCache {
 
     public @Nullable Approvable get(HashId itemId) {
         Record i = records.get(itemId);
+        if( i != null && i.item == null )
+            throw new RuntimeException("cache: record with empty item");
         return i != null ? i.item : null;
     }
 
     public void put(Approvable item) {
         // this will plainly override current if any
         new Record(item);
-        System.out.println("cache: stored item "+item.getId());
     }
 
     private ConcurrentHashMap<HashId,Record> records = new ConcurrentHashMap();
+
+    public void idsCheck(HashId itemId) {
+        for(HashId x: records.keySet()) {
+            System.out.println(" checking "+itemId+" eq "+x+ ": "+itemId.equals(x) + " / " + x.equals(itemId) );
+            System.out.println(" codes: "+itemId.hashCode() + " / "+ x.hashCode());
+            System.out.println(" digest check: "+ Base64.encodeString(itemId.getDigest()));
+            System.out.println(" digest data : "+ Base64.encodeString(x.getDigest()));
+        }
+    }
+
+    public int size() {
+        return records.size();
+    }
 
     private class Record {
         private Instant expiresAt;

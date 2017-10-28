@@ -8,13 +8,10 @@
 package com.icodici.universa.node2;
 
 import com.icodici.universa.HashId;
-import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.SqliteLedger;
-import com.icodici.universa.node.TestItem;
+import com.icodici.universa.node.*;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
-import net.sergeych.utils.LogPrinter;
+import net.sergeych.tools.StopWatch;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -81,8 +78,8 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
             TestLocalNetwork ln = new TestLocalNetwork(nc, info, getNodeKey(i));
             ln.setNodes(nodes);
-            ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
-//            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
+//            ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
+            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
             Node n = new Node(config, info, ledger, ln);
             nodes.put(info, n);
             networks.add(ln);
@@ -115,12 +112,12 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         ae.await(500);
     }
 
-        @Test
+    @Test
     public void registerGoodItem() throws Exception {
-        int N = 10;
-        LogPrinter.showDebug(true);
-        for (int k = 0; k < 1; k++) {
-//            StopWatch.measure(true, () -> {
+        int N = 100;
+//        LogPrinter.showDebug(true);
+        for (int k = 0; k < 100; k++) {
+            StopWatch.measure(true, () -> {
             for (int i = 0; i < N; i++) {
                 TestItem ok = new TestItem(true);
                 node.registerItem(ok);
@@ -132,32 +129,38 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
                         fail("timeout");
                     }
                 }
-                System.out.println("\n\n--------------------------\n\n");
+//                System.out.println("\n\n--------------------------\n\n");
                 assertThat(node.countElections(), is(lessThan(10)));
+
+                ItemResult r = node.waitItem(ok.getId(), 5500);
+                assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
+
             }
-//            });
+            });
         }
     }
 
-//    @Test
-//    public void registerBadItem() throws Exception {
-//        TestItem bad = new TestItem(false);
-//        node.registerItem(bad);
-//        ItemResult r = node.waitItem(bad.getId(), 100);
-//        assertEquals(ItemState.DECLINED, r.state);
-//    }
-//
-//    @Test
-//    public void checkItem() throws Exception {
-//        TestItem ok = new TestItem(true);
-//        TestItem bad = new TestItem(false);
-//        node.registerItem(ok);
-//        node.registerItem(bad);
-//        node.waitItem(ok.getId(), 100);
-//        node.waitItem(bad.getId(), 100);
-//        assertEquals(ItemState.APPROVED, node.checkItem(ok.getId()).state);
-//        assertEquals(ItemState.DECLINED, node.checkItem(bad.getId()).state);
-//    }
+    @Test
+    public void registerBadItem() throws Exception {
+        TestItem bad = new TestItem(false);
+        node.registerItem(bad);
+        for (Node n : nodes.values()) {
+            ItemResult r = node.waitItem(bad.getId(), 100);
+            assertEquals(ItemState.DECLINED, r.state);
+        }
+    }
+
+    @Test
+    public void checkItem() throws Exception {
+        TestItem ok = new TestItem(true);
+        TestItem bad = new TestItem(false);
+        node.registerItem(ok);
+        node.registerItem(bad);
+        node.waitItem(ok.getId(), 100);
+        node.waitItem(bad.getId(), 100);
+        assertEquals(ItemState.APPROVED, node.checkItem(ok.getId()).state);
+        assertEquals(ItemState.DECLINED, node.checkItem(bad.getId()).state);
+    }
 //
 //
 //    @Test
