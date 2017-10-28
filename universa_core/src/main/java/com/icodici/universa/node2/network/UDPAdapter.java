@@ -107,7 +107,7 @@ public class UDPAdapter extends DatagramAdapter {
                 }
             }
         } else {
-            report(getLabel(), "session not exist");
+            report(getLabel(), "session not exist", VerboseLevel.BASE);
             session = createSession(destination.getNumber(),
                     destination.getNodeAddress().getAddress(),
                     destination.getNodeAddress().getPort());
@@ -186,11 +186,12 @@ public class UDPAdapter extends DatagramAdapter {
 
     protected synchronized void sendAsDataBlock(Block rawDataBlock, Session session) throws EncryptionError, InterruptedException {
         report(getLabel(), "send data to " + session.remoteNodeId, VerboseLevel.BASE);
-        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode(), VerboseLevel.BASE);
+        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
         byte[] encrypted = session.sessionKey.etaEncrypt(rawDataBlock.payload);
 
         Binder binder = Binder.fromKeysValues(
-                "data", encrypted
+                "data", encrypted,
+                "crc32", rawDataBlock.crc32
         );
 
         Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
@@ -249,7 +250,7 @@ public class UDPAdapter extends DatagramAdapter {
 
     protected synchronized void sendSessionKey(Session session) throws InterruptedException {
         report(getLabel(), "send session key to " + session.remoteNodeId, VerboseLevel.BASE);
-        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode(), VerboseLevel.BASE);
+        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
 
         List data = asList(session.sessionKey.getKey(), session.remoteNonce);
         try {
@@ -324,7 +325,7 @@ public class UDPAdapter extends DatagramAdapter {
         report(getLabel(), "session created for nodeId " + remoteId, VerboseLevel.BASE);
         session.remoteNodeId = remoteId;
         session.sessionKey = sessionKey;
-        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode(), VerboseLevel.BASE);
+        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
         sessionsById.put(remoteId, session);
 
         return session;
@@ -595,66 +596,86 @@ public class UDPAdapter extends DatagramAdapter {
                     signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
                     report(getLabel(), " session " + session.publicKey);
                     report(getLabel(), " unbossedPayload " + unbossedPayload);
-                    if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
+                    if(session.publicKey != null) {
+                        if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
 
-                        report(getLabel(), " successfully verified ");
+                            report(getLabel(), " successfully verified ");
 
-                        byte[] decryptedData = ownPrivateKey.decrypt(signedUnbossed);
-                        List receivedData = Boss.load(decryptedData);
-                        byte[] sessionKey = ((Bytes) receivedData.get(0)).toArray();
-                        byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
+                            byte[] decryptedData = ownPrivateKey.decrypt(signedUnbossed);
+                            List receivedData = Boss.load(decryptedData);
+                            byte[] sessionKey = ((Bytes) receivedData.get(0)).toArray();
+                            byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
 
-                        // if remote nonce from received data equals with own nonce
-                        // (means session sent as answer to key request from known and expected node)
-                        if(Arrays.equals(receiverNonce, session.localNonce)) {
-                            session.reconstructSessionKey(sessionKey);
-                            report(getLabel(), " check session " + session.isValid());
+                            // if remote nonce from received data equals with own nonce
+                            // (means session sent as answer to key request from known and expected node)
+                            if (Arrays.equals(receiverNonce, session.localNonce)) {
+                                session.reconstructSessionKey(sessionKey);
+                                report(getLabel(), " check session " + session.isValid());
 
-                            // Tell remote nonce we got session and no need to resend it.
-                            answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                                // Tell remote nonce we got session and no need to resend it.
+                                answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
 
-                            if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
-                                report(getLabel(), " waiting blocks num " + session.waitingBlocksQueue.size());
-                                try {
-                                    for (Block waitingBlock : session.waitingBlocksQueue) {
-                                        report(getLabel(), " waitingBlock " + waitingBlock.blockId + " type " + waitingBlock.type);
-                                        if (waitingBlock.type == PacketTypes.RAW_DATA) {
-                                            sendAsDataBlock(waitingBlock, session);
-                                        } else {
-                                            sendBlock(waitingBlock, session);
+                                if (session != null && session.isValid() && session.state == Session.EXCHANGING) {
+                                    report(getLabel(), " waiting blocks num " + session.waitingBlocksQueue.size());
+                                    try {
+                                        for (Block waitingBlock : session.waitingBlocksQueue) {
+                                            report(getLabel(), " waitingBlock " + waitingBlock.blockId + " type " + waitingBlock.type);
+                                            if (waitingBlock.type == PacketTypes.RAW_DATA) {
+                                                sendAsDataBlock(waitingBlock, session);
+                                            } else {
+                                                sendBlock(waitingBlock, session);
+                                            }
+                                            session.removeBlockFromWaitingQueue(waitingBlock);
                                         }
-                                        session.removeBlockFromWaitingQueue(waitingBlock);
+                                    } catch (InterruptedException e) {
+                                        System.out.println(Errors.BAD_VALUE + " send encryption error, " + e.getMessage());
                                     }
-                                } catch (InterruptedException e) {
-                                    System.out.println(Errors.BAD_VALUE + " send encryption error, " + e.getMessage());
                                 }
+                            } else {
+                                System.out.println(Errors.BAD_VALUE + ": got nonce is not valid");
+                                throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid");
                             }
                         } else {
-                            System.out.println(Errors.BAD_VALUE + ": got nonce is not valid");
-                            throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid");
+                            System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
+                            throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
                         }
                     } else {
-                        System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
-                        throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
+                        System.out.println(Errors.BAD_VALUE + ": public key for current session is broken");
+                        throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session is broken");
                     }
                     break;
 
                 case PacketTypes.DATA:
                     report(getLabel(), "got data from " + block.senderNodeId, VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
-                    if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
-                        unbossedPayload = Boss.load(block.payload);
-                        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode(), VerboseLevel.BASE);
-                        try {
+                    try {
+                        if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
+                            unbossedPayload = Boss.load(block.payload);
+                            report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
+
                             byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
+                            byte[] crc32Remote = unbossedPayload.getBinaryOrThrow("crc32");
+                            byte[] crc32Local = new Crc32().digest(decrypted);
+
+                            if(!Arrays.equals(crc32Remote, crc32Local)) {
+                                report(getLabel(), "Crc32 Error, sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
+//                            throw e;
+//                                sendNack(session, block.blockId);
+                                throw new EncryptionError(Errors.BAD_VALUE + ": Crc32 Error");
+                            } else {
+                                report(getLabel(), "Crc32 id ok, sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
+                            }
 
                             receiver.accept(decrypted);
-                        } catch (SymmetricKey.AuthenticationFailed e) {
-                            report(getLabel(), "SymmetricKey.AuthenticationFailed, sessionKey is " + session.sessionKey.hashCode(), VerboseLevel.BASE);
-                            throw e;
+
                         }
+                        answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                    } catch (SymmetricKey.AuthenticationFailed e) {
+                        report(getLabel(), "SymmetricKey.AuthenticationFailed, sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
+//                            throw e;
+                        sendNack(session, block.blockId);
+                        throw e;
                     }
-                    answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
                     break;
 
                 case PacketTypes.ACK:
@@ -679,9 +700,9 @@ public class UDPAdapter extends DatagramAdapter {
                     if(session != null && session.isValid()) {
                         session.moveBlocksFromSendingToWaiting();
                         session.state = Session.HANDSHAKE;
-                        report(getLabel(), "sessionKey was " + session.sessionKey.hashCode(), VerboseLevel.BASE);
+                        report(getLabel(), "sessionKey was " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
                         session.sessionKey = sessionKey;
-                        report(getLabel(), "sessionKey now " + session.sessionKey.hashCode(), VerboseLevel.BASE);
+                        report(getLabel(), "sessionKey now " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
                         sendHello(session);
                     }
                     break;
@@ -793,6 +814,7 @@ public class UDPAdapter extends DatagramAdapter {
         private int blockId;
         private int type;
         private byte[] payload;
+        private byte[] crc32;
         private int sendAttempts;
         private InetAddress address;
         private int port;
@@ -817,6 +839,7 @@ public class UDPAdapter extends DatagramAdapter {
             this.address = address;
             this.port = port;
             this.payload = payload;
+            this.crc32 = new Crc32().digest(payload);
 
             packets = new ConcurrentHashMap<>();
             datagrams = new ConcurrentHashMap<>();
