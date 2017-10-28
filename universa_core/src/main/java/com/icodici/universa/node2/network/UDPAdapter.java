@@ -78,7 +78,7 @@ public class UDPAdapter extends DatagramAdapter {
         Block rawBlock = new Block(myNodeInfo.getNumber(), destination.getNumber(),
                                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.RAW_DATA,
                                    destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
-                                   payload);
+                                   payload.clone());
 
         if (session != null) {
             if(session.isValid()) {
@@ -150,14 +150,52 @@ public class UDPAdapter extends DatagramAdapter {
 
     protected synchronized void sendBlock(Block block, Session session) throws InterruptedException {
 
-        byte[] crc32Local = new Crc32().digest(block.payload);
-        report(getLabel(), "sendBlock: Crc32 id is " + Arrays.equals(block.crc32, crc32Local), VerboseLevel.BASE);
+        if(block.type == PacketTypes.DATA) {
+            try {
+                Block rawBlock = session.getRawDataBlockFromWaitingQueue(block.blockId);
+                Binder unbossedPayload = Boss.load(block.payload);
+                byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
+                byte[] crc32Local = new Crc32().digest(decrypted);
+                report(getLabel(), "sendBlock: Crc32 id is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
+            } catch (EncryptionError encryptionError) {
+                encryptionError.printStackTrace();
+            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
+                authenticationFailed.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         if(!block.isValidToSend()) {
             block.prepareToSend(MAX_PACKET_SIZE);
         }
 
-        report(getLabel(), "sendBlock after prepareToSend: Crc32 id is " + Arrays.equals(block.crc32, crc32Local), VerboseLevel.BASE);
-//        List<DatagramPacket> outs = makeDatagramPacketsFromBlock(block, session.address, session.port);
+        if(block.type == PacketTypes.DATA) {
+            try {
+                Block recBlock = new Block(block.senderNodeId, block.receiverNodeId,
+                        block.blockId, block.type,
+                        block.address, block.port);
+                for(Packet p : block.packets.values()) {
+                    recBlock.addToPackets(p);
+                }
+
+                recBlock.reconstruct();
+
+                Block rawBlock = session.getRawDataBlockFromWaitingQueue(recBlock.blockId);
+                Binder unbossedPayload = Boss.load(recBlock.payload);
+                byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
+                byte[] crc32Local = new Crc32().digest(decrypted);
+                report(getLabel(), "reconstructed block before send check: Crc32 is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
+            } catch (EncryptionError encryptionError) {
+                encryptionError.printStackTrace();
+            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
+                authenticationFailed.printStackTrace();
+            } catch (IOException ioError) {
+                ioError.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        //        List<DatagramPacket> outs = makeDatagramPacketsFromBlock(block, session.address, session.port);
         List<DatagramPacket> outs = new ArrayList(block.datagrams.values());
 
         block.sendAttempts++;
@@ -201,11 +239,12 @@ public class UDPAdapter extends DatagramAdapter {
                 "data", encrypted,
                 "crc32", rawDataBlock.crc32
         );
-
+        byte[] packedData = Boss.pack(binder);
+        report(getLabel(), " data size: " + packedData.length + " for " + session.remoteNodeId, VerboseLevel.BASE);
         Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
                                 rawDataBlock.blockId, PacketTypes.DATA,
                                 session.address, session.port,
-                                Boss.pack(binder));
+                                packedData);
         sendBlock(block, session);
     }
 
@@ -1182,6 +1221,16 @@ public class UDPAdapter extends DatagramAdapter {
                     sendingBlock.delivered = true;
                 }
             }
+        }
+
+        public synchronized Block getRawDataBlockFromWaitingQueue(int blockId) throws InterruptedException {
+            for (Block block : waitingBlocksQueue) {
+                if (block.blockId == blockId && block.type == PacketTypes.RAW_DATA) {
+                    return block;
+                }
+            }
+
+            return null;
         }
 
     }
