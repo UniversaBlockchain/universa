@@ -13,6 +13,8 @@ import java.time.Duration;
 /**
  * Limit something specifying and counting number of 'pulses' per some time slot. Limited are usages inside the slot,
  * when the slot is done, counts starts from 0.
+ *
+ * Serualization most completely save/restore its state: time slot, pule limit, duration and pulses left
  */
 public abstract class RateCounter implements Serializable {
 
@@ -23,6 +25,19 @@ public abstract class RateCounter implements Serializable {
      * @param period slot duration
      */
     public abstract void reset(int limit, Duration period);
+
+
+    /**
+     * The duration set by the {@link #reset(int, Duration)}
+     * @return
+     */
+    public abstract Duration getDuration();
+
+    /**
+     * The pulse limit set by the {@link #reset(int, Duration)}
+     * @return
+     */
+    public abstract int getPulseLimit();
 
 
     /**
