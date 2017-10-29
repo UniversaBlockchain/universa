@@ -29,15 +29,15 @@ import static org.junit.Assert.*;
 public class MainTest {
     @Test
     public void startNode() throws Exception {
-        String[] args = new String[] { "--test", "--config", "../../deploy/samplesrv", "--nolog"};
-        Main.main(args);
-        Main.waitReady();
-        BufferedLogger l = Main.logger;
+        String[] args = new String[] { "--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/node1", "--nolog"};
+        Main main = new Main(args);
+        main.waitReady();
+        BufferedLogger l = main.logger;
 
         ClientHTTPClient client = new ClientHTTPClient(
-                "http://localhost:2052",
+                "http://localhost:6000",
                 TestKeys.privateKey(3),
-                Main.getNodePublicKey()
+                main.getNodePublicKey()
         );
 
         l.log("client ready");
@@ -61,12 +61,12 @@ public class MainTest {
         Contract c1 = new Contract(sealed);
         assertArrayEquals(c.getLastSealedBinary(), c1.getLastSealedBinary());
 
-        Main.cache.put(c);
-        assertNotNull(Main.cache.get(c.getId()));
+        main.cache.put(c);
+        assertNotNull(main.cache.get(c.getId()));
 
         System.out.println("source id       "+c.getId().toBase64String());
 //        URL url = new URL("http://localhost:2052/contracts/cache_test");
-        URL url = new URL("http://localhost:2052/contracts/"+c.getId().toBase64String());
+        URL url = new URL("http://localhost:6000/contracts/"+c.getId().toBase64String());
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         assertEquals(200, con.getResponseCode());
@@ -76,7 +76,7 @@ public class MainTest {
 
         assertArrayEquals(c.getLastSealedBinary(), data2);
 
-        url = new URL("http://localhost:2052/network");
+        url = new URL("http://localhost:6000/network");
         con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         assertEquals(200, con.getResponseCode());
@@ -89,7 +89,7 @@ public class MainTest {
                 ni.stream().map(x->x.getStringOrThrow("url"))
                            .collect(Collectors.toList()));
 
-        Main.shutdown();
+        main.shutdown();
         Thread.sleep(100);
     }
 
