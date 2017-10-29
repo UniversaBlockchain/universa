@@ -21,6 +21,7 @@ import org.junit.Test;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -88,4 +89,17 @@ public class MainTest {
         main.logger.getCopy().forEach(x-> System.out.println(x));
     }
 
+    Main createMain(String name,boolean nolog) throws InterruptedException {
+        String[] args = new String[]{"--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/"+name, nolog ? "--nolog" : ""};
+        Main main = new Main(args);
+        main.waitReady();
+        return main;
+    }
+
+    @Test
+    public void localNetwork() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for( int i=0; i<3; i++ )
+            mm.add(createMain("node"+(i+1), true));
+    }
 }

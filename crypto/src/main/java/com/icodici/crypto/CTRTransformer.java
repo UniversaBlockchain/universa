@@ -81,7 +81,9 @@ class CTRTransformer {
         counterBytes[2] = (byte) (counter >> 8);
         counterBytes[3] = (byte) counter;
         applyXor(source, blockSize - 4, counterBytes);
-        source = cipher.transformBlock(source);
+        synchronized (cipher) {
+            source = cipher.transformBlock(source);
+        }
         counter++;
         index = 0;
     }

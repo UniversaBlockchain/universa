@@ -116,7 +116,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     public void registerGoodItem() throws Exception {
         int N = 100;
 //        LogPrinter.showDebug(true);
-        for (int k = 0; k < 100; k++) {
+        for (int k = 0; k < 10000; k++) {
             StopWatch.measure(true, () -> {
             for (int i = 0; i < N; i++) {
                 TestItem ok = new TestItem(true);
