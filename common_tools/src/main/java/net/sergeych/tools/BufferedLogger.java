@@ -38,6 +38,10 @@ public class BufferedLogger implements AutoCloseable {
     private PipedInputStream inPipe;
     private boolean printTimestamp = false;
 
+    public void e(String s) {
+        log("ERROR: "+s);
+    }
+
     /**
      * Log entry structure provides ID to navigate, creation instant and the message.
      */
@@ -311,8 +315,7 @@ public class BufferedLogger implements AutoCloseable {
         try {
             PipedOutputStream outPipe = new PipedOutputStream();
             oldOut = System.out;
-            printTo(oldOut, false);
-            System.setOut(new PrintStream(outPipe));
+            System.setOut(new PrintStream(outPipe, true));
             inPipe = new PipedInputStream(outPipe);
             BufferedReader r = new BufferedReader(new InputStreamReader(inPipe));
             interceptorThread = new Thread(() -> {
