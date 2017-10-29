@@ -29,7 +29,7 @@ import static org.junit.Assert.*;
 public class MainTest {
     @Test
     public void startNode() throws Exception {
-        String[] args = new String[] { "--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/node1", "--nolog"};
+        String[] args = new String[]{"--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/node1", "--nolog"};
         Main main = new Main(args);
         main.waitReady();
         BufferedLogger l = main.logger;
@@ -40,14 +40,12 @@ public class MainTest {
                 main.getNodePublicKey()
         );
 
-        l.log("client ready");
         Binder data = client.command("status");
         data.getStringOrThrow("status");
 //        assertThat(data.getListOrThrow("log").size(), greaterThan(3));
         BasicHTTPClient.Answer a = client.request("ping");
-        l.log(">>"+a);
+        assertEquals("200: {ping=pong}", a.toString());
 
-//        URL url = new URL("http://localhost:2052/contracts/1234597899=");
 
         Contract c = new Contract();
         c.setIssuerKeys(TestKeys.publicKey(3));
@@ -64,14 +62,10 @@ public class MainTest {
         main.cache.put(c);
         assertNotNull(main.cache.get(c.getId()));
 
-        System.out.println("source id       "+c.getId().toBase64String());
-//        URL url = new URL("http://localhost:2052/contracts/cache_test");
-        URL url = new URL("http://localhost:6000/contracts/"+c.getId().toBase64String());
+        URL url = new URL("http://localhost:6000/contracts/" + c.getId().toBase64String());
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         assertEquals(200, con.getResponseCode());
-        System.out.println(con.getResponseCode());
-            System.out.println(con.getHeaderFields());
         byte[] data2 = Do.read(con.getInputStream());
 
         assertArrayEquals(c.getLastSealedBinary(), data2);
@@ -80,17 +74,18 @@ public class MainTest {
         con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         assertEquals(200, con.getResponseCode());
-        System.out.println(con.getResponseCode());
-        System.out.println(con.getHeaderFields());
         Binder bres = Boss.unpack((Do.read(con.getInputStream())))
                 .getBinderOrThrow("response");
         List<Binder> ni = bres.getBinders("nodes");
-        System.out.println("\n\n" +
-                ni.stream().map(x->x.getStringOrThrow("url"))
-                           .collect(Collectors.toList()));
+        String pubUrls = ni.stream().map(x -> x.getStringOrThrow("url"))
+                .collect(Collectors.toList())
+                .toString();
+
+        assertEquals("[http://localhost:8080, http://localhost:8080, http://localhost:8080]", pubUrls);
 
         main.shutdown();
-        Thread.sleep(100);
+        main.logger.stopInterceptingStdOut();;
+        main.logger.getCopy().forEach(x-> System.out.println(x));
     }
 
 }

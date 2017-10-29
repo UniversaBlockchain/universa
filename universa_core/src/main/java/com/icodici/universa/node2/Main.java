@@ -24,23 +24,23 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    private  final String NODE_VERSION = "2.0.6";
-    private  OptionParser parser;
-    private  OptionSet options;
-    public  final Reporter reporter = new Reporter();
+    private final String NODE_VERSION = "2.0.6";
+    private OptionParser parser;
+    private OptionSet options;
+    public final Reporter reporter = new Reporter();
 
-    private  String NAME_STRING = "Universa node server v" + NODE_VERSION + "\n";
+    private String NAME_STRING = "Universa node server v" + NODE_VERSION + "\n";
 
-    private  AsyncEvent eventReady = new AsyncEvent();
-    public  final BufferedLogger logger = new BufferedLogger(4096);
-    private  String configRoot;
+    private AsyncEvent eventReady = new AsyncEvent();
+    public final BufferedLogger logger = new BufferedLogger(4096);
+    private String configRoot;
 
 
-     public static void main(String[] args) {
-         new Main(args);
-     }
+    public static void main(String[] args) {
+        new Main(args);
+    }
 
-     Main(String[] args) {
+    Main(String[] args) {
         parser = new OptionParser() {
             {
                 acceptsAll(asList("?", "h", "help"), "show help").forHelp();
@@ -54,11 +54,13 @@ public class Main {
         };
         try {
             options = parser.parse(args);
-//            if (options.has("nolog"))
-//                logger.interceptStdOut();
-//            else
-//                logger.printTo(System.out, false);
+            if (options.has("nolog")) {
+                logger.interceptStdOut();
+            }
+            else
                 logger.printTo(System.out, false);
+//            logger.printTo(System.out, false);
+
             if (options.has("?")) {
                 usage(null);
             }
@@ -66,34 +68,35 @@ public class Main {
             log("Starting client interface");
             loadNodeConfig();
 
-            System.out.println("--------------- step 2 --------------------");
+            log("--------------- step 2 --------------------");
             log("loading network configuration...");
             loadNetConfig();
 
-            System.out.println("--------------- step 3 --------------------");
+            log("--------------- step 3 --------------------");
             log("Starting the client HTTP server...");
             startClientHttpServer();
 
-            System.out.println("all initialization is done -----------------------------------");
+            log("all initialization is done -----------------------------------");
             startAndWaitEnd();
         } catch (OptionException e) {
             usage("Unrecognized parameter: " + e.getMessage());
         } catch (InterruptedException e) {
             e.printStackTrace();
-            System.out.println("interrupted exception, leaving");
+            log("interrupted exception, leaving");
             System.err.println("interrupted exception, leaving");
         } catch (Exception e) {
-            System.out.println("exception "+e);
-            System.err.println("exception "+e);
+            log("exception " + e);
+            logger.e("exception " + e);
             e.printStackTrace();
             usage(e.getMessage());
         }
     }
 
-    public  NetConfig netConfig;
-    private  void loadNetConfig() throws IOException {
-        netConfig = new NetConfig(configRoot+"/config/nodes");
-        log("Network configuration is loaded from "+configRoot+", "+netConfig.size() + " nodes.");
+    public NetConfig netConfig;
+
+    private void loadNetConfig() throws IOException {
+        netConfig = new NetConfig(configRoot + "/config/nodes");
+        log("Network configuration is loaded from " + configRoot + ", " + netConfig.size() + " nodes.");
     }
 
     /**
@@ -101,7 +104,7 @@ public class Main {
      *
      * @throws InterruptedException
      */
-    private  void startAndWaitEnd() throws InterruptedException {
+    private void startAndWaitEnd() throws InterruptedException {
         eventReady.fire(null);
         if (!options.has("test"))
             synchronized (parser) {
@@ -114,14 +117,14 @@ public class Main {
      *
      * @throws InterruptedException
      */
-    public  void waitReady() throws InterruptedException {
+    public void waitReady() throws InterruptedException {
         eventReady.await();
     }
 
     /**
      * For unit-tests. REquest the shutdown and wait until the node stops.
      */
-     public void shutdown() {
+    public void shutdown() {
         try {
 //            network.close();
             log("shutting down");
@@ -138,16 +141,16 @@ public class Main {
         }
     }
 
-     private PrivateKey nodeKey;
-     private Binder settings;
+    private PrivateKey nodeKey;
+    private Binder settings;
 
-     public PublicKey getNodePublicKey() {
+    public PublicKey getNodePublicKey() {
         return nodeKey.getPublicKey();
     }
 
-     public NodeInfo myInfo;
+    public NodeInfo myInfo;
 
-    private  void loadNodeConfig() throws IOException {
+    private void loadNodeConfig() throws IOException {
         Yaml yaml = new Yaml();
         configRoot = (String) options.valueOf("config");
 
@@ -169,37 +172,36 @@ public class Main {
         );
 
         log("key loaded: " + nodeKey.info());
-        log( "node local URL: "+ myInfo.publicUrlString());
-        log( "node info: "+ myInfo.toBinder());
+        log("node local URL: " + myInfo.publicUrlString());
+        log("node info: " + myInfo.toBinder());
     }
 
-    private  ClientHTTPServer clientHTTPServer;
+    private ClientHTTPServer clientHTTPServer;
 
-    public  Node node;
-    public  final Config config = new Config();
-    public  ItemCache cache = new ItemCache(Duration.ofMinutes(30));
+    public Node node;
+    public final Config config = new Config();
+    public ItemCache cache = new ItemCache(Duration.ofMinutes(30));
 
-    private  void setupNode() {
+    private void setupNode() {
         config.setNegativeConsensus(1);
         config.setPositiveConsensus(1);
 //        node = new Node(config, )
     }
 
-    private  void startClientHttpServer() throws Exception {
-        System.out.println("prepare to start client HTTP server on "+settings.getIntOrThrow("http_client_port"));
+    private void startClientHttpServer() throws Exception {
+        log("prepare to start client HTTP server on " + settings.getIntOrThrow("http_client_port"));
         clientHTTPServer = new ClientHTTPServer(nodeKey, settings.getIntOrThrow("http_client_port"), logger);
         clientHTTPServer.setCache(cache);
         clientHTTPServer.setNetConfig(netConfig);
 //        node = new Node()
     }
 
-    private  void log(String msg) {
-        System.out.println(msg);
-//        logger.log(msg);
+    private void log(String msg) {
+        logger.log(msg);
     }
 
-     private void usage(String text) {
-        System.out.println("usafe called");
+    private void usage(String text) {
+        log("usafe called");
         boolean error = false;
         PrintStream out = System.out;
         if (text != null) {
