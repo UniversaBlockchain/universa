@@ -8,6 +8,7 @@
 package com.icodici.universa.node.network;
 
 import net.sergeych.tools.Binder;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 
@@ -40,8 +41,27 @@ public interface BasicHTTPService extends AutoCloseable {
      *
      * @param pathStart the beginning of the request's path that should be handled by this handler
      * @param handler   to handle such requests
+     * @return <code>null</code> if there were no previous handlers bound to this request
+     * path prefix before this handler;
+     * or {@link Handler} which was bound at this prefix before and that was overwritten.
      */
-    void on(String pathStart, Handler handler);
+    @Nullable
+    Handler on(String pathStart, Handler handler);
+
+    /**
+     * Register request handler which must be called if there is no matching
+     * {@link #on(String, Handler)} requests found.
+     * <p>
+     * By default, if no {@link #onNotFound(Handler)} handlers found,
+     * a response with 404 HTTP code and an empty body is returned.
+     *
+     * @param handler to handle such requests
+     * @return <code>null</code> if there were no previous handlers bound to this request
+     * path prefix before this handler;
+     * or {@link Handler} which was bound at this prefix before and that was overwritten.
+     */
+    @Nullable
+    Handler onNotFound(Handler handler);
 
     /**
      * A parameter for {@link Request#getParams()} representing fileupload arguments
@@ -123,12 +143,15 @@ public interface BasicHTTPService extends AutoCloseable {
          */
         void setBody(byte[] bodyAsBytes);
 
-        void setResponeCode(int code);
+        /**
+         * Set the HTTP response code to specific value.
+         */
+        void setResponseCode(int code);
     }
 
     /**
      * Handler for HTTP requests.
-     *
+     * <p>
      * If body is already has been set in the Response, this means it already
      * knows about some error.
      */

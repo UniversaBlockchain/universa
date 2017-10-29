@@ -60,7 +60,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                 hh.put("Cache-Control", "max-age=315360000");
                 response.setBody(data);
             } else
-                response.setResponeCode(404);
+                response.setResponseCode(404);
         });
 
         addEndpoint("/network", (Binder params, Result result) -> {

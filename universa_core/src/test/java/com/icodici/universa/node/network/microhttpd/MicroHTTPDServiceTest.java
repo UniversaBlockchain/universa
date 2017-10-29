@@ -25,9 +25,11 @@ import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.*;
 
@@ -92,6 +94,19 @@ public class MicroHTTPDServiceTest {
                 e.printStackTrace();
             }
         });
+        service.on("asdf", (request, response) -> {
+            // Default handler
+            try {
+                final MicroHTTPDService.MicroHTTPDServiceResponse microResponse = (MicroHTTPDService.MicroHTTPDServiceResponse) response;
+                @Nullable String error = microResponse.getError();
+                assertNull(error);
+
+                final Binder result = Binder.fromKeysValues("errors", Arrays.asList("Unsupported URL: " + request.getPath()));
+                response.setBody(Boss.pack(result));
+            } catch (AssertionError e) {
+                e.printStackTrace();
+            }
+        });
 
         {
             UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
@@ -114,6 +129,134 @@ public class MicroHTTPDServiceTest {
             assertEquals(a.code, 200);
             assertTrue(a.data.getListOrThrow("errors").contains("Unsupported URL: /ping"));
         }
+    }
+
+    @Test
+    public void test404() throws IOException {
+        final ArrayList<String> requestLog = new ArrayList<>();
+        final ArrayList<Integer> responseLog = new ArrayList<>();
+
+        final BasicHTTPService.Handler
+                handler1 = (request, response) -> responseLog.add(1),
+                handlerE = (request, response) -> responseLog.add(0);
+
+        final Consumer<String> connect = path -> {
+            URLConnection connection = null;
+            int responseCode = 0;
+            try {
+                connection = new URL(ROOT_URL + path).openConnection();
+
+                final HttpURLConnection httpConnection = (HttpURLConnection) connection;
+                responseCode = httpConnection.getResponseCode();
+                httpConnection.getInputStream();
+                requestLog.add("Connect to " + path);
+            } catch (IOException e) {
+                requestLog.add(String.format("Connect to %s failed with %s", path, responseCode));
+            }
+        };
+
+        // Call an url when no handlers are added
+        {
+            requestLog.clear();
+            responseLog.clear();
+
+            connect.accept("/ping1");
+
+            assertArrayEquals(
+                    new String[]{"Connect to /ping1 failed with 404"},
+                    requestLog.toArray());
+            assertArrayEquals(
+                    new Integer[]{},
+                    responseLog.toArray());
+        }
+
+        // Then, call an url when some handler is added, but no 404 handler yet
+        {
+            requestLog.clear();
+            responseLog.clear();
+
+            assertNull(service.on("/ping1", handler1));
+
+            connect.accept("/ping1");
+            connect.accept("/ping2");
+
+            assertArrayEquals(
+                    new String[]{"Connect to /ping1", "Connect to /ping2 failed with 404"},
+                    requestLog.toArray());
+            assertArrayEquals(
+                    new Integer[]{1},
+                    responseLog.toArray());
+        }
+
+        // Then, call an url when both some handler is added and a specific 404 handler
+        {
+            requestLog.clear();
+            responseLog.clear();
+
+            assertNull(service.onNotFound(handlerE));
+
+            connect.accept("/ping1");
+            connect.accept("/ping2");
+
+            assertArrayEquals(
+                    new String[]{"Connect to /ping1", "Connect to /ping2"},
+                    requestLog.toArray());
+            assertArrayEquals(
+                    new Integer[]{1, 0},
+                    responseLog.toArray());
+        }
+    }
+
+    @Test
+    public void testOverwritingOnHandlers() throws IOException {
+        final ArrayList<Integer> log = new ArrayList<>();
+
+        final BasicHTTPService.Handler
+                handler1 = (request, response) -> log.add(1),
+                handler2 = (request, response) -> log.add(2),
+                handler3 = (request, response) -> log.add(3),
+                handlerE = (request, response) -> log.add(0);
+        assertNull(service.on("/ping1", handler3));
+        assertEquals(handler3, service.on("/ping1", handler2));
+        assertEquals(handler2, service.on("/ping1", handler1));
+
+        assertNull(service.on("/ping2", handler2));
+        assertEquals(handler2, service.on("/ping2", handler2));
+        assertEquals(handler2, service.on("/ping2", handler2));
+
+        assertNull(service.on("/ping3", handler1));
+        assertEquals(handler1, service.on("/ping3", handler2));
+        assertEquals(handler2, service.on("/ping3", handler3));
+
+        assertNull(service.onNotFound(handler3));
+        assertEquals(handler3, service.onNotFound(handler2));
+        assertEquals(handler2, service.onNotFound(handler1));
+        assertEquals(handler1, service.onNotFound(handlerE));
+
+        // Now call them all.
+
+        final Consumer<String> connect = path -> {
+            URLConnection connection = null;
+            try {
+                connection = new URL(ROOT_URL + path).openConnection();
+
+                final HttpURLConnection httpConnection = (HttpURLConnection) connection;
+                httpConnection.getInputStream();
+            } catch (IOException e) {
+                System.out.printf("Error: %s\n", e);
+            }
+        };
+
+        connect.accept("/ping1");
+        connect.accept("/ping1");
+        connect.accept("/ping2");
+        connect.accept("/ping2");
+        connect.accept("/ping3");
+        connect.accept("/ping3");
+        connect.accept("/pingBad");
+        connect.accept("/pingBad");
+
+        assertArrayEquals(new Integer[]{1, 1, 2, 2, 3, 3, 0, 0}, log.toArray());
     }
 
     /**
@@ -147,6 +290,7 @@ public class MicroHTTPDServiceTest {
             }
         });
 
+        // Test good connection
         {
             UniversaHTTPClient client = new UniversaHTTPClient("testnode1", ROOT_URL);
             UniversaHTTPClient.Answer a = client.request("ping1", "hello", "world");
@@ -215,7 +359,6 @@ public class MicroHTTPDServiceTest {
     @Test
     public void testRequestWithParamsMergingComplex() throws IOException {
         service.on("/ping2", (request, response) -> {
-            System.out.println("req. " + Thread.currentThread().getName());
             try {
                 final Binder params = request.getParams();
 
@@ -259,7 +402,6 @@ public class MicroHTTPDServiceTest {
         });
 
         {
-            System.out.println(Thread.currentThread().getName());
             final String path = "/ping2?a=url1&a=url2&b=url1&cUrl=cUrl1";
 
             // For this test, we create a HTTP request fully manually.

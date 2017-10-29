@@ -40,18 +40,47 @@ public class MicroHTTPDService implements BasicHTTPService {
     @Nullable
     private MicroHTTPD microHTTPD = null;
 
+
+    static class PathHandlerEntry {
+        @NonNull
+        final String prefix;
+        @NonNull
+        final Handler handler;
+
+        PathHandlerEntry(@NonNull String prefix, @NonNull Handler handler) {
+            assert prefix != null;
+            assert handler != null;
+
+            this.prefix = prefix;
+            this.handler = handler;
+        }
+    }
+
     /**
      * The list of handlers. Should be used for iteration.
      * <p>
      * Internally, it is thread-safe; so any attempt to dynamically add it in one thread
      * while iterating in another (no matter of reasons for this scenario) won't fail.
      */
-    private final List<AbstractMap.Entry<String, Handler>> pathHandlers = new CopyOnWriteArrayList<>();
+    private final List<PathHandlerEntry> pathHandlers = new CopyOnWriteArrayList<>();
     /**
-     * Should not be used for iteration. In “synchronized” mode, should be used for
+     * Should <b>not</b> be used for iteration; use {@link #pathHandlers instead}.
+     * In “synchronized” mode, should be used for
      * adding/removing/checking-for-pathStart-existence.
+     * Becomes <code>synchronized</code> when it is needed
+     * to update {@link #pathStarts} or {@link #pathHandlers} altogether.
      */
-    private final Map<String, Handler> pathStarts = new LinkedHashMap<>();
+    private final Map<String, PathHandlerEntry> pathStarts = new LinkedHashMap<>();
+
+    /**
+     * The handler for calls that cannot be found.
+     */
+    @Nullable
+    private Handler notFoundHandler = null;
+    /**
+     * The lock for {@link #notFoundHandler}.
+     */
+    private Object notFoundHandlerLock = new Object();
 
 
     static class MicroHTTPDServiceFileUpload implements BasicHTTPService.FileUpload {
@@ -198,7 +227,7 @@ public class MicroHTTPDService implements BasicHTTPService {
         }
 
         @Override
-        public void setResponeCode(int code) {
+        public void setResponseCode(int code) {
             responseCode = code;
         }
 
@@ -267,10 +296,29 @@ public class MicroHTTPDService implements BasicHTTPService {
                     responsePlaceholder.setError(errorMessage);
                 }
 
-                try {
-                    requestHandler.handle(requestToHandle, responsePlaceholder);
-                } catch (Throwable e) {
-                    log.wtf("On handling request, got problem", e);
+                if (requestHandler != null) {
+                    // We do have a handler to use
+                    try {
+                        requestHandler.handle(requestToHandle, responsePlaceholder);
+                    } catch (Throwable e) {
+                        log.wtf("On handling request, got problem", e);
+                    }
+                } else {
+                    // We don't have a handler found; need to use a onNotFound one for error response,
+                    // or even a custom one.
+                    @Nullable Handler notFoundHandlerToUse = notFoundHandler;
+
+                    if (notFoundHandlerToUse != null) {
+                        // We have a specific handler for NotFound cases.
+                        try {
+                            notFoundHandlerToUse.handle(requestToHandle, responsePlaceholder);
+                        } catch (Throwable e) {
+                            log.wtf("On handling request with no specific handler, got problem", e);
+                        }
+                    } else {
+                        // We have no specific handler for NotFound cases.
+                        responsePlaceholder.setResponseCode(404);
+                    }
                 }
 
                 // Let's create the final response.
@@ -309,9 +357,9 @@ public class MicroHTTPDService implements BasicHTTPService {
         assert session != null;
 
         final String uri = session.getUri();
-        for (AbstractMap.Entry<String, Handler> entry : pathHandlers) {
-            if (uri.startsWith(entry.getKey())) {
-                return entry.getValue();
+        for (final PathHandlerEntry entry : pathHandlers) {
+            if (uri.startsWith(entry.prefix)) {
+                return entry.handler;
             }
         }
         return null;
@@ -325,15 +373,33 @@ public class MicroHTTPDService implements BasicHTTPService {
     }
 
     @Override
-    public void on(String pathStart, Handler handler) {
+    @Nullable
+    public Handler on(String pathStart, Handler handler) {
         assert pathStart != null;
         assert handler != null;
 
+        final PathHandlerEntry newHandlerEntry = new PathHandlerEntry(pathStart, handler);
+
+        @Nullable final PathHandlerEntry oldHandlerEntry;
         synchronized (pathStarts) {
-            if (!pathStarts.containsKey(pathStart)) {
-                pathStarts.put(pathStart, handler);
-                pathHandlers.add(new AbstractMap.SimpleEntry<>(pathStart, handler));
-            }
+            oldHandlerEntry = pathStarts.get(pathStart);
+            pathHandlers.remove(oldHandlerEntry);
+            pathStarts.put(pathStart, newHandlerEntry);
+            pathHandlers.add(newHandlerEntry);
         }
+        return (oldHandlerEntry == null) ? null : oldHandlerEntry.handler;
+    }
+
+    @Override
+    @Nullable
+    public Handler onNotFound(Handler handler) {
+        assert handler != null;
+
+        @Nullable final Handler previousHandler;
+        synchronized (notFoundHandlerLock) {
+            previousHandler = notFoundHandler;
+            notFoundHandler = handler;
+        }
+        return previousHandler;
     }
 }
