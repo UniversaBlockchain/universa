@@ -42,7 +42,7 @@ public class TestLocalNetwork extends Network {
         adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo);
         adapter.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         adapter.receive(this::onReceived);
-        adapter.addExceptionsCallback(this::exceptionCallback);
+        adapter.addErrorsCallback(this::exceptionCallback);
     }
 
     private final void onReceived(byte[] packedNotifications) {

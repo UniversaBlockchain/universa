@@ -182,13 +182,38 @@ public class UDPAdapter extends DatagramAdapter {
 //
 //                Block rawBlock = session.getRawDataBlockFromWaitingQueue(recBlock.blockId);
 //                Binder unbossedPayload = Boss.load(recBlock.payload);
-//                byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
+//                byte[] encrypted = unbossedPayload.getBinaryOrThrow("data");
+//                byte[] decrypted = session.sessionKey.etaDecrypt(encrypted);
 //                byte[] crc32Local = new Crc32().digest(decrypted);
-//                report(getLabel(), "reconstructed block before send check: Crc32 is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
+//                byte[] crc32Remote = unbossedPayload.getBinaryOrThrow("crc32");
+//                byte[] crc32encryptedLocal = new Crc32().digest(encrypted);
+//                byte[] crc32encryptedRemote = unbossedPayload.getBinaryOrThrow("crc32encrypted");
+//                if(!Arrays.equals(rawBlock.crc32, crc32Local) || !Arrays.equals(crc32Remote, crc32Local) || !Arrays.equals(crc32encryptedRemote, crc32encryptedLocal)) {
+//                    callErrorCallbacks(Errors.BAD_VALUE +
+//                            ": Crc32 Error, sendBlock " +
+//                            "\n decrypted length " + decrypted.length +
+//                            "\n sessionKey is " + session.sessionKey.hashCode() +
+//                            "\n own sessionKey is " + sessionKey.hashCode() +
+//                            "\n string: " + new String(decrypted) +
+//                            "\n send block id: " + block.blockId +
+//                            "\n reconstructered block id: " + recBlock.blockId +
+//                            "\n own id: " + myNodeInfo.getNumber() +
+//                            "\n remote id: " + session.remoteNodeId +
+//                            "\n crc32encrypted is " + Arrays.equals(crc32encryptedRemote, crc32encryptedLocal) +
+//                            "\n crc32Remote is " + Arrays.equals(crc32Remote, crc32Local) +
+//                            "\n crc32rawBlock is " + Arrays.equals(rawBlock.crc32, crc32Local) +
+//                            "\n crc32encryptedRemote value " + crc32encryptedRemote);
+//                }
+////                report(getLabel(), "reconstructed block before send check: Crc32 is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
 //            } catch (EncryptionError encryptionError) {
 //                encryptionError.printStackTrace();
 //            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
 //                authenticationFailed.printStackTrace();
+//                callErrorCallbacks(Errors.BAD_VALUE +
+//                        ": Crc32 SymmetricKey.AuthenticationFailed, sendBlock " +
+//                        "\n sessionKey is " + session.sessionKey.hashCode() +
+//                        "\n own sessionKey is " + sessionKey.hashCode() +
+//                        "\n remote id: " + session.remoteNodeId);
 //            } catch (IOException ioError) {
 //                ioError.printStackTrace();
 //            } catch (Exception e) {
@@ -231,16 +256,52 @@ public class UDPAdapter extends DatagramAdapter {
         report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
 
         byte[] crc32Local = new Crc32().digest(rawDataBlock.payload);
-        report(getLabel(), "sendAsDataBlock: Crc32 id is " + Arrays.equals(rawDataBlock.crc32, crc32Local), VerboseLevel.BASE);
+        report(getLabel(), "sendAsDataBlock: Crc32 id is " + Arrays.equals(rawDataBlock.crc32, crc32Local));
 
-        byte[] encrypted = session.sessionKey.etaEncrypt(rawDataBlock.payload);
+        byte[] encrypted = session.sessionKey.etaEncrypt(rawDataBlock.payload.clone());
+//        if(!Arrays.equals(rawDataBlock.crc32, crc32Local)) {
+//            callErrorCallbacks(Errors.BAD_VALUE +
+//                    ": Crc32 Error, sendAsDataBlock " +
+//                    "\n payload length " + rawDataBlock.payload.length +
+//                    "\n sessionKey is " + session.sessionKey.hashCode() +
+//                    "\n own sessionKey is " + sessionKey.hashCode() +
+//                    "\n string: " + new String(rawDataBlock.payload) +
+//                    "\n remote id: " + session.remoteNodeId +
+//                    "\n rawDataBlock id: " + rawDataBlock.blockId);
+//        }
+//
+//        try {
+//            byte[] decrypted = session.sessionKey.etaDecrypt(encrypted);
+//            byte[] crc32LocalDecrypted = new Crc32().digest(decrypted);
+//            if(!Arrays.equals(rawDataBlock.crc32, crc32LocalDecrypted)) {
+//                callErrorCallbacks(Errors.BAD_VALUE +
+//                        ": Crc32 Error, sendAsDataBlock decrypted" +
+//                        "\n payload length " + rawDataBlock.payload.length +
+//                        "\n sessionKey is " + session.sessionKey.hashCode() +
+//                        "\n own sessionKey is " + sessionKey.hashCode() +
+//                        "\n string: " + new String(rawDataBlock.payload) +
+//                        "\n remote id: " + session.remoteNodeId +
+//                        "\n rawDataBlock id: " + rawDataBlock.blockId +
+//                        "\n crc32 decrypted is " + Arrays.equals(rawDataBlock.crc32, crc32LocalDecrypted) +
+//                        "\n crc32rawBlock is " + Arrays.equals(rawDataBlock.crc32, crc32Local));
+//            }
+//        } catch (EncryptionError encryptionError) {
+//            encryptionError.printStackTrace();
+//        } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
+//            authenticationFailed.printStackTrace();
+//            callErrorCallbacks(Errors.BAD_VALUE +
+//                    ": Crc32 SymmetricKey.AuthenticationFailed, sendAsDataBlock " +
+//                    "\n sessionKey is " + session.sessionKey.hashCode() +
+//                    "\n own sessionKey is " + sessionKey.hashCode() +
+//                    "\n remote id: " + session.remoteNodeId);
+//        }
 
         Binder binder = Binder.fromKeysValues(
                 "data", encrypted,
                 "crc32", rawDataBlock.crc32
         );
         byte[] packedData = Boss.pack(binder);
-        report(getLabel(), " data size: " + packedData.length + " for " + session.remoteNodeId, VerboseLevel.BASE);
+        report(getLabel(), " data size: " + rawDataBlock.payload.length + " for " + session.remoteNodeId);
         Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
                                 rawDataBlock.blockId, PacketTypes.DATA,
                                 session.address, session.port,
@@ -302,7 +363,7 @@ public class UDPAdapter extends DatagramAdapter {
         report(getLabel(), "send session key to " + session.remoteNodeId, VerboseLevel.BASE);
         report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
 
-//        session.state = Session.SESSION;
+        session.state = Session.SESSION;
         List data = asList(session.sessionKey.getKey(), session.remoteNonce);
         try {
             byte[] packed = Boss.pack(data);
@@ -377,7 +438,7 @@ public class UDPAdapter extends DatagramAdapter {
         session.remoteNodeId = remoteId;
         session.sessionKey = sessionKey;
         report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
-        sessionsById.put(remoteId, session);
+        sessionsById.putIfAbsent(remoteId, session);
 
         return session;
 
@@ -407,6 +468,7 @@ public class UDPAdapter extends DatagramAdapter {
             for(Block rb : blocksToRemove) {
                 try {
                     session.removeBlockFromSendingQueue(rb);
+                    session.removeBlockFromWaitingQueue(rb.blockId);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -450,9 +512,29 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    protected synchronized void sendWaitingBlocks(Session session) throws EncryptionError {
+        if (session != null && session.isValid() && session.state == Session.EXCHANGING) {
+            report(getLabel(), " waiting blocks num " + session.waitingBlocksQueue.size());
+            try {
+                for (Block waitingBlock : session.waitingBlocksQueue) {
+                    report(getLabel(), " waitingBlock " + waitingBlock.blockId + " type " + waitingBlock.type);
+                    if (waitingBlock.type == PacketTypes.RAW_DATA) {
+                        sendAsDataBlock(waitingBlock, session);
+                    } else {
+                        sendBlock(waitingBlock, session);
+                    }
+//                                            session.removeBlockFromWaitingQueue(waitingBlock);
+                }
+            } catch (InterruptedException e) {
+                System.out.println(Errors.BAD_VALUE + " send encryption error, " + e.getMessage());
+            }
+        }
+    }
 
-    protected synchronized void callCallbacks(String message) {
-        for(Function<String, String> fn : callbacks) {
+
+
+    protected synchronized void callErrorCallbacks(String message) {
+        for(Function<String, String> fn : errorCallbacks) {
             fn.apply(message);
         }
     }
@@ -551,9 +633,10 @@ public class UDPAdapter extends DatagramAdapter {
                 } catch (IllegalArgumentException e) {
                     e.printStackTrace();
                 } catch (InterruptedException e) {
-//                    e.printStackTrace();
+                    e.printStackTrace();
                 } catch (EncryptionError e) {
-                    callCallbacks("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+//                    System.out.println("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+                    callErrorCallbacks("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -693,22 +776,7 @@ public class UDPAdapter extends DatagramAdapter {
                                 // Tell remote nonce we got session and no need to resend it.
                                 answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
 
-                                if (session != null && session.isValid() && session.state == Session.EXCHANGING) {
-                                    report(getLabel(), " waiting blocks num " + session.waitingBlocksQueue.size());
-                                    try {
-                                        for (Block waitingBlock : session.waitingBlocksQueue) {
-                                            report(getLabel(), " waitingBlock " + waitingBlock.blockId + " type " + waitingBlock.type);
-                                            if (waitingBlock.type == PacketTypes.RAW_DATA) {
-                                                sendAsDataBlock(waitingBlock, session);
-                                            } else {
-                                                sendBlock(waitingBlock, session);
-                                            }
-//                                            session.removeBlockFromWaitingQueue(waitingBlock);
-                                        }
-                                    } catch (InterruptedException e) {
-                                        System.out.println(Errors.BAD_VALUE + " send encryption error, " + e.getMessage());
-                                    }
-                                }
+                                sendWaitingBlocks(session);
                             } else {
                                 System.out.println(Errors.BAD_VALUE + ": got nonce is not valid");
                                 throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid");
@@ -740,9 +808,15 @@ public class UDPAdapter extends DatagramAdapter {
                                 receiver.accept(decrypted);
                             } else {
                                 report(getLabel(), "Crc32 Error, sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
-//                            throw e;
+
                                 sendNack(session, block.blockId);
-                                throw new EncryptionError(Errors.BAD_VALUE + ": Crc32 Error");
+                                throw new EncryptionError(Errors.BAD_VALUE +
+                                        ": Crc32 Error, decrypted length " + decrypted.length +
+                                        "\n sessionKey is " + session.sessionKey.hashCode() +
+                                        "\n own sessionKey is " + sessionKey.hashCode() +
+                                        "\n string: " + new String(decrypted) +
+                                        "\n remote id: " + session.remoteNodeId +
+                                        "\n reconstructered block id: " + block.blockId);
                             }
 
                         }
@@ -757,8 +831,9 @@ public class UDPAdapter extends DatagramAdapter {
 
                 case PacketTypes.ACK:
                     report(getLabel(), "got ack from " + block.senderNodeId, VerboseLevel.BASE);
-                    ackBlockId = Boss.load(block.payload);
                     session = sessionsById.get(block.senderNodeId);
+                    ackBlockId = Boss.load(block.payload);
+                    report(getLabel(), " ackBlockId is: " + ackBlockId);
                     if(session != null) {
                         report(getLabel(), " num packets was in queue: " + session.sendingPacketsQueue.size());
                         session.makeBlockDelivered(ackBlockId);
@@ -766,6 +841,10 @@ public class UDPAdapter extends DatagramAdapter {
                         session.incremetWaitIndexForPacketsFromSendingQueue();
                         report(getLabel(), " num packets in queue: " + session.sendingPacketsQueue.size());
                         checkUnsentPackets(session);
+                    }
+                    if(session.state == Session.SESSION) {
+                        session.state = Session.EXCHANGING;
+                        sendWaitingBlocks(session);
                     }
                     break;
 
@@ -1095,7 +1174,7 @@ public class UDPAdapter extends DatagramAdapter {
             if (sessionKey == null) {
                 sessionKey = new SymmetricKey();
             }
-            state = EXCHANGING;
+//            state = EXCHANGING;
         }
 
         public synchronized void reconstructSessionKey(byte[] key) throws EncryptionError {

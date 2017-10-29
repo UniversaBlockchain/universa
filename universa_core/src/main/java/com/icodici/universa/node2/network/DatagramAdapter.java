@@ -58,7 +58,7 @@ public abstract class DatagramAdapter {
     protected int testMode = TestModes.NONE;
     protected int verboseLevel = VerboseLevel.NOTHING;
 
-    protected List<Function<String, String>> callbacks = new ArrayList<>();
+    protected List<Function<String, String>> errorCallbacks = new ArrayList<>();
 
     /**
      * Create an instance that listens for the incoming datagrams using the specified configurations. The adapter should
@@ -81,10 +81,10 @@ public abstract class DatagramAdapter {
     public abstract void shutdown();
 
     /**
-     * Add callback for exceptions.
+     * Add callback for errors.
      */
-    public void addExceptionsCallback(Function<String, String> fn) {
-        callbacks.add(fn);
+    public void addErrorsCallback(Function<String, String> fn) {
+        errorCallbacks.add(fn);
     }
 
     public void receive(Consumer<byte[]> receiver) {

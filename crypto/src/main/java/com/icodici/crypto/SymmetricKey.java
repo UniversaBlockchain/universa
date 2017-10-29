@@ -74,7 +74,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
         }
 
         @Override
-        public int read() throws IOException {
+        public synchronized int read() throws IOException {
             int nextByte = inputStream.read();
             if (nextByte < 0) {
                 end();
@@ -91,7 +91,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
             }
         }
 
-        private void end() throws IOException {
+        private synchronized void end() throws IOException {
             byte[] readHmac = ring.readAll();
             if (readHmac.length != hmac.getLength())
                 throw new IOException("stream corrupted: bad hmac record size:" + readHmac.length);
@@ -136,7 +136,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
          *
          * @throws IOException
          */
-        public void end() throws IOException {
+        public synchronized void end() throws IOException {
             if (done)
                 return;
             done = true;
@@ -150,14 +150,14 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
          * @throws IOException
          */
         @Override
-        public void close() throws IOException {
+        public synchronized void close() throws IOException {
             if (!done)
                 end();
             outputStream.close();
         }
 
         @Override
-        public void write(int plain) throws IOException {
+        public synchronized void write(int plain) throws IOException {
             if (done)
                 throw new EOFException("can't write past the end()");
             try {
@@ -191,34 +191,34 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
         this.keyInfo = keyInfo;
     }
 
-    public void setKey(byte[] key) {
+    public synchronized void setKey(byte[] key) {
         cipher = null;
         this.key = key;
     }
 
-    public byte[] getKey() {
+    public synchronized byte[] getKey() {
         return key;
     }
 
-    public int getBitStrength() {
+    public synchronized int getBitStrength() {
         return getSize() * 8;
     }
 
-    public int getSize() {
+    public synchronized int getSize() {
         return key.length;
     }
 
     @Override
-    public Map<String, Object> toHash() throws IllegalStateException {
+    public synchronized Map<String, Object> toHash() throws IllegalStateException {
         return Do.map("key", key);
     }
 
     @Override
-    public void updateFromHash(Map<String, Object> hash) throws Error {
+    public synchronized void updateFromHash(Map<String, Object> hash) throws Error {
         setKey((byte[]) hash.get("key"));
     }
 
-    protected BlockCipher getCipher() {
+    protected synchronized BlockCipher getCipher() {
         if (cipher == null) {
             cipher = new AES256();
             cipher.initialize(BlockCipher.Direction.ENCRYPT, this);
@@ -226,20 +226,20 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
         return cipher;
     }
 
-    public byte[] encrypt(byte[] plaintext) throws EncryptionError {
+    public synchronized byte[] encrypt(byte[] plaintext) throws EncryptionError {
         return EncryptingStream.encrypt(getCipher(), plaintext);
     }
 
-    public byte[] decrypt(byte[] ciphertext) throws EncryptionError {
+    public synchronized byte[] decrypt(byte[] ciphertext) throws EncryptionError {
         return DecryptingStream.decrypt(getCipher(), ciphertext);
     }
 
-    public OutputStream encryptStream(OutputStream outputStream) throws IOException,
+    public synchronized OutputStream encryptStream(OutputStream outputStream) throws IOException,
             EncryptionError {
         return new EncryptingStream(getCipher(), outputStream);
     }
 
-    public InputStream decryptStream(InputStream inputStream) throws IOException, EncryptionError {
+    public synchronized InputStream decryptStream(InputStream inputStream) throws IOException, EncryptionError {
         return new DecryptingStream(getCipher(), inputStream);
     }
 
@@ -259,7 +259,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
      * @throws IOException
      * @throws EncryptionError
      */
-    public EtaEncryptingStream etaEncryptStream(OutputStream out) throws IOException,
+    public synchronized EtaEncryptingStream etaEncryptStream(OutputStream out) throws IOException,
             EncryptionError {
         return new EtaEncryptingStream(out);
     }
@@ -277,7 +277,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
      * @throws IOException
      * @throws EncryptionError
      */
-    public EtaDecryptingStream etaDecryptStream(InputStream in) throws IOException,
+    public synchronized EtaDecryptingStream etaDecryptStream(InputStream in) throws IOException,
             EncryptionError {
         return new EtaDecryptingStream(in);
     }
@@ -298,7 +298,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
      *
      * @throws EncryptionError
      */
-    public byte[] etaEncrypt(byte[] data) throws EncryptionError {
+    public synchronized byte[] etaEncrypt(byte[] data) throws EncryptionError {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try {
             final EtaEncryptingStream s = etaEncryptStream(bos);
@@ -321,7 +321,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
      *
      * @throws EncryptionError
      */
-    public byte[] etaSign(byte[] data) throws EncryptionError {
+    public synchronized byte[] etaSign(byte[] data) throws EncryptionError {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         try {
             final EtaEncryptingStream s = new EtaEncryptingStream(bos, false);
@@ -345,7 +345,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
      * @throws AuthenticationFailed
      *         if the authentication record does not match the data.
      */
-    public byte[] etaDecrypt(byte[] data) throws EncryptionError, AuthenticationFailed {
+    public synchronized byte[] etaDecrypt(byte[] data) throws EncryptionError, AuthenticationFailed {
         try {
             return Do.read(etaDecryptStream(new ByteArrayInputStream(data)));
         } catch (AuthenticationFailed e) {
@@ -355,7 +355,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
         }
     }
 
-    public static byte[] xor(byte[] src, int value) {
+    public synchronized static byte[] xor(byte[] src, int value) {
         byte[] result = new byte[src.length];
         for (int i = 0; i < src.length; i++)
             result[i] = (byte) ((src[i] ^ value) & 0xFF);
@@ -363,21 +363,21 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
     }
 
     @Override
-    public byte[] pack() {
+    public synchronized byte[] pack() {
         if (key == null)
             throw new IllegalStateException("key is not yet initialized, no keyInfo is available");
         return key;
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public synchronized boolean equals(Object obj) {
         if (!(obj instanceof SymmetricKey))
             return false;
         return Arrays.equals(key, ((SymmetricKey) obj).key);
     }
 
     @Override
-    public int hashCode() {
+    public synchronized int hashCode() {
         return key[0] + (key[1] << 8) + (key[2] << 16) + (key[3] << 24);
     }
 }
