@@ -411,6 +411,14 @@ public class CLIMainTest  {
     }
 
     @Test
+    public void findContractsInWrongPath() throws Exception {
+
+        callMain("-f", rootPath + "not_exist_subfolder/", "-v", "-r");
+        System.out.println(output);
+        assert(output.indexOf("No contracts found") >= 0);
+    }
+
+    @Test
     public void downloadContract() throws Exception {
         callMain("-d", "www.universa.io");
         System.out.println(output);
@@ -439,6 +447,15 @@ public class CLIMainTest  {
         callMain("-ch", rootPath, "-v");
         System.out.println(output);
 //        assertEquals(3, errors.size());
+    }
+
+    @Test
+    public void checkContractInNotExistPath() throws Exception {
+        // check contracts
+        callMain("-ch", rootPath + "notexist.unicon", "-v");
+        System.out.println(output);
+
+        assert(output.indexOf("No contracts found") >= 0);
     }
 
     @Test
