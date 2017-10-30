@@ -16,6 +16,7 @@ import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
+import joptsimple.BuiltinHelpFormatter;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -877,6 +878,7 @@ public class CLIMain {
         if (text != null)
             out.println("ERROR: " + text + "\n");
         try {
+            parser.formatHelpWith(new BuiltinHelpFormatter(110,1));
             parser.printHelpOn(out);
         } catch (IOException e) {
             e.printStackTrace();
