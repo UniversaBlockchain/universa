@@ -304,4 +304,9 @@ public class ContractTest extends ContractTestBase {
         }
     }
 
+    @Test
+    public void loadBadFile() throws Exception {
+//        byte[] packed = Do.read(rootPath + "/testcoin5.unicon");
+//        Contract c = new Contract(packed);
+    }
 }
