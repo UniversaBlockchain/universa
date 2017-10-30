@@ -672,7 +672,7 @@ public class CLIMain {
                 xstream.alias(fieldName, Binder.class);
                 data = Binder.convertAllMapsToBinders(xstream.fromXML(fields.get(fieldName)));
             } catch (Exception xmlEx) {
-                xmlEx.printStackTrace();
+//                xmlEx.printStackTrace();
                 try {
                     data = Binder.convertAllMapsToBinders(JsonTool.fromJson(fields.get(fieldName)));
                 } catch (Exception jsonEx) {
