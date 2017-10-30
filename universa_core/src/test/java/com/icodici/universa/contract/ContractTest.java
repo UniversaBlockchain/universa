@@ -15,11 +15,11 @@ import com.icodici.universa.contract.roles.RoleLink;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,6 +27,7 @@ import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.hamcrest.number.OrderingComparison.greaterThan;
 import static org.junit.Assert.*;
 
 public class ContractTest extends ContractTestBase {
@@ -303,5 +304,17 @@ public class ContractTest extends ContractTestBase {
             assertFalse(c.getOwner().isValid());
             assertFalse(c.getCreator().isValid());
         }
+    }
+
+    @Test
+    public void sinleSignature() throws Exception {
+        byte[] packed = Do.read(rootPath + "/bad-creator-isssuer.unicon");
+        // bad signature: error after parsing
+        Contract c = new Contract(packed);
+        assertThat(c.getErrors().size(), greaterThan(0));
+        // then missing signature on the check
+        c.check();
+//        c.traceErrors();
+        assertFalse(c.isOk());
     }
 }

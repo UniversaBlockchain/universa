@@ -77,9 +77,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             throw new IllegalArgumentException("version too high");
         byte[] contractBytes = data.getBinaryOrThrow("data");
 
-        registerAdapters();
-
-
         // This must be explained. By default, Boss.load will apply contract transformation in place
         // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
         // data without BiSerializer and then do it by hand calling deserialize:
@@ -111,12 +108,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 if (es != null) {
                     sealedByKeys.put(key, es);
                 }
+                else
+                    addError(Errors.BAD_SIGNATURE, "keytag:"+key.info().getBase64Tag(),"the signature is broken");
             }
         }
-    }
-
-    private void registerAdapters() {
-        // init permissions
     }
 
     public Contract() {
@@ -397,6 +392,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean isSignedBy(Role role) {
         if (role == null)
             return false;
+        role = role.resolve();
         if (!sealedByKeys.isEmpty())
             return role.isAllowedForKeys(getSealedByKeys());
         return role.isAllowedForKeys(

@@ -122,7 +122,8 @@ abstract public class Notification {
             while (true) {
                 // boss reader throws EOFException
                 Notification n = read(from, r);
-                notifications.add(n);
+                if( n != null )
+                    notifications.add(n);
             }
         } catch (EOFException x) {
             // normal, all data decoded
@@ -134,12 +135,19 @@ abstract public class Notification {
 
     public static Notification read(NodeInfo from, Boss.Reader r) throws IOException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
         int code = r.readInt();
-        Constructor c = classes.get(code).getDeclaredConstructor();
-        c.setAccessible(true);
-        Notification n = (Notification) c.newInstance();
-        n.readFrom(r);
-        n.from = from;
-        return n;
+        Class<? extends Notification> nclass = classes.get(code);
+        if( nclass != null ) {
+            Constructor c = nclass.getDeclaredConstructor();
+            c.setAccessible(true);
+            Notification n = (Notification) c.newInstance();
+            n.readFrom(r);
+            n.from = from;
+            return n;
+        }
+        else {
+//            System.out.println("*** unknown notification class code: "+code);
+            return null;
+        }
     }
 
 }

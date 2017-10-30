@@ -29,6 +29,8 @@ public class ClientHTTPServer extends BasicHttpServer {
     private ItemCache cache;
     private NetConfig netConfig;
 
+    private boolean localCors = false;
+
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
         super(privateKey, port, 64, logger);
         log = logger;
@@ -114,12 +116,13 @@ public class ClientHTTPServer extends BasicHttpServer {
     @Override
     public void on(String path, BasicHTTPService.Handler handler) {
         super.on(path, (request, response) -> {
-            Binder hh = response.getHeaders();
-//            hh.put("Access-Control-Allow-Origin", "*");
-//            hh.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-//            hh.put("Access-Control-Allow-Headers", "DNT,X-CustomHeader,Keep-Alive,User-Age  nt,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range");
-//            hh.put("Access-Control-Expose-Headers", "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range");
-            System.out.println("REQ "+path+": "+request.getPath()+" | "+request.getParams());
+            if( localCors ) {
+                Binder hh = response.getHeaders();
+                hh.put("Access-Control-Allow-Origin", "*");
+                hh.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+                hh.put("Access-Control-Allow-Headers", "DNT,X-CustomHeader,Keep-Alive,User-Age  nt,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range");
+                hh.put("Access-Control-Expose-Headers", "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range");
+            }
             handler.handle(request, response);
         });
     }
@@ -140,6 +143,14 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setNode(Node node) {
         this.node = node;
+    }
+
+    public boolean isLocalCors() {
+        return localCors;
+    }
+
+    public void setLocalCors(boolean localCors) {
+        this.localCors = localCors;
     }
 
     //    @Override

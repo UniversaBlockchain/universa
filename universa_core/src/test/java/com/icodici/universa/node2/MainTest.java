@@ -155,21 +155,21 @@ public class MainTest {
         System.out.println(":: "+r);
 
 
-//        ItemResult r = client.getState(c.getId());
-//        assertEquals(ItemState.UNDEFINED, r.state);
-//        System.out.println(":: "+r);
-//
-//        LogPrinter.showDebug(true);
-//        r = client.approve(c.getLastSealedBinary());
-//        System.out.println(r);
-//
-//        while(true) {
-//            r = client.getState(c.getId());
-//            System.out.println("-->? " + r);
-//            Thread.sleep(10);
-//            if( !r.state.isPending() )
-//                break;
-//        }
+        r = client.getState(c.getId());
+        assertEquals(ItemState.UNDEFINED, r.state);
+        System.out.println(":: "+r);
+
+        LogPrinter.showDebug(true);
+        r = client.register(c.getLastSealedBinary());
+        System.out.println(r);
+
+        while(true) {
+            r = client.getState(c.getId());
+            System.out.println("-->? " + r);
+            Thread.sleep(50);
+            if( !r.state.isPending() )
+                break;
+        }
 //
 //        Client client = new Client(myKey, );
     }

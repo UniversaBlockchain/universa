@@ -28,6 +28,7 @@ public enum Errors {
      * Approvable item of unknown type or general reference error
      */
     BAD_REF,
+    BAD_SIGNATURE,
     /**
      * can't revoke requested item
      */

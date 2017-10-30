@@ -8,11 +8,9 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.Approvable;
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
-import net.sergeych.biserializer.BiAdapter;
-import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -22,6 +20,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
  * The exported state of the item. This object is used to return data for the external (e.g. network) queries. We do not
@@ -48,6 +47,8 @@ public class ItemResult {
      * network.
      */
     public final @NonNull ZonedDateTime expiresAt;
+
+    public List<ErrorRecord> errors;
 
     /**
      * Initialize from a record and posession flag
@@ -85,6 +86,7 @@ public class ItemResult {
         haveCopy = fields.getBooleanOrThrow("haveCopy");
         createdAt = fields.getZonedDateTime("createdAt", null);
         expiresAt = fields.getZonedDateTime("expiresAt", null);
+        errors = fields.getList("errors", null);
     }
 
     public ItemResult(ItemState state, boolean haveCopy, @NonNull ZonedDateTime createdAt, @NonNull ZonedDateTime expiresAt) {
@@ -106,7 +108,8 @@ public class ItemResult {
                 "state", state.name(),
                 "haveCopy", haveCopy,
                 "createdAt", createdAt,
-                "expiresAt", expiresAt
+                "expiresAt", expiresAt,
+                "errors", DefaultBiMapper.serialize(errors)
         );
     }
 

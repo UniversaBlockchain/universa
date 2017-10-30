@@ -9,8 +9,10 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.PostgresLedger;
+import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.network.ClientHTTPServer;
 import com.icodici.universa.node2.network.NetworkV2;
 import joptsimple.OptionException;
@@ -28,7 +30,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    public static final String NODE_VERSION = "2.0.8";
+    public static final String NODE_VERSION = "2.0.10";
     private OptionParser parser;
     private OptionSet options;
     public final Reporter reporter = new Reporter();
@@ -49,6 +51,8 @@ public class Main {
 //        args = new String[]{"--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/node1"};
 
         Config.forceInit(Contract.class);
+        Config.forceInit(ItemNotification.class);
+//        LogPrinter.showDebug(true);
 
         parser = new OptionParser() {
             {
@@ -118,20 +122,26 @@ public class Main {
         log("ledger constructed");
 
         int n = netConfig.size();
-        int negative = (int) Math.round(n * 0.11);
+        int negative = (int) Math.ceil(n * 0.11);
         if (negative < 1)
             negative = 1;
-        int positive = (int) Math.round(n * 0.90);
-        if (negative >= positive)
-            throw new IllegalArgumentException("bad consensus for the network: " + negative + "/" + positive);
-        log("Metwork consensus is set to: " + negative + " / " + positive);
+        int positive = (int) Math.floor(n * 0.90);
+        if( negative+positive == n)
+            negative += 1;
+        log("Network consensus is set to: " + negative + " / " + positive);
         config.setPositiveConsensus(positive);
         config.setNegativeConsensus(negative);
         network = new NetworkV2(netConfig, myInfo, nodeKey);
         node = new Node(config, myInfo, ledger, network);
         cache = node.getCache();
+
+        StateRecord r = ledger.getRecord(HashId.withDigest("bS/c4YMidaVuzTBhHLkGPFAvPbZQHybzQnXAoBwaZYM8eLYb7mAkVYEpuqKRXYc7anqX47BeNdvFN1n7KluH9A=="));
+        if( r != null )
+            r.destroy();
+
         clientHTTPServer.setNode(node);
         clientHTTPServer.setCache(cache);
+        clientHTTPServer.setLocalCors(myInfo.getPublicHost().equals("localhost"));
     }
 
     /**

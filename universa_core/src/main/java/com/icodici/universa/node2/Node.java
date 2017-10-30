@@ -44,6 +44,7 @@ public class Node {
     private final Ledger ledger;
     private final Network network;
     private final ItemCache cache;
+    private final ItemInformer informer = new ItemInformer();
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
 
@@ -81,7 +82,11 @@ public class Node {
      */
     public @NonNull ItemResult checkItem(HashId itemId) {
         Object x = checkItemInternal(itemId, null, false);
-        return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+        ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+        ItemInformer.Record record = informer.takeFor(itemId);
+        if( record != null )
+            ir.errors = record.errorRecords;
+        return ir;
     }
 
     /**
@@ -385,6 +390,9 @@ public class Node {
                     newState = checkPassed ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE;
                     setState(newState);
                 }
+            }
+            if( !checkPassed ) {
+                informer.inform(item);
             }
             record.setExpiresAt(item.getExpiresAt());
             record.save();

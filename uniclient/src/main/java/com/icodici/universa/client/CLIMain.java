@@ -310,16 +310,20 @@ public class CLIMain {
     /**
      * Check contract for errors. Print erors if found.
      *
-     * @param c - contarct to check.
+     * @param contract - contarct to check.
      *
      */
-    private static void checkContract(Contract c) {
-        c.seal();
-        c.check();
-        c.getErrors().forEach(error -> {
+    private static void checkContract(Contract contract) {
+        if( !contract.isOk() ) {
+            reporter.message("The capsule is not sealed");
+            contract.getErrors().forEach(e->reporter.error(e.getError().toString(), e.getObjectName(), e.getMessage()));
+        }
+        contract.seal();
+        contract.check();
+        contract.getErrors().forEach(error -> {
             addError(error.getError().toString(), error.getObjectName(), error.getMessage());
         });
-        if(c.getErrors().size() == 0) {
+        if(contract.getErrors().size() == 0) {
             report("Contract is valid");
         }
     }
@@ -335,6 +339,10 @@ public class CLIMain {
     private static Boolean checkBytesIsValidContract(byte[] data) {
         try {
             Contract contract = new Contract(data);
+            if( !contract.isOk() ) {
+                reporter.message("The capsule is not sealed");
+                contract.getErrors().forEach(e->reporter.error(e.getError().toString(), e.getObjectName(), e.getMessage()));
+            }
             checkContract(contract);
         } catch (RuntimeException e) {
             addError(Errors.BAD_VALUE.name(), "", e.getMessage());

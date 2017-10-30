@@ -53,7 +53,11 @@ public class NetworkV2 extends Network {
             if (consumer != null) {
                 List<Notification> nn = unpack(packedNotifications);
                 for (Notification n : nn) {
-                    consumer.accept(n);
+                    if( n == null )
+                        System.out.println("bad notification skipped");
+                    else {
+                        consumer.accept(n);
+                    }
                 }
             }
         } catch (IOException e) {
@@ -87,12 +91,13 @@ public class NetworkV2 extends Network {
             }
             return nn;
         } catch (Exception e) {
+            e.printStackTrace();
             System.err.println("failed to unpack notification: " + e);
-            throw new IOException("failed to unpack notifications");
+            throw new IOException("failed to unpack notifications", e);
         }
     }
 
-    private final byte[] packNotifications(NodeInfo from, Collection<Notification> notifications) {
+    private synchronized final byte[] packNotifications(NodeInfo from, Collection<Notification> notifications) {
         Boss.Writer w = new Boss.Writer();
         try {
             w.write(1)                                      // packet type code
@@ -111,19 +116,10 @@ public class NetworkV2 extends Network {
         }
     }
 
-    private Map<NodeInfo, DatagramAdapter> adapters = new HashMap<>();
-
     @Override
     public void deliver(NodeInfo toNode, Notification notification) {
         try {
             byte[] data = packNotifications(myInfo, Do.listOf(notification));
-            try {
-                unpack(data);
-            } catch (Exception e) {
-                System.err.println("-- pack test failed -- " + e);
-                e.printStackTrace();
-                System.exit(75);
-            }
             adapter.send(toNode, data);
         } catch (Exception e) {
             e.printStackTrace();
@@ -140,14 +136,18 @@ public class NetworkV2 extends Network {
     @Override
     public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         try {
-            URL url = new URL("http://localhost:6000/contracts/" + itemId.toBase64String());
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("GET");
-            if (200 != con.getResponseCode())
+//            URL url = new URL("http://localhost:8080/contracts/" + itemId.toBase64String());
+            URL url = new URL(nodeInfo.publicUrlString() + "/contracts/" + itemId.toBase64String());
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestMethod("GET");
+            if (200 != connection.getResponseCode())
                 return null;
-            byte[] data = Do.read(con.getInputStream());
+            byte[] data = Do.read(connection.getInputStream());
             return new Contract(data);
         } catch (IOException e) {
+            System.out.println("doewnload failure: "+e);
+            e.printStackTrace();
             return null;
         }
     }
