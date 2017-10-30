@@ -90,7 +90,7 @@ public class CLIMain {
                 accepts("as", "Use with -e, --export command. Specify format for export contract.")
                         .withRequiredArg()
                         .ofType(String.class)
-                        .defaultsTo("xml");
+                        .defaultsTo("json");
                 acceptsAll(asList("i", "import"), "Import contract from specified xml or json file.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file");
@@ -417,7 +417,7 @@ public class CLIMain {
         } else if("json".equals(extension)) {
             report("import from json ok");
         } else {
-            report("import ok");
+            report("import from xml ok");
 
         }
 
@@ -468,25 +468,24 @@ public class CLIMain {
         Binder binder = contract.serialize(DefaultBiMapper.getInstance().newSerializer());
 
         byte[] data;
-        if("json".equals(format)) {
-            String jsonString = JsonTool.toJsonString(binder);
-            data = jsonString.getBytes();
-
-        } else {
+        if("xml".equals(format)) {
             XStream xstream = new XStream(new DomDriver());
 //            magicApi.registerConverter(new MapEntryConverter());
             xstream.alias("root", Binder.class);
             data = xstream.toXML(binder).getBytes();
+        } else {
+            String jsonString = JsonTool.toJsonString(binder);
+            data = jsonString.getBytes();
         }
         try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
             fs.write(data);
             fs.close();
         }
 
-        if("json".equals(format)) {
-            report(fileName + " export as json ok");
+        if("xml".equals(format)) {
+            report(fileName + " export as xml ok");
         } else {
-            report(fileName + " export ok");
+            report(fileName + " export as json ok");
         }
     }
 
@@ -563,23 +562,23 @@ public class CLIMain {
             Binder binder =  DefaultBiMapper.getInstance().newSerializer().serialize(hm);
 
             byte[] data;
-            if ("json".equals(format)) {
-                String jsonString = JsonTool.toJsonString(binder);
-                data = jsonString.getBytes();
-            } else {
+            if ("xml".equals(format)) {
                 XStream xstream = new XStream(new DomDriver());
                 xstream.alias("root", Binder.class);
                 data = xstream.toXML(binder).getBytes();
+            } else {
+                String jsonString = JsonTool.toJsonString(binder);
+                data = jsonString.getBytes();
             }
             try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
                 fs.write(data);
                 fs.close();
             }
 
-            if ("json".equals(format)) {
-                report("export fields as json ok");
+            if ("xml".equals(format)) {
+                report("export fields as xml ok");
             } else {
-                report("export fields ok");
+                report("export fields as json ok");
             }
         } catch (IllegalArgumentException e) {
             report("export fields error: " + e.getMessage());
@@ -702,8 +701,8 @@ public class CLIMain {
                 }
             }
         } else {
-            addError("-1", "", "Path " + path + " does not exist");
-            usage("Path " + path + " does not exist");
+            addError("2", "", "Path " + path + " does not exist");
+//            usage("Path " + path + " does not exist");
         }
         return foundContracts;
     }

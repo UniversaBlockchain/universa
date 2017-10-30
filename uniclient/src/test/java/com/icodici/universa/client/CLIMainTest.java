@@ -100,7 +100,7 @@ public class CLIMainTest  {
         callMain(
                 "-e", rootPath + "contract_to_export.unicon");
         System.out.println(output);
-        assert(output.indexOf("export ok") >= 0);
+        assert(output.indexOf("export as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -114,12 +114,21 @@ public class CLIMainTest  {
     }
 
     @Test
+    public void exportAsXMLTest() throws Exception {
+        callMain(
+                "-e", rootPath + "contract_to_export.unicon", "-as", "xml");
+        System.out.println(output);
+        assert(output.indexOf("export as xml ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
     public void exportWithNameTest() throws Exception {
         String name = "ExportedContract";
         callMain(
                 "-e", rootPath + "contract_to_export.unicon", "-name", rootPath + name);
         System.out.println(output);
-        assert(output.indexOf(name + " export ok") >= 0);
+        assert(output.indexOf(name + " export as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -150,7 +159,7 @@ public class CLIMainTest  {
         callMain(
                 "-e", rootPath + "contract_to_export.unicon", "-get", field1, "-get", field2);
         System.out.println(output);
-        assert(output.indexOf("export fields ok") >= 0);
+        assert(output.indexOf("export fields as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -324,7 +333,7 @@ public class CLIMainTest  {
         callMain(
                 "-i", rootPath + "contract_to_import.xml");
         System.out.println(output);
-        assert(output.indexOf("import ok") >= 0);
+        assert(output.indexOf("import from xml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -352,7 +361,7 @@ public class CLIMainTest  {
         callMain(
                 "-i", rootPath + "contract_to_import.xml", "-name", rootPath + name);
         System.out.println(output);
-        assert(output.indexOf("import ok") >= 0);
+        assert(output.indexOf("import from xml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -413,8 +422,12 @@ public class CLIMainTest  {
     @Test
     public void findContractsInWrongPath() throws Exception {
 
-        callMain("-f", rootPath + "not_exist_subfolder/", "-v", "-r");
-        System.out.println(output);
+        try {
+            callMain("-f", rootPath + "not_exist_subfolder/", "-v", "-r");
+            System.out.println(output);
+        } catch (Exception e) {
+
+        }
         assert(output.indexOf("No contracts found") >= 0);
     }
 
