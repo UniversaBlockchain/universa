@@ -14,6 +14,11 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.converters.Converter;
+import com.thoughtworks.xstream.converters.MarshallingContext;
+import com.thoughtworks.xstream.converters.UnmarshallingContext;
+import com.thoughtworks.xstream.io.HierarchicalStreamReader;
+import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
@@ -30,6 +35,10 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -129,6 +138,11 @@ public class CLIMain {
                         "Specify to check contracts in the path and do it recursively.");
                 accepts("binary", "Use with --ch, --check. " +
                         "Specify to check contracts from binary data.");
+
+
+//                acceptsAll(asList("ie"), "Test - delete.")
+//                        .withRequiredArg().ofType(String.class)
+//                        .describedAs("file");
             }
         };
         try {
@@ -176,22 +190,24 @@ public class CLIMain {
                 List updateValues = options.valuesOf("value");
                 HashMap<String, String> updateFieldsHashMap = new HashMap<>();
                 Contract contract = loadContract(source);
-                try {
-                    for (int i = 0; i < updateFields.size(); i++) {
-                        updateFieldsHashMap.put((String) updateFields.get(i), (String) updateValues.get(i));
-                    }
-                } catch (Exception e) {
+                if(contract != null) {
+                    try {
+                        for (int i = 0; i < updateFields.size(); i++) {
+                            updateFieldsHashMap.put((String) updateFields.get(i), (String) updateValues.get(i));
+                        }
+                    } catch (Exception e) {
 
-                }
-                if(updateFieldsHashMap != null && updateFieldsHashMap.size() > 0) {
-                    updateFields(contract, updateFieldsHashMap);
-                }
-                if(extractKeyRole != null) {
-                    exportPublicKeys(contract, extractKeyRole, name);
-                } else if(extractFields != null && extractFields.size() > 0) {
-                    exportFields(contract, extractFields, name, format);
-                } else {
-                    exportContract(contract, name, format);
+                    }
+                    if (updateFieldsHashMap != null && updateFieldsHashMap.size() > 0) {
+                        updateFields(contract, updateFieldsHashMap);
+                    }
+                    if (extractKeyRole != null) {
+                        exportPublicKeys(contract, extractKeyRole, name);
+                    } else if (extractFields != null && extractFields.size() > 0) {
+                        exportFields(contract, extractFields, name, format);
+                    } else {
+                        exportContract(contract, name, format);
+                    }
                 }
                 finish();
             }
@@ -200,15 +216,31 @@ public class CLIMain {
 
                 Contract contract = importContract(source);
 
-                String name = (String) options.valueOf("name");
-                if (name == null)
-                {
-                    File file = new File(source);
-                    name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
+                if(contract != null) {
+                    String name = (String) options.valueOf("name");
+                    if (name == null) {
+                        File file = new File(source);
+                        name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
+                    }
+                    saveContract(contract, name);
                 }
-                saveContract(contract, name);
                 finish();
             }
+//            if (options.has("ie")) {
+//                String source = (String) options.valueOf("ie");
+//
+//                Contract contract = importContract(source);
+//
+//                if(contract != null) {
+//                    String name = (String) options.valueOf("name");
+//                    if (name == null) {
+//                        File file = new File(source);
+//                        name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
+//                    }
+//                    exportContract(contract, name, "xml");
+//                }
+//                finish();
+//            }
             if (options.has("f")) {
                 String source = (String) options.valueOf("f");
 
@@ -383,42 +415,48 @@ public class CLIMain {
             extension = sourceName.substring(i + 1);
         }
 
-        Contract contract;
-        if("yaml".equals(extension) || "yml".equals(extension)) {
-            contract = Contract.fromYamlFile(sourceName);
-        } else {
-            String stringData = "";
-            BufferedReader in = new BufferedReader(new FileReader(sourceName));
-            String str;
-            while ((str = in.readLine()) != null)
-                stringData += str;
-            in.close();
-
-            Binder binder;
-
-            if ("json".equals(extension)) {
-                binder = Binder.convertAllMapsToBinders(JsonTool.fromJson(stringData));
+        Contract contract = null;
+        File pathFile = new File(sourceName);
+        if(pathFile.exists()) {
+            if ("yaml".equals(extension) || "yml".equals(extension)) {
+                contract = Contract.fromYamlFile(sourceName);
             } else {
-                XStream xstream = new XStream(new DomDriver());
-//            magicApi.registerConverter(new MapEntryConverter());
-                xstream.alias("root", Binder.class);
-                binder = (Binder) xstream.fromXML(stringData);
+                String stringData = "";
 
+                BufferedReader in = new BufferedReader(new FileReader(sourceName));
+                String str;
+                while ((str = in.readLine()) != null)
+                    stringData += str;
+                in.close();
+
+                Binder binder;
+
+                if ("json".equals(extension)) {
+                    binder = Binder.convertAllMapsToBinders(JsonTool.fromJson(stringData));
+                } else {
+                    XStream xstream = new XStream(new DomDriver());
+                    xstream.registerConverter(new MapEntryConverter());
+                    xstream.alias("contract", Binder.class);
+                    binder = Binder.convertAllMapsToBinders(xstream.fromXML(stringData));
+
+                }
+
+                BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
+                contract = new Contract();
+                contract.deserialize(binder, bm);
             }
+            report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()));
 
-            BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
-            contract = new Contract();
-            contract.deserialize(binder, bm);
-        }
-        report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()));
-
-        if("yaml".equals(extension) || "yml".equals(extension)) {
-            report("import from yaml ok");
-        } else if("json".equals(extension)) {
-            report("import from json ok");
+            if ("yaml".equals(extension) || "yml".equals(extension)) {
+                report("import from yaml ok");
+            } else if ("json".equals(extension)) {
+                report("import from json ok");
+            } else {
+                report("import from xml ok");
+            }
         } else {
-            report("import from xml ok");
-
+            addError("2", "", "Path " + sourceName + " does not exist");
+            usage("Path " + sourceName + " does not exist");
         }
 
         return contract;
@@ -432,15 +470,21 @@ public class CLIMain {
      * @return loaded and from loaded data created Contract.
      */
     private static Contract loadContract(String fileName) throws IOException {
-        Contract contract;
+        Contract contract = null;
 
-        reporter.verbose("---");
-        reporter.verbose("Loading contract from: " + fileName);
-        Path path = Paths.get(fileName);
-        byte[] data = Files.readAllBytes(path);
+        File pathFile = new File(fileName);
+        if(pathFile.exists()) {
+            reporter.verbose("---");
+            reporter.verbose("Loading contract from: " + fileName);
+            Path path = Paths.get(fileName);
+            byte[] data = Files.readAllBytes(path);
 
-        contract = new Contract(data);
-        reporter.verbose("Contract has loaded");
+            contract = new Contract(data);
+            reporter.verbose("Contract has loaded");
+        } else {
+            addError("2", "", "Path " + fileName + " does not exist");
+            usage("Path " + fileName + " does not exist");
+        }
 
         return contract;
     }
@@ -470,8 +514,8 @@ public class CLIMain {
         byte[] data;
         if("xml".equals(format)) {
             XStream xstream = new XStream(new DomDriver());
-//            magicApi.registerConverter(new MapEntryConverter());
-            xstream.alias("root", Binder.class);
+            xstream.registerConverter(new MapEntryConverter());
+            xstream.alias("contract", Binder.class);
             data = xstream.toXML(binder).getBytes();
         } else {
             String jsonString = JsonTool.toJsonString(binder);
@@ -564,7 +608,8 @@ public class CLIMain {
             byte[] data;
             if ("xml".equals(format)) {
                 XStream xstream = new XStream(new DomDriver());
-                xstream.alias("root", Binder.class);
+                xstream.registerConverter(new MapEntryConverter());
+                xstream.alias("fields", Binder.class);
                 data = xstream.toXML(binder).getBytes();
             } else {
                 String jsonString = JsonTool.toJsonString(binder);
@@ -602,9 +647,11 @@ public class CLIMain {
 
             try {
                 XStream xstream = new XStream(new DomDriver());
-                xstream.alias("root", Binder.class);
-                data = (Binder) xstream.fromXML(fields.get(fieldName));
+                xstream.registerConverter(new MapEntryConverter());
+                xstream.alias(fieldName, Binder.class);
+                data = Binder.convertAllMapsToBinders(xstream.fromXML(fields.get(fieldName)));
             } catch (Exception xmlEx) {
+                xmlEx.printStackTrace();
                 try {
                     data = Binder.convertAllMapsToBinders(JsonTool.fromJson(fields.get(fieldName)));
                 } catch (Exception jsonEx) {
@@ -702,7 +749,7 @@ public class CLIMain {
             }
         } else {
             addError("2", "", "Path " + path + " does not exist");
-//            usage("Path " + path + " does not exist");
+            usage("Path " + path + " does not exist");
         }
         return foundContracts;
     }
@@ -931,6 +978,163 @@ public class CLIMain {
         public boolean accept(File pathname) {
             return pathname.isDirectory();
         }
+
+    }
+
+    public static class MapEntryConverter implements Converter {
+        public boolean canConvert(Class c) {
+            return AbstractMap.class.isAssignableFrom(c);
+        }
+
+        public void marshal(Object value, HierarchicalStreamWriter writer, MarshallingContext context) {
+            AbstractMap<String, Object> map = (AbstractMap<String, Object>) value;
+            Object checkingValue;
+            String checkingKey;
+            String hasType = "";
+            for (String key : map.keySet()) {
+                if("__type".equals(key)) {
+                    hasType = (String) map.get(key);
+                    break;
+                }
+            }
+
+            switch (hasType) {
+                case MapEntryConverterKnownTypes.UNIXTIME:
+                    writer.startNode(hasType);
+                    ZonedDateTime date = ZonedDateTime.ofInstant(Instant.ofEpochSecond((Long)map.get("seconds")),
+                            ZoneOffset.systemDefault());
+                    writer.setValue(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(date));
+                    writer.endNode();
+                    break;
+
+                default:
+                    if(checkForKnownTypes(hasType)) {
+                        writer.startNode(hasType);
+                    }
+                    for (Map.Entry<String, Object> entry : map.entrySet()) {
+                        checkingKey = entry.getKey();
+                        checkingValue = entry.getValue();
+                        if(!"__type".equals(checkingKey) || !checkForKnownTypes(hasType)) {
+                            if (!Character.isDigit(checkingKey.charAt(0))) {
+                                writer.startNode(checkingKey);
+                            } else {
+                                writer.startNode("__digit_" + checkingKey);
+                            }
+                            if (checkingValue != null) {
+                                if (checkingValue instanceof Integer) {
+                                    writer.setValue(String.valueOf(checkingValue));
+                                } else if (checkingValue instanceof AbstractMap) {
+                                    context.convertAnother(checkingValue);
+                                } else if (checkingValue instanceof List) {
+                                    writer.addAttribute("isArray", "true");
+                                    for (Object o : (List) checkingValue) {
+                                        writer.startNode("item");
+                                        context.convertAnother(o);
+                                        writer.endNode();
+                                    }
+                                } else {
+                                    writer.setValue(checkingValue.toString());
+                                }
+                            }
+                            writer.endNode();
+                        }
+                    }
+                    if(checkForKnownTypes(hasType)) {
+                        writer.endNode();
+                    }
+
+            }
+        }
+
+        public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
+            Map<String, Object> map = new HashMap<String, Object>();
+
+            Object checkingValue;
+            String checkingKey;
+            String isArray;
+            while (reader.hasMoreChildren()) {
+                reader.moveDown();
+                checkingKey = reader.getNodeName();
+                checkingValue = reader.getValue();
+                isArray = reader.getAttribute("isArray");
+                try {
+                    String hasType = checkingKey;
+                    if (checkForKnownTypes(hasType)) {
+                        switch (hasType) {
+                            case MapEntryConverterKnownTypes.UNIXTIME:
+                                map.put("__type", checkingKey);
+                                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                                ZonedDateTime date = ZonedDateTime.parse((String) checkingValue, formatter.withZone(ZoneId.systemDefault()));
+                                map.put("seconds", date.toEpochSecond());
+                                break;
+
+                            default:
+                                map.put("__type", checkingKey);
+                                map.putAll((AbstractMap) context.convertAnother(checkingValue, AbstractMap.class));
+                        }
+                    } else {
+                        if (checkingKey.length() > 8 && "__digit_".equals(checkingKey.substring(0, 8))) {
+                            checkingKey = checkingKey.substring(8, checkingKey.length());
+                        }
+                        if ("true".equals(isArray)) {
+                            List<Object> list = new ArrayList<>();
+                            while (reader.hasMoreChildren()) {
+                                reader.moveDown();
+                                list.add(context.convertAnother(reader.getValue(), AbstractMap.class));
+                                reader.moveUp();
+                            }
+                            map.put(checkingKey, list);
+                        } else {
+                            if (reader.hasMoreChildren()) {
+                                map.put(checkingKey, context.convertAnother(checkingValue, AbstractMap.class));
+                            } else {
+                                if ("".equals(checkingValue)) {
+                                    map.put(checkingKey, null);
+                                } else {
+                                    map.put(checkingKey, checkingValue);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    map.put(checkingKey, null);
+                    e.printStackTrace();
+                }
+                reader.moveUp();
+            }
+            return map;
+        }
+
+        private Boolean checkForKnownTypes(String type) {
+            switch (type) {
+                case MapEntryConverterKnownTypes.UNIXTIME:
+                case MapEntryConverterKnownTypes.SIMPLE_ROLE:
+                case MapEntryConverterKnownTypes.KEY_RECORD:
+                case MapEntryConverterKnownTypes.RSA_PUBLIC_KEY:
+                case MapEntryConverterKnownTypes.REFERENCE:
+                case MapEntryConverterKnownTypes.ROLE_LINK:
+                case MapEntryConverterKnownTypes.CHANGE_OWNER_PERMISSION:
+                case MapEntryConverterKnownTypes.REVOKE_PERMISSION:
+                case MapEntryConverterKnownTypes.BINARY:
+                    return true;
+            }
+            return false;
+        }
+    }
+
+    public static class MapEntryConverterKnownTypes {
+
+        static public final String UNIXTIME = "unixtime";
+        static public final String SIMPLE_ROLE = "SimpleRole";
+        static public final String KEY_RECORD = "KeyRecord";
+        static public final String RSA_PUBLIC_KEY = "RSAPublicKey";
+        static public final String REFERENCE = "com.icodici.universa.contract.Reference";
+        static public final String ROLE_LINK = "RoleLink";
+        static public final String CHANGE_OWNER_PERMISSION = "ChangeOwnerPermission";
+        static public final String REVOKE_PERMISSION = "RevokePermission";
+        static public final String BINARY = "binary";
+
+
 
     }
 }
