@@ -8,11 +8,14 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.ItemCache;
+import com.icodici.universa.node2.Main;
 import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.Node;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 
@@ -67,7 +70,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             if (networkData == null) {
                 List<Binder> nodes = new ArrayList<Binder>();
                 result.putAll(
-                        "version", "2.0.0",
+                        "version", Main.NODE_VERSION,
                         "nodes", nodes
                 );
                 if( netConfig != null ) {
@@ -81,6 +84,29 @@ public class ClientHTTPServer extends BasicHttpServer {
             }
 
         });
+
+        addSecureEndpoint("getState", this::getState);
+        addSecureEndpoint("approve", this::approve);
+    }
+
+    private Binder approve(Binder params, Session session) throws IOException {
+        checkNode();
+        return Binder.of(
+                "itemResult",
+                node.registerItem(new Contract(params.getBinaryOrThrow("packedItem")))
+        );
+    }
+
+    private Binder getState(Binder params, Session session) throws CommandFailedException {
+        checkNode();
+        return Binder.of("itemResult",
+                         node.checkItem((HashId)params.get("itemId")));
+    }
+
+    private void checkNode() throws CommandFailedException {
+        if( node == null ) {
+            throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
+        }
     }
 
     static private Binder networkData = null;
@@ -88,14 +114,17 @@ public class ClientHTTPServer extends BasicHttpServer {
     @Override
     public void on(String path, BasicHTTPService.Handler handler) {
         super.on(path, (request, response) -> {
-//            Binder hh = response.getHeaders();
+            Binder hh = response.getHeaders();
 //            hh.put("Access-Control-Allow-Origin", "*");
 //            hh.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-//            hh.put("Access-Control-Allow-Headers", "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range");
+//            hh.put("Access-Control-Allow-Headers", "DNT,X-CustomHeader,Keep-Alive,User-Age  nt,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range");
 //            hh.put("Access-Control-Expose-Headers", "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Content-Range,Range");
+            System.out.println("REQ "+path+": "+request.getPath()+" | "+request.getParams());
             handler.handle(request, response);
         });
     }
+
+    private Node node;
 
     public ItemCache getCache() {
         return cache;
@@ -107,6 +136,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setNetConfig(NetConfig netConfig) {
         this.netConfig = netConfig;
+    }
+
+    public void setNode(Node node) {
+        this.node = node;
     }
 
     //    @Override

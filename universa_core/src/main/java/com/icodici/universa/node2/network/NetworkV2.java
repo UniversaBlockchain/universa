@@ -5,36 +5,39 @@
  *
  */
 
-package com.icodici.universa.node2;
+package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.node2.network.DatagramAdapter;
-import com.icodici.universa.node2.network.Network;
-import com.icodici.universa.node2.network.UDPAdapter;
+import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.NodeInfo;
+import com.icodici.universa.node2.Notification;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class TestLocalNetwork extends Network {
+public class NetworkV2 extends Network {
 
     private final NodeInfo myInfo;
     private final PrivateKey myKey;
     private final UDPAdapter adapter;
-    //    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(8);
-    private Map<NodeInfo, Node> nodes = new HashMap<>();
+
+//    private Map<NodeInfo, Node> nodes = new HashMap<>();
 
     private static LogPrinter log = new LogPrinter("TLN");
     private Consumer<Notification> consumer;
 
-    public TestLocalNetwork(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
+    public NetworkV2(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
         super(netConfig);
         this.myInfo = myInfo;
         this.myKey = myKey;
@@ -53,7 +56,6 @@ public class TestLocalNetwork extends Network {
                     consumer.accept(n);
                 }
             }
-
         } catch (IOException e) {
             System.err.println("ignoring notification, " + e);
             e.printStackTrace();
@@ -111,10 +113,6 @@ public class TestLocalNetwork extends Network {
 
     private Map<NodeInfo, DatagramAdapter> adapters = new HashMap<>();
 
-    public void addNode(NodeInfo ni, Node node) {
-        nodes.put(ni, node);
-    }
-
     @Override
     public void deliver(NodeInfo toNode, Notification notification) {
         try {
@@ -137,18 +135,26 @@ public class TestLocalNetwork extends Network {
         consumer = notificationConsumer;
     }
 
+//    private final Map<NodeInfo,BasicHTTPClient> httpClients = new HashMap<>();
+
     @Override
     public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
-        Node node = nodes.get(nodeInfo);
-        return node.getItem(itemId);
+        try {
+            URL url = new URL("http://localhost:6000/contracts/" + itemId.toBase64String());
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+            if (200 != con.getResponseCode())
+                return null;
+            byte[] data = Do.read(con.getInputStream());
+            return new Contract(data);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     private String exceptionCallback(String message) {
-        System.out.println(message);
+        System.out.println("UDP adapter error: " + message);
         return message;
     }
 
-    public void setNodes(Map<NodeInfo, Node> nodes) {
-        this.nodes = nodes;
-    }
 }

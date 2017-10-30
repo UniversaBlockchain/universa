@@ -7,15 +7,19 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.BasicHTTPClient;
-import com.icodici.universa.node2.network.ClientHTTPClient;
+import com.icodici.universa.node2.network.Client;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.LogPrinter;
 import org.junit.Test;
 
 import java.net.HttpURLConnection;
@@ -35,8 +39,8 @@ public class MainTest {
         main.waitReady();
         BufferedLogger l = main.logger;
 
-        ClientHTTPClient client = new ClientHTTPClient(
-                "http://localhost:6000",
+        Client client = new Client(
+                "http://localhost:8080",
                 TestKeys.privateKey(3),
                 main.getNodePublicKey()
         );
@@ -63,7 +67,7 @@ public class MainTest {
         main.cache.put(c);
         assertNotNull(main.cache.get(c.getId()));
 
-        URL url = new URL("http://localhost:6000/contracts/" + c.getId().toBase64String());
+        URL url = new URL("http://localhost:8080/contracts/" + c.getId().toBase64String());
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         assertEquals(200, con.getResponseCode());
@@ -71,7 +75,7 @@ public class MainTest {
 
         assertArrayEquals(c.getLastSealedBinary(), data2);
 
-        url = new URL("http://localhost:6000/network");
+        url = new URL("http://localhost:8080/network");
         con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         assertEquals(200, con.getResponseCode());
@@ -82,7 +86,7 @@ public class MainTest {
                 .collect(Collectors.toList())
                 .toString();
 
-        assertEquals("[http://localhost:8080, http://localhost:8080, http://localhost:8080]", pubUrls);
+        assertEquals("[http://localhost:8080, http://localhost:6002, http://localhost:6004]", pubUrls);
 
         main.shutdown();
         main.logger.stopInterceptingStdOut();;
@@ -100,6 +104,73 @@ public class MainTest {
     public void localNetwork() throws Exception {
         List<Main> mm = new ArrayList<>();
         for( int i=0; i<3; i++ )
-            mm.add(createMain("node"+(i+1), true));
+            mm.add(createMain("node"+(i+1), false));
+        Main main = mm.get(0);
+        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
+        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        assertEquals(main.cache, main.node.getCache());
+        ItemCache c1 = main.cache;
+        ItemCache c2 = main.node.getCache();
+
+        Contract c = new Contract(myKey);
+        c.seal();
+        assertTrue(c.isOk());
+
+        Client client = new Client(myKey, main.myInfo);
+
+        ItemResult r = client.getState(c.getId());
+        assertEquals(ItemState.UNDEFINED, r.state);
+        System.out.println(":: "+r);
+
+        LogPrinter.showDebug(true);
+        r = client.register(c.getLastSealedBinary());
+        System.out.println(r);
+
+        while(true) {
+            r = client.getState(c.getId());
+            System.out.println("-->? " + r);
+            Thread.sleep(10);
+            if( !r.state.isPending() )
+                break;
+        }
+//        System.out.println("-->! " + r);
+
+//        assertEquals(ItemState.UNDEFINED, s);
+    }
+
+    @Test
+    public void checkRealNetwork() throws Exception {
+
+        PrivateKey clientKey = TestKeys.privateKey(3);
+        Client client = new Client("http://node-17-com.universa.io:8080", clientKey);
+
+        Contract c = new Contract(clientKey);
+        c.seal();
+        assertTrue(c.isOk());
+
+        ItemResult r = client.getState(c.getId());
+        assertEquals(ItemState.UNDEFINED, r.state);
+        System.out.println(":: "+r);
+
+
+//        ItemResult r = client.getState(c.getId());
+//        assertEquals(ItemState.UNDEFINED, r.state);
+//        System.out.println(":: "+r);
+//
+//        LogPrinter.showDebug(true);
+//        r = client.approve(c.getLastSealedBinary());
+//        System.out.println(r);
+//
+//        while(true) {
+//            r = client.getState(c.getId());
+//            System.out.println("-->? " + r);
+//            Thread.sleep(10);
+//            if( !r.state.isPending() )
+//                break;
+//        }
+//
+//        Client client = new Client(myKey, );
     }
 }

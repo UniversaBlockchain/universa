@@ -57,7 +57,7 @@ public class BasicHttpServerTest extends TestCase {
         BasicHttpServer s = new BasicHttpServer(nodeKey, 15600, 32, log);
         BasicHTTPClient c = new BasicHTTPClient("http://localhost:15600");
         c.start(clientKey, nodeKey.getPublicKey());
-        assertThrows(BasicHTTPClient.CommandFailedException.class, ()->c.command("test_error"));
+        assertThrows(CommandFailedException.class, ()->c.command("test_error"));
     }
 
 }

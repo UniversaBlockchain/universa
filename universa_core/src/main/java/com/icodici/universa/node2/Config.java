@@ -16,6 +16,15 @@ public class Config {
     private Duration revokedItemExpiration = maxItemCreationAge.plusDays(10);
     private TemporalAmount maxDownloadOnApproveTime = Duration.ofMinutes(5);
 
+    public static <T> Class<T> forceInit(Class<T> klass) {
+        try {
+            Class.forName(klass.getName(), true, klass.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new AssertionError(e);  // Can't happen
+        }
+        return klass;
+    }
+
     public Duration getDeclinedItemExpiration() {
         return declinedItemExpiration;
     }

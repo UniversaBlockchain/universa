@@ -124,6 +124,8 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
                 for (Node n : nodes.values()) {
                     try {
                         ItemResult r = n.waitItem(ok.getId(), 5500);
+                        if( !r.state.consensusFound())
+                            Thread.sleep(30);
                         assertEquals("In node "+n+" item "+ok.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
                         fail("timeout");

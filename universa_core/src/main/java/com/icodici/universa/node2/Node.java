@@ -196,7 +196,6 @@ public class Node {
                 if (autoStart) {
                     if (item != null) {
                         synchronized (cache) { cache.put(item); }
-//                        cache.put(item);
                     }
                     ItemProcessor processor = new ItemProcessor(itemId, item, lock);
                     processors.put(itemId, processor);
@@ -239,6 +238,10 @@ public class Node {
 
     public int countElections() {
         return processors.size();
+    }
+
+    public ItemCache getCache() {
+        return cache;
     }
 
     private class ItemProcessor {
@@ -302,6 +305,7 @@ public class Node {
                             return;
                         } else {
                             debug("failed to download " + itemId + " from " + source);
+                            Thread.sleep(100);
                         }
                     } catch (InterruptedException e) {
                         e.printStackTrace();

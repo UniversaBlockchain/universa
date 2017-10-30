@@ -141,8 +141,7 @@ public class NodeInfo implements BiSerializable {
     }
 
     public String publicUrlString() {
-        return "http://" + publicHost + ":8080";
-//        return "http://" + publicHost + ":" + clientAddress.getPort();
+        return publicHost.equals("localhost") ? "http://localhost:"+clientAddress.getPort() : "http://" + publicHost + ":8080";
     }
 
     @Override
@@ -173,5 +172,9 @@ public class NodeInfo implements BiSerializable {
 
     static {
         DefaultBiMapper.registerClass(NodeInfo.class);
+    }
+
+    public String internalUrlString() {
+        return "http://" + clientAddress.getHostName() + ":" + clientAddress.getPort();
     }
 }

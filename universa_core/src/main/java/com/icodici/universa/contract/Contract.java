@@ -16,6 +16,8 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
@@ -115,21 +117,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private void registerAdapters() {
         // init permissions
-        DefaultBiMapper.registerClass(ChangeNumberPermission.class);
-        DefaultBiMapper.registerClass(ChangeOwnerPermission.class);
-        DefaultBiMapper.registerClass(ModifyDataPermission.class);
-        DefaultBiMapper.registerClass(RevokePermission.class);
-        DefaultBiMapper.registerClass(SplitJoinPermission.class);
-        // roles
-        DefaultBiMapper.registerClass(ListRole.class);
-        DefaultBiMapper.registerClass(Role.class);
-        DefaultBiMapper.registerClass(RoleLink.class);
-        DefaultBiMapper.registerClass(SimpleRole.class);
-        // other
-        DefaultBiMapper.registerClass(KeyRecord.class);
-        DefaultBiMapper.registerClass(TransactionContract.class);
-        DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
-        DefaultBiMapper.registerClass(Reference.class);
     }
 
     public Contract() {
@@ -150,7 +137,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public Contract(PrivateKey key) {
         this();
         // default expiration date
-        setExpiresAt(ZonedDateTime.now().plusYears(5));
+        setExpiresAt(ZonedDateTime.now().plusDays(90));
         // issuer role is a key for a new contract
         Role r = setIssuerKeys(key.getPublicKey());
         // issuer is owner, link roles
@@ -1230,7 +1217,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTimeOrThrow("expires_at");
             this.data = d.deserialize(data.getBinder("data",Binder.EMPTY));
-//            this.reference = d.deserialize(data.getBinder("reference"));
+            this.reference = d.deserialize(data.getBinder("reference", null));
             Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
             perms.forEach((id, perm) -> {
                 perm.setId(id);
@@ -1248,10 +1235,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public String getErrorsString() {
         return errors.stream().map(Object::toString).collect(Collectors.joining(","));
-    }
-
-    static {
-        DefaultBiMapper.registerClass(Contract.class);
     }
 
     @Override
@@ -1314,5 +1297,38 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         public Contract getContract() {
             return this.c;
         }
+    }
+
+    static {
+        Config.forceInit(ItemResult.class);
+        Config.forceInit(HashId.class);
+        Config.forceInit(Contract.class);
+        Config.forceInit(Permission.class);
+        Config.forceInit(Contract.class);
+        Config.forceInit(ChangeNumberPermission.class);
+        Config.forceInit(ChangeOwnerPermission.class);
+        Config.forceInit(SplitJoinPermission.class);
+        Config.forceInit(PublicKey.class);
+        Config.forceInit(PrivateKey.class);
+        Config.forceInit(KeyRecord.class);
+//        Config.forceInit(.class);
+        DefaultBiMapper.registerClass(Contract.class);
+        DefaultBiMapper.registerClass(ChangeNumberPermission.class);
+        DefaultBiMapper.registerClass(ChangeOwnerPermission.class);
+        DefaultBiMapper.registerClass(ModifyDataPermission.class);
+        DefaultBiMapper.registerClass(RevokePermission.class);
+        DefaultBiMapper.registerClass(SplitJoinPermission.class);
+        // roles
+        DefaultBiMapper.registerClass(ListRole.class);
+        DefaultBiMapper.registerClass(Role.class);
+        DefaultBiMapper.registerClass(RoleLink.class);
+        DefaultBiMapper.registerClass(SimpleRole.class);
+        // other
+        DefaultBiMapper.registerClass(KeyRecord.class);
+        DefaultBiMapper.registerClass(TransactionContract.class);
+        DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
+        DefaultBiMapper.registerClass(Reference.class);
+
+        DefaultBiMapper.registerClass(Permission.class);
     }
 }

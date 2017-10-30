@@ -83,7 +83,7 @@ public class ItemResult {
     public ItemResult(Binder fields) {
         state = ItemState.valueOf(fields.getStringOrThrow("state"));
         haveCopy = fields.getBooleanOrThrow("haveCopy");
-        createdAt = fields.getZonedDateTimeOrThrow("createdAt");
+        createdAt = fields.getZonedDateTime("createdAt", null);
         expiresAt = fields.getZonedDateTime("expiresAt", null);
     }
 

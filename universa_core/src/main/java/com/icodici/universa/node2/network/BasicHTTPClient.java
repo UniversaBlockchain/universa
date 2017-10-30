@@ -13,6 +13,8 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
+import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node2.Config;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -157,7 +159,8 @@ public class BasicHTTPClient {
                 Binder result = data.getBinder("result", null);
                 if( result != null )
                     return result;
-                er = (ErrorRecord) data.get("error");
+                System.out.println("result: " + result);
+                er = (ErrorRecord)data.get("error");;
                 if( er == null )
                     er = new ErrorRecord(Errors.FAILURE, "", "unprocessablereply");
             } catch (EndpointException e) {
@@ -229,6 +232,8 @@ public class BasicHTTPClient {
         connection.setConnectTimeout(2000);
         connection.setReadTimeout(5000);
         connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+        connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+
 
         try (
                 OutputStream output = connection.getOutputStream();
@@ -261,25 +266,7 @@ public class BasicHTTPClient {
         return "HTTPClient<" +getUrl() + ">";
     }
 
-    public class ClientException extends IOException {
-        public ClientException(String message) {
-            super(message);
-        }
-
-        public ClientException(String message, Throwable cause) {
-            super(message, cause);
-        }
-
-        public ClientException(Throwable cause) {
-            super(cause);
-        }
-
-        public BasicHTTPClient getClient() {
-            return BasicHTTPClient.this;
-        }
-    }
-
-    public class ConnectionFailedException extends ClientException {
+    public static class ConnectionFailedException extends IOException {
 
         public ConnectionFailedException() {
             super("connection failed");
@@ -290,7 +277,7 @@ public class BasicHTTPClient {
         }
     }
 
-    public class EndpointException extends ClientException {
+    public static class EndpointException extends IOException {
         private final Answer answer;
 
         public EndpointException(Answer answer) {
@@ -319,22 +306,6 @@ public class BasicHTTPClient {
         }
     }
 
-    /**
-     * Exception thrown if the remote command (authenticated) reports some {@link ErrorRecord}-based error.
-     */
-    public class CommandFailedException extends ClientException {
-        private final ErrorRecord error;
-
-        public CommandFailedException(ErrorRecord error) {
-            super(error.toString());
-            this.error = error;
-        }
-
-        public ErrorRecord getError() {
-            return error;
-        }
-    }
-
 
     public class Answer {
         public final int code;
@@ -356,5 +327,10 @@ public class BasicHTTPClient {
         public boolean isOk() {
             return code == 200;
         }
+    }
+
+    static {
+        Config.forceInit(ErrorRecord.class);
+        Config.forceInit(ItemState.class);
     }
 }

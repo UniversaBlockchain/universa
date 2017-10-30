@@ -33,7 +33,7 @@ public class ErrorRecord {
     public String toString() {
         StringBuilder sb = new StringBuilder(error.name());
         if( objectName != null && !objectName.isEmpty())
-            sb.append("@"+objectName);
+            sb.append(" ["+objectName +"]");
         if( message != null && !message.isEmpty() )
             sb.append(" "+message);
         return sb.toString();

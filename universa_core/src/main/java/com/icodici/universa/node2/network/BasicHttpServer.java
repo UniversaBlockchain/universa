@@ -17,6 +17,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongycastle.util.encoders.Base64;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
@@ -39,7 +40,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class BasicHttpServer {
 
-//    public void changeKeyFor(PublicKey clientKey) throws EncryptionError {
+    //    public void changeKeyFor(PublicKey clientKey) throws EncryptionError {
 //        Session session = sessionsByKey.get(clientKey);
 //        if (session != null)
 //            session.sessionKey = null;
@@ -75,17 +76,20 @@ public class BasicHttpServer {
             PublicKey clientKey = new PublicKey(params.getBinaryOrThrow("client_key"));
             return inSession(clientKey, session -> session.connect());
         } catch (Exception e) {
-            throw new ClientError(Errors.BAD_CLIENT_KEY, "client_key","bad client key");
+            throw new ClientError(Errors.BAD_CLIENT_KEY, "client_key", "bad client key");
         }
     }
 
     class Result extends Binder {
         private int status = 200;
-        public void setStatus(int code) { status = code; }
+
+        public void setStatus(int code) {
+            status = code;
+        }
     }
 
     public interface Endpoint {
-        public void execute(Binder params,Result result) throws Exception;
+        public void execute(Binder params, Result result) throws Exception;
     }
 
     public interface SimpleEndpoint {
@@ -93,10 +97,10 @@ public class BasicHttpServer {
     }
 
     public interface SecureEndpoint {
-        Binder execute(Binder params,Session session);
+        Binder execute(Binder params, Session session) throws Exception;
     }
 
-    private final ConcurrentHashMap<String,SecureEndpoint> secureEncpoins = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SecureEndpoint> secureEncpoins = new ConcurrentHashMap<>();
 
     public void addSecureEndpoint(String commandName, SecureEndpoint ep) {
         secureEncpoins.put(commandName, ep);
@@ -107,6 +111,7 @@ public class BasicHttpServer {
             Binder result;
             try {
                 Result epResult = new Result();
+//                System.out.println("extracted params: " + extractParams(request));
                 ep.execute(extractParams(request), epResult);
                 result = Binder.of(
                         "result", "ok",
@@ -122,20 +127,26 @@ public class BasicHttpServer {
         });
     }
 
-    void addEndpoint(String path,SimpleEndpoint sep) {
-        addEndpoint(path, (params,result) -> {
+    void addEndpoint(String path, SimpleEndpoint sep) {
+        addEndpoint(path, (params, result) -> {
             result.putAll(sep.execute(params));
         });
     }
 
     public Binder extractParams(BasicHTTPService.Request request) {
-        BasicHTTPService.FileUpload rd = (BasicHTTPService.FileUpload) request.getParams().get("requestData");
-        if( rd != null ) {
-            byte[] data = rd.getBytes();
-            return Boss.unpack(data);
+        Binder rp = request.getParams();
+        String sparams = rp.getString("requestData64", null);
+        if (sparams != null) {
+            byte [] x = Base64.decode(sparams);
+            return Boss.unpack(x);
+        } else {
+            BasicHTTPService.FileUpload rd = (BasicHTTPService.FileUpload) rp.get("requestData");
+            if (rd != null) {
+                byte[] data = rd.getBytes();
+                return Boss.unpack(data);
+            }
         }
-        else
-            return Binder.EMPTY;
+        return Binder.EMPTY;
     }
 
     private Binder onPing(Binder params) {
@@ -162,21 +173,23 @@ public class BasicHttpServer {
                 s.errors.clear();
                 return s.answer(processor.apply(s));
             } catch (ClientError e) {
-                s.errors.add(e.errorRecord);
+                s.errors.add(e.getErrorRecord());
             } catch (Exception e) {
                 s.errors.add(new ErrorRecord(Errors.FAILURE, "", e.getMessage()));
             }
             return s.answer(null);
         }
     }
-//
+
+    //
     private Binder inSession(long id, Implementor processor) {
         Session s = sessionsById.get(id);
         if (s == null)
             throw new IllegalArgumentException("bad session number");
         return inSession(s, processor);
     }
-//
+
+    //
 //    private Response processRequest(String uri, Binder params) {
 //        try {
 //            final Binder result;
@@ -240,30 +253,8 @@ public class BasicHttpServer {
         }
     }
 
-    static public class ClientError extends IOException {
-        public ErrorRecord getErrorRecord() {
-            return errorRecord;
-        }
-
-        private final ErrorRecord errorRecord;
-
-        public ClientError(ErrorRecord er) {
-            super(er.toString());
-            this.errorRecord = er;
-        }
-
-        public ClientError(Errors code, String object, String message) {
-            this(new ErrorRecord(code, object, message));
-        }
-
-        @Override
-        public String toString() {
-            return "ClientError: " + errorRecord;
-        }
-    }
-
     private AtomicLong sessionIds = new AtomicLong(
-        ZonedDateTime.now().toEpochSecond() +
+            ZonedDateTime.now().toEpochSecond() +
                     Do.randomInt(0x7FFFffff));
 
     protected class Session {
@@ -298,7 +289,7 @@ public class BasicHttpServer {
                 serverNonce = Do.randomBytes(48);
             return Binder.fromKeysValues(
                     "server_nonce", serverNonce,
-                    "session_id", sessionId
+                    "session_id", ""+sessionId
             );
         }
 
@@ -388,12 +379,17 @@ public class BasicHttpServer {
                         throw new IllegalAccessException("sample error");
                     default:
                         SecureEndpoint sep = secureEncpoins.get(cmd);
-                        if( sep != null )
-                            return sep.execute(params, this);
+                        if (sep != null)
+                            return sep.execute(params.getBinder("params", Binder.EMPTY), this);
                 }
 //            } catch (ClientError e) {
 //                throw e;
+//            } catch (ClientError error) {
+//                throw error;
             } catch (Exception e) {
+                e.printStackTrace();
+                if (e instanceof ClientError)
+                    throw (ClientError) e;
                 throw new ClientError(Errors.COMMAND_FAILED, cmd, e.getMessage());
             }
             throw new ClientError(Errors.UNKNOWN_COMMAND, "command", "unknown: " + cmd);

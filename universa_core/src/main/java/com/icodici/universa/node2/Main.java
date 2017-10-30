@@ -9,7 +9,10 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node.PostgresLedger;
 import com.icodici.universa.node2.network.ClientHTTPServer;
+import com.icodici.universa.node2.network.NetworkV2;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -19,12 +22,13 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.sql.SQLException;
 import java.time.Duration;
 
 import static java.util.Arrays.asList;
 
 public class Main {
-    private final String NODE_VERSION = "2.0.6";
+    public static final String NODE_VERSION = "2.0.8";
     private OptionParser parser;
     private OptionSet options;
     public final Reporter reporter = new Reporter();
@@ -41,6 +45,11 @@ public class Main {
     }
 
     Main(String[] args) {
+
+//        args = new String[]{"--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/node1"};
+
+        Config.forceInit(Contract.class);
+
         parser = new OptionParser() {
             {
                 acceptsAll(asList("?", "h", "help"), "show help").forHelp();
@@ -56,8 +65,7 @@ public class Main {
             options = parser.parse(args);
             if (options.has("nolog")) {
                 logger.interceptStdOut();
-            }
-            else
+            } else
                 logger.printTo(System.out, false);
 //            logger.printTo(System.out, false);
 
@@ -76,6 +84,10 @@ public class Main {
             log("Starting the client HTTP server...");
             startClientHttpServer();
 
+            log("--------------- step 4 --------------------");
+            log("Starting the Universa node service...");
+            startNode();
+
             log("all initialization is done -----------------------------------");
             startAndWaitEnd();
         } catch (OptionException e) {
@@ -93,10 +105,33 @@ public class Main {
     }
 
     public NetConfig netConfig;
+    public NetworkV2 network;
+    public final Config config = new Config();
 
     private void loadNetConfig() throws IOException {
         netConfig = new NetConfig(configRoot + "/config/nodes");
         log("Network configuration is loaded from " + configRoot + ", " + netConfig.size() + " nodes.");
+    }
+
+    private void startNode() throws SQLException, IOException {
+        PostgresLedger ledger = new PostgresLedger(settings.getStringOrThrow("database"));
+        log("ledger constructed");
+
+        int n = netConfig.size();
+        int negative = (int) Math.round(n * 0.11);
+        if (negative < 1)
+            negative = 1;
+        int positive = (int) Math.round(n * 0.90);
+        if (negative >= positive)
+            throw new IllegalArgumentException("bad consensus for the network: " + negative + "/" + positive);
+        log("Metwork consensus is set to: " + negative + " / " + positive);
+        config.setPositiveConsensus(positive);
+        config.setNegativeConsensus(negative);
+        network = new NetworkV2(netConfig, myInfo, nodeKey);
+        node = new Node(config, myInfo, ledger, network);
+        cache = node.getCache();
+        clientHTTPServer.setNode(node);
+        clientHTTPServer.setCache(cache);
     }
 
     /**
@@ -179,14 +214,8 @@ public class Main {
     private ClientHTTPServer clientHTTPServer;
 
     public Node node;
-    public final Config config = new Config();
     public ItemCache cache = new ItemCache(Duration.ofMinutes(30));
 
-    private void setupNode() {
-        config.setNegativeConsensus(1);
-        config.setPositiveConsensus(1);
-//        node = new Node(config, )
-    }
 
     private void startClientHttpServer() throws Exception {
         log("prepare to start client HTTP server on " + settings.getIntOrThrow("http_client_port"));

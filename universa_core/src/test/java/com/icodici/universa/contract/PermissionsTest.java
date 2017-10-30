@@ -17,7 +17,6 @@ import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.HashSet;

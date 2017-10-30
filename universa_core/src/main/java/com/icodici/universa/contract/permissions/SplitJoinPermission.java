@@ -12,6 +12,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
@@ -28,6 +29,7 @@ import static java.util.Arrays.asList;
  * permission could be used more than once allowing for different roles to change in different range and directions.
  */
 
+@BiType(name="SplitJoinPermission")
 public class SplitJoinPermission extends Permission {
 
     private Decimal minValue;
