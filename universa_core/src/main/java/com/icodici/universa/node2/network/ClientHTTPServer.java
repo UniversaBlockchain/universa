@@ -89,6 +89,11 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("approve", this::approve);
+        addSecureEndpoint("throw_error", this::throw_error);
+    }
+
+    private Binder throw_error(Binder binder, Session session) throws IOException {
+        throw new IOException("just a test");
     }
 
     private Binder approve(Binder params, Session session) throws IOException {
