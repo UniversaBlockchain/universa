@@ -217,8 +217,17 @@ public class CLIMain {
 
                 List<Wallet> wallets = Wallet.determineWallets(new ArrayList<>(allFoundContracts.values()));
 
-                printWallets(wallets);
-                printContracts(allFoundContracts);
+                if(wallets.size() > 0) {
+                    printWallets(wallets);
+                } else {
+                    report("No wallets found");
+                }
+
+                if(allFoundContracts.size() > 0) {
+                    printContracts(allFoundContracts);
+                } else {
+                    report("No contracts found");
+                }
 
                 finish();
             }
@@ -242,12 +251,16 @@ public class CLIMain {
                     HashMap<String, Contract> contracts = findContracts(source, options.has("r"));
 
                     report("");
-                    report("Checking loaded contracts");
-                    report("---");
-                    for (String key : contracts.keySet()) {
-                        report("Checking contract at " + key);
-                        checkContract(contracts.get(key));
+                    if(contracts.size() > 0) {
+                        report("Checking loaded contracts");
                         report("---");
+                        for (String key : contracts.keySet()) {
+                            report("Checking contract at " + key);
+                            checkContract(contracts.get(key));
+                            report("---");
+                        }
+                    } else {
+                        report("No contracts found");
                     }
                 }
 
@@ -309,9 +322,9 @@ public class CLIMain {
     }
 
     /**
-     * Check contract for errors. Print erors if found.
+     * Check contract for errors. Print errors if found.
      *
-     * @param contract - contarct to check.
+     * @param contract - contract to check.
      *
      */
     private static void checkContract(Contract contract) {
@@ -691,18 +704,26 @@ public class CLIMain {
         HashMap<String, Contract> foundContracts = new HashMap<>();
         List<File> foundContractFiles = new ArrayList<>();
 
-        fillWithContractsFiles(foundContractFiles, path, recursively);
+        File pathFile = new File(path);
 
-        Contract contract;
-        for (File file : foundContractFiles) {
-            try {
-                contract = loadContract(file.getAbsolutePath());
-                foundContracts.put(file.getAbsolutePath(), contract);
-            } catch (RuntimeException e) {
-                addError(Errors.BAD_VALUE.name(), "", e.getMessage());
-            } catch (IOException e) {
-                addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+        if(pathFile.exists()) {
+
+            fillWithContractsFiles(foundContractFiles, path, recursively);
+
+            Contract contract;
+            for (File file : foundContractFiles) {
+                try {
+                    contract = loadContract(file.getAbsolutePath());
+                    foundContracts.put(file.getAbsolutePath(), contract);
+                } catch (RuntimeException e) {
+                    addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+                } catch (IOException e) {
+                    addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+                }
             }
+        } else {
+            addError("-1", "", "Path " + path + " does not exist");
+            usage("Path " + path + " does not exist");
         }
         return foundContracts;
     }
