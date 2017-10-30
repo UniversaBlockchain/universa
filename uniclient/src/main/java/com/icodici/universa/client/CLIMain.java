@@ -702,7 +702,8 @@ public class CLIMain {
                 }
             }
         } else {
-            addError("0", "", "Path does not exist");
+            addError("-1", "", "Path " + path + " does not exist");
+            usage("Path " + path + " does not exist");
         }
         return foundContracts;
     }
