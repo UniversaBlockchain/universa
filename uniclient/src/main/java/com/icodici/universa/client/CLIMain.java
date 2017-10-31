@@ -216,11 +216,22 @@ public class CLIMain {
                     if (updateFieldsHashMap.size() > 0) {
                         updateFields(contract, updateFieldsHashMap);
                     }
+
+
                     if (extractKeyRole != null) {
+                        if(name == null) {
+                            name = source.replaceAll("\\.(unicon)$", ".pub");
+                        }
                         exportPublicKeys(contract, extractKeyRole, name);
                     } else if (extractFields != null && extractFields.size() > 0) {
+                        if(name == null) {
+                            name = source.replaceAll("\\.(unicon)$", "_fields." + format);
+                        }
                         exportFields(contract, extractFields, name, format, options.has("pretty"));
                     } else {
+                        if(name == null) {
+                            name = source.replaceAll("\\.(unicon)$", "." + format);
+                        }
                         exportContract(contract, name, format, options.has("pretty"));
                     }
                 }
@@ -233,9 +244,8 @@ public class CLIMain {
 
                 if(contract != null) {
                     String name = (String) options.valueOf("name");
-                    if (name == null) {
-                        File file = new File(source);
-                        name = file.getParent() + "/Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
+                    if(name == null) {
+                        name = source.replaceAll("\\.(json|xml|yml|yaml)$", ".unicon");
                     }
                     saveContract(contract, name);
                 }
@@ -287,13 +297,6 @@ public class CLIMain {
             if (options.has("ch")) {
                 String source = (String) options.valueOf("ch");
 
-//                if (options.has("binary")) {
-//                    // TODO: load bytes from source and check it in the checkBytesIsValidContract()
-//                    Contract contract = Contract.fromDslFile(source);
-//                    keysMap().values().forEach(k -> contract.addSignerKey(k));
-//                    byte[] data = contract.seal();
-//                    checkBytesIsValidContract(data);
-//                } else {
                 HashMap<String, Contract> contracts = findContracts(source, options.has("r"));
 
                 report("");
@@ -575,7 +578,7 @@ public class CLIMain {
             String jsonString = gson.toJson(binder);
             data = jsonString.getBytes();
         }
-        try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
+        try (FileOutputStream fs = new FileOutputStream(fileName)) {
             fs.write(data);
             fs.close();
         }
@@ -596,7 +599,7 @@ public class CLIMain {
             if (testMode && testRootPath != null) {
                 fileName = testRootPath + "Universa_" + roleName + "_public_key";
             } else {
-                fileName = "Universa_" + roleName + "_public_key";
+                fileName = "Universa_" + roleName + "_public_key.pub";
             }
         }
 
@@ -610,7 +613,8 @@ public class CLIMain {
             for (PublicKey key : keys) {
                 index++;
                 data = key.pack();
-                try (FileOutputStream fs = new FileOutputStream(fileName + "_" + index + ".pub")) {
+                String name = fileName.replaceAll("\\.(pub)$", "_key_" + roleName + "_" + index + ".pub");
+                try (FileOutputStream fs = new FileOutputStream(name)) {
                     fs.write(data);
                     fs.close();
                 }
@@ -682,7 +686,7 @@ public class CLIMain {
                 String jsonString = gson.toJson(binder);
                 data = jsonString.getBytes();
             }
-            try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
+            try (FileOutputStream fs = new FileOutputStream(fileName)) {
                 fs.write(data);
                 fs.close();
             }

@@ -125,7 +125,7 @@ public class CLIMainTest  {
     @Test
     public void exportAsXMLTest() throws Exception {
         callMain(
-                "-e", rootPath + "simple_root_contract_v2.unicon", "-as", "xml");
+                "-e", rootPath + "contract_to_export.unicon", "-as", "xml");
         System.out.println(output);
         assert(output.indexOf("export as xml ok") >= 0);
         assertEquals(0, errors.size());
@@ -134,7 +134,7 @@ public class CLIMainTest  {
     @Test
     public void exportAsYamlTest() throws Exception {
         callMain(
-                "-e", rootPath + "simple_root_contract_v2.unicon", "-as", "yaml");
+                "-e", rootPath + "contract_to_export.unicon", "-as", "yaml");
         System.out.println(output);
         assert(output.indexOf("export as yaml ok") >= 0);
         assertEquals(0, errors.size());
@@ -142,7 +142,7 @@ public class CLIMainTest  {
 
     @Test
     public void exportWithNameTest() throws Exception {
-        String name = "ExportedContract";
+        String name = "ExportedContract.json";
         callMain(
                 "-e", rootPath + "contract_to_export.unicon", "-name", rootPath + name);
         System.out.println(output);
