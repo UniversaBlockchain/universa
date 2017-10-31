@@ -97,6 +97,10 @@ public class Reporter {
         }
     }
 
+    public void warning(String msg) {
+        message(msg);
+    }
+
     /**
      * Get collected report as a Binder object.
      *

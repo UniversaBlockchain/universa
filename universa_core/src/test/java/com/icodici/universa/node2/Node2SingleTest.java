@@ -454,7 +454,6 @@ public class Node2SingleTest extends TestCase {
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
-
     private void init(int posCons, int negCons) throws IOException, SQLException {
         config = new Config();
 

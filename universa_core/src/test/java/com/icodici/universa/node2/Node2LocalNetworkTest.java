@@ -8,9 +8,11 @@
 package com.icodici.universa.node2;
 
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.After;
 import org.junit.Test;
@@ -170,6 +172,18 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         assertEquals(ItemState.APPROVED, node.checkItem(ok.getId()).state);
         assertEquals(ItemState.DECLINED, node.checkItem(bad.getId()).state);
     }
+
+    @Test
+    public void badmodify2ContractCase() throws Exception {
+        byte[] packed = Do.read("src/test_contracts/badmodify2.unicon");
+        Contract c = new Contract(packed);
+        node.registerItem(c);
+        System.out.println(c.getId().toBase64String());
+        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+
 //
 //
 //    @Test

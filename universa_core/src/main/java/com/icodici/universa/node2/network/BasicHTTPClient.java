@@ -106,6 +106,7 @@ public class BasicHTTPClient {
 
         if (!result.getStringOrThrow("status").equals("OK"))
             throw new ConnectionFailedException("" + result);
+
     }
 
     public void restart() throws IOException {

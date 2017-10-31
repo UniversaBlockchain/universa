@@ -14,7 +14,7 @@ public class RegexMatcher extends BaseMatcher {
 
     public boolean matches(Object o){
         Pattern pn = Pattern.compile(regex, Pattern.MULTILINE | Pattern.DOTALL);
-        return pn.matcher((CharSequence)o).matches();
+        return pn.matcher((CharSequence)o).find();
     }
 
     public void describeTo(Description description){

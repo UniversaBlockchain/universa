@@ -48,5 +48,6 @@ public enum Errors {
     BAD_CLIENT_KEY,
     UNKNOWN_COMMAND,
     NOT_READY,
+    NOT_FOUND,
     COMMAND_FAILED
 }

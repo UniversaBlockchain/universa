@@ -1,87 +1,94 @@
 package com.icodici.universa.client;
 
-import com.icodici.universa.node.network.UniversaHTTPClient;
-import net.sergeych.boss.Boss;
-import net.sergeych.tools.Binder;
+import com.icodici.universa.HashId;
+import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node2.network.Client;
+import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClientNetwork {
 
-    private Binder netConfig;
+    static Reporter reporter = CLIMain.getReporter();
 
-    ArrayList<UniversaHTTPClient> clients = new ArrayList<>();
+    Client client;
 
-    public ClientNetwork() {
-        try {
-            byte[] bytes = Do.read(getClass()
-                                           .getClassLoader()
-                                           .getResourceAsStream("config/ndata.boss")
-            );
-            netConfig = Boss.unpack(bytes);
-
-            netConfig.forEach((nodeId, o) -> {
-                Binder nodeData = (Binder) o;
-                String host = nodeData.getStringOrThrow("ip");
-                int port = nodeData.getIntOrThrow("client_port");
-                String url = "http://" + host + ":" + port;
-                UniversaHTTPClient client = new UniversaHTTPClient(nodeId, url);
-                clients.add(client);
-            });
-        } catch (IOException e) {
-            throw new RuntimeException("failed to read ndata resource", e);
+    public ClientNetwork() throws IOException {
+        for( int i=1; i<10; i++ ) {
+            try {
+                client = new Client("http://node-" +
+                                            Do.randomIntInRange(1, 10) +
+                                            "-com.universa.io:8080", CLIMain.getPrivateKey());
+                break;
+            }
+            catch(IOException e) {
+                reporter.warning("failed to read network from node "+i);
+            }
         }
+        if( client == null )
+            throw new IOException("failed to connect to to the universa network");
+        reporter.verbose("Read Universa network configuration: "+client.size()+" nodes");
+        reporter.verbose("Network version: "+client.getVersion());
     }
 
+    public ItemResult register(byte[] packedContract) throws ClientError {
+        return client.register(packedContract);
+    }
 
-    private void addNode(String name) {
-        Yaml yaml = new Yaml();
+    public ItemResult check(String base64Id) throws ClientError {
+        return client.getState(HashId.withDigest(base64Id));
     }
 
     public int size() {
-        return netConfig.size();
+        return client.size();
     }
 
     public int checkNetworkState(Reporter reporter) {
         ExecutorService es = Executors.newCachedThreadPool();
         ArrayList<Future<?>> futures = new ArrayList<>();
         AtomicInteger okNodes = new AtomicInteger(0);
-        clients.forEach(client -> {
+        List<Client.NodeRecord> nodes = client.getNodes();
+        for( int nn=0; nn<client.size(); nn++) {
+            final int nodeNumber = nn;
             futures.add(
                     es.submit(() -> {
-                        try {
-                            reporter.verbose("checking " + client);
-                            UniversaHTTPClient.Answer answer = client.request("ping", "foo", "bar");
-                            if (answer.code == 200) {
-                                reporter.verbose(client.toString() + " OK");
-                                int cnt = okNodes.incrementAndGet();
-                                reporter.progress("" + cnt);
-//                                answer = client.request("network");
-                                return;
+                            for( int i=0; i<5; i++) {
+                                if (client.ping(i)) {
+                                    okNodes.getAndIncrement();
+                                    break;
+                                }
+                                try {
+                                    reporter.verbose("retrying node " + i);
+                                    Thread.sleep(750);
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                }
                             }
-                        } catch (IOException e) {
-                            reporter.error("CONNECTION_FAILED", client.toString(), "connection failed: " + e);
-                        }
                     })
             );
-        });
+        }
         futures.forEach(f -> {
             try {
                 f.get(4, TimeUnit.SECONDS);
             } catch (TimeoutException e) {
-                reporter.verbose("timout");
+                reporter.verbose("node test is timed out");
                 f.cancel(true);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
         es.shutdown();
-        return okNodes.get();
+        int n = okNodes.get();
+        if( n >= client.size() * 0.12 )
+            reporter.message("Universa network is active, "+n+" node(s) are reachable");
+        else
+            reporter.error("NOT_READY", "network", "Universa network is temporarily inaccessible, reachable nodes: "+n);
+        return n;
     }
 }

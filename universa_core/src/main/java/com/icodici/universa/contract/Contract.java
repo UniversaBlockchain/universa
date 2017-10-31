@@ -976,6 +976,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return result;
     }
 
+    public static Contract fromSealedFile(String contractFileName) throws IOException {
+        return new Contract(Do.read(contractFileName));
+    }
+
     public class State {
         private int revision;
         private Binder state;

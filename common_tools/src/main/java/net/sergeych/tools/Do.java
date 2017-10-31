@@ -79,7 +79,6 @@ public class Do {
         if (prng == null) {
             try {
                 prng = SecureRandom.getInstance("SHA1PRNG");
-                System.out.println("SHA1PRGN for Do has been created");
             } catch (NoSuchAlgorithmException e) {
                 System.out.println("no SHA1PRNG found");
                 throw new RuntimeException("no suitable RNG found", e);
@@ -89,7 +88,7 @@ public class Do {
     }
 
     /**
-     * get the next integer in [0,max] range using {@link SecureRandom} generator
+     * get the next integer in [0,max[ (max exclusive, zero inclusive) range using {@link SecureRandom} generator
      *
      * @param max
      *
@@ -127,6 +126,10 @@ public class Do {
                 data[i] = (byte) -data[i];
         }
         return data;
+    }
+
+    public static int randomIntInRange(int inclusiveMinimum, int inclusiveMaximum) {
+        return randomInt(inclusiveMaximum - inclusiveMinimum + 1) + inclusiveMinimum;
     }
 
     /**

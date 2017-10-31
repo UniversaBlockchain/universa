@@ -35,6 +35,40 @@ public class Client {
         Config.forceInit(Contract.class);
     }
 
+    private final PrivateKey clientPrivateKey;
+
+    List<Client> clients;
+
+    private String version;
+
+    public final int size() {
+        return nodes.size();
+    }
+
+    public boolean ping(int i) {
+        try {
+            return getClient(i).ping();
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private boolean ping() throws IOException {
+        client.command("sping");
+        return true;
+    }
+
+    Client getClient(int i) throws IOException {
+        Client c = clients.get(i);
+        if( c == null ) {
+            NodeRecord r = nodes.get(i);
+            c = new Client(r.url, clientPrivateKey, r.key);
+        }
+        return c;
+    }
+
     protected interface Executor<T> {
         T execute() throws Exception;
     }
@@ -44,23 +78,30 @@ public class Client {
     public Client(String rootUrlString, PrivateKey clientPrivateKey,
                   PublicKey nodePublicKey) throws IOException {
         client = new BasicHTTPClient(rootUrlString);
+        this.clientPrivateKey = clientPrivateKey;
         client.start(clientPrivateKey, nodePublicKey);
     }
 
     public Client(PrivateKey myPrivateKey, NodeInfo nodeInfo) throws IOException {
         client = new BasicHTTPClient(nodeInfo.publicUrlString());
+        this.clientPrivateKey = myPrivateKey;
         client.start(myPrivateKey, nodeInfo.getPublicKey());
     }
 
     public Client(String someNodeUrl, PrivateKey clientPrivateKey) throws IOException {
+        this.clientPrivateKey = clientPrivateKey;
         loadNetworkFrom(someNodeUrl);
+        clients = new ArrayList<>(size());
+        for(int i=0; i<size(); i++) {
+            clients.add(null);
+        }
         NodeRecord r = Do.sample(nodes);
-        System.out.println("Will try to connecto to the random node: " + r);
+        System.out.println("Will try to connect to to the random node: " + r);
         client = new BasicHTTPClient(r.url);
         client.start(clientPrivateKey, r.key);
     }
 
-    private class NodeRecord {
+    public class NodeRecord {
         public final String url;
         public final PublicKey key;
 
@@ -79,7 +120,15 @@ public class Client {
         }
     }
 
+    public List<NodeRecord> getNodes() {
+        return nodes;
+    }
+
     private List<NodeRecord> nodes = new ArrayList<>();
+
+    public String getVersion() {
+        return version;
+    }
 
     private void loadNetworkFrom(String someNodeUrl) throws IOException {
         URL url = new URL(someNodeUrl + "/network");
@@ -93,10 +142,10 @@ public class Client {
         Binder bres = Boss.unpack((Do.read(connection.getInputStream())))
                 .getBinderOrThrow("response");
         nodes.clear();
-        System.out.println("Remote node version: " + bres.getStringOrThrow("version"));
+        this.version = bres.getStringOrThrow("version");
+
         for (Binder b : bres.getBinders("nodes"))
             nodes.add(new NodeRecord(b));
-        System.out.println(nodes);
     }
 
     public ItemResult register(byte[] packed) throws ClientError {

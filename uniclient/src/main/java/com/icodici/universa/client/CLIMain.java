@@ -7,17 +7,16 @@
 
 package com.icodici.universa.client;
 
-import com.eclipsesource.json.JsonObject;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.Converter;
@@ -42,17 +41,21 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.prefs.Preferences;
 
 import static java.util.Arrays.asList;
 
 public class CLIMain {
 
-    private static final String CLI_VERSION = "2.1.0";
+    private static final String CLI_VERSION = "2.1.1";
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -70,6 +73,7 @@ public class CLIMain {
     static public void main(String[] args) throws IOException {
 //        args = new String[]{"-g", "longkey", "-s", "4096"};
         // when we run untitests, it is important
+        System.out.println(Do.list(args));
         reporter.clear();
         // it could be called more than once from tests
         keyFiles = null;
@@ -90,6 +94,10 @@ public class CLIMain {
                 acceptsAll(asList("j", "json"), "Return result in json format.");
                 acceptsAll(asList("v", "verbose"), "Provide more detailed information.");
                 acceptsAll(asList("network"), "Check network status.");
+                accepts("register", "register a specified contract, must be a sealed binary file")
+                        .withRequiredArg().ofType(String.class).describedAs("contract.unicon");
+                accepts("probe", "query the state of the document in the Universa network")
+                        .withRequiredArg().ofType(String.class).describedAs("base64_id");
                 acceptsAll(asList("k", "keys"), "List of comma-separated private key files to" +
                         "use to sign contract with, if appropriated.")
                         .withRequiredArg().ofType(String.class)
@@ -111,16 +119,17 @@ public class CLIMain {
                 acceptsAll(asList("i", "import"), "Import contract from specified xml, json or yaml file.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file");
-                accepts("name", "Use with -e, --export or -i, --import commands. " +
+                acceptsAll(asList("name", "o"), "Use with -e, --export or -i, --import commands. " +
                         "Specify name of destination file.")
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("filename");
-                accepts("extract-key", "Use with -e, --export command. " +
+                accepts("extract-keys", "Use with -e, --export command. " +
                         "Extracts any public key(s) from specified role into external file.")
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("role");
+                accepts("base64", "with --extract-keys keys to the text base64 format");
                 accepts("get", "Use with -e, --export command. " +
                         "Extracts any field of the contract into external file.")
                         .withRequiredArg()
@@ -182,10 +191,14 @@ public class CLIMain {
             if (options.has("network")) {
                 ClientNetwork n = getClientNetwork();
                 int total = n.size();
-                int active = n.checkNetworkState(reporter);
-                reporter.message("network availablity: " + active + "/" + total);
-                reporter.message("status: suspended for maintenance");
+                n.checkNetworkState(reporter);
                 finish();
+            }
+            if(options.has("register")) {
+                doRegister();
+            }
+            if(options.has("probe")) {
+                doProbe();
             }
             if (options.has("g")) {
                 generateKeyPair();
@@ -205,7 +218,7 @@ public class CLIMain {
                 List updateValues = options.valuesOf("value");
                 HashMap<String, String> updateFieldsHashMap = new HashMap<>();
                 Contract contract = loadContract(source);
-                if(contract != null) {
+                if (contract != null) {
                     try {
                         for (int i = 0; i < updateFields.size(); i++) {
                             updateFieldsHashMap.put((String) updateFields.get(i), (String) updateValues.get(i));
@@ -242,7 +255,7 @@ public class CLIMain {
 
                 Contract contract = importContract(source);
 
-                if(contract != null) {
+                if (contract != null) {
                     String name = (String) options.valueOf("name");
                     if(name == null) {
                         name = source.replaceAll("\\.(json|xml|yml|yaml)$", ".unicon");
@@ -319,7 +332,10 @@ public class CLIMain {
             usage(null);
 
         } catch (OptionException e) {
-            usage("Unrecognized parameter: " + e.getMessage());
+            if( options != null )
+                usage("Unrecognized parameter: " + e.getMessage());
+            else
+                e.printStackTrace();
         } catch (Finished e) {
             if (reporter.isQuiet())
                 System.out.println(reporter.reportJson());
@@ -330,6 +346,75 @@ public class CLIMain {
         }
 
     }
+
+    private static void doRegister() throws IOException {
+        Contract c = Contract.fromSealedFile((String)options.valueOf("register"));
+        List<ErrorRecord> errors = c.getErrors();
+        if( errors.size() > 0 ) {
+            report("conteact has errors and can't be submitted for registration");
+            report("contract id: "+c.getId().toBase64String());
+            addErrors(errors);
+            finish();
+        }
+        report("registering the contract "+c.getId().toBase64String());
+        ItemResult r = getClientNetwork().register(c.getLastSealedBinary());
+        report("submitted with result:");
+        report(r.toString());
+        finish();
+    }
+
+    private static void doProbe() throws IOException {
+        ItemResult ir = getClientNetwork().check((String)options.valueOf("probe"));
+        report("Universa network has reported the state:");
+        report(ir.toString());
+        finish();
+    }
+
+    private static void addErrors(List<ErrorRecord> errors) {
+        errors.forEach(e->addError(e.getError().name(), e.getObjectName(), e.getMessage()));
+    }
+
+    private static PrivateKey privateKey;
+    private static Preferences prefs = Preferences.userRoot();
+
+    static public PrivateKey getPrivateKey() throws IOException {
+        if (privateKey == null) {
+            String keyFileName = prefs.get("privateKeyFile", null);
+            if (keyFileName != null) {
+                reporter.verbose("Loading private key from " + keyFileName);
+                try {
+                    privateKey = new PrivateKey(Do.read(keyFileName));
+                } catch (IOException e) {
+                    reporter.warning("can't read privte Key file: "+keyFileName);
+                }
+
+            }
+            if (privateKey == null) {
+                reporter.warning("\nUser private key is not set, generating new one.");
+                reporter.message("new private key has been generated");
+                privateKey = new PrivateKey(2048);
+
+                Path keysDir = Paths.get(System.getProperty("user.home") + "/.universa");
+                if ( !Files.exists(keysDir) ) {
+                    reporter.verbose("creating new keys directory: " + keysDir.toString());
+                    final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwx------");
+                    final FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(perms);
+                    Files.createDirectory(keysDir,ownerOnly);
+                }
+
+                Path keyFile = keysDir.resolve("main.private.unikey");
+                try (OutputStream out = Files.newOutputStream(keyFile) ) {
+                    out.write(privateKey.pack());
+                }
+                final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
+                Files.setPosixFilePermissions(keyFile,perms);
+                prefs.put("privateKeyFile", keyFile.toString());
+                report("new private key has just been generated and stored to the "+keysDir);
+            }
+        }
+        return privateKey;
+    }
+
 
     private static void printFingerprints() throws IOException {
         Map<String, PrivateKey> kk = keysMap();
@@ -402,8 +487,8 @@ public class CLIMain {
                     report("\t" + canPlay + " " + perm.getName());
                     BufferedReader br = new BufferedReader(new StringReader(yaml.dumpAsMap(perm.getParams())));
                     try {
-                        for( String line; (line = br.readLine()) != null; ) {
-                            report("\t    "+line);
+                        for (String line; (line = br.readLine()) != null; ) {
+                            report("\t    " + line);
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -466,7 +551,7 @@ public class CLIMain {
 
         Contract contract = null;
         File pathFile = new File(sourceName);
-        if(pathFile.exists()) {
+        if (pathFile.exists()) {
 
             Binder binder;
 
@@ -512,7 +597,7 @@ public class CLIMain {
         Contract contract = null;
 
         File pathFile = new File(fileName);
-        if(pathFile.exists()) {
+        if (pathFile.exists()) {
             reporter.verbose("---");
             reporter.verbose("Loading contract from: " + fileName);
             Path path = Paths.get(fileName);
@@ -560,7 +645,7 @@ public class CLIMain {
         Binder binder = contract.serialize(DefaultBiMapper.getInstance().newSerializer());
 
         byte[] data;
-        if("xml".equals(format)) {
+        if ("xml".equals(format)) {
             XStream xstream = new XStream(new DomDriver());
             xstream.registerConverter(new MapEntryConverter());
             xstream.alias("contract", Binder.class);
@@ -583,7 +668,9 @@ public class CLIMain {
             fs.close();
         }
 
-        report(fileName + " export as " + format + " ok");
+
+            report(fileName + " export as " + format + " ok");
+
     }
 
     /**
@@ -973,15 +1060,21 @@ public class CLIMain {
         }
         out.println("\nUniversa client tool, v. " + CLI_VERSION + "\n");
 
-        int columns = (Integer) options.valueOf("term-width");
+        if( options == null )
+            System.err.println("error while parsing command linee");
+        else {
+            Integer columns = (Integer) options.valueOf("term-width");
+            if (columns == null)
+                columns = 120;
 
-        if (text != null)
-            out.println("ERROR: " + text + "\n");
-        try {
-            parser.formatHelpWith(new BuiltinHelpFormatter(columns, 2));
-            parser.printHelpOn(out);
-        } catch (IOException e) {
-            e.printStackTrace();
+            if (text != null)
+                out.println("ERROR: " + text + "\n");
+            try {
+                parser.formatHelpWith(new BuiltinHelpFormatter(columns, 2));
+                parser.printHelpOn(out);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         System.exit(100);
     }
@@ -998,7 +1091,7 @@ public class CLIMain {
         return reporter;
     }
 
-    public static synchronized ClientNetwork getClientNetwork() {
+    public static synchronized ClientNetwork getClientNetwork() throws IOException {
         if (clientNetwork == null)
             clientNetwork = new ClientNetwork();
         return clientNetwork;
@@ -1068,7 +1161,7 @@ public class CLIMain {
             String checkingKey;
             String hasType = "";
             for (String key : map.keySet()) {
-                if("__type".equals(key)) {
+                if ("__type".equals(key)) {
                     hasType = (String) map.get(key);
                     break;
                 }
@@ -1077,20 +1170,20 @@ public class CLIMain {
             switch (hasType) {
                 case MapEntryConverterKnownTypes.UNIXTIME:
                     writer.startNode(hasType);
-                    ZonedDateTime date = ZonedDateTime.ofInstant(Instant.ofEpochSecond((Long)map.get("seconds")),
-                            ZoneOffset.systemDefault());
+                    ZonedDateTime date = ZonedDateTime.ofInstant(Instant.ofEpochSecond((Long) map.get("seconds")),
+                                                                 ZoneOffset.systemDefault());
                     writer.setValue(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss [XXX]").format(date));
                     writer.endNode();
                     break;
 
                 default:
-                    if(checkForKnownTypes(hasType)) {
+                    if (checkForKnownTypes(hasType)) {
                         writer.startNode(hasType);
                     }
                     for (Map.Entry<String, Object> entry : map.entrySet()) {
                         checkingKey = entry.getKey();
                         checkingValue = entry.getValue();
-                        if(!"__type".equals(checkingKey) || !checkForKnownTypes(hasType)) {
+                        if (!"__type".equals(checkingKey) || !checkForKnownTypes(hasType)) {
                             if (!Character.isDigit(checkingKey.charAt(0))) {
                                 writer.startNode(checkingKey);
                             } else {
@@ -1115,7 +1208,7 @@ public class CLIMain {
                             writer.endNode();
                         }
                     }
-                    if(checkForKnownTypes(hasType)) {
+                    if (checkForKnownTypes(hasType)) {
                         writer.endNode();
                     }
 
@@ -1209,7 +1302,6 @@ public class CLIMain {
         static public final String CHANGE_OWNER_PERMISSION = "ChangeOwnerPermission";
         static public final String REVOKE_PERMISSION = "RevokePermission";
         static public final String BINARY = "binary";
-
 
 
     }
