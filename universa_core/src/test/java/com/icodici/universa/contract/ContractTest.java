@@ -35,7 +35,7 @@ public class ContractTest extends ContractTestBase {
 
     @Test
     public void fromYamlFile() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         assertProperSimpleRootContract(c);
 //
 //        Binder s = DefaultBiMapper.serialize(c);
@@ -109,7 +109,7 @@ public class ContractTest extends ContractTestBase {
     public void createFromBinaryWithRealContract() throws Exception {
         String fileName = "./src/test_contracts/simple_root_contract.yml";
 
-        Contract c = Contract.fromYamlFile(fileName);
+        Contract c = Contract.fromDslFile(fileName);
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(c, true);
@@ -130,7 +130,7 @@ public class ContractTest extends ContractTestBase {
     public void createFromSealedWithRealContract() throws Exception {
         String fileName = "./src/test_contracts/subscription.yml";
 
-        Contract c = Contract.fromYamlFile(fileName);
+        Contract c = Contract.fromDslFile(fileName);
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(c, true);
@@ -147,7 +147,7 @@ public class ContractTest extends ContractTestBase {
     public void createFromSealedWithRealContractData() throws Exception {
         String fileName = "./src/test_contracts/subscription_with_data.yml";
 
-        Contract c = Contract.fromYamlFile(fileName);
+        Contract c = Contract.fromDslFile(fileName);
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(c, true);
@@ -178,7 +178,7 @@ public class ContractTest extends ContractTestBase {
 
     @Test
     public void getPath() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.seal();
         assertNull(c.get("state.data.hello.world"));
         assertAlmostSame(ZonedDateTime.now(), c.get("definition.created_at"));
@@ -191,7 +191,7 @@ public class ContractTest extends ContractTestBase {
 
     @Test
     public void serializeToBinder() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         Binder b = BossBiMapper.serialize(c);
         Yaml yaml = new Yaml();
         Contract c1 = DefaultBiMapper.deserialize(b);
@@ -204,7 +204,7 @@ public class ContractTest extends ContractTestBase {
 
     @Test
     public void checkCreatingRootContract() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         boolean ok = c.check();
         assertFalse(ok);
         List<ErrorRecord> errors = c.getErrors();
@@ -234,7 +234,7 @@ public class ContractTest extends ContractTestBase {
 
     @Test
     public void checkSealingRootContract() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         c.check();
         c.traceErrors();
@@ -262,8 +262,8 @@ public class ContractTest extends ContractTestBase {
 
     @Test
     public void shouldFindWithValidReference() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "references/subscriptionReference.yml");
-        Contract c2 = Contract.fromYamlFile(rootPath + "references/subscriptionRoot.yml");
+        Contract c = Contract.fromDslFile(rootPath + "references/subscriptionReference.yml");
+        Contract c2 = Contract.fromDslFile(rootPath + "references/subscriptionRoot.yml");
 
         List<Contract> contracts = c2.extractByValidReference(Arrays.asList(c));
         assertNotNull(contracts);
@@ -272,8 +272,8 @@ public class ContractTest extends ContractTestBase {
 
     @Test
     public void shouldFindWithValidReferenceSeal() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "references/subscriptionReference.yml");
-        Contract c2 = Contract.fromYamlFile(rootPath + "references/subscriptionRoot.yml");
+        Contract c = Contract.fromDslFile(rootPath + "references/subscriptionReference.yml");
+        Contract c2 = Contract.fromDslFile(rootPath + "references/subscriptionRoot.yml");
 
         c = new Contract(c.seal());
         c2 = new Contract(c2.seal());

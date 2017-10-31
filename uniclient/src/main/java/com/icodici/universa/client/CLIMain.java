@@ -88,7 +88,7 @@ public class CLIMain {
                 acceptsAll(asList("v", "verbose"), "Provide more detailed information.");
                 acceptsAll(asList("network"), "Check network status.");
                 acceptsAll(asList("k", "keys"), "List of comma-separated private key files to" +
-                        "use tosign contract with, if appropriated.")
+                        "use to sign contract with, if appropriated.")
                         .withRequiredArg().ofType(String.class)
                         .withValuesSeparatedBy(",").describedAs("key_file");
                 acceptsAll(asList("fingerprints"), "Print fingerprints of keys specified with -k.");
@@ -278,7 +278,7 @@ public class CLIMain {
 
 //                if (options.has("binary")) {
 //                    // TODO: load bytes from source and check it in the checkBytesIsValidContract()
-//                    Contract contract = Contract.fromYamlFile(source);
+//                    Contract contract = Contract.fromDslFile(source);
 //                    keysMap().values().forEach(k -> contract.addSignerKey(k));
 //                    byte[] data = contract.seal();
 //                    checkBytesIsValidContract(data);
@@ -343,7 +343,7 @@ public class CLIMain {
 
     private static void createContract() throws IOException {
         String source = (String) options.valueOf("c");
-        Contract c = Contract.fromYamlFile(source);
+        Contract c = Contract.fromDslFile(source);
         keysMap().values().forEach(k -> c.addSignerKey(k));
         byte[] data = c.seal();
         // try sign
@@ -454,7 +454,7 @@ public class CLIMain {
         File pathFile = new File(sourceName);
         if(pathFile.exists()) {
             if ("yaml".equals(extension) || "yml".equals(extension)) {
-                contract = Contract.fromYamlFile(sourceName);
+                contract = Contract.fromDslFile(sourceName);
             } else {
                 String stringData = "";
 

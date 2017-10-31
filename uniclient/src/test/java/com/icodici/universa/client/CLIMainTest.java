@@ -340,7 +340,7 @@ public class CLIMainTest  {
             saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
         }
 
-        Contract nonCoin = Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
+        Contract nonCoin = Contract.fromDslFile("./src/test_files/simple_root_contract_v2.yml");
         saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unicon");
         saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unicon");
 
@@ -447,7 +447,7 @@ public class CLIMainTest  {
             saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
         }
 
-        Contract nonCoin = Contract.fromYamlFile("./src/test_files/simple_root_contract_v2.yml");
+        Contract nonCoin = Contract.fromDslFile("./src/test_files/simple_root_contract_v2.yml");
         saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unicon");
         saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unicon");
 
@@ -541,7 +541,7 @@ public class CLIMainTest  {
     }
 
     protected Contract createCoin(String yamlFilePath) throws IOException {
-        Contract c = Contract.fromYamlFile(yamlFilePath);
+        Contract c = Contract.fromDslFile(yamlFilePath);
         c.setOwnerKey(ownerKey2);
         return c;
     }

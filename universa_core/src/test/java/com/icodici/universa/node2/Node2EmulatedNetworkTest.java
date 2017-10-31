@@ -438,7 +438,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void createRealContract() throws Exception {
-        Contract c = Contract.fromYamlFile(ROOT_PATH + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
         c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
         assertTrue(c.check());
         c.seal();

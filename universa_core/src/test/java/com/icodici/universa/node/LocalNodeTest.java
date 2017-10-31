@@ -348,7 +348,7 @@ public class LocalNodeTest extends NodeTestCase {
     @Test
     public void createRealContract() throws Exception {
         LocalNode n = createLocalConsensus();
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         assertTrue(c.check());
         c.seal();

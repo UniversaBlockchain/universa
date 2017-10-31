@@ -169,7 +169,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return this;
     }
 
-    public static Contract fromYamlFile(String fileName) throws IOException {
+    public static Contract fromDslFile(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         try (FileReader r = new FileReader(fileName)) {
             Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(r)));

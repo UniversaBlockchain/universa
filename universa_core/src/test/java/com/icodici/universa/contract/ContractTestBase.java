@@ -113,7 +113,7 @@ public class ContractTestBase extends TestCase {
     }
 
     protected Contract createCoin(String yamlFilePath) throws IOException {
-        Contract c = Contract.fromYamlFile(yamlFilePath);
+        Contract c = Contract.fromDslFile(yamlFilePath);
         c.setOwnerKey(ownerKey2);
         return c;
     }

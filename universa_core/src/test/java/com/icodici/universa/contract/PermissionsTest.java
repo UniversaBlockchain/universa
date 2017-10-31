@@ -29,7 +29,7 @@ public class PermissionsTest extends ContractTestBase {
 
     @Test
     public void newRevision() throws Exception {
-        Contract c = Contract.fromYamlFile(ROOT_CONTRACT);
+        Contract c = Contract.fromDslFile(ROOT_CONTRACT);
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         byte[] sealed = c.seal();
         assertTrue(c.check());
@@ -59,7 +59,7 @@ public class PermissionsTest extends ContractTestBase {
 
     @Test
     public void validPermissionIds() throws Exception {
-        Contract c = Contract.fromYamlFile(ROOT_CONTRACT);
+        Contract c = Contract.fromDslFile(ROOT_CONTRACT);
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         byte[] sealed = c.seal();
         assertTrue(c.check());
@@ -69,7 +69,7 @@ public class PermissionsTest extends ContractTestBase {
 
     @Test
     public void changeOwner() throws Exception {
-        Contract c = Contract.fromYamlFile(ROOT_CONTRACT);
+        Contract c = Contract.fromDslFile(ROOT_CONTRACT);
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         c.setOwnerKey(ownerKey1);
@@ -119,7 +119,7 @@ public class PermissionsTest extends ContractTestBase {
 
     @Test
     public void changeNumber() throws Exception {
-        Contract c = Contract.fromYamlFile(SUBSCRIPTION_PATH);
+        Contract c = Contract.fromDslFile(SUBSCRIPTION_PATH);
         c.setOwnerKey(ownerKey2);
 //        c.getPermission("change_value")
 
@@ -355,7 +355,7 @@ public class PermissionsTest extends ContractTestBase {
 
     @Test
     public void testInvalidChild() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
 
         c.setOwnerKey(ownerKey1);
@@ -372,7 +372,7 @@ public class PermissionsTest extends ContractTestBase {
         c2.setOwnerKey(ownerKey3);
 
         // Let's attach a just a bad contract. not properly signed in our case.
-        Contract badc = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract badc = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         badc.addSignerKey(ownerKey1);
         badc.setOwnerKey(ownerKey1);
         badc.seal();
@@ -410,7 +410,7 @@ public class PermissionsTest extends ContractTestBase {
     }
 
     private Contract basicContractCreation(final String fileName, final String keyFileName, final PrivateKey key) throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + fileName);
+        Contract c = Contract.fromDslFile(rootPath + fileName);
         c.setOwnerKey(key);
         c.addSignerKeyFromFile(rootPath + keyFileName);
         c.seal();

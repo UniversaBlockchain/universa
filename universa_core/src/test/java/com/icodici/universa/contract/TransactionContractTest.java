@@ -19,7 +19,7 @@ public class TransactionContractTest extends ContractTestBase {
 
     @Test
     public void badRevoke() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         c.seal();
 
@@ -37,7 +37,7 @@ public class TransactionContractTest extends ContractTestBase {
 
     @Test
     public void goodRevoke() throws Exception {
-        Contract c = Contract.fromYamlFile(rootPath + "simple_root_contract.yml");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
         // let's make this key among owners

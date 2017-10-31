@@ -158,7 +158,7 @@ public class UniversaHTTPServerTest {
         setMicroHTTPDUp();
         universaHTTPServer.start();
 
-        Contract contractToSend = Contract.fromYamlFile("./src/test_contracts/id_1.yml");
+        Contract contractToSend = Contract.fromDslFile("./src/test_contracts/id_1.yml");
 
         Binder binder = BossBiMapper.serialize(contractToSend);
 
@@ -198,7 +198,7 @@ public class UniversaHTTPServerTest {
         universaHTTPServer.start();
 
 
-        Contract contractToSend = Contract.fromYamlFile("./src/test_contracts/id_1.yml");
+        Contract contractToSend = Contract.fromDslFile("./src/test_contracts/id_1.yml");
 
         Binder binder = BossBiMapper.serialize(contractToSend);
 

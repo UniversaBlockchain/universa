@@ -255,7 +255,7 @@ public class ListRoleTest {
 
     @Test
     public void serializeContractWithListRole() throws Exception {
-        Contract c = Contract.fromYamlFile("./src/test_contracts/simple_root_contract.yml");
+        Contract c = Contract.fromDslFile("./src/test_contracts/simple_root_contract.yml");
 
         SimpleRole s1 = new SimpleRole("role");
         ListRole listRole = new ListRole("owner", 1, Do.listOf(s1));
