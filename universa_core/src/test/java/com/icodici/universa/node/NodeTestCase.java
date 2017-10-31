@@ -8,6 +8,7 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.HashId;
+import org.junit.Ignore;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.sql.SQLException;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+@Ignore("outdated vy v2")
 public class NodeTestCase extends TestCase {
     protected Network network;
     protected Ledger ledger;

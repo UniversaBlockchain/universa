@@ -20,8 +20,9 @@ public class DbPool implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
+        threadDb.set(null);
         while( !pool.isEmpty())
-            pool.take().close();
+            pool.take().destroy();
     }
 
     public interface DbConsumer<R> {

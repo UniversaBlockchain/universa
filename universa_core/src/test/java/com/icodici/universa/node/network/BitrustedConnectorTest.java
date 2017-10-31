@@ -13,6 +13,7 @@ import net.sergeych.tools.DeferredResult;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.tools.StreamConnector;
 import org.hamcrest.CoreMatchers;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -25,6 +26,7 @@ import java.util.concurrent.*;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 
+@Ignore("outdated vy v2")
 public class BitrustedConnectorTest {
     ExecutorService pool = Executors.newCachedThreadPool();
 

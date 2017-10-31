@@ -27,8 +27,13 @@ public class ItemLockTest {
         assertEquals(3, count);
         assertEquals(1, ItemLock.size());
         id = null;
-        System.gc();
-        System.runFinalization();
+        for (int i = 0; i < 10; i++) {
+            System.gc();
+            System.runFinalization();
+            if( ItemLock.size() == 0 )
+            break;
+            Thread.sleep(100);
+        }
         assertEquals(0, ItemLock.size());
 
 

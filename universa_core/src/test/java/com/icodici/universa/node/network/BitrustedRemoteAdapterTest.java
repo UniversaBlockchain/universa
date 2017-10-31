@@ -9,6 +9,7 @@ package com.icodici.universa.node.network;
 
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.*;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.junit.Assert.assertEquals;
 
+@Ignore("outdated vy v2")
 public class BitrustedRemoteAdapterTest extends NodeTestCase {
 
     protected List<LocalNode> allNodes = new ArrayList<>();

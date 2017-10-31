@@ -13,6 +13,7 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -27,7 +28,8 @@ import java.util.Properties;
 import java.util.concurrent.TimeoutException;
 
 import static java.util.Arrays.asList;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.*;
 
 public class Node2SingleTest extends TestCase {
@@ -45,6 +47,12 @@ public class Node2SingleTest extends TestCase {
     @Before
     public void setUp() throws Exception {
         init(1, 1);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+//        ledger.close();
+        network.shutdown();
     }
 
     @Test
@@ -298,7 +306,7 @@ public class Node2SingleTest extends TestCase {
 
             // check that main is fully approved
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 100);
+            ItemResult itemResult = node.waitItem(main.getId(), 1500);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
@@ -319,13 +327,18 @@ public class Node2SingleTest extends TestCase {
         node.registerItem(existing1);
         node.registerItem(existing2);
 
+
+        // we need them to be settled first
+        node.waitItem(existing1.getId(), 2000);
+        node.waitItem(existing2.getId(), 2000);
+
         main.addReferencedItems(existing1.getId(), existing2.getId());
         main.addNewItems(new1, new2);
 
         // check that main is fully approved
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 1500);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         assertEquals(ItemState.UNDEFINED, node.checkItem(new1.getId()).state);
@@ -360,27 +373,28 @@ public class Node2SingleTest extends TestCase {
         assertNull(node.getItem(missingId));
     }
 
-    @Test
-    public void approveAndRevoke() throws Exception {
-        TestItem main = new TestItem(true);
-
-        StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
-        existing1.setState(ItemState.APPROVED).save();
-        StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
-        existing2.setState(ItemState.APPROVED).save();
-
-        main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
-
-        // check that main is fully approved
-        node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
-        assertEquals(ItemState.APPROVED, itemResult.state);
-
-        // and the references are intact
-        assertEquals(ItemState.REVOKED, node.checkItem(existing1.getId()).state);
-        assertEquals(ItemState.REVOKED, node.checkItem(existing2.getId()).state);
-    }
-
+    // this test can't be executed in a network as it needs setup in all 3 ledgers
+//    @Test
+//    public void approveAndRevoke() throws Exception {
+//        TestItem main = new TestItem(true);
+//
+//        StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
+//        existing1.setState(ItemState.APPROVED).save();
+//        StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
+//        existing2.setState(ItemState.APPROVED).save();
+//
+//        main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
+//
+//        // check that main is fully approved
+//        node.registerItem(main);
+//        ItemResult itemResult = node.waitItem(main.getId(), 100);
+//        assertEquals(ItemState.APPROVED, itemResult.state);
+//
+//        // and the references are intact
+//        assertEquals(ItemState.REVOKED, node.checkItem(existing1.getId()).state);
+//        assertEquals(ItemState.REVOKED, node.checkItem(existing2.getId()).state);
+//    }
+//
     @Test
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
         for (ItemState badState : Arrays.asList(
@@ -399,7 +413,7 @@ public class Node2SingleTest extends TestCase {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 100);
+            ItemResult itemResult = node.waitItem(main.getId(), 1500);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
@@ -413,19 +427,19 @@ public class Node2SingleTest extends TestCase {
     public void itemsCachedThenPurged() throws Exception {
 
         // todo: rewrite
-//        config.setMaxElectionsTime(Duration.ofMillis(100));
-//
-//        TestItem main = new TestItem(true);
-//        main.setExpiresAtPlusFive(false);
-//
-//        node.registerItem(main);
-//        ItemResult itemResult = node.waitItem(main.getId(), 100);
-//        assertEquals(ItemState.APPROVED, itemResult.state);
-//        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
-//
-//        assertEquals(main, node.getItem(main.getId()));
-//        Thread.sleep(110);
-//        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
+        config.setMaxElectionsTime(Duration.ofMillis(100));
+
+        TestItem main = new TestItem(true);
+        main.setExpiresAtPlusFive(false);
+
+        node.registerItem(main);
+        ItemResult itemResult = node.waitItem(main.getId(), 1500);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
+
+        assertEquals(main, node.getItem(main.getId()));
+        Thread.sleep(500);
+        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
     }
 
     @Test
@@ -436,7 +450,7 @@ public class Node2SingleTest extends TestCase {
         c.seal();
 
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 100);
+        ItemResult itemResult = node.waitItem(c.getId(), 1500);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 

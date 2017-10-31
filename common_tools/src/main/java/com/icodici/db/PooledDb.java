@@ -47,4 +47,8 @@ public class PooledDb extends Db implements AutoCloseable {
         dbPool.returnToPool(this);
 //            System.out.println("back "+this+" pool " + DbPool.this + " left " + pool.maximumConnections);
     }
+
+    public void destroy() {
+        super.close();
+    }
 }

@@ -74,8 +74,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void registerGoodItem() throws Exception {
-        int N = 10;
-        for(int k=0; k<100; k++ ) {
+        int N = 100;
+        for(int k=0; k<1; k++ ) {
 //            StopWatch.measure(true, () -> {
                 for (int i = 0; i < N; i++) {
                     TestItem ok = new TestItem(true);

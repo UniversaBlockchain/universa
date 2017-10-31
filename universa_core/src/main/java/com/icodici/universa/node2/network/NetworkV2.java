@@ -157,4 +157,7 @@ public class NetworkV2 extends Network {
         return message;
     }
 
+    public void shutdown() {
+        adapter.shutdown();
+    }
 }

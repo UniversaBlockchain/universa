@@ -3,11 +3,13 @@ package com.icodici.universa.node;
 import com.icodici.universa.node.network.UniversaHTTPClient;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static com.icodici.universa.RegexMatcher.matches;
 import static org.junit.Assert.*;
 
+@Ignore("outdated vy v2")
 public class NodeStarterTest extends TestCase {
 
 

@@ -12,6 +12,7 @@ import com.icodici.universa.node.*;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.StopWatch;
+import org.junit.After;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -87,6 +88,12 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         node = nodes.values().iterator().next();
     }
 
+    @After
+    public void tearDown() throws Exception {
+        networks.forEach(n->n.shutDown());
+        nodes.forEach((i,n)->n.getLedger().close());
+    }
+
     private List<TestLocalNetwork> networks = new ArrayList<>();
 
     @Test
@@ -116,7 +123,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     public void registerGoodItem() throws Exception {
         int N = 100;
 //        LogPrinter.showDebug(true);
-        for (int k = 0; k < 10000; k++) {
+        for (int k = 0; k < 1; k++) {
             StopWatch.measure(true, () -> {
             for (int i = 0; i < N; i++) {
                 TestItem ok = new TestItem(true);
@@ -158,8 +165,8 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         TestItem bad = new TestItem(false);
         node.registerItem(ok);
         node.registerItem(bad);
-        node.waitItem(ok.getId(), 100);
-        node.waitItem(bad.getId(), 100);
+        node.waitItem(ok.getId(), 1500);
+        node.waitItem(bad.getId(), 1500);
         assertEquals(ItemState.APPROVED, node.checkItem(ok.getId()).state);
         assertEquals(ItemState.DECLINED, node.checkItem(bad.getId()).state);
     }

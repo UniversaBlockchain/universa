@@ -32,6 +32,7 @@ import net.sergeych.tools.Do;
 import net.sergeych.tools.JsonTool;
 import net.sergeych.tools.Reporter;
 import net.sergeych.utils.Base64;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -58,7 +59,7 @@ public class CLIMain {
     private static Reporter reporter = new Reporter();
     private static ClientNetwork clientNetwork;
     private static List<String> keyFileNames = new ArrayList<>();
-    private static Map<String,PrivateKey> keyFiles;
+    private static Map<String, PrivateKey> keyFiles;
 
 
     public static final String AMOUNT_FIELD_NAME = "amount";
@@ -153,13 +154,13 @@ public class CLIMain {
             if (options.has("?")) {
                 usage(null);
             }
-            if( options.has("v")) {
+            if (options.has("v")) {
                 reporter.setVerboseMode(true);
             }
-            if(options.has("k")) {
+            if (options.has("k")) {
                 keyFileNames = (List<String>) options.valuesOf("k");
             }
-            if( options.has("fingerprints") ) {
+            if (options.has("fingerprints")) {
                 printFingerprints();
                 finish();
             }
@@ -250,13 +251,13 @@ public class CLIMain {
 
                 List<Wallet> wallets = Wallet.determineWallets(new ArrayList<>(allFoundContracts.values()));
 
-                if(wallets.size() > 0) {
+                if (wallets.size() > 0) {
                     printWallets(wallets);
                 } else {
                     report("No wallets found");
                 }
 
-                if(allFoundContracts.size() > 0) {
+                if (allFoundContracts.size() > 0) {
                     printContracts(allFoundContracts);
                 } else {
                     report("No contracts found");
@@ -274,7 +275,7 @@ public class CLIMain {
             if (options.has("ch")) {
                 String source = (String) options.valueOf("ch");
 
-                if(options.has("binary")) {
+                if (options.has("binary")) {
                     // TODO: load bytes from source and check it in the checkBytesIsValidContract()
                     Contract contract = Contract.fromYamlFile(source);
                     keysMap().values().forEach(k -> contract.addSignerKey(k));
@@ -284,7 +285,7 @@ public class CLIMain {
                     HashMap<String, Contract> contracts = findContracts(source, options.has("r"));
 
                     report("");
-                    if(contracts.size() > 0) {
+                    if (contracts.size() > 0) {
                         report("Checking loaded contracts");
                         report("---");
                         for (String key : contracts.keySet()) {
@@ -305,7 +306,7 @@ public class CLIMain {
         } catch (OptionException e) {
             usage("Unrecognized parameter: " + e.getMessage());
         } catch (Finished e) {
-            if( reporter.isQuiet())
+            if (reporter.isQuiet())
                 System.out.println(reporter.reportJson());
         } catch (Exception e) {
             e.printStackTrace();
@@ -317,24 +318,24 @@ public class CLIMain {
 
     private static void printFingerprints() throws IOException {
         Map<String, PrivateKey> kk = keysMap();
-        if( kk.isEmpty() )
+        if (kk.isEmpty())
             report("please specify at least one key file with --fingerprints");
         else {
-            kk.forEach((name, key)->{
+            kk.forEach((name, key) -> {
                 report("Fingerprints:");
-                report(name+"\t"+ Base64.encodeCompactString(key.fingerprint()));
+                report(name + "\t" + Base64.encodeCompactString(key.fingerprint()));
             });
         }
     }
 
     private static void anonymousKeyPrints() throws IOException {
         Map<String, PrivateKey> kk = keysMap();
-        if( kk.isEmpty() )
+        if (kk.isEmpty())
             report("please specify at least one key file with --fingerprints");
         else {
-            kk.forEach((name, key)->{
+            kk.forEach((name, key) -> {
                 report("Anonymous key prints:");
-                report(name+"\t"+ Base64.encodeCompactString(key.fingerprint()));
+                report(name + "\t" + Base64.encodeCompactString(key.fingerprint()));
             });
         }
     }
@@ -358,15 +359,15 @@ public class CLIMain {
      * Check contract for errors. Print errors if found.
      *
      * @param contract - contract to check.
-     *
      */
     private static void checkContract(Contract contract) {
         // First, check the sealed state
-        if( !contract.isOk() ) {
+        if (!contract.isOk()) {
             reporter.message("The capsule is not sealed properly:");
-            contract.getErrors().forEach(e->reporter.error(e.getError().toString(), e.getObjectName(), e.getMessage()));
+            contract.getErrors().forEach(e -> reporter.error(e.getError().toString(), e.getObjectName(), e.getMessage()));
         }
-        if( options.has("verbose")) {
+        Yaml yaml = new Yaml();
+        if (options.has("verbose")) {
             Set<PublicKey> keys = contract.getSealedByKeys();
             if (keys.size() > 0) {
                 report("\nSignature contains " + keys.size() + " valid key(s):\n");
@@ -377,9 +378,22 @@ public class CLIMain {
                 report("\nWhich can play roles:\n");
                 contract.getRoles().forEach((name, role) -> {
                     String canPlay = role.isAllowedForKeys(keys) ? "✔" : "✘";
-                    report("\t " + canPlay + " " + role.getName());
+                    report("\t" + canPlay + " " + role.getName());
                 });
 
+                report("\nAnd have permissions:\n");
+                contract.getPermissions().values().forEach(perm -> {
+                    String canPlay = perm.isAllowedForKeys(keys) ? "✔" : "✘";
+                    report("\t" + canPlay + " " + perm.getName());
+                    BufferedReader br = new BufferedReader(new StringReader(yaml.dumpAsMap(perm.getParams())));
+                    try {
+                        for( String line; (line = br.readLine()) != null; ) {
+                            report("\t    "+line);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
 
                 report("\n");
             }
@@ -389,7 +403,7 @@ public class CLIMain {
         contract.getErrors().forEach(error -> {
             addError(error.getError().toString(), error.getObjectName(), error.getMessage());
         });
-        if(contract.getErrors().size() == 0) {
+        if (contract.getErrors().size() == 0) {
             report("Contract is valid");
         }
     }
@@ -400,14 +414,13 @@ public class CLIMain {
      * @param data - data to check.
      *
      * @return true if bytes is Contract and Contract is valid.
-     *
      */
     private static Boolean checkBytesIsValidContract(byte[] data) {
         try {
             Contract contract = new Contract(data);
-            if( !contract.isOk() ) {
+            if (!contract.isOk()) {
                 reporter.message("The capsule is not sealed");
-                contract.getErrors().forEach(e->reporter.error(e.getError().toString(), e.getObjectName(), e.getMessage()));
+                contract.getErrors().forEach(e -> reporter.error(e.getError().toString(), e.getObjectName(), e.getMessage()));
             }
             checkContract(contract);
         } catch (RuntimeException e) {
@@ -515,15 +528,13 @@ public class CLIMain {
      *
      * @param contract - contract to export.
      * @param fileName - name of file to export to.
-     * @param format - format of file to export to. Can be xml or json.
-     *
+     * @param format   - format of file to export to. Can be xml or json.
      */
     private static void exportContract(Contract contract, String fileName, String format) throws IOException {
         report("export format: " + format);
 
-        if (fileName == null)
-        {
-            if(testMode && testRootPath != null) {
+        if (fileName == null) {
+            if (testMode && testRootPath != null) {
                 fileName = testRootPath + "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
             } else {
                 fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
@@ -560,13 +571,11 @@ public class CLIMain {
      * @param contract - contract to export.
      * @param roleName - from which role keys should be exported.
      * @param fileName - name of file to export to.
-     *
      */
     private static void exportPublicKeys(Contract contract, String roleName, String fileName) throws IOException {
 
-        if (fileName == null)
-        {
-            if(testMode && testRootPath != null) {
+        if (fileName == null) {
+            if (testMode && testRootPath != null) {
                 fileName = testRootPath + "Universa_" + roleName + "_public_key";
             } else {
                 fileName = "Universa_" + roleName + "_public_key";
@@ -575,7 +584,7 @@ public class CLIMain {
 
         Role role = contract.getRole(roleName);
 
-        if(role != null) {
+        if (role != null) {
             Set<PublicKey> keys = role.getKeys();
 
             int index = 0;
@@ -598,18 +607,16 @@ public class CLIMain {
     /**
      * Export fields from specified contract.
      *
-     * @param contract - contract to export.
+     * @param contract   - contract to export.
      * @param fieldNames - list of field names to export.
-     * @param fileName - name of file to export to.
-     * @param format - format of file to export to. Can be xml or json.
-     *
+     * @param fileName   - name of file to export to.
+     * @param format     - format of file to export to. Can be xml or json.
      */
     private static void exportFields(Contract contract, List<String> fieldNames, String fileName, String format) throws IOException {
         report("export format: " + format);
 
-        if (fileName == null)
-        {
-            if(testMode && testRootPath != null) {
+        if (fileName == null) {
+            if (testMode && testRootPath != null) {
                 fileName = testRootPath + "Universa_fields_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
             } else {
                 fileName = "Universa_fields_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
@@ -624,7 +631,7 @@ public class CLIMain {
                 hm.put(fieldName, contract.get(fieldName));
             }
 
-            Binder binder =  DefaultBiMapper.getInstance().newSerializer().serialize(hm);
+            Binder binder = DefaultBiMapper.getInstance().newSerializer().serialize(hm);
 
             byte[] data;
             if ("xml".equals(format)) {
@@ -655,13 +662,12 @@ public class CLIMain {
      * Update fields for specified contract.
      *
      * @param contract - contract for update.
-     * @param fields - map of field names and values.
-     *
+     * @param fields   - map of field names and values.
      */
     private static void updateFields(Contract contract, HashMap<String, String> fields) throws IOException {
 
         for (String fieldName : fields.keySet()) {
-            report("update field: " + fieldName + " -> " + fields.get(fieldName) );
+            report("update field: " + fieldName + " -> " + fields.get(fieldName));
 
             Binder binder = new Binder();
             Binder data = null;
@@ -680,7 +686,7 @@ public class CLIMain {
                 }
             }
 
-            if(data != null) {
+            if (data != null) {
                 BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
 
                 binder.put("data", bm.deserialize(data));
@@ -701,11 +707,9 @@ public class CLIMain {
      *
      * @param contract - contract for update.
      * @param fileName - name of file to save to.
-     *
      */
     private static void saveContract(Contract contract, String fileName) throws IOException {
-        if (fileName == null)
-        {
+        if (fileName == null) {
             fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
         }
 
@@ -753,7 +757,7 @@ public class CLIMain {
 
         File pathFile = new File(path);
 
-        if(pathFile.exists()) {
+        if (pathFile.exists()) {
 
             fillWithContractsFiles(foundContractFiles, path, recursively);
 
@@ -791,7 +795,7 @@ public class CLIMain {
 
     /**
      * Fill given List with contract files, found in given path recursively.
-     *
+     * <p>
      * Does not return new Lists but put found files into the given List for optimisation purposes.
      *
      * @param foundContractFiles
@@ -800,7 +804,7 @@ public class CLIMain {
     private static void fillWithContractsFiles(List<File> foundContractFiles, String path, Boolean recursively) {
         File pathFile = new File(path);
 
-        if(pathFile.exists()) {
+        if (pathFile.exists()) {
             ContractFilesFilter filter = new ContractFilesFilter();
             DirsFilter dirsFilter = new DirsFilter();
 
@@ -808,7 +812,7 @@ public class CLIMain {
                 File[] foundFiles = pathFile.listFiles(filter);
                 foundContractFiles.addAll(Arrays.asList(foundFiles));
 
-                if(recursively) {
+                if (recursively) {
                     File[] foundDirs = pathFile.listFiles(dirsFilter);
                     for (File file : foundDirs) {
                         fillWithContractsFiles(foundContractFiles, file.getPath(), true);
@@ -826,14 +830,13 @@ public class CLIMain {
      * Just print wallets info to console.
      *
      * @param wallets
-     *
      */
     private static void printWallets(List<Wallet> wallets) {
         reporter.message("---");
         reporter.message("");
 
         List<Contract> foundContracts = new ArrayList<>();
-        for(Wallet wallet : wallets) {
+        for (Wallet wallet : wallets) {
             foundContracts.addAll(wallet.getContracts());
 
             reporter.message("found wallet: " + wallet.toString());
@@ -846,22 +849,22 @@ public class CLIMain {
                 try {
                     numcoins = contract.getStateData().getIntOrThrow(AMOUNT_FIELD_NAME);
                     currency = contract.getDefinition().getData().getOrThrow("currency_code");
-                    if(balance.containsKey(currency)) {
+                    if (balance.containsKey(currency)) {
                         balance.replace(currency, balance.get(currency) + numcoins);
                     } else {
                         balance.put(currency, numcoins);
                     }
                     reporter.verbose("found coins: " +
-                            contract.getDefinition().getData().getOrThrow("name") +
-                            " -> " + numcoins + " (" + currency + ") ");
+                                             contract.getDefinition().getData().getOrThrow("name") +
+                                             " -> " + numcoins + " (" + currency + ") ");
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
             reporter.verbose("");
-            reporter.message("total in the wallet: " );
+            reporter.message("total in the wallet: ");
             for (String c : balance.keySet()) {
-                reporter.message( balance.get(c) + " (" + c + ") ");
+                reporter.message(balance.get(c) + " (" + c + ") ");
             }
         }
     }
@@ -870,7 +873,6 @@ public class CLIMain {
      * Just print contracts info to console.
      *
      * @param contracts
-     *
      */
     private static void printContracts(HashMap<String, Contract> contracts) {
         reporter.verbose("");
@@ -881,10 +883,10 @@ public class CLIMain {
         for (String key : contracts.keySet()) {
             try {
                 reporter.verbose(key + ": " +
-                        "contract created at " +
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contracts.get(key).getCreatedAt()) +
-                        ": " +
-                        contracts.get(key).getDefinition().getData().getString("description")
+                                         "contract created at " +
+                                         DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contracts.get(key).getCreatedAt()) +
+                                         ": " +
+                                         contracts.get(key).getDefinition().getData().getString("description")
                 );
             } catch (Exception e) {
                 e.printStackTrace();
@@ -902,7 +904,7 @@ public class CLIMain {
     }
 
     private static void addError(String code, String object, String message) {
-        reporter.error(code,object,message);
+        reporter.error(code, object, message);
     }
 
     private static void generateKeyPair() throws IOException {
@@ -924,7 +926,7 @@ public class CLIMain {
         if (text != null)
             out.println("ERROR: " + text + "\n");
         try {
-            parser.formatHelpWith(new BuiltinHelpFormatter(110,1));
+            parser.formatHelpWith(new BuiltinHelpFormatter(110, 1));
             parser.printHelpOn(out);
         } catch (IOException e) {
             e.printStackTrace();
@@ -945,15 +947,15 @@ public class CLIMain {
     }
 
     public static synchronized ClientNetwork getClientNetwork() {
-        if( clientNetwork == null )
+        if (clientNetwork == null)
             clientNetwork = new ClientNetwork();
         return clientNetwork;
     }
 
-    public static synchronized Map<String,PrivateKey> keysMap() throws IOException {
-        if( keyFiles == null ) {
+    public static synchronized Map<String, PrivateKey> keysMap() throws IOException {
+        if (keyFiles == null) {
             keyFiles = new HashMap<>();
-            for(String fileName: keyFileNames) {
+            for (String fileName : keyFileNames) {
                 PrivateKey pk = new PrivateKey(Do.read(fileName));
                 keyFiles.put(fileName, pk);
             }
@@ -974,7 +976,7 @@ public class CLIMain {
         public boolean accept(File pathname) {
             String extension = getExtension(pathname);
             for (String unc : extensions) {
-                if(unc.equals(extension)) {
+                if (unc.equals(extension)) {
                     return true;
                 }
             }
@@ -984,8 +986,8 @@ public class CLIMain {
         private String getExtension(File pathname) {
             String filename = pathname.getPath();
             int i = filename.lastIndexOf('.');
-            if ( i>0 && i<filename.length()-1 ) {
-                return filename.substring(i+1).toLowerCase();
+            if (i > 0 && i < filename.length() - 1) {
+                return filename.substring(i + 1).toLowerCase();
             }
             return "";
         }

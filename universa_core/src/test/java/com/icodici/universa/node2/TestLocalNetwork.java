@@ -151,4 +151,8 @@ public class TestLocalNetwork extends Network {
     public void setNodes(Map<NodeInfo, Node> nodes) {
         this.nodes = nodes;
     }
+
+    public void shutDown() {
+        adapter.shutdown();
+    }
 }

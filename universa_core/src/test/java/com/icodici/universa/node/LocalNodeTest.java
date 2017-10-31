@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
  *
- * Written by Sergey Chernov <real.sergeych@gmail.com>, August 2017.
+ * Written by Sergey Chernov <real.sergeych@gmail.com>
  *
  */
 
@@ -10,6 +10,7 @@ package com.icodici.universa.node;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -22,6 +23,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.*;
 
+@Ignore("outdated vy v2")
 public class LocalNodeTest extends NodeTestCase {
 
     @Test

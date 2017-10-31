@@ -15,20 +15,19 @@ import com.icodici.universa.node.TestCase;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import org.junit.Ignore;
 import org.junit.Test;
 
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
-import java.lang.management.ManagementFactory;
+import static org.junit.Assert.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
+@Ignore("outdated vy v2")
 public class ClientEndpointTest extends TestCase {
 
     private static final int DEFAULT_PORT = 17173;

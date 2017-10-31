@@ -3,10 +3,12 @@ package com.icodici.universa.node.benchmark;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.PostgresLedgerTest;
 import net.sergeych.tools.BufferedLogger;
+import org.junit.Ignore;
 
 import java.util.Map;
 import java.util.Random;
 
+@Ignore("outdated vy v2")
 public class TPSTestTest {
 
     private static final int contractsPerStep = 5000;

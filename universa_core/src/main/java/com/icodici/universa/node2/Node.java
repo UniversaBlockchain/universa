@@ -249,6 +249,10 @@ public class Node {
         return cache;
     }
 
+    public Ledger getLedger() {
+        return ledger;
+    }
+
     private class ItemProcessor {
 
         private Approvable item;

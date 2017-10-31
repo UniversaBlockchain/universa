@@ -30,7 +30,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    public static final String NODE_VERSION = "2.0.13";
+    public static final String NODE_VERSION = "2.1.0";
     private OptionParser parser;
     private OptionSet options;
     public final Reporter reporter = new Reporter();
@@ -173,6 +173,8 @@ public class Main {
         try {
 //            network.close();
             log("shutting down");
+            network.shutdown();
+            clientHTTPServer.shutdown();
         } catch (Exception e) {
         }
 

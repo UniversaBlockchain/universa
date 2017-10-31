@@ -19,6 +19,7 @@ import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.Base64;
 import net.sergeych.utils.LogPrinter;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -33,6 +34,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.*;
 
+@Ignore("outdated vy v2")
 public class NetConfigTest {
 
     public static final int TEST_NODES = 10;

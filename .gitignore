@@ -83,3 +83,5 @@ fabric.properties
 ## Local developer files
 /.idea/copyright/Stipan.xml
 /.idea/workspace.xml
+!/.idea/artifacts/uniclient_main_jar.xml
+!/.idea/artifacts/uninode_jar.xml

@@ -9,12 +9,14 @@ package com.icodici.universa.node.network;
 
 import com.icodici.universa.node.Network;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.junit.Ignore;
 
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Ignore("outdated vy v2")
 public class TestV1Network implements AutoCloseable {
 
     private final ArrayList<NetworkV1> networks = new ArrayList<>();

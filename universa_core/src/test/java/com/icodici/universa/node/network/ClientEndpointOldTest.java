@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.node.TestCase;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.lang.management.ManagementFactory;
@@ -18,6 +19,7 @@ import java.lang.management.ManagementFactory;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+@Ignore("outdated vy v2")
 public class ClientEndpointOldTest extends TestCase {
 
     private static final int DEFAULT_PORT = 17172;

@@ -85,4 +85,6 @@ public abstract class Network {
     public void eachNode(Consumer<NodeInfo> consumer) {
         netConfig.forEachNode(n -> consumer.accept(n));
     }
+
+    public void shutdown() {}
 }

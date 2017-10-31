@@ -20,6 +20,8 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
+import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.HttpURLConnection;
@@ -31,7 +33,14 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
+@Ignore("start it manually")
 public class MainTest {
+
+    @After
+    public void tearDown() throws Exception {
+        LogPrinter.showDebug(false);
+    }
+
     @Test
     public void startNode() throws Exception {
         String[] args = new String[]{"--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/node1", "--nolog"};
@@ -135,18 +144,21 @@ public class MainTest {
             if( !r.state.isPending() )
                 break;
         }
+        mm.forEach(x->x.shutdown());
 //        System.out.println("-->! " + r);
 
 //        assertEquals(ItemState.UNDEFINED, s);
     }
 
-    @Test
+//    @Test
+//    @Ignore("This test nust be started manually")
     public void checkRealNetwork() throws Exception {
 
         PrivateKey clientKey = TestKeys.privateKey(3);
         Client client = new Client("http://node-17-com.universa.io:8080", clientKey);
 
         Contract c = new Contract(clientKey);
+        c.setExpiresAt(ZonedDateTime.now().plusSeconds(300));
         c.seal();
         assertTrue(c.isOk());
 
