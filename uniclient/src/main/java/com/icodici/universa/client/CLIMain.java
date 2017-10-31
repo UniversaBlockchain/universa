@@ -7,6 +7,11 @@
 
 package com.icodici.universa.client;
 
+import com.eclipsesource.json.JsonObject;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -29,7 +34,6 @@ import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
-import net.sergeych.tools.JsonTool;
 import net.sergeych.tools.Reporter;
 import net.sergeych.utils.Base64;
 import org.yaml.snakeyaml.Yaml;
@@ -39,7 +43,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -149,6 +152,7 @@ public class CLIMain {
 //                accepts("binary", "Use with --ch, --check. " +
 //                        "Specify to check contracts from binary data.");
                 accepts("term-width").withRequiredArg().ofType(Integer.class).defaultsTo(80);
+                accepts("pretty", "Use with -as json option. Make json string pretty.");
 
 
 //                acceptsAll(asList("ie"), "Test - delete.")
@@ -215,9 +219,9 @@ public class CLIMain {
                     if (extractKeyRole != null) {
                         exportPublicKeys(contract, extractKeyRole, name);
                     } else if (extractFields != null && extractFields.size() > 0) {
-                        exportFields(contract, extractFields, name, format);
+                        exportFields(contract, extractFields, name, format, options.has("pretty"));
                     } else {
-                        exportContract(contract, name, format);
+                        exportContract(contract, name, format, options.has("pretty"));
                     }
                 }
                 finish();
@@ -467,24 +471,14 @@ public class CLIMain {
                 if ("yaml".equals(extension) || "yml".equals(extension)) {
                     Yaml yaml = new Yaml();
                     binder = Binder.convertAllMapsToBinders(yaml.load(reader));
+                } else if ("json".equals(extension)) {
+                    Gson gson = new GsonBuilder().create();
+                    binder = Binder.convertAllMapsToBinders(gson.fromJson(reader, Binder.class));
                 } else {
-                    String stringData = "";
-
-                    BufferedReader in = new BufferedReader(reader);
-                    String str;
-                    while ((str = in.readLine()) != null)
-                        stringData += str;
-                    in.close();
-
-                    if ("json".equals(extension)) {
-                        binder = Binder.convertAllMapsToBinders(JsonTool.fromJson(stringData));
-                    } else {
-                        XStream xstream = new XStream(new DomDriver());
-                        xstream.registerConverter(new MapEntryConverter());
-                        xstream.alias("contract", Binder.class);
-                        binder = Binder.convertAllMapsToBinders(xstream.fromXML(stringData));
-
-                    }
+                    XStream xstream = new XStream(new DomDriver());
+                    xstream.registerConverter(new MapEntryConverter());
+                    xstream.alias("contract", Binder.class);
+                    binder = Binder.convertAllMapsToBinders(xstream.fromXML(reader));
                 }
             }
 
@@ -538,6 +532,18 @@ public class CLIMain {
      * @param format   - format of file to export to. Can be xml or json.
      */
     private static void exportContract(Contract contract, String fileName, String format) throws IOException {
+        exportContract(contract, fileName, format, false);
+    }
+
+    /**
+     * Export contract to specified xml or json file.
+     *
+     * @param contract - contract to export.
+     * @param fileName - name of file to export to.
+     * @param format   - format of file to export to. Can be xml, yaml or json.
+     * @param jsonPretty   - if true, json will be pretty formated.
+     */
+    private static void exportContract(Contract contract, String fileName, String format, Boolean jsonPretty) throws IOException {
         report("export format: " + format);
 
         if (fileName == null) {
@@ -560,7 +566,13 @@ public class CLIMain {
             Yaml yaml = new Yaml();
             data = yaml.dumpAsMap(binder).getBytes();
         } else {
-            String jsonString = JsonTool.toJsonString(binder);
+            Gson gson;
+            if(jsonPretty) {
+                gson = new GsonBuilder().setPrettyPrinting().create();
+            } else {
+                gson = new GsonBuilder().create();
+            }
+            String jsonString = gson.toJson(binder);
             data = jsonString.getBytes();
         }
         try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
@@ -619,6 +631,18 @@ public class CLIMain {
      * @param format     - format of file to export to. Can be xml or json.
      */
     private static void exportFields(Contract contract, List<String> fieldNames, String fileName, String format) throws IOException {
+        exportFields(contract, fieldNames, fileName, format, false);
+    }
+
+    /**
+     * Export fields from specified contract.
+     *
+     * @param contract   - contract to export.
+     * @param fieldNames - list of field names to export.
+     * @param fileName   - name of file to export to.
+     * @param format     - format of file to export to. Can be xml or json.
+     */
+    private static void exportFields(Contract contract, List<String> fieldNames, String fileName, String format, Boolean jsonPretty) throws IOException {
         report("export format: " + format);
 
         if (fileName == null) {
@@ -649,7 +673,13 @@ public class CLIMain {
                 Yaml yaml = new Yaml();
                 data = yaml.dumpAsMap(binder).getBytes();
             } else {
-                String jsonString = JsonTool.toJsonString(binder);
+                Gson gson;
+                if(jsonPretty) {
+                    gson = new GsonBuilder().setPrettyPrinting().create();
+                } else {
+                    gson = new GsonBuilder().create();
+                }
+                String jsonString = gson.toJson(binder);
                 data = jsonString.getBytes();
             }
             try (FileOutputStream fs = new FileOutputStream(fileName + "." + format)) {
@@ -686,7 +716,8 @@ public class CLIMain {
             } catch (Exception xmlEx) {
 //                xmlEx.printStackTrace();
                 try {
-                    data = Binder.convertAllMapsToBinders(JsonTool.fromJson(fields.get(fieldName)));
+                    Gson gson = new GsonBuilder().create();
+                    binder = Binder.convertAllMapsToBinders(gson.fromJson(fields.get(fieldName), Binder.class));
                     data = (Binder) data.get(fieldName);
                 } catch (Exception jsonEx) {
 //                    jsonEx.printStackTrace();
