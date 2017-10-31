@@ -211,7 +211,7 @@ public class CLIMain {
                 String source = (String) options.valueOf("e");
                 String format = (String) options.valueOf("as");
                 String name = (String) options.valueOf("name");
-                String extractKeyRole = (String) options.valueOf("extract-key");
+                String extractKeyRole = (String) options.valueOf("extract-keys");
                 List extractFields = options.valuesOf("get");
 
                 List updateFields = options.valuesOf("set");

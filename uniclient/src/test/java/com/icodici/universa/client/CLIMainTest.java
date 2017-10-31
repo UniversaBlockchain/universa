@@ -176,7 +176,7 @@ public class CLIMainTest {
     public void exportPublicKeys() throws Exception {
         String role = "owner";
         callMain(
-                "-e", rootPath + "contract_to_export.unicon", "-extract-keys", role);
+                "-e", rootPath + "contract_to_export.unicon", "--extract-keys", role);
         System.out.println(output);
         assert (output.indexOf(role + " export public keys ok") >= 0);
         assertEquals(0, errors.size());
