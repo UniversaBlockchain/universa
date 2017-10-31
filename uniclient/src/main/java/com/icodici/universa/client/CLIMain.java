@@ -49,7 +49,7 @@ import static java.util.Arrays.asList;
 
 public class CLIMain {
 
-    private static final String CLI_VERSION = "0.1";
+    private static final String CLI_VERSION = "2.1.0";
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -141,6 +141,7 @@ public class CLIMain {
                         "Specify to check contracts in the path and do it recursively.");
                 accepts("binary", "Use with --ch, --check. " +
                         "Specify to check contracts from binary data.");
+                accepts("term-width").withRequiredArg().ofType(Integer.class).defaultsTo(80);
 
 
 //                acceptsAll(asList("ie"), "Test - delete.")
@@ -514,7 +515,6 @@ public class CLIMain {
             byte[] data = Files.readAllBytes(path);
 
             contract = new Contract(data);
-            reporter.verbose("Contract has loaded");
         } else {
             addError("2", "", "Path " + fileName + " does not exist");
             usage("Path " + fileName + " does not exist");
@@ -923,10 +923,13 @@ public class CLIMain {
             error = true;
         }
         out.println("\nUniversa client tool, v. " + CLI_VERSION + "\n");
+
+        int columns = (Integer) options.valueOf("term-width");
+
         if (text != null)
             out.println("ERROR: " + text + "\n");
         try {
-            parser.formatHelpWith(new BuiltinHelpFormatter(110, 1));
+            parser.formatHelpWith(new BuiltinHelpFormatter(columns, 2));
             parser.printHelpOn(out);
         } catch (IOException e) {
             e.printStackTrace();
