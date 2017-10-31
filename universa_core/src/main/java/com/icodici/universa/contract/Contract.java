@@ -59,7 +59,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private final Map<PublicKey, ExtendedSignature> sealedByKeys = new HashMap<>();
     private Set<PrivateKey> keysToSignWith = new HashSet<>();
     private HashId id;
-    private Reference reference;
+    private Reference references;
 
     /**
      * Extract contract from a sealed form, filling signers information. Only valid signatures are kept, invalid are
@@ -323,7 +323,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 addError(BAD_VALUE, "state.origin", "wrong origin, should be root");
             }
             if (!getParent().equals(parent.getId()))
-                addError(BAD_VALUE, "state.parent", "illegal parent reference");
+                addError(BAD_VALUE, "state.parent", "illegal parent references");
 
             ContractDelta delta = new ContractDelta(parent, this);
             delta.check();
@@ -363,10 +363,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 definition.createdAt.isBefore(getEarliestCreationTime())) {
             addError(BAD_VALUE, "definition.created_at", "invalid");
         }
-        if (definition.expiresAt == null ||
-                definition.expiresAt.isBefore(ZonedDateTime.now())) {
-            addError(EXPIRED, "definition.expires_at");
+
+        boolean stateExpiredAt = state.expiresAt == null || state.expiresAt.isBefore(ZonedDateTime.now());
+        boolean definitionExpiredAt = definition.expiresAt == null || definition.expiresAt.isBefore(ZonedDateTime.now());
+
+        if (stateExpiredAt) {
+            if (definitionExpiredAt) {
+                addError(EXPIRED, "state.expires_at");
+            }
         }
+
         if (state.createdAt == null ||
                 state.createdAt.isAfter(ZonedDateTime.now()) ||
                 state.createdAt.isBefore(getEarliestCreationTime())) {
@@ -392,7 +398,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean isSignedBy(Role role) {
         if (role == null)
             return false;
+
         role = role.resolve();
+
+        if (role == null)
+            return false;
+
         if (!sealedByKeys.isEmpty())
             return role.isAllowedForKeys(getSealedByKeys());
         return role.isAllowedForKeys(
@@ -453,7 +464,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public ZonedDateTime getExpiresAt() {
-        return definition.expiresAt;
+        return state.expiresAt != null ? state.expiresAt : definition.expiresAt;
     }
 
     public Map<String, Role> getRoles() {
@@ -724,7 +735,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public void setExpiresAt(ZonedDateTime dateTime) {
-        definition.setExpiresAt(dateTime);
+        state.setExpiresAt(dateTime);
     }
 
     @Override
@@ -839,7 +850,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             name = name.substring(11);
             switch (name) {
                 case "expires_at":
-                    return (T) definition.expiresAt;
+                    return (T) state.expiresAt;
                 case "created_at":
                     return (T) definition.createdAt;
                 case "issuer":
@@ -882,7 +893,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             name = name.substring(11);
             switch (name) {
                 case "expires_at":
-                    definition.expiresAt = value.getZonedDateTimeOrThrow("data");
+                    state.expiresAt = value.getZonedDateTimeOrThrow("data");
                     return;
                 case "created_at":
                     definition.createdAt = value.getZonedDateTimeOrThrow("data");
@@ -932,13 +943,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean isValidReference(Contract contract) {
         boolean result = true;
 
-        reference = this.getDefinition().getReference();
+        references = this.getDefinition().getReferences();
 
-        if (reference == null) result = false;
+        if (references == null) result = false;
 
         //check roles
         if (result) {
-            List<String> roles = reference.getRoles();
+            List<String> roles = references.getRoles();
             Map<String, Role> contractRoles = contract.getRoles();
             result = roles.stream()
                     .filter(role -> contractRoles.containsKey(role))
@@ -947,14 +958,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         //check origin
         if (result) {
-            final String origin = reference.getOrigin();
+            final String origin = references.getOrigin();
             result = (origin == null || !(contract.getOrigin().equals(this.getOrigin())));
         }
 
 
         //check fields
         if (result) {
-            List<String> fields = reference.getFields();
+            List<String> fields = references.getFields();
             Binder stateData = contract.getStateData();
             result = fields.stream()
                     .filter(field -> stateData.get(field) != null)
@@ -969,6 +980,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private int revision;
         private Binder state;
         private ZonedDateTime createdAt;
+        private ZonedDateTime expiresAt;
         //        private Role createdBy;
         private HashId origin;
         private HashId parent;
@@ -980,9 +992,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             revision = 1;
         }
 
+        public void setExpiresAt(ZonedDateTime expiresAt) {
+            this.expiresAt = expiresAt;
+        }
+
+
         private State initializeWithDsl(Binder state) {
             this.state = state;
             createdAt = state.getZonedDateTime("created_at", null);
+            expiresAt = state.getZonedDateTime("expires_at", null);
             revision = state.getIntOrThrow("revision");
             data = state.getOrCreateBinder("data");
             if (createdAt == null) {
@@ -1004,17 +1022,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         public Binder serializeWith(BiSerializer serializer) {
+
+
+            Binder of = Binder.of(
+                    "created_at", createdAt,
+                    "revision", revision,
+                    "owner", getRole("owner"),
+                    "created_by", getRole("creator"),
+                    "branch_id", branchId,
+                    "origin", serializer.serialize(origin),
+                    "parent", serializer.serialize(parent),
+                    "data", data
+            );
+
+            if (expiresAt != null)
+                of.set("expires_at", expiresAt);
+
+
             return serializer.serialize(
-                    Binder.of(
-                            "created_at", createdAt,
-                            "revision", revision,
-                            "owner", getRole("owner"),
-                            "created_by", getRole("creator"),
-                            "branch_id", branchId,
-                            "origin", serializer.serialize(origin),
-                            "parent", serializer.serialize(parent),
-                            "data", data
-                    )
+                    of
             );
         }
 
@@ -1024,7 +1050,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public void deserealizeWith(Binder data, BiDeserializer d) {
             createdAt = data.getZonedDateTimeOrThrow("created_at");
+            expiresAt = data.getZonedDateTime("expires_at", null);
+
             revision = data.getIntOrThrow("revision");
+
             if (revision <= 0)
                 throw new IllegalArgumentException("illegal revision number: " + revision);
             Role r = registerRole(d.deserialize(data.getBinderOrThrow("owner")));
@@ -1084,7 +1113,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private ZonedDateTime expiresAt;
         private Binder definition;
         private Binder data;
-        private Reference reference;
+        private Reference references;
 
 
         private Definition() {
@@ -1095,17 +1124,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             this.definition = definition;
             Role issuer = createRole("issuer", definition.getOrThrow("issuer"));
             createdAt = definition.getZonedDateTimeOrThrow("created_at");
-            expiresAt = definition.getZonedDateTimeOrThrow("expires_at");
+            expiresAt = definition.getZonedDateTime("expires_at", null);
             registerRole(issuer);
             data = definition.getBinder("data");
-            reference = processReference(definition.getBinder("reference"));
+            references = processReference(definition.getBinder("references"));
             return this;
         }
 
         private Reference processReference(Binder binder) {
             Reference result = new Reference();
 
-            if (binder.size() == 0) return result;
+            if (binder.size() == 0) return null;
 
             Binder conditions = binder.getBinder("conditions");
 
@@ -1124,8 +1153,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return result;
         }
 
-        public Reference getReference() {
-            return this.reference;
+        public Reference getReferences() {
+            return this.references;
         }
 
         /**
@@ -1196,24 +1225,31 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             });
 
             Collections.sort(pp);
+            Binder of = Binder.of(
+                    "issuer", getIssuer(),
+                    "created_at", createdAt,
+                    "data", data,
+                    "permissions", pb
+            );
+
+            if (expiresAt != null)
+                of.set("expires_at", expiresAt);
+
+            if (references != null)
+                of.set("references", references);
+
+
             return serializer.serialize(
-                    Binder.of(
-                            "issuer", getIssuer(),
-                            "created_at", createdAt,
-                            "expires_at", expiresAt,
-                            "data", data,
-                            "permissions", pb,
-                            "reference", reference
-                    )
+                    of
             );
         }
 
         public void deserializeWith(Binder data, BiDeserializer d) {
             registerRole(d.deserialize(data.getBinderOrThrow("issuer")));
             createdAt = data.getZonedDateTimeOrThrow("created_at");
-            expiresAt = data.getZonedDateTimeOrThrow("expires_at");
+            expiresAt = data.getZonedDateTime("expires_at", null);
             this.data = d.deserialize(data.getBinder("data",Binder.EMPTY));
-            this.reference = d.deserialize(data.getBinder("reference", null));
+            this.references = d.deserialize(data.getBinder("references", null));
             Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
             perms.forEach((id, perm) -> {
                 perm.setId(id);

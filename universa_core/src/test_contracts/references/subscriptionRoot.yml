@@ -49,11 +49,6 @@ definition:
  created_at:
    now()
 
- # required. must be in future.
- expires_at:
-   __t: unixtime
-   seconds: 1659720337
-
  # required key, can be empty if the contract uses only standard roles, issues and creator.
  roles:
    # no extra roles, issuer and owner are predefined, so empty list.
@@ -101,7 +96,7 @@ definition:
                 within the period starting at 'active since' and ending at the time of contract expiration.
 
  # reference contains the conditions which must be specified for the other contracts to link
- reference:
+ references:
   name: ref_name
   # At least 1 condition is expected. The other is optional.
   conditions:
@@ -136,6 +131,11 @@ state:
   # required. who has created this document. for the root contract it is always the issues, for changed
   # states it is almost always the owner. The contract should be signed by this key.
   created_by: issuer
+
+   # required. must be in future.
+  expires_at:
+    __t: unixtime
+    seconds: 1659720337
 
   # required. revision increments on any contract edit. the root contract has always revision of 1
   revision: 1

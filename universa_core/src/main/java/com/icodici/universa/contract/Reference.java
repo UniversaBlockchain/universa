@@ -1,3 +1,8 @@
+/*
+ * Created by Maxim Pogorelov <pogorelovm23@gmail.com>, 10/26/17.
+ */
+
+
 package com.icodici.universa.contract;
 
 import net.sergeych.biserializer.BiDeserializer;
@@ -9,9 +14,7 @@ import net.sergeych.tools.Binder;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by pogorelov on 10/26/17.
- */
+
 public class Reference implements BiSerializable {
 
     private String name;

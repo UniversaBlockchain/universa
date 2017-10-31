@@ -6,6 +6,8 @@ package com.icodici.universa.contract.permissions;
 
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.diff.ChangedItem;
@@ -27,7 +29,7 @@ public class ModifyDataPermission extends Permission {
     }
 
     public ModifyDataPermission(Role role, Binder params) {
-        super(FIELD_NAME, role);
+        super(FIELD_NAME, role, params);
         Object fields = params.get("fields");
         if (fields != null && fields instanceof Map) {
             this.fields.putAll((Map) fields);
@@ -73,6 +75,26 @@ public class ModifyDataPermission extends Permission {
 
     private boolean isEmptyOrNull(List<String> data, Object value) {
         return (value == null || "".equals(value)) && (data.contains(null) || data.contains(""));
+    }
+
+    public Map<String, List<String>> getFields() {
+        return fields;
+    }
+
+    @Override
+    public Binder serialize(BiSerializer serializer) {
+        Binder results = super.serialize(serializer);
+        results.put("fields", serializer.serialize(this.fields));
+        return results;
+    }
+
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        super.deserialize(data, deserializer);
+        Object fields = data.get("fields");
+        if (fields != null && fields instanceof Map) {
+            this.fields.putAll((Map) fields);
+        }
     }
 
     static {
