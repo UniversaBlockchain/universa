@@ -123,6 +123,15 @@ public class CLIMainTest  {
     }
 
     @Test
+    public void exportAsYamlTest() throws Exception {
+        callMain(
+                "-e", rootPath + "simple_root_contract_v2.unicon", "-as", "yaml");
+        System.out.println(output);
+        assert(output.indexOf("export as yaml ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
     public void exportWithNameTest() throws Exception {
         String name = "ExportedContract";
         callMain(
@@ -171,6 +180,17 @@ public class CLIMainTest  {
                 "-e", rootPath + "contract_to_export.unicon", "-as", "xml", "-get", field1, "-get", field2);
         System.out.println(output);
         assert(output.indexOf("export fields as xml ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportFieldsAsYaml() throws Exception {
+        String field1 = "definition.issuer";
+        String field2 = "state.origin";
+        callMain(
+                "-e", rootPath + "contract_to_export.unicon", "-as", "yaml", "-get", field1, "-get", field2);
+        System.out.println(output);
+        assert(output.indexOf("export fields as yaml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -225,9 +245,48 @@ public class CLIMainTest  {
     @Test
     public void updateFieldsFromJSON() throws Exception {
         String field1 = "definition.issuer";
-        String value1 = "{\"keys\":[{\"name\":\"Universa\",\"key\":{\"__type\":\"RSAPublicKey\",\"packed\":{\"__type\":\"binary\",\"base64\":\"HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0W\\nsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOyta\\nICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJ\\nUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/na\\nIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ\\n/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzF\\nbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GL\\ny+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKx\\nBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6\\nDgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=\"}},\"__type\":\"KeyRecord\"}],\"__type\":\"SimpleRole\",\"name\":\"issuer\"}";
+        String value1 = "{\"definition.issuer\":{\"keys\":[{\"name\":\"Universa\",\"key\":{\"__type\":\"RSAPublicKey\",\"packed\":{\"__type\":\"binary\",\"base64\":\"HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0W\\nsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOyta\\nICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJ\\nUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/na\\nIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ\\n/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzF\\nbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GL\\ny+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKx\\nBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6\\nDgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=\"}},\"__type\":\"KeyRecord\"}],\"__type\":\"SimpleRole\",\"name\":\"issuer\"}}";
         String field2 = "definition.expires_at";
-        String value2 = "{\"seconds\":1519772317,\"__type\":\"unixtime\"}";
+        String value2 = "{\"definition.expires_at\": {\"seconds\":1519772317,\"__type\":\"unixtime\"}}";
+        callMain(
+                "-e", rootPath + "contract_to_export.unicon",
+                "-set", field1, "-value", value1,
+                "-set", field2, "-value", value2);
+        System.out.println(output);
+        assert(output.indexOf("update field " + field1 + " ok") >= 0);
+        assert(output.indexOf("update field " + field2 + " ok") >= 0);
+        assert(output.indexOf("contract expires at 2018-02-27") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void updateFieldsFromYaml() throws Exception {
+        String field1 = "definition.issuer";
+        String value1 = "definition.issuer:\n" +
+                "  keys:\n" +
+                "  - name: Universa\n" +
+                "    key:\n" +
+                "      __type: RSAPublicKey\n" +
+                "      packed:\n" +
+                "        __type: binary\n" +
+                "        base64: |-\n" +
+                "          HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0W\n" +
+                "          smcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOyta\n" +
+                "          ICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJ\n" +
+                "          UZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/na\n" +
+                "          Iaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ\n" +
+                "          /4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzF\n" +
+                "          bNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GL\n" +
+                "          y+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKx\n" +
+                "          BNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6\n" +
+                "          DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=\n" +
+                "    __type: KeyRecord\n" +
+                "  __type: SimpleRole\n" +
+                "  name: issuer";
+        String field2 = "definition.expires_at";
+        String value2 = "definition.expires_at:\n" +
+                "    seconds: 1519772317\n" +
+                "    __type: unixtime";
         callMain(
                 "-e", rootPath + "contract_to_export.unicon",
                 "-set", field1, "-value", value1,
@@ -286,6 +345,15 @@ public class CLIMainTest  {
         assert(output.indexOf("import from xml ok") >= 0);
         assertEquals(0, errors.size());
     }
+
+    @Test
+    public void importFromYamlTest() throws Exception {
+        callMain(
+                "-i", rootPath + "contract_to_import.yaml");
+        System.out.println(output);
+        assert(output.indexOf("import from yaml ok") >= 0);
+        assertEquals(0, errors.size());
+    }
 //
 //    @Test
 //    public void importExportXMLTest() throws Exception {
@@ -296,14 +364,6 @@ public class CLIMainTest  {
 //        assertEquals(0, errors.size());
 //    }
 
-    @Test
-    public void importFromYamlTest() throws Exception {
-        callMain(
-                "-i", rootPath + "simple_root_contract_v2.yml");
-        System.out.println(output);
-        assert(output.indexOf("import from yaml ok") >= 0);
-        assertEquals(0, errors.size());
-    }
 
     @Test
     public void importWithNameTest() throws Exception {

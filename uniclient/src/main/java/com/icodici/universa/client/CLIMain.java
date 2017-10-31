@@ -81,7 +81,7 @@ public class CLIMain {
                         .withRequiredArg()
                         .ofType(Integer.class)
                         .defaultsTo(2048);
-                acceptsAll(asList("c", "create"), "Create smart contract from yaml template.")
+                acceptsAll(asList("c", "create"), "Create smart contract from dsl template.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file.yml");
                 acceptsAll(asList("j", "json"), "Return result in json format.");
@@ -95,38 +95,45 @@ public class CLIMain {
 //                acceptsAll(asList("show", "s"), "show contract")
 //                        .withRequiredArg().ofType(String.class)
                 acceptsAll(asList("e", "export"), "Export specified contract. " +
-                        "Default export format is XML. " +
-                        "Use '-as' option with values 'json', 'xml' for export as specified format.")
+                        "Default export format is JSON. " +
+                        "Use '-as' option with values 'json', 'xml' or 'yaml' for export as specified format.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file");
-                accepts("as", "Use with -e, --export command. Specify format for export contract.")
+                accepts("as", "Use with -e, --export command. Specify format for export contract. " +
+                        "Possible values are 'json', 'xml' or 'yaml'.")
                         .withRequiredArg()
                         .ofType(String.class)
+                        .describedAs("format")
                         .defaultsTo("json");
-                acceptsAll(asList("i", "import"), "Import contract from specified xml or json file.")
+                acceptsAll(asList("i", "import"), "Import contract from specified xml, json or yaml file.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file");
                 accepts("name", "Use with -e, --export or -i, --import commands. " +
                         "Specify name of destination file.")
                         .withRequiredArg()
-                        .ofType(String.class);
+                        .ofType(String.class)
+                        .describedAs("filename");
                 accepts("extract-key", "Use with -e, --export command. " +
                         "Extracts any public key(s) from specified role into external file.")
                         .withRequiredArg()
-                        .ofType(String.class);
+                        .ofType(String.class)
+                        .describedAs("role");
                 accepts("get", "Use with -e, --export command. " +
                         "Extracts any field of the contract into external file.")
                         .withRequiredArg()
-                        .ofType(String.class);
+                        .ofType(String.class)
+                        .describedAs("field_name");
                 accepts("set", "Use with -e, --export command. " +
-                        "Specify field of the contract for update.")
+                        "Specify field of the contract for update. Use -value option to specify value for the field")
                         .withRequiredArg()
-                        .ofType(String.class);
+                        .ofType(String.class)
+                        .describedAs("field_name");
                 accepts("value", "Use with -e, --export command and after -set argument. " +
                         "Update specified with -set argument field of the contract.")
                         .withRequiredArg()
-                        .ofType(String.class);
-                acceptsAll(asList("f", "find"), "Search all contracts in the specified path including subpaths." +
+                        .ofType(String.class)
+                        .describedAs("field_value");
+                acceptsAll(asList("f", "find"), "Search all contracts in the specified path including subpaths. " +
                         "Use -r key to check all contracts in the path recursively.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("path");
@@ -137,7 +144,7 @@ public class CLIMain {
                         "Use -r key to check all contracts in the path recursively.")
                         .withRequiredArg().ofType(String.class)
                         .describedAs("file/path");
-                accepts("r", "Use with --ch, --check or -f, --find command. " +
+                accepts("r", "Use with --ch, --check or -f, --find commands. " +
                         "Specify to check contracts in the path and do it recursively.");
 //                accepts("binary", "Use with --ch, --check. " +
 //                        "Specify to check contracts from binary data.");
@@ -202,7 +209,7 @@ public class CLIMain {
                     } catch (Exception e) {
 
                     }
-                    if (updateFieldsHashMap != null && updateFieldsHashMap.size() > 0) {
+                    if (updateFieldsHashMap.size() > 0) {
                         updateFields(contract, updateFieldsHashMap);
                     }
                     if (extractKeyRole != null) {
@@ -453,42 +460,42 @@ public class CLIMain {
         Contract contract = null;
         File pathFile = new File(sourceName);
         if(pathFile.exists()) {
-            if ("yaml".equals(extension) || "yml".equals(extension)) {
-                contract = Contract.fromDslFile(sourceName);
-            } else {
-                String stringData = "";
 
-                BufferedReader in = new BufferedReader(new FileReader(sourceName));
-                String str;
-                while ((str = in.readLine()) != null)
-                    stringData += str;
-                in.close();
+            Binder binder;
 
-                Binder binder;
-
-                if ("json".equals(extension)) {
-                    binder = Binder.convertAllMapsToBinders(JsonTool.fromJson(stringData));
+            try (FileReader reader = new FileReader(sourceName)) {
+                if ("yaml".equals(extension) || "yml".equals(extension)) {
+                    Yaml yaml = new Yaml();
+                    binder = Binder.convertAllMapsToBinders(yaml.load(reader));
                 } else {
-                    XStream xstream = new XStream(new DomDriver());
-                    xstream.registerConverter(new MapEntryConverter());
-                    xstream.alias("contract", Binder.class);
-                    binder = Binder.convertAllMapsToBinders(xstream.fromXML(stringData));
+                    String stringData = "";
 
+                    BufferedReader in = new BufferedReader(reader);
+                    String str;
+                    while ((str = in.readLine()) != null)
+                        stringData += str;
+                    in.close();
+
+                    if ("json".equals(extension)) {
+                        binder = Binder.convertAllMapsToBinders(JsonTool.fromJson(stringData));
+                    } else {
+                        XStream xstream = new XStream(new DomDriver());
+                        xstream.registerConverter(new MapEntryConverter());
+                        xstream.alias("contract", Binder.class);
+                        binder = Binder.convertAllMapsToBinders(xstream.fromXML(stringData));
+
+                    }
                 }
-
-                BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
-                contract = new Contract();
-                contract.deserialize(binder, bm);
             }
+
+            BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
+            contract = new Contract();
+            contract.deserialize(binder, bm);
+
             report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()));
 
-            if ("yaml".equals(extension) || "yml".equals(extension)) {
-                report("import from yaml ok");
-            } else if ("json".equals(extension)) {
-                report("import from json ok");
-            } else {
-                report("import from xml ok");
-            }
+            report("import from " + extension + " ok");
+
         } else {
             addError("2", "", "Path " + sourceName + " does not exist");
             usage("Path " + sourceName + " does not exist");
@@ -549,6 +556,9 @@ public class CLIMain {
             xstream.registerConverter(new MapEntryConverter());
             xstream.alias("contract", Binder.class);
             data = xstream.toXML(binder).getBytes();
+        } else if("yaml".equals(format) || "yml".equals(format)) {
+            Yaml yaml = new Yaml();
+            data = yaml.dumpAsMap(binder).getBytes();
         } else {
             String jsonString = JsonTool.toJsonString(binder);
             data = jsonString.getBytes();
@@ -558,11 +568,7 @@ public class CLIMain {
             fs.close();
         }
 
-        if("xml".equals(format)) {
-            report(fileName + " export as xml ok");
-        } else {
-            report(fileName + " export as json ok");
-        }
+        report(fileName + " export as " + format + " ok");
     }
 
     /**
@@ -639,6 +645,9 @@ public class CLIMain {
                 xstream.registerConverter(new MapEntryConverter());
                 xstream.alias("fields", Binder.class);
                 data = xstream.toXML(binder).getBytes();
+            } else if("yaml".equals(format) || "yml".equals(format)) {
+                Yaml yaml = new Yaml();
+                data = yaml.dumpAsMap(binder).getBytes();
             } else {
                 String jsonString = JsonTool.toJsonString(binder);
                 data = jsonString.getBytes();
@@ -648,11 +657,8 @@ public class CLIMain {
                 fs.close();
             }
 
-            if ("xml".equals(format)) {
-                report("export fields as xml ok");
-            } else {
-                report("export fields as json ok");
-            }
+            report("export fields as " + format + " ok");
+
         } catch (IllegalArgumentException e) {
             report("export fields error: " + e.getMessage());
         }
@@ -681,8 +687,16 @@ public class CLIMain {
 //                xmlEx.printStackTrace();
                 try {
                     data = Binder.convertAllMapsToBinders(JsonTool.fromJson(fields.get(fieldName)));
+                    data = (Binder) data.get(fieldName);
                 } catch (Exception jsonEx) {
-
+//                    jsonEx.printStackTrace();
+                    try {
+                        Yaml yaml = new Yaml();
+                        data = Binder.convertAllMapsToBinders(yaml.load(fields.get(fieldName)));
+                        data = (Binder) data.get(fieldName);
+                    } catch (Exception yamlEx) {
+                        yamlEx.printStackTrace();
+                    }
                 }
             }
 
