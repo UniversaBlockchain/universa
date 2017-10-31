@@ -79,7 +79,7 @@ public class UDPAdapter extends DatagramAdapter {
 
         if (session != null) {
             if(session.isValid()) {
-                if (session.state == Session.EXCHANGING) {
+                if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
                     report(getLabel(), "session is ok");
 
                     session.addBlockToWaitingQueue(rawBlock);
@@ -89,7 +89,7 @@ public class UDPAdapter extends DatagramAdapter {
                     session.addBlockToWaitingQueue(rawBlock);
                 }
             } else {
-                if (session.state == Session.EXCHANGING) {
+                if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
                     report(getLabel(), "session not valid for exchanging, recreate");
                     session = createSession(destination.getNumber(),
                             destination.getNodeAddress().getAddress(),
@@ -257,7 +257,6 @@ public class UDPAdapter extends DatagramAdapter {
         report(getLabel(), "send session key to " + session.remoteNodeId, VerboseLevel.BASE);
         report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
 
-        session.state = Session.SESSION;
         List data = asList(session.sessionKey.getKey(), session.remoteNonce);
         try {
             byte[] packed = Boss.pack(data);
@@ -274,6 +273,7 @@ public class UDPAdapter extends DatagramAdapter {
                                     session.address, session.port,
                                     Boss.pack(binder));
             sendBlock(block, session);
+            session.state = Session.SESSION;
         } catch (EncryptionError encryptionError) {
             encryptionError.printStackTrace();
         }
@@ -352,6 +352,10 @@ public class UDPAdapter extends DatagramAdapter {
 
             for(Block rb : blocksToRemove) {
                 try {
+//                    if(rb.type == PacketTypes.DATA && session.sendingBlocksQueue.contains(rb)) {
+//                        System.err.println(getLabel() + "block " + rb.blockId + " type " + rb.type + " has not delivered and will be removed");
+//                        callErrorCallbacks("block " + rb.blockId + " type " + rb.type + " has not delivered and will be removed");
+//                    }
                     session.removeBlockFromSendingQueue(rb);
                     session.removeBlockFromWaitingQueue(rb.blockId);
                 } catch (InterruptedException e) {
@@ -398,7 +402,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     protected synchronized void sendWaitingBlocks(Session session) throws EncryptionError {
-        if (session != null && session.isValid() && session.state == Session.EXCHANGING) {
+        if (session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
             report(getLabel(), " waiting blocks num " + session.waitingBlocksQueue.size());
             try {
                 for (Block waitingBlock : session.waitingBlocksQueue) {
@@ -503,6 +507,33 @@ public class UDPAdapter extends DatagramAdapter {
                                         session = createSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
                                     }
                                     sendPacketAck(session, packet.blockId, packet.packetId);
+                                    switch (packet.type) {
+                                        case PacketTypes.HELLO:
+                                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                            break;
+                                        case PacketTypes.WELCOME:
+                                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                            session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                                            break;
+                                        case PacketTypes.KEY_REQ:
+                                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                            session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                                            session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                                            break;
+                                        case PacketTypes.SESSION:
+                                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                            session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                                            session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                                            session.makeBlockDeliveredByType(PacketTypes.SESSION);
+                                        case PacketTypes.DATA:
+                                            if(session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+                                                session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                                session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                                                session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                                                session.makeBlockDeliveredByType(PacketTypes.SESSION);
+                                            }
+                                            break;
+                                    }
                                 }
                             }
                         }
@@ -518,7 +549,7 @@ public class UDPAdapter extends DatagramAdapter {
                         e.printStackTrace();
                     }
                 } else {
-                    report(getLabel(), "socket already closed");
+                    report(getLabel(), "socket will be closed");
                     shutdownThread();
                 }
             }
@@ -560,6 +591,7 @@ public class UDPAdapter extends DatagramAdapter {
                     session.makeBlockDeliveredByType(PacketTypes.HELLO);
                     if(session.state == Session.HANDSHAKE ||
                             session.state == Session.EXCHANGING ||
+                            session.state == Session.SESSION ||
                             // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
                             session.remoteNodeId > myNodeInfo.getNumber()) {
 
@@ -638,8 +670,6 @@ public class UDPAdapter extends DatagramAdapter {
                     session.makeBlockDeliveredByType(PacketTypes.SESSION);
                     unbossedPayload = Boss.load(block.payload);
                     signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
-                    report(getLabel(), " session " + session.publicKey);
-                    report(getLabel(), " unbossedPayload " + unbossedPayload);
                     if(session.publicKey != null) {
                         if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
 
@@ -656,7 +686,7 @@ public class UDPAdapter extends DatagramAdapter {
                                 session.reconstructSessionKey(sessionKey);
                                 report(getLabel(), " check session " + session.isValid());
 
-                                // Tell remote nonce we got session and no need to resend it.
+                                // Tell remote nonce we got session or send own and no need to resend it.
                                 answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
 
                                 sendWaitingBlocks(session);
@@ -678,7 +708,13 @@ public class UDPAdapter extends DatagramAdapter {
                     report(getLabel(), "got data from " + block.senderNodeId, VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
                     try {
-                        if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
+                        if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+
+                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                            session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                            session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                            session.makeBlockDeliveredByType(PacketTypes.SESSION);
+
                             unbossedPayload = Boss.load(block.payload);
                             report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
 
@@ -724,10 +760,11 @@ public class UDPAdapter extends DatagramAdapter {
                         session.incremetWaitIndexForPacketsFromSendingQueue();
                         report(getLabel(), " num packets in queue: " + session.sendingPacketsQueue.size());
                         checkUnsentPackets(session);
-                    }
-                    if(session.state == Session.SESSION) {
-                        session.state = Session.EXCHANGING;
-                        sendWaitingBlocks(session);
+
+                        if (session.state == Session.SESSION) {
+                            session.state = Session.EXCHANGING;
+                            sendWaitingBlocks(session);
+                        }
                     }
                     break;
 
@@ -737,7 +774,7 @@ public class UDPAdapter extends DatagramAdapter {
                     report(getLabel(), " blockId: " + ackBlockId);
 
                     session = sessionsById.get(block.senderNodeId);
-                    if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
+                    if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                         session.moveBlocksFromSendingToWaiting();
                         session.removeDataBlocksFromWaiting();
                         session.state = Session.HANDSHAKE;
@@ -773,8 +810,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
         public synchronized void answerAckOrNack(Session session, Block block, InetAddress address, int port) throws InterruptedException, EncryptionError {
-            if(session != null && session.isValid() && session.state == Session.EXCHANGING) {
-
+            if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                 sendAck(session, block.blockId);
             } else {
                 session = createSession(block.senderNodeId, address, port);
@@ -1156,6 +1192,7 @@ public class UDPAdapter extends DatagramAdapter {
                 if (sendingBlock.blockId == blockId) {
                     removeBlockFromSendingQueue(sendingBlock);
                     sendingBlock.delivered = true;
+                    report(getLabel(), "block " + sendingBlock.blockId + " delivered");
                 }
             }
         }

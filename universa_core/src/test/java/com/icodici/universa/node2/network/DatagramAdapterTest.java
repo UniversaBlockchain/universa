@@ -237,8 +237,9 @@ public class DatagramAdapterTest {
             System.out.println(m);
             return m;});
 
-//        d1.seTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-//        d2.seTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d1.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+//        d2.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+//        d2.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2".getBytes();
@@ -258,43 +259,16 @@ public class DatagramAdapterTest {
 
         d1.receive(d-> {
             receviedFor1.add(d);
-//            try {
-//                waitStatusQueueFor1.put("DONE");
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//                System.out.println("DONE error");
-//            }
-//            System.out.println("receviedFor1.add");
-//            System.out.println("all got: " + (receviedFor1.size() + receviedFor2.size() + receviedFor3.size()));
-
             if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size()) == attempts * numSends)
                 ae.fire();
         });
         d2.receive(d-> {
             receviedFor2.add(d);
-//            try {
-//                waitStatusQueueFor1.put("DONE");
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//                System.out.println("DONE error");
-//            }
-//            System.out.println("receviedFor2.add");
-//            System.out.println("all got: " + (receviedFor1.size() + receviedFor2.size() + receviedFor3.size()));
-
             if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size()) == attempts * numSends)
                 ae.fire();
         });
         d3.receive(d-> {
             receviedFor3.add(d);
-//            try {
-//                waitStatusQueueFor1.put("DONE");
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//                System.out.println("DONE error");
-//            }
-//            System.out.println("receviedFor3.add");
-//            System.out.println("all got: " + (receviedFor1.size() + receviedFor2.size() + receviedFor3.size()));
-
             if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size()) == attempts * numSends)
                 ae.fire();
         });
@@ -348,9 +322,9 @@ public class DatagramAdapterTest {
         }
 
         try {
-            ae.await(5000);
+            ae.await(60000);
         } catch (TimeoutException e) {
-
+            System.out.println("time is up");
         }
 
         System.out.println("receviedFor1 got: " + (receviedFor1.size()));
