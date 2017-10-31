@@ -33,7 +33,6 @@ public class UDPAdapter extends DatagramAdapter {
     static private LogPrinter log = new LogPrinter("UDPA");
 
     private DatagramSocket socket;
-    private DatagramPacket receivedDatagram;
 
     private SocketListenThread socketListenThread;
 
@@ -53,11 +52,9 @@ public class UDPAdapter extends DatagramAdapter {
         super(ownPrivateKey, sessionKey, myNodeInfo);
 
         socket = new DatagramSocket(myNodeInfo.getNodeAddress().getPort());
+        socket.setReuseAddress(true);
 
-        byte[] buf = new byte[DatagramAdapter.MAX_PACKET_SIZE];
-        receivedDatagram = new DatagramPacket(buf, buf.length);
-
-        socketListenThread = new SocketListenThread();
+        socketListenThread = new SocketListenThread(socket);
         socketListenThread.start();
 
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -150,77 +147,10 @@ public class UDPAdapter extends DatagramAdapter {
 
     protected synchronized void sendBlock(Block block, Session session) throws InterruptedException {
 
-//        if(block.type == PacketTypes.DATA) {
-//            try {
-//                Block rawBlock = session.getRawDataBlockFromWaitingQueue(block.blockId);
-//                Binder unbossedPayload = Boss.load(block.payload);
-//                byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
-//                byte[] crc32Local = new Crc32().digest(decrypted);
-//                report(getLabel(), "sendBlock: Crc32 id is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
-//            } catch (EncryptionError encryptionError) {
-//                encryptionError.printStackTrace();
-//            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
-//                authenticationFailed.printStackTrace();
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        }
         if(!block.isValidToSend()) {
             block.prepareToSend(MAX_PACKET_SIZE);
         }
 
-//        if(block.type == PacketTypes.DATA) {
-//            try {
-//                Block recBlock = new Block(block.senderNodeId, block.receiverNodeId,
-//                        block.blockId, block.type,
-//                        block.address, block.port);
-//                for(Packet p : block.packets.values()) {
-//                    recBlock.addToPackets(p);
-//                }
-//
-//                recBlock.reconstruct();
-//
-//                Block rawBlock = session.getRawDataBlockFromWaitingQueue(recBlock.blockId);
-//                Binder unbossedPayload = Boss.load(recBlock.payload);
-//                byte[] encrypted = unbossedPayload.getBinaryOrThrow("data");
-//                byte[] decrypted = session.sessionKey.etaDecrypt(encrypted);
-//                byte[] crc32Local = new Crc32().digest(decrypted);
-//                byte[] crc32Remote = unbossedPayload.getBinaryOrThrow("crc32");
-//                byte[] crc32encryptedLocal = new Crc32().digest(encrypted);
-//                byte[] crc32encryptedRemote = unbossedPayload.getBinaryOrThrow("crc32encrypted");
-//                if(!Arrays.equals(rawBlock.crc32, crc32Local) || !Arrays.equals(crc32Remote, crc32Local) || !Arrays.equals(crc32encryptedRemote, crc32encryptedLocal)) {
-//                    callErrorCallbacks(Errors.BAD_VALUE +
-//                            ": Crc32 Error, sendBlock " +
-//                            "\n decrypted length " + decrypted.length +
-//                            "\n sessionKey is " + session.sessionKey.hashCode() +
-//                            "\n own sessionKey is " + sessionKey.hashCode() +
-//                            "\n string: " + new String(decrypted) +
-//                            "\n send block id: " + block.blockId +
-//                            "\n reconstructered block id: " + recBlock.blockId +
-//                            "\n own id: " + myNodeInfo.getNumber() +
-//                            "\n remote id: " + session.remoteNodeId +
-//                            "\n crc32encrypted is " + Arrays.equals(crc32encryptedRemote, crc32encryptedLocal) +
-//                            "\n crc32Remote is " + Arrays.equals(crc32Remote, crc32Local) +
-//                            "\n crc32rawBlock is " + Arrays.equals(rawBlock.crc32, crc32Local) +
-//                            "\n crc32encryptedRemote value " + crc32encryptedRemote);
-//                }
-////                report(getLabel(), "reconstructed block before send check: Crc32 is " + Arrays.equals(rawBlock.crc32, crc32Local), VerboseLevel.BASE);
-//            } catch (EncryptionError encryptionError) {
-//                encryptionError.printStackTrace();
-//            } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
-//                authenticationFailed.printStackTrace();
-//                callErrorCallbacks(Errors.BAD_VALUE +
-//                        ": Crc32 SymmetricKey.AuthenticationFailed, sendBlock " +
-//                        "\n sessionKey is " + session.sessionKey.hashCode() +
-//                        "\n own sessionKey is " + sessionKey.hashCode() +
-//                        "\n remote id: " + session.remoteNodeId);
-//            } catch (IOException ioError) {
-//                ioError.printStackTrace();
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        }
-        //        List<DatagramPacket> outs = makeDatagramPacketsFromBlock(block, session.address, session.port);
         List<DatagramPacket> outs = new ArrayList(block.datagrams.values());
 
         block.sendAttempts++;
@@ -259,42 +189,6 @@ public class UDPAdapter extends DatagramAdapter {
         report(getLabel(), "sendAsDataBlock: Crc32 id is " + Arrays.equals(rawDataBlock.crc32, crc32Local));
 
         byte[] encrypted = session.sessionKey.etaEncrypt(rawDataBlock.payload.clone());
-//        if(!Arrays.equals(rawDataBlock.crc32, crc32Local)) {
-//            callErrorCallbacks(Errors.BAD_VALUE +
-//                    ": Crc32 Error, sendAsDataBlock " +
-//                    "\n payload length " + rawDataBlock.payload.length +
-//                    "\n sessionKey is " + session.sessionKey.hashCode() +
-//                    "\n own sessionKey is " + sessionKey.hashCode() +
-//                    "\n string: " + new String(rawDataBlock.payload) +
-//                    "\n remote id: " + session.remoteNodeId +
-//                    "\n rawDataBlock id: " + rawDataBlock.blockId);
-//        }
-//
-//        try {
-//            byte[] decrypted = session.sessionKey.etaDecrypt(encrypted);
-//            byte[] crc32LocalDecrypted = new Crc32().digest(decrypted);
-//            if(!Arrays.equals(rawDataBlock.crc32, crc32LocalDecrypted)) {
-//                callErrorCallbacks(Errors.BAD_VALUE +
-//                        ": Crc32 Error, sendAsDataBlock decrypted" +
-//                        "\n payload length " + rawDataBlock.payload.length +
-//                        "\n sessionKey is " + session.sessionKey.hashCode() +
-//                        "\n own sessionKey is " + sessionKey.hashCode() +
-//                        "\n string: " + new String(rawDataBlock.payload) +
-//                        "\n remote id: " + session.remoteNodeId +
-//                        "\n rawDataBlock id: " + rawDataBlock.blockId +
-//                        "\n crc32 decrypted is " + Arrays.equals(rawDataBlock.crc32, crc32LocalDecrypted) +
-//                        "\n crc32rawBlock is " + Arrays.equals(rawDataBlock.crc32, crc32Local));
-//            }
-//        } catch (EncryptionError encryptionError) {
-//            encryptionError.printStackTrace();
-//        } catch (SymmetricKey.AuthenticationFailed authenticationFailed) {
-//            authenticationFailed.printStackTrace();
-//            callErrorCallbacks(Errors.BAD_VALUE +
-//                    ": Crc32 SymmetricKey.AuthenticationFailed, sendAsDataBlock " +
-//                    "\n sessionKey is " + session.sessionKey.hashCode() +
-//                    "\n own sessionKey is " + sessionKey.hashCode() +
-//                    "\n remote id: " + session.remoteNodeId);
-//        }
 
         Binder binder = Binder.fromKeysValues(
                 "data", encrypted,
@@ -420,15 +314,6 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-//    protected List<DatagramPacket> makeDatagramPacketsFromBlock(Block block, InetAddress address, int port) {
-//
-//        block.splitByPackets(MAX_PACKET_SIZE);
-//
-//        return datagramPackets;
-//
-//    }
-
-
     protected synchronized Session createSession(int remoteId, InetAddress address, int port) throws EncryptionError {
 
         Session session;
@@ -540,31 +425,23 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-//    public byte[] serialize(Object obj) throws IOException {
-//        try(ByteArrayOutputStream b = new ByteArrayOutputStream()){
-//            try(ObjectOutputStream o = new ObjectOutputStream(b)){
-//                o.writeObject(obj);
-//            }
-//            return b.toByteArray();
-//        }
-//    }
-//
-//    public Object deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
-//        try(ByteArrayInputStream b = new ByteArrayInputStream(bytes)){
-//            try(ObjectInputStream o = new ObjectInputStream(b)){
-//                return o.readObject();
-//            }
-//        }
-//    }
-
-
     class SocketListenThread extends Thread
     {
         private Boolean active = false;
 
+        private final DatagramSocket threadSocket;
+        private DatagramPacket receivedDatagram;
+
         private ConcurrentHashMap<Integer, Block> waitingBlocks = new ConcurrentHashMap<>();
 
         private ConcurrentHashMap<Integer, Block> obtainedBlocks = new ConcurrentHashMap<>();
+
+        public SocketListenThread(DatagramSocket socket){
+
+            byte[] buf = new byte[DatagramAdapter.MAX_PACKET_SIZE];
+            receivedDatagram = new DatagramPacket(buf, buf.length);
+            this.threadSocket = socket;
+        }
 
         @Override
         public void run()
@@ -574,83 +451,89 @@ public class UDPAdapter extends DatagramAdapter {
             active = true;
             while(active) {
                 try {
-                    if(!socket.isClosed()) {
-                        socket.receive(receivedDatagram);
+                    if(!threadSocket.isClosed()) {
+                        if(active) {
+                            threadSocket.receive(receivedDatagram);
+                        }
                     }
                 } catch (SocketException e) {
 //                    e.printStackTrace();
                 } catch (IOException e) {
-//                    e.printStackTrace();
+                    e.printStackTrace();
                 }
 
-                String rcvd = getLabel() + " Got data from address: " + receivedDatagram.getAddress() + ", port: " + receivedDatagram.getPort();
-//                System.out.println(rcvd);
+                if(active) {
 
+                    byte[] data = Arrays.copyOfRange(receivedDatagram.getData(), 0, receivedDatagram.getLength());
 
-                byte[] data = Arrays.copyOfRange(receivedDatagram.getData(), 0, receivedDatagram.getLength());
+                    Packet packet = new Packet();
+                    Block waitingBlock = null;
+                    try {
+                        packet.parseFromByteArray(data);
 
-                Packet packet = new Packet();
-                Block waitingBlock = null;
-                try {
-                    packet.parseFromByteArray(data);
+                        report(getLabel(), " got packet with blockId: " + packet.blockId + " packetId: " + packet.packetId + " type: " + packet.type);
 
-                    report(getLabel(), " got packet with blockId: " + packet.blockId + " packetId: " + packet.packetId + " type: " + packet.type);
-
-                    if (waitingBlocks.containsKey(packet.blockId)) {
-                        waitingBlock = waitingBlocks.get(packet.blockId);
-                    } else {
-                        if (obtainedBlocks.containsKey(packet.blockId)) {
-                            // Do nothing, cause we got and obtained this block already
-                            report(getLabel(), " warning: repeated block given, with id " + packet.blockId);
+                        if (waitingBlocks.containsKey(packet.blockId)) {
+                            waitingBlock = waitingBlocks.get(packet.blockId);
                         } else {
-                            waitingBlock = new Block(packet.senderNodeId, packet.receiverNodeId,
-                                    packet.blockId, packet.type,
-                                    receivedDatagram.getAddress(), receivedDatagram.getPort());
-                            waitingBlocks.put(waitingBlock.blockId, waitingBlock);
-                        }
+                            if (obtainedBlocks.containsKey(packet.blockId)) {
+                                // Do nothing, cause we got and obtained this block already
+                                report(getLabel(), " warning: repeated block given, with id " + packet.blockId);
+                            } else {
+                                waitingBlock = new Block(packet.senderNodeId, packet.receiverNodeId,
+                                        packet.blockId, packet.type,
+                                        receivedDatagram.getAddress(), receivedDatagram.getPort());
+                                waitingBlocks.put(waitingBlock.blockId, waitingBlock);
+                            }
 //                        waitingBlock = new Block(packet.senderNodeId, packet.receiverNodeId, packet.blockId, packet.type);
 //                        waitingBlocks.put(waitingBlock.blockId, waitingBlock);
-                    }
+                        }
 
-                    if(waitingBlock != null) {
-                        waitingBlock.addToPackets(packet);
+                        if (waitingBlock != null) {
+                            waitingBlock.addToPackets(packet);
 
-                        if (waitingBlock.isSolid()) {
-                            moveWaitingBlockToObtained(waitingBlock);
-                            waitingBlock.reconstruct();
-                            obtainSolidBlock(waitingBlock);
-                        } else {
-                            if(packet.type != PacketTypes.PACKET_ACK) {
-                                Session session = sessionsById.get(packet.senderNodeId);
-                                if (session == null) {
-                                    session = createSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                            if (waitingBlock.isSolid()) {
+                                moveWaitingBlockToObtained(waitingBlock);
+                                waitingBlock.reconstruct();
+                                obtainSolidBlock(waitingBlock);
+                            } else {
+                                if (packet.type != PacketTypes.PACKET_ACK) {
+                                    Session session = sessionsById.get(packet.senderNodeId);
+                                    if (session == null) {
+                                        session = createSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                                    }
+                                    sendPacketAck(session, packet.blockId, packet.packetId);
                                 }
-                                sendPacketAck(session, packet.blockId, packet.packetId);
                             }
                         }
-                    }
 
-                } catch (IllegalArgumentException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (EncryptionError e) {
+                    } catch (IllegalArgumentException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (EncryptionError e) {
 //                    System.out.println("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
-                    callErrorCallbacks("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
-                } catch (IOException e) {
-                    e.printStackTrace();
+                        callErrorCallbacks("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    report(getLabel(), "socket already closed");
+                    shutdownThread();
                 }
             }
         }
 
 
-        public void shutdownThread()
+        public synchronized void shutdownThread()
         {
             active = false;
+            interrupt();
+            threadSocket.close();
         }
 
 
-        public String getLabel()
+        public synchronized String getLabel()
         {
             return myNodeInfo.getNumber() + "-" + getName() + ": ";
         }
