@@ -389,13 +389,13 @@ public class CLIMainTest  {
         assertEquals(0, errors.size());
     }
 
-    @Test
-    public void checkDataIsValidContract() throws Exception {
-        callMain("-ch", rootPath + "simple_root_contract_v2.yml", "--binary");
-        System.out.println(output);
-        assert(output.indexOf("Contract is valid") >= 0);
-        assertEquals(0, errors.size());
-    }
+//    @Test
+//    public void checkDataIsValidContract() throws Exception {
+//        callMain("-ch", rootPath + "simple_root_contract_v2.yml", "--binary");
+//        System.out.println(output);
+//        assert(output.indexOf("Contract is valid") >= 0);
+//        assertEquals(0, errors.size());
+//    }
 
     @Test
     public void checkContract() throws Exception {

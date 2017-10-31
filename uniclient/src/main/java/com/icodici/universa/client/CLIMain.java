@@ -139,8 +139,8 @@ public class CLIMain {
                         .describedAs("file/path");
                 accepts("r", "Use with --ch, --check or -f, --find command. " +
                         "Specify to check contracts in the path and do it recursively.");
-                accepts("binary", "Use with --ch, --check. " +
-                        "Specify to check contracts from binary data.");
+//                accepts("binary", "Use with --ch, --check. " +
+//                        "Specify to check contracts from binary data.");
                 accepts("term-width").withRequiredArg().ofType(Integer.class).defaultsTo(80);
 
 
@@ -276,28 +276,28 @@ public class CLIMain {
             if (options.has("ch")) {
                 String source = (String) options.valueOf("ch");
 
-                if (options.has("binary")) {
-                    // TODO: load bytes from source and check it in the checkBytesIsValidContract()
-                    Contract contract = Contract.fromYamlFile(source);
-                    keysMap().values().forEach(k -> contract.addSignerKey(k));
-                    byte[] data = contract.seal();
-                    checkBytesIsValidContract(data);
-                } else {
-                    HashMap<String, Contract> contracts = findContracts(source, options.has("r"));
+//                if (options.has("binary")) {
+//                    // TODO: load bytes from source and check it in the checkBytesIsValidContract()
+//                    Contract contract = Contract.fromYamlFile(source);
+//                    keysMap().values().forEach(k -> contract.addSignerKey(k));
+//                    byte[] data = contract.seal();
+//                    checkBytesIsValidContract(data);
+//                } else {
+                HashMap<String, Contract> contracts = findContracts(source, options.has("r"));
 
-                    report("");
-                    if (contracts.size() > 0) {
-                        report("Checking loaded contracts");
+                report("");
+                if (contracts.size() > 0) {
+                    report("Checking loaded contracts");
+                    report("---");
+                    for (String key : contracts.keySet()) {
+                        report("Checking contract at " + key);
+                        checkContract(contracts.get(key));
                         report("---");
-                        for (String key : contracts.keySet()) {
-                            report("Checking contract at " + key);
-                            checkContract(contracts.get(key));
-                            report("---");
-                        }
-                    } else {
-                        report("No contracts found");
                     }
+                } else {
+                    report("No contracts found");
                 }
+//                }
 
                 finish();
             }
