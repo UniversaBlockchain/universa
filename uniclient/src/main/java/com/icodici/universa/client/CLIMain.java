@@ -1044,7 +1044,7 @@ public class CLIMain {
                     writer.startNode(hasType);
                     ZonedDateTime date = ZonedDateTime.ofInstant(Instant.ofEpochSecond((Long)map.get("seconds")),
                             ZoneOffset.systemDefault());
-                    writer.setValue(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(date));
+                    writer.setValue(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss [XXX]").format(date));
                     writer.endNode();
                     break;
 
@@ -1104,8 +1104,8 @@ public class CLIMain {
                         switch (hasType) {
                             case MapEntryConverterKnownTypes.UNIXTIME:
                                 map.put("__type", checkingKey);
-                                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                                ZonedDateTime date = ZonedDateTime.parse((String) checkingValue, formatter.withZone(ZoneId.systemDefault()));
+                                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss [XXX]");
+                                ZonedDateTime date = ZonedDateTime.parse((String) checkingValue, formatter);
                                 map.put("seconds", date.toEpochSecond());
                                 break;
 

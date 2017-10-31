@@ -1,26 +1,18 @@
 <contract>
   <api__level>2</api__level>
   <definition>
-    <reference>
-      <com.icodici.universa.contract.Reference>
-        <roles isArray="true"/>
-        <origin/>
-        <name/>
-        <fields isArray="true"/>
-      </com.icodici.universa.contract.Reference>
-    </reference>
     <expires__at>
-      <unixtime>2022-08-05 10:25:37</unixtime>
+      <unixtime>2022-08-05 10:25:37 -07:00</unixtime>
     </expires__at>
     <data>
       <description>this documents certifies the right of holder (owner) to access all readonly Universa services within the period starting at &apos;active since&apos; and ending at the time of contract expiration.</description>
       <active__since>
-        <unixtime>2017-08-05 10:24:49</unixtime>
+        <unixtime>2017-08-05 10:24:49 -07:00</unixtime>
       </active__since>
       <type>access certificate</type>
     </data>
     <permissions>
-      <FLC3mc>
+      <W8EYBJ>
         <ChangeOwnerPermission>
           <name>change_owner</name>
           <role>
@@ -30,8 +22,8 @@
             </RoleLink>
           </role>
         </ChangeOwnerPermission>
-      </FLC3mc>
-      <fSYBQR>
+      </W8EYBJ>
+      <Lcwaps>
         <RevokePermission>
           <name>revoke</name>
           <role>
@@ -41,10 +33,10 @@
             </RoleLink>
           </role>
         </RevokePermission>
-      </fSYBQR>
+      </Lcwaps>
     </permissions>
     <created__at>
-      <unixtime>2017-10-30 08:35:19</unixtime>
+      <unixtime>2017-10-31 10:29:42 -07:00</unixtime>
     </created__at>
     <issuer>
       <SimpleRole>
@@ -117,7 +109,7 @@
     <branch__id/>
     <origin/>
     <created__at>
-      <unixtime>2017-10-30 08:35:19</unixtime>
+      <unixtime>2017-10-31 10:29:42 -07:00</unixtime>
     </created__at>
     <created__by>
       <RoleLink>

@@ -229,7 +229,7 @@ public class CLIMainTest  {
                 "  </definition.issuer>";
         String field2 = "definition.expires_at";
         String value2 = "<definition.expires__at>\n" +
-                "       <unixtime>2022-08-05 10:25:37</unixtime>\n" +
+                "       <unixtime>2022-08-05 10:25:37 -07:00</unixtime>\n" +
                 "</definition.expires__at>";
         callMain(
                 "-e", rootPath + "contract_to_export.unicon",
