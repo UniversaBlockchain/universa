@@ -519,10 +519,10 @@ public class CLIMain {
             }
             checkContract(contract);
         } catch (RuntimeException e) {
-            addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+            addError(Errors.BAD_VALUE.name(), "byte[] data", e.getMessage());
             return false;
         } catch (IOException e) {
-            addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+            addError(Errors.BAD_VALUE.name(), "byte[] data", e.getMessage());
             return false;
         }
 
@@ -574,8 +574,8 @@ public class CLIMain {
             report("import from " + extension + " ok");
 
         } else {
-            addError("2", "", "Path " + sourceName + " does not exist");
-            usage("Path " + sourceName + " does not exist");
+            addError(Errors.NOT_FOUND.name(), sourceName, "Path " + sourceName + " does not exist");
+//            usage("Path " + sourceName + " does not exist");
         }
 
         return contract;
@@ -599,8 +599,8 @@ public class CLIMain {
 
             contract = new Contract(data);
         } else {
-            addError("2", "", "Path " + fileName + " does not exist");
-            usage("Path " + fileName + " does not exist");
+            addError(Errors.NOT_FOUND.name(), fileName, "Path " + fileName + " does not exist");
+//            usage("Path " + fileName + " does not exist");
         }
 
         return contract;
@@ -856,7 +856,7 @@ public class CLIMain {
                 try {
                     contract.addSignerKey(PrivateKey.fromPath(Paths.get(k.toString())));
                 } catch (IOException e) {
-                    addError("NOT_FOUND", k.toString(), "failed to load key file: "+e.getMessage());
+                    addError(Errors.NOT_FOUND.name(), k.toString(), "failed to load key file: "+e.getMessage());
                 }
             });
         }
@@ -924,14 +924,14 @@ public class CLIMain {
                     contract = loadContract(file.getAbsolutePath());
                     foundContracts.put(file.getAbsolutePath(), contract);
                 } catch (RuntimeException e) {
-                    addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+                    addError(Errors.FAILURE.name(), file.getAbsolutePath(), e.getMessage());
                 } catch (IOException e) {
-                    addError(Errors.BAD_VALUE.name(), "", e.getMessage());
+                    addError(Errors.FAILURE.name(), file.getAbsolutePath(), e.getMessage());
                 }
             }
         } else {
-            addError("2", "", "Path " + path + " does not exist");
-            usage("Path " + path + " does not exist");
+            addError(Errors.NOT_FOUND.name(), path, "Path " + path + " does not exist");
+//            usage("Path " + path + " does not exist");
         }
         return foundContracts;
     }

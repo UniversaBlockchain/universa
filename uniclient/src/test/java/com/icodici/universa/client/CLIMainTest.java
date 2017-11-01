@@ -174,6 +174,18 @@ public class CLIMainTest {
     }
 
     @Test
+    public void exportWrongPathTest() throws Exception {
+        callMain(
+                "-e", rootPath + "not_exist_contract.unicon");
+        System.out.println(output);
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_FOUND.name(), errors.get(0).get("code"));
+            assertEquals(rootPath + "not_exist_contract.unicon", errors.get(0).get("object"));
+        }
+    }
+
+    @Test
     public void exportPublicKeys() throws Exception {
         String role = "owner";
         callMain(
@@ -443,6 +455,18 @@ public class CLIMainTest {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
         }
     }
+
+    @Test
+    public void importFromWrongPathTest() throws Exception {
+        callMain(
+                "-i", rootPath + "not_exist_contract.yaml");
+        System.out.println(output);
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_FOUND.name(), errors.get(0).get("code"));
+            assertEquals(rootPath + "not_exist_contract.yaml", errors.get(0).get("object"));
+        }
+    }
 //
 //    @Test
 //    public void importExportXMLTest() throws Exception {
@@ -521,16 +545,16 @@ public class CLIMainTest {
         assert (output.indexOf(total + " (TUNC)") >= 0);
     }
 
-    //    @Test
+    @Test
     public void findContractsInWrongPath() throws Exception {
 
-        try {
-            callMain("-f", rootPath + "not_exist_subfolder/", "-v", "-r");
-            System.out.println(output);
-        } catch (Exception e) {
-
-        }
+        callMain("-f", rootPath + "not_exist_subfolder/", "-v", "-r");
+        System.out.println(output);
         assert (output.indexOf("No contracts found") >= 0);
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_FOUND.name(), errors.get(0).get("code"));
+            assertEquals(rootPath + "not_exist_subfolder/", errors.get(0).get("object"));
+        }
     }
 
     @Test
