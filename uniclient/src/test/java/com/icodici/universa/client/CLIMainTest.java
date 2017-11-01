@@ -9,6 +9,7 @@ package com.icodici.universa.client;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
+import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
@@ -401,7 +402,10 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.json");
         System.out.println(output);
         assert (output.indexOf("import from json ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 
     @Test
@@ -410,7 +414,10 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.json");
         System.out.println(output);
         assert (output.indexOf("import from json ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 
     @Test
@@ -419,7 +426,10 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.xml");
         System.out.println(output);
         assert (output.indexOf("import from xml ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 
     @Test
@@ -428,7 +438,10 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.yaml");
         System.out.println(output);
         assert (output.indexOf("import from yaml ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 //
 //    @Test
@@ -448,7 +461,10 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.xml", "-name", rootPath + name);
         System.out.println(output);
         assert (output.indexOf("import from xml ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 
     @Test
