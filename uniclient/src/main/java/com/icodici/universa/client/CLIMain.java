@@ -55,7 +55,7 @@ import static java.util.Arrays.asList;
 
 public class CLIMain {
 
-    private static final String CLI_VERSION = "2.1.1";
+    private static final String CLI_VERSION = "2.1.2";
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -71,9 +71,7 @@ public class CLIMain {
     public static final String AMOUNT_FIELD_NAME = "amount";
 
     static public void main(String[] args) throws IOException {
-//        args = new String[]{"-g", "longkey", "-s", "4096"};
-        // when we run untitests, it is important
-        System.out.println(Do.list(args));
+        // when we run untit tests, it is important:
         reporter.clear();
         // it could be called more than once from tests
         keyFiles = null;
@@ -124,7 +122,7 @@ public class CLIMain {
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("filename");
-                accepts("extract-keys", "Use with -e, --export command. " +
+                accepts("extract-key", "Use with -e, --export command. " +
                         "Extracts any public key(s) from specified role into external file.")
                         .withRequiredArg()
                         .ofType(String.class)
@@ -211,7 +209,7 @@ public class CLIMain {
                 String source = (String) options.valueOf("e");
                 String format = (String) options.valueOf("as");
                 String name = (String) options.valueOf("name");
-                String extractKeyRole = (String) options.valueOf("extract-keys");
+                String extractKeyRole = (String) options.valueOf("extract-key");
                 List extractFields = options.valuesOf("get");
 
                 List updateFields = options.valuesOf("set");
