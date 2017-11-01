@@ -700,9 +700,17 @@ public class CLIMain {
             for (PublicKey key : keys) {
                 index++;
                 data = key.pack();
-                String name = fileName.replaceAll("\\.(pub)$", "_key_" + roleName + "_" + index + ".pub");
+                String name = fileName.replaceAll("\\.(pub)$", "_key_" + roleName + "_" + index + ".public.unikey");
+                boolean base64 = false;
+                if( options.has("base64")) {
+                    base64 = true;
+                    name += ".txt";
+                }
                 try (FileOutputStream fs = new FileOutputStream(name)) {
-                    fs.write(data);
+                    if( base64 )
+                        fs.write(Base64.encodeLines(data).getBytes());
+                    else
+                        fs.write(data);
                     fs.close();
                 }
             }
