@@ -939,6 +939,7 @@ public class UDPAdapter extends DatagramAdapter {
             datagrams = new ConcurrentHashMap<>();
 
             List headerData = asList(0, 0, senderNodeId, receiverNodeId, blockId, type);
+            // TODO: resolve issue with magic digit
             int headerSize = Boss.dump(headerData).size() + 3; // 3 - Boss artefact
 
             byte[] blockByteArray;

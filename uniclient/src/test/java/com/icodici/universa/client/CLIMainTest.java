@@ -9,6 +9,7 @@ package com.icodici.universa.client;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
+import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
@@ -72,7 +73,7 @@ public class CLIMainTest {
     public void createRegisterCheckRevoke() throws Exception {
         String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
         callMain("-c", rootPath + "simple_root_contract_v2.yml",
-                 "-k", keyFileName
+                "-k", keyFileName
         );
         String contractFileName = rootPath + "/simple_root_contract_v2.unicon";
         assertTrue(new File(contractFileName).exists());
@@ -87,8 +88,148 @@ public class CLIMainTest {
     }
 
     @Test
+    public void createRegisterTwoContractsCheckRevoke1() throws Exception {
+        String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
+
+        callMain("-c", rootPath + "simple_root_contract_v2.yml",
+                "-k", keyFileName
+        );
+        String contractFileName = rootPath + "/simple_root_contract_v2.unicon";
+        assertTrue(new File(contractFileName).exists());
+        assertEquals(0, errors.size());
+
+        callMain("-c", rootPath + "another_root_contract_v2.yml",
+                "-k", keyFileName
+        );
+        String contractFileName2 = rootPath + "/another_root_contract_v2.unicon";
+        assertTrue(new File(contractFileName2).exists());
+        assertEquals(0, errors.size());
+
+        Contract c = Contract.fromSealedFile(contractFileName);
+        System.out.println("first contract: " + c.getId());
+
+        Contract c2 = Contract.fromSealedFile(contractFileName2);
+        System.out.println("second contract: " + c.getId());
+
+        callMain2("--register", contractFileName, contractFileName2, "--verbose");
+    }
+
+    @Test
+    public void createRegisterTwoContractsCheckRevoke2() throws Exception {
+        String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
+
+        callMain("-c", rootPath + "simple_root_contract_v2.yml",
+                "-k", keyFileName
+        );
+        String contractFileName = rootPath + "/simple_root_contract_v2.unicon";
+        assertTrue(new File(contractFileName).exists());
+        assertEquals(0, errors.size());
+
+        callMain("-c", rootPath + "another_root_contract_v2.yml",
+                "-k", keyFileName
+        );
+        String contractFileName2 = rootPath + "/another_root_contract_v2.unicon";
+        assertTrue(new File(contractFileName2).exists());
+        assertEquals(0, errors.size());
+
+        Contract c = Contract.fromSealedFile(contractFileName);
+        System.out.println("first contract: " + c.getId());
+
+        Contract c2 = Contract.fromSealedFile(contractFileName2);
+        System.out.println("second contract: " + c.getId());
+
+        callMain2("--register", contractFileName + "," + contractFileName2, "--verbose");
+    }
+
+    @Test
+    public void createRegisterTwoContractsCheckRevoke3() throws Exception {
+        String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
+
+        callMain("-c", rootPath + "simple_root_contract_v2.yml",
+                "-k", keyFileName
+        );
+        String contractFileName = rootPath + "/simple_root_contract_v2.unicon";
+        assertTrue(new File(contractFileName).exists());
+        assertEquals(0, errors.size());
+
+        callMain("-c", rootPath + "another_root_contract_v2.yml",
+                "-k", keyFileName
+        );
+        String contractFileName2 = rootPath + "/another_root_contract_v2.unicon";
+        assertTrue(new File(contractFileName2).exists());
+        assertEquals(0, errors.size());
+
+        Contract c = Contract.fromSealedFile(contractFileName);
+        System.out.println("first contract: " + c.getId());
+
+        Contract c2 = Contract.fromSealedFile(contractFileName2);
+        System.out.println("second contract: " + c.getId());
+
+        callMain2("--register", "--verbose", contractFileName, contractFileName2);
+    }
+
+    @Test
+    public void createRegisterTwoContractsCheckRevoke4() throws Exception {
+        String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
+
+        callMain("-c", rootPath + "simple_root_contract_v2.yml",
+                "-k", keyFileName
+        );
+        String contractFileName = rootPath + "/simple_root_contract_v2.unicon";
+        assertTrue(new File(contractFileName).exists());
+        assertEquals(0, errors.size());
+
+        callMain("-c", rootPath + "another_root_contract_v2.yml",
+                "-k", keyFileName
+        );
+        String contractFileName2 = rootPath + "/another_root_contract_v2.unicon";
+        assertTrue(new File(contractFileName2).exists());
+        assertEquals(0, errors.size());
+
+        Contract c = Contract.fromSealedFile(contractFileName);
+        System.out.println("first contract: " + c.getId());
+
+        Contract c2 = Contract.fromSealedFile(contractFileName2);
+        System.out.println("second contract: " + c.getId());
+
+        callMain2("--register", "--verbose", contractFileName + "," + contractFileName2);
+    }
+
+    @Test
     public void checkState() throws Exception {
         callMain2("--probe", "py2GSOxgOGBPiaL9rnGm800lf1Igk3/BGU/wSawFNic7H/x0r8KPOb61iqYlDXWMtR44r5GaO/EDa5Di8c6lmQ", "--verbose");
+    }
+
+    @Test
+    public void checkStateTwoHashes1() throws Exception {
+        callMain2("--probe",
+                "py2GSOxgOGBPiaL9rnGm800lf1Igk3/BGU/wSawFNic7H/x0r8KPOb61iqYlDXWMtR44r5GaO/EDa5Di8c6lmQ",
+                "G0lCqE2TPn9wiioHDy5nllWbLkRwPA97HdnhtcCn3EDAuoDBwiZcRIGjrBftGLFWOVUY8D5yPVkEj+wqb6ytrA",
+                "--verbose");
+    }
+
+    @Test
+    public void checkStateTwoHashes2() throws Exception {
+        callMain2("--probe",
+                "py2GSOxgOGBPiaL9rnGm800lf1Igk3/BGU/wSawFNic7H/x0r8KPOb61iqYlDXWMtR44r5GaO/EDa5Di8c6lmQ" + "," +
+                "G0lCqE2TPn9wiioHDy5nllWbLkRwPA97HdnhtcCn3EDAuoDBwiZcRIGjrBftGLFWOVUY8D5yPVkEj+wqb6ytrA",
+                "--verbose");
+    }
+
+    @Test
+    public void checkStateTwoHashes3() throws Exception {
+        callMain2("--probe",
+                "--verbose",
+                "py2GSOxgOGBPiaL9rnGm800lf1Igk3/BGU/wSawFNic7H/x0r8KPOb61iqYlDXWMtR44r5GaO/EDa5Di8c6lmQ",
+                "G0lCqE2TPn9wiioHDy5nllWbLkRwPA97HdnhtcCn3EDAuoDBwiZcRIGjrBftGLFWOVUY8D5yPVkEj+wqb6ytrA");
+    }
+
+    @Test
+    public void checkStateTwoHashes4() throws Exception {
+        callMain2("--probe",
+                "--verbose",
+                "py2GSOxgOGBPiaL9rnGm800lf1Igk3/BGU/wSawFNic7H/x0r8KPOb61iqYlDXWMtR44r5GaO/EDa5Di8c6lmQ" + "," +
+                "G0lCqE2TPn9wiioHDy5nllWbLkRwPA97HdnhtcCn3EDAuoDBwiZcRIGjrBftGLFWOVUY8D5yPVkEj+wqb6ytrA");
     }
 
     @Test
@@ -173,6 +314,85 @@ public class CLIMainTest {
     }
 
     @Test
+    public void exportTwoContractsTest1() throws Exception {
+        callMain(
+                "-e", "-as", "json", "-pretty",
+                rootPath + "contract_to_export.unicon",
+                rootPath + "contract_to_export2.unicon");
+        System.out.println(output);
+        assert (output.indexOf("export as json ok") >= 1);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportTwoContractsTest2() throws Exception {
+        callMain(
+                "-e",
+                rootPath + "contract_to_export.unicon", "-as", "json", "-pretty",
+                rootPath + "contract_to_export2.unicon", "-as", "xml");
+        System.out.println(output);
+        assert (output.indexOf("export as json ok") >= 0);
+        assert (output.indexOf("export as xml ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportTwoContractsTest3() throws Exception {
+        callMain(
+                "-e", "-pretty", "-v",
+                rootPath + "contract_to_export.unicon",
+                rootPath + "contract_to_export2.unicon");
+        System.out.println(output);
+        assert (output.indexOf("export as json ok") >= 1);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportTwoContractsTest4() throws Exception {
+        callMain(
+                "-e",
+                rootPath + "contract_to_export.unicon," + rootPath + "contract_to_export2.unicon",
+                "-pretty", "-v");
+        System.out.println(output);
+        assert (output.indexOf("export as json ok") >= 1);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportTwoContractsTest5() throws Exception {
+        callMain(
+                "-e", "-as", "xml",
+                rootPath + "contract_to_export.unicon," + rootPath + "contract_to_export2.unicon");
+        System.out.println(output);
+        assert (output.indexOf("export as xml ok") >= 1);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportTwoContractsTest6() throws Exception {
+        callMain(
+                "-e",
+                rootPath + "contract_to_export.unicon", "-name", rootPath + "test6.XML",
+                rootPath + "simple_root_contract_v2.unicon", "-name", rootPath + "test6.YML");
+        System.out.println(output);
+        assert (output.indexOf("export as xml ok") >= 0);
+        assert (output.indexOf("export as yml ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportWrongPathTest() throws Exception {
+        callMain(
+                "-e", rootPath + "not_exist_contract.unicon");
+        System.out.println(output);
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_FOUND.name(), errors.get(0).get("code"));
+            assertEquals(rootPath + "not_exist_contract.unicon", errors.get(0).get("object"));
+        }
+    }
+
+    @Test
     public void exportPublicKeys() throws Exception {
         String role = "owner";
         callMain(
@@ -193,11 +413,22 @@ public class CLIMainTest {
     }
 
     @Test
-    public void exportFields() throws Exception {
+    public void exportFields1() throws Exception {
         String field1 = "definition.issuer";
         String field2 = "state.origin";
         callMain(
                 "-e", rootPath + "contract_to_export.unicon", "-get", field1, "-get", field2);
+        System.out.println(output);
+        assert (output.indexOf("export fields as json ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportFields2() throws Exception {
+        String field1 = "definition.issuer";
+        String field2 = "state.origin";
+        callMain(
+                "-e", rootPath + "contract_to_export.unicon", "-get", field1 + "," + field2);
         System.out.println(output);
         assert (output.indexOf("export fields as json ok") >= 0);
         assertEquals(0, errors.size());
@@ -401,7 +632,10 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.json");
         System.out.println(output);
         assert (output.indexOf("import from json ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 
     @Test
@@ -410,16 +644,22 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.json");
         System.out.println(output);
         assert (output.indexOf("import from json ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 
     @Test
     public void importFromXMLTest() throws Exception {
         callMain(
-                "-i", rootPath + "contract_to_import.xml");
+                "-i", rootPath + "contract_to_import.XML");
         System.out.println(output);
         assert (output.indexOf("import from xml ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 
     @Test
@@ -428,7 +668,112 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.yaml");
         System.out.println(output);
         assert (output.indexOf("import from yaml ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
+    }
+
+    @Test
+    public void importTwoContractsTest1() throws Exception {
+        callMain(
+                "-i", rootPath + "contract_to_import.json",
+                rootPath + "contract_to_import.xml",
+                rootPath + "contract_to_import.yaml");
+        System.out.println(output);
+        assert (output.indexOf("import from json ok") >= 0);
+        assert (output.indexOf("import from yaml ok") >= 0);
+        assert (output.indexOf("import from xml ok") >= 0);
+        assertEquals(3, errors.size());
+        if(errors.size() > 2) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+        }
+    }
+
+    @Test
+    public void importTwoContractsTest2() throws Exception {
+        callMain(
+                "-i", "-name", rootPath + "contract_json.unicon", rootPath + "contract_to_import.json",
+                "-name", rootPath + "contract_xml.unicon", rootPath + "contract_to_import.xml",
+                "-name", rootPath + "contract_yaml.unicon", rootPath + "contract_to_import.yaml");
+        System.out.println(output);
+        assert (output.indexOf("import from json ok") >= 0);
+        assert (output.indexOf("import from yaml ok") >= 0);
+        assert (output.indexOf("import from xml ok") >= 0);
+        assertEquals(3, errors.size());
+        if(errors.size() > 2) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+        }
+    }
+
+    @Test
+    public void importTwoContractsTest3() throws Exception {
+        callMain(
+                "-i", "-v", rootPath + "contract_to_import.json",
+                rootPath + "contract_to_import.xml",
+                rootPath + "contract_to_import.yaml");
+        System.out.println(output);
+        assert (output.indexOf("import from json ok") >= 0);
+        assert (output.indexOf("import from yaml ok") >= 0);
+        assert (output.indexOf("import from xml ok") >= 0);
+        assertEquals(3, errors.size());
+        if(errors.size() > 2) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+        }
+    }
+
+    @Test
+    public void importTwoContractsTest4() throws Exception {
+        callMain(
+                "-i", rootPath + "contract_to_import.json," +
+                        rootPath + "contract_to_import.xml," +
+                        rootPath + "contract_to_import.yaml");
+        System.out.println(output);
+        assert (output.indexOf("import from json ok") >= 0);
+        assert (output.indexOf("import from yaml ok") >= 0);
+        assert (output.indexOf("import from xml ok") >= 0);
+        assertEquals(3, errors.size());
+        if(errors.size() > 2) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+        }
+    }
+
+    @Test
+    public void importTwoContractsTest5() throws Exception {
+        callMain(
+                "-i", "-v", rootPath + "contract_to_import.json," +
+                        rootPath + "contract_to_import.xml," +
+                        rootPath + "contract_to_import.yaml");
+        System.out.println(output);
+        assert (output.indexOf("import from json ok") >= 0);
+        assert (output.indexOf("import from yaml ok") >= 0);
+        assert (output.indexOf("import from xml ok") >= 0);
+        assertEquals(3, errors.size());
+        if(errors.size() > 2) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+        }
+    }
+
+    @Test
+    public void importFromWrongPathTest() throws Exception {
+        callMain(
+                "-i", rootPath + "not_exist_contract.yaml");
+        System.out.println(output);
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_FOUND.name(), errors.get(0).get("code"));
+            assertEquals(rootPath + "not_exist_contract.yaml", errors.get(0).get("object"));
+        }
     }
 //
 //    @Test
@@ -448,7 +793,10 @@ public class CLIMainTest {
                 "-i", rootPath + "contract_to_import.xml", "-name", rootPath + name);
         System.out.println(output);
         assert (output.indexOf("import from xml ok") >= 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
     }
 
     @Test
@@ -505,16 +853,52 @@ public class CLIMainTest {
         assert (output.indexOf(total + " (TUNC)") >= 0);
     }
 
-    //    @Test
+    @Test
     public void findContractsInWrongPath() throws Exception {
 
-        try {
-            callMain("-f", rootPath + "not_exist_subfolder/", "-v", "-r");
-            System.out.println(output);
-        } catch (Exception e) {
-
-        }
+        callMain("-f", rootPath + "not_exist_subfolder/", "-v", "-r");
+        System.out.println(output);
         assert (output.indexOf("No contracts found") >= 0);
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_FOUND.name(), errors.get(0).get("code"));
+            assertEquals(rootPath + "not_exist_subfolder/", errors.get(0).get("object"));
+        }
+    }
+
+    @Test
+    public void findTwoPaths1() throws Exception {
+        callMain("-f",
+                rootPath + "not_exist_subfolder",
+                rootPath + "not_exist_subfolder2");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void findTwoPaths2() throws Exception {
+        callMain("-f",
+                rootPath + "not_exist_subfolder" + "," +
+                        rootPath + "not_exist_subfolder2");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void findTwoPaths3() throws Exception {
+        callMain("-f", "-v",
+                rootPath + "not_exist_subfolder",
+                rootPath + "not_exist_subfolder2");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void findTwoPaths4() throws Exception {
+        callMain("-f", "-v",
+                rootPath + "not_exist_subfolder" + "," +
+                        rootPath + "not_exist_subfolder2");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
     }
 
     @Test
@@ -536,6 +920,42 @@ public class CLIMainTest {
     @Test
     public void checkContract() throws Exception {
         callMain("-ch", rootPath + "contract_to_export.unicon");
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkTwoContracts1() throws Exception {
+        callMain("-ch",
+                rootPath + "contract_to_export.unicon",
+                rootPath + "simple_root_contract_v2.unicon");
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkTwoContracts2() throws Exception {
+        callMain("-ch",
+                rootPath + "contract_to_export.unicon," +
+                        rootPath + "simple_root_contract_v2.unicon");
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkTwoContracts3() throws Exception {
+        callMain("-ch", "-v",
+                rootPath + "contract_to_export.unicon",
+                rootPath + "simple_root_contract_v2.unicon");
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkTwoContracts4() throws Exception {
+        callMain("-ch", "-v",
+                rootPath + "contract_to_export.unicon," +
+                        rootPath + "simple_root_contract_v2.unicon");
         System.out.println(output);
         assertEquals(0, errors.size());
     }
@@ -605,6 +1025,42 @@ public class CLIMainTest {
         for (File file : filesToRemove) {
             file.delete();
         }
+    }
+
+    @Test
+    public void checkTwoPaths1() throws Exception {
+        callMain("-ch",
+                rootPath,
+                rootPath + "contract_subfolder2");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkTwoPaths2() throws Exception {
+        callMain("-ch",
+                rootPath + "," +
+                        rootPath + "contract_subfolder2");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkTwoPaths3() throws Exception {
+        callMain("-ch", "-v",
+                rootPath,
+                rootPath + "contract_subfolder2");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void checkTwoPaths4() throws Exception {
+        callMain("-ch", "-v",
+                rootPath + "," +
+                        rootPath + "contract_subfolder2");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
     }
 
     @Test
