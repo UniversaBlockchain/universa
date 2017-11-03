@@ -66,9 +66,12 @@ public class ModifyDataPermission extends Permission {
                     value = ((ChangedItem) mapChanges.get(key)).newValue();
                 }
 
+                boolean containsField = this.fields.containsKey(key);
+
                 List<String> foundField = this.fields.get(key);
 
-                return foundField != null && (foundField.contains(value) || isEmptyOrNull(foundField, value));
+                return (containsField && foundField == null) ||
+                        (foundField != null && foundField.contains(value) || isEmptyOrNull(foundField, value));
             });
         }
     }

@@ -105,6 +105,7 @@ definition:
             - ~
             - blockchain-partnership.
             - blockchain-universa.
+          units:
      - role: issuer
        fields:
           option:
@@ -176,4 +177,5 @@ state:
     description: An example of smart contract.
     partner_name: blockchain-partnership.
     direction: 2
+    units: 35
     option: 1
