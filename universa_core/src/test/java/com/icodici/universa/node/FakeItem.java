@@ -18,7 +18,7 @@ public class FakeItem implements Approvable {
     }
 
     @Override
-    public boolean check() {
+    public boolean check(String __) {
         return true;
     }
 

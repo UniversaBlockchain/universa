@@ -205,7 +205,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public boolean check() {
+    public boolean check(String prefix) {
         try {
             // common check for all cases
             errors.clear();
@@ -216,16 +216,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 checkChangedContract();
         } catch (Exception e) {
             e.printStackTrace();
-            addError(FAILED_CHECK, "", e.toString());
+            addError(FAILED_CHECK, prefix, e.toString());
         }
         int index = 0;
         for (Contract c : newItems) {
-            c.check();
+            String p = prefix + "new["+index+"].";
+            c.check(p);
             if (!c.isOk()) {
-                String prefix = "new[" + index + "]";
                 c.errors.forEach(e -> {
                     String name = e.getObjectName();
-                    name = name != null || name.isEmpty() ? prefix : prefix + "." + name;
+                    name = name == null ? p : p + name;
                     addError(e.getError(), name, e.getMessage());
                 });
             }

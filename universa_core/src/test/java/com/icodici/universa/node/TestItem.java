@@ -50,7 +50,7 @@ public class TestItem implements Approvable {
     }
 
     @Override
-    public boolean check() {
+    public boolean check(String __) {
         return isGood;
     }
 

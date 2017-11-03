@@ -84,7 +84,7 @@ public class ContractDelta {
         }
         ChangedItem<Integer, Integer> revision = (ChangedItem) stateChanges.get("revision");
         if (revision == null)
-            addError(BAD_VALUE, "state,revision", "is not incremented");
+            addError(BAD_VALUE, "state.revision", "is not incremented");
         else {
             stateChanges.remove("revision");
             if (revision.oldValue() + 1 != revision.newValue())

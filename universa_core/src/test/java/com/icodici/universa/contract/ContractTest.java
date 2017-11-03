@@ -19,6 +19,7 @@ import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -27,7 +28,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -378,7 +382,10 @@ public class ContractTest extends ContractTestBase {
 
     @Test
     public void loadBadFile() throws Exception {
-//        byte[] packed = Do.read(rootPath + "/testcoin5.unicon");
-//        Contract c = new Contract(packed);
+        byte[] packed = Do.read(rootPath + "/7000test6.unicon");
+        Contract c = new Contract(packed);
+        c.check();
+        c.traceErrors();
+
     }
 }
