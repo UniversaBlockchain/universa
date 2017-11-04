@@ -980,6 +980,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return new Contract(Do.read(contractFileName));
     }
 
+    public ZonedDateTime getIssuedAt() {
+        return definition.createdAt;
+    }
+
     public class State {
         private int revision;
         private Binder state;

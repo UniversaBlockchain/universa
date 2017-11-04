@@ -16,6 +16,7 @@ import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ import java.util.function.Consumer;
 import static org.junit.Assert.*;
 
 
+@Ignore("is covered by other tests. slow. call it explicitly of need")
 public class MicroHTTPDServiceTest {
     private static final int DEFAULT_PORT = 17174;
     private static final String ROOT_URL = "http://localhost:" + DEFAULT_PORT;

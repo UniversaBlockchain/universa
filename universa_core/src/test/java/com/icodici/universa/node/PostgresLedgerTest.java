@@ -57,21 +57,6 @@ public class PostgresLedgerTest extends TestCase {
         assertSame(r3, r4);
     }
 
-    @Test
-    public void specialIds() throws Exception {
-        for( int i=0; i<100; i++) {
-            HashId id = HashId.withDigest("gHwXqrvAC4IXYvHhsnfv2ew/dduI/0vcv2E2MZ/qgl4A9AlgKZjDQ49rvknUHmPGpdE6zGN2JJHXIFR+2jqe9Q");
-            StateRecord r1 = ledger.findOrCreate(id);
-            r1.setState(ItemState.REVOKED);
-            r1.save();
-
-            StateRecord r2 = ledger.getRecord(id);
-            assertEquals(r1.getId(), r2.getId());
-            assertEquals(r1.getState(), r2.getState());
-        }
-
-    }
-
     //    @Test
     public void ledgerBenchmark() throws Exception {
         ExecutorService es = Executors.newCachedThreadPool();

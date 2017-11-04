@@ -464,9 +464,8 @@ public class CLIMain {
 
             report("");
             if (contracts.size() > 0) {
-                report("Checking found contracts at the " + source);
                 for (String key : contracts.keySet()) {
-                    report("Checking contract at " + key);
+                    report("Checking contract: " + key);
                     checkContract(contracts.get(key));
                     report("");
                 }
@@ -695,6 +694,13 @@ public class CLIMain {
         }
         Yaml yaml = new Yaml();
         if (options.has("verbose")) {
+
+            report("contract id: "+ contract.getId().toBase64String());
+            report("issued:   "+contract.getIssuedAt());
+            report("revision: "+contract.getRevision());
+            report("created:  "+contract.getCreatedAt());
+            report("expires:  "+contract.getExpiresAt());
+
             Set<PublicKey> keys = contract.getSealedByKeys();
             if (keys.size() > 0) {
                 report("\nSignature contains " + keys.size() + " valid key(s):\n");
@@ -827,7 +833,7 @@ public class CLIMain {
 
         File pathFile = new File(fileName);
         if (pathFile.exists()) {
-            reporter.verbose("Loading contract from: " + fileName);
+//            reporter.verbose("Loading contract from: " + fileName);
             Path path = Paths.get(fileName);
             byte[] data = Files.readAllBytes(path);
 

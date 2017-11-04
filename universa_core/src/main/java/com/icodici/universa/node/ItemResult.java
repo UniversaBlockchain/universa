@@ -21,6 +21,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * The exported state of the item. This object is used to return data for the external (e.g. network) queries. We do not
@@ -115,7 +116,12 @@ public class ItemResult {
 
     @Override
     public String toString() {
-        return "ItemResult<" + state + " " + createdAt + " (" + (haveCopy ? "copy" : "") + ")>";
+        String s = "";
+        if( errors != null && !errors.isEmpty()) {
+            s = " errors: " + errors.stream().map(e -> e.toString()).collect(Collectors.joining(","));
+        }
+        return "ItemResult<" + state + " " + createdAt + " (" + (haveCopy ? "copy" : "") + ")"+s+
+                ">";
     }
 
     /**

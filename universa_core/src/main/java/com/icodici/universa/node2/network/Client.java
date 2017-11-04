@@ -96,7 +96,6 @@ public class Client {
             clients.add(null);
         }
         NodeRecord r = Do.sample(nodes);
-        System.out.println("Will try to connect to to the random node: " + r);
         client = new BasicHTTPClient(r.url);
         client.start(clientPrivateKey, r.key);
     }
