@@ -1,11 +1,11 @@
 /*
  * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
  *
- * Written by Sergey Chernov <real.sergeych@gmail.com>, August 2017.
+ * Written by Sergey Chernov <real.sergeych@gmail.com>
  *
  */
 
-package com.icodici.universa.node.network;
+package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.HashType;
 import com.icodici.crypto.PrivateKey;
@@ -13,6 +13,8 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
+import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node2.Config;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -30,22 +32,20 @@ import java.net.URLConnection;
 import java.util.Arrays;
 import java.util.List;
 
-public class UniversaHTTPClient {
+public class BasicHttpClient {
 
     private final static int DEFAULT_RECONNECT_TIMES = 3;
 
     static private LogPrinter log = new LogPrinter("HTCL");
     private String connectMessage;
-    private String nodeId;
     private PrivateKey privateKey;
     private SymmetricKey sessionKey;
     private long sessionId;
     private String url;
     private PublicKey nodePublicKey;
 
-    public UniversaHTTPClient(String nodeId, String rootUrlString) {
+    public BasicHttpClient(String rootUrlString) {
         this.url = rootUrlString;
-        this.nodeId = nodeId;
     }
 
     public String getConnectMessage() {
@@ -106,6 +106,7 @@ public class UniversaHTTPClient {
 
         if (!result.getStringOrThrow("status").equals("OK"))
             throw new ConnectionFailedException("" + result);
+
     }
 
     public void restart() throws IOException {
@@ -159,7 +160,8 @@ public class UniversaHTTPClient {
                 Binder result = data.getBinder("result", null);
                 if( result != null )
                     return result;
-                er = (ErrorRecord) data.get("error");
+                System.out.println("result: " + result);
+                er = (ErrorRecord)data.get("error");;
                 if( er == null )
                     er = new ErrorRecord(Errors.FAILURE, "", "unprocessablereply");
             } catch (EndpointException e) {
@@ -200,9 +202,11 @@ public class UniversaHTTPClient {
     }
 
     private Answer requestOrThrow(String connect, Object... params) throws IOException {
+//        System.out.println("---> "+connect+": "+asList(params));
         Answer answer = request(connect, params);
         if (answer.code >= 400 || answer.data.containsKey("errors"))
             throw new EndpointException(answer);
+//        System.out.println("<--- "+answer);
         return answer;
     }
 
@@ -229,6 +233,8 @@ public class UniversaHTTPClient {
         connection.setConnectTimeout(2000);
         connection.setReadTimeout(5000);
         connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+        connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+
 
         try (
                 OutputStream output = connection.getOutputStream();
@@ -258,28 +264,10 @@ public class UniversaHTTPClient {
 
     @Override
     public String toString() {
-        return "Node<" + nodeId + ":" + getUrl() + ">";
+        return "HTTPClient<" +getUrl() + ">";
     }
 
-    public class ClientException extends IOException {
-        public ClientException(String message) {
-            super(message);
-        }
-
-        public ClientException(String message, Throwable cause) {
-            super(message, cause);
-        }
-
-        public ClientException(Throwable cause) {
-            super(cause);
-        }
-
-        public UniversaHTTPClient getClient() {
-            return UniversaHTTPClient.this;
-        }
-    }
-
-    public class ConnectionFailedException extends ClientException {
+    public static class ConnectionFailedException extends IOException {
 
         public ConnectionFailedException() {
             super("connection failed");
@@ -290,7 +278,7 @@ public class UniversaHTTPClient {
         }
     }
 
-    public class EndpointException extends ClientException {
+    public static class EndpointException extends IOException {
         private final Answer answer;
 
         public EndpointException(Answer answer) {
@@ -319,22 +307,6 @@ public class UniversaHTTPClient {
         }
     }
 
-    /**
-     * Exception thrown if the remote command (authenticated) reports some {@link ErrorRecord}-based error.
-     */
-    public class CommandFailedException extends ClientException {
-        private final ErrorRecord error;
-
-        public CommandFailedException(ErrorRecord error) {
-            super(error.toString());
-            this.error = error;
-        }
-
-        public ErrorRecord getError() {
-            return error;
-        }
-    }
-
 
     public class Answer {
         public final int code;
@@ -342,7 +314,7 @@ public class UniversaHTTPClient {
 
         private Answer(int code, @NonNull Binder data) {
             this.code = code;
-            this.data = data;
+            this.data = data.getBinderOrThrow("response");
         }
 
         @Override
@@ -356,5 +328,10 @@ public class UniversaHTTPClient {
         public boolean isOk() {
             return code == 200;
         }
+    }
+
+    static {
+        Config.forceInit(ErrorRecord.class);
+        Config.forceInit(ItemState.class);
     }
 }

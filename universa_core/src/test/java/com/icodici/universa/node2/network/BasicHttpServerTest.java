@@ -23,8 +23,8 @@ public class BasicHttpServerTest extends TestCase {
 //    @Test
 //    public void addEndpoint() throws Exception {
 //        BasicHttpServer s = new BasicHttpServer(null, 15600, 32, log);
-//        BasicHTTPClient c = new BasicHTTPClient("http://localhost:15600");
-//        BasicHTTPClient.Answer a = c.request("ping", Binder.of("hello", "world"));
+//        BasicHttpClient c = new BasicHttpClient("http://localhost:15600");
+//        BasicHttpClient.Answer a = c.request("ping", Binder.of("hello", "world"));
 //        System.out.println(":: "+a);
 //        s.shutdown();
 //    }
@@ -35,7 +35,7 @@ public class BasicHttpServerTest extends TestCase {
         PrivateKey clientKey = TestKeys.privateKey(2);
         BasicHttpServer s = new BasicHttpServer(nodeKey, 15600, 32, log);
 
-        BasicHTTPClient c = new BasicHTTPClient("http://localhost:15600");
+        BasicHttpClient c = new BasicHttpClient("http://localhost:15600");
         c.start(clientKey, nodeKey.getPublicKey());
 
         Binder res = c.command("sping");
@@ -55,7 +55,7 @@ public class BasicHttpServerTest extends TestCase {
         PrivateKey nodeKey = TestKeys.privateKey(1);
         PrivateKey clientKey = TestKeys.privateKey(2);
         BasicHttpServer s = new BasicHttpServer(nodeKey, 15600, 32, log);
-        BasicHTTPClient c = new BasicHTTPClient("http://localhost:15600");
+        BasicHttpClient c = new BasicHttpClient("http://localhost:15600");
         c.start(clientKey, nodeKey.getPublicKey());
         assertThrows(CommandFailedException.class, ()->c.command("test_error"));
     }

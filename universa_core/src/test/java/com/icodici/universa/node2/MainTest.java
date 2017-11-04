@@ -13,7 +13,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.network.TestKeys;
-import com.icodici.universa.node2.network.BasicHTTPClient;
+import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.Client;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -57,7 +57,7 @@ public class MainTest {
         Binder data = client.command("status");
         data.getStringOrThrow("status");
 //        assertThat(data.getListOrThrow("log").size(), greaterThan(3));
-        BasicHTTPClient.Answer a = client.request("ping");
+        BasicHttpClient.Answer a = client.request("ping");
         assertEquals("200: {ping=pong}", a.toString());
 
 

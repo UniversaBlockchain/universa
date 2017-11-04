@@ -73,17 +73,17 @@ public class Client {
         T execute() throws Exception;
     }
 
-    final BasicHTTPClient client;
+    final BasicHttpClient client;
 
     public Client(String rootUrlString, PrivateKey clientPrivateKey,
                   PublicKey nodePublicKey) throws IOException {
-        client = new BasicHTTPClient(rootUrlString);
+        client = new BasicHttpClient(rootUrlString);
         this.clientPrivateKey = clientPrivateKey;
         client.start(clientPrivateKey, nodePublicKey);
     }
 
     public Client(PrivateKey myPrivateKey, NodeInfo nodeInfo) throws IOException {
-        client = new BasicHTTPClient(nodeInfo.publicUrlString());
+        client = new BasicHttpClient(nodeInfo.publicUrlString());
         this.clientPrivateKey = myPrivateKey;
         client.start(myPrivateKey, nodeInfo.getPublicKey());
     }
@@ -96,7 +96,7 @@ public class Client {
             clients.add(null);
         }
         NodeRecord r = Do.sample(nodes);
-        client = new BasicHTTPClient(r.url);
+        client = new BasicHttpClient(r.url);
         client.start(clientPrivateKey, r.key);
     }
 
@@ -168,7 +168,7 @@ public class Client {
         return client.command(name, params);
     }
 
-    public BasicHTTPClient.Answer request(String name, Object... params) throws IOException {
+    public BasicHttpClient.Answer request(String name, Object... params) throws IOException {
         return client.request(name, params);
     }
 

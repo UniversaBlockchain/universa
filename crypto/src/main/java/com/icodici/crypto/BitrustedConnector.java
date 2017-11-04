@@ -1,13 +1,12 @@
 /*
  * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
  *
- * Written by Sergey Chernov <real.sergeych@gmail.com>, August 2017.
+ * Written by Sergey Chernov <real.sergeych@gmail.com>
  *
  */
 
-package com.icodici.universa.node.network;
+package com.icodici.crypto;
 
-import com.icodici.crypto.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.farcall.BossConnector;
 import net.sergeych.farcall.Command;
@@ -28,8 +27,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.Predicate;
-
-import com.icodici.universa.node.network.BitrustedConnector.Error;
 
 public class BitrustedConnector implements Farcall.Target, Connector {
 

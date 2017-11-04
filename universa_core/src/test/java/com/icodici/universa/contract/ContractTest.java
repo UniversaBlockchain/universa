@@ -19,7 +19,6 @@ import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -380,12 +379,12 @@ public class ContractTest extends ContractTestBase {
         }
     }
 
-    @Test
-    public void loadBadFile() throws Exception {
-        byte[] packed = Do.read(rootPath + "/7000test6.unicon");
-        Contract c = new Contract(packed);
-        c.check();
-        c.traceErrors();
-
-    }
+//    @Test
+//    public void loadBadFile() throws Exception {
+//        byte[] packed = Do.read(rootPath + "/7000test6.unicon");
+//        Contract c = new Contract(packed);
+//        c.check();
+//        c.traceErrors();
+//
+//    }
 }

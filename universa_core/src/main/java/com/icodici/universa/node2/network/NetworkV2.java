@@ -131,7 +131,7 @@ public class NetworkV2 extends Network {
         consumer = notificationConsumer;
     }
 
-//    private final Map<NodeInfo,BasicHTTPClient> httpClients = new HashMap<>();
+//    private final Map<NodeInfo,BasicHttpClient> httpClients = new HashMap<>();
 
     @Override
     public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {

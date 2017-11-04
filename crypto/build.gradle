@@ -40,4 +40,5 @@ dependencies {
     }
     checkerFramework "org.checkerframework:checker:${checkerFrameworkVersion}"
     compile "org.checkerframework:checker-qual:${checkerFrameworkVersion}"
+    testCompile 'org.hamcrest:hamcrest-library:1.3'
 }
