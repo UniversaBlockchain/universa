@@ -65,8 +65,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
-     * the transaction pack fails to resove a link, no error will be reported - not sure it's a good idea.
-     * If need, the exception could be generated with the transaction pack.
+     * the transaction pack fails to resove a link, no error will be reported - not sure it's a good idea. If need, the
+     * exception could be generated with the transaction pack.
      * <p>
      * It is recommended to call {@link #check()} after construction to see the errors.
      *
@@ -454,6 +454,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 return (Contract) a;
         }
         return null;
+    }
+
+    /**
+     * Add one or more contracts to revoke. The contracts must be approved loaded from a binary. Do not call {@link
+     * #seal()} on them as resealing discards network approval by changing the id!
+     *
+     * @param toRevoke
+     */
+    public void addRevokingItems(Contract... toRevoke) {
+        for (Contract c : toRevoke)
+            revokingItems.add(c);
     }
 
     private void basicCheck() {
@@ -981,8 +992,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return context.siblings;
     }
 
-    public void addNewItem(Contract newContract) {
-        newItems.add(newContract);
+    /**
+     * Add one or more siblings to the contract. Note that those must be sealed before calling {@link #seal()} or {@link
+     * #getPackedTransaction()}. Do not reseal as it changes the id!
+     *
+     * @param newContracts
+     */
+    public void addNewItems(Contract... newContracts) {
+        for (Contract c : newContracts)
+            newItems.add(c);
     }
 
     /**
@@ -1145,16 +1163,41 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return sealedBinary;
     }
 
+    /**
+     * Pack the contract to the most modern .unicon fromat, same as {@link TransactionPack#pack()}. Uses bounded
+     * {@link TransactionPack} instance to save togther the contract, revoking and new items (if any). This is a binary
+     * format using to submit for approval. Use {@link #fromPackedTransaction(byte[])} to read this format.
+     *
+     * @return packed binary form.
+     */
     public byte[] getPackedTransaction() {
         return getTransactionPack().pack();
     }
 
     /**
-     * Unitity method: retreive a first contract from a packed {@link TransactionPack} object.
+     * Main .unicon read routine. Load any .unicon version and construct a linked Contract with counterparts (new and
+     * revoking items if present) and corresponding {@link TransactionPack} instance to pack it to store or send to
+     * approval.
+     * <p>
+     * The supported file variants are:
+     * <p>
+     * - v2 legacy unicon. Is loaded with packed conterparts if any. Only for compatibility, avoid using it.
+     * <p>
+     * - v3 compacted unicon. Is loaded without counterparts, should be added later if need with {@link
+     * #addNewItems(Contract...)} and {@link #addRevokingItems(Contract...)}. This is a good way to keep the long
+     * contract chain.
+     * <p>
+     * - packed {@link TransactionPack}. This is a preferred way to keep current contract state.
+     * <p>
+     * To pack and write corresponding .unicon file use {@link #getPackedTransaction()}.
+     *
+     * @param packedItem some packed from of the universa contract
+     *
+     * @throws IOException if the packedItem is broken
      */
-    public static Contract fromPackedTransaction(@NonNull byte[] packedItems) throws IOException {
-        TransactionPack tp = TransactionPack.unpack(packedItems);
-        return tp.getContract(0);
+    public static Contract fromPackedTransaction(@NonNull byte[] packedItem) throws IOException {
+        TransactionPack tp = TransactionPack.unpack(packedItem);
+        return tp.getContract();
     }
 
     public void setTransactionPack(TransactionPack transactionPack) {
@@ -1162,7 +1205,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public TransactionPack getTransactionPack() {
-        if( transactionPack == null )
+        if (transactionPack == null)
             transactionPack = new TransactionPack(this);
         return transactionPack;
     }

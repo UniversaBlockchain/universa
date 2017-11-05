@@ -378,7 +378,7 @@ public class PermissionsTest extends ContractTestBase {
         badc.seal();
         assertFalse(badc.check());
 
-        c2.addNewItem(badc);
+        c2.addNewItems(badc);
 
         // now c2 should be bad: it tries to create a bad contract!
         sealCheckTrace(c2, false);
@@ -391,7 +391,7 @@ public class PermissionsTest extends ContractTestBase {
         assertTrue(c3.isOk());
 
         c2.getNewItems().clear();
-        c2.addNewItem(c3);
+        c2.addNewItems(c3);
 
         assertEquals(1, c2.getNewItems().size());
 

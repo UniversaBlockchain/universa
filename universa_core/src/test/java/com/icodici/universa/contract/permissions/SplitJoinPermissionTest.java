@@ -318,7 +318,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
         TransactionPack tp2 = TransactionPack.unpack(new TransactionPack(c1).pack());
 //        tp2.trace();
-        Contract restored = tp2.getContract(0);
+        Contract restored = tp2.getContract();
         restored.check();
         restored.traceErrors();
         assertTrue(restored.isOk());

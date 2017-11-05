@@ -149,7 +149,7 @@ public class NetworkV2 extends Network {
             TransactionPack tp = TransactionPack.unpack(data, false);
             tp.trace();
 //            Contract c = Contract.fromPackedTransaction(data);
-            return tp.getContract(0);
+            return tp.getContract();
         } catch (Exception e) {
             System.out.println("download failure: "+e);
             e.printStackTrace();

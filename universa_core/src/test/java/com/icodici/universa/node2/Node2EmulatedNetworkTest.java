@@ -343,6 +343,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         // and the references are intact
         assertEquals(ItemState.DECLINED, node.checkItem(existing1.getId()).state);
+        if( node.checkItem(existing2.getId()).state.isPending() )
+            Thread.sleep(500);
         assertEquals(ItemState.APPROVED, node.checkItem(existing2.getId()).state);
     }
 

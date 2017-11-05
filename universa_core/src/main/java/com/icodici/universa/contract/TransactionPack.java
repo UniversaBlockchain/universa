@@ -16,16 +16,30 @@ import net.sergeych.tools.Binder;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * The bundle of linked contracts to be passed to the network to perform the operation. Consists of contracts to approve
- * and their counterparts (revoking versions, siblings), optional contracts to identify the calling party and to pay the
- * transaction and other stuff needed by the network to properly process.
+ * The main contract and its counterparts needed for registration submission bundled together. The main contract is
+ * specified in constructor or with {@link #setContract(Contract)}, and obtained by {@link #getContract()}. The
+ * counterparts are: possible siblings (for example, of split operation), and revoking contracts (when creating new
+ * revision, joining contracts and so on). All of these should be presented the the Network in the form of sealed
+ * binaries, that is when {@link TransactionPack} is used.
+ * <p>
+ * Packed format of transaction pack could be very well used instead of {@link Contract#seal()} binaries as it holds
+ * together the window around the contract graph (parent and siblings) needed to approve its state. It is advised to use
+ * {@link Contract#getPackedTransaction()} to save the Contract and {@link Contract#fromPackedTransaction(byte[])} to
+ * restore, respectively, as it holds together all relevant data. The file extension for it should be .unicon, as the
+ * latter function is able to read and reconstruct lefacy v2 sealed contracts, current v3 seald contracts and packed
+ * TransactionPack instances, it is a universal format and a universal routine to load it. See {@link
+ * Contract#fromPackedTransaction(byte[])} for more.
+ * <p>
+ * Indeed, it is possible to keep all contract binaries separately and put them together for submission only, thus
+ * saving the space.
+ * <p>
+ * The legacy v2 self-contained format is no more in use as the size of the hashed binary constantly grows.
  * <p>
  * A word of terminology.
  * <p>
@@ -33,11 +47,7 @@ import java.util.stream.Collectors;
  * and approval; it could and should contain other contracts as revoking as well as new items (siblings) to create.
  * These <i>referenced</i> contracts do not need to be addded separately.
  * <p>
- * The contracts in the list are processed by the Network in the order of addition. If it is not state otherwise, the
- * sequence of the contracts pack is not an atomic transaction, unlike each contract of it which is an atomic
- * transaction.
- * <p>
- * To put several operations in an atomic transaction, put iy all into a single top-level contract.
+ * Note. To put several operations in an atomic transaction, put iy all into a single top-level contract.
  * <p>
  * This implementation is not thread safe. Synchronize your access if need.
  */
@@ -46,24 +56,24 @@ public class TransactionPack implements BiSerializable {
 
     private static byte[] packedBinary;
     private Map<HashId, Contract> references = new HashMap<>();
-    private List<Contract> contracts = new ArrayList<>();
+    private Contract contract;
 
     /**
      * Create a transaction pack and add a contract to it. See {@link TransactionPack#TransactionPack()} and {@link
-     * #addContract(Contract)} for more information.
+     * #setContract(Contract)} for more information.
      *
      * @param contract
      */
     public TransactionPack(Contract contract) {
         this();
-        addContract(contract);
+        setContract(contract);
     }
 
     /**
      * The list of contracts to approve.
      */
-    public List<Contract> getContracts() {
-        return contracts;
+    public Contract getContract() {
+        return contract;
     }
 
     public Contract getReference(HashId id) {
@@ -88,10 +98,10 @@ public class TransactionPack implements BiSerializable {
      *
      * @param c contract to append to the list of transactions.
      */
-    public void addContract(Contract c) {
-        if (contracts.contains(c))
+    public void setContract(Contract c) {
+        if (contract != null)
             throw new IllegalArgumentException("the contract is already added");
-        contracts.add(c);
+        contract = c;
         packedBinary = null;
         c.getRevokingItems().forEach(i -> putReference((Contract) i));
         c.getNewItems().forEach(i -> putReference((Contract) i));
@@ -99,22 +109,22 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * Direct add the reference. Not recommended as {@link #addContract(Contract)} already does it for all referenced
+     * Direct add the reference. Not recommended as {@link #setContract(Contract)} already does it for all referenced
      * contracts. Use it to add references not mentioned in the added contracts.
      *
      * @param reference
      */
     public void addReference(Contract reference) {
-        if( !references.containsKey(reference.getId())) {
+        if (!references.containsKey(reference.getId())) {
             packedBinary = null;
             references.put(reference.getId(), reference);
         }
     }
 
     /**
-     * store the referenced contract. Called by the {@link #addContract(Contract)} and only useful if the latter is
+     * store the referenced contract. Called by the {@link #setContract(Contract)} and only useful if the latter is
      * overriden. Referenced contracts are not processed by themselves but only as parts of the contracts add with
-     * {@link #addContract(Contract)}
+     * {@link #setContract(Contract)}
      *
      * @param contract
      */
@@ -130,17 +140,14 @@ public class TransactionPack implements BiSerializable {
             List<Bytes> ll = deserializer.deserializeCollection(
                     data.getListOrThrow("references")
             );
-            if (ll != null)
+            if (ll != null) {
                 for (Bytes b : ll) {
                     Contract c = new Contract(b.toArray(), this);
                     references.put(c.getId(), c);
                 }
-            ll = deserializer.deserialize(data.getList("contracts", null));
-            if (ll != null)
-                for (Bytes b : ll) {
-                    Contract c = new Contract(b.toArray(), this);
-                    contracts.add(c);
-                }
+            }
+            byte[] bb = data.getBinaryOrThrow("contract");
+            contract = new Contract(bb, this);
         } catch (IOException e) {
             throw new RuntimeException("illegal data format in TransactionPack", e);
         }
@@ -149,11 +156,7 @@ public class TransactionPack implements BiSerializable {
     @Override
     public Binder serialize(BiSerializer serializer) {
         return Binder.of(
-                "contracts",
-                serializer.serialize(
-                        contracts.stream()
-                                .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
-                ),
+                "contract", contract.getLastSealedBinary(),
                 "references",
                 serializer.serialize(
                         references.values().stream()
@@ -171,7 +174,7 @@ public class TransactionPack implements BiSerializable {
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
-    public static TransactionPack unpack(byte[] packOrContractBytes,boolean allowNonTransacions) throws IOException {
+    public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransacions) throws IOException {
         packedBinary = packOrContractBytes;
 
         Object x = Boss.load(packOrContractBytes);
@@ -179,13 +182,12 @@ public class TransactionPack implements BiSerializable {
         if (x instanceof TransactionPack)
             return (TransactionPack) x;
 
-        if(! allowNonTransacions)
+        if (!allowNonTransacions)
             throw new IOException("expected transaction pack");
 
         // This is an old v2 self-contained contract or a root v3 contract, no revokes, no siblings.
         TransactionPack tp = new TransactionPack();
-        Contract c = new Contract(packOrContractBytes, tp);
-        tp.contracts.add(c);
+        tp.contract = new Contract(packOrContractBytes, tp);
         return tp;
     }
 
@@ -204,10 +206,11 @@ public class TransactionPack implements BiSerializable {
 
     /**
      * Shortcut to {@link Boss#pack(Object)} for this.
+     *
      * @return
      */
     public byte[] pack() {
-        if( packedBinary == null )
+        if (packedBinary == null)
             packedBinary = Boss.pack(this);
         return packedBinary;
     }
@@ -224,24 +227,14 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * @param i index of the contract to retreive
-     * @return ith contract from added
-     */
-    public Contract getContract(int i) {
-        return contracts.get(0);
-    }
-
-    /**
      * Trace the tree of contracts references on the stdout.
      */
     public void trace() {
         System.out.println("Transaction pack");
-        System.out.println("\tContracts:");
-        for (Contract c : contracts) {
-            System.out.println("\t\t" + c.getId());
-            c.getNewItems().forEach(x -> System.out.println("\t\t\tnew: " + x.getId()));
-            c.getRevokingItems().forEach(x -> System.out.println("\t\t\trevoke: " + x.getId()));
-        }
+        System.out.println("\tContract:");
+        System.out.println("\t\t" + contract.getId());
+        contract.getNewItems().forEach(x -> System.out.println("\t\t\tnew: " + x.getId()));
+        contract.getRevokingItems().forEach(x -> System.out.println("\t\t\trevoke: " + x.getId()));
         System.out.println("\tReferences:");
         references.forEach((hashId, contract) -> System.out.println("\t\t" + hashId + " -> " + contract.getId()));
     }

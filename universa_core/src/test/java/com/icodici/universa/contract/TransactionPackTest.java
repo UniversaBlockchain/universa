@@ -48,14 +48,14 @@ public class TransactionPackTest {
     @Test
     public void serializeNew() throws Exception {
         TransactionPack tp = new TransactionPack();
-        tp.addContract(c);
+        tp.setContract(c);
         checkSimplePack(tp);
     }
 
     @Test
     public void deserializeNew() throws Exception {
         TransactionPack tp = new TransactionPack();
-        tp.addContract(c);
+        tp.setContract(c);
         checkSimplePack(tp);
 
         assertSame(tp,c.getTransactionPack());
@@ -64,7 +64,7 @@ public class TransactionPackTest {
         TransactionPack tp1 = TransactionPack.unpack(packedTp);
         checkSimplePack(tp1);
 
-        Contract c1 = tp1.getContracts().get(0);
+        Contract c1 = tp1.getContract();
         // it should be the same
         assertEquals(c.getId(), c1.getId());
         assertSame(tp1,c1.getTransactionPack());
@@ -98,9 +98,8 @@ public class TransactionPackTest {
     }
 
     public void checkSimplePack(TransactionPack tp) {
-        assertEquals(1, tp.getContracts().size());
         assertEquals(3, tp.getReferences().size());
-        assertEquals(c.getId(), tp.getContracts().get(0).getId());
+        assertEquals(c.getId(), tp.getContract().getId());
 
         Set<HashId> rids = c.getRevokingItems().stream().map(x->x.getId()).collect(Collectors.toSet());
         Set<HashId> nids = c.getNewItems().stream().map(x->x.getId()).collect(Collectors.toSet());
@@ -140,8 +139,8 @@ public class TransactionPackTest {
             n0 = new Contract(TestKeys.privateKey(0));
             n1 = new Contract(TestKeys.privateKey(0));
 
-            c.addNewItem(n0);
-            c.addNewItem(n1);
+            c.addNewItems(n0);
+            c.addNewItems(n1);
             c.seal();
             return this;
         }
