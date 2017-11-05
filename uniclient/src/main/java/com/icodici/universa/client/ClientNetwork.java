@@ -1,5 +1,6 @@
 package com.icodici.universa.client;
 
+import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.Client;
@@ -20,21 +21,20 @@ public class ClientNetwork {
     Client client;
 
     public ClientNetwork() throws IOException {
-        for( int i=1; i<10; i++ ) {
+        for (int i = 1; i < 10; i++) {
             try {
                 client = new Client("http://node-" +
                                             Do.randomIntInRange(1, 10) +
                                             "-com.universa.io:8080", CLIMain.getPrivateKey());
                 break;
-            }
-            catch(IOException e) {
-                reporter.warning("failed to read network from node "+i);
+            } catch (IOException e) {
+                reporter.warning("failed to read network from node " + i);
             }
         }
-        if( client == null )
+        if (client == null)
             throw new IOException("failed to connect to to the universa network");
-        reporter.verbose("Read Universa network configuration: "+client.size()+" nodes");
-        reporter.verbose("Network version: "+client.getVersion());
+        reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
+        reporter.verbose("Network version: " + client.getVersion());
     }
 
     public ItemResult register(byte[] packedContract) throws ClientError {
@@ -53,23 +53,27 @@ public class ClientNetwork {
         ExecutorService es = Executors.newCachedThreadPool();
         ArrayList<Future<?>> futures = new ArrayList<>();
         AtomicInteger okNodes = new AtomicInteger(0);
-        List<Client.NodeRecord> nodes = client.getNodes();
-        for( int nn=0; nn<client.size(); nn++) {
+        final List<Client.NodeRecord> nodes = client.getNodes();
+        for (int nn = 0; nn < client.size(); nn++) {
             final int nodeNumber = nn;
             futures.add(
                     es.submit(() -> {
-                            for( int i=0; i<5; i++) {
-                                if (client.ping(i)) {
+                        final String url = nodes.get(nodeNumber).url;
+                        reporter.verbose("Checking node " + url);
+                        for (int i = 0; i < 5; i++) {
+                            try {
+                                if (client.ping(nodeNumber)) {
                                     okNodes.getAndIncrement();
-                                    break;
+                                    reporter.verbose("Got an answer from " + url);
+                                    return;
                                 }
-                                try {
-                                    reporter.verbose("retrying node " + i);
-                                    Thread.sleep(750);
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                }
+                                reporter.message("retry #" + (i+1) + " on connection failure: " + url);
+                                Thread.sleep(200);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
                             }
+                        }
+                        reporter.error(Errors.NOT_READY.name(), url, "failed to connect");
                     })
             );
         }
@@ -85,10 +89,10 @@ public class ClientNetwork {
         });
         es.shutdown();
         int n = okNodes.get();
-        if( n >= client.size() * 0.12 )
-            reporter.message("Universa network is active, "+n+" node(s) are reachable");
+        if (n >= client.size() * 0.12)
+            reporter.message("Universa network is active, " + n + " node(s) are reachable");
         else
-            reporter.error("NOT_READY", "network", "Universa network is temporarily inaccessible, reachable nodes: "+n);
+            reporter.error("NOT_READY", "network", "Universa network is temporarily inaccessible, reachable nodes: " + n);
         return n;
     }
 }

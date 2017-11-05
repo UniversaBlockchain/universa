@@ -50,7 +50,6 @@ public class Client {
             return getClient(i).ping();
         }
         catch(Exception e) {
-            e.printStackTrace();
         }
         return false;
     }
@@ -98,6 +97,10 @@ public class Client {
         NodeRecord r = Do.sample(nodes);
         client = new BasicHttpClient(r.url);
         client.start(clientPrivateKey, r.key);
+    }
+
+    public String getUrl() {
+        return client.getUrl();
     }
 
     public class NodeRecord {

@@ -228,6 +228,7 @@ public class BasicHttpClient {
         String CRLF = "\r\n"; // Line separator required by multipart/form-data.
 
         URLConnection connection = new URL(url + "/" + path).openConnection();
+
         connection.setDoOutput(true);
 
         connection.setConnectTimeout(2000);
