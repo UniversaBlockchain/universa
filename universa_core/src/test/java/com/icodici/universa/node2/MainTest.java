@@ -82,7 +82,7 @@ public class MainTest {
         assertEquals(200, con.getResponseCode());
         byte[] data2 = Do.read(con.getInputStream());
 
-        assertArrayEquals(c.getLastSealedBinary(), data2);
+        assertArrayEquals(c.getPackedTransaction(), data2);
 
         url = new URL("http://localhost:8080/network");
         con = (HttpURLConnection) url.openConnection();

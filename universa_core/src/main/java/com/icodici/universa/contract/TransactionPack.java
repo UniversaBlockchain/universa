@@ -135,22 +135,18 @@ public class TransactionPack implements BiSerializable {
     }
 
     @Override
-    public void deserialize(Binder data, BiDeserializer deserializer) {
-        try {
-            List<Bytes> ll = deserializer.deserializeCollection(
-                    data.getListOrThrow("references")
-            );
-            if (ll != null) {
-                for (Bytes b : ll) {
-                    Contract c = new Contract(b.toArray(), this);
-                    references.put(c.getId(), c);
-                }
+    public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
+        List<Bytes> ll = deserializer.deserializeCollection(
+                data.getListOrThrow("references")
+        );
+        if (ll != null) {
+            for (Bytes b : ll) {
+                Contract c = new Contract(b.toArray(), this);
+                references.put(c.getId(), c);
             }
-            byte[] bb = data.getBinaryOrThrow("contract");
-            contract = new Contract(bb, this);
-        } catch (IOException e) {
-            throw new RuntimeException("illegal data format in TransactionPack", e);
         }
+        byte[] bb = data.getBinaryOrThrow("contract");
+        contract = new Contract(bb, this);
     }
 
     @Override

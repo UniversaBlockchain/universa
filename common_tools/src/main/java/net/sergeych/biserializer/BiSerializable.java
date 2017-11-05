@@ -9,6 +9,8 @@ package net.sergeych.biserializer;
 
 import net.sergeych.tools.Binder;
 
+import java.io.IOException;
+
 /**
  * The interface of class that can serialize and deserialize itself to/from {@link Binder}. The class implementing that
  * interface <b>must have default constructor, either public, protected, package-protected or private</b>. Also, it is
@@ -26,7 +28,7 @@ public interface BiSerializable {
      * @param data         to deserialize from
      * @param deserializer to deserialize components and use context
      */
-    public void deserialize(Binder data, BiDeserializer deserializer);
+    public void deserialize(Binder data, BiDeserializer deserializer) throws IOException;
 
     /**
      * Construct a Binder holding all necessary information to reconstruct state with {@link #deserialize(Binder,
