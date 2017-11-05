@@ -42,6 +42,7 @@ import static java.util.Arrays.asList;
 @BiType(name = "UniversaContract")
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
+    private static final int MAX_API_LEVEL = 3;
     private final Set<HashId> referencedItems = new HashSet<>();
     private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
@@ -49,7 +50,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private final Map<String, Role> roles = new HashMap<>();
     private State state;
     private byte[] sealedBinary;
-    private int apiLevel = 3;
+    private int apiLevel = MAX_API_LEVEL;
     private Context context = null;
 
     /**
@@ -60,6 +61,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Set<PrivateKey> keysToSignWith = new HashSet<>();
     private HashId id;
     private Reference references;
+    private TransactionPack transactionPack;
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
@@ -75,6 +77,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         this.sealedBinary = sealed;
+        this.transactionPack = pack;
         Binder data = Boss.unpack(sealed);
         if (!data.getStringOrThrow("type").equals("unicapsule"))
             throw new IllegalArgumentException("wrong object type, unicapsule required");
@@ -765,6 +768,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private void setOwnBinary(Binder result) {
         sealedBinary = Boss.pack(result);
+        transactionPack = null;
         this.id = HashId.of(sealedBinary);
     }
 
@@ -882,7 +886,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         int l = data.getIntOrThrow("api_level");
-        if (l > apiLevel)
+        if (l > MAX_API_LEVEL)
             throw new RuntimeException("contract api level conflict: found " + l + " my level " + apiLevel);
         deserializer.withContext(this, () -> {
             if (definition == null)
@@ -1139,6 +1143,28 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (sealedBinary == null && sealAsNeed)
             seal();
         return sealedBinary;
+    }
+
+    public byte[] getPackedTransaction() {
+        return getTransactionPack().pack();
+    }
+
+    /**
+     * Unitity method: retreive a first contract from a packed {@link TransactionPack} object.
+     */
+    public static Contract fromPackedTransaction(@NonNull byte[] packedItems) throws IOException {
+        TransactionPack tp = TransactionPack.unpack(packedItems);
+        return tp.getContract(0);
+    }
+
+    public void setTransactionPack(TransactionPack transactionPack) {
+        this.transactionPack = transactionPack;
+    }
+
+    public TransactionPack getTransactionPack() {
+        if( transactionPack == null )
+            transactionPack = new TransactionPack(this);
+        return transactionPack;
     }
 
     public class State {
@@ -1528,4 +1554,5 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         DefaultBiMapper.registerClass(Permission.class);
     }
+
 }

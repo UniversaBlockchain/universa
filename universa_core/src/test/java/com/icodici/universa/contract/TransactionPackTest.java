@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class TransactionPackTest {
@@ -57,12 +58,17 @@ public class TransactionPackTest {
         tp.addContract(c);
         checkSimplePack(tp);
 
-        TransactionPack tp1 = TransactionPack.unpack(tp.pack());
+        assertSame(tp,c.getTransactionPack());
+
+        byte[] packedTp = tp.pack();
+        TransactionPack tp1 = TransactionPack.unpack(packedTp);
         checkSimplePack(tp1);
 
         Contract c1 = tp1.getContracts().get(0);
         // it should be the same
         assertEquals(c.getId(), c1.getId());
+        assertSame(tp1,c1.getTransactionPack());
+        assertSame(packedTp, c1.getPackedTransaction());
 
         List<Approvable> r1 = new ArrayList<>(c.getRevokingItems());
         List<Approvable> r2 = new ArrayList<>(c1.getRevokingItems());

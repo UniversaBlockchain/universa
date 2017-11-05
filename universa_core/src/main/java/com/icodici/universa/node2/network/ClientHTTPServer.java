@@ -54,7 +54,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                 if (cache != null) {
                     Contract c = (Contract) cache.get(id);
                     if (c != null) {
-                        data = c.getLastSealedBinary();
+                        data = c.getPackedTransaction();
                     }
                 }
             }
@@ -100,7 +100,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode();
         return Binder.of(
                 "itemResult",
-                node.registerItem(new Contract(params.getBinaryOrThrow("packedItem")))
+                node.registerItem(Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem")))
         );
     }
 

@@ -11,7 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import com.icodici.universa.node2.Notification;
@@ -23,7 +23,9 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class NetworkV2 extends Network {
@@ -144,9 +146,12 @@ public class NetworkV2 extends Network {
             if (200 != connection.getResponseCode())
                 return null;
             byte[] data = Do.read(connection.getInputStream());
-            return new Contract(data);
-        } catch (IOException e) {
-            System.out.println("doewnload failure: "+e);
+            TransactionPack tp = TransactionPack.unpack(data, false);
+            tp.trace();
+//            Contract c = Contract.fromPackedTransaction(data);
+            return tp.getContract(0);
+        } catch (Exception e) {
+            System.out.println("download failure: "+e);
             e.printStackTrace();
             return null;
         }

@@ -134,13 +134,13 @@ public class MainTest {
         System.out.println(":: "+r);
 
         LogPrinter.showDebug(true);
-        r = client.register(c.getLastSealedBinary());
+        r = client.register(c.getPackedTransaction());
         System.out.println(r);
 
         while(true) {
             r = client.getState(c.getId());
             System.out.println("-->? " + r);
-            Thread.sleep(10);
+            Thread.sleep(3000);
             if( !r.state.isPending() )
                 break;
         }
