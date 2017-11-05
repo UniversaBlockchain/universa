@@ -49,7 +49,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private final Map<String, Role> roles = new HashMap<>();
     private State state;
     private byte[] sealedBinary;
-    private int apiLevel = 2;
+    private int apiLevel = 3;
     private Context context = null;
 
     /**
@@ -62,19 +62,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Reference references;
 
     /**
-     * Extract contract from a sealed form, filling signers information. Only valid signatures are kept, invalid are
-     * silently discarded. It is recommended to call {@link #check()} after construction to see the errors.
+     * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
+     * the transaction pack fails to resove a link, no error will be reported - not sure it's a good idea.
+     * If need, the exception could be generated with the transaction pack.
+     * <p>
+     * It is recommended to call {@link #check()} after construction to see the errors.
      *
-     * @param sealed binary sealed contract
+     * @param sealed binary sealed contract.
+     * @param pack   the transaction pack to resolve dependeincise agains.
+     *
      * @throws IllegalArgumentException on the various format errors
      */
-    public Contract(byte[] sealed) throws IOException {
+    public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         this.sealedBinary = sealed;
         Binder data = Boss.unpack(sealed);
         if (!data.getStringOrThrow("type").equals("unicapsule"))
             throw new IllegalArgumentException("wrong object type, unicapsule required");
-        if (data.getIntOrThrow("version") > 7)
-            throw new IllegalArgumentException("version too high");
+
+        apiLevel = data.getIntOrThrow("version");
+
         byte[] contractBytes = data.getBinaryOrThrow("data");
 
         // This must be explained. By default, Boss.load will apply contract transformation in place
@@ -84,11 +90,34 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         BiDeserializer bm = BossBiMapper.newDeserializer();
         deserialize(payload.getBinderOrThrow("contract"), bm);
 
-        for (Object r : payload.getList("revoking", Collections.EMPTY_LIST))
-            revokingItems.add(new Contract(((Bytes) r).toArray()));
+        if (apiLevel < 3) {
+            // Legacy format: revoking and new items are included (so the contract pack grows)
+            for (Object packed : payload.getList("revoking", Collections.EMPTY_LIST)) {
+                Contract c = new Contract(((Bytes) packed).toArray(), pack);
+                revokingItems.add(c);
+                pack.addReference(c);
+            }
 
-        for (Object r : payload.getList("new", Collections.EMPTY_LIST))
-            newItems.add(new Contract(((Bytes) r).toArray()));
+            for (Object packed : payload.getList("new", Collections.EMPTY_LIST)) {
+                Contract c = new Contract(((Bytes) packed).toArray(), pack);
+                newItems.add(c);
+                pack.addReference(c);
+            }
+        } else {
+            // new format: only references are included
+            for (Binder b : (List<Binder>) payload.getList("revoking", Collections.EMPTY_LIST)) {
+                HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
+                Contract r = pack.getReference(hid);
+                if (r != null)
+                    revokingItems.add(r);
+            }
+            for (Binder b : (List<Binder>) payload.getList("new", Collections.EMPTY_LIST)) {
+                HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
+                Contract n = pack.getReference(hid);
+                if (n != null)
+                    newItems.add(n);
+            }
+        }
 
         getContext();
         newItems.forEach(i -> i.context = context);
@@ -107,12 +136,78 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
                 if (es != null) {
                     sealedByKeys.put(key, es);
-                }
-                else
-                    addError(Errors.BAD_SIGNATURE, "keytag:"+key.info().getBase64Tag(),"the signature is broken");
+                } else
+                    addError(Errors.BAD_SIGNATURE, "keytag:" + key.info().getBase64Tag(), "the signature is broken");
             }
         }
     }
+
+    public Contract(byte[] data) throws IOException {
+        this(data, new TransactionPack());
+    }
+
+
+    /**
+     * Extract old, deprecated v2 self-contained binary partially unpacked by the {@link TransactionPack}, and fill the
+     * transaction pack with its contents. This contsructor also fills transaction pack instance with the new and
+     * revoking items included in its body in v2.
+     *
+     * @param sealed binary sealed contract
+     * @param data   unpacked sealed data (it is ready by the time of calling it)
+     *
+     * @throws IllegalArgumentException on the various format errors
+     */
+    public Contract(byte[] sealed, Binder data, TransactionPack pack) throws IOException {
+        this.sealedBinary = sealed;
+        if (!data.getStringOrThrow("type").equals("unicapsule"))
+            throw new IllegalArgumentException("wrong object type, unicapsule required");
+        int v = data.getIntOrThrow("version");
+        if (v > 2)
+            throw new IllegalArgumentException("This constructor requires version 2, got version " + v);
+        byte[] contractBytes = data.getBinaryOrThrow("data");
+
+        // This must be explained. By default, Boss.load will apply contract transformation in place
+        // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
+        // data without BiSerializer and then do it by hand calling deserialize:
+        Binder payload = Boss.load(contractBytes, null);
+        BiDeserializer bm = BossBiMapper.newDeserializer();
+        deserialize(payload.getBinderOrThrow("contract"), bm);
+
+        for (Object r : payload.getList("revoking", Collections.EMPTY_LIST)) {
+            Contract c = new Contract(((Bytes) r).toArray(), pack);
+            revokingItems.add(c);
+            pack.addReference(c);
+        }
+
+        for (Object r : payload.getList("new", Collections.EMPTY_LIST)) {
+            Contract c = new Contract(((Bytes) r).toArray(), pack);
+            newItems.add(c);
+            pack.addReference(c);
+        }
+
+        getContext();
+        newItems.forEach(i -> i.context = context);
+
+        HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
+
+        roles.values().forEach(role -> {
+            role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+        });
+
+        for (Object signature : (List) data.getOrThrow("signatures")) {
+            byte[] s = ((Bytes) signature).toArray();
+            Bytes keyId = ExtendedSignature.extractKeyId(s);
+            PublicKey key = keys.get(keyId);
+            if (key != null) {
+                ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
+                if (es != null) {
+                    sealedByKeys.put(key, es);
+                } else
+                    addError(Errors.BAD_SIGNATURE, "keytag:" + key.info().getBase64Tag(), "the signature is broken");
+            }
+        }
+    }
+
 
     public Contract() {
         definition = new Definition();
@@ -220,7 +315,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         int index = 0;
         for (Contract c : newItems) {
-            String p = prefix + "new["+index+"].";
+            String p = prefix + "new[" + index + "].";
             c.check(p);
             if (!c.isOk()) {
                 c.errors.forEach(e -> {
@@ -347,6 +442,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * will not be found, null will be returned.
      *
      * @param id to find
+     *
      * @return matching Contract instance or null if not found.
      */
     private Contract getRevokingItem(HashId id) {
@@ -420,6 +516,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * is register and return it, if it is a Map, tries to contruct and register {@link Role} thent return it.
      *
      * @param roleObject
+     *
      * @return
      */
     @NonNull
@@ -438,6 +535,21 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public Role getRole(String roleName) {
         return roles.get(roleName);
+    }
+
+    /**
+     * Get the id sealing self if need
+     *
+     * @param sealAsNeed true to seal the contract if there is no {@link #getLastSealedBinary()}.
+     *
+     * @return contract id.
+     */
+    public HashId getId(boolean sealAsNeed) {
+        if (id != null)
+            return id;
+        if (getLastSealedBinary() == null && sealAsNeed)
+            seal();
+        return getId();
     }
 
     @Override
@@ -578,7 +690,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return errors.isEmpty();
     }
 
-    public byte[] seal() {
+    public byte[] sealAsV2() {
         byte[] theContract = Boss.pack(
                 BossBiMapper.serialize(
                         Binder.of(
@@ -595,7 +707,36 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         newItems.forEach(c -> c.seal());
         Binder result = Binder.of(
                 "type", "unicapsule",
-                "version", apiLevel,
+                "version", 2,
+                "data", theContract
+        );
+        List<byte[]> signatures = new ArrayList<>();
+        keysToSignWith.forEach(key -> {
+            signatures.add(ExtendedSignature.sign(key, theContract));
+        });
+        result.put("data", theContract);
+        result.put("signatures", signatures);
+        setOwnBinary(result);
+        return sealedBinary;
+    }
+
+    public byte[] seal() {
+        byte[] theContract = Boss.pack(
+                BossBiMapper.serialize(
+                        Binder.of(
+                                "contract", this,
+                                "revoking", revokingItems.stream()
+                                        .map(i -> i.getId())
+                                        .collect(Collectors.toList()),
+                                "new", newItems.stream()
+                                        .map(i -> i.getId(true))
+                                        .collect(Collectors.toList())
+                        )
+                )
+        );
+        Binder result = Binder.of(
+                "type", "unicapsule",
+                "version", 3,
                 "data", theContract
         );
         List<byte[]> signatures = new ArrayList<>();
@@ -741,7 +882,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         int l = data.getIntOrThrow("api_level");
-        if (l != apiLevel)
+        if (l > apiLevel)
             throw new RuntimeException("contract api level conflict: found " + l + " my level " + apiLevel);
         deserializer.withContext(this, () -> {
             if (definition == null)
@@ -775,6 +916,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * themselves: registering this contract will do all the work.
      *
      * @param count number of siblings to split
+     *
      * @return array of just created siblings, to modify their state only.
      */
     public Contract[] split(int count) {
@@ -813,6 +955,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @param fieldName      field to extract from
      * @param valueToExtract how much to extract
+     *
      * @return new sibling contract with the extracted value.
      */
     public Contract splitValue(String fieldName, Decimal valueToExtract) {
@@ -843,6 +986,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * on.
      *
      * @param name
+     *
      * @return
      */
     public <T> T get(String name) {
@@ -977,11 +1121,24 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public static Contract fromSealedFile(String contractFileName) throws IOException {
-        return new Contract(Do.read(contractFileName));
+        return new Contract(Do.read(contractFileName), new TransactionPack());
     }
 
     public ZonedDateTime getIssuedAt() {
         return definition.createdAt;
+    }
+
+    /**
+     * Get last sealed binary or create it if there is not
+     *
+     * @param sealAsNeed {@link #seal()} it if there is no cached binary
+     *
+     * @return sealed contract or null
+     */
+    public byte[] getLastSealedBinary(boolean sealAsNeed) {
+        if (sealedBinary == null && sealAsNeed)
+            seal();
+        return sealedBinary;
     }
 
     public class State {
@@ -1256,7 +1413,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             registerRole(d.deserialize(data.getBinderOrThrow("issuer")));
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTime("expires_at", null);
-            this.data = d.deserialize(data.getBinder("data",Binder.EMPTY));
+            this.data = d.deserialize(data.getBinder("data", Binder.EMPTY));
             this.references = d.deserialize(data.getBinder("references", null));
             Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
             perms.forEach((id, perm) -> {

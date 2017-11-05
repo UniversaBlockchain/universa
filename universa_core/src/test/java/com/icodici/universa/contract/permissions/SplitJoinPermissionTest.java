@@ -11,16 +11,11 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTestBase;
-import com.icodici.universa.wallet.Wallet;
+import com.icodici.universa.contract.TransactionPack;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -316,8 +311,14 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
         sealCheckTrace(c1, true);
 
-        // and it should be the same after seriazling:
-        Contract restored = new Contract(c1.getLastSealedBinary());
+        // and it should be the same after seriazling to the transaction pack
+
+        TransactionPack tp = new TransactionPack(c1);
+//        tp.trace();
+
+        TransactionPack tp2 = TransactionPack.unpack(new TransactionPack(c1).pack());
+//        tp2.trace();
+        Contract restored = tp2.getContract(0);
         restored.check();
         restored.traceErrors();
         assertTrue(restored.isOk());

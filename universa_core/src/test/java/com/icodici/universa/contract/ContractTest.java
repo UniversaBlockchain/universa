@@ -119,11 +119,8 @@ public class ContractTest extends ContractTestBase {
 
         fileName = "./src/test_contracts/binaryContract.unc";
 
-        FileOutputStream stream = new FileOutputStream(fileName);
-        try {
+        try(FileOutputStream stream = new FileOutputStream(fileName)) {
             stream.write(c.seal());
-        } finally {
-            stream.close();
         }
 
         readContract(fileName);
@@ -196,7 +193,6 @@ public class ContractTest extends ContractTestBase {
     public void serializeToBinder() throws Exception {
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         Binder b = BossBiMapper.serialize(c);
-        Yaml yaml = new Yaml();
         Contract c1 = DefaultBiMapper.deserialize(b);
 //        System.out.println(yaml.dump(b));
 //        System.out.println(yaml.dump(c1.serializeToBinder()));
@@ -381,7 +377,7 @@ public class ContractTest extends ContractTestBase {
 
 //    @Test
 //    public void loadBadFile() throws Exception {
-//        byte[] packed = Do.read(rootPath + "/7000test6.unicon");
+//        byte[] packed = Do.read(rootPath + "7.35jun15 (outgoing).unicon");
 //        Contract c = new Contract(packed);
 //        c.check();
 //        c.traceErrors();

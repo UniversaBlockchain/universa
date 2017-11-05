@@ -48,7 +48,11 @@ public class ContractDelta {
             }
             // check immutable root area
             // should be only one change here: state
-            if (rootDelta.getChanges().size() > 1)
+            int allowedRootChanges = 1;
+            Delta ch = rootDelta.getChange("api_level");
+            if( ch != null)
+                allowedRootChanges++;
+            if (rootDelta.getChanges().size() > allowedRootChanges)
                 addError(ILLEGAL_CHANGE, "root", "root level changes are forbidden except the state");
 
             // check only permitted changes in data
