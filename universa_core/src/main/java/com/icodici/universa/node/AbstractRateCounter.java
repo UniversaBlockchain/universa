@@ -14,7 +14,7 @@ import java.time.Duration;
  * Limit something specifying and counting number of 'pulses' per some time slot. Limited are usages inside the slot,
  * when the slot is done, counts starts from 0.
  *
- * Serualization most completely save/restore its state: time slot, pule limit, duration and pulses left
+ * Serialization most completely save/restore its state: time slot, pulse limit, duration and pulses left
  */
 public abstract class AbstractRateCounter implements Serializable {
 

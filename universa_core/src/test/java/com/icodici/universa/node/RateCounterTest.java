@@ -3,6 +3,7 @@ package com.icodici.universa.node;
 import net.sergeych.tools.AsyncEvent;
 import org.junit.Test;
 
+import java.io.*;
 import java.time.Duration;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -155,6 +156,47 @@ public class RateCounterTest {
         }
         assertEquals(-3, rc.pulsesLeft());
         assertEquals(false, rc.countPulse());
+    }
+
+    @Test
+    public void serializeTest() throws Exception {
+        int limit = 5;
+        int seconds = 1;
+        RateCounter rc = new RateCounter(limit, Duration.ofSeconds(seconds));
+
+        assertEquals(limit, rc.pulsesLeft());
+        assertEquals(limit, rc.getPulseLimit());
+        assertEquals(seconds, rc.getDuration().getSeconds());
+
+        rc.countPulse(); // 1
+        rc.countPulse(); // 2
+        rc.countPulse(); // 3
+
+        FileOutputStream fos = new FileOutputStream("temp.out");
+        ObjectOutputStream oos = new ObjectOutputStream(fos);
+        oos.writeObject(rc);
+        oos.flush();
+        oos.close();
+
+        // deserialize
+        FileInputStream fis = new FileInputStream("temp.out");
+        ObjectInputStream oin = new ObjectInputStream(fis);
+        RateCounter rc2 = (RateCounter) oin.readObject();
+
+        File file = new File("temp.out");
+        if(file.exists()) file.delete();
+
+        System.out.println(rc.millisecondsLeft() + " <-> " + rc2.millisecondsLeft());
+        assertEquals(rc.getPulseLimit(), rc2.getPulseLimit());
+        assertEquals(rc.getDuration().getSeconds(), rc2.getDuration().getSeconds());
+        assertEquals(rc.pulsesLeft(), rc2.pulsesLeft());
+        assertEquals(rc.millisecondsLeft(), rc2.millisecondsLeft());
+
+        assertEquals(true, rc2.countPulse()); // 4
+        assertEquals(true, rc2.countPulse()); // 5
+        assertEquals(0, rc2.pulsesLeft());
+        assertEquals(false, rc2.countPulse()); // 6
+        assertEquals(-1, rc2.pulsesLeft());
     }
 
 }

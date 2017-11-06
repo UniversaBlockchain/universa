@@ -1,5 +1,6 @@
 package com.icodici.universa.node;
 
+import java.io.Serializable;
 import java.time.Duration;
 
 public class RateCounter extends AbstractRateCounter {
@@ -36,6 +37,13 @@ public class RateCounter extends AbstractRateCounter {
         return limit;
     }
 
+    public long millisecondsLeft() {
+        if(currentTimeSlot != null && currentTimeSlot.isActive())
+            return currentTimeSlot.millisecondsLeft();
+
+        return 0;
+    }
+
     @Override
     public boolean countPulse() {
         if(currentTimeSlot != null && currentTimeSlot.isActive()) {
@@ -47,7 +55,7 @@ public class RateCounter extends AbstractRateCounter {
     }
 
 
-    public class TimeSlot {
+    public class TimeSlot implements Serializable {
 
         private int limit;
         private int currentCount;
@@ -71,6 +79,13 @@ public class RateCounter extends AbstractRateCounter {
 
         public boolean isActive() {
             return System.currentTimeMillis() - startTime <= period.toMillis();
+        }
+
+        public long millisecondsLeft() {
+            if(isActive())
+                return (startTime + period.toMillis()) - System.currentTimeMillis();
+
+            return 0;
         }
     }
 }
