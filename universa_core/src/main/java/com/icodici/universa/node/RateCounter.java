@@ -1,62 +1,76 @@
-/*
- * Copyright (c) 2017 Sergey Chernov, iCodici S.n.C, All Rights Reserved
- *
- * Written by Sergey Chernov <real.sergeych@gmail.com>
- *
- */
-
 package com.icodici.universa.node;
 
-import java.io.Serializable;
 import java.time.Duration;
 
-/**
- * Limit something specifying and counting number of 'pulses' per some time slot. Limited are usages inside the slot,
- * when the slot is done, counts starts from 0.
- *
- * Serualization most completely save/restore its state: time slot, pule limit, duration and pulses left
- */
-public abstract class RateCounter implements Serializable {
+public class RateCounter extends AbstractRateCounter {
 
-    /**
-     * Set the time stol to a specified period and start counting pulses. Current state os cleared.
-     *
-     * @param limit  maximum puleses per slot
-     * @param period slot duration
-     */
-    public abstract void reset(int limit, Duration period);
+    private int limit;
+    private Duration period;
+    private TimeSlot currentTimeSlot;
+
+    public RateCounter (int limit, Duration period) {
+        reset(limit, period);
+    }
+
+    @Override
+    public void reset(int limit, Duration period) {
+        this.limit = limit;
+        this.period = period;
+    }
+
+    @Override
+    public Duration getDuration() {
+        return period;
+    }
+
+    @Override
+    public int getPulseLimit() {
+        return limit;
+    }
+
+    @Override
+    public int pulsesLeft() {
+        if(currentTimeSlot != null && currentTimeSlot.isActive())
+            return currentTimeSlot.limit - currentTimeSlot.currentCount;
+
+        return limit;
+    }
+
+    @Override
+    public boolean countPulse() {
+        if(currentTimeSlot != null && currentTimeSlot.isActive()) {
+        } else {
+            currentTimeSlot = new TimeSlot(limit, period);
+        }
+
+        return currentTimeSlot.countPulse();
+    }
 
 
-    /**
-     * The duration set by the {@link #reset(int, Duration)}
-     * @return
-     */
-    public abstract Duration getDuration();
+    public class TimeSlot {
 
-    /**
-     * The pulse limit set by the {@link #reset(int, Duration)}
-     * @return
-     */
-    public abstract int getPulseLimit();
+        private int limit;
+        private int currentCount;
+        private long startTime;
+        private Duration period;
 
+        public TimeSlot(int limit, Duration period) {
+            System.out.println("creates new time slot ");
+            this.startTime = System.currentTimeMillis();
+            this.limit = limit;
+            this.period = period;
+        }
 
-    /**
-     * Get the number of pulses left for the current time slot. If the slot is finished, does not create a new slot.
-     *
-     * @return number of pulses left in the current slot. Could be negative if the limited is exceeded.
-     */
-    public abstract int pulsesLeft();
+        public boolean countPulse() {
+            currentCount++;
+            if(currentCount > limit)
+                return false;
 
-    /**
-     * Register a pulse. Creates new slot now and resets counter if the current slot is finished or there is no current
-     * slot, what could happen after the reset.
-     * <p>
-     * Important. A new slot must always be created with this call. The time between the end of the current slot and the
-     * first call to the {@link #countPulse()} does not count.
-     *
-     * @return true if the limit is not exceeded after counting the pulse.
-     */
-    public abstract boolean countPulse();
+            return true;
+        }
 
+        public boolean isActive() {
+            return System.currentTimeMillis() - startTime <= period.toMillis();
+        }
+    }
 }
-
