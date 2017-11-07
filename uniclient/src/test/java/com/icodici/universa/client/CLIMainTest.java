@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.permissions.RevokePermission;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -1210,6 +1211,36 @@ public class CLIMainTest {
 
     @Test
     public void revokeContract() throws Exception {
+        String contractFileName = basePath + "contract_owner.unicon";
+        Contract contract = new Contract(ownerKey1);
+        contract.addPermission(new RevokePermission(contract.getRole("owner")));
+        contract.addPermission(new RevokePermission(contract.getRole("issuer")));
+        contract.seal();
+
+        saveContract(contract, contractFileName);
+
+        callMain2("--check", contractFileName, "-v");
+
+        callMain2("--register", contractFileName, "--verbose");
+
+        Contract c = Contract.fromSealedFile(contractFileName);
+        System.out.println("contract: " + c.getId().toBase64String());
+
+        Thread.sleep(1500);
+        System.out.println("probe before revoke");
+        callMain2("--probe", c.getId().toBase64String(), "--verbose");
+        Thread.sleep(1500);
+        callMain2("-revoke", contractFileName, "-v");
+        Thread.sleep(1500);
+        System.out.println("probe after revoke");
+        callMain("--probe", c.getId().toBase64String(), "--verbose");
+
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void revokeContractfromTemplate() throws Exception {
         String contractFileName = basePath + "contract_for_revoke1.unicon";
 
         callMain2("--check", contractFileName, "-v");

@@ -1327,7 +1327,7 @@ public class CLIMain {
             addErrors(errors);
         } else {
             contract.seal();
-            ItemResult r = getClientNetwork().register(contract.getPackedTransaction());
+            ItemResult r = getClientNetwork().register(contract.getLastSealedBinary());
             report("submitted with result:");
             report(r.toString());
         }
