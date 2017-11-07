@@ -88,7 +88,9 @@ public class CLIMain {
                         .ofType(Integer.class)
                         .defaultsTo(2048);
                 acceptsAll(asList("c", "create"), "Create smart contract from dsl template.")
-                        .withRequiredArg().ofType(String.class)
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
                         .describedAs("file.yml");
                 acceptsAll(asList("j", "json"), "Return result in json format.");
                 acceptsAll(asList("v", "verbose"), "Provide more detailed information.");
@@ -218,7 +220,7 @@ public class CLIMain {
                 return;
             }
             if (options.has("c")) {
-                createContract();
+                doCreateContract();
             }
             if (options.has("e")) {
                 doExport();
@@ -259,69 +261,68 @@ public class CLIMain {
 
     }
 
+    private static void doCreateContract() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("c"));
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+
+        List<String> names = (List) options.valuesOf("name");
+        List updateFields = options.valuesOf("set");
+        List updateValues = options.valuesOf("value");
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+            String name = null;
+            if (names.size() > s) name = names.get(s);
+
+            HashMap<String, String> updateFieldsHashMap = new HashMap<>();
+
+            Contract contract = Contract.fromDslFile(source);
+
+            try {
+                for (int i = 0; i < updateFields.size(); i++) {
+                    updateFieldsHashMap.put((String) updateFields.get(i), (String) updateValues.get(i));
+                }
+            } catch (Exception e) {
+
+            }
+            if (updateFieldsHashMap.size() > 0) {
+                updateFields(contract, updateFieldsHashMap);
+            }
+
+            keysMap().values().forEach(k -> contract.addSignerKey(k));
+            byte[] data = contract.seal();
+
+            // try sign
+            if (name == null) {
+                name = source.replaceAll("(?i)\\.(yml|yaml)$", ".unicon");
+            }
+            saveContract(contract, name);
+            report("created contract file: " + name);
+            checkContract(contract);
+        }
+        finish();
+    }
+
     private static void doExport() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("e"));
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
         }
-        List<String> formats = new ArrayList<String>((List) options.valuesOf("as"));
-        if (formats != null) {
-            sources.removeAll(formats);
-            sources.remove("-as");
-            sources.remove("--as");
-        }
-        if (options.has("j")) {
-            sources.remove("-j");
-            sources.remove("--j");
-            sources.remove("-json");
-            sources.remove("--json");
-        }
-        if (options.has("v")) {
-            sources.remove("-v");
-            sources.remove("--v");
-            sources.remove("-verbose");
-            sources.remove("--verbose");
-        }
-        if (options.has("r")) {
-            sources.remove("-r");
-            sources.remove("--r");
-        }
-        if (options.has("pretty")) {
-            sources.remove("-pretty");
-            sources.remove("--pretty");
-        }
-        List<String> names = (List) options.valuesOf("name");
-        if (names != null) {
-            sources.removeAll(names);
-            sources.remove("-name");
-            sources.remove("--name");
-        }
-        List<String> extractKeyRoles = (List) options.valuesOf("extract-key");
-        if (extractKeyRoles != null) {
-            sources.removeAll(extractKeyRoles);
-            sources.remove("-extract-key");
-            sources.remove("--extract-key");
-        }
-        List extractFields = options.valuesOf("get");
-        if (extractFields != null) {
-            sources.removeAll(extractFields);
-            sources.remove("-get");
-            sources.remove("--get");
-        }
 
+        cleanNonOptionalArguments(sources);
+
+        List<String> formats = new ArrayList<String>((List) options.valuesOf("as"));
+        List<String> names = (List) options.valuesOf("name");
+        List<String> extractKeyRoles = (List) options.valuesOf("extract-key");
+        List extractFields = options.valuesOf("get");
         List updateFields = options.valuesOf("set");
-        if (updateFields != null) {
-            sources.removeAll(updateFields);
-            sources.remove("-set");
-            sources.remove("--set");
-        }
         List updateValues = options.valuesOf("value");
-        if (extractFields != null) {
-            sources.removeAll(updateValues);
-            sources.remove("-value");
-            sources.remove("--value");
-        }
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
@@ -392,29 +393,11 @@ public class CLIMain {
             sources.addAll(asList(opt.split(",")));
         }
 
-        if (options.has("j")) {
-            sources.remove("-j");
-            sources.remove("--j");
-            sources.remove("-json");
-            sources.remove("--json");
-        }
-        if (options.has("v")) {
-            sources.remove("-v");
-            sources.remove("--v");
-            sources.remove("-verbose");
-            sources.remove("--verbose");
-        }
-        if (options.has("r")) {
-            sources.remove("-r");
-            sources.remove("--r");
-        }
-        List<String> names = (List) options.valuesOf("name");
-        if (names != null) {
-            sources.removeAll(names);
-            sources.remove("-name");
-            sources.remove("--name");
-        }
+        cleanNonOptionalArguments(sources);
 
+        List<String> names = (List) options.valuesOf("name");
+        List updateFields = options.valuesOf("set");
+        List updateValues = options.valuesOf("value");
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
@@ -422,8 +405,18 @@ public class CLIMain {
             if (names.size() > s) name = names.get(s);
 
             Contract contract = importContract(source);
-
             if (contract != null) {
+                HashMap<String, String> updateFieldsHashMap = new HashMap<>();
+                try {
+                    for (int i = 0; i < updateFields.size(); i++) {
+                        updateFieldsHashMap.put((String) updateFields.get(i), (String) updateValues.get(i));
+                    }
+                } catch (Exception e) {
+
+                }
+                if (updateFieldsHashMap.size() > 0) {
+                    updateFields(contract, updateFieldsHashMap);
+                }
                 if (name == null) {
                     name = source.replaceAll("(?i)\\.(json|xml|yml|yaml)$", ".unicon");
                 }
@@ -440,23 +433,7 @@ public class CLIMain {
             sources.addAll(asList(opt.split(",")));
         }
 
-        if (options.has("j")) {
-            sources.remove("-j");
-            sources.remove("--j");
-            sources.remove("-json");
-            sources.remove("--json");
-        }
-        if (options.has("v")) {
-            sources.remove("-v");
-            sources.remove("--v");
-            sources.remove("-verbose");
-            sources.remove("--verbose");
-        }
-        if (options.has("r")) {
-            sources.remove("-r");
-            sources.remove("--r");
-        }
-
+        cleanNonOptionalArguments(sources);
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
@@ -503,23 +480,7 @@ public class CLIMain {
             sources.addAll(asList(opt.split(",")));
         }
 
-        if (options.has("j")) {
-            sources.remove("-j");
-            sources.remove("--j");
-            sources.remove("-json");
-            sources.remove("--json");
-        }
-        if (options.has("v")) {
-            sources.remove("-v");
-            sources.remove("--v");
-            sources.remove("-verbose");
-            sources.remove("--verbose");
-        }
-        if (options.has("r")) {
-            sources.remove("-r");
-            sources.remove("--r");
-        }
-
+        cleanNonOptionalArguments(sources);
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
@@ -553,18 +514,7 @@ public class CLIMain {
             sources.addAll(asList(opt.split(",")));
         }
 
-        if (options.has("j")) {
-            sources.remove("-j");
-            sources.remove("--j");
-            sources.remove("-json");
-            sources.remove("--json");
-        }
-        if (options.has("v")) {
-            sources.remove("-v");
-            sources.remove("--v");
-            sources.remove("-verbose");
-            sources.remove("--verbose");
-        }
+        cleanNonOptionalArguments(sources);
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
@@ -592,6 +542,25 @@ public class CLIMain {
             sources.addAll(asList(opt.split(",")));
         }
 
+        cleanNonOptionalArguments(sources);
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+            ItemResult ir = getClientNetwork().check(source);
+            report("Universa network has reported the state:");
+            report(ir.toString());
+        }
+        finish();
+    }
+
+    private static void cleanNonOptionalArguments(List sources) throws IOException {
+
+        List<String> formats = new ArrayList<String>((List) options.valuesOf("as"));
+        if (formats != null) {
+            sources.removeAll(formats);
+            sources.remove("-as");
+            sources.remove("--as");
+        }
         if (options.has("j")) {
             sources.remove("-j");
             sources.remove("--j");
@@ -604,14 +573,45 @@ public class CLIMain {
             sources.remove("-verbose");
             sources.remove("--verbose");
         }
-
-        for (int s = 0; s < sources.size(); s++) {
-            String source = sources.get(s);
-            ItemResult ir = getClientNetwork().check(source);
-            report("Universa network has reported the state:");
-            report(ir.toString());
+        if (options.has("r")) {
+            sources.remove("-r");
+            sources.remove("--r");
         }
-        finish();
+        if (options.has("pretty")) {
+            sources.remove("-pretty");
+            sources.remove("--pretty");
+        }
+        List<String> names = (List) options.valuesOf("name");
+        if (names != null) {
+            sources.removeAll(names);
+            sources.remove("-name");
+            sources.remove("--name");
+        }
+        List<String> extractKeyRoles = (List) options.valuesOf("extract-key");
+        if (extractKeyRoles != null) {
+            sources.removeAll(extractKeyRoles);
+            sources.remove("-extract-key");
+            sources.remove("--extract-key");
+        }
+        List extractFields = options.valuesOf("get");
+        if (extractFields != null) {
+            sources.removeAll(extractFields);
+            sources.remove("-get");
+            sources.remove("--get");
+        }
+
+        List updateFields = options.valuesOf("set");
+        if (updateFields != null) {
+            sources.removeAll(updateFields);
+            sources.remove("-set");
+            sources.remove("--set");
+        }
+        List updateValues = options.valuesOf("value");
+        if (extractFields != null) {
+            sources.removeAll(updateValues);
+            sources.remove("-value");
+            sources.remove("--value");
+        }
     }
 
     private static void addErrors(List<ErrorRecord> errors) {
@@ -682,21 +682,6 @@ public class CLIMain {
                 report(name + "\t" + Base64.encodeCompactString(key.fingerprint()));
             });
         }
-    }
-
-    private static void createContract() throws IOException {
-        String source = (String) options.valueOf("c");
-        Contract c = Contract.fromDslFile(source);
-        keysMap().values().forEach(k -> c.addSignerKey(k));
-        byte[] data = c.seal();
-        // try sign
-        String contractFileName = source.replaceAll("\\.(yml|yaml)$", ".unicon");
-        try (FileOutputStream fs = new FileOutputStream(contractFileName)) {
-            fs.write(data);
-        }
-        report("created contract file: " + contractFileName);
-        checkContract(c);
-        finish();
     }
 
     /**
@@ -850,7 +835,7 @@ public class CLIMain {
                 contract = new Contract();
                 contract.deserialize(binder, bm);
 
-                report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()));
+                report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contract.getCreatedAt()));
 
                 report("import from " + extension + " ok");
             } catch (Exception e) {
@@ -916,9 +901,9 @@ public class CLIMain {
 
         if (fileName == null) {
             if (testMode && testRootPath != null) {
-                fileName = testRootPath + "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+                fileName = testRootPath + "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contract.getCreatedAt());
             } else {
-                fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+                fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contract.getCreatedAt());
             }
         }
 
@@ -1028,9 +1013,9 @@ public class CLIMain {
 
         if (fileName == null) {
             if (testMode && testRootPath != null) {
-                fileName = testRootPath + "Universa_fields_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+                fileName = testRootPath + "Universa_fields_" + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contract.getCreatedAt());
             } else {
-                fileName = "Universa_fields_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt());
+                fileName = "Universa_fields_" + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contract.getCreatedAt());
             }
         }
 
@@ -1125,7 +1110,7 @@ public class CLIMain {
             }
         }
 
-        report("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getExpiresAt()));
+        report("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contract.getExpiresAt()));
     }
 
     /**
@@ -1340,7 +1325,7 @@ public class CLIMain {
             try {
                 reporter.verbose(key + ": " +
                                          "contract created at " +
-                                         DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contracts.get(key).getCreatedAt()) +
+                                         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contracts.get(key).getCreatedAt()) +
                                          ": " +
                                          contracts.get(key).getDefinition().getData().getString("description")
                 );
