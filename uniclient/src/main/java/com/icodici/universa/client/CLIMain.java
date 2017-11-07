@@ -1306,7 +1306,7 @@ public class CLIMain {
         tc.setIssuer(key);
         tc.addContractToRemove(contract);
 
-        tc.seal();
+//        tc.seal();
 
         registerContract(tc);
 

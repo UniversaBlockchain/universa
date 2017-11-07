@@ -74,10 +74,10 @@ public class CLIMainTest {
                 "-set", field, "-value", value);
         callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_to_export.unicon",
                 "-set", field, "-value", value);
-        callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_for_revoke1.unicon",
+        callMain("-c", rootPath + "simple_root_contract.yml", "-name", basePath + "contract_for_revoke1.unicon",
                 "-set", field, "-value", value,
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
-        callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_for_revoke2.unicon",
+        callMain("-c", rootPath + "simple_root_contract.yml", "-name", basePath + "contract_for_revoke2.unicon",
                 "-set", field, "-value", value,
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
 
@@ -1211,17 +1211,20 @@ public class CLIMainTest {
     @Test
     public void revokeContract() throws Exception {
         String contractFileName = basePath + "contract_for_revoke1.unicon";
+
+        callMain2("--check", contractFileName, "-v");
+
         callMain2("--register", contractFileName, "--verbose");
 
         Contract c = Contract.fromSealedFile(contractFileName);
         System.out.println("contract: " + c.getId().toBase64String());
 
-//        Thread.sleep(500);
+        Thread.sleep(1500);
         System.out.println("probe before revoke");
         callMain2("--probe", c.getId().toBase64String(), "--verbose");
-//        Thread.sleep(500);
+        Thread.sleep(1500);
         callMain2("-revoke", contractFileName, "-v");
-//        Thread.sleep(500);
+        Thread.sleep(1500);
         System.out.println("probe after revoke");
         callMain("--probe", c.getId().toBase64String(), "--verbose");
 
