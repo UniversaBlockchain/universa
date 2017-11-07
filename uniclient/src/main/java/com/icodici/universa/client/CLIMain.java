@@ -192,9 +192,13 @@ public class CLIMain {
             }
             if (options.has("v")) {
                 reporter.setVerboseMode(true);
+            } else {
+                reporter.setVerboseMode(false);
             }
             if (options.has("k")) {
                 keyFileNames = (List<String>) options.valuesOf("k");
+            } else {
+                keyFileNames = new ArrayList<>();
             }
             if (options.has("fingerprints")) {
                 printFingerprints();
@@ -202,6 +206,8 @@ public class CLIMain {
             }
             if (options.has("j")) {
                 reporter.setQuiet(true);
+            } else {
+                reporter.setQuiet(false);
             }
             if (options.has("network")) {
                 ClientNetwork n = getClientNetwork();
@@ -216,7 +222,7 @@ public class CLIMain {
                 doProbe();
             }
             if (options.has("g")) {
-                generateKeyPair();
+                doGenerateKeyPair();
                 return;
             }
             if (options.has("c")) {
@@ -367,7 +373,7 @@ public class CLIMain {
                         if (name == null) {
                             name = source.replaceAll("(?i)\\.(unicon)$", ".pub");
                         }
-                        exportPublicKeys(contract, extractKeyRole, name);
+                        exportPublicKeys(contract, extractKeyRole, name, options.has("base64"));
                     }
                 } else if (extractFields != null && extractFields.size() > 0) {
                     if (name == null) {
@@ -458,21 +464,6 @@ public class CLIMain {
         finish();
     }
 
-    private static void checkFile(File f) {
-        try {
-            TransactionPack tp = TransactionPack.unpack(Do.read(f), true);
-            if (tp.isReconstructed()) {
-                report("file " + f + " is a single contract");
-            } else {
-                report("file " + f + " is a transaction pack");
-            }
-            System.out.println();
-            checkContract(tp.getContract());
-        } catch (IOException e) {
-            addError("READ_ERROR", f.getPath(), e.toString());
-        }
-    }
-
     private static void doFindContracts() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("f"));
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
@@ -553,6 +544,18 @@ public class CLIMain {
         finish();
     }
 
+    private static void doGenerateKeyPair() throws IOException {
+        PrivateKey k = new PrivateKey((Integer) options.valueOf("s"));
+        String name = (String) options.valueOf("g");
+        new FileOutputStream(name + ".private.unikey").write(k.pack());
+        new FileOutputStream(name + ".public.unikey").write(k.getPublicKey().pack());
+        if (options.has("base64")) {
+            new FileOutputStream(name + ".public.unikey.txt")
+                    .write(Base64.encodeLines(k.getPublicKey().pack()).getBytes());
+        }
+        System.out.println("New key pair ready");
+    }
+
     private static void cleanNonOptionalArguments(List sources) throws IOException {
 
         List<String> formats = new ArrayList<String>((List) options.valuesOf("as"));
@@ -617,6 +620,8 @@ public class CLIMain {
     private static void addErrors(List<ErrorRecord> errors) {
         errors.forEach(e -> addError(e.getError().name(), e.getObjectName(), e.getMessage()));
     }
+
+    ///////////////////////////
 
     private static PrivateKey privateKey;
     private static Preferences prefs = Preferences.userRoot();
@@ -684,6 +689,21 @@ public class CLIMain {
         }
     }
 
+    private static void checkFile(File f) {
+        try {
+            TransactionPack tp = TransactionPack.unpack(Do.read(f), true);
+            if (tp.isReconstructed()) {
+                report("file " + f + " is a single contract");
+            } else {
+                report("file " + f + " is a transaction pack");
+            }
+            System.out.println();
+            checkContract(tp.getContract());
+        } catch (IOException e) {
+            addError("READ_ERROR", f.getPath(), e.toString());
+        }
+    }
+
     /**
      * Check contract for errors. Print errors if found.
      *
@@ -696,7 +716,7 @@ public class CLIMain {
             contract.getErrors().forEach(e -> reporter.error(e.getError().toString(), e.getObjectName(), e.getMessage()));
         }
         Yaml yaml = new Yaml();
-        if (options.has("verbose")) {
+        if (reporter.isVerboseMode()) {
 
             report("api level:   "+contract.getApiLevel());
             report("contract id: " + contract.getId().toBase64String());
@@ -945,7 +965,7 @@ public class CLIMain {
      * @param roleName - from which role keys should be exported.
      * @param fileName - name of file to export to.
      */
-    private static void exportPublicKeys(Contract contract, String roleName, String fileName) throws IOException {
+    private static void exportPublicKeys(Contract contract, String roleName, String fileName, boolean base64) throws IOException {
 
         if (fileName == null) {
             if (testMode && testRootPath != null) {
@@ -966,9 +986,8 @@ public class CLIMain {
                 index++;
                 data = key.pack();
                 String name = fileName.replaceAll("\\.(pub)$", "_key_" + roleName + "_" + index + ".public.unikey");
-                boolean base64 = false;
-                if (options.has("base64")) {
-                    base64 = true;
+
+                if (base64) {
                     name += ".txt";
                 }
                 try (FileOutputStream fs = new FileOutputStream(name)) {
@@ -1124,15 +1143,17 @@ public class CLIMain {
             fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:ss").format(contract.getCreatedAt()) + ".unicon";
         }
 
-        if (options.has("k")) {
-            options.valuesOf("k").forEach(k -> {
-                try {
-                    contract.addSignerKey(PrivateKey.fromPath(Paths.get(k.toString())));
-                } catch (IOException e) {
-                    addError(Errors.NOT_FOUND.name(), k.toString(), "failed to load key file: " + e.getMessage());
-                }
-            });
-        }
+        keysMap().values().forEach(k -> contract.addSignerKey(k));
+
+//        if (options.has("k")) {
+//            options.valuesOf("k").forEach(k -> {
+//                try {
+//                    contract.addSignerKey(PrivateKey.fromPath(Paths.get(k.toString())));
+//                } catch (IOException e) {
+//                    addError(Errors.NOT_FOUND.name(), k.toString(), "failed to load key file: " + e.getMessage());
+//                }
+//            });
+//        }
 
         byte[] data = contract.seal();
         int count = contract.getKeysToSignWith().size();
@@ -1348,18 +1369,6 @@ public class CLIMain {
         reporter.error(code, object, message);
     }
 
-    private static void generateKeyPair() throws IOException {
-        PrivateKey k = new PrivateKey((Integer) options.valueOf("s"));
-        String name = (String) options.valueOf("g");
-        new FileOutputStream(name + ".private.unikey").write(k.pack());
-        new FileOutputStream(name + ".public.unikey").write(k.getPublicKey().pack());
-        if (options.has("base64")) {
-            new FileOutputStream(name + ".public.unikey.txt")
-                    .write(Base64.encodeLines(k.getPublicKey().pack()).getBytes());
-        }
-        System.out.println("New key pair ready");
-    }
-
     static private void usage(String text) {
         boolean error = false;
         PrintStream out = System.out;
@@ -1410,8 +1419,14 @@ public class CLIMain {
         if (keyFiles == null) {
             keyFiles = new HashMap<>();
             for (String fileName : keyFileNames) {
-                PrivateKey pk = new PrivateKey(Do.read(fileName));
-                keyFiles.put(fileName, pk);
+//                PrivateKey pk = new PrivateKey(Do.read(fileName));
+//                keyFiles.put(fileName, pk);
+                try {
+                    PrivateKey pk = PrivateKey.fromPath(Paths.get(fileName));
+                    keyFiles.put(fileName, pk);
+                } catch (IOException e) {
+                    addError(Errors.NOT_FOUND.name(), fileName.toString(), "failed to load key file: " + e.getMessage());
+                }
             }
         }
         return keyFiles;
