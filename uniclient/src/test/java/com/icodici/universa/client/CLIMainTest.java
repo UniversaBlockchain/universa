@@ -187,7 +187,7 @@ public class CLIMainTest {
         System.out.println(c.getId());
         callMain2("--register", contractFileName, "--verbose");
         for (int i = 0; i < 10; i++) {
-            callMain2("--check", c.getId().toBase64String());
+            callMain2("--probe", c.getId().toBase64String());
             Thread.sleep(500);
         }
     }
@@ -1210,7 +1210,21 @@ public class CLIMainTest {
 
     @Test
     public void revokeContract() throws Exception {
-        callMain("-revoke", basePath + "contract_for_revoke1.unicon", "-v");
+        String contractFileName = basePath + "contract_for_revoke1.unicon";
+        callMain2("--register", contractFileName, "--verbose");
+
+        Contract c = Contract.fromSealedFile(contractFileName);
+        System.out.println("contract: " + c.getId().toBase64String());
+
+//        Thread.sleep(500);
+        System.out.println("probe before revoke");
+        callMain2("--probe", c.getId().toBase64String(), "--verbose");
+//        Thread.sleep(500);
+        callMain2("-revoke", contractFileName, "-v");
+//        Thread.sleep(500);
+        System.out.println("probe after revoke");
+        callMain("--probe", c.getId().toBase64String(), "--verbose");
+
         System.out.println(output);
         assertEquals(0, errors.size());
     }

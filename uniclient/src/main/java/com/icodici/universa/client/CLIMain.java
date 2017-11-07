@@ -524,6 +524,7 @@ public class CLIMain {
             String source = sources.get(s);
             Contract contract = Contract.fromSealedFile(source);
 
+//            contract.seal();
             report("registering the contract " + contract.getId().toBase64String() + " from " + source);
             registerContract(contract);
         }
@@ -1307,7 +1308,7 @@ public class CLIMain {
 
         tc.seal();
 
-        registerContract(tc, true);
+        registerContract(tc);
 
         return tc;
     }
@@ -1319,29 +1320,14 @@ public class CLIMain {
      *
      */
     public static void registerContract(Contract contract) throws IOException {
-        registerContract(contract, false);
-    }
-
-    /**
-     * Register a specified contract.
-     *
-     * @param contract must be a sealed binary file.
-     * @param asTransactionPack flag, point to register contract from getPackedTransaction().
-     *
-     */
-    public static void registerContract(Contract contract, boolean asTransactionPack) throws IOException {
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
             report("contract has errors and can't be submitted for registration");
             report("contract id: " + contract.getId().toBase64String());
             addErrors(errors);
         } else {
-            ItemResult r;
-            if(asTransactionPack) {
-                r = getClientNetwork().register(contract.getPackedTransaction());
-            } else {
-                r = getClientNetwork().register(contract.getLastSealedBinary());
-            }
+            contract.seal();
+            ItemResult r = getClientNetwork().register(contract.getPackedTransaction());
             report("submitted with result:");
             report(r.toString());
         }
