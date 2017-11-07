@@ -45,6 +45,10 @@ public class ClientNetwork {
         return client.getState(HashId.withDigest(base64Id));
     }
 
+    public ItemResult check(HashId id) throws ClientError {
+        return client.getState(id);
+    }
+
     public int size() {
         return client.size();
     }

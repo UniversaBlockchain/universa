@@ -146,8 +146,8 @@ public class NetworkV2 extends Network {
             if (200 != connection.getResponseCode())
                 return null;
             byte[] data = Do.read(connection.getInputStream());
-            TransactionPack tp = TransactionPack.unpack(data, false);
-            tp.trace();
+            TransactionPack tp = TransactionPack.unpack(data, true);
+//            tp.trace();
 //            Contract c = Contract.fromPackedTransaction(data);
             return tp.getContract();
         } catch (Exception e) {

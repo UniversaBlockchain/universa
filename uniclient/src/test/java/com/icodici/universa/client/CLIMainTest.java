@@ -58,6 +58,26 @@ public class CLIMainTest {
     }
 
     @Test
+    public void chectTransactionPack() throws Exception {
+        Contract r = new Contract(ownerKey1);
+        r.seal();
+
+        Contract c = r.createRevision(ownerKey1);
+        Contract n = c.split(1)[0];
+        n.seal();
+        c.seal();
+        c.addNewItems(n);
+
+        String path = rootPath + "/testtranspack.unicon";
+//        path = "/Users/sergeych/dev/!/e7810197-d148-4936-866b-44daae182e83.transaction";
+        try(FileOutputStream fos = new FileOutputStream(path)) {
+            fos.write(c.getPackedTransaction());
+        }
+
+        callMain2("--check", path, "-v");
+    }
+
+    @Test
     public void createContract() throws Exception {
         callMain("-c", rootPath + "simple_root_contract.yml", "-j");
         assert (new File(rootPath + "/simple_root_contract.unicon").exists());
@@ -81,10 +101,10 @@ public class CLIMainTest {
         Contract c = Contract.fromSealedFile(contractFileName);
         System.out.println(c.getId());
         callMain2("--register", contractFileName, "--verbose");
-//        for (int i = 0; i < 10; i++) {
-//            callMain2("--check", c.getId().toBase64String());
-//            Thread.sleep(500);
-//        }
+        for (int i = 0; i < 10; i++) {
+            callMain2("--check", c.getId().toBase64String());
+            Thread.sleep(500);
+        }
     }
 
     @Test

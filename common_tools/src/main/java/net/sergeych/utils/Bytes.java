@@ -603,4 +603,9 @@ public class Bytes implements Serializable {
 //        return NameCode32.encode(data);
 //    }
 
+    // for Yaml
+    public byte[] getData() {
+        return data;
+    }
+
 }

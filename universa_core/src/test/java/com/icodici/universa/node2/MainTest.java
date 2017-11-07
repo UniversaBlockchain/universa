@@ -150,8 +150,8 @@ public class MainTest {
 //        assertEquals(ItemState.UNDEFINED, s);
     }
 
-//    @Test
-//    @Ignore("This test nust be started manually")
+    @Test
+    @Ignore("This test nust be started manually")
     public void checkRealNetwork() throws Exception {
 
         PrivateKey clientKey = TestKeys.privateKey(3);
@@ -172,7 +172,8 @@ public class MainTest {
         System.out.println(":: "+r);
 
         LogPrinter.showDebug(true);
-        r = client.register(c.getLastSealedBinary());
+//        r = client.register(c.getLastSealedBinary());
+        r = client.register(c.getPackedTransaction());
         System.out.println(r);
 
         while(true) {

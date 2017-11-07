@@ -55,6 +55,7 @@ import java.util.stream.Collectors;
 public class TransactionPack implements BiSerializable {
 
     private static byte[] packedBinary;
+    private boolean reconstructed = false;
     private Map<HashId, Contract> references = new HashMap<>();
     private Contract contract;
 
@@ -161,6 +162,10 @@ public class TransactionPack implements BiSerializable {
         );
     }
 
+    public final boolean isReconstructed() {
+        return reconstructed;
+    }
+
     /**
      * Unpack either old contract binary (all included), or newer transaction pack. Could be used to load old contarcts
      * to perform a transaction.
@@ -175,14 +180,16 @@ public class TransactionPack implements BiSerializable {
 
         Object x = Boss.load(packOrContractBytes);
 
-        if (x instanceof TransactionPack)
+        if (x instanceof TransactionPack) {
             return (TransactionPack) x;
+        }
 
         if (!allowNonTransacions)
             throw new IOException("expected transaction pack");
 
         // This is an old v2 self-contained contract or a root v3 contract, no revokes, no siblings.
         TransactionPack tp = new TransactionPack();
+        tp.reconstructed = true;
         tp.contract = new Contract(packOrContractBytes, tp);
         return tp;
     }

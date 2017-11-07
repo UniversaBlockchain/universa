@@ -7,12 +7,10 @@
 
 package net.sergeych.tools;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
@@ -130,6 +128,10 @@ public class Do {
 
     public static int randomIntInRange(int inclusiveMinimum, int inclusiveMaximum) {
         return randomInt(inclusiveMaximum - inclusiveMinimum + 1) + inclusiveMinimum;
+    }
+
+    public static byte[] read(File f) throws IOException {
+        return Files.readAllBytes(f.toPath());
     }
 
     /**

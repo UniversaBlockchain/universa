@@ -11,6 +11,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.utils.Base64;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -19,9 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class TransactionPackTest {
     private Contract n0;
@@ -61,6 +60,9 @@ public class TransactionPackTest {
         assertSame(tp,c.getTransactionPack());
 
         byte[] packedTp = tp.pack();
+
+        System.out.println(Base64.encodeString(packedTp));
+
         TransactionPack tp1 = TransactionPack.unpack(packedTp);
         checkSimplePack(tp1);
 
