@@ -183,6 +183,23 @@ public class PermissionsTest extends ContractTestBase {
     }
 
     @Test
+    public void shouldModifyAnyValueForKey() throws  Exception {
+        Contract c = basicContractCreation(SUBSCRIPTION_WITH_DATA, PRIVATE_KEY, ownerKey2);
+        Binder d = c.getStateData();
+
+        Contract c1 = c.createRevision(ownerKey2);
+        Binder d1 = c1.getStateData();
+
+        final String oldValue = "35";
+        final String newValue = "303434935245";
+        final String field = "units";
+
+        setAndCheckOldNewValues(d, d1, oldValue, newValue, field);
+
+        sealCheckTrace(c1, true);
+    }
+
+    @Test
     public void shouldPopulateWithEmptyStateDataValues() throws  Exception {
         PrivateKey ownerKey2 = TestKeys.privateKey(1);
 
