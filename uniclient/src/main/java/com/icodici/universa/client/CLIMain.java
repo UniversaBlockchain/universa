@@ -15,8 +15,11 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.contract.TransactionContract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
@@ -177,6 +180,12 @@ public class CLIMain {
 //                        "Specify to check contracts from binary data.");
                 accepts("term-width").withRequiredArg().ofType(Integer.class).defaultsTo(80);
                 accepts("pretty", "Use with -as json option. Make json string pretty.");
+                acceptsAll(asList("revoke"), "Revoke specified contract and create a revocation transactional contract. " +
+                        "Use -k option to specify private key to sign revoking contract.")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("file.unicon");
 
 
 //                acceptsAll(asList("ie"), "Test - delete.")
@@ -199,6 +208,7 @@ public class CLIMain {
                 keyFileNames = (List<String>) options.valuesOf("k");
             } else {
                 keyFileNames = new ArrayList<>();
+                keyFiles = null;
             }
             if (options.has("fingerprints")) {
                 printFingerprints();
@@ -246,6 +256,9 @@ public class CLIMain {
             }
             if (options.has("ch")) {
                 doCheckContracts();
+            }
+            if (options.has("revoke")) {
+                doRevoke();
             }
 
             usage(null);
@@ -509,18 +522,10 @@ public class CLIMain {
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
-            Contract c = Contract.fromSealedFile(source);
-            List<ErrorRecord> errors = c.getErrors();
-            if (errors.size() > 0) {
-                report("conteact has errors and can't be submitted for registration");
-                report("contract id: " + c.getId().toBase64String());
-                addErrors(errors);
-                finish();
-            }
-            report("registering the contract " + c.getId().toBase64String() + " from " + source);
-            ItemResult r = getClientNetwork().register(c.getLastSealedBinary());
-            report("submitted with result:");
-            report(r.toString());
+            Contract contract = Contract.fromSealedFile(source);
+
+            report("registering the contract " + contract.getId().toBase64String() + " from " + source);
+            registerContract(contract);
         }
         finish();
     }
@@ -554,6 +559,36 @@ public class CLIMain {
                     .write(Base64.encodeLines(k.getPublicKey().pack()).getBytes());
         }
         System.out.println("New key pair ready");
+    }
+
+
+
+    private static void doRevoke() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("revoke"));
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+        report("doRevoke");
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+
+            Contract contract = loadContract(source);
+            report("doRevoke " + contract);
+            if (contract != null) {
+                if(contract.check()) {
+                    report("revoke contract from " + source);
+                    revokeContract(contract, keysMap().values().toArray(new PrivateKey[0]));
+                } else {
+                    addErrors(contract.getErrors());
+                }
+            }
+        }
+
+        finish();
     }
 
     private static void cleanNonOptionalArguments(List sources) throws IOException {
@@ -1255,6 +1290,61 @@ public class CLIMain {
         // TODO: Download and check contract.
         report("downloading from " + url);
         return null;
+    }
+
+    /**
+     * Revoke specified contract and create a revocation transactional contract.
+     *
+     * @param contract
+     *
+     * @return TransactionContract - revoking transaction contract.
+     */
+    public static TransactionContract revokeContract(Contract contract, PrivateKey... key) throws IOException {
+
+        TransactionContract tc = new TransactionContract();
+        tc.setIssuer(key);
+        tc.addContractToRemove(contract);
+
+        tc.seal();
+
+        registerContract(tc, true);
+
+        return tc;
+    }
+
+    /**
+     * Register a specified contract.
+     *
+     * @param contract must be a sealed binary file.
+     *
+     */
+    public static void registerContract(Contract contract) throws IOException {
+        registerContract(contract, false);
+    }
+
+    /**
+     * Register a specified contract.
+     *
+     * @param contract must be a sealed binary file.
+     * @param asTransactionPack flag, point to register contract from getPackedTransaction().
+     *
+     */
+    public static void registerContract(Contract contract, boolean asTransactionPack) throws IOException {
+        List<ErrorRecord> errors = contract.getErrors();
+        if (errors.size() > 0) {
+            report("contract has errors and can't be submitted for registration");
+            report("contract id: " + contract.getId().toBase64String());
+            addErrors(errors);
+        } else {
+            ItemResult r;
+            if(asTransactionPack) {
+                r = getClientNetwork().register(contract.getPackedTransaction());
+            } else {
+                r = getClientNetwork().register(contract.getLastSealedBinary());
+            }
+            report("submitted with result:");
+            report(r.toString());
+        }
     }
 
 

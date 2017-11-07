@@ -74,6 +74,12 @@ public class CLIMainTest {
                 "-set", field, "-value", value);
         callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_to_export.unicon",
                 "-set", field, "-value", value);
+        callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_for_revoke1.unicon",
+                "-set", field, "-value", value,
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_for_revoke2.unicon",
+                "-set", field, "-value", value,
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
 
         callMain("-e", basePath + "contract1.unicon", "-name", basePath + "contract_to_import.json");
         callMain("-e", basePath + "contract1.unicon", "-name", basePath + "contract_to_import.xml");
@@ -1200,6 +1206,31 @@ public class CLIMainTest {
         callMain("-ch", rootPath + "old_api_contract.unicon", "-v");
         System.out.println(output);
         assertEquals(true, errors.size() > 0);
+    }
+
+    @Test
+    public void revokeContract() throws Exception {
+        callMain("-revoke", basePath + "contract_for_revoke1.unicon", "-v");
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void revokeContractWithKey() throws Exception {
+        callMain("-revoke", basePath + "contract_for_revoke1.unicon", "-v",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void revokeTwoContracts() throws Exception {
+        callMain("-revoke",
+                basePath + "contract_for_revoke1.unicon",
+                basePath + "contract_for_revoke2.unicon",
+                "-v");
+        System.out.println(output);
+        assertEquals(0, errors.size());
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
