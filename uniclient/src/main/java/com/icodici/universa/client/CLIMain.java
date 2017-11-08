@@ -341,8 +341,8 @@ public class CLIMain {
                 updateFields(contract, updateFieldsHashMap);
             }
 
-            keysMap().values().forEach(k -> contract.addSignerKey(k));
-            byte[] data = contract.seal();
+//            keysMap().values().forEach(k -> contract.addSignerKey(k));
+//            byte[] data = contract.seal();
 
             // try sign
             if (name == null) {
@@ -552,7 +552,8 @@ public class CLIMain {
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
-            Contract contract = Contract.fromSealedFile(source);
+//            Contract contract = Contract.fromSealedFile(source);
+            Contract contract = loadContract(source);
 
 //            contract.seal();
             report("registering the contract " + contract.getId().toBase64String() + " from " + source);
@@ -658,14 +659,17 @@ public class CLIMain {
                             contract.addRevokingItems(revokeContract);
                         }
                     }
+                    if (name == null) {
+                        name = source;
+                    }
+                    if(siblingItems != null || revokeItems != null) {
+                        contract.seal();
+                        saveContract(contract, name, true);
+                    }
                 } else {
                     addErrors(contract.getErrors());
                 }
             }
-            if (name == null) {
-                name = source;
-            }
-            saveContract(contract, name, true);
         }
 
         finish();
@@ -1325,6 +1329,9 @@ public class CLIMain {
         }
 
         keysMap().values().forEach(k -> contract.addSignerKey(k));
+        if(keysMap().values().size() > 0) {
+            contract.seal();
+        }
 
         byte[] data;
         if(fromPackedTransaction) {
@@ -1472,6 +1479,7 @@ public class CLIMain {
      *
      */
     public static void registerContract(Contract contract, Boolean fromPackedTransaction) throws IOException {
+//        checkContract(contract);
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
             report("contract has errors and can't be submitted for registration");

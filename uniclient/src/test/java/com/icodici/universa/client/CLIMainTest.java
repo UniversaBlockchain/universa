@@ -152,6 +152,7 @@ public class CLIMainTest {
 
         String path = rootPath + "/testtranspack.unicon";
 //        path = "/Users/sergeych/dev/!/e7810197-d148-4936-866b-44daae182e83.transaction";
+        c.seal();
         CLIMain.saveContract(c, path, true);
 //        try (FileOutputStream fs = new FileOutputStream(path)) {
 //            fs.write(c.getPackedTransaction());
@@ -214,14 +215,15 @@ public class CLIMainTest {
     @Test
     public void createRegisterCheckRevoke() throws Exception {
         String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
+        String contractFileName = basePath + "contract7.unicon";
         callMain("-c", rootPath + "simple_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "simple_root_contract_v2.unicon"
+                "-k", keyFileName, "-name", contractFileName
         );
-        String contractFileName = basePath + "simple_root_contract_v2.unicon";
         assertTrue(new File(contractFileName).exists());
         assertEquals(0, errors.size());
         Contract c = Contract.fromSealedFile(contractFileName);
         System.out.println(c.getId());
+//        callMain2("--ch", contractFileName, "--verbose");
         callMain2("--register", contractFileName, "--verbose");
         for (int i = 0; i < 10; i++) {
             callMain2("--probe", c.getId().toBase64String());
@@ -989,7 +991,6 @@ public class CLIMainTest {
                     dir += "contract_subfolder/contract_subfolder_level2/";
                     break;
             }
-            coin.seal();
             CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
         }
 
@@ -1254,6 +1255,7 @@ public class CLIMainTest {
         Contract contract = new Contract(ownerKey1);
         contract.addPermission(new RevokePermission(contract.getRole("owner")));
         contract.addPermission(new RevokePermission(contract.getRole("issuer")));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
         CLIMain.saveContract(contract, contractFileName);
@@ -1322,11 +1324,17 @@ public class CLIMainTest {
 
     @Test
     public void packContractWithCounterParts() throws Exception {
-        String contractFileName = basePath + "packedContract2.unicon";
+        String contractFileName = basePath + "coin1000.unicon";
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(1000));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+        CLIMain.saveContract(contract, contractFileName);
         callMain2("--check", contractFileName, "-v");
         callMain2("-pack-with", contractFileName,
                 "-add-sibling", basePath + "packedContract_new_item.unicon",
                 "-add-revoke", basePath + "packedContract_revoke.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
                 "-v");
 
         callMain("--check", contractFileName, "-v");
@@ -1336,8 +1344,13 @@ public class CLIMainTest {
 
     @Test
     public void packContractWithCounterPartsWithName() throws Exception {
-        String contractFileName = basePath + "contract1.unicon";
+        String contractFileName = basePath + "coin100.unicon";
         String savingFileName = basePath + "packed.unicon";
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+        CLIMain.saveContract(contract, contractFileName);
         callMain2("--check", contractFileName, "-v");
         callMain2("-pack-with", contractFileName,
                 "-add-sibling", basePath + "contract2.unicon",
@@ -1372,6 +1385,7 @@ public class CLIMainTest {
             Contract contract = createCoin();
             contract.getStateData().set(FIELD_NAME, new Decimal(value));
             contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+            contract.seal();
 
             sealCheckTrace(contract, true);
 
