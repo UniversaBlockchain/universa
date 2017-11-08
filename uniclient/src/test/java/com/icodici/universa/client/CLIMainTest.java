@@ -106,7 +106,7 @@ public class CLIMainTest {
     }
 
     @Test
-    public void chectTransactionPack() throws Exception {
+    public void checkTransactionPack() throws Exception {
         Contract r = new Contract(ownerKey1);
         r.seal();
 
@@ -1280,6 +1280,26 @@ public class CLIMainTest {
         System.out.println(output);
         assertEquals(0, errors.size());
     }
+
+//    @Test
+//    public void packContractWithCounterParts() throws Exception {
+//        Contract r = new Contract(ownerKey1);
+//        r.seal();
+//
+//        Contract c = r.createRevision(ownerKey1);
+//        Contract n = c.split(1)[0];
+//        n.seal();
+//        c.seal();
+//        c.addNewItems(n);
+//
+//        String path = rootPath + "/testtranspack.unicon";
+////        path = "/Users/sergeych/dev/!/e7810197-d148-4936-866b-44daae182e83.transaction";
+//        try(FileOutputStream fos = new FileOutputStream(path)) {
+//            fos.write(c.getPackedTransaction());
+//        }
+//
+//        callMain2("--check", path, "-v");
+//    }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
         List<Contract> contracts = new ArrayList<>();

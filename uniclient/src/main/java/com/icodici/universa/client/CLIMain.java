@@ -186,6 +186,12 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("file.unicon");
+                acceptsAll(asList("pack-with"), "Pack contract with counterparts (new, revoking). " +
+                        "Use -add-sibling option to add sibling and -add-revoke to add revoke item.")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("file.unicon");
 
 
 //                acceptsAll(asList("ie"), "Test - delete.")
@@ -259,6 +265,9 @@ public class CLIMain {
             }
             if (options.has("revoke")) {
                 doRevoke();
+            }
+            if (options.has("pack-with")) {
+                doPackWith();
             }
 
             usage(null);
@@ -592,6 +601,34 @@ public class CLIMain {
         finish();
     }
 
+
+
+    private static void doPackWith() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("pack-with"));
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+
+            Contract contract = loadContract(source, true);
+            if (contract != null) {
+                if(contract.check()) {
+                    report("revoke contract from " + source);
+                    revokeContract(contract, keysMap().values().toArray(new PrivateKey[0]));
+                } else {
+                    addErrors(contract.getErrors());
+                }
+            }
+        }
+
+        finish();
+    }
+
     private static void cleanNonOptionalArguments(List sources) throws IOException {
 
         List<String> formats = new ArrayList<String>((List) options.valuesOf("as"));
@@ -910,10 +947,11 @@ public class CLIMain {
      * Load contract from specified path.
      *
      * @param fileName
+     * @param fromPackedTransaction - create contract from loaded data with Contract.fromPackedTransaction(data)
      *
      * @return loaded and from loaded data created Contract.
      */
-    private static Contract loadContract(String fileName) throws IOException {
+    private static Contract loadContract(String fileName, Boolean fromPackedTransaction) throws IOException {
         Contract contract = null;
 
         File pathFile = new File(fileName);
@@ -922,13 +960,28 @@ public class CLIMain {
             Path path = Paths.get(fileName);
             byte[] data = Files.readAllBytes(path);
 
-            contract = new Contract(data);
+            if(fromPackedTransaction) {
+                contract = Contract.fromPackedTransaction(data);
+            } else {
+                contract = new Contract(data);
+            }
         } else {
             addError(Errors.NOT_FOUND.name(), fileName, "Path " + fileName + " does not exist");
 //            usage("Path " + fileName + " does not exist");
         }
 
         return contract;
+    }
+
+    /**
+     * Load contract from specified path.
+     *
+     * @param fileName
+     *
+     * @return loaded and from loaded data created Contract.
+     */
+    private static Contract loadContract(String fileName) throws IOException {
+        return loadContract(fileName, false);
     }
 
     /**
@@ -1173,25 +1226,22 @@ public class CLIMain {
      *
      * @param contract - contract for update.
      * @param fileName - name of file to save to.
+     * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
      */
-    private static void saveContract(Contract contract, String fileName) throws IOException {
+    private static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction) throws IOException {
         if (fileName == null) {
             fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:ss").format(contract.getCreatedAt()) + ".unicon";
         }
 
         keysMap().values().forEach(k -> contract.addSignerKey(k));
 
-//        if (options.has("k")) {
-//            options.valuesOf("k").forEach(k -> {
-//                try {
-//                    contract.addSignerKey(PrivateKey.fromPath(Paths.get(k.toString())));
-//                } catch (IOException e) {
-//                    addError(Errors.NOT_FOUND.name(), k.toString(), "failed to load key file: " + e.getMessage());
-//                }
-//            });
-//        }
-
-        byte[] data = contract.seal();
+        byte[] data;
+        if(fromPackedTransaction) {
+            contract.seal();
+            data = contract.getPackedTransaction();
+        } else {
+            data = contract.seal();
+        }
         int count = contract.getKeysToSignWith().size();
         if (count > 0)
             report("Contract is sealed with " + count + " key(s)");
@@ -1205,6 +1255,16 @@ public class CLIMain {
             report("Sealed contract has no errors");
         } else
             addErrors(contract.getErrors());
+    }
+
+    /**
+     * Save specified contract to file.
+     *
+     * @param contract - contract for update.
+     * @param fileName - name of file to save to.
+     */
+    private static void saveContract(Contract contract, String fileName) throws IOException {
+        saveContract(contract, fileName, false);
     }
 
     /**
@@ -1306,11 +1366,38 @@ public class CLIMain {
         tc.setIssuer(key);
         tc.addContractToRemove(contract);
 
-//        tc.seal();
+        tc.seal();
 
-        registerContract(tc);
+        registerContract(tc, true);
 
         return tc;
+    }
+
+    /**
+     * Register a specified contract.
+     *
+     * @param contract must be a sealed binary.
+     * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
+     *
+     */
+    public static void registerContract(Contract contract, Boolean fromPackedTransaction) throws IOException {
+        List<ErrorRecord> errors = contract.getErrors();
+        if (errors.size() > 0) {
+            report("contract has errors and can't be submitted for registration");
+            report("contract id: " + contract.getId().toBase64String());
+            addErrors(errors);
+        } else {
+//            contract.seal();
+
+            ItemResult r;
+            if(fromPackedTransaction) {
+                r = getClientNetwork().register(contract.getLastSealedBinary());
+            } else {
+                r = getClientNetwork().register(contract.getPackedTransaction());
+            }
+            report("submitted with result:");
+            report(r.toString());
+        }
     }
 
     /**
@@ -1320,17 +1407,7 @@ public class CLIMain {
      *
      */
     public static void registerContract(Contract contract) throws IOException {
-        List<ErrorRecord> errors = contract.getErrors();
-        if (errors.size() > 0) {
-            report("contract has errors and can't be submitted for registration");
-            report("contract id: " + contract.getId().toBase64String());
-            addErrors(errors);
-        } else {
-            contract.seal();
-            ItemResult r = getClientNetwork().register(contract.getLastSealedBinary());
-            report("submitted with result:");
-            report(r.toString());
-        }
+        registerContract(contract, false);
     }
 
 
