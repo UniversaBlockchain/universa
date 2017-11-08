@@ -348,6 +348,7 @@ public class CLIMain {
             if (name == null) {
                 name = source.replaceAll("(?i)\\.(yml|yaml)$", ".unicon");
             }
+            contract.seal();
             saveContract(contract, name);
             report("created contract file: " + name);
             checkContract(contract);
@@ -467,6 +468,7 @@ public class CLIMain {
                 if (name == null) {
                     name = source.replaceAll("(?i)\\.(json|xml|yml|yaml)$", ".unicon");
                 }
+                contract.seal();
                 saveContract(contract, name);
             }
         }
@@ -691,6 +693,7 @@ public class CLIMain {
                         for (Approvable newItem : contract.getNewItems()) {
                             String newItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_new_item_" + i + ".unicon");
                             report("save newItem to " + newItemFileName);
+//                            ((Contract) newItem).seal();
                             saveContract((Contract) newItem, newItemFileName);
                             i++;
                         }
@@ -700,10 +703,14 @@ public class CLIMain {
                         for (Approvable revokeItem : contract.getRevokingItems()) {
                             String revokeItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_revoke_" + i + ".unicon");
                             report("save revokeItem to " + revokeItemFileName);
+//                            ((Contract) revokeItem).seal();
                             saveContract((Contract) revokeItem, revokeItemFileName);
                             i++;
                         }
                     }
+//                    String parentFileName = source.replaceAll("(?i)\\.(unicon)$", "_parent.unicon");
+//                    report("save parentFileName to " + parentFileName);
+//                    saveContract(contract, parentFileName);
                 } else {
                     addErrors(contract.getErrors());
                 }
@@ -1065,7 +1072,7 @@ public class CLIMain {
      * @return loaded and from loaded data created Contract.
      */
     private static Contract loadContract(String fileName) throws IOException {
-        return loadContract(fileName, false);
+        return loadContract(fileName, true);
     }
 
     /**
@@ -1324,7 +1331,7 @@ public class CLIMain {
             contract.seal();
             data = contract.getPackedTransaction();
         } else {
-            data = contract.seal();
+            data = contract.getLastSealedBinary();
         }
         int count = contract.getKeysToSignWith().size();
         if (count > 0)

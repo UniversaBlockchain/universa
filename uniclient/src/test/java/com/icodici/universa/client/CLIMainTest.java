@@ -76,6 +76,9 @@ public class CLIMainTest {
         callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
                 "-set", field, "-value", value);
+        callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract3.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
+                "-set", field, "-value", value);
         callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_to_export.unicon",
                 "-set", field, "-value", value);
         callMain("-c", rootPath + "simple_root_contract.yml", "-name", basePath + "contract_for_revoke1.unicon",
@@ -99,6 +102,20 @@ public class CLIMainTest {
             fs.close();
         }
 
+        path = Paths.get(rootPath + "packedContract_new_item.unicon");
+        data = Files.readAllBytes(path);
+        try (FileOutputStream fs = new FileOutputStream(basePath + "packedContract_new_item.unicon")) {
+            fs.write(data);
+            fs.close();
+        }
+
+        path = Paths.get(rootPath + "packedContract_revoke.unicon");
+        data = Files.readAllBytes(path);
+        try (FileOutputStream fs = new FileOutputStream(basePath + "packedContract_revoke.unicon")) {
+            fs.write(data);
+            fs.close();
+        }
+
         ownerKey1 = TestKeys.privateKey(3);
         ownerKey2 = TestKeys.privateKey(1);
         ownerKey3 = TestKeys.privateKey(2);
@@ -107,12 +124,12 @@ public class CLIMainTest {
 
     @AfterClass
     public static void cleanAfter() throws Exception {
-//        File file = new File(basePath);
-//        if(file.exists()) {
-//            for (File f : file.listFiles())
-//                f.delete();
-//        }
-//        file.delete();
+        File file = new File(basePath);
+        if(file.exists()) {
+            for (File f : file.listFiles())
+                f.delete();
+        }
+        file.delete();
     }
 
     @Test
@@ -1293,11 +1310,11 @@ public class CLIMainTest {
 
     @Test
     public void packContractWithCounterParts() throws Exception {
-        String contractFileName = basePath + "contract1.unicon";
+        String contractFileName = basePath + "packedContract.unicon";
         callMain2("--check", contractFileName, "-v");
         callMain2("-pack-with", contractFileName,
-                "-add-sibling", basePath + "contract2.unicon",
-                "-add-revoke", basePath + "contract_for_revoke1.unicon",
+                "-add-sibling", basePath + "packedContract_new_item.unicon",
+                "-add-revoke", basePath + "packedContract_revoke.unicon",
                 "-v");
 
         callMain("--check", contractFileName, "-v");
@@ -1325,7 +1342,11 @@ public class CLIMainTest {
     public void unpackContractWithCounterParts() throws Exception {
         String fileName = basePath + "packedContract.unicon";
         callMain2("--check", fileName, "-v");
-        callMain("-unpack", fileName, "-v");
+        callMain2("-unpack", fileName, "-v");
+        System.out.println(" ");
+        callMain2("--check", basePath + "packedContract_new_item_1.unicon", "-v");
+        System.out.println(" ");
+        callMain("--check", basePath + "packedContract_revoke_1.unicon", "-v");
 
         System.out.println(output);
         assertEquals(0, errors.size());
