@@ -192,6 +192,16 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("file.unicon");
+                accepts("add-sibling", "Use with --pack-with command. " +
+                        "Option add sibling item for packing contract.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("sibling.unicon");
+                accepts("add-revoke", "Use with --pack-with command. " +
+                        "Option add revoke item for packing contract.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("revoke.unicon");
 
 
 //                acceptsAll(asList("ie"), "Test - delete.")
@@ -611,6 +621,8 @@ public class CLIMain {
         }
 
         cleanNonOptionalArguments(sources);
+        List siblingItems = options.valuesOf("add-sibling");
+        List revokeItems = options.valuesOf("add-revoke");
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
@@ -618,12 +630,26 @@ public class CLIMain {
             Contract contract = loadContract(source, true);
             if (contract != null) {
                 if(contract.check()) {
-                    report("revoke contract from " + source);
-                    revokeContract(contract, keysMap().values().toArray(new PrivateKey[0]));
+                    report("pack contract from " + source);
+                    if(siblingItems != null) {
+                        for (Object sibFile : siblingItems) {
+                            Contract siblingContract = loadContract((String) sibFile, true);
+                            report("add sibling from " + sibFile);
+                            contract.addNewItems(siblingContract);
+                        }
+                    }
+                    if(revokeItems != null) {
+                        for (Object revokeFile : revokeItems) {
+                            Contract revokeContract = loadContract((String) revokeFile, true);
+                            report("add revoke from " + revokeFile);
+                            contract.addRevokingItems(revokeContract);
+                        }
+                    }
                 } else {
                     addErrors(contract.getErrors());
                 }
             }
+            saveContract(contract, source, true);
         }
 
         finish();
