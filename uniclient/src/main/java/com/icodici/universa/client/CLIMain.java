@@ -1046,7 +1046,7 @@ public class CLIMain {
      *
      * @return loaded and from loaded data created Contract.
      */
-    private static Contract loadContract(String fileName, Boolean fromPackedTransaction) throws IOException {
+    public static Contract loadContract(String fileName, Boolean fromPackedTransaction) throws IOException {
         Contract contract = null;
 
         File pathFile = new File(fileName);
@@ -1075,7 +1075,7 @@ public class CLIMain {
      *
      * @return loaded and from loaded data created Contract.
      */
-    private static Contract loadContract(String fileName) throws IOException {
+    public static Contract loadContract(String fileName) throws IOException {
         return loadContract(fileName, true);
     }
 
@@ -1459,6 +1459,8 @@ public class CLIMain {
      * @return TransactionContract - revoking transaction contract.
      */
     public static TransactionContract revokeContract(Contract contract, PrivateKey... key) throws IOException {
+
+        report("keys num: " + key.length);
 
         TransactionContract tc = new TransactionContract();
         tc.setIssuer(key);

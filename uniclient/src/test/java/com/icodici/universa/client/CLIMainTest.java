@@ -11,7 +11,10 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.contract.TransactionContract;
 import com.icodici.universa.contract.permissions.RevokePermission;
+import com.icodici.universa.contract.roles.SimpleRole;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -1251,6 +1254,7 @@ public class CLIMainTest {
 
     @Test
     public void revokeContract() throws Exception {
+
         String contractFileName = basePath + "contract_owner.unicon";
         Contract contract = new Contract(ownerKey1);
         contract.addPermission(new RevokePermission(contract.getRole("owner")));
@@ -1264,7 +1268,7 @@ public class CLIMainTest {
 
         callMain2("--register", contractFileName, "--verbose");
 
-        Contract c = Contract.fromSealedFile(contractFileName);
+        Contract c = CLIMain.loadContract(contractFileName);
         System.out.println("contract: " + c.getId().toBase64String());
 
         Thread.sleep(1500);
@@ -1281,6 +1285,37 @@ public class CLIMainTest {
     }
 
     @Test
+    public void revokeContractVirtual() throws Exception {
+
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
+        // let's make this key among owners
+        ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.seal();
+
+        CLIMain.registerContract(c);
+        Thread.sleep(500);
+        callMain2("--probe", c.getId().toBase64String());
+
+        PrivateKey issuer1 = TestKeys.privateKey(1   );
+        TransactionContract tc = new TransactionContract();
+
+        // among issuers there is now owner
+        tc.setIssuer(issuer1, goodKey);
+        tc.addContractToRemove(c);
+
+        tc.seal();
+
+        assertTrue(tc.check());
+
+        CLIMain.registerContract(tc);
+
+        Thread.sleep(500);
+        callMain2("--probe", c.getId().toBase64String());
+    }
+
+    @Test
     public void revokeContractfromTemplate() throws Exception {
         String contractFileName = basePath + "contract_for_revoke1.unicon";
 
@@ -1288,7 +1323,7 @@ public class CLIMainTest {
 
         callMain2("--register", contractFileName, "--verbose");
 
-        Contract c = Contract.fromSealedFile(contractFileName);
+        Contract c = CLIMain.loadContract(contractFileName);
         System.out.println("contract: " + c.getId().toBase64String());
 
         Thread.sleep(1500);
