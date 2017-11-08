@@ -20,6 +20,9 @@ import org.junit.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -89,6 +92,13 @@ public class CLIMainTest {
 
         callMain("-i", basePath + "contract_to_import.json", "-name", basePath + "not_signed_contract.unicon");
 
+        Path path = Paths.get(rootPath + "packedContract.unicon");
+        byte[] data = Files.readAllBytes(path);
+        try (FileOutputStream fs = new FileOutputStream(basePath + "packedContract.unicon")) {
+            fs.write(data);
+            fs.close();
+        }
+
         ownerKey1 = TestKeys.privateKey(3);
         ownerKey2 = TestKeys.privateKey(1);
         ownerKey3 = TestKeys.privateKey(2);
@@ -97,12 +107,12 @@ public class CLIMainTest {
 
     @AfterClass
     public static void cleanAfter() throws Exception {
-        File file = new File(basePath);
-        if(file.exists()) {
-            for (File f : file.listFiles())
-                f.delete();
-        }
-        file.delete();
+//        File file = new File(basePath);
+//        if(file.exists()) {
+//            for (File f : file.listFiles())
+//                f.delete();
+//        }
+//        file.delete();
     }
 
     @Test
@@ -1293,6 +1303,32 @@ public class CLIMainTest {
         callMain("--check", contractFileName, "-v");
         System.out.println(output);
 //        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void packContractWithCounterPartsWithName() throws Exception {
+        String contractFileName = basePath + "contract1.unicon";
+        String savingFileName = basePath + "packed.unicon";
+        callMain2("--check", contractFileName, "-v");
+        callMain2("-pack-with", contractFileName,
+                "-add-sibling", basePath + "contract2.unicon",
+                "-add-revoke", basePath + "contract_for_revoke1.unicon",
+                "-name", savingFileName,
+                "-v");
+
+        callMain("--check", savingFileName, "-v");
+        System.out.println(output);
+//        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void unpackContractWithCounterParts() throws Exception {
+        String fileName = basePath + "packedContract.unicon";
+        callMain2("--check", fileName, "-v");
+        callMain("-unpack", fileName, "-v");
+
+        System.out.println(output);
+        assertEquals(0, errors.size());
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {

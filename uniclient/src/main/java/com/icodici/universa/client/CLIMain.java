@@ -12,6 +12,7 @@ import com.google.gson.GsonBuilder;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
@@ -202,6 +203,11 @@ public class CLIMain {
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("revoke.unicon");
+                acceptsAll(asList("unpack"), "Extracts revoking and new items from contracts and save them.")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("file.unicon");
 
 
 //                acceptsAll(asList("ie"), "Test - delete.")
@@ -278,6 +284,9 @@ public class CLIMain {
             }
             if (options.has("pack-with")) {
                 doPackWith();
+            }
+            if (options.has("unpack")) {
+                doUnpackWith();
             }
 
             usage(null);
@@ -612,7 +621,6 @@ public class CLIMain {
     }
 
 
-
     private static void doPackWith() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("pack-with"));
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
@@ -623,9 +631,12 @@ public class CLIMain {
         cleanNonOptionalArguments(sources);
         List siblingItems = options.valuesOf("add-sibling");
         List revokeItems = options.valuesOf("add-revoke");
+        List<String> names = (List) options.valuesOf("name");
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
+            String name = null;
+            if (names.size() > s) name = names.get(s);
 
             Contract contract = loadContract(source, true);
             if (contract != null) {
@@ -649,7 +660,54 @@ public class CLIMain {
                     addErrors(contract.getErrors());
                 }
             }
-            saveContract(contract, source, true);
+            if (name == null) {
+                name = source;
+            }
+            saveContract(contract, name, true);
+        }
+
+        finish();
+    }
+
+
+    private static void doUnpackWith() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("unpack"));
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+
+            Contract contract = loadContract(source, true);
+            if (contract != null) {
+                if(contract.check()) {
+                    report("unpack contract from " + source);
+                    int i = 1;
+                    if(contract.getNewItems() != null) {
+                        for (Approvable newItem : contract.getNewItems()) {
+                            String newItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_new_item_" + i + ".unicon");
+                            report("save newItem to " + newItemFileName);
+                            saveContract((Contract) newItem, newItemFileName);
+                            i++;
+                        }
+                    }
+                    i = 1;
+                    if(contract.getRevokingItems() != null) {
+                        for (Approvable revokeItem : contract.getRevokingItems()) {
+                            String revokeItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_revoke_" + i + ".unicon");
+                            report("save revokeItem to " + revokeItemFileName);
+                            saveContract((Contract) revokeItem, revokeItemFileName);
+                            i++;
+                        }
+                    }
+                } else {
+                    addErrors(contract.getErrors());
+                }
+            }
         }
 
         finish();
