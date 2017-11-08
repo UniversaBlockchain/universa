@@ -1506,7 +1506,7 @@ public class CLIMain {
      *
      */
     public static void registerContract(Contract contract) throws IOException {
-        registerContract(contract, false);
+        registerContract(contract, true);
     }
 
 
