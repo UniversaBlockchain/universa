@@ -1319,7 +1319,7 @@ public class CLIMain {
      * @param fileName - name of file to save to.
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
      */
-    private static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction) throws IOException {
+    public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction) throws IOException {
         if (fileName == null) {
             fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:ss").format(contract.getCreatedAt()) + ".unicon";
         }
@@ -1328,7 +1328,7 @@ public class CLIMain {
 
         byte[] data;
         if(fromPackedTransaction) {
-            contract.seal();
+//            contract.seal();
             data = contract.getPackedTransaction();
         } else {
             data = contract.getLastSealedBinary();
@@ -1354,7 +1354,7 @@ public class CLIMain {
      * @param contract - contract for update.
      * @param fileName - name of file to save to.
      */
-    private static void saveContract(Contract contract, String fileName) throws IOException {
+    public static void saveContract(Contract contract, String fileName) throws IOException {
         saveContract(contract, fileName, false);
     }
 

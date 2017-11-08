@@ -102,6 +102,13 @@ public class CLIMainTest {
             fs.close();
         }
 
+        path = Paths.get(rootPath + "packedContract.unicon");
+        data = Files.readAllBytes(path);
+        try (FileOutputStream fs = new FileOutputStream(basePath + "packedContract2.unicon")) {
+            fs.write(data);
+            fs.close();
+        }
+
         path = Paths.get(rootPath + "packedContract_new_item.unicon");
         data = Files.readAllBytes(path);
         try (FileOutputStream fs = new FileOutputStream(basePath + "packedContract_new_item.unicon")) {
@@ -145,11 +152,13 @@ public class CLIMainTest {
 
         String path = rootPath + "/testtranspack.unicon";
 //        path = "/Users/sergeych/dev/!/e7810197-d148-4936-866b-44daae182e83.transaction";
-        try(FileOutputStream fos = new FileOutputStream(path)) {
-            fos.write(c.getPackedTransaction());
-        }
-
-        callMain2("--check", path, "-v");
+        CLIMain.saveContract(c, path, true);
+//        try (FileOutputStream fs = new FileOutputStream(path)) {
+//            fs.write(c.getPackedTransaction());
+//            fs.close();
+//        }
+        callMain("--check", path, "-v");
+        System.out.println(output);
     }
 
     @Test
@@ -980,12 +989,14 @@ public class CLIMainTest {
                     dir += "contract_subfolder/contract_subfolder_level2/";
                     break;
             }
-            saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
+            coin.seal();
+            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
         }
 
         Contract nonCoin = Contract.fromDslFile("./src/test_files/simple_root_contract_v2.yml");
-        saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unicon");
-        saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unicon");
+        nonCoin.seal();
+        CLIMain.saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unicon");
+        CLIMain.saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unicon");
 
         // Found wallets
 
@@ -1159,12 +1170,13 @@ public class CLIMainTest {
                     dir += "contract_subfolder/contract_subfolder_level2/";
                     break;
             }
-            saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
+            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
         }
 
         Contract nonCoin = Contract.fromDslFile("./src/test_files/simple_root_contract_v2.yml");
-        saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unicon");
-        saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unicon");
+        nonCoin.seal();
+        CLIMain.saveContract(nonCoin, rootPath + "contract_subfolder/NonCoin.unicon");
+        CLIMain.saveContract(nonCoin, rootPath + "contract_subfolder/contract_subfolder_level2/NonCoin.unicon");
 
         // check contracts
 
@@ -1244,7 +1256,7 @@ public class CLIMainTest {
         contract.addPermission(new RevokePermission(contract.getRole("issuer")));
         contract.seal();
 
-        saveContract(contract, contractFileName);
+        CLIMain.saveContract(contract, contractFileName);
 
         callMain2("--check", contractFileName, "-v");
 
@@ -1310,7 +1322,7 @@ public class CLIMainTest {
 
     @Test
     public void packContractWithCounterParts() throws Exception {
-        String contractFileName = basePath + "packedContract.unicon";
+        String contractFileName = basePath + "packedContract2.unicon";
         callMain2("--check", contractFileName, "-v");
         callMain2("-pack-with", contractFileName,
                 "-add-sibling", basePath + "packedContract_new_item.unicon",
@@ -1369,18 +1381,18 @@ public class CLIMainTest {
         return contracts;
     }
 
-    private void saveContract(Contract contract, String fileName) throws IOException {
-
-        if (fileName == null) {
-            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
-        }
-
-        byte[] data = contract.seal();
-        try (FileOutputStream fs = new FileOutputStream(fileName)) {
-            fs.write(data);
-            fs.close();
-        }
-    }
+//    private void saveContract(Contract contract, String fileName) throws IOException {
+//
+//        if (fileName == null) {
+//            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-dd").format(contract.getCreatedAt()) + ".unicon";
+//        }
+//
+//        byte[] data = contract.getPackedTransaction();
+//        try (FileOutputStream fs = new FileOutputStream(fileName)) {
+//            fs.write(data);
+//            fs.close();
+//        }
+//    }
 
     private static Reporter callMain(String... args) throws Exception {
         output = ConsoleInterceptor.copyOut(() -> {
