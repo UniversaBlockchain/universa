@@ -1492,9 +1492,9 @@ public class CLIMain {
 
             ItemResult r;
             if(fromPackedTransaction) {
-                r = getClientNetwork().register(contract.getLastSealedBinary());
-            } else {
                 r = getClientNetwork().register(contract.getPackedTransaction());
+            } else {
+                r = getClientNetwork().register(contract.getLastSealedBinary());
             }
             report("submitted with result:");
             report(r.toString());
