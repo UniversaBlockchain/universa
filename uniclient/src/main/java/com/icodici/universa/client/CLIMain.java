@@ -182,7 +182,9 @@ public class CLIMain {
                 accepts("term-width").withRequiredArg().ofType(Integer.class).defaultsTo(80);
                 accepts("pretty", "Use with -as json option. Make json string pretty.");
                 acceptsAll(asList("revoke"), "Revoke specified contract and create a revocation transactional contract. " +
-                        "Use -k option to specify private key to sign revoking contract.")
+                        "Use -k option to specify private key for revoke contract, " +
+                        "key should be same as key you signed contract for revoke with. " +
+                        "You cannot revoke contract without pointing private key.")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
