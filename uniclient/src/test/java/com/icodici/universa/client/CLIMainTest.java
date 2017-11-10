@@ -15,6 +15,7 @@ import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.TransactionContract;
 import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node.ItemState;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -84,12 +85,31 @@ public class CLIMainTest {
                 "-set", field, "-value", value);
         callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_to_export.unicon",
                 "-set", field, "-value", value);
-        callMain("-c", rootPath + "simple_root_contract.yml", "-name", basePath + "contract_for_revoke1.unicon",
-                "-set", field, "-value", value,
-                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
-        callMain("-c", rootPath + "simple_root_contract.yml", "-name", basePath + "contract_for_revoke2.unicon",
-                "-set", field, "-value", value,
-                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+
+
+        Contract c1 = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        c1.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        PrivateKey goodKey1 = c1.getKeysToSignWith().iterator().next();
+        // let's make this key among owners
+        ((SimpleRole)c1.getRole("owner")).addKeyRecord(new KeyRecord(goodKey1.getPublicKey()));
+        c1.seal();
+        CLIMain.saveContract(c1, basePath + "contract_for_revoke1.unicon");
+
+        Contract c2 = Contract.fromDslFile(rootPath + "another_root_contract_v2.yml");
+        c2.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        PrivateKey goodKey2 = c2.getKeysToSignWith().iterator().next();
+        // let's make this key among owners
+        ((SimpleRole)c2.getRole("owner")).addKeyRecord(new KeyRecord(goodKey2.getPublicKey()));
+        c2.seal();
+        CLIMain.saveContract(c2, basePath + "contract_for_revoke2.unicon");
+
+        Contract c3 = Contract.fromDslFile(rootPath + "simple_root_contract_v2.yml");
+        c3.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        PrivateKey goodKey3 = c3.getKeysToSignWith().iterator().next();
+        // let's make this key among owners
+        ((SimpleRole)c3.getRole("owner")).addKeyRecord(new KeyRecord(goodKey3.getPublicKey()));
+        c3.seal();
+        CLIMain.saveContract(c3, basePath + "contract_for_revoke3.unicon");
 
         callMain("-e", basePath + "contract1.unicon", "-name", basePath + "contract_to_import.json");
         callMain("-e", basePath + "contract1.unicon", "-name", basePath + "contract_to_import.xml");
@@ -1253,38 +1273,6 @@ public class CLIMainTest {
     }
 
     @Test
-    public void revokeContract() throws Exception {
-
-        String contractFileName = basePath + "contract_owner.unicon";
-        Contract contract = new Contract(ownerKey1);
-        contract.addPermission(new RevokePermission(contract.getRole("owner")));
-        contract.addPermission(new RevokePermission(contract.getRole("issuer")));
-        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        contract.seal();
-
-        CLIMain.saveContract(contract, contractFileName);
-
-        callMain2("--check", contractFileName, "-v");
-
-        callMain2("--register", contractFileName, "--verbose");
-
-        Contract c = CLIMain.loadContract(contractFileName);
-        System.out.println("contract: " + c.getId().toBase64String());
-
-        Thread.sleep(1500);
-        System.out.println("probe before revoke");
-        callMain2("--probe", c.getId().toBase64String(), "--verbose");
-        Thread.sleep(1500);
-        callMain2("-revoke", contractFileName, "-v");
-        Thread.sleep(1500);
-        System.out.println("probe after revoke");
-        callMain("--probe", c.getId().toBase64String(), "--verbose");
-
-        System.out.println(output);
-        assertEquals(0, errors.size());
-    }
-
-    @Test
     public void revokeContractVirtual() throws Exception {
 
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
@@ -1294,9 +1282,23 @@ public class CLIMainTest {
         ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
         c.seal();
 
+        System.out.println("---");
+        System.out.println("register contract");
+        System.out.println("---");
+
         CLIMain.registerContract(c);
-        Thread.sleep(500);
-        callMain2("--probe", c.getId().toBase64String());
+
+        Thread.sleep(1500);
+        System.out.println("---");
+        System.out.println("check contract");
+        System.out.println("---");
+
+        callMain("--probe", c.getId().toBase64String());
+
+        System.out.println(output);
+        assert (output.indexOf(ItemState.APPROVED.name()) >= 0);
+
+
 
         PrivateKey issuer1 = TestKeys.privateKey(1   );
         TransactionContract tc = new TransactionContract();
@@ -1309,17 +1311,87 @@ public class CLIMainTest {
 
         assertTrue(tc.check());
 
+        System.out.println("---");
+        System.out.println("register revoking contract");
+        System.out.println("---");
+
         CLIMain.registerContract(tc);
 
-        Thread.sleep(500);
-        callMain2("--probe", c.getId().toBase64String());
+        Thread.sleep(1500);
+        System.out.println("---");
+        System.out.println("check revoking contract");
+        System.out.println("---");
+
+        callMain("--probe", tc.getId().toBase64String());
+
+        System.out.println(output);
+        assert (output.indexOf(ItemState.APPROVED.name()) >= 1);
+
+
+
+        Thread.sleep(1500);
+        System.out.println("---");
+        System.out.println("check contract");
+        System.out.println("---");
+
+        callMain("--probe", c.getId().toBase64String());
+
+        System.out.println(output);
+
+        assert (output.indexOf(ItemState.REVOKED.name()) >= 0);
     }
 
     @Test
-    public void revokeContractfromTemplate() throws Exception {
-        String contractFileName = basePath + "contract_for_revoke1.unicon";
+    public void revokeCreatedContractWithRole() throws Exception {
 
-        callMain2("--check", contractFileName, "-v");
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
+        // let's make this key among owners
+        ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.seal();
+        String contractFileName = basePath + "with_role_for_revoke.unicon";
+        CLIMain.saveContract(c, contractFileName);
+
+        System.out.println("---");
+        System.out.println("register contract");
+        System.out.println("---");
+
+//        CLIMain.registerContract(c);
+        callMain2("--register", contractFileName, "--verbose");
+
+        Thread.sleep(1500);
+        System.out.println("---");
+        System.out.println("check contract");
+        System.out.println("---");
+
+        callMain("--probe", c.getId().toBase64String());
+
+        System.out.println(output);
+        assert (output.indexOf(ItemState.APPROVED.name()) >= 0);
+
+
+
+        callMain2("-revoke", contractFileName, "-v",
+                "-k", PRIVATE_KEY_PATH);
+
+
+
+        Thread.sleep(1500);
+        System.out.println("---");
+        System.out.println("check contract after revoke");
+        System.out.println("---");
+
+        callMain("--probe", c.getId().toBase64String());
+
+        System.out.println(output);
+
+        assert (output.indexOf(ItemState.REVOKED.name()) >= 0);
+    }
+
+    @Test
+    public void revokeContract() throws Exception {
+        String contractFileName = basePath + "contract_for_revoke3.unicon";
 
         callMain2("--register", contractFileName, "--verbose");
 
@@ -1330,31 +1402,70 @@ public class CLIMainTest {
         System.out.println("probe before revoke");
         callMain2("--probe", c.getId().toBase64String(), "--verbose");
         Thread.sleep(1500);
-        callMain2("-revoke", contractFileName, "-v");
+        callMain2("-revoke", contractFileName, "-v",
+                "-k", PRIVATE_KEY_PATH);
         Thread.sleep(1500);
         System.out.println("probe after revoke");
         callMain("--probe", c.getId().toBase64String(), "--verbose");
 
         System.out.println(output);
         assertEquals(0, errors.size());
+
+        assert (output.indexOf(ItemState.REVOKED.name()) >= 0);
     }
 
     @Test
-    public void revokeContractWithKey() throws Exception {
-        callMain("-revoke", basePath + "contract_for_revoke1.unicon", "-v",
-                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+    public void revokeContractWithoutKey() throws Exception {
+        String contractFileName = basePath + "contract_for_revoke1.unicon";
+
+        callMain2("--register", contractFileName, "--verbose");
+        callMain2("-revoke", contractFileName, "-v");
+
+        Thread.sleep(1500);
+        System.out.println("probe after revoke");
+        Contract c = CLIMain.loadContract(contractFileName);
+        callMain("--probe", c.getId().toBase64String(), "--verbose");
+
         System.out.println(output);
         assertEquals(0, errors.size());
+
+        assert (output.indexOf(ItemState.REVOKED.name()) < 0);
     }
 
     @Test
     public void revokeTwoContracts() throws Exception {
-        callMain("-revoke",
-                basePath + "contract_for_revoke1.unicon",
-                basePath + "contract_for_revoke2.unicon",
-                "-v");
+        String contractFileName1 = basePath + "contract_for_revoke1.unicon";
+        String contractFileName2 = basePath + "contract_for_revoke2.unicon";
+
+        System.out.println("---");
+        System.out.println("register contracts");
+        System.out.println("---");
+        callMain2("--register", contractFileName1, contractFileName2, "--verbose");
+
+        Thread.sleep(1500);
+        System.out.println("---");
+        System.out.println("revoke contracts");
+        System.out.println("---");
+
+        callMain2("-revoke", contractFileName1, contractFileName2, "-v",
+                "-k", PRIVATE_KEY_PATH);
+
+
+        Thread.sleep(1500);
+        System.out.println("---");
+        System.out.println("check contracts after revoke");
+        System.out.println("---");
+
+        Contract c1 = CLIMain.loadContract(contractFileName1);
+        callMain2("--probe", c1.getId().toBase64String(), "--verbose");
+
+        Contract c2 = CLIMain.loadContract(contractFileName2);
+        callMain("--probe", c2.getId().toBase64String(), "--verbose");
+
         System.out.println(output);
         assertEquals(0, errors.size());
+
+        assert (output.indexOf(ItemState.REVOKED.name()) >= 1);
     }
 
     @Test
