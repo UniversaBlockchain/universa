@@ -24,9 +24,7 @@ public class TransactionContractTest extends ContractTestBase {
         c.seal();
 
         PrivateKey issuer = TestKeys.privateKey(2);
-        TransactionContract tc = new TransactionContract();
-        tc.setIssuer(issuer);
-        tc.addContractToRemove(c);
+        Contract tc = c.createRevocation(issuer);
 
         // c can't be revoked with this key!
         boolean result = tc.check();
@@ -44,14 +42,10 @@ public class TransactionContractTest extends ContractTestBase {
         ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
         c.seal();
 
-        PrivateKey issuer1 = TestKeys.privateKey(1   );
-        TransactionContract tc = new TransactionContract();
+        Contract revokeContract = c.createRevocation(goodKey);
 
-        // among issuers there is now owner
-        tc.setIssuer(issuer1, goodKey);
-        tc.addContractToRemove(c);
 
-        assertTrue(tc.check());
+        assertTrue(revokeContract.check());
 //        tc.traceErrors();
     }
 }

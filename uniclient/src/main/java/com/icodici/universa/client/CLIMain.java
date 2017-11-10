@@ -16,11 +16,9 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.TransactionContract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.roles.Role;
-import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
@@ -306,6 +304,31 @@ public class CLIMain {
             System.exit(100);
         }
 
+    }
+
+    private static String[] unescape(String[] args) {
+        ArrayList<String> result = new ArrayList<>();
+        StringBuilder sb = null;
+        for(String s: args) {
+            System.out.println(s);
+            if( sb != null ) {
+                if( s.endsWith("\"") ) {
+                    sb.append(s.substring(0, s.length()-1));
+                    result.add(sb.toString());
+                    sb = null;
+                }
+            }
+            else {
+                if (s.startsWith("\"")) {
+                    sb = new StringBuilder(s.substring(1));
+                } else {
+                    result.add(s);
+                }
+            }
+
+        }
+        System.out.println(result);
+        return result.toArray(new String[0]);
     }
 
     private static void doCreateContract() throws IOException {

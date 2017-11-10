@@ -1164,9 +1164,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
-     * Pack the contract to the most modern .unicon fromat, same as {@link TransactionPack#pack()}. Uses bounded
-     * {@link TransactionPack} instance to save togther the contract, revoking and new items (if any). This is a binary
-     * format using to submit for approval. Use {@link #fromPackedTransaction(byte[])} to read this format.
+     * Pack the contract to the most modern .unicon fromat, same as {@link TransactionPack#pack()}. Uses bounded {@link
+     * TransactionPack} instance to save togther the contract, revoking and new items (if any). This is a binary format
+     * using to submit for approval. Use {@link #fromPackedTransaction(byte[])} to read this format.
      *
      * @return packed binary form.
      */
@@ -1208,6 +1208,33 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (transactionPack == null)
             transactionPack = new TransactionPack(this);
         return transactionPack;
+    }
+
+    /**
+     * Create revocation contract. To revoke the contract it is necessary that it has "revoke" permission, and one need
+     * the keys to be able to play the role assigned to it.
+     * <p>
+     * So, to revoke some contract:
+     * <p>
+     * - call {@link #createRevocation(PrivateKey...)} with key or keys that can play the role for "revoke"
+     * permission
+     * <p>
+     * - register it in the Universa network, see {@link com.icodici.universa.node2.network.Client#register(byte[])}.
+     * Upon the successful registration the source contract will be revoked. Use transaction contract's {@link
+     * #getPackedTransaction()} to obtain a binary to submit to the client.
+     *
+     * @param keys one or more keys that together can play the role assigned to the revoke permission.
+     *
+     * @return ready sealed contract that revokes this contract on registration
+     */
+    public Contract createRevocation(PrivateKey... keys) {
+        TransactionContract tc = new TransactionContract();
+
+        // among issuers there is now owner
+        tc.setIssuer(keys);
+        tc.addContractToRemove(this);
+        tc.seal();
+        return tc;
     }
 
     public class State {
