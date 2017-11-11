@@ -9,9 +9,11 @@ package com.icodici.universa.node;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.Contract;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -22,6 +24,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.fail;
 
 public class TestCase {
@@ -78,6 +81,34 @@ public class TestCase {
 
     protected PublicKey getNodePublicKey(int index) throws IOException {
         return getNodeKey(index).getPublicKey();
+    }
+
+    protected Contract readContract(String fileName) throws Exception {
+        return readContractBase(fileName, false);
+    }
+
+    protected Contract readContract(String fileName, boolean isTransaction) throws Exception {
+        return readContractBase(fileName, isTransaction);
+    }
+
+    protected Contract readContractBase(String fileName, boolean isTransaction) throws Exception {
+        Contract contract = null;
+
+        Path path = Paths.get(fileName);
+        byte[] data = Files.readAllBytes(path);
+
+        try {
+            if (isTransaction) {
+                contract = Contract.fromPackedTransaction(data);
+            }
+            else
+                contract = new Contract(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        assertNotEquals(contract, null);
+        return contract;
     }
 
 }

@@ -99,34 +99,6 @@ public class ContractTestBase extends TestCase {
         assertFalse(c.isPermitted("revoke", issuer));
     }
 
-    protected Contract readContract(String fileName) throws Exception {
-        return readContractBase(fileName, false);
-    }
-
-    protected Contract readContract(String fileName, boolean isTransaction) throws Exception {
-        return readContractBase(fileName, isTransaction);
-    }
-
-    protected Contract readContractBase(String fileName, boolean isTransaction) throws Exception {
-        Contract contract = null;
-
-        Path path = Paths.get(fileName);
-        byte[] data = Files.readAllBytes(path);
-
-        try {
-            if (isTransaction) {
-                contract = Contract.fromPackedTransaction(data);
-            }
-            else
-                contract = new Contract(data);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        assertNotEquals(contract, null);
-        return contract;
-    }
-
     protected void sealCheckTrace(Contract c, boolean isOk) {
         c.seal();
         c.check();

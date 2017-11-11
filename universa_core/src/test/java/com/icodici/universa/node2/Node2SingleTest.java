@@ -8,6 +8,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
@@ -26,7 +27,9 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
@@ -429,6 +432,54 @@ public class Node2SingleTest extends TestCase {
             assertEquals(badState, existing2.reload().getState());
 
         }
+    }
+
+    @Test
+    public void shouldDeclineSplit() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+
+        // 50
+        c = c.createRevision();
+        Contract c2 = c.splitValue("amount", new Decimal(550));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertFalse(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(-450), c.getStateData().get("amount"));
+
+        registerAndCheckDeclined(c2);
+    }
+
+    @Test
+    public void checkSergeychCase() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
+
+        Contract contract = readContract(transactionName, true);
+
+        HashId id;
+        StateRecord orCreate;
+
+        for (Approvable c : contract.getRevokingItems()) {
+            id = c.getId();
+            orCreate = ledger.findOrCreate(id);
+            orCreate.setState(ItemState.APPROVED).save();
+        }
+
+        for (Approvable c : contract.getNewItems()) {
+            id = c.getId();
+            orCreate = ledger.findOrCreate(id);
+            orCreate.setState(ItemState.APPROVED).save();
+        }
+
+        node.registerItem(contract);
+        ItemResult itemResult = node.waitItem(contract.getId(), 1500);
+        assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
     @Test
