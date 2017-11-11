@@ -121,7 +121,7 @@ public class SplitJoinPermission extends Permission {
         isValid = sum.compareTo(newValue) == 0;
 
         if (!isValid)
-            isValid = checkSplitJointCase(changed, sum);
+            isValid = checkSplitJoinCase(changed, sum);
 
 
         if (isValid)
@@ -141,21 +141,28 @@ public class SplitJoinPermission extends Permission {
         isValid = sum.equals(oldValue);
 
         if (!isValid)
-            isValid = checkSplitJointCase(changed, sum);
+            isValid = checkSplitJoinCase(changed, sum);
 
 
         if (isValid && newValue.compareTo(minValue) >= 0 && newValue.ulp().compareTo(minUnit) >= 0)
             dataChanges.remove(fieldName);
     }
 
-    private boolean checkSplitJointCase(Contract changed, Decimal sum) {
+    private boolean checkSplitJoinCase(Contract changed, Decimal sum) {
         Decimal splitJoinSum = Decimal.ZERO;
 
         for (Contract c : changed.getSiblings()) {
             splitJoinSum = splitJoinSum.add(new Decimal(c.getStateData().getString(fieldName)));
         }
 
-        return splitJoinSum.compareTo(sum) == 0;
+        Decimal rSum = Decimal.ZERO;
+
+        for (Approvable r : changed.getRevokingItems()) {
+            if (r instanceof Contract)
+                rSum = rSum.add(new Decimal(((Contract)r).getStateData().getString(fieldName)));
+        }
+
+        return splitJoinSum.compareTo(rSum) == 0;
     }
 
     static {

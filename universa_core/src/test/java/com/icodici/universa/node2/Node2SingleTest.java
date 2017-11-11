@@ -8,10 +8,16 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.permissions.SplitJoinPermission;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
+import com.icodici.universa.wallet.Wallet;
+import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
@@ -426,6 +432,115 @@ public class Node2SingleTest extends TestCase {
     }
 
     @Test
+    public void shouldApproveSplit() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+
+        // 50
+        c = c.createRevision();
+        Contract c2 = c.splitValue("amount", new Decimal(50));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(50), c.getStateData().get("amount"));
+
+        registerAndCheckApproved(c2);
+        assertEquals("50", c2.getStateData().get("amount"));
+    }
+
+    @Test
+    public void shouldApproveSplitAndJoinWithNewSend() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+        assertEquals(100, c.getStateData().get("amount"));
+
+
+        // 50
+        Contract cRev = c.createRevision();
+        Contract c2 = cRev.splitValue("amount", new Decimal(50));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
+
+        registerAndCheckApproved(c2);
+        assertEquals("50", c2.getStateData().get("amount"));
+
+
+        //send 150 out of 2 contracts (100 + 50)
+        Contract c3 = c2.createRevision();
+        c3.getStateData().set("amount", (new Decimal((Integer)c.getStateData().get("amount"))).
+                add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
+        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c3.addRevokingItems(c);
+        assertTrue(c3.check());
+        c3.seal();
+
+        registerAndCheckApproved(c3);
+        assertEquals(new Decimal(150), c3.getStateData().get("amount"));
+    }
+
+    @Test
+    public void shouldDeclineSplitAndJoinWithWrongAmount() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+        assertEquals(100, c.getStateData().get("amount"));
+
+
+        // 50
+        Contract cRev = c.createRevision();
+        Contract c2 = cRev.splitValue("amount", new Decimal(50));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
+
+        registerAndCheckApproved(c2);
+        assertEquals("50", c2.getStateData().get("amount"));
+
+
+        //wrong. send 500 out of 2 contracts (100 + 50)
+        Contract c3 = c2.createRevision();
+        c3.getStateData().set("amount", new Decimal(500));
+        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c3.addRevokingItems(c);
+        assertFalse(c3.check());
+        c3.seal();
+
+        registerAndCheckDeclined(c3);
+    }
+
+    private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
+        node.registerItem(c);
+        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+    private void registerAndCheckDeclined(Contract c) throws TimeoutException, InterruptedException {
+        node.registerItem(c);
+        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+    }
+
+    @Test
     public void itemsCachedThenPurged() throws Exception {
 
         // todo: rewrite
@@ -451,9 +566,7 @@ public class Node2SingleTest extends TestCase {
         assertTrue(c.check());
         c.seal();
 
-        node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 1500);
-        assertEquals(ItemState.APPROVED, itemResult.state);
+        registerAndCheckApproved(c);
     }
 
     private void init(int posCons, int negCons) throws IOException, SQLException {

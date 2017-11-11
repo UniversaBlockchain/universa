@@ -1,0 +1,156 @@
+---
+__type: SmartContract
+
+# minimum Universa smart contract API level required to process this contract
+api_level: 2
+
+# this is an required and immutable section that must be copied between states. it defines main contract
+# properties and permissions.
+definition:
+
+  issuer:
+   # required. contract must have issuer (or issuers). on creation, the root contract must be signed by
+   # all issuers.
+
+     key: >
+          HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+          a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+          z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+          BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+          vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+          Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+          hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+          LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+          MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=
+     # _xer0yfe2nn1xthc.unikey
+
+     # to show to the user
+     description: >
+       This contract represent a on-time emission of a coin-like object, that could be split to pieces up to the
+       specified amount (like small changed) or joined back. This contract does not allow emit more joinable coins.
+       Unlike paper money, this contrace is singlue emission only. Coins of this type could be only split from this
+       contract, and the joined together to form any necessary sum.
+
+  # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
+  # consult current Universa state, maximum delayed contract creation time varies. This time we make a template
+  # which will be substituted by the creation time on issuing client:
+
+  # will keep the time of root contract creation
+  created_at: now()
+
+  # required key, can be empty if the contract uses only standard roles, issues and creator.
+  roles:
+   # no extra roles, issuer and owner are predefined, so empty list.
+
+  # required key, if left empty, the contract can not be changed or revoked. Be careful.
+  permissions:
+     # owner have a right to transfer ownership. Note that if the creator will be mentioned here, only the creator
+     # will have permission to change owner. It is very important to allow it, so the owner can pay with a coin, or
+     # split a part of it for another beneficiary
+    change_owner: owner
+
+    # This is a main permission of money-like contract
+    split_join:
+      # owner can split and join coins, e.g. manipulate to pay and receive payments.
+
+      # is also limited (a useful option):
+      - role: owner
+        # Mimimum splittable value. It means that we can split 10 coints to 9.99 and 0.01. Note that the system now
+        # only allow values not lessser tha. 0.000`000`001, e.g. 1E-9, 1 nano-unit of something.
+        min_value: 0.01 # one cent is a minimum
+        # all split values must not differ to a value less than this unit. Actually, it should always
+        # be a power of 10, like 0.0001 The system checks that any split value's ULP is no less than that
+        # (ULP is Unit in Last Position, common term. For example ULP(117.223) is 0.001
+        # is greated tham this. In our case, it allows splitting 10 to 5.001 and 4.999, but not to 5.1234 and 4.9866
+        # as the ulp will be 0.0001 for 4.8966. In most cases it is practical to have same min_unit and to min_value
+        # as the 10th power
+        min_unit: 0.001
+
+        # The name of the field to change
+        field_name: amount
+
+        # this way we forbid any later emissions: only parts from this contract could be joined.
+        # adding other field to this allow additional emission:
+        join_match_fields:
+          - state.origin
+
+    # who can revoke the contract: owner, and issuer altogether. Usually it means - when the issuer posess the contract
+    # for example by bying it back from the customer, it is possible ro revoke it. Very much like destroying banknotes
+    # by its owner - but we require also issuer signature on it:
+    revoke:
+      - issuer
+      - owner
+#      - role:
+#        name: list_role
+#        type: ALL_OF
+#        roles:
+#          - issuer
+#          - owner
+
+  # required section, could be empty. Any immutable structured data issuer might need to include into the contract
+  # this data will be also copied without change during any contract changes.
+  data:
+    # optional, but almost always needed name or four currency
+    name: Test cryptocurrency
+    # optional, we recommend this field to be defined in a practical and meamningful way to avoid future collisions
+    currency_code: TUNC
+    # the human-readable version of currency-code
+    currency_name: Test Univerca Cryptocurrencty
+
+    description: this contract emits initial amount of test cryptocurrency to be payable just like electronic money
+
+# required section. Data that represent current contract state, could be modified in accordance with
+# 'permissions' section above
+state:
+ # required. most often, we should specify contract owner. we could specify 'issuer' or provide a key
+  owner:
+    # we create contract to be owned by another person, so we must provide a key:
+    key: HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=
+    # the rest is optional and application-specific
+    name:
+      salutation: Mr.
+      first: Vasiliy
+      last: Pupkin
+
+  # required. who has created this document. for the root contract it is always the issues, for changed
+  # states it is almost always the owner. The contract should be signed by this key.
+  created_by: issuer
+
+   # required. must be in distant future.
+  expires_at:
+    __t: unixtime
+    seconds: 1659720337
+
+  # required. revision increments on any contract edit. the root contract has always revision of 1
+  revision: 1
+
+  # required. the contract based on which has created this one. it could be previous state of the contract in the
+  # case of the edit or another contract that generates child contract and so on. this time it is a new chain
+  # root so it is empty:
+  parent: ~
+
+  # required. the contract origin. when the contract state changes, the origin should always point to the root
+  # contract, to which it is empty. This field mutates once, so it is part of the state, not definition.
+  # this is a root contract, so:
+  origin: ~
+
+  # required except root contracs. creation time of this revision (e.g. state). As it is a root contract, we
+  # leave it empty:
+  created_at: ~
+
+  # required section. any application data that could be changed.
+  data:
+    # initially emitted value: one million test coins. Note that this contract will not allow any additional emissions,
+    # so the sum fo all coins of this type across the system will necer exceed 1 000 000. It, still, could be less -
+    # issuer, when is the owner of the coin, ccan revoke it (see permissions) effectively implementing deflation
+    amount: 100
+
+

@@ -50,65 +50,6 @@ public class ContractTest extends ContractTestBase {
 
 
     @Test
-    public void createFromSealed() throws Exception {
-        String fileName = "./src/test_contracts/simple_root_contract.unc";
-
-        readContract(fileName);
-    }
-
-    @Test
-    public void createWithData() throws Exception {
-        String fileName = "./src/test_contracts/ONSUBMIT_30.unicon";
-
-        Contract contract = readContract(fileName);
-
-        Multimap<String, Permission> permissions = contract.getPermissions();
-        assertNotNull(permissions);
-        assertEquals(1, permissions.size());
-        Object modify_data = permissions.get("modify_data").toArray()[0];
-
-        assertTrue(modify_data instanceof ModifyDataPermission);
-        Map<String, List<String>> fields = ((ModifyDataPermission) modify_data).getFields();
-        assertEquals(1, fields.size());
-        List<String> names = fields.get("name");
-        assertEquals(2, names.size());
-        assertEquals("Maksim", names.get(0));
-        assertEquals("Vasily", names.get(1));
-
-        sealCheckTrace(contract, true);
-
-    }
-
-    @Test
-    public void createWithSplit() throws Exception {
-        String fileName = "./src/test_contracts/123121892sdf.unicon";
-        int globalValue = 123123123;
-        int splitValue = 1231;
-
-        Contract contract = readContract(fileName);
-
-        //parent value
-        Set<Approvable> revokingItems = contract.getRevokingItems();
-        assertNotNull(revokingItems);
-        assertEquals(1, revokingItems.size());
-        assertEquals(globalValue, ((Contract) revokingItems.toArray()[0]).getStateData().get("amount"));
-
-        //sibling value
-        Set<Approvable> newItems = contract.getNewItems();
-        assertNotNull(newItems);
-        assertEquals(1, newItems.size());
-        assertEquals(splitValue, ((Contract) newItems.toArray()[0]).getStateData().get("amount"));
-
-        //current value
-        assertEquals(2, contract.getRevision());
-        Binder stateData = contract.getStateData();
-        assertEquals(globalValue - splitValue, stateData.get("amount"));
-
-
-        sealCheckTrace(contract, true);
-    }
-
-    @Test
     public void createFromBinaryWithRealContract() throws Exception {
         String fileName = "./src/test_contracts/simple_root_contract.yml";
 
@@ -158,22 +99,6 @@ public class ContractTest extends ContractTestBase {
         sealedContract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(sealedContract, true);
-    }
-
-    private Contract readContract(String fileName) throws Exception {
-        Contract contract = null;
-
-        Path path = Paths.get(fileName);
-        byte[] data = Files.readAllBytes(path);
-
-        try {
-            contract = new Contract(data);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        assertNotEquals(contract, null);
-        return contract;
     }
 
     @Test

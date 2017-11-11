@@ -100,29 +100,22 @@ public class ContractTestBase extends TestCase {
     }
 
     protected Contract readContract(String fileName) throws Exception {
-        return readContractBase(fileName, null);
+        return readContractBase(fileName, false);
     }
 
-    protected Contract readContract(String fileName, String transactionName) throws Exception {
-        return readContractBase(fileName, transactionName);
+    protected Contract readContract(String fileName, boolean isTransaction) throws Exception {
+        return readContractBase(fileName, isTransaction);
     }
 
-    protected Contract readContractBase(String fileName, String transactionName) throws Exception {
+    protected Contract readContractBase(String fileName, boolean isTransaction) throws Exception {
         Contract contract = null;
 
         Path path = Paths.get(fileName);
         byte[] data = Files.readAllBytes(path);
 
-        byte[] transactionData = new byte[0];
-        if (transactionName != null) {
-            Path transactionPath = Paths.get(transactionName);
-            transactionData = Files.readAllBytes(transactionPath);
-        }
-
         try {
-            if (transactionData.length > 0) {
-                TransactionPack unpack = TransactionPack.unpack(transactionData);
-                contract = new Contract(unpack.getContract().seal(), unpack);
+            if (isTransaction) {
+                contract = Contract.fromPackedTransaction(data);
             }
             else
                 contract = new Contract(data);

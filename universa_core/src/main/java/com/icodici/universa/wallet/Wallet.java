@@ -78,7 +78,6 @@ public class Wallet {
             } else if (compared == 1) {
                 result = joinAndRemoveFromContracts(selectedContracts);
                 result.getStateData().set(fieldName, sum);
-                result.getState().setBranchNumber(result.getState().getBranchRevision() + 1);
 
                 //split with change and add it back to the contracts
                 Contract newContract = result.splitValue(fieldName, sum.subtract(value));
@@ -88,16 +87,20 @@ public class Wallet {
             }
         }
 
+        if (result == null)
+            throw new IllegalArgumentException("The amount of contracts from the walled does not match the expected value.");
+
         return result;
     }
 
     private Contract joinAndRemoveFromContracts(List<Contract> selectedContracts) throws Exception {
         Contract result = selectedContracts.get(0).copy();
-        result.setKeysToSignWith(selectedContracts.get(0).getKeysToSignWith());
-        result.getState().setBranchNumber(result.getState().getBranchRevision() + 1);
 
         result.getRevokingItems().addAll(selectedContracts);
+
         this.contracts.removeAll(selectedContracts);
+
+        result.setKeysToSignWith(selectedContracts.get(0).getKeysToSignWith());
 
         return result;
     }

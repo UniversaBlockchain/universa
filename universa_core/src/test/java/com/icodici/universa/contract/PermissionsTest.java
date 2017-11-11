@@ -9,11 +9,14 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
+import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.wallet.Wallet;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -413,7 +416,22 @@ public class PermissionsTest extends ContractTestBase {
         assertEquals(1, c2.getNewItems().size());
 
         sealCheckTrace(c2, false);
+    }
 
+    @Test
+    public void shouldCheckSplitJoinAndSent80coins() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/0a875b1f-d979-45d4-85f5-a388e70692a3.transaction";
+
+        Contract contract = readContract(transactionName, true);
+        sealCheckTrace(contract, true);
+    }
+
+    @Test
+    public void shouldCheckSplitJoinAndSent50coins() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/2a8960bb-9a30-4173-8702-42084553e9b4.transaction";
+
+        Contract contract = readContract(transactionName, true);
+        sealCheckTrace(contract, true);
     }
 
     private void setAndCheckOldNewValues(Binder d, Binder d1, String oldValue, String newValue, String field) {
