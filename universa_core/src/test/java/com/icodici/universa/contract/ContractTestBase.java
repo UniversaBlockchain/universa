@@ -15,6 +15,9 @@ import com.icodici.universa.node.network.TestKeys;
 import org.junit.Before;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -96,6 +99,40 @@ public class ContractTestBase extends TestCase {
         assertFalse(c.isPermitted("revoke", issuer));
     }
 
+    protected Contract readContract(String fileName) throws Exception {
+        return readContractBase(fileName, null);
+    }
+
+    protected Contract readContract(String fileName, String transactionName) throws Exception {
+        return readContractBase(fileName, transactionName);
+    }
+
+    protected Contract readContractBase(String fileName, String transactionName) throws Exception {
+        Contract contract = null;
+
+        Path path = Paths.get(fileName);
+        byte[] data = Files.readAllBytes(path);
+
+        byte[] transactionData = new byte[0];
+        if (transactionName != null) {
+            Path transactionPath = Paths.get(transactionName);
+            transactionData = Files.readAllBytes(transactionPath);
+        }
+
+        try {
+            if (transactionData.length > 0) {
+                TransactionPack unpack = TransactionPack.unpack(transactionData);
+                contract = new Contract(unpack.getContract().seal(), unpack);
+            }
+            else
+                contract = new Contract(data);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        assertNotEquals(contract, null);
+        return contract;
+    }
 
     protected void sealCheckTrace(Contract c, boolean isOk) {
         c.seal();

@@ -43,7 +43,7 @@ public class Wallet {
      * @param value     value to have in a one contract
      * @return
      */
-    public synchronized Contract buildContractWithValue(String fieldName, @NonNull Decimal value) {
+    public synchronized Contract buildContractWithValue(String fieldName, @NonNull Decimal value) throws Exception {
         if (value == null || Decimal.ZERO.equals(value) || this.contracts.size() == 0) return null;
 
         Contract result = null;
@@ -78,6 +78,7 @@ public class Wallet {
             } else if (compared == 1) {
                 result = joinAndRemoveFromContracts(selectedContracts);
                 result.getStateData().set(fieldName, sum);
+                result.getState().setBranchNumber(result.getState().getBranchRevision() + 1);
 
                 //split with change and add it back to the contracts
                 Contract newContract = result.splitValue(fieldName, sum.subtract(value));
@@ -90,8 +91,10 @@ public class Wallet {
         return result;
     }
 
-    private Contract joinAndRemoveFromContracts(List<Contract> selectedContracts) {
+    private Contract joinAndRemoveFromContracts(List<Contract> selectedContracts) throws Exception {
         Contract result = selectedContracts.get(0).copy();
+        result.setKeysToSignWith(selectedContracts.get(0).getKeysToSignWith());
+        result.getState().setBranchNumber(result.getState().getBranchRevision() + 1);
 
         result.getRevokingItems().addAll(selectedContracts);
         this.contracts.removeAll(selectedContracts);

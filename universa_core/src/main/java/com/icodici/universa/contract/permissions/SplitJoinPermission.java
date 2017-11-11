@@ -29,7 +29,7 @@ import static java.util.Arrays.asList;
  * permission could be used more than once allowing for different roles to change in different range and directions.
  */
 
-@BiType(name="SplitJoinPermission")
+@BiType(name = "SplitJoinPermission")
 public class SplitJoinPermission extends Permission {
 
     private Decimal minValue;
@@ -95,6 +95,8 @@ public class SplitJoinPermission extends Permission {
     }
 
     private void checkMerge(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Decimal newValue) {
+        boolean isValid;
+
         // merge means there are mergeable contracts in the revoking items
         Decimal sum = Decimal.ZERO;
         for (Approvable a : changed.getRevokingItems()) {
@@ -115,18 +117,45 @@ public class SplitJoinPermission extends Permission {
                 sum = sum.add(new Decimal(s));
             }
         }
-        if (sum.compareTo(newValue) == 0)
+
+        isValid = sum.compareTo(newValue) == 0;
+
+        if (!isValid)
+            isValid = checkSplitJointCase(changed, sum);
+
+
+        if (isValid)
             dataChanges.remove(fieldName);
     }
 
     private void checkSplit(Contract changed, MapDelta<String, Binder, Binder> dataChanges, Decimal oldValue, Decimal newValue) {
+        boolean isValid;
+
         // We need to find the splitted contracts
         Decimal sum = Decimal.ZERO;
-        for (Contract s : changed.getSiblings())
+        for (Contract s : changed.getSiblings()) {
             sum = sum.add(new Decimal(s.getStateData().getString(fieldName)));
-        // total value should not be changed:
-        if (sum.equals(oldValue) && newValue.compareTo(minValue) >= 0 && newValue.ulp().compareTo(minUnit) >= 0)
+        }
+
+        // total value should not be changed or check split-join case
+        isValid = sum.equals(oldValue);
+
+        if (!isValid)
+            isValid = checkSplitJointCase(changed, sum);
+
+
+        if (isValid && newValue.compareTo(minValue) >= 0 && newValue.ulp().compareTo(minUnit) >= 0)
             dataChanges.remove(fieldName);
+    }
+
+    private boolean checkSplitJointCase(Contract changed, Decimal sum) {
+        Decimal splitJoinSum = Decimal.ZERO;
+
+        for (Contract c : changed.getSiblings()) {
+            splitJoinSum = splitJoinSum.add(new Decimal(c.getStateData().getString(fieldName)));
+        }
+
+        return splitJoinSum.compareTo(sum) == 0;
     }
 
     static {

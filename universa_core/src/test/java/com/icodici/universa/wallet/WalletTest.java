@@ -41,6 +41,26 @@ public class WalletTest extends ContractTestBase {
     }
 
     @Test
+    public void shouldSplitAndMergeOne() throws Exception {
+        List<Contract> listOfCoinsWithAmount = createListOfCoinsWithAmount(Arrays.asList(100, 200));
+
+
+        List<Wallet> wallets = Wallet.determineWallets(listOfCoinsWithAmount);
+
+        //want to send 250
+        Wallet wallet = wallets.get(0);
+        Contract output = wallet.buildContractWithValue("amount", new Decimal(250));
+        output.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(output, true);
+
+        Contract contract = wallet.getContracts().get(0);
+        sealCheckTrace(contract, true);
+        assertEquals("50", contract.getState().getData().get("amount"));
+
+    }
+
+    @Test
     public void shouldTransferAmountFromCoupleContracts() throws Exception {
         Decimal valueToSend = new Decimal(70);
 
