@@ -454,24 +454,39 @@ public class Node2SingleTest extends TestCase {
     public void checkSergeychCase() throws Exception {
         String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
 
-        Contract contract = readContract(transactionName, true);
+        for( int i=0; i < 5; i++) {
+            Contract contract = readContract(transactionName, true);
 
-        HashId id;
-        StateRecord orCreate;
+            HashId id;
+            StateRecord orCreate;
 
-        for (Approvable c : contract.getRevokingItems()) {
-            id = c.getId();
-            orCreate = ledger.findOrCreate(id);
-            orCreate.setState(ItemState.APPROVED).save();
+            for (Approvable c : contract.getRevokingItems()) {
+                id = c.getId();
+                orCreate = ledger.findOrCreate(id);
+                orCreate.setState(ItemState.APPROVED).save();
+            }
+
+            for( Approvable c: contract.getNewItems()) {
+                orCreate = ledger.getRecord(c.getId());
+                if( orCreate != null )
+                    orCreate.destroy();
+            }
+
+            StateRecord r = ledger.getRecord(contract.getId());
+            if( r !=  null ) {
+                r.destroy();
+            }
+
+            contract.check();
+            contract.traceErrors();
+            assertTrue(contract.isOk());
+
+            node.registerItem(contract);
+            ItemResult itemResult = node.waitItem(contract.getId(), 15000);
+            if( ItemState.APPROVED != itemResult.state)
+                fail("Wrong state on repetition "+i+": "+itemResult+", "+itemResult.errors);
+            assertEquals(ItemState.APPROVED, itemResult.state);
         }
-
-        contract.seal();
-        contract.traceErrors();
-        assertTrue(contract.isOk());
-
-        node.registerItem(contract);
-        ItemResult itemResult = node.waitItem(contract.getId(), 15000);
-        assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
     @Test
