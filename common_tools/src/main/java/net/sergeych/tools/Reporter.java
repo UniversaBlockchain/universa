@@ -147,4 +147,23 @@ public class Reporter {
     public void setVerboseMode(boolean verboseMode) {
         this.verboseMode = verboseMode;
     }
+
+
+    /**
+     * Outputs newline on the console only (does nothing in quiet more).
+     */
+    public void newLine() {
+        console("\n");
+    }
+
+    /**
+     * print to console only, does notthing ing queit mode. To it to not to pollute json output with visual suff like
+     * newlines.
+     *
+     * @param text
+     */
+    public void console(String text) {
+        if (!quiet)
+            System.out.println(text);
+    }
 }

@@ -12,12 +12,11 @@ import com.google.gson.GsonBuilder;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.Approvable;
-import com.icodici.universa.ErrorRecord;
-import com.icodici.universa.Errors;
+import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionContract;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.wallet.Wallet;
@@ -34,6 +33,7 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
@@ -311,16 +311,15 @@ public class CLIMain {
     private static String[] unescape(String[] args) {
         ArrayList<String> result = new ArrayList<>();
         StringBuilder sb = null;
-        for(String s: args) {
+        for (String s : args) {
             System.out.println(s);
-            if( sb != null ) {
-                if( s.endsWith("\"") ) {
-                    sb.append(s.substring(0, s.length()-1));
+            if (sb != null) {
+                if (s.endsWith("\"")) {
+                    sb.append(s.substring(0, s.length() - 1));
                     result.add(sb.toString());
                     sb = null;
                 }
-            }
-            else {
+            } else {
                 if (s.startsWith("\"")) {
                     sb = new StringBuilder(s.substring(1));
                 } else {
@@ -619,7 +618,6 @@ public class CLIMain {
     }
 
 
-
     private static void doRevoke() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("revoke"));
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
@@ -636,7 +634,7 @@ public class CLIMain {
             Contract contract = loadContract(source);
             report("doRevoke " + contract);
             if (contract != null) {
-                if(contract.check()) {
+                if (contract.check()) {
                     report("revoke contract from " + source);
                     revokeContract(contract, keysMap().values().toArray(new PrivateKey[0]));
                 } else {
@@ -668,16 +666,16 @@ public class CLIMain {
 
             Contract contract = loadContract(source, true);
             if (contract != null) {
-                if(contract.check()) {
+                if (contract.check()) {
                     report("pack contract from " + source);
-                    if(siblingItems != null) {
+                    if (siblingItems != null) {
                         for (Object sibFile : siblingItems) {
                             Contract siblingContract = loadContract((String) sibFile, true);
                             report("add sibling from " + sibFile);
                             contract.addNewItems(siblingContract);
                         }
                     }
-                    if(revokeItems != null) {
+                    if (revokeItems != null) {
                         for (Object revokeFile : revokeItems) {
                             Contract revokeContract = loadContract((String) revokeFile, true);
                             report("add revoke from " + revokeFile);
@@ -687,7 +685,7 @@ public class CLIMain {
                     if (name == null) {
                         name = source;
                     }
-                    if(siblingItems != null || revokeItems != null) {
+                    if (siblingItems != null || revokeItems != null) {
                         contract.seal();
                         saveContract(contract, name, true);
                     }
@@ -715,10 +713,10 @@ public class CLIMain {
 
             Contract contract = loadContract(source, true);
             if (contract != null) {
-                if(contract.check()) {
+                if (contract.check()) {
                     report("unpack contract from " + source);
                     int i = 1;
-                    if(contract.getNewItems() != null) {
+                    if (contract.getNewItems() != null) {
                         for (Approvable newItem : contract.getNewItems()) {
                             String newItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_new_item_" + i + ".unicon");
                             report("save newItem to " + newItemFileName);
@@ -728,7 +726,7 @@ public class CLIMain {
                         }
                     }
                     i = 1;
-                    if(contract.getRevokingItems() != null) {
+                    if (contract.getRevokingItems() != null) {
                         for (Approvable revokeItem : contract.getRevokingItems()) {
                             String revokeItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_revoke_" + i + ".unicon");
                             report("save revokeItem to " + revokeItemFileName);
@@ -911,7 +909,7 @@ public class CLIMain {
         Yaml yaml = new Yaml();
         if (reporter.isVerboseMode()) {
 
-            report("api level:   "+contract.getApiLevel());
+            report("api level:   " + contract.getApiLevel());
             report("contract id: " + contract.getId().toBase64String());
             report("issued:      " + contract.getIssuedAt());
             report("revision:    " + contract.getRevision());
@@ -920,12 +918,16 @@ public class CLIMain {
 
             System.out.println();
 
-            contract.getRevokingItems().forEach(r-> {
+            contract.getRevokingItems().forEach(r -> {
                 try {
                     ClientNetwork n = getClientNetwork();
                     System.out.println();
-                    report("revoking item exists: "+r.getId().toBase64String());
-                    report("\tstate: "+n.check(r.getId()));
+                    report("revoking item exists: " + r.getId().toBase64String());
+                    report("\tstate: " + n.check(r.getId()));
+                    HashId origin = ((Contract) r).getOrigin();
+                    boolean m = origin.equals(contract.getOrigin());
+                    report("\tOrigin: " + origin);
+                    report("\t" + (m ? "matches main contract origin" : "does not match main contract origin"));
                 } catch (Exception clientError) {
                     clientError.printStackTrace();
                 }
@@ -933,11 +935,11 @@ public class CLIMain {
 
             contract.getNewItems().forEach(n -> {
                 System.out.println();
-                report("New item exists:      "+n.getId().toBase64String());
+                report("New item exists:      " + n.getId().toBase64String());
                 Contract nc = (Contract) n;
-                boolean m  = nc.getOrigin().equals(contract.getOrigin());
-                report("\tOrigin: "+((Contract) n).getOrigin());
-                report("\t"+(m?"matches main contract origin" : "does not match main contract origin"));
+                boolean m = nc.getOrigin().equals(contract.getOrigin());
+                report("\tOrigin: " + ((Contract) n).getOrigin());
+                report("\t" + (m ? "matches main contract origin" : "does not match main contract origin"));
             });
 
             Set<PublicKey> keys = contract.getSealedByKeys();
@@ -970,15 +972,53 @@ public class CLIMain {
                     }
                 });
 
-                report("\n");
+                reporter.newLine();
             }
         }
-//        contract.seal();
+
+        Multimap<String, Permission> permissions = contract.getPermissions();
+        Collection<Permission> sjs = permissions.get("split_join");
+        if (sjs != null) {
+            sjs.forEach(sj -> checkSj(contract, sj));
+        }
+
         contract.check();
         addErrors(contract.getErrors());
         if (contract.getErrors().size() == 0) {
             report("Contract is valid");
         }
+    }
+
+    private static void checkSj(Contract contract, Permission sj) {
+        Binder params = sj.getParams();
+        String fieldName = "state.data." + params.getStringOrThrow("field_name");
+        report("splitjoins permission fond on field '" + fieldName + "'");
+        StringBuilder outcome = new StringBuilder();
+        List<Decimal> values = new ArrayList<>();
+        contract.getRevoking().forEach(c -> {
+            System.out.println(fieldName);
+            Decimal x = new Decimal((String) c.get(fieldName));
+            values.add(x);
+            if (outcome.length() > 0)
+                outcome.append(" + ");
+            outcome.append(x.toString());
+        });
+        List<Contract> news = Do.listOf(contract);
+        news.addAll(contract.getNew());
+        outcome.append(" -> ");
+        news.forEach(c -> {
+            if( c != contract )
+                outcome.append(" + ");
+            Decimal x = new Decimal((String) c.get(fieldName));
+            outcome.append(x.toString());
+            values.add(x.negate());
+        });
+        reporter.verbose("operation is: "+ outcome.toString());
+        Decimal saldo = values.stream().reduce(Decimal.ZERO, (a, b) -> a.add(b));
+        if( saldo.compareTo(Decimal.ZERO) == 0 )
+            reporter.verbose("Saldo looks good (zero)");
+        else
+            reporter.warning("Saldo is not zero: "+saldo);
     }
 
     /**
@@ -1080,7 +1120,7 @@ public class CLIMain {
             Path path = Paths.get(fileName);
             byte[] data = Files.readAllBytes(path);
 
-            if(fromPackedTransaction) {
+            if (fromPackedTransaction) {
                 contract = Contract.fromPackedTransaction(data);
             } else {
                 contract = new Contract(data);
@@ -1344,8 +1384,8 @@ public class CLIMain {
     /**
      * Save specified contract to file.
      *
-     * @param contract - contract for update.
-     * @param fileName - name of file to save to.
+     * @param contract              - contract for update.
+     * @param fileName              - name of file to save to.
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
      */
     public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction) throws IOException {
@@ -1354,12 +1394,12 @@ public class CLIMain {
         }
 
         keysMap().values().forEach(k -> contract.addSignerKey(k));
-        if(keysMap().values().size() > 0) {
+        if (keysMap().values().size() > 0) {
             contract.seal();
         }
 
         byte[] data;
-        if(fromPackedTransaction) {
+        if (fromPackedTransaction) {
 //            contract.seal();
             data = contract.getPackedTransaction();
         } else {
@@ -1501,9 +1541,8 @@ public class CLIMain {
     /**
      * Register a specified contract.
      *
-     * @param contract must be a sealed binary.
+     * @param contract              must be a sealed binary.
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
-     *
      */
     public static void registerContract(Contract contract, Boolean fromPackedTransaction) throws IOException {
 //        checkContract(contract);
@@ -1516,7 +1555,7 @@ public class CLIMain {
 //            contract.seal();
 
             ItemResult r;
-            if(fromPackedTransaction) {
+            if (fromPackedTransaction) {
                 r = getClientNetwork().register(contract.getPackedTransaction());
             } else {
                 r = getClientNetwork().register(contract.getLastSealedBinary());
@@ -1530,7 +1569,6 @@ public class CLIMain {
      * Register a specified contract.
      *
      * @param contract must be a sealed binary file.
-     *
      */
     public static void registerContract(Contract contract) throws IOException {
         registerContract(contract, true);
@@ -1564,7 +1602,7 @@ public class CLIMain {
                 }
             } else {
 //                if (filter.accept(pathFile)) {
-                    foundContractFiles.add(pathFile);
+                foundContractFiles.add(pathFile);
 //                }
             }
         }

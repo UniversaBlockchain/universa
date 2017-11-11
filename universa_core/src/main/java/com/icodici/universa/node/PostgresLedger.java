@@ -190,6 +190,18 @@ public class PostgresLedger implements Ledger {
         });
     }
 
+    public void testClearLedger() {
+        try {
+            dbPool.execute(db -> {
+                db.update("truncate ledger;");
+                return null;
+            });
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void destroy(StateRecord record) {
         long recordId = record.getRecordId();

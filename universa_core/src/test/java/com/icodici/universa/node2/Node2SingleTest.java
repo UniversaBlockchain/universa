@@ -12,13 +12,8 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.permissions.SplitJoinPermission;
-import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
-import com.icodici.universa.wallet.Wallet;
-import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
@@ -27,9 +22,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
@@ -56,6 +49,7 @@ public class Node2SingleTest extends TestCase {
     @Before
     public void setUp() throws Exception {
         init(1, 1);
+        ((PostgresLedger)ledger).testClearLedger();
     }
 
     @After
@@ -471,14 +465,12 @@ public class Node2SingleTest extends TestCase {
             orCreate.setState(ItemState.APPROVED).save();
         }
 
-        for (Approvable c : contract.getNewItems()) {
-            id = c.getId();
-            orCreate = ledger.findOrCreate(id);
-            orCreate.setState(ItemState.APPROVED).save();
-        }
+        contract.seal();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
 
         node.registerItem(contract);
-        ItemResult itemResult = node.waitItem(contract.getId(), 1500);
+        ItemResult itemResult = node.waitItem(contract.getId(), 15000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 

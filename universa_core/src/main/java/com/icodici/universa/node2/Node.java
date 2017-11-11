@@ -182,7 +182,7 @@ public class Node {
 
                 StateRecord r = ledger.getRecord(itemId);
                 // if it is not pending, it means it is already processed:
-                if (r != null) {
+                if (r != null && !r.isPending()) {
                     // it is, and we may still have it cached - we do not put it again:
                     return new ItemResult(r, cache.get(itemId) != null);
                 }
@@ -544,6 +544,7 @@ public class Node {
                 // form created records, we touch only these that we have actually created
                 for (StateRecord r : lockedToCreate)
                     r.unlock().save();
+                // todo: concurrent modification can happen here!
                 lockedToCreate.clear();
                 setState(newState);
                 ZonedDateTime expiration = ZonedDateTime.now()

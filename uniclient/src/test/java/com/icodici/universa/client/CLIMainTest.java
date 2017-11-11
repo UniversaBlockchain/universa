@@ -13,13 +13,14 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.TransactionContract;
-import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemState;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
-import org.junit.*;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -1521,6 +1522,11 @@ public class CLIMainTest {
 
         System.out.println(output);
         assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void extraChecks() throws Exception {
+        callMain2("-v", "--check", "/Users/sergeych/dev/!/0199efcd-0313-4e2c-8f19-62d6bd1c9755.transaction");
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {

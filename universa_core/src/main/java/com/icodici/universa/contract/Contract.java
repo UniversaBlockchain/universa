@@ -1012,6 +1012,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return
      */
     public <T> T get(String name) {
+        String originalName = name;
         if (name.startsWith("definition.")) {
             name = name.substring(11);
             switch (name) {
@@ -1044,7 +1045,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             case "origin":
                 return (T) getOrigin();
         }
-        throw new IllegalArgumentException("bad root: " + name);
+        throw new IllegalArgumentException("bad root: " + originalName);
     }
 
     /**
@@ -1235,6 +1236,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         tc.addContractToRemove(this);
         tc.seal();
         return tc;
+    }
+
+    public List<Contract> getRevoking() {
+        return new ArrayList<Contract>((Collection)getRevokingItems());
+    }
+
+    public List<? extends Contract> getNew() {
+        return new ArrayList<Contract>((Collection)getNewItems());
     }
 
     public class State {
