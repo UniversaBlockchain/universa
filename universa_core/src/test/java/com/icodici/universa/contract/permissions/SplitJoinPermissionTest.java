@@ -21,13 +21,97 @@ import static org.junit.Assert.*;
 
 public class SplitJoinPermissionTest extends ContractTestBase {
 
+    private static final String FIELD_NAME = "amount";
+
+    @Test
+    public void splitJoinHasTwoDifferentCoinTypes() throws Exception {
+        Contract root = createCoinWithAmount("200", FIELD_NAME);
+
+        Contract c1 = root.splitValue(FIELD_NAME, new Decimal(100));
+        sealCheckTrace(c1, true);
+
+        // c1 split 50 50
+        c1 = c1.createRevision(ownerKey2);
+        c1.seal();
+        Contract c50_1 = c1.splitValue(FIELD_NAME, new Decimal(50));
+        sealCheckTrace(c50_1, true);
+
+        //set wrong revoking with the same amount
+        root = root.createRevision(ownerKey2);
+        root.seal();
+
+        Contract cr50 = createCoinWithAmount("50", FIELD_NAME);
+
+        // coin amount: 200 (revoking: 100 and 50 and 50 another different coin)
+        root.getStateData().set(FIELD_NAME, new Decimal(200));
+        root.addRevokingItems(c50_1);
+        root.addRevokingItems(cr50);
+
+        sealCheckTrace(root, false);
+    }
+
+    @Test
+    public void splitJoinHasNotEnoughSumRevoking() throws Exception {
+        Contract root = createCoinWithAmount("200", FIELD_NAME);
+
+        Contract c1 = root.splitValue(FIELD_NAME, new Decimal(100));
+        sealCheckTrace(c1, true);
+
+        // c1 split 50 50
+        c1 = c1.createRevision(ownerKey2);
+        c1.seal();
+        Contract c50_1 = c1.splitValue(FIELD_NAME, new Decimal(50));
+        sealCheckTrace(c50_1, true);
+
+        //set wrong revoking with the same amount
+        root = root.createRevision(ownerKey2);
+        root.seal();
+
+        // c1 split 45 5
+        c1 = c50_1.createRevision(ownerKey2);
+        c1.seal();
+        Contract c5 = c1.splitValue(FIELD_NAME, new Decimal(5));
+        sealCheckTrace(c5, true);
+
+        // coin amount: 200 (revoking: 100 and 50 and 5)
+        root.getStateData().set(FIELD_NAME, new Decimal(200));
+        root.addRevokingItems(c50_1);
+        root.addRevokingItems(c5);
+
+        sealCheckTrace(root, false);
+    }
+
+    @Test
+    public void shouldSplitJoinHasEnoughSumRevoking() throws Exception {
+        // 2 coins: 1st v: 50 (r: 50 and 50), 2nd v: 50 (r: 50 and 50)
+        Contract root = createCoinWithAmount("200", FIELD_NAME);
+
+        Contract c1 = root.splitValue(FIELD_NAME, new Decimal(100));
+        sealCheckTrace(c1, true);
+
+        // c1 split 50 50
+        c1 = c1.createRevision(ownerKey2);
+        c1.seal();
+        Contract c50_1 = c1.splitValue(FIELD_NAME, new Decimal(50));
+        sealCheckTrace(c50_1, true);
+
+        //good join
+        Contract finalC = c50_1.createRevision(ownerKey2);
+        finalC.seal();
+
+        finalC.getStateData().set(FIELD_NAME, new Decimal(100));
+        finalC.addRevokingItems(c50_1);
+        finalC.addRevokingItems(c1);
+
+        sealCheckTrace(finalC, true);
+    }
 
     @Test
     public void shouldNotJoinWithWrongParent() throws Exception {
         Contract c = createCoin();
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
-        Contract c1 = c.splitValue("amount", new Decimal(1));
+        Contract c1 = c.splitValue(FIELD_NAME, new Decimal(1));
 
         Contract.ContractDev dev = c1.new ContractDev(c1);
 
@@ -56,9 +140,9 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         sealCheckTrace(c, true);
 
         // Split with 1
-        Contract c2 = c.splitValue("amount", new Decimal(v));
-        assertEquals(amount - v, c.getStateData().getIntOrThrow("amount"));
-        assertEquals(v, c2.getStateData().getIntOrThrow("amount"));
+        Contract c2 = c.splitValue(FIELD_NAME, new Decimal(v));
+        assertEquals(amount - v, c.getStateData().getIntOrThrow(FIELD_NAME));
+        assertEquals(v, c2.getStateData().getIntOrThrow(FIELD_NAME));
 
         sealCheckTrace(c2, true);
 
@@ -66,9 +150,9 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         c3.getRevokingItems().add(c2);
 
         //Trying to hack the join and get bigger amount
-        c3.getStateData().set("amount", new Decimal(v + 1));
-        assertEquals(amount - v, c.getStateData().getIntOrThrow("amount"));
-        assertEquals(v + 1, c3.getStateData().getIntOrThrow("amount"));
+        c3.getStateData().set(FIELD_NAME, new Decimal(v + 1));
+        assertEquals(amount - v, c.getStateData().getIntOrThrow(FIELD_NAME));
+        assertEquals(v + 1, c3.getStateData().getIntOrThrow(FIELD_NAME));
 
         sealCheckTrace(c3, false);
     }
@@ -97,7 +181,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         assertNotNull(data);
         assertTrue(data.size() > 0);
 
-        data.remove("amount");
+        data.remove(FIELD_NAME);
 
         Contract dc2 = DefaultBiMapper.deserialize(sd2);
 
@@ -260,7 +344,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
         sealCheckTrace(c, true);
 
-        Contract c2 = c.splitValue("amount", new Decimal(50));
+        Contract c2 = c.splitValue(FIELD_NAME, new Decimal(50));
         c2.setIssuerKeys(ownerKey1.getPublicKey());
 
         sealCheckTrace(c2, false);
@@ -277,14 +361,14 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
         sealCheckTrace(c, true);
 
-        Contract c2 = c.splitValue("amount", new Decimal(valueForSplit));
+        Contract c2 = c.splitValue(FIELD_NAME, new Decimal(valueForSplit));
         c2.addSignerKey(ownerKey2);
         Binder d2 = c2.getStateData();
 
         sealCheckTrace(c2, true);
 
-        assertEquals(defaultValue - valueForSplit, d.getIntOrThrow("amount"));
-        assertEquals(valueForSplit, d2.getIntOrThrow("amount"));
+        assertEquals(defaultValue - valueForSplit, d.getIntOrThrow(FIELD_NAME));
+        assertEquals(valueForSplit, d2.getIntOrThrow(FIELD_NAME));
     }
 
 
@@ -296,7 +380,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         Binder d = c.getStateData();
         int a = 1000000;
-        assertEquals(a, d.getIntOrThrow("amount"));
+        assertEquals(a, d.getIntOrThrow(FIELD_NAME));
         sealCheckTrace(c, true);
 
         // bad split: no changes
@@ -305,9 +389,9 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         sealCheckTrace(c1, false);
 
         // Good split
-        Contract c2 = c1.splitValue("amount", new Decimal(500));
-        assertEquals(a - 500, c1.getStateData().getIntOrThrow("amount"));
-        assertEquals(500, c2.getStateData().getIntOrThrow("amount"));
+        Contract c2 = c1.splitValue(FIELD_NAME, new Decimal(500));
+        assertEquals(a - 500, c1.getStateData().getIntOrThrow(FIELD_NAME));
+        assertEquals(500, c2.getStateData().getIntOrThrow(FIELD_NAME));
 
         sealCheckTrace(c1, true);
 
@@ -337,7 +421,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         Binder d = c.getStateData();
         int a = 1000000;
-        assertEquals(a, d.getIntOrThrow("amount"));
+        assertEquals(a, d.getIntOrThrow(FIELD_NAME));
         c.seal();
         c.check();
         c.traceErrors();
@@ -350,15 +434,15 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         sealCheckTrace(c1, false);
 
         // Good split
-        Contract c2 = c1.splitValue("amount", new Decimal(500));
-        assertEquals(a - 500, c1.getStateData().getIntOrThrow("amount"));
-        assertEquals(500, c2.getStateData().getIntOrThrow("amount"));
+        Contract c2 = c1.splitValue(FIELD_NAME, new Decimal(500));
+        assertEquals(a - 500, c1.getStateData().getIntOrThrow(FIELD_NAME));
+        assertEquals(500, c2.getStateData().getIntOrThrow(FIELD_NAME));
 
         sealCheckTrace(c1, true);
 
         Contract c3 = c1.createRevision(ownerKey2);
         c3.getRevokingItems().add(c2);
-        c3.getStateData().set("amount", new Decimal(a));
+        c3.getStateData().set(FIELD_NAME, new Decimal(a));
 
         sealCheckTrace(c3, true);
 
@@ -371,7 +455,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         Binder d = c.getStateData();
         int a = 1000000;
-        assertEquals(a, d.getIntOrThrow("amount"));
+        assertEquals(a, d.getIntOrThrow(FIELD_NAME));
         c.seal();
         assertTrue(c.check());
 
@@ -379,10 +463,10 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
 
         // Good split but wrong amount
-        Contract c2 = c1.splitValue("amount", new Decimal(500));
-        assertEquals(a - 500, c1.getStateData().getIntOrThrow("amount"));
-        assertEquals(500, c2.getStateData().getIntOrThrow("amount"));
-        c2.getStateData().set("amount", "500.00000001");
+        Contract c2 = c1.splitValue(FIELD_NAME, new Decimal(500));
+        assertEquals(a - 500, c1.getStateData().getIntOrThrow(FIELD_NAME));
+        assertEquals(500, c2.getStateData().getIntOrThrow(FIELD_NAME));
+        c2.getStateData().set(FIELD_NAME, "500.00000001");
         sealCheckTrace(c1, false);
 
     }
@@ -394,12 +478,12 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         Binder d = c.getStateData();
         int a = 1000000;
-        assertEquals(a, d.getIntOrThrow("amount"));
+        assertEquals(a, d.getIntOrThrow(FIELD_NAME));
         c.seal();
         assertTrue(c.check());
 
         Contract c1 = c.createRevision(ownerKey2);
-        c1.getStateData().set("amount", "500.00000001");
+        c1.getStateData().set(FIELD_NAME, "500.00000001");
         sealCheckTrace(c1, false);
 
     }

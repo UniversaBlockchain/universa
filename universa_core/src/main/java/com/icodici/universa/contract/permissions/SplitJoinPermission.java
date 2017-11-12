@@ -102,26 +102,17 @@ public class SplitJoinPermission extends Permission {
         for (Approvable a : changed.getRevokingItems()) {
             if (a instanceof Contract) {
                 Contract c = (Contract) a;
-                // Checking that it is mergeable:
-                String s = c.getStateData().getString(fieldName, null);
-                // no field?
-                if (s == null)
-                    return;
-                // check matching fields
-                for (String name : mergeFields) {
-                    Object v1 = changed.get(name);
-                    Object v2 = changed.get(name);
-                    if (!v1.equals(v2))
-                        return;
-                }
-                sum = sum.add(new Decimal(s));
+
+                if (!isMergeable(c) || !validateMergeFields(changed, c)) return;
+
+                sum = sum.add(new Decimal(getFieldName(c)));
             }
         }
 
         isValid = sum.compareTo(newValue) == 0;
 
         if (!isValid)
-            isValid = checkSplitJoinCase(changed, sum);
+            isValid = checkSplitJoinCase(changed);
 
 
         if (isValid)
@@ -134,6 +125,9 @@ public class SplitJoinPermission extends Permission {
         // We need to find the splitted contracts
         Decimal sum = Decimal.ZERO;
         for (Contract s : changed.getSiblings()) {
+
+            if (!isMergeable(s) || !validateMergeFields(changed, s)) return;
+
             sum = sum.add(new Decimal(s.getStateData().getString(fieldName)));
         }
 
@@ -141,14 +135,14 @@ public class SplitJoinPermission extends Permission {
         isValid = sum.equals(oldValue);
 
         if (!isValid)
-            isValid = checkSplitJoinCase(changed, sum);
+            isValid = checkSplitJoinCase(changed);
 
 
         if (isValid && newValue.compareTo(minValue) >= 0 && newValue.ulp().compareTo(minUnit) >= 0)
             dataChanges.remove(fieldName);
     }
 
-    private boolean checkSplitJoinCase(Contract changed, Decimal sum) {
+    private boolean checkSplitJoinCase(Contract changed) {
         Decimal splitJoinSum = Decimal.ZERO;
 
         for (Contract c : changed.getSiblings()) {
@@ -158,11 +152,38 @@ public class SplitJoinPermission extends Permission {
         Decimal rSum = Decimal.ZERO;
 
         for (Approvable r : changed.getRevokingItems()) {
-            if (r instanceof Contract)
-                rSum = rSum.add(new Decimal(((Contract)r).getStateData().getString(fieldName)));
+            if (r instanceof Contract) {
+                Contract c = (Contract) r;
+
+                if (!isMergeable(c) || !validateMergeFields(changed, c)) return false;
+
+                rSum = rSum.add(new Decimal(((Contract) r).getStateData().getString(fieldName)));
+            }
         }
 
         return splitJoinSum.compareTo(rSum) == 0;
+    }
+
+    private boolean validateMergeFields(Contract changed, Contract c) {
+        // check matching fields
+        for (String name : mergeFields) {
+            Object v1 = changed.get(name);
+            Object v2 = c.get(name);
+            if (!v1.equals(v2))
+                return false;
+        }
+        return true;
+    }
+
+    private boolean isMergeable(Contract c) {
+        // Checking that it is mergeable:
+        String s = getFieldName(c);
+        // no field?
+        return s != null;
+    }
+
+    private String getFieldName(Contract c) {
+        return c.getStateData().getString(fieldName, null);
     }
 
     static {

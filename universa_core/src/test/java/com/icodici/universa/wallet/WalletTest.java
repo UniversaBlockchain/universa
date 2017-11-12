@@ -176,11 +176,7 @@ public class WalletTest extends ContractTestBase {
 
 
         for (Integer value : values) {
-            Contract contract = createCoin();
-            contract.getStateData().set(FIELD_NAME, new Decimal(value));
-            contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-
-            sealCheckTrace(contract, true);
+            Contract contract = createCoinWithAmount(String.valueOf(value), FIELD_NAME);
 
             contracts.add(contract);
         }

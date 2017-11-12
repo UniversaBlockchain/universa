@@ -9,6 +9,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.TestCase;
 import com.icodici.universa.node.network.TestKeys;
@@ -118,5 +119,15 @@ public class ContractTestBase extends TestCase {
         Contract c = Contract.fromDslFile(yamlFilePath);
         c.setOwnerKey(ownerKey2);
         return c;
+    }
+
+    protected Contract createCoinWithAmount(String amount, String fieldName) throws Exception {
+        Contract contract = createCoin();
+        contract.getStateData().set(fieldName, new Decimal(amount));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(contract, true);
+
+        return contract;
     }
 }
