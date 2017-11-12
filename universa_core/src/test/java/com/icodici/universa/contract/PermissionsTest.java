@@ -434,6 +434,22 @@ public class PermissionsTest extends ContractTestBase {
         sealCheckTrace(contract, true);
     }
 
+    @Test
+    public void shouldCheckSplitJoinAndSentTest() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
+
+        Contract contract = readContract(transactionName, true);
+        sealCheckTrace(contract, true);
+    }
+
+    @Test
+    public void sendTwice() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+
+        Contract contract = readContract(transactionName, true);
+        sealCheckTrace(contract, true);
+    }
+
     private void setAndCheckOldNewValues(Binder d, Binder d1, String oldValue, String newValue, String field) {
         assertEquals(oldValue, d.getString(field));
         assertEquals(oldValue, d1.getString(field));

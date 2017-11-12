@@ -7,9 +7,13 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Approvable;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node.network.TestKeys;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Assert;
 import org.junit.Test;
@@ -48,20 +52,21 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         nc = new NetConfig();
         TestEmulatedNetwork en = new TestEmulatedNetwork(nc);
-        for(int i=0; i<NODES; i++) {
 
+        for (int i = 0; i < NODES; i++) {
 
-            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING+"_t"+i, properties);
-            int offset = 7100 + 10*i;
+            ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
+
+            int offset = 7100 + 10 * i;
             NodeInfo info =
                     new NodeInfo(
                             getNodeKey(i).getPublicKey(),
                             i,
-                            "testnode_"+i,
+                            "testnode_" + i,
                             "localhost",
-                            offset+3,
+                            offset + 3,
                             offset,
-                            offset+2
+                            offset + 2
                     );
             nc.addNode(info);
             Node n = new Node(config, info, ledger, en);
@@ -75,22 +80,177 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
     @Test
     public void registerGoodItem() throws Exception {
         int N = 100;
-        for(int k=0; k<1; k++ ) {
+        for (int k = 0; k < 1; k++) {
 //            StopWatch.measure(true, () -> {
-                for (int i = 0; i < N; i++) {
-                    TestItem ok = new TestItem(true);
-                    node.registerItem(ok);
-                    for (Node n : nodes) {
-                        try {
-                            ItemResult r = n.waitItem(ok.getId(), 2500);
-                            assertEquals(ItemState.APPROVED, r.state);
-                        } catch (TimeoutException e) {
-                            fail("timeout");
-                        }
+            for (int i = 0; i < N; i++) {
+                TestItem ok = new TestItem(true);
+                node.registerItem(ok);
+                for (Node n : nodes) {
+                    try {
+                        ItemResult r = n.waitItem(ok.getId(), 2500);
+                        assertEquals(ItemState.APPROVED, r.state);
+                    } catch (TimeoutException e) {
+                        fail("timeout");
                     }
                 }
+            }
 //            });
             assertThat(node.countElections(), is(lessThan(10)));
+        }
+    }
+
+//    @Test
+    public void unexpectedStrangeCaseWithConcurrent() throws Exception {
+        String FIELD_NAME = "amount";
+        PrivateKey ownerKey2 = TestKeys.privateKey(1);
+        String PRIVATE_KEY = "_xer0yfe2nn1xthc.private.unikey";
+
+        Contract root = Contract.fromDslFile("./src/test_contracts/coin.yml");
+        root.getStateData().set(FIELD_NAME, new Decimal(200));
+        root.addSignerKeyFromFile("./src/test_contracts/" + PRIVATE_KEY);
+        root.setOwnerKey(ownerKey2);
+        root.seal();
+        assertTrue(root.check());
+
+
+        Contract c1 = root.splitValue(FIELD_NAME, new Decimal(100));
+        c1.seal();
+        assertTrue(root.check());
+        assertTrue(c1.isOk());
+
+        // c1 split 50 50
+        c1 = c1.createRevision(ownerKey2);
+        c1.seal();
+        Contract c50_1 = c1.splitValue(FIELD_NAME, new Decimal(50));
+        c50_1.seal();
+        assertTrue(c50_1.isOk());
+
+        //good join
+        Contract finalC = c50_1.createRevision(ownerKey2);
+        finalC.seal();
+
+        finalC.getStateData().set(FIELD_NAME, new Decimal(100));
+        finalC.addRevokingItems(c50_1);
+        finalC.addRevokingItems(c1);
+
+        for (int j = 0; j < 500; j++) {
+
+            HashId id;
+            StateRecord orCreate;
+
+            int p = 0;
+            for (Approvable c : finalC.getRevokingItems()) {
+                id = c.getId();
+                for (int i = 0; i < nodes.size(); i++) {
+                    if (i == nodes.size() - 1 && p == 1) break;
+
+                    Node nodeS = nodes.get(i);
+                    orCreate = nodeS.getLedger().findOrCreate(id);
+                    orCreate.setState(ItemState.APPROVED).save();
+                }
+                ++p;
+            }
+
+            destroyFromAllNodesExistingNew(finalC);
+
+            destroyCurrentFromAllNodesIfExists(finalC);
+
+            node.registerItem(finalC);
+            ItemResult itemResult = node.waitItem(finalC.getId(), 1500);
+            System.out.println(itemResult.state);
+//            if (ItemState.APPROVED != itemResult.state)
+//                System.out.println("\r\nWrong state on repetition " + j + ": " + itemResult + ", " + itemResult.errors +
+//                        " \r\ncontract_errors: " + finalC.getErrors());
+//            else
+//                System.out.println("\r\nGood. repetition: " + j + " ledger:" + node.getLedger().toString());
+//                fail("Wrong state on repetition " + j + ": " + itemResult + ", " + itemResult.errors +
+//                        " \r\ncontract_errors: " + finalC.getErrors());
+
+//            assertEquals(ItemState.APPROVED, itemResult.state);
+        }
+
+    }
+
+    private void destroyCurrentFromAllNodesIfExists(Contract finalC) {
+        for (Node nodeS : nodes) {
+            StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
+            if (r != null) {
+                r.destroy();
+            }
+        }
+    }
+
+    @Test
+    public void checkSimpleCase() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+
+        for (int i = 0; i < 5; i++) {
+            Contract contract = readContract(transactionName, true);
+
+            addDetailsToAllLedgers(contract);
+
+            contract.check();
+            contract.traceErrors();
+            assertTrue(contract.isOk());
+
+            node.registerItem(contract);
+            ItemResult itemResult = node.waitItem(contract.getId(), 1500);
+            if (ItemState.APPROVED != itemResult.state)
+                fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
+                        " \r\ncontract_errors: " + contract.getErrors());
+
+            assertEquals(ItemState.APPROVED, itemResult.state);
+        }
+    }
+
+    @Test
+    public void checkSergeychCase() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
+
+        for (int i = 0; i < 5; i++) {
+            Contract contract = readContract(transactionName, true);
+
+            addDetailsToAllLedgers(contract);
+
+            contract.check();
+            contract.traceErrors();
+            assertTrue(contract.isOk());
+
+            node.registerItem(contract);
+            ItemResult itemResult = node.waitItem(contract.getId(), 15000);
+
+            if (ItemState.APPROVED != itemResult.state)
+                fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
+                        " \r\ncontract_errors: " + contract.getErrors());
+
+            assertEquals(ItemState.APPROVED, itemResult.state);
+        }
+    }
+
+    private void addDetailsToAllLedgers(Contract contract) {
+        HashId id;
+        StateRecord orCreate;
+        for (Approvable c : contract.getRevokingItems()) {
+            id = c.getId();
+            for (Node nodeS : nodes) {
+                orCreate = nodeS.getLedger().findOrCreate(id);
+                orCreate.setState(ItemState.APPROVED).save();
+            }
+        }
+
+        destroyFromAllNodesExistingNew(contract);
+
+        destroyCurrentFromAllNodesIfExists(contract);
+    }
+
+    private void destroyFromAllNodesExistingNew(Contract c50_1) {
+        StateRecord orCreate;
+        for (Approvable c : c50_1.getNewItems()) {
+            for (Node nodeS : nodes) {
+                orCreate = nodeS.getLedger().getRecord(c.getId());
+                if (orCreate != null)
+                    orCreate.destroy();
+            }
         }
     }
 
@@ -98,8 +258,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
     public void registerBadItem() throws Exception {
         TestItem bad = new TestItem(false);
         node.registerItem(bad);
-            ItemResult r = node.waitItem(bad.getId(), 100);
-            assertEquals(ItemState.DECLINED, r.state);
+        ItemResult r = node.waitItem(bad.getId(), 100);
+        assertEquals(ItemState.DECLINED, r.state);
     }
 
     @Test
@@ -343,7 +503,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         // and the references are intact
         assertEquals(ItemState.DECLINED, node.checkItem(existing1.getId()).state);
-        if( node.checkItem(existing2.getId()).state.isPending() )
+        if (node.checkItem(existing2.getId()).state.isPending())
             Thread.sleep(500);
         assertEquals(ItemState.APPROVED, node.checkItem(existing2.getId()).state);
     }
@@ -441,7 +601,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
     @Test
     public void createRealContract() throws Exception {
         Contract c = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
-        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue(c.check());
         c.seal();
 
