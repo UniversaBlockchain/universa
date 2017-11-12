@@ -452,24 +452,24 @@ public class Node2SingleTest extends TestCase {
 
     @Test
     public void checkSergeychCase() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
+    String transactionName = "./src/test_contracts/transaction/e00b7488-9a8f-461f-96f6-177c6272efa0.transaction";
 
         for( int i=0; i < 5; i++) {
             Contract contract = readContract(transactionName, true);
 
             HashId id;
-            StateRecord orCreate;
+            StateRecord record;
 
             for (Approvable c : contract.getRevokingItems()) {
                 id = c.getId();
-                orCreate = ledger.findOrCreate(id);
-                orCreate.setState(ItemState.APPROVED).save();
+                record = ledger.findOrCreate(id);
+                record.setState(ItemState.APPROVED).save();
             }
 
             for( Approvable c: contract.getNewItems()) {
-                orCreate = ledger.getRecord(c.getId());
-                if( orCreate != null )
-                    orCreate.destroy();
+                record = ledger.getRecord(c.getId());
+                if( record != null )
+                    record.destroy();
             }
 
             StateRecord r = ledger.getRecord(contract.getId());
@@ -481,7 +481,8 @@ public class Node2SingleTest extends TestCase {
             contract.traceErrors();
             assertTrue(contract.isOk());
 
-            node.registerItem(contract);
+            @NonNull ItemResult ir = node.registerItem(contract);
+//            System.out.println("-- "+ir);
             ItemResult itemResult = node.waitItem(contract.getId(), 15000);
             if( ItemState.APPROVED != itemResult.state)
                 fail("Wrong state on repetition "+i+": "+itemResult+", "+itemResult.errors);

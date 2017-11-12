@@ -213,7 +213,7 @@ public class StateRecord implements HashIdentifiable {
      * checked locally and is therefore in PENDING_NEGATIVE or PENDING_POSITIVE state, it can not lock any other items.
      *
      * @param idToRevoke
-     * @return locked record ir null if it could not be node
+     * @return locked record id null if it could not be node
      */
     public StateRecord lockToRevoke(HashId idToRevoke) {
         checkLedgerExists();
@@ -225,7 +225,9 @@ public class StateRecord implements HashIdentifiable {
         switch (lockedRecord.getState()) {
             case LOCKED:
                 // if it is locked by us, it's ok
-                return lockedRecord.getLockedByRecordId() == recordId ? lockedRecord : null;
+                if( checkLockedRecord(lockedRecord) )
+                    return null;
+                break;
             case APPROVED:
                 // it's ok, we can lock it
                 break;
@@ -237,6 +239,39 @@ public class StateRecord implements HashIdentifiable {
         lockedRecord.setState(ItemState.LOCKED);
         lockedRecord.save();
         return lockedRecord;
+    }
+
+    /**
+     * It might happen that the locked record is locked by a zombie or by us which is ok (the latter requires us to reset
+     * lock to us).
+     *
+     * @param lockedRecord
+     * @return true if the lock could be acquired
+     */
+    private boolean checkLockedRecord(StateRecord lockedRecord) {
+        // It is locked bu us
+        if(lockedRecord.getLockedByRecordId() == recordId )
+            return true;
+
+        StateRecord currentOwner = ledger.getLockOwnerOf(lockedRecord);
+        // we can acquire the lock - it is dead
+        if( currentOwner == null )
+            return true;
+
+        // valid lock
+        if( currentOwner.state.isPending() )
+            return false;
+
+        // This section process data structure errors than can opccur due to unhandled exceptions, data corruption and like
+        // in a safe manner:
+
+        // The locker is bad?
+        if( currentOwner.state == ItemState.DECLINED || currentOwner.state == ItemState.DISCARDED )
+            return true;
+
+        // report inconsistent data. We are not 100% sure this lock could be reacquired, further exploration
+        // needed. As for now, we can't lock it.
+        return false;
     }
 
     /**

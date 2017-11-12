@@ -587,7 +587,6 @@ public class CLIMain {
     }
 
     private static void doProbe() throws IOException {
-
         List<String> sources = new ArrayList<String>((List) options.valuesOf("probe"));
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
@@ -917,17 +916,23 @@ public class CLIMain {
             report("expires:     " + contract.getExpiresAt());
 
             System.out.println();
+            Set<PublicKey> keys = contract.getSealedByKeys();
 
-            contract.getRevokingItems().forEach(r -> {
+            contract.getRevoking().forEach(r -> {
                 try {
                     ClientNetwork n = getClientNetwork();
                     System.out.println();
                     report("revoking item exists: " + r.getId().toBase64String());
                     report("\tstate: " + n.check(r.getId()));
-                    HashId origin = ((Contract) r).getOrigin();
+                    HashId origin = r.getOrigin();
                     boolean m = origin.equals(contract.getOrigin());
                     report("\tOrigin: " + origin);
                     report("\t" + (m ? "matches main contract origin" : "does not match main contract origin"));
+                    if( r.canBeRevoked(keys) ) {
+                        report("\trevocation is allowed");
+                    }
+                    else
+                        reporter.error(Errors.BAD_REVOKE.name(), r.getId().toString(), "revocation not allowed");
                 } catch (Exception clientError) {
                     clientError.printStackTrace();
                 }
@@ -942,7 +947,6 @@ public class CLIMain {
                 report("\t" + (m ? "matches main contract origin" : "does not match main contract origin"));
             });
 
-            Set<PublicKey> keys = contract.getSealedByKeys();
             if (keys.size() > 0) {
                 report("\nSignature contains " + keys.size() + " valid key(s):\n");
                 keys.forEach(k -> {

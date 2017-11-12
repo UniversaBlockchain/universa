@@ -1246,6 +1246,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return new ArrayList<Contract>((Collection)getNewItems());
     }
 
+    /**
+     * @param keys that should be tested
+     * @return true if the set of keys is enough revoke this contract.
+     */
+    public boolean canBeRevoked(Set<PublicKey> keys) {
+        for(Permission perm: permissions.getList("revoke")) {
+            if( perm.isAllowedForKeys(keys))
+                return true;
+        }
+        return false;
+    }
+
     public class State {
         private int revision;
         private Binder state;

@@ -11,6 +11,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.ItemResult;
@@ -31,6 +32,7 @@ public class Client {
 
     static {
         Config.forceInit(ItemResult.class);
+        Config.forceInit(ErrorRecord.class);
         Config.forceInit(HashId.class);
         Config.forceInit(Contract.class);
     }
@@ -48,8 +50,7 @@ public class Client {
     public boolean ping(int i) {
         try {
             return getClient(i).ping();
-        }
-        catch(Exception e) {
+        } catch (Exception e) {
         }
         return false;
     }
@@ -61,9 +62,10 @@ public class Client {
 
     Client getClient(int i) throws IOException {
         Client c = clients.get(i);
-        if( c == null ) {
+        if (c == null) {
             NodeRecord r = nodes.get(i);
             c = new Client(r.url, clientPrivateKey, r.key);
+            clients.set(i, c);
         }
         return c;
     }
@@ -91,7 +93,7 @@ public class Client {
         this.clientPrivateKey = clientPrivateKey;
         loadNetworkFrom(someNodeUrl);
         clients = new ArrayList<>(size());
-        for(int i=0; i<size(); i++) {
+        for (int i = 0; i < size(); i++) {
             clients.add(null);
         }
         NodeRecord r = Do.sample(nodes);
@@ -161,9 +163,14 @@ public class Client {
 
     public ItemResult getState(HashId itemId) throws ClientError {
         return protect(() -> {
+//            for (int i = 0; i < nodes.size(); i++) {
+//                System.out.println("checking node " + i);
+//                ItemResult r = getClient(i).command("getState",
+//                                                    "itemId", itemId).getOrThrow("itemResult");
+//                System.out.println(">> " + r);
+//            }
             return (ItemResult) client.command("getState",
-                                               "itemId", itemId
-            ).getOrThrow("itemResult");
+                                               "itemId", itemId).getOrThrow("itemResult");
         });
     }
 

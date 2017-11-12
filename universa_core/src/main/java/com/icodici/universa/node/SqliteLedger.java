@@ -110,6 +110,12 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public StateRecord getLockOwnerOf(StateRecord rc) {
+        throw new RuntimeException("not implemented");
+//        return null;
+    }
+
+    @Override
     public StateRecord findOrCreate(HashId itemId) {
         // This simple version requires that database is used exclusively by one localnode - the normal way. As nodes
         // are multithreaded, there is absolutely no use to share database between nodes.

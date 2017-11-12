@@ -13,6 +13,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
+@Ignore("in the sequence  causes SIGSEGV in java machine in sqlite module")
 public class ItemLockTest {
 
     private int count = 0;

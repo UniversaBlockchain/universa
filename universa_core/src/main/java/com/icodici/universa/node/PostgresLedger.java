@@ -134,13 +134,38 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public StateRecord getLockOwnerOf(StateRecord rc) {
+        StateRecord sr = protect(() -> {
+            return dbPool.execute(db -> {
+                try (ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE id = ? limit 1", rc.getRecordId())) {
+                    if (rs == null)
+                        return null;
+                    StateRecord r = new StateRecord(this, rs);
+                    StateRecord cached = cachedRecords.get(r.getId()).get();
+                    if (cached != null) {
+                        r = cached;
+                    } else {
+                        cachedRecords.put(r.getId(), new WeakReference<>(r));
+                    }
+                    return r;
+                }
+            });
+        });
+        if (sr != null && sr.isExpired()) {
+            sr.destroy();
+            return null;
+        }
+        return sr;
+    }
+
+    @Override
     public StateRecord findOrCreate(HashId itemId) {
         // This simple version requires that database is used exclusively by one localnode - the normal way. As nodes
         // are multithreaded, there is absolutely no use to share database between nodes.
         return protect(() -> {
             StateRecord record = getFromCache(itemId);
-            if( record == null) {
-                try (ResultSet rs = inPool(db->db.queryRow("select * from sr_find_or_create(?)", itemId.getDigest()))) {
+            if (record == null) {
+                try (ResultSet rs = inPool(db -> db.queryRow("select * from sr_find_or_create(?)", itemId.getDigest()))) {
                     record = new StateRecord(this, rs);
                     putToCache(record);
                 }
@@ -170,7 +195,7 @@ public class PostgresLedger implements Ledger {
     @Override
     public long countRecords() {
         try {
-            return dbPool.execute((db)->(long)db.queryOne("SELECT COUNT(*) FROM ledger"));
+            return dbPool.execute((db) -> (long) db.queryOne("SELECT COUNT(*) FROM ledger"));
         } catch (Exception e) {
             e.printStackTrace();
             return -1;
@@ -196,8 +221,7 @@ public class PostgresLedger implements Ledger {
                 db.update("truncate ledger;");
                 return null;
             });
-        }
-        catch(Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

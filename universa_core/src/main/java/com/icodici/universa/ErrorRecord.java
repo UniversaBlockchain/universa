@@ -17,6 +17,13 @@ public class ErrorRecord {
         this.error = error;
     }
 
+    public ErrorRecord(Binder binder) {
+        this(                        Errors.valueOf(binder.getStringOrThrow("error")),
+                                     binder.getStringOrThrow("object"),
+                                     binder.getString("message", "")
+        );
+    }
+
     public String getObjectName() {
         return objectName;
     }

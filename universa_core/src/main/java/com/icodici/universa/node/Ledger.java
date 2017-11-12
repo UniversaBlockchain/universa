@@ -41,6 +41,15 @@ public interface Ledger {
     StateRecord createOutputLockRecord(long creatorRecordId, HashId newItemHashId);
 
     /**
+     * Get the record that owns the lock. This method should only return the record, not analyze it or somehow process. Still
+     * it never returns expired records. Note that <b>caller must clear the lock</b> if this method returns null.
+     *
+     * @param rc locked record.
+     * @return the record or null if none found
+     */
+    StateRecord getLockOwnerOf(StateRecord rc);
+
+    /**
      * Create new record for a given id and set it to the PENDING state. Normally, it is used to create new root
      * documents. If the record exists, it returns it. If the record does not exists, it creates new one with {@link
      * ItemState#PENDING} state. The operation must be implemented as atomic.

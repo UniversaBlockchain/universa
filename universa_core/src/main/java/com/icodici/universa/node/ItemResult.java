@@ -20,6 +20,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -87,7 +89,10 @@ public class ItemResult {
         haveCopy = fields.getBooleanOrThrow("haveCopy");
         createdAt = fields.getZonedDateTime("createdAt", null);
         expiresAt = fields.getZonedDateTime("expiresAt", null);
-        errors = fields.getList("errors", null);
+        errors = new ArrayList<>();
+        fields.getList("errors", Collections.EMPTY_LIST).forEach(x -> {
+            errors.add( x instanceof Binder ? new ErrorRecord((Binder)x) : (ErrorRecord) x);
+        });
     }
 
     public ItemResult(ItemState state, boolean haveCopy, @NonNull ZonedDateTime createdAt, @NonNull ZonedDateTime expiresAt) {
@@ -117,10 +122,10 @@ public class ItemResult {
     @Override
     public String toString() {
         String s = "";
-        if( errors != null && !errors.isEmpty()) {
+        if (errors != null && !errors.isEmpty()) {
             s = " errors: " + errors.stream().map(e -> e.toString()).collect(Collectors.joining(","));
         }
-        return "ItemResult<" + state + " " + createdAt + " (" + (haveCopy ? "copy" : "") + ")"+s+
+        return "ItemResult<" + state + " " + createdAt + " (" + (haveCopy ? "copy" : "") + ")" + s +
                 ">";
     }
 
@@ -130,6 +135,7 @@ public class ItemResult {
      * precision is of essence, compare these fields separately.
      *
      * @param obj presumably another {@link ItemResult} instance
+     *
      * @return true if instances represent the same state with datetimes fields equal to seconds.
      */
     @Override

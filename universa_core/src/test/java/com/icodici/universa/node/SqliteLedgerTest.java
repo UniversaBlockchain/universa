@@ -4,6 +4,7 @@ import com.icodici.universa.HashId;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -17,6 +18,7 @@ import java.util.concurrent.Future;
 
 import static org.junit.Assert.*;
 
+@Ignore("some methods are outdated")
 public class SqliteLedgerTest extends TestCase {
     private SqliteLedger ledger;
 
