@@ -207,11 +207,11 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(ItemState.LOCKED, existing.getState());
         assertEquals(r.getRecordId(), existing.getLockedByRecordId());
 
+        // we lock again the same record, everything should be still ok:
         StateRecord r2 = r.lockToRevoke(existing.getId());
-
+        assertNotNull(r2);
         existing.reload();
         r.reload();
-
         assertSameRecords(existing, r1);
         assertSameRecords(existing, r2);
         assertSame(r1, r2);

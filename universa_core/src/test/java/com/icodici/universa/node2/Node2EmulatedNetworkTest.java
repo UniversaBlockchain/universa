@@ -14,6 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Assert;
 import org.junit.Test;
@@ -99,7 +100,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         }
     }
 
-//    @Test
+    //    @Test
     public void unexpectedStrangeCaseWithConcurrent() throws Exception {
         String FIELD_NAME = "amount";
         PrivateKey ownerKey2 = TestKeys.privateKey(1);
@@ -197,35 +198,57 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
             ItemResult itemResult = node.waitItem(contract.getId(), 1500);
             if (ItemState.APPROVED != itemResult.state)
                 fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
-                        " \r\ncontract_errors: " + contract.getErrors());
+                             " \r\ncontract_errors: " + contract.getErrors());
 
             assertEquals(ItemState.APPROVED, itemResult.state);
         }
     }
 
-    @Test
-    public void checkSergeychCase() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
+    @Test(timeout = 3000)
+    public void resync() throws Exception {
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.APPROVED);
+        nodes.forEach(n -> {
+            System.out.println(n.getLedger().getRecord(c.getId()));
+        });
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
 
-        for (int i = 0; i < 5; i++) {
-            Contract contract = readContract(transactionName, true);
+        LogPrinter.showDebug(true);
+        node.resync(c.getId()).await();
+        System.out.println(node.checkItem(c.getId()));
+    }
 
-            addDetailsToAllLedgers(contract);
-
-            contract.check();
-            contract.traceErrors();
-            assertTrue(contract.isOk());
-
-            node.registerItem(contract);
-            ItemResult itemResult = node.waitItem(contract.getId(), 15000);
-
-            if (ItemState.APPROVED != itemResult.state)
-                fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
-                        " \r\ncontract_errors: " + contract.getErrors());
-
-            assertEquals(ItemState.APPROVED, itemResult.state);
+    private void addToAllLedgers(Contract c, ItemState state) {
+        for (Node n : nodes) {
+            n.getLedger().findOrCreate(c.getId()).setState(state).save();
         }
     }
+
+    //    @Test
+//    public void checkSergeychCase() throws Exception {
+//        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
+//
+//        for (int i = 0; i < 5; i++) {
+//            Contract contract = readContract(transactionName, true);
+//
+//            addDetailsToAllLedgers(contract);
+//
+//            contract.check();
+//            contract.traceErrors();
+//            assertTrue(contract.isOk());
+//
+//            node.registerItem(contract);
+//            ItemResult itemResult = node.waitItem(contract.getId(), 15000);
+//
+//            if (ItemState.APPROVED != itemResult.state)
+//                fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
+//                        " \r\ncontract_errors: " + contract.getErrors());
+//
+//            assertEquals(ItemState.APPROVED, itemResult.state);
+//        }
+//    }
 
     private void addDetailsToAllLedgers(Contract contract) {
         HashId id;

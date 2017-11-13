@@ -12,6 +12,7 @@ import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import com.icodici.universa.node2.Notification;
@@ -23,9 +24,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class NetworkV2 extends Network {
@@ -155,6 +154,21 @@ public class NetworkV2 extends Network {
             e.printStackTrace();
             return null;
         }
+    }
+
+    private final Map<NodeInfo,Client> cachedClients = new HashMap<>();
+
+    @Override
+    public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
+        Client client;
+        synchronized (cachedClients) {
+            client = cachedClients.get(nodeInfo);
+            if( client == null ) {
+                client = new Client(myKey, nodeInfo);
+                cachedClients.put(nodeInfo, client);
+            }
+        }
+        return client.getState(id);
     }
 
     private String exceptionCallback(String message) {

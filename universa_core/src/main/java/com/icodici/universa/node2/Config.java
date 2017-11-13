@@ -104,4 +104,11 @@ public class Config {
     public void setMaxDownloadOnApproveTime(TemporalAmount maxDownloadOnApproveTime) {
         this.maxDownloadOnApproveTime = maxDownloadOnApproveTime;
     }
+
+    public int getResyncThreshold() {
+        int n = getNegativeConsensus() * 2;
+        if (n > getPositiveConsensus())
+            n = getNegativeConsensus();
+        return n;
+    }
 }

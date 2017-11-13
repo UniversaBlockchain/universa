@@ -110,6 +110,10 @@ public interface Ledger {
         return -1;
     }
 
+    default StateRecord getLockOwnerOf(HashId itemId) {
+        return getLockOwnerOf(getRecord(itemId));
+    }
+
     public static class Rollback extends Db.RollbackException {
     }
 

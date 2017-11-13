@@ -7,7 +7,9 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
@@ -25,8 +27,7 @@ import java.util.concurrent.TimeoutException;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.number.OrderingComparison.lessThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class Node2LocalNetworkTest extends Node2SingleTest {
 
@@ -148,6 +149,74 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
             });
         }
     }
+
+    @Test
+    public void splitJoinTest() throws Exception {
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+        assertEquals(100, c.getStateData().get("amount"));
+
+
+        // 50
+        Contract cRev = c.createRevision();
+        Contract c2 = cRev.splitValue("amount", new Decimal(50));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
+
+        registerAndCheckApproved(c2);
+        assertEquals("50", c2.getStateData().get("amount"));
+
+
+        //send 150 out of 2 contracts (100 + 50)
+        Contract c3 = c2.createRevision();
+        c3.getStateData().set("amount", (new Decimal((Integer)c.getStateData().get("amount"))).
+                add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
+        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c3.addRevokingItems(c);
+        assertTrue(c3.check());
+        c3.seal();
+
+        registerAndCheckApproved(c3);
+        assertEquals(new Decimal(150), c3.getStateData().get("amount"));
+
+    }
+
+    // This test will no
+//    @Test(timeout = 300000)
+//    public void resync() throws Exception {
+//        Contract c = new Contract(TestKeys.privateKey(0));
+//        c.seal();
+//        addToAllLedgers(c, ItemState.APPROVED);
+//        nodes.values().forEach(n->{
+//            System.out.println(node.getLedger().getRecord(c.getId()));
+//        });
+//        node.getLedger().getRecord(c.getId()).destroy();
+//        assertEquals(ItemState.UNDEFINED,node.checkItem(c.getId()).state);
+//
+//        LogPrinter.showDebug(true);
+//        node.resync(c.getId()).await();
+//        System.out.println(node.checkItem(c.getId()));
+//    }
+
+    private void addToAllLedgers(Contract c, ItemState state) {
+        for( Node n: nodes.values() ) {
+            node.getLedger().findOrCreate(c.getId()).setState(state).save();
+        }
+    }
+
+    private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
+        node.registerItem(c);
+        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
 
     @Test
     public void registerBadItem() throws Exception {

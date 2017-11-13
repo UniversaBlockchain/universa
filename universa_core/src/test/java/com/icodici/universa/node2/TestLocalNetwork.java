@@ -155,4 +155,21 @@ public class TestLocalNetwork extends Network {
     public void shutDown() {
         adapter.shutdown();
     }
+
+    // redo it to work right in the local network
+//    @Override
+//    public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
+//        Client client;
+//        synchronized (cachedClients) {
+//            client = cachedClients.get(nodeInfo);
+//            if( client == null ) {
+//                client = new Client(myKey, nodeInfo);
+//                cachedClients.put(nodeInfo, client);
+//            }
+//        }
+//        return client.getState(id);
+//    }
+//    private final Map<NodeInfo,Client> cachedClients = new HashMap<>();
+
+
 }

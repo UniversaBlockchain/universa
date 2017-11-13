@@ -598,8 +598,8 @@ public class CLIMain {
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
             ItemResult ir = getClientNetwork().check(source);
-            report("Universa network has reported the state:");
-            report(ir.toString());
+//            report("Universa network has reported the state:");
+//            report(ir.toString());
         }
         finish();
     }
@@ -996,11 +996,10 @@ public class CLIMain {
     private static void checkSj(Contract contract, Permission sj) {
         Binder params = sj.getParams();
         String fieldName = "state.data." + params.getStringOrThrow("field_name");
-        report("splitjoins permission fond on field '" + fieldName + "'");
+        reporter.verbose("splitjoins permission fond on field '" + fieldName + "'");
         StringBuilder outcome = new StringBuilder();
         List<Decimal> values = new ArrayList<>();
         contract.getRevoking().forEach(c -> {
-            System.out.println(fieldName);
             Decimal x = new Decimal((String) c.get(fieldName));
             values.add(x);
             if (outcome.length() > 0)

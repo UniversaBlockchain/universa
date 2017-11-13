@@ -133,7 +133,7 @@ public class MainTest {
         assertEquals(ItemState.UNDEFINED, r.state);
         System.out.println(":: "+r);
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
         r = client.register(c.getPackedTransaction());
         System.out.println(r);
 

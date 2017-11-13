@@ -225,7 +225,7 @@ public class StateRecord implements HashIdentifiable {
         switch (lockedRecord.getState()) {
             case LOCKED:
                 // if it is locked by us, it's ok
-                if( checkLockedRecord(lockedRecord) )
+                if( !checkLockedRecord(lockedRecord) )
                     return null;
                 break;
             case APPROVED:
@@ -365,6 +365,11 @@ public class StateRecord implements HashIdentifiable {
 
     public boolean isExpired() {
         return expiresAt.isBefore(ZonedDateTime.now());
+    }
+
+    public StateRecord setCreatedAt(@NonNull ZonedDateTime createdAt) {
+        this.createdAt = createdAt;
+        return this;
     }
 
     static public class NotFoundException extends IOException {

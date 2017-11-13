@@ -34,7 +34,7 @@ public class ClientNetwork {
         if (client == null)
             throw new IOException("failed to connect to to the universa network");
         reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
-        reporter.verbose("Network version: " + client.getVersion());
+        reporter.message("Network version: " + client.getVersion());
     }
 
     public ItemResult register(byte[] packedContract) throws ClientError {
@@ -42,11 +42,11 @@ public class ClientNetwork {
     }
 
     public ItemResult check(String base64Id) throws ClientError {
-        return client.getState(HashId.withDigest(base64Id));
+        return client.getState(HashId.withDigest(base64Id),reporter);
     }
 
     public ItemResult check(HashId id) throws ClientError {
-        return client.getState(id);
+        return client.getState(id, reporter);
     }
 
     public int size() {
@@ -99,4 +99,5 @@ public class ClientNetwork {
             reporter.error("NOT_READY", "network", "Universa network is temporarily inaccessible, reachable nodes: " + n);
         return n;
     }
+
 }

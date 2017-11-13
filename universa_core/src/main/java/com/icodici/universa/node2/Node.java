@@ -15,19 +15,18 @@ import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.network.Network;
-import net.sergeych.tools.AsyncEvent;
-import net.sergeych.tools.Do;
+import net.sergeych.tools.*;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.io.IOException;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -84,9 +83,19 @@ public class Node {
         Object x = checkItemInternal(itemId, null, false);
         ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
         ItemInformer.Record record = informer.takeFor(itemId);
-        if( record != null )
+        if (record != null)
             ir.errors = record.errorRecords;
         return ir;
+    }
+
+    public @NonNull Binder extendedCheckItem(HashId itemId) {
+        ItemResult ir = checkItem(itemId);
+        Binder result = Binder.of("itemResult", ir);
+        if (ir != null && ir.state == ItemState.LOCKED) {
+            ir.lockedById = ledger.getLockOwnerOf(itemId).getId();
+//            result.put("lockedBy", ledger.getRecord(itemId).getOwner());
+        }
+        return result;
     }
 
     /**
@@ -103,7 +112,7 @@ public class Node {
             ((ItemProcessor) x).doneEvent.await(millisToWait);
             return ((ItemProcessor) x).getResult();
         }
-        debug("it is not processor: "+x);
+        debug("it is not processor: " + x);
         return (ItemResult) x;
     }
 
@@ -128,7 +137,7 @@ public class Node {
             if (x instanceof ItemProcessor) {
                 ItemProcessor ip = (ItemProcessor) x;
                 ItemResult result = in.getItemResult();
-                ip.lock( ()-> {
+                ip.lock(() -> {
                     debug("notification from " + in.getFrom() + ": " + in.getItemId() + ": " + in.getItemResult() + ", " + in.answerIsRequested());
                     debug("my state in it " + ip.getState() + " and I have a copy: " + (ip.item != null));
                     // we might still need to download and process it
@@ -158,6 +167,83 @@ public class Node {
         }
     }
 
+
+    public DeferredResult resync(HashId id) throws Exception {
+        final DeferredResult result = new DeferredResult();
+
+        if( ledger.getRecord(id) != null ) {
+            result.sendFailure(null);
+            return result;
+        }
+
+        final AtomicInteger latch = new AtomicInteger(config.getResyncThreshold());
+        final AtomicInteger rest = new AtomicInteger(config.getPositiveConsensus()+1);
+        debug("resync latch is set to " + latch);
+        final LinkedList<NodeInfo> test = new LinkedList<>(network.allNodes());
+
+        final Average startDateAvg = new Average();
+        final Average expiresAtAvg = new Average();
+
+        for(int i=0; i<5; i++ ) {
+            executorService.submit(()->{
+                while( rest.get() > 1 && latch.get() > 0 ) {
+                    NodeInfo ni = null;
+                    synchronized (test) {
+                        if (!test.isEmpty())
+                            ni = test.removeFirst();
+                    }
+                    if (ni != null) {
+                        try {
+                            ItemResult r = network.getItemState(ni, id);
+                            debug("got ftom "+ni+" : "+r);
+                            if (r != null && r.state.isApproved()) {
+                                startDateAvg.update(r.createdAt.toEpochSecond());
+                                expiresAtAvg.update(r.expiresAt.toEpochSecond());
+                                int count = latch.decrementAndGet();
+                                if (count < 1) {
+                                    debug("resync success on " + id);
+                                    ZonedDateTime createdAt = ZonedDateTime.ofInstant(
+                                            Instant.ofEpochSecond((long) startDateAvg.average()), ZoneId.systemDefault());
+                                    ZonedDateTime expiresAt = ZonedDateTime.ofInstant(
+                                            Instant.ofEpochSecond((long) expiresAtAvg.average()), ZoneId.systemDefault());
+                                    debug("created at " + startDateAvg + " : " + createdAt);
+                                    debug("created at " + expiresAtAvg + " : " + expiresAt);
+                                    ledger.findOrCreate(id).setState(ItemState.APPROVED)
+                                            .setCreatedAt(createdAt)
+                                            .setExpiresAt(expiresAt)
+                                            .save();
+                                    debug("resync finished");
+                                    result.sendSuccess(null);
+                                    break;
+                                }
+                            }
+                            else {
+                                debug("not approved from "+ni);
+                                if( rest.decrementAndGet() < 1 ) {
+                                    result.sendFailure(null);
+                                    return;
+                                }
+                            }
+                        } catch (IOException e) {
+                            debug("failed to get state from " + ni + ": " + e);
+                            synchronized (test) {
+                                test.addLast(ni);
+                            }
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                debug("exiting resync thread");
+            });
+        }
+        return result;
+    }
+
+
     /**
      * Optimized for various usages, check the item, start processing as need, return object depending on the current
      * state. Note that actuall error codes are set to the item itself.
@@ -176,7 +262,7 @@ public class Node {
             return ItemLock.synchronize(itemId, (lock) -> {
                 ItemProcessor ip = processors.get(itemId);
                 if (ip != null) {
-                    debug("existing IP found for "+itemId);
+                    debug("existing IP found for " + itemId);
                     return ip;
                 }
 
@@ -187,7 +273,7 @@ public class Node {
                     return new ItemResult(r, cache.get(itemId) != null);
                 }
 
-                debug("no record in ledger found for "+itemId.toBase64String());
+                debug("no record in ledger found for " + itemId.toBase64String());
 
                 // we have no consensus on it. We might need to find one, after some precheck.
                 // The contract should not be too old to process:
@@ -200,7 +286,9 @@ public class Node {
 
                 if (autoStart) {
                     if (item != null) {
-                        synchronized (cache) { cache.put(item); }
+                        synchronized (cache) {
+                            cache.put(item);
+                        }
                     }
                     ItemProcessor processor = new ItemProcessor(itemId, item, lock);
                     processors.put(itemId, processor);
@@ -273,7 +361,7 @@ public class Node {
         private ScheduledFuture<?> poller;
         private ScheduledFuture<?> downloader;
 
-        public ItemProcessor(HashId itemId, Approvable item,Object lock) {
+        public ItemProcessor(HashId itemId, Approvable item, Object lock) {
             mutex = lock;
             this.itemId = itemId;
             if (item == null)
@@ -324,7 +412,9 @@ public class Node {
         }
 
         private final void itemDownloaded() {
-            synchronized (cache) { cache.put(item); }
+            synchronized (cache) {
+                cache.put(item);
+            }
             checkItem();
             downloadedEvent.fire();
             startPolling();
@@ -395,7 +485,7 @@ public class Node {
                     setState(newState);
                 }
             }
-            if( !checkPassed ) {
+            if (!checkPassed) {
                 informer.inform(item);
             }
             record.setExpiresAt(item.getExpiresAt());
@@ -507,7 +597,7 @@ public class Node {
                 if (record.getState() != ItemState.APPROVED) {
                     log.e("record is not approved2 " + record.getState());
                 }
-                debug("approval done for " + itemId+ " : "+getState() + " have copy " + (item == null));
+                debug("approval done for " + itemId + " : " + getState() + " have copy " + (item == null));
             } catch (TimeoutException | InterruptedException e) {
                 debug("commit: failed to load item " + itemId + " ledger will not be altered, the record will be destroyed");
                 setState(ItemState.UNDEFINED);
@@ -517,12 +607,12 @@ public class Node {
         }
 
         private void close() {
-            debug("closing "+itemId+" : "+getState());
+            debug("closing " + itemId + " : " + getState());
             doneEvent.fire();
             if (poller != null)
                 poller.cancel(false);
             processors.remove(itemId);
-            debug("closed "+itemId.toBase64String());
+            debug("closed " + itemId.toBase64String());
         }
 
         private ItemState getState() {

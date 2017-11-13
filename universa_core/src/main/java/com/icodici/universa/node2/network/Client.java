@@ -15,18 +15,23 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.tools.Reporter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class Client {
 
@@ -174,6 +179,87 @@ public class Client {
         });
     }
 
+    public ItemResult getExtendedState(HashId itemId,int nodeNumber) throws ClientError {
+        return protect(() -> {
+//            for (int i = 0; i < nodes.size(); i++) {
+//                System.out.println("checking node " + i);
+//                ItemResult r = getClient(i).command("getState",
+//                                                    "itemId", itemId).getOrThrow("itemResult");
+//                System.out.println(">> " + r);
+//            }
+            return (ItemResult) client.command("getState",
+                                               "itemId", itemId).getOrThrow("itemResult");
+        });
+    }
+
+    public ItemResult getState(HashId itemId, Reporter reporter) throws ClientError {
+        final ExecutorService pool = Executors.newCachedThreadPool();
+        final List<ErrorRecord> errors = new ArrayList<>();
+
+        return protect(() -> {
+            final Map<ItemState, List<ItemResult>> states = new HashMap<>();
+            final CountDownLatch latch = new CountDownLatch(nodes.size());
+            for (int i = 0; i < nodes.size(); i++) {
+                final int nn = i;
+                pool.submit(() -> {
+                    for (int retry = 0; retry < 5; retry++) {
+                        try {
+                            Client c = getClient(nn);
+                            ItemResult r = c.command("getState", "itemId", itemId).getOrThrow("itemResult");
+                            r.meta.put("url", c.getNodeNumber());
+//                            reporter.verbose(c.getUrl() + " --> " + r);
+                            synchronized (states) {
+                                List<ItemResult> list = states.get(r.state);
+                                if (list == null) {
+                                    list = new ArrayList();
+                                    states.put(r.state, list);
+                                }
+                                list.add(r);
+                                if( r.errors.size() > 0 )
+                                    reporter.warning("errors from "+c.getNodeNumber()+": "+r.errors);
+                                break;
+                            }
+                        } catch (IOException e) {
+                            reporter.warning("can't get answer from node " + nn + ", retry #" + retry + ": " + e);
+                        }
+                    }
+                    latch.countDown();
+                });
+            }
+            latch.await();
+
+            pool.shutdown();
+
+            final ItemResult consensus[] = new ItemResult[1];
+            states.forEach((itemState, itemResults) -> {
+                if (itemResults.size() >= getPositiveConsensus())
+                    consensus[0] = itemResults.get(0);
+            });
+            if (consensus[0] != null)
+                reporter.message("State consensus found:" + consensus[0]);
+            else {
+                reporter.warning("no consensus found");
+            }
+            if( states.size() > 1 ) {
+                states.entrySet().stream()
+                        .sorted(Comparator.comparingInt(o -> o.getValue().size()))
+                        .forEach(kv -> {
+                            List<ItemResult> itemResults = kv.getValue();
+                            reporter.message("" + kv.getKey() + ": " + itemResults.size() + ": " +
+                                                     itemResults.stream()
+                                                             .map(x -> x.meta.getStringOrThrow("url"))
+                                                             .collect(Collectors.toSet())
+                            );
+                        });
+            }
+            return consensus[0];
+        });
+    }
+
+    private int getNodeNumber() {
+        return client.getNodeNumber();
+    }
+
     public Binder command(String name, Object... params) throws IOException {
         return client.command(name, params);
     }
@@ -190,4 +276,13 @@ public class Client {
             throw new ClientError(ex);
         }
     }
+
+    private int positiveConsensus = -1;
+
+    public int getPositiveConsensus() {
+        if (positiveConsensus < 1)
+            positiveConsensus = (int) Math.floor(nodes.size() * 0.90);
+        return positiveConsensus;
+    }
+
 }

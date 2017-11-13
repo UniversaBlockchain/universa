@@ -9,9 +9,11 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.utils.LogPrinter;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -53,5 +55,14 @@ public class TestEmulatedNetwork extends Network {
     public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         Node node = nodes.get(nodeInfo);
         return node.getItem(itemId);
+    }
+
+    @Override
+    public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
+        return nodes.get(nodeInfo).checkItem(id);
+    }
+
+    public Node getNode(NodeInfo info) {
+        return nodes.get(info);
     }
 }

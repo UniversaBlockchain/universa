@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.universa.HashId;
 import net.sergeych.boss.Boss;
 import org.junit.Test;
 
@@ -35,8 +36,10 @@ public class ItemResultTest extends TestCase {
     @Test
     public void bossSerialization() throws Exception {
         ItemResult r1 = new ItemResult(APPROVED, false, ZonedDateTime.now(), inFuture(300));
+        r1.lockedById = HashId.createRandom();
         ItemResult r2 = new ItemResult(Boss.unpack(Boss.pack(r1.toBinder())));
         assertEquals(r1.state, r2.state);
+        assertEquals(r1.lockedById, r2.lockedById);
         assertEquals(r1.haveCopy, r2.haveCopy);
         assertAlmostSame(r1.createdAt, r2.createdAt);
         assertAlmostSame(r1.expiresAt, r2.expiresAt);

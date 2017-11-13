@@ -30,7 +30,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    public static final String NODE_VERSION = "2.2.4";
+    public static final String NODE_VERSION = "2.2.5";
     private OptionParser parser;
     private OptionSet options;
     public final Reporter reporter = new Reporter();
@@ -122,10 +122,11 @@ public class Main {
         log("ledger constructed");
 
         int n = netConfig.size();
-        int negative = (int) Math.ceil(n * 0.11);
+        // Until we fix the announcer
+        int negative = (int) Math.ceil(n * 0.34);
         if (negative < 1)
             negative = 1;
-        int positive = (int) Math.floor(n * 0.90);
+        int positive = (int) Math.floor(n * 0.66);
         if( negative+positive == n)
             negative += 1;
         log("Network consensus is set to: " + negative + " / " + positive);

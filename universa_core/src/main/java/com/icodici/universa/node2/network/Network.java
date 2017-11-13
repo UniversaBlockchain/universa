@@ -9,11 +9,14 @@ package com.icodici.universa.node2.network;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import com.icodici.universa.node2.Notification;
 
+import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
@@ -86,5 +89,13 @@ public abstract class Network {
         netConfig.forEachNode(n -> consumer.accept(n));
     }
 
+    public List<NodeInfo> allNodes() {
+        return netConfig.toList();
+    }
+
     public void shutdown() {}
+
+    public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
+        return null;
+    }
 }

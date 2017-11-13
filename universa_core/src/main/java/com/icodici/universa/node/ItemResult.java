@@ -10,6 +10,7 @@ package com.icodici.universa.node;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -53,6 +54,10 @@ public class ItemResult {
 
     public List<ErrorRecord> errors;
 
+    public HashId lockedById = null;
+
+    public transient final Binder meta = new Binder();
+
     /**
      * Initialize from a record and posession flag
      *
@@ -93,6 +98,7 @@ public class ItemResult {
         fields.getList("errors", Collections.EMPTY_LIST).forEach(x -> {
             errors.add( x instanceof Binder ? new ErrorRecord((Binder)x) : (ErrorRecord) x);
         });
+        lockedById = (HashId) fields.get("lockedById");
     }
 
     public ItemResult(ItemState state, boolean haveCopy, @NonNull ZonedDateTime createdAt, @NonNull ZonedDateTime expiresAt) {
@@ -115,7 +121,8 @@ public class ItemResult {
                 "haveCopy", haveCopy,
                 "createdAt", createdAt,
                 "expiresAt", expiresAt,
-                "errors", DefaultBiMapper.serialize(errors)
+                "errors", DefaultBiMapper.serialize(errors),
+                "lockedById", lockedById
         );
     }
 

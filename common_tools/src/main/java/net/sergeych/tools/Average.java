@@ -24,7 +24,7 @@ public class Average {
      *
      * @return current sample length after adding this value
      */
-    public long update(double value) {
+    public synchronized long update(double value) {
         sum += value;
         sum2 += value * value;
         return ++n;

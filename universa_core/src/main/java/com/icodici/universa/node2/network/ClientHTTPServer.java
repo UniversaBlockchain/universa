@@ -32,7 +32,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private boolean localCors = false;
 
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
-        super(privateKey, port, 64, logger);
+        super(privateKey, port, 128, logger);
         log = logger;
 
         addSecureEndpoint("status", (params, session) -> Binder.of(

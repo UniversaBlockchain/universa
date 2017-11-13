@@ -31,6 +31,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BasicHttpClient {
 
@@ -266,6 +268,17 @@ public class BasicHttpClient {
     @Override
     public String toString() {
         return "HTTPClient<" +getUrl() + ">";
+    }
+
+    int nodeNumber = -1;
+    public int getNodeNumber() {
+        if( nodeNumber < 0 ) {
+            Matcher matcher = Pattern.compile("node-(\\d+)-").matcher(getUrl());
+            if( matcher.find() ) {
+                nodeNumber = Integer.valueOf(matcher.group(1));
+            }
+        }
+        return nodeNumber;
     }
 
     public static class ConnectionFailedException extends IOException {
