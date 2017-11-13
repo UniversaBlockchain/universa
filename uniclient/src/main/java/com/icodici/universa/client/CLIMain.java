@@ -202,7 +202,7 @@ public class CLIMain {
                         "Option add revoke item for packing contract.")
                         .withRequiredArg()
                         .ofType(String.class)
-                        .describedAs("revoke.unicon");
+                        .describedAs("file.unicon");
                 acceptsAll(asList("unpack"), "Extracts revoking and new items from contracts and save them.")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
