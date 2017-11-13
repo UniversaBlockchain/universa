@@ -43,12 +43,12 @@ public abstract class DatagramAdapter {
     /**
      * Max number of attempts to retransmit a block, defaults to 10
      */
-    static public final int RETRANSMIT_MAX_ATTEMPTS = 10;
+    static public final int RETRANSMIT_MAX_ATTEMPTS = 30;
 
     /**
      * Time between attempts to retransmit a DATA block, in milliseconds
      */
-    static public final int RETRANSMIT_TIME = 750;
+    static public final int RETRANSMIT_TIME = 250;
 
     protected NodeInfo myNodeInfo;
     protected Consumer<byte[]> receiver = null;
