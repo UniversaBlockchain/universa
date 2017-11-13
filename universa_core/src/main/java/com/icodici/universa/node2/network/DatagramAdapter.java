@@ -57,6 +57,7 @@ public abstract class DatagramAdapter {
 
     protected int testMode = TestModes.NONE;
     protected int verboseLevel = VerboseLevel.NOTHING;
+    protected int lostPacketsPercent = 50;
 
     protected List<Function<String, String>> errorCallbacks = new ArrayList<>();
 
@@ -104,6 +105,10 @@ public abstract class DatagramAdapter {
 
     public void setVerboseLevel(int level) {
         this.verboseLevel = level;
+    }
+
+    public void setLostPacketsPercentInTestMode(int percent) {
+        this.lostPacketsPercent = percent;
     }
 
 

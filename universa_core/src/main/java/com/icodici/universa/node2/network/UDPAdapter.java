@@ -167,7 +167,7 @@ public class UDPAdapter extends DatagramAdapter {
             report(getLabel(), "sending packets num:  " + outs.size());
             for (DatagramPacket d : outs) {
                 if(testMode == TestModes.LOST_PACKETS || testMode == TestModes.LOST_AND_SHUFFLE_PACKETS) {
-                    if (new Random().nextInt(10) > 0) {
+                    if (new Random().nextInt(100) < lostPacketsPercent) {
                         report(getLabel(), "Lost packet in block: " + block.blockId);
                         continue;
                     }

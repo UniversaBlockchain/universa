@@ -229,6 +229,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         for (TestLocalNetwork ln : networks) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            ln.setUDPAdapterLostPacketsPercentInTestMode(90);
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         }
 
@@ -271,6 +272,150 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         }
 
         timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+    }
+
+    @Test
+    public void checkRegisterContractOnTemporaryOffedNetwork() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+
+        LogPrinter.showDebug(true);
+
+        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        Contract contract = readContract(transactionName, true);
+
+        addDetailsToAllLedgers(contract);
+
+        contract.check();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                boolean all_is_approved = true;
+                for (Node n : nodes.values()) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+                }
+                assertEquals(all_is_approved, false);
+            }
+        }, 0, 1000);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            timer.cancel();
+            System.out.println("switching on node 2");
+            networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(50);
+        }
+
+        try {
+            ae.await(500);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        boolean all_is_approved = true;
+        for (Node n : nodes.values()) {
+            ItemResult r = n.checkItem(contract.getId());
+            System.out.println("Node: " + n.toString() + " state: " + r.state);
+            if(r.state != ItemState.APPROVED) {
+                all_is_approved = false;
+            }
+        }
+
+        assertEquals(all_is_approved, true);
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+    }
+
+    @Test
+    public void checkRegisterContractOnTemporaryOffedAndHalfOnedNetwork() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+
+        LogPrinter.showDebug(true);
+
+        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        Contract contract = readContract(transactionName, true);
+
+        addDetailsToAllLedgers(contract);
+
+        contract.check();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                boolean all_is_approved = true;
+                for (Node n : nodes.values()) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+                }
+                assertEquals(all_is_approved, false);
+            }
+        }, 0, 1000);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            timer.cancel();
+            System.out.println("switching on node 2");
+            networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(50);
+        }
+
+        try {
+            ae.await(1000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        boolean all_is_approved = true;
+        for (Node n : nodes.values()) {
+            ItemResult r = n.checkItem(contract.getId());
+            System.out.println("Node: " + n.toString() + " state: " + r.state);
+            if(r.state != ItemState.APPROVED) {
+                all_is_approved = false;
+            }
+        }
+
+        assertEquals(all_is_approved, true);
 
         for (TestLocalNetwork ln : networks) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);

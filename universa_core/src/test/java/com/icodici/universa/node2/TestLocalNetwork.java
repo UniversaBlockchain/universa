@@ -53,6 +53,10 @@ public class TestLocalNetwork extends Network {
         adapter.setVerboseLevel(level);
     }
 
+    public void setUDPAdapterLostPacketsPercentInTestMode(int percent) {
+        adapter.setLostPacketsPercentInTestMode(percent);
+    }
+
     private final void onReceived(byte[] packedNotifications) {
         try {
             if (consumer != null) {
