@@ -84,8 +84,8 @@ public class DatagramAdapterTest {
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
 
-        d1.seTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
-        d2.seTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
+        d1.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
+        d2.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
 
         d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -572,8 +572,8 @@ public class DatagramAdapterTest {
         d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
-        d1.seTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-        d2.seTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+        d1.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+        d2.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2".getBytes();
@@ -651,8 +651,8 @@ public class DatagramAdapterTest {
         d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
-        d1.seTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
-        d2.seTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
+        d1.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
+        d2.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
 
         byte[] payload1 = "test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 test data set 1 ".getBytes();
 
@@ -702,8 +702,8 @@ public class DatagramAdapterTest {
         d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
-        d1.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
-        d2.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+        d1.setTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+        d2.setTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
 
 //        byte[] payload1 = "test data set with rnd: ".getBytes();
 
@@ -785,7 +785,7 @@ public class DatagramAdapterTest {
         DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
         ArrayList<byte[]> receviedFor3 = new ArrayList<>();
 
-        d3.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+        d3.setTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
 
         d3.receive(d-> {
             receviedFor3.add(d);

@@ -43,7 +43,7 @@ public abstract class DatagramAdapter {
     /**
      * Max number of attempts to retransmit a block, defaults to 10
      */
-    static public final int RETRANSMIT_MAX_ATTEMPTS = 30;
+    static public final int RETRANSMIT_MAX_ATTEMPTS = 50;
 
     /**
      * Time between attempts to retransmit a DATA block, in milliseconds
@@ -98,7 +98,7 @@ public abstract class DatagramAdapter {
         }
     }
 
-    public void seTestMode(int testMode) {
+    public void setTestMode(int testMode) {
         this.testMode = testMode;
     }
 

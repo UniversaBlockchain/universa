@@ -7,19 +7,23 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.StopWatch;
+import net.sergeych.utils.LogPrinter;
 import org.junit.After;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
@@ -215,6 +219,112 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         node.registerItem(c);
         ItemResult itemResult = node.waitItem(c.getId(), 1500);
         assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+    @Test
+    public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
+        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+
+        LogPrinter.showDebug(true);
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        }
+
+        AsyncEvent ae = new AsyncEvent();
+
+        Contract contract = readContract(transactionName, true);
+
+        addDetailsToAllLedgers(contract);
+
+        contract.check();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
+
+        node.registerItem(contract);
+
+        for (Node n : nodes.values()) {
+            ItemResult r = n.checkItem(contract.getId());
+            System.out.println("Node: " + n.toString() + " state: " + r.state);
+        }
+
+        ItemResult itemResult = node.waitItem(contract.getId(), 10000);
+        if (ItemState.APPROVED != itemResult.state)
+            fail("Wrong state: " + itemResult + ", " + itemResult.errors +
+                    " \r\ncontract_errors: " + contract.getErrors());
+
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                for (Node n : nodes.values()) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                }
+            }
+        }, 1000, 1000);
+
+        try {
+            ae.await(30000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        System.out.println("-----------nodes state--------------");
+
+        for (Node n : nodes.values()) {
+            ItemResult r = n.checkItem(contract.getId());
+            System.out.println("Node: " + n.toString() + " state: " + r.state);
+        }
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+    }
+
+    private void addDetailsToAllLedgers(Contract contract) {
+        HashId id;
+        StateRecord orCreate;
+        for (Approvable c : contract.getRevokingItems()) {
+            id = c.getId();
+            for (Node nodeS : nodes.values()) {
+                orCreate = nodeS.getLedger().findOrCreate(id);
+                orCreate.setState(ItemState.APPROVED).save();
+            }
+        }
+
+        destroyFromAllNodesExistingNew(contract);
+
+        destroyCurrentFromAllNodesIfExists(contract);
+    }
+
+    private void destroyFromAllNodesExistingNew(Contract c50_1) {
+        StateRecord orCreate;
+        for (Approvable c : c50_1.getNewItems()) {
+            for (Node nodeS : nodes.values()) {
+                orCreate = nodeS.getLedger().getRecord(c.getId());
+                if (orCreate != null)
+                    orCreate.destroy();
+            }
+        }
+    }
+
+    private void destroyCurrentFromAllNodesIfExists(Contract finalC) {
+        for (Node nodeS : nodes.values()) {
+            StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
+            if (r != null) {
+                r.destroy();
+            }
+        }
     }
 
 

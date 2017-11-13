@@ -14,6 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.tools.AsyncEvent;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Assert;
@@ -198,7 +199,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
             ItemResult itemResult = node.waitItem(contract.getId(), 1500);
             if (ItemState.APPROVED != itemResult.state)
                 fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
-                             " \r\ncontract_errors: " + contract.getErrors());
+                        " \r\ncontract_errors: " + contract.getErrors());
 
             assertEquals(ItemState.APPROVED, itemResult.state);
         }

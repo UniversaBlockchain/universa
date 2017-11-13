@@ -122,6 +122,7 @@ public class Node {
             // get processor, create if need
             // register my vote
             Object x = checkItemInternal(in.getItemId(), null, true);
+            debug("onNotification x is " + x.getClass() + " and answerIsRequested: " + in.answerIsRequested());
             NodeInfo from = in.getFrom();
             if (x instanceof ItemResult) {
                 ItemResult r = (ItemResult) x;
@@ -348,18 +349,21 @@ public class Node {
         private final HashId itemId;
         private Set<NodeInfo> sources = new HashSet<>();
         private Instant expiresAt;
+        private Instant consensusReceivedCheckExpiresAt;
 
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
         private List<StateRecord> lockedToRevoke = new ArrayList<>();
         private List<StateRecord> lockedToCreate = new ArrayList<>();
         private boolean consensusFound;
+        private boolean consensusPossiblyReceivedByAll;
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
 
         private final Object mutex;
         private ScheduledFuture<?> poller;
         private ScheduledFuture<?> downloader;
+        private ScheduledFuture<?> consensusReceivedChecker;
 
         public ItemProcessor(HashId itemId, Approvable item, Object lock) {
             mutex = lock;
@@ -369,13 +373,19 @@ public class Node {
             this.item = item;
             record = ledger.findOrCreate(itemId);
             expiresAt = Instant.now().plus(config.getMaxElectionsTime());
+            consensusReceivedCheckExpiresAt = Instant.now().plus(config.getMaxConsensusReceivedCheckTime());
             consensusFound = false;
+            consensusPossiblyReceivedByAll = false;
             if (this.item != null)
                 executorService.submit(() -> itemDownloaded());
         }
 
         private boolean isExpired() {
             return expiresAt.isBefore(Instant.now());
+        }
+
+        private boolean isConsensusReceivedCheckExpired() {
+            return consensusReceivedCheckExpiresAt.isBefore(Instant.now());
         }
 
         private long getMillisLeft() {
@@ -436,6 +446,14 @@ public class Node {
                     long millis = config.getPollTime().toMillis();
                     poller = executorService.scheduleAtFixedRate(() -> poll(), millis, millis, TimeUnit.MILLISECONDS);
                 }
+            }
+        }
+
+        private final void startConsensusReceivedChecking() {
+            synchronized (mutex) {
+                long millis = config.getConsensusReceivedCheckTime().toMillis();
+                consensusReceivedChecker = executorService.scheduleAtFixedRate(() -> sendNotificationsWithNewConsensus(),
+                        millis, millis, TimeUnit.MILLISECONDS);
             }
         }
 
@@ -518,6 +536,43 @@ public class Node {
             });
         }
 
+        private final void sendNotificationsWithNewConsensus() {
+            synchronized (mutex) {
+                if (consensusPossiblyReceivedByAll)
+                    return;
+                if (isConsensusReceivedCheckExpired()) {
+                    // cancel by timeout expired
+                    debug("WARNING: Checking if all nodes got consensus is timed up, cancelling " + itemId);
+                    consensusPossiblyReceivedByAll = true;
+                    if(consensusReceivedChecker != null)
+                        consensusReceivedChecker.cancel(false);
+                    return;
+                }
+            }
+            // at this point we should requery the nodes that did not yet answered us
+            Notification notification = new ItemNotification(myInfo, itemId, getResult(), true);
+            network.eachNode(node -> {
+                if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
+                    debug("Unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
+                    network.deliver(node, notification);
+                }
+            });
+        }
+
+        private final Boolean checkIfAllReceivedConsensus() {
+            Boolean allReceived = network.allNodes().size() == positiveNodes.size() + negativeNodes.size();
+
+            if(allReceived) {
+                consensusPossiblyReceivedByAll = true;
+                if(consensusReceivedChecker != null)
+                    consensusReceivedChecker.cancel(false);
+
+                processors.remove(itemId);
+            }
+
+            return allReceived;
+        }
+
         private final void broadcastMyState() {
             network.broadcast(myInfo, new ItemNotification(myInfo, itemId, getResult(), true));
         }
@@ -526,8 +581,6 @@ public class Node {
             boolean positiveConsenus = false;
             boolean negativeConsenus = false;
             synchronized (mutex) {
-                if (consensusFound)
-                    return;
                 Set<NodeInfo> add, remove;
                 if (state.isPositive()) {
                     add = positiveNodes;
@@ -538,6 +591,14 @@ public class Node {
                 }
                 add.add(node);
                 remove.remove(node);
+
+                if (consensusFound) {
+                    debug("consensus already found, but vote for " + itemId + " from " + node + ": " + state + " > " + positiveNodes.size() + "/" +
+                            negativeNodes.size());
+                    checkIfAllReceivedConsensus();
+                    return;
+                }
+
                 if (negativeNodes.size() >= config.getNegativeConsensus()) {
                     consensusFound = true;
                     negativeConsenus = true;
@@ -611,8 +672,12 @@ public class Node {
             doneEvent.fire();
             if (poller != null)
                 poller.cancel(false);
-            processors.remove(itemId);
+//            processors.remove(itemId);
             debug("closed " + itemId.toBase64String());
+
+            checkIfAllReceivedConsensus();
+            if(!consensusPossiblyReceivedByAll)
+                startConsensusReceivedChecking();
         }
 
         private ItemState getState() {

@@ -45,6 +45,14 @@ public class TestLocalNetwork extends Network {
         adapter.addErrorsCallback(this::exceptionCallback);
     }
 
+    public void setUDPAdapterTestMode(int testMode) {
+        adapter.setTestMode(testMode);
+    }
+
+    public void setUDPAdapterVerboseLevel(int level) {
+        adapter.setVerboseLevel(level);
+    }
+
     private final void onReceived(byte[] packedNotifications) {
         try {
             if (consumer != null) {
