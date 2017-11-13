@@ -223,9 +223,9 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+        String transactionName = "./src/test_contracts/transaction/for_offed_node.transaction";
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
 
         for (TestLocalNetwork ln : networks) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
@@ -281,9 +281,9 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void checkRegisterContractOnTemporaryOffedNetwork() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+        String transactionName = "./src/test_contracts/transaction/for_offed_node.transaction";
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
 
         networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
         networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
@@ -353,9 +353,9 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void checkRegisterContractOnTemporaryOffedAndHalfOnedNetwork() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+        String transactionName = "./src/test_contracts/transaction/for_offed_node.transaction";
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
 
         networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
         networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
@@ -401,7 +401,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         }
 
         try {
-            ae.await(1000);
+            ae.await(2000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
