@@ -244,18 +244,6 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         node.registerItem(contract);
 
-        for (Node n : nodes.values()) {
-            ItemResult r = n.checkItem(contract.getId());
-            System.out.println("Node: " + n.toString() + " state: " + r.state);
-        }
-
-        ItemResult itemResult = node.waitItem(contract.getId(), 10000);
-        if (ItemState.APPROVED != itemResult.state)
-            fail("Wrong state: " + itemResult + ", " + itemResult.errors +
-                    " \r\ncontract_errors: " + contract.getErrors());
-
-        assertEquals(ItemState.APPROVED, itemResult.state);
-
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -263,12 +251,18 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
                 System.out.println("-----------nodes state--------------");
 
+                boolean all_is_approved = true;
                 for (Node n : nodes.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
                 }
+
+//                if(all_is_approved) ae.fire();
             }
-        }, 1000, 1000);
+        }, 0, 1000);
 
         try {
             ae.await(30000);
@@ -277,13 +271,6 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         }
 
         timer.cancel();
-
-        System.out.println("-----------nodes state--------------");
-
-        for (Node n : nodes.values()) {
-            ItemResult r = n.checkItem(contract.getId());
-            System.out.println("Node: " + n.toString() + " state: " + r.state);
-        }
 
         for (TestLocalNetwork ln : networks) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
