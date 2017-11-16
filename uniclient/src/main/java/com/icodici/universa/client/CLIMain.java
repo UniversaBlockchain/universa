@@ -58,7 +58,7 @@ import static java.util.Arrays.asList;
 
 public class CLIMain {
 
-    private static final String CLI_VERSION = "2.2.0";
+    private static final String CLI_VERSION = "2.2.3";
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -75,6 +75,8 @@ public class CLIMain {
 
     static public void main(String[] args) throws IOException {
         // when we run untit tests, it is important:
+//        args = new String[]{"-c", "/Users/sergeych/dev/new_universa/uniclient-testcreate/simple_root_contract.yml"};
+
         reporter.clear();
         // it could be called more than once from tests
         keyFiles = null;
@@ -94,6 +96,9 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("file.yml");
+                accepts("wait", "with --register,  wait for network consensus up to specified number of milliseconds.")
+                        .withOptionalArg().ofType(Integer.class).defaultsTo(5000)
+                        .describedAs("milliseconds");
                 acceptsAll(asList("j", "json"), "Return result in json format.");
                 acceptsAll(asList("v", "verbose"), "Provide more detailed information.");
                 acceptsAll(asList("network"), "Check network status.");
@@ -365,7 +370,7 @@ public class CLIMain {
                 updateFields(contract, updateFieldsHashMap);
             }
 
-//            keysMap().values().forEach(k -> contract.addSignerKey(k));
+            keysMap().values().forEach(k -> contract.addSignerKey(k));
 //            byte[] data = contract.seal();
 
             // try sign
@@ -374,7 +379,6 @@ public class CLIMain {
             }
             contract.seal();
             saveContract(contract, name);
-            report("created contract file: " + name);
             checkContract(contract);
         }
         finish();
@@ -1559,9 +1563,9 @@ public class CLIMain {
 
             ItemResult r;
             if (fromPackedTransaction) {
-                r = getClientNetwork().register(contract.getPackedTransaction());
+                r = getClientNetwork().register(contract.getPackedTransaction(), (int)options.valueOf("wait"));
             } else {
-                r = getClientNetwork().register(contract.getLastSealedBinary());
+                r = getClientNetwork().register(contract.getLastSealedBinary(), (int)options.valueOf("wait"));
             }
             report("submitted with result:");
             report(r.toString());

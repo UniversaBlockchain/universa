@@ -33,6 +33,8 @@ import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.icodici.crypto.PublicKey.PUBLIC_KEY_BI_ADAPTER;
@@ -1217,10 +1219,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * <p>
      * So, to revoke some contract:
      * <p>
-     * - call {@link #createRevocation(PrivateKey...)} with key or keys that can play the role for "revoke"
-     * permission
+     * - call {@link #createRevocation(PrivateKey...)} with key or keys that can play the role for "revoke" permission
      * <p>
-     * - register it in the Universa network, see {@link com.icodici.universa.node2.network.Client#register(byte[])}.
+     * - register it in the Universa network, see {@link com.icodici.universa.node2.network.Client#register(byte[], long)}.
      * Upon the successful registration the source contract will be revoked. Use transaction contract's {@link
      * #getPackedTransaction()} to obtain a binary to submit to the client.
      *
@@ -1239,20 +1240,21 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public List<Contract> getRevoking() {
-        return new ArrayList<Contract>((Collection)getRevokingItems());
+        return new ArrayList<Contract>((Collection) getRevokingItems());
     }
 
     public List<? extends Contract> getNew() {
-        return new ArrayList<Contract>((Collection)getNewItems());
+        return new ArrayList<Contract>((Collection) getNewItems());
     }
 
     /**
      * @param keys that should be tested
+     *
      * @return true if the set of keys is enough revoke this contract.
      */
     public boolean canBeRevoked(Set<PublicKey> keys) {
-        for(Permission perm: permissions.getList("revoke")) {
-            if( perm.isAllowedForKeys(keys))
+        for (Permission perm : permissions.getList("revoke")) {
+            if (perm.isAllowedForKeys(keys))
                 return true;
         }
         return false;
@@ -1406,7 +1408,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             this.definition = definition;
             Role issuer = createRole("issuer", definition.getOrThrow("issuer"));
             createdAt = definition.getZonedDateTimeOrThrow("created_at");
-            expiresAt = definition.getZonedDateTime("expires_at", null);
+            Object t = definition.getOrDefault("expires_at", null);
+            if (t != null)
+                expiresAt = decodeDslTime(t);
             registerRole(issuer);
             data = definition.getBinder("data");
             references = processReference(definition.getBinder("references"));
@@ -1611,6 +1615,38 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         public Contract getContract() {
             return this.c;
         }
+    }
+
+    static private Pattern relativeTimePattern = Pattern.compile(
+            "(\\d+) (hour|min|day)\\w*$",
+            Pattern.CASE_INSENSITIVE);
+
+    static public ZonedDateTime decodeDslTime(Object t) {
+        if (t instanceof ZonedDateTime)
+            return (ZonedDateTime) t;
+        if (t instanceof CharSequence) {
+            if (t.equals("now()"))
+                return ZonedDateTime.now();
+            Matcher m = relativeTimePattern.matcher((CharSequence) t);
+            System.out.println("MATCH: " + m);
+            if (m.find()) {
+                ZonedDateTime now = ZonedDateTime.now();
+                int amount = Integer.valueOf(m.group(1));
+                String unit = m.group(2);
+                switch (unit) {
+                    case "min":
+                        return now.plusMinutes(amount);
+                    case "hour":
+                        return now.plusHours(amount);
+                    case "day":
+                        return now.plusDays(amount);
+                    default:
+                        throw new IllegalArgumentException("unknown time unit: " + unit);
+
+                }
+            }
+        }
+        throw new IllegalArgumentException("can't convert to datetime: "+t);
     }
 
     static {

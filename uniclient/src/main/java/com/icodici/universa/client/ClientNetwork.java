@@ -38,7 +38,20 @@ public class ClientNetwork {
     }
 
     public ItemResult register(byte[] packedContract) throws ClientError {
-        return client.register(packedContract);
+        return client.register(packedContract, 0);
+    }
+
+    /**
+     * Register packed binary contract and wait for the consensus.
+     *
+     * @param packedContract
+     * @param millisToWait wait for the consensus as long as specified time, <= 0 means no wait (returns some pending
+     *                     state from registering).
+     * @return last item status returned by the network
+     * @throws ClientError
+     */
+    public ItemResult register(byte[] packedContract, long millisToWait) throws ClientError {
+        return client.register(packedContract, millisToWait);
     }
 
     public ItemResult check(String base64Id) throws ClientError {

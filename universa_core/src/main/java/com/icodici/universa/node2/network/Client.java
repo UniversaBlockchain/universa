@@ -19,6 +19,7 @@ import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
@@ -27,10 +28,11 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class Client {
@@ -158,8 +160,28 @@ public class Client {
     }
 
     public ItemResult register(byte[] packed) throws ClientError {
-        return protect(() -> (ItemResult) client.command("approve", "packedItem", packed)
+        return register(packed, 0);
+    }
+
+    public ItemResult register(byte[] packed, long millisToWait) throws ClientError {
+        ItemResult lastResult = protect(() -> (ItemResult) client.command("approve", "packedItem", packed)
                 .get("itemResult"));
+        if (millisToWait > 0 && lastResult.state.isPending()) {
+            Instant end = Instant.now().plusMillis(millisToWait);
+            try {
+                Contract c = Contract.fromPackedTransaction(packed);
+                while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
+                    Thread.currentThread().sleep(100);
+                    lastResult = getState(c.getId());
+                    System.out.println("test: " + lastResult);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return lastResult;
     }
 
     public final ItemResult getState(@NonNull Approvable item) throws ClientError {
@@ -179,7 +201,7 @@ public class Client {
         });
     }
 
-    public ItemResult getExtendedState(HashId itemId,int nodeNumber) throws ClientError {
+    public ItemResult getExtendedState(HashId itemId, int nodeNumber) throws ClientError {
         return protect(() -> {
 //            for (int i = 0; i < nodes.size(); i++) {
 //                System.out.println("checking node " + i);
@@ -196,18 +218,22 @@ public class Client {
         final ExecutorService pool = Executors.newCachedThreadPool();
         final List<ErrorRecord> errors = new ArrayList<>();
 
+        final AsyncEvent<Void> consensusFound = new AsyncEvent<>();
+        final int checkConsensus = getNodes().size() / 3;
+
+        final AtomicInteger nodesLeft = new AtomicInteger(nodes.size());
+
         return protect(() -> {
             final Map<ItemState, List<ItemResult>> states = new HashMap<>();
-            final CountDownLatch latch = new CountDownLatch(nodes.size());
             for (int i = 0; i < nodes.size(); i++) {
                 final int nn = i;
                 pool.submit(() -> {
                     for (int retry = 0; retry < 5; retry++) {
+//                        reporter.verbose("trying "+reporter+" for node "+nn);
                         try {
                             Client c = getClient(nn);
                             ItemResult r = c.command("getState", "itemId", itemId).getOrThrow("itemResult");
                             r.meta.put("url", c.getNodeNumber());
-//                            reporter.verbose(c.getUrl() + " --> " + r);
                             synchronized (states) {
                                 List<ItemResult> list = states.get(r.state);
                                 if (list == null) {
@@ -215,32 +241,42 @@ public class Client {
                                     states.put(r.state, list);
                                 }
                                 list.add(r);
-                                if( r.errors.size() > 0 )
-                                    reporter.warning("errors from "+c.getNodeNumber()+": "+r.errors);
+                                if (r.errors.size() > 0)
+                                    reporter.warning("errors from " + c.getNodeNumber() + ": " + r.errors);
                                 break;
                             }
                         } catch (IOException e) {
-                            reporter.warning("can't get answer from node " + nn + ", retry #" + retry + ": " + e);
+//                            reporter.warning("can't get answer from node " + nn + ", retry #" + retry + ": " + e);
                         }
                     }
-                    latch.countDown();
+                    // Now we should check the consensus
+                    states.forEach((itemState, itemResults) -> {
+                        if (itemResults.size() >= checkConsensus)
+                            if (itemResults.size() >= checkConsensus) {
+                                consensusFound.fire();
+                                return;
+                            }
+                    });
+                    if (nodesLeft.decrementAndGet() < 1)
+                        consensusFound.fire();
                 });
             }
-            latch.await();
 
-            pool.shutdown();
+            consensusFound.await(5000);
+
+            pool.shutdownNow();
 
             final ItemResult consensus[] = new ItemResult[1];
             states.forEach((itemState, itemResults) -> {
-                if (itemResults.size() >= getPositiveConsensus())
+                if (itemResults.size() >= checkConsensus)
                     consensus[0] = itemResults.get(0);
             });
             if (consensus[0] != null)
                 reporter.message("State consensus found:" + consensus[0]);
             else {
-                reporter.warning("no consensus found");
+                reporter.warning("no consensus found " + states.size());
             }
-            if( states.size() > 1 ) {
+            if (states.size() > 1) {
                 states.entrySet().stream()
                         .sorted(Comparator.comparingInt(o -> o.getValue().size()))
                         .forEach(kv -> {
