@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import com.icodici.universa.node2.network.UDPAdapter;
@@ -166,6 +167,11 @@ public class TestLocalNetwork extends Network {
 
     public void shutDown() {
         adapter.shutdown();
+    }
+
+    @Override
+    public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
+        return nodes.get(nodeInfo).checkItem(id);
     }
 
     // redo it to work right in the local network

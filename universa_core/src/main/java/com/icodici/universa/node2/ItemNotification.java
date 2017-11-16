@@ -67,7 +67,7 @@ public class ItemNotification extends Notification {
         super(from);
     }
 
-    private ItemNotification() {
+    protected ItemNotification() {
     }
 
     @Override
