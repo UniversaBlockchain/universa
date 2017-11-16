@@ -42,6 +42,8 @@ public class Config {
     private Duration pollTime = Duration.ofMillis(1000);
     private Duration consensusReceivedCheckTime = Duration.ofMillis(1000);
     private Duration maxConsensusReceivedCheckTime = Duration.ofMinutes(15);
+    private Duration resyncTime = Duration.ofMillis(1000);
+    private Duration maxResyncTime = Duration.ofMinutes(5);
 
     public int getPositiveConsensus() {
         return positiveConsensus;
@@ -65,6 +67,14 @@ public class Config {
 
     public Duration getMaxConsensusReceivedCheckTime() {
         return maxConsensusReceivedCheckTime;
+    }
+
+    public Duration getMaxResyncTime() {
+        return maxResyncTime;
+    }
+
+    public void setMaxResyncTime(Duration time) {
+        maxResyncTime = time;
     }
 
     public void setMaxElectionsTime(Duration maxElectionsTime) {
@@ -109,6 +119,14 @@ public class Config {
 
     public void setConsensusReceivedCheckTime(Duration consensusReceivedCheckTime) {
         this.consensusReceivedCheckTime = consensusReceivedCheckTime;
+    }
+
+    public Duration getResyncTime() {
+        return resyncTime;
+    }
+
+    public void setResyncTime(Duration resyncTime) {
+        this.resyncTime = resyncTime;
     }
 
     public TemporalAmount getMaxDownloadOnApproveTime() {

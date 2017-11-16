@@ -12,6 +12,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
@@ -24,6 +25,7 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
@@ -211,7 +213,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     private void addToAllLedgers(Contract c, ItemState state) {
         for( Node n: nodes.values() ) {
-            node.getLedger().findOrCreate(c.getId()).setState(state).save();
+            n.getLedger().findOrCreate(c.getId()).setState(state).save();
         }
     }
 
@@ -422,6 +424,230 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
     }
+
+    @Test
+    public void resyncApproved() throws Exception {
+        AsyncEvent ae = new AsyncEvent();
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.APPROVED);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+        // Start checking nodes
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                boolean all_is_approved = true;
+                for (Node n : nodes.values()) {
+//                    System.out.println(n.getLedger().getRecord(c.getId()));
+                    ItemResult r = n.checkItem(c.getId());
+                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+                }
+
+                if(all_is_approved) ae.fire();
+            }
+        }, 0, 1000);
+
+//        LogPrinter.showDebug(true);
+        node.resync(c.getId());
+
+        try {
+            ae.await(3000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        assertEquals(ItemState.APPROVED, node.checkItem(c.getId()).state);
+    }
+
+    @Test
+    public void resyncRevoked() throws Exception {
+        AsyncEvent ae = new AsyncEvent();
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.REVOKED);
+
+        // Start checking nodes
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                boolean all_is_approved = true;
+                for (Node n : nodes.values()) {
+//                    System.out.println(n.getLedger().getRecord(c.getId()));
+                    ItemResult r = n.checkItem(c.getId());
+                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.REVOKED) {
+                        all_is_approved = false;
+                    }
+                }
+
+                if(all_is_approved) ae.fire();
+            }
+        }, 0, 1000);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+//        LogPrinter.showDebug(true);
+        node.resync(c.getId());
+
+        try {
+            ae.await(3000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        assertEquals(ItemState.REVOKED, node.checkItem(c.getId()).state);
+    }
+
+    @Test
+    public void resyncDeclined() throws Exception {
+        AsyncEvent ae = new AsyncEvent();
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.DECLINED);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+        // Start checking nodes
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                boolean all_is_approved = true;
+                for (Node n : nodes.values()) {
+//                    System.out.println(n.getLedger().getRecord(c.getId()));
+                    ItemResult r = n.checkItem(c.getId());
+                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.DECLINED) {
+                        all_is_approved = false;
+                    }
+                }
+
+                if(all_is_approved) ae.fire();
+            }
+        }, 0, 1000);
+
+//        LogPrinter.showDebug(true);
+        node.resync(c.getId());
+
+        try {
+            ae.await(3000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        assertEquals(ItemState.DECLINED, node.checkItem(c.getId()).state);
+    }
+
+    @Test
+    public void resyncOther() throws Exception {
+        AsyncEvent ae = new AsyncEvent();
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.PENDING_POSITIVE);
+
+        Duration wasMaxResyncTime = config.getMaxResyncTime();
+        config.setMaxResyncTime(Duration.ofMillis(5000));
+
+        // Start checking nodes
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                boolean all_is_approved = true;
+                for (Node n : nodes.values()) {
+//                    System.out.println(n.getLedger().getRecord(c.getId()));
+                    ItemResult r = n.checkItem(c.getId());
+                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
+//                    if(r.state != ItemState.APPROVED) {
+//                        all_is_approved = false;
+//                    }
+                }
+
+//                if(all_is_approved) ae.fire();
+            }
+        }, 0, 1000);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+//        LogPrinter.showDebug(true);
+        node.resync(c.getId());
+
+        try {
+            ae.await(6000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+        config.setMaxResyncTime(wasMaxResyncTime);
+
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+    }
+
+//    @Test
+//    public void resyncFaked() throws Exception {
+//        AsyncEvent ae = new AsyncEvent();
+//        Contract c = new Contract(TestKeys.privateKey(0));
+//        c.seal();
+//        addToAllLedgers(c, ItemState.DECLINED);
+//
+//        node.getLedger().getRecord(c.getId()).setState(ItemState.APPROVED);
+//        assertEquals(ItemState.APPROVED, node.checkItem(c.getId()).state);
+//
+//        // Start checking nodes
+//        Timer timer = new Timer();
+//        timer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//
+//                boolean all_is_approved = true;
+//                for (Node n : nodes.values()) {
+////                    System.out.println(n.getLedger().getRecord(c.getId()));
+//                    ItemResult r = n.checkItem(c.getId());
+//                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
+//                    if(r.state != ItemState.DECLINED) {
+//                        all_is_approved = false;
+//                    }
+//                }
+//
+//                if(all_is_approved) ae.fire();
+//            }
+//        }, 0, 1000);
+//
+//        LogPrinter.showDebug(true);
+//        node.resync(c.getId());
+//
+//        try {
+//            ae.await(3000);
+//        } catch (TimeoutException e) {
+//            System.out.println("time is up");
+//        }
+//
+//        timer.cancel();
+//
+//        assertEquals(ItemState.DECLINED, node.checkItem(c.getId()).state);
+//    }
 
     private void addDetailsToAllLedgers(Contract contract) {
         HashId id;

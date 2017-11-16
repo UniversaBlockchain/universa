@@ -217,7 +217,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
 
         LogPrinter.showDebug(true);
-        node.resync(c.getId()).await();
+        node.resync(c.getId());
         System.out.println(node.checkItem(c.getId()));
     }
 
