@@ -37,6 +37,8 @@ import java.util.regex.Pattern;
 public class BasicHttpClient {
 
     private final static int DEFAULT_RECONNECT_TIMES = 3;
+    private final static int CONNECTION_READ_TIMEOUT = 5000;
+    private final static int CONNECTION_TIMEOUT = 2000;
 
     static private LogPrinter log = new LogPrinter("HTCL");
     private String connectMessage;
@@ -233,8 +235,8 @@ public class BasicHttpClient {
 
         connection.setDoOutput(true);
 
-        connection.setConnectTimeout(2000);
-        connection.setReadTimeout(5000);
+        connection.setConnectTimeout(CONNECTION_TIMEOUT);
+        connection.setReadTimeout(CONNECTION_READ_TIMEOUT);
         connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
         connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
 

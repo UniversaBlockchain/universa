@@ -1432,10 +1432,92 @@ public class CLIMainTest {
 
         Thread.sleep(30000);
 
+        System.out.println("---");
+        System.out.println("check contracts in order");
+        System.out.println("---");
         for (int i = 0; i < numContracts; i++) {
+
+            final Contract contract = contracts.get(i);
+            callMain2("--probe", contract.getId().toBase64String());
+        }
+
+        assertEquals(0, CLIMain.getReporter().getErrors().size());
+    }
+
+    @Test
+    public void registerManyContractsFromVariousNodes() throws Exception {
+
+        ClientNetwork clientNetwork1 = new ClientNetwork("http://localhost:8080");
+        ClientNetwork clientNetwork2 = new ClientNetwork("http://localhost:6002");
+        ClientNetwork clientNetwork3 = new ClientNetwork("http://localhost:6004");
+
+
+        int numContracts = 100;
+        List<Contract> contracts = new ArrayList<>();
+
+        for (int i = 0; i < numContracts; i++) {
+            Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+            c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+            PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
+            // let's make this key among owners
+            ((SimpleRole) c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+            c.seal();
+
+            contracts.add(c);
+        }
+
+        Thread.sleep(500);
+
+        for (int i = 0; i < numContracts; i++) {
+
             System.out.println("---");
-            System.out.println("check contract " + i);
+            System.out.println("register contract " + i);
             System.out.println("---");
+            final Contract contract = contracts.get(i);
+            Thread thread1 = new Thread(() -> {
+                try {
+                    System.out.println("register contract on the client 1 -> run thread");
+                    CLIMain.registerContract(contract);
+                    ItemResult r1 = clientNetwork1.register(contract.getPackedTransaction(), 50);
+                    System.out.println("register contract on the client 1 -> result: " + r1.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            thread1.start();
+
+            Thread thread2 = new Thread(() -> {
+                try {
+                    System.out.println("register contracz on the client 2 -> run thread");
+                    CLIMain.registerContract(contract);
+                    ItemResult r2 = clientNetwork2.register(contract.getPackedTransaction(), 50);
+                    System.out.println("register contract on the client 2 -> result: " + r2.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            thread2.start();
+
+            Thread thread3 = new Thread(() -> {
+                try {
+                    System.out.println("register contract on the client 3 -> run thread");
+                    CLIMain.registerContract(contract);
+                    ItemResult r3 = clientNetwork3.register(contract.getPackedTransaction(), 50);
+                    System.out.println("register contract on the client 3 -> result: " + r3.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+            thread3.start();
+        }
+
+
+        Thread.sleep(30000);
+
+        System.out.println("---");
+        System.out.println("check contracts in order");
+        System.out.println("---");
+        for (int i = 0; i < numContracts; i++) {
 
             final Contract contract = contracts.get(i);
             callMain2("--probe", contract.getId().toBase64String());
