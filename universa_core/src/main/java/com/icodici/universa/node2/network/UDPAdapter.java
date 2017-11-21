@@ -122,7 +122,21 @@ public class UDPAdapter extends DatagramAdapter {
         socketListenThread.shutdownThread();
         socket.close();
         socket.disconnect();
+        closeSessions();
+    }
+
+
+    public void closeSessions() {
+        report(getLabel(), "closeSessions");
         sessionsById.clear();
+    }
+
+
+    public void brakeSessions() {
+        report(getLabel(), "brakeSessions");
+        for (Session s : sessionsById.values()) {
+            s.publicKey = new PublicKey();
+        }
     }
 
 
@@ -542,10 +556,16 @@ public class UDPAdapter extends DatagramAdapter {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
+                    } catch (SymmetricKey.AuthenticationFailed e) {
+                        callErrorCallbacks("SymmetricKey.AuthenticationFailed in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+                        e.printStackTrace();
                     } catch (EncryptionError e) {
-//                    System.out.println("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
                         callErrorCallbacks("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+                        e.printStackTrace();
                     } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (IllegalStateException e) {
+                        callErrorCallbacks("IllegalStateException in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
                         e.printStackTrace();
                     }
                 } else {
@@ -570,7 +590,7 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
-        protected synchronized void obtainSolidBlock(Block block) throws EncryptionError, SymmetricKey.AuthenticationFailed, InterruptedException {
+        protected synchronized void obtainSolidBlock(Block block) throws SymmetricKey.AuthenticationFailed, EncryptionError, InterruptedException {
             Session session = null;
             Binder unbossedPayload;
             byte[] signedUnbossed;
@@ -604,59 +624,63 @@ public class UDPAdapter extends DatagramAdapter {
                 case PacketTypes.WELCOME:
                     report(getLabel(), "got welcome from " + block.senderNodeId, VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
-                    session.remoteNonce = block.payload;
-                    session.makeBlockDeliveredByType(PacketTypes.HELLO);
-                    session.makeBlockDeliveredByType(PacketTypes.WELCOME);
-                    if(session.state == Session.HELLO ||
-                            // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
-                            session.remoteNodeId > myNodeInfo.getNumber()) {
+                    if(session != null) {
+                        session.remoteNonce = block.payload;
+                        session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                        session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                        if (session.state == Session.HELLO ||
+                                // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
+                                session.remoteNodeId > myNodeInfo.getNumber()) {
 
-                        sendKeyRequest(session);
-                    } else {
-                        report(getLabel(), "node sent handshake too, to " + session.remoteNodeId + " state: " + session.state, VerboseLevel.BASE);
+                            sendKeyRequest(session);
+                        } else {
+                            report(getLabel(), "node sent handshake too, to " + session.remoteNodeId + " state: " + session.state, VerboseLevel.BASE);
+                        }
                     }
                     break;
 
                 case PacketTypes.KEY_REQ:
                     report(getLabel(), "got key request from " + block.senderNodeId, VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
-                    session.makeBlockDeliveredByType(PacketTypes.HELLO);
-                    session.makeBlockDeliveredByType(PacketTypes.WELCOME);
-                    session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
-                    unbossedPayload = Boss.load(block.payload);
-                    signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
-                    if (session.publicKey != null) {
-                        if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
+                    if(session != null) {
+                        session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                        session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                        session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                        unbossedPayload = Boss.load(block.payload);
+                        signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
+                        if (session.publicKey != null) {
+                            if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
 
-                            report(getLabel(), "successfully verified ");
+                                report(getLabel(), "successfully verified ");
 
-                            List receivedData = Boss.load(signedUnbossed);
-                            byte[] senderNonce = ((Bytes) receivedData.get(0)).toArray();
-                            byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
+                                List receivedData = Boss.load(signedUnbossed);
+                                byte[] senderNonce = ((Bytes) receivedData.get(0)).toArray();
+                                byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
 
-                            // if remote nonce from received data equals with own nonce
-                            // (means request sent after welcome from known and expected node)
-                            if (Arrays.equals(receiverNonce, session.localNonce)) {
-                                session.remoteNonce = senderNonce;
+                                // if remote nonce from received data equals with own nonce
+                                // (means request sent after welcome from known and expected node)
+                                if (Arrays.equals(receiverNonce, session.localNonce)) {
+                                    session.remoteNonce = senderNonce;
 
-                                if(session.state == Session.WELCOME ||
-                                        // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
-                                        session.remoteNodeId > myNodeInfo.getNumber()) {
+                                    if (session.state == Session.WELCOME ||
+                                            // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
+                                            session.remoteNodeId > myNodeInfo.getNumber()) {
 
-                                    session.createSessionKey();
-                                    report(getLabel(), " check session " + session.isValid());
-                                    sendSessionKey(session);
-                                } else {
-                                    report(getLabel(), "node sent handshake too, to " + session.remoteNodeId + " state: " + session.state, VerboseLevel.BASE);
-                                }
+                                        session.createSessionKey();
+                                        report(getLabel(), " check session " + session.isValid());
+                                        sendSessionKey(session);
+                                    } else {
+                                        report(getLabel(), "node sent handshake too, to " + session.remoteNodeId + " state: " + session.state, VerboseLevel.BASE);
+                                    }
 //                                    session.makeBlockDeliveredByType(PacketTypes.SESSION);
+                                } else {
+                                    throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid (not equals with current)");
+                                }
                             } else {
-                                System.out.println(Errors.BAD_VALUE + ": got nonce is not valid");
-                                throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid");
+                                throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
                             }
                         } else {
-                            System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
-                            throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
+                            throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session is broken or does not exist");
                         }
                     }
                     break;
@@ -664,43 +688,42 @@ public class UDPAdapter extends DatagramAdapter {
                 case PacketTypes.SESSION:
                     report(getLabel(), "got session from " + block.senderNodeId, VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
-                    session.makeBlockDeliveredByType(PacketTypes.HELLO);
-                    session.makeBlockDeliveredByType(PacketTypes.WELCOME);
-                    session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
-                    session.makeBlockDeliveredByType(PacketTypes.SESSION);
-                    unbossedPayload = Boss.load(block.payload);
-                    signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
-                    if(session.publicKey != null) {
-                        if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
+                    if(session != null) {
+                        session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                        session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                        session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                        session.makeBlockDeliveredByType(PacketTypes.SESSION);
+                        unbossedPayload = Boss.load(block.payload);
+                        signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
+                        if (session.publicKey != null) {
+                            if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
 
-                            report(getLabel(), " successfully verified ");
+                                report(getLabel(), " successfully verified ");
 
-                            byte[] decryptedData = ownPrivateKey.decrypt(signedUnbossed);
-                            List receivedData = Boss.load(decryptedData);
-                            byte[] sessionKey = ((Bytes) receivedData.get(0)).toArray();
-                            byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
+                                byte[] decryptedData = ownPrivateKey.decrypt(signedUnbossed);
+                                List receivedData = Boss.load(decryptedData);
+                                byte[] sessionKey = ((Bytes) receivedData.get(0)).toArray();
+                                byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
 
-                            // if remote nonce from received data equals with own nonce
-                            // (means session sent as answer to key request from known and expected node)
-                            if (Arrays.equals(receiverNonce, session.localNonce)) {
-                                session.reconstructSessionKey(sessionKey);
-                                report(getLabel(), " check session " + session.isValid());
+                                // if remote nonce from received data equals with own nonce
+                                // (means session sent as answer to key request from known and expected node)
+                                if (Arrays.equals(receiverNonce, session.localNonce)) {
+                                    session.reconstructSessionKey(sessionKey);
+                                    report(getLabel(), " check session " + session.isValid());
 
-                                // Tell remote nonce we got session or send own and no need to resend it.
-                                answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                                    // Tell remote nonce we got session or send own and no need to resend it.
+                                    answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
 
-                                sendWaitingBlocks(session);
+                                    sendWaitingBlocks(session);
+                                } else {
+                                    throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid (not equals with current)");
+                                }
                             } else {
-                                System.out.println(Errors.BAD_VALUE + ": got nonce is not valid");
-                                throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid");
+                                throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
                             }
                         } else {
-                            System.out.println(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
-                            throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
+                            throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session is broken or does not exist");
                         }
-                    } else {
-                        System.out.println(Errors.BAD_VALUE + ": public key for current session is broken");
-                        throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session is broken");
                     }
                     break;
 
@@ -724,7 +747,7 @@ public class UDPAdapter extends DatagramAdapter {
 
                             if(Arrays.equals(crc32Remote, crc32Local)) {
                                 report(getLabel(), "Crc32 id ok", VerboseLevel.BASE);
-                                receiver.accept(decrypted);
+                                if(receiver != null) receiver.accept(decrypted);
                             } else {
                                 report(getLabel(), "Crc32 Error, sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
 
@@ -742,7 +765,6 @@ public class UDPAdapter extends DatagramAdapter {
                         answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
                     } catch (SymmetricKey.AuthenticationFailed e) {
                         report(getLabel(), "SymmetricKey.AuthenticationFailed, sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId, VerboseLevel.BASE);
-//                            throw e;
                         sendNack(session, block.blockId);
                         throw e;
                     }

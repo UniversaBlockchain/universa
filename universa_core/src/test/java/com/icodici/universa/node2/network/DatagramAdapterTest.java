@@ -15,6 +15,7 @@ import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -35,9 +36,9 @@ public class DatagramAdapterTest {
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
         DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3); // create implemented class with node1
 
-        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         byte[] payload1 = "test data set 1".getBytes();
 
@@ -87,8 +88,8 @@ public class DatagramAdapterTest {
         d1.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
         d2.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
 
-        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         byte[] payload1 = Do.randomBytes(1024 * 10);
 
@@ -137,9 +138,9 @@ public class DatagramAdapterTest {
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
         DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3); // create implemented class with node1
 
-        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2222".getBytes();
@@ -212,45 +213,64 @@ public class DatagramAdapterTest {
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
         NodeInfo node3 = new NodeInfo(TestKeys.publicKey(2),12, "test_node_12", "localhost", 16204, 16205, 16303);
+        NodeInfo node4 = new NodeInfo(TestKeys.publicKey(0),13, "test_node_13", "localhost", 16205, 16206, 16304);
+        NodeInfo node5 = new NodeInfo(TestKeys.publicKey(1),14, "test_node_14", "localhost", 16206, 16207, 16305);
 
         SymmetricKey symmetricKey1 = new SymmetricKey();
         SymmetricKey symmetricKey2 = new SymmetricKey();
         SymmetricKey symmetricKey3 = new SymmetricKey();
+        SymmetricKey symmetricKey4 = new SymmetricKey();
+        SymmetricKey symmetricKey5 = new SymmetricKey();
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1); // create implemented class with node1
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey2, node2); // create implemented class with node1
         DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), symmetricKey3, node3); // create implemented class with node1
+        DatagramAdapter d4 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey4, node4); // create implemented class with node1
+        DatagramAdapter d5 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey5, node5); // create implemented class with node1
 
-        System.out.println("symmetricKey1 is " + symmetricKey1.hashCode());
-        System.out.println("symmetricKey2 is " + symmetricKey2.hashCode());
-        System.out.println("symmetricKey3 is " + symmetricKey3.hashCode());
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
+//        d1.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d2.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d3.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d4.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d5.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//
+//        d1.setLostPacketsPercentInTestMode(75);
+//        d2.setLostPacketsPercentInTestMode(75);
+//        d3.setLostPacketsPercentInTestMode(75);
+//        d4.setLostPacketsPercentInTestMode(75);
+//        d5.setLostPacketsPercentInTestMode(75);
+
         d1.addErrorsCallback(m -> {
-            System.out.println(m);
+            System.err.println(m);
             return m;});
         d2.addErrorsCallback(m -> {
-            System.out.println(m);
+            System.err.println(m);
             return m;});
         d3.addErrorsCallback(m -> {
-            System.out.println(m);
+            System.err.println(m);
             return m;});
-
-//        d1.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
-//        d2.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
-//        d2.seTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
+        d4.addErrorsCallback(m -> {
+            System.err.println(m);
+            return m;});
+        d5.addErrorsCallback(m -> {
+            System.err.println(m);
+            return m;});
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2".getBytes();
         byte[] payload3 = "test data set 3".getBytes();
 
-        int attempts = 100;
+        int attempts = 500;
         int numSends = 100;
 
         ArrayList<byte[]> receviedFor1 = new ArrayList<>();
         ArrayList<byte[]> receviedFor2 = new ArrayList<>();
         ArrayList<byte[]> receviedFor3 = new ArrayList<>();
+        ArrayList<byte[]> receviedFor4 = new ArrayList<>();
+        ArrayList<byte[]> receviedFor5 = new ArrayList<>();
         BlockingQueue<String> waitStatusQueueFor1 = new ArrayBlockingQueue<String>(1, true);
         BlockingQueue<String> waitStatusQueueFor2 = new ArrayBlockingQueue<String>(1, true);
         BlockingQueue<String> waitStatusQueueFor3 = new ArrayBlockingQueue<String>(1, true);
@@ -259,17 +279,27 @@ public class DatagramAdapterTest {
 
         d1.receive(d-> {
             receviedFor1.add(d);
-            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size()) == attempts * numSends)
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
                 ae.fire();
         });
         d2.receive(d-> {
             receviedFor2.add(d);
-            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size()) == attempts * numSends)
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
                 ae.fire();
         });
         d3.receive(d-> {
             receviedFor3.add(d);
-            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size()) == attempts * numSends)
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
+                ae.fire();
+        });
+        d4.receive(d-> {
+            receviedFor4.add(d);
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
+                ae.fire();
+        });
+        d5.receive(d-> {
+            receviedFor5.add(d);
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
                 ae.fire();
         });
 
@@ -283,8 +313,8 @@ public class DatagramAdapterTest {
                 int rnd2 = 0;
                 int rnd3 = 0;
                 while(rnd2 == rnd3) {
-                    rnd2 = new Random().nextInt(3);
-                    rnd3 = new Random().nextInt(3);
+                    rnd2 = new Random().nextInt(5);
+                    rnd3 = new Random().nextInt(5);
                 }
                 byte[] payload;
                 DatagramAdapter sender;
@@ -300,23 +330,25 @@ public class DatagramAdapterTest {
                     sender = d1;
                 else if(rnd2 == 1)
                     sender = d2;
-                else
+                else if(rnd2 == 2)
                     sender = d3;
+                else if(rnd2 == 3)
+                    sender = d4;
+                else
+                    sender = d5;
 
                 if(rnd3 == 0)
                     receiverNode = node1;
                 else if(rnd3 == 1)
                     receiverNode = node2;
-                else
+                else if(rnd3 == 2)
                     receiverNode = node3;
+                else if(rnd3 == 3)
+                    receiverNode = node4;
+                else
+                    receiverNode = node5;
 
                 sender.send(receiverNode, payload);
-//                d1.send(node2, payload);
-//                d2.send(node3, payload);
-//                d3.send(node1, payload);
-//                d1.send(node3, payload);
-//                d2.send(node1, payload);
-//                d3.send(node2, payload);
             }
             Thread.sleep(new Random().nextInt(20));
         }
@@ -330,37 +362,407 @@ public class DatagramAdapterTest {
         System.out.println("receviedFor1 got: " + (receviedFor1.size()));
         System.out.println("receviedFor2 got: " + (receviedFor2.size()));
         System.out.println("receviedFor3 got: " + (receviedFor3.size()));
-        System.out.println("all got: " + (receviedFor1.size() + receviedFor2.size() + receviedFor3.size()));
-//        while (waitStatusQueueFor1.size() < attempts * numSends){
-//        }
+        System.out.println("receviedFor4 got: " + (receviedFor4.size()));
+        System.out.println("receviedFor5 got: " + (receviedFor5.size()));
+        System.out.println("all got: " + (receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()));
 
-//        while (!((waitStatusQueueFor2.take()).equals("DONE"))){
-//            // wait until it is delivered
-//        }
-//        System.out.println("wait queue 2 DONE");
-//
-//        while (!((waitStatusQueueFor3.take()).equals("DONE"))){
-//            // wait until it is delivered
-//        }
-//        System.out.println("wait queue 3 DONE");
-//
-        assertEquals(numSends * attempts, receviedFor1.size() + receviedFor2.size() + receviedFor3.size());
-//        assertEquals(numSends * attempts, receviedFor2.size());
-//        assertEquals(numSends * attempts, receviedFor3.size());
-//            byte[] data1 = receviedFor2.get(0);
-//            byte[] data2 = receviedFor2.get(1);
-//            byte[] data3 = receviedFor2.get(2);
-//
-//            // receiver must s
-//            assertArrayEquals(payload1, data1);
-//            assertArrayEquals(payload2, data2);
-//            assertArrayEquals(payload3, data3);
-
-        // And test it for all interfaceces and big arrays of data
+        assertEquals(numSends * attempts, receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size());
 
         d1.shutdown();
         d2.shutdown();
         d3.shutdown();
+        d4.shutdown();
+        d5.shutdown();
+    }
+
+
+    @Test
+    public void sendEachOtherReceiveCloseSessionAndTryAgain() throws Exception {
+
+        for (int i = 0; i < 6; i++) {
+            create5NodesSend10Times();
+        }
+    }
+
+
+    public void create5NodesSend10Times() throws Exception {
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+        NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
+        NodeInfo node3 = new NodeInfo(TestKeys.publicKey(2),12, "test_node_12", "localhost", 16204, 16205, 16303);
+        NodeInfo node4 = new NodeInfo(TestKeys.publicKey(0),13, "test_node_13", "localhost", 16205, 16206, 16304);
+        NodeInfo node5 = new NodeInfo(TestKeys.publicKey(1),14, "test_node_14", "localhost", 16206, 16207, 16305);
+
+        SymmetricKey symmetricKey1 = new SymmetricKey();
+        SymmetricKey symmetricKey2 = new SymmetricKey();
+        SymmetricKey symmetricKey3 = new SymmetricKey();
+        SymmetricKey symmetricKey4 = new SymmetricKey();
+        SymmetricKey symmetricKey5 = new SymmetricKey();
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey2, node2); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), symmetricKey3, node3); // create implemented class with node1
+        DatagramAdapter d4 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey4, node4); // create implemented class with node1
+        DatagramAdapter d5 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey5, node5); // create implemented class with node1
+
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d4.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d5.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+
+//        d1.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d2.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d3.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d4.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        d5.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//
+//        d1.setLostPacketsPercentInTestMode(75);
+//        d2.setLostPacketsPercentInTestMode(75);
+//        d3.setLostPacketsPercentInTestMode(75);
+//        d4.setLostPacketsPercentInTestMode(75);
+//        d5.setLostPacketsPercentInTestMode(75);
+
+        List symmetricKeyErrors = new ArrayList();
+        d1.addErrorsCallback(m -> {
+            System.err.println(m);
+            if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                symmetricKeyErrors.add(m);
+            return m;});
+        d2.addErrorsCallback(m -> {
+            System.err.println(m);
+            if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                symmetricKeyErrors.add(m);
+            return m;});
+        d3.addErrorsCallback(m -> {
+            System.err.println(m);
+            if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                symmetricKeyErrors.add(m);
+            return m;});
+        d4.addErrorsCallback(m -> {
+            System.err.println(m);
+            if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                symmetricKeyErrors.add(m);
+            return m;});
+        d5.addErrorsCallback(m -> {
+            System.err.println(m);
+            if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                symmetricKeyErrors.add(m);
+            return m;});
+
+        byte[] payload1 = "test data set 1".getBytes();
+        byte[] payload2 = "test data set 2".getBytes();
+        byte[] payload3 = "test data set 3".getBytes();
+
+        int attempts = 100;
+        int numSends = 10;
+
+        ArrayList<byte[]> receviedFor1 = new ArrayList<>();
+        ArrayList<byte[]> receviedFor2 = new ArrayList<>();
+        ArrayList<byte[]> receviedFor3 = new ArrayList<>();
+        ArrayList<byte[]> receviedFor4 = new ArrayList<>();
+        ArrayList<byte[]> receviedFor5 = new ArrayList<>();
+
+        AsyncEvent<Void> ae = new AsyncEvent<>();
+
+        d1.receive(d-> {
+            receviedFor1.add(d);
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
+                ae.fire();
+        });
+        d2.receive(d-> {
+            receviedFor2.add(d);
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
+                ae.fire();
+        });
+        d3.receive(d-> {
+            receviedFor3.add(d);
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
+                ae.fire();
+        });
+        d4.receive(d-> {
+            receviedFor4.add(d);
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
+                ae.fire();
+        });
+        d5.receive(d-> {
+            receviedFor5.add(d);
+            if((receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) == attempts * numSends)
+                ae.fire();
+        });
+
+        for (int i = 0; i < attempts; i++) {
+            System.out.println("Send part: " + i);
+
+            // send from adapter d1, to d2 as it is connected with node2 credentials:
+            for (int j = 0; j < numSends; j++) {
+                int rnd1 = new Random().nextInt(3);
+
+                int rnd2 = 0;
+                int rnd3 = 0;
+                while(rnd2 == rnd3) {
+                    rnd2 = new Random().nextInt(5);
+                    rnd3 = new Random().nextInt(5);
+                }
+                byte[] payload;
+                DatagramAdapter sender;
+                NodeInfo receiverNode;
+                if(rnd1 == 0)
+                    payload = payload1;
+                else if(rnd1 == 1)
+                    payload = payload2;
+                else
+                    payload = payload3;
+
+                if(rnd2 == 0)
+                    sender = d1;
+                else if(rnd2 == 1)
+                    sender = d2;
+                else if(rnd2 == 2)
+                    sender = d3;
+                else if(rnd2 == 3)
+                    sender = d4;
+                else
+                    sender = d5;
+
+                if(rnd3 == 0)
+                    receiverNode = node1;
+                else if(rnd3 == 1)
+                    receiverNode = node2;
+                else if(rnd3 == 2)
+                    receiverNode = node3;
+                else if(rnd3 == 3)
+                    receiverNode = node4;
+                else
+                    receiverNode = node5;
+
+                sender.send(receiverNode, payload);
+            }
+            Thread.sleep(new Random().nextInt(200));
+//            if(new Random().nextBoolean()) ((UDPAdapter)d1).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d2).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d3).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d4).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d5).brakeSessions();
+        }
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        System.out.println("receviedFor1 got: " + (receviedFor1.size()));
+        System.out.println("receviedFor2 got: " + (receviedFor2.size()));
+        System.out.println("receviedFor3 got: " + (receviedFor3.size()));
+        System.out.println("receviedFor4 got: " + (receviedFor4.size()));
+        System.out.println("receviedFor5 got: " + (receviedFor5.size()));
+        System.out.println("all got: " + (receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()));
+
+//        assertEquals(numSends * attempts, receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size());
+
+        assertEquals(0, symmetricKeyErrors.size());
+
+        d1.shutdown();
+        d2.shutdown();
+        d3.shutdown();
+        d4.shutdown();
+        d5.shutdown();
+    }
+
+
+    @Test
+    public void createNodeToMany() throws Exception {
+
+        int numNodes = 100;
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+
+        SymmetricKey symmetricKey1 = new SymmetricKey();
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1); // create implemented class with node1
+
+        List symmetricKeyErrors = new ArrayList();
+        d1.addErrorsCallback(m -> {
+            System.err.println(m);
+            if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                symmetricKeyErrors.add(m);
+            return m;});
+
+        byte[] payload = "test data set 1".getBytes();
+
+        int attempts = 5;
+        int numSends = 5;
+
+        ArrayList<byte[]> receviedFor = new ArrayList<>();
+
+        AsyncEvent<Void> ae = new AsyncEvent<>();
+
+        d1.receive(data-> {
+            receviedFor.add(data);
+            if((receviedFor.size()) == attempts * numSends * numNodes)
+                ae.fire();
+        });
+
+        List<NodeInfo> nodes = new ArrayList<>();
+        List<DatagramAdapter> adapters = new ArrayList<>();
+
+        for (int i = 0; i < numNodes; i++) {
+
+            int keyIndex = new Random().nextInt(2);
+            NodeInfo n = new NodeInfo(TestKeys.publicKey(keyIndex),2 + i, "test_node_2" + i, "localhost", 16203 + i, 16204+i, 16302+i);
+
+            nodes.add(n);
+
+            SymmetricKey sk = new SymmetricKey();
+            DatagramAdapter d = new UDPAdapter(TestKeys.privateKey(keyIndex), sk, n); // create implemented class with node1
+
+            adapters.add(d);
+
+            d.addErrorsCallback(m -> {
+                System.err.println(m);
+                if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                    symmetricKeyErrors.add(m);
+                return m;});
+
+            d.receive(data-> {
+                receviedFor.add(data);
+                if((receviedFor.size()) == attempts * numSends * numNodes)
+                    ae.fire();
+            });
+        }
+
+        for (int i = 0; i < attempts; i++) {
+            System.out.println("Send part: " + i);
+
+            // send from adapter d1, to d2 as it is connected with node2 credentials:
+            for (int j = 0; j < numSends; j++) {
+
+                for (int k = 0; k < numNodes; k++) {
+                    d1.send(nodes.get(k), payload);
+                }
+            }
+            Thread.sleep(new Random().nextInt(200));
+//            if(new Random().nextBoolean()) ((UDPAdapter)d1).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d2).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d3).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d4).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d5).brakeSessions();
+        }
+
+        try {
+            ae.await(30000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        assertEquals(0, symmetricKeyErrors.size());
+
+        System.out.println("all got: " + (receviedFor.size()));
+
+        assertEquals(attempts * numSends * numNodes, receviedFor.size());
+
+        d1.shutdown();
+
+        for (int i = 0; i < numNodes; i++) {
+            adapters.get(i).shutdown();
+        }
+    }
+
+
+    @Test
+    public void createManyNodesToOne() throws Exception {
+
+        int numNodes = 100;
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+
+        SymmetricKey symmetricKey1 = new SymmetricKey();
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1); // create implemented class with node1
+
+        List symmetricKeyErrors = new ArrayList();
+        d1.addErrorsCallback(m -> {
+            System.err.println(m);
+            if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                symmetricKeyErrors.add(m);
+            return m;});
+
+        byte[] payload = "test data set 1".getBytes();
+
+        int attempts = 5;
+        int numSends = 5;
+
+        ArrayList<byte[]> receviedFor = new ArrayList<>();
+
+        AsyncEvent<Void> ae = new AsyncEvent<>();
+
+        d1.receive(data-> {
+            receviedFor.add(data);
+            if((receviedFor.size()) == attempts * numSends * numNodes)
+                ae.fire();
+        });
+
+        List<NodeInfo> nodes = new ArrayList<>();
+        List<DatagramAdapter> adapters = new ArrayList<>();
+
+        for (int i = 0; i < numNodes; i++) {
+
+            int keyIndex = new Random().nextInt(2);
+            NodeInfo n = new NodeInfo(TestKeys.publicKey(keyIndex),2 + i, "test_node_2" + i, "localhost", 16203 + i, 16204+i, 16302+i);
+
+            nodes.add(n);
+
+            SymmetricKey sk = new SymmetricKey();
+            DatagramAdapter d = new UDPAdapter(TestKeys.privateKey(keyIndex), sk, n); // create implemented class with node1
+
+            adapters.add(d);
+
+            d.addErrorsCallback(m -> {
+                System.err.println(m);
+                if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
+                    symmetricKeyErrors.add(m);
+                return m;});
+
+            d.receive(data-> {
+                receviedFor.add(data);
+                if((receviedFor.size()) == attempts * numSends * numNodes)
+                    ae.fire();
+            });
+        }
+
+        for (int i = 0; i < attempts; i++) {
+            System.out.println("Send part: " + i);
+
+            // send from adapter d1, to d2 as it is connected with node2 credentials:
+            for (int j = 0; j < numSends; j++) {
+
+                for (int k = 0; k < numNodes; k++) {
+                    adapters.get(k).send(node1, payload);
+                }
+            }
+            Thread.sleep(new Random().nextInt(200));
+//            if(new Random().nextBoolean()) ((UDPAdapter)d1).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d2).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d3).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d4).brakeSessions();
+//            if(new Random().nextBoolean()) ((UDPAdapter)d5).brakeSessions();
+        }
+
+        try {
+            ae.await(30000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        assertEquals(0, symmetricKeyErrors.size());
+
+        System.out.println("all got: " + (receviedFor.size()));
+
+        assertEquals(attempts * numSends * numNodes, receviedFor.size());
+
+        d1.shutdown();
+
+        for (int i = 0; i < numNodes; i++) {
+            adapters.get(i).shutdown();
+        }
     }
 
 
@@ -375,9 +777,9 @@ public class DatagramAdapterTest {
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
         DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3); // create implemented class with node1
 
-        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
 //        d1.seTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
 //        d2.seTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
@@ -456,8 +858,8 @@ public class DatagramAdapterTest {
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
 
-        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2".getBytes();
@@ -569,8 +971,8 @@ public class DatagramAdapterTest {
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
 
-        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         d1.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
         d2.setTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
@@ -648,8 +1050,8 @@ public class DatagramAdapterTest {
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
 
-        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         d1.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
         d2.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
