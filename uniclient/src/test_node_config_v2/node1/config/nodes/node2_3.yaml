@@ -1,0 +1,10 @@
+---
+http_client_port: 6004
+http_server_port: 2082
+udp_server_port: 6005
+database: jdbc:postgresql://localhost:5432/universa_node_t3
+node_number: 3
+public_host: localhost
+node_name: node2_3
+ip:
+- 127.0.0.1

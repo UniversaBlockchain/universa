@@ -14,7 +14,11 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.TransactionContract;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node2.ItemCache;
+import com.icodici.universa.node2.Main;
+import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -55,14 +59,20 @@ public class CLIMainTest {
 
     protected static final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
 
+    protected static List<Main> localNodes = new ArrayList<>();
+
     @BeforeClass
     public static void prepareRoot() throws Exception {
+
+        createLocalNetwork();
+
 //        new File(rootPath + "/simple_root_contract.unicon").delete();
         assert (new File(rootPath + "/simple_root_contract.yml").exists());
         assert (new File(rootPath + "/simple_root_contract_v2.yml").exists());
 
         CLIMain.setTestMode();
         CLIMain.setTestRootPath(rootPath);
+        CLIMain.setNodeUrl("http://localhost:8080");
 
         File file = new File(basePath);
         if(!file.exists()) {
@@ -161,6 +171,25 @@ public class CLIMainTest {
                 f.delete();
         }
         file.delete();
+
+        destroyLocalNetwork();
+    }
+
+    public static void createLocalNetwork() throws Exception {
+        for (int i = 0; i < 3; i++)
+            localNodes.add(createMain("node" + (i + 1), false));
+
+        Main main = localNodes.get(0);
+        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
+        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
+
+        assertEquals(main.cache, main.node.getCache());
+    }
+
+
+    public static void destroyLocalNetwork() {
+
+        localNodes.forEach(x->x.shutdown());
     }
 
     @Test
@@ -233,7 +262,7 @@ public class CLIMainTest {
     @Test
     public void checkTheNetwork() throws Exception {
         Reporter r = callMain("--network", "--verbose");
-        assertThat(r.getMessage(-1), matches("30 node"));
+        assertThat(r.getMessage(-1), matches("3 node"));
     }
 
     @Test
@@ -1379,7 +1408,7 @@ public class CLIMainTest {
             thread.start();
         }
 
-        Thread.sleep(15000);
+        Thread.sleep(30000);
 
         for (int i = 0; i < numContracts; i++) {
             System.out.println("---");
@@ -1401,7 +1430,7 @@ public class CLIMainTest {
             thread.start();
         }
 
-        Thread.sleep(15000);
+        Thread.sleep(30000);
 
         for (int i = 0; i < numContracts; i++) {
             System.out.println("---");
@@ -1665,5 +1694,14 @@ public class CLIMainTest {
         Contract c = Contract.fromDslFile(yamlFilePath);
         c.setOwnerKey(ownerKey2);
         return c;
+    }
+
+    static Main createMain(String name,boolean nolog) throws InterruptedException {
+        String path = new File("src/test_node_config_v2/"+name).getAbsolutePath();
+        System.out.println(path);
+        String[] args = new String[]{"--test", "--config", path, nolog ? "--nolog" : ""};
+        Main main = new Main(args);
+        main.waitReady();
+        return main;
     }
 }

@@ -44,6 +44,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     public static String CONFIG_2_PATH = "../../deploy/samplesrv/";
 
     public void setUp() throws Exception {
+
         config = new Config();
         config.setPositiveConsensus(2);
         config.setNegativeConsensus(1);

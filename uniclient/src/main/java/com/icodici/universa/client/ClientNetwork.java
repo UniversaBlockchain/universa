@@ -24,13 +24,21 @@ public class ClientNetwork {
         for (int i = 1; i < 10; i++) {
             try {
                 client = new Client("http://node-" +
-                                            Do.randomIntInRange(1, 10) +
-                                            "-com.universa.io:8080", CLIMain.getPrivateKey());
+                        Do.randomIntInRange(1, 10) +
+                        "-com.universa.io:8080", CLIMain.getPrivateKey());
                 break;
             } catch (IOException e) {
                 reporter.warning("failed to read network from node " + i);
             }
         }
+        if (client == null)
+            throw new IOException("failed to connect to to the universa network");
+        reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
+        reporter.message("Network version: " + client.getVersion());
+    }
+
+    public ClientNetwork(String nodeUrl) throws IOException {
+        client = new Client(nodeUrl, CLIMain.getPrivateKey());
         if (client == null)
             throw new IOException("failed to connect to to the universa network");
         reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");

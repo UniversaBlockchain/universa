@@ -46,7 +46,7 @@ public class Main {
         new Main(args);
     }
 
-    Main(String[] args) {
+    public Main(String[] args) {
 
 //        args = new String[]{"--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/node1"};
 

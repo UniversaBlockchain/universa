@@ -172,7 +172,7 @@ public class NetworkV2 extends Network {
     }
 
     private String exceptionCallback(String message) {
-        System.out.println("UDP adapter error: " + message);
+        System.err.println("UDP adapter error: " + message);
         return message;
     }
 

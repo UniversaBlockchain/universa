@@ -64,6 +64,7 @@ public class CLIMain {
     private static OptionSet options;
     private static boolean testMode;
     private static String testRootPath;
+    private static String nodeUrl;
 
     private static Reporter reporter = new Reporter();
     private static ClientNetwork clientNetwork;
@@ -1004,21 +1005,27 @@ public class CLIMain {
         StringBuilder outcome = new StringBuilder();
         List<Decimal> values = new ArrayList<>();
         contract.getRevoking().forEach(c -> {
-            Decimal x = new Decimal((String) c.get(fieldName));
-            values.add(x);
-            if (outcome.length() > 0)
-                outcome.append(" + ");
-            outcome.append(x.toString());
+            Decimal x;
+            if(c.get(fieldName) != null) {
+                x = new Decimal(c.get(fieldName).toString());
+                values.add(x);
+                if (outcome.length() > 0)
+                    outcome.append(" + ");
+                outcome.append(x.toString());
+            }
         });
         List<Contract> news = Do.listOf(contract);
         news.addAll(contract.getNew());
         outcome.append(" -> ");
         news.forEach(c -> {
-            if( c != contract )
-                outcome.append(" + ");
-            Decimal x = new Decimal((String) c.get(fieldName));
-            outcome.append(x.toString());
-            values.add(x.negate());
+            Decimal x;
+            if(c.get(fieldName) != null) {
+                if( c != contract )
+                    outcome.append(" + ");
+                x = new Decimal(c.get(fieldName).toString());
+                outcome.append(x.toString());
+                values.add(x.negate());
+            }
         });
         reporter.verbose("operation is: "+ outcome.toString());
         Decimal saldo = values.stream().reduce(Decimal.ZERO, (a, b) -> a.add(b));
@@ -1729,13 +1736,21 @@ public class CLIMain {
         testRootPath = rootPath;
     }
 
+    public static void setNodeUrl(String url) {
+        nodeUrl = url;
+    }
+
     public static Reporter getReporter() {
         return reporter;
     }
 
     public static synchronized ClientNetwork getClientNetwork() throws IOException {
-        if (clientNetwork == null)
-            clientNetwork = new ClientNetwork();
+        if (clientNetwork == null) {
+            if(nodeUrl != null)
+                clientNetwork = new ClientNetwork(nodeUrl);
+            else
+                clientNetwork = new ClientNetwork();
+        }
         return clientNetwork;
     }
 
