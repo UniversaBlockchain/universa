@@ -1343,6 +1343,79 @@ public class CLIMainTest {
     }
 
     @Test
+    public void registerManyContracts() throws Exception {
+
+        int numContracts = 100;
+        List<Contract> contracts = new ArrayList<>();
+
+        for (int i = 0; i < numContracts; i++) {
+            Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+            c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+            PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
+            // let's make this key among owners
+            ((SimpleRole) c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+            c.seal();
+
+            contracts.add(c);
+        }
+
+        Thread.sleep(500);
+
+        for (int i = 0; i < numContracts; i++) {
+
+            System.out.println("---");
+            System.out.println("register contract " + i);
+            System.out.println("---");
+            final Contract contract = contracts.get(i);
+            Thread thread = new Thread(() -> {
+                try {
+                    System.out.println("register contract -> run thread");
+                    CLIMain.registerContract(contract);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            thread.start();
+        }
+
+        Thread.sleep(15000);
+
+        for (int i = 0; i < numContracts; i++) {
+            System.out.println("---");
+            System.out.println("check contract " + i);
+            System.out.println("---");
+
+            final Contract contract = contracts.get(i);
+            Thread thread = new Thread(() -> {
+                System.out.println("check contract -> run thread");
+                try {
+                    callMain2("--probe", contract.getId().toBase64String());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+
+            thread.start();
+        }
+
+        Thread.sleep(15000);
+
+        for (int i = 0; i < numContracts; i++) {
+            System.out.println("---");
+            System.out.println("check contract " + i);
+            System.out.println("---");
+
+            final Contract contract = contracts.get(i);
+            callMain2("--probe", contract.getId().toBase64String());
+        }
+
+        assertEquals(0, CLIMain.getReporter().getErrors().size());
+    }
+
+    @Test
     public void revokeCreatedContractWithRole() throws Exception {
 
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");

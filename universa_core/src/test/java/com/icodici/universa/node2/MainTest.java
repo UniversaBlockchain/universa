@@ -24,8 +24,10 @@ import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +45,9 @@ public class MainTest {
 
     @Test
     public void startNode() throws Exception {
-        String[] args = new String[]{"--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/node1", "--nolog"};
+        String path = new File("src/test_node_config_v2/node1").getAbsolutePath();
+        System.out.println(path);
+        String[] args = new String[]{"--test", "--config", path, "--nolog"};
         Main main = new Main(args);
         main.waitReady();
         BufferedLogger l = main.logger;
@@ -103,7 +107,9 @@ public class MainTest {
     }
 
     Main createMain(String name,boolean nolog) throws InterruptedException {
-        String[] args = new String[]{"--test", "--config", "/Users/sergeych/dev/new_universa/universa_core/src/test_node_config_v2/"+name, nolog ? "--nolog" : ""};
+        String path = new File("src/test_node_config_v2/"+name).getAbsolutePath();
+        System.out.println(path);
+        String[] args = new String[]{"--test", "--config", path, nolog ? "--nolog" : ""};
         Main main = new Main(args);
         main.waitReady();
         return main;
