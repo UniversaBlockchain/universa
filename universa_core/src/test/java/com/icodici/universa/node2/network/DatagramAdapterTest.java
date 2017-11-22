@@ -658,13 +658,13 @@ public class DatagramAdapterTest {
 
         System.out.println("all got: " + (receviedFor.size()));
 
-        assertEquals(attempts * numSends * numNodes, receviedFor.size());
-
         d1.shutdown();
 
         for (int i = 0; i < numNodes; i++) {
             adapters.get(i).shutdown();
         }
+
+        assertEquals(attempts * numSends * numNodes, receviedFor.size());
     }
 
 
@@ -756,13 +756,13 @@ public class DatagramAdapterTest {
 
         System.out.println("all got: " + (receviedFor.size()));
 
-        assertEquals(attempts * numSends * numNodes, receviedFor.size());
-
         d1.shutdown();
 
         for (int i = 0; i < numNodes; i++) {
             adapters.get(i).shutdown();
         }
+
+        assertEquals(attempts * numSends * numNodes, receviedFor.size());
     }
 
 

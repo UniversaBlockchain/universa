@@ -36,6 +36,8 @@ public class UDPAdapter extends DatagramAdapter {
 
     private SocketListenThread socketListenThread;
 
+    private Object lock = new Object();
+
 //    private ConcurrentHashMap<PublicKey, Session> sessionsByKey = new ConcurrentHashMap<>();
     private ConcurrentHashMap<Integer, Session> sessionsById = new ConcurrentHashMap<>();
 
@@ -80,18 +82,21 @@ public class UDPAdapter extends DatagramAdapter {
         if (session != null) {
             if(session.isValid()) {
                 if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
-                    report(getLabel(), "session is ok");
+                    report(getLabel(), "session is ok", VerboseLevel.BASE);
 
                     session.addBlockToWaitingQueue(rawBlock);
                     sendAsDataBlock(rawBlock, session);
                 } else {
-                    report(getLabel(), "session is handshaking");
+                    report(getLabel(), "session is handshaking", VerboseLevel.BASE);
                     session.addBlockToWaitingQueue(rawBlock);
                 }
             } else {
                 if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
-                    report(getLabel(), "session not valid for exchanging, recreate");
-                    session = createSession(destination.getNumber(),
+                    report(getLabel(), "session not valid for exchanging, recreate", VerboseLevel.BASE);
+                    if(sessionsById.containsKey(session.remoteNodeId)) {
+                        sessionsById.remove(session.remoteNodeId);
+                    }
+                    session = getOrCreateSession(destination.getNumber(),
                             destination.getNodeAddress().getAddress(),
                             destination.getNodeAddress().getPort());
                     session.publicKey = destination.getPublicKey();
@@ -99,13 +104,13 @@ public class UDPAdapter extends DatagramAdapter {
                     session.addBlockToWaitingQueue(rawBlock);
                     sendHello(session);
                 } else {
-                    report(getLabel(), "session not valid yet, but it is handshaking");
+                    report(getLabel(), "session not valid yet, but it is handshaking", VerboseLevel.BASE);
                     session.addBlockToWaitingQueue(rawBlock);
                 }
             }
         } else {
-            report(getLabel(), "session not exist");
-            session = createSession(destination.getNumber(),
+            report(getLabel(), "session not exist", VerboseLevel.BASE);
+            session = getOrCreateSession(destination.getNumber(),
                     destination.getNodeAddress().getAddress(),
                     destination.getNodeAddress().getPort());
             session.publicKey = destination.getPublicKey();
@@ -328,7 +333,19 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized Session createSession(int remoteId, InetAddress address, int port) throws EncryptionError {
+    protected synchronized Session getOrCreateSession(int remoteId, InetAddress address, int port) throws EncryptionError {
+
+        if(sessionsById.containsKey(remoteId)) {
+            Session s = sessionsById.get(remoteId);
+            report(getLabel(), ">>Session was exist for node " + remoteId + " at the node " + myNodeInfo.getNumber(), VerboseLevel.BASE);
+            report(getLabel(), ">>local node: " + myNodeInfo.getNumber() + " remote node: " + s.remoteNodeId, VerboseLevel.BASE);
+            report(getLabel(), ">>local nonce: " + s.localNonce + " remote nonce: " + s.remoteNonce, VerboseLevel.BASE);
+            report(getLabel(), ">>state: " + s.state, VerboseLevel.BASE);
+            report(getLabel(), ">>session key: " + s.sessionKey.hashCode(), VerboseLevel.BASE);
+//            report(getLabel(), ">>new local nonce: " + session.localNonce, VerboseLevel.BASE);
+
+            return s;
+        }
 
         Session session;
 
@@ -337,15 +354,6 @@ public class UDPAdapter extends DatagramAdapter {
         session.remoteNodeId = remoteId;
         session.sessionKey = sessionKey;
         report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
-        if(sessionsById.containsKey(remoteId)) {
-            Session s = sessionsById.get(remoteId);
-            System.err.println("Session was exist for node " + remoteId + " at the node " + myNodeInfo.getNumber());
-            System.err.println("local node: " + myNodeInfo.getNumber() + " remote node: " + s.remoteNodeId);
-            System.err.println("local nonce: " + s.localNonce + " remote nonce: " + s.remoteNonce);
-            System.err.println("state: " + s.state);
-            System.err.println("session key: " + s.sessionKey.hashCode());
-            System.err.println("new local nonce: " + session.localNonce);
-        }
         sessionsById.putIfAbsent(remoteId, session);
 
         return session;
@@ -525,10 +533,11 @@ public class UDPAdapter extends DatagramAdapter {
                                 obtainSolidBlock(waitingBlock);
                             } else {
                                 if (packet.type != PacketTypes.PACKET_ACK) {
-                                    Session session = sessionsById.get(packet.senderNodeId);
-                                    if (session == null) {
-                                        session = createSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
-                                    }
+//                                    Session session = sessionsById.get(packet.senderNodeId);
+//                                    if (session == null) {
+//                                        session = getOrCreateSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
+//                                    }
+                                    Session session = getOrCreateSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
                                     sendPacketAck(session, packet.blockId, packet.packetId);
                                     switch (packet.type) {
                                         case PacketTypes.HELLO:
@@ -569,13 +578,13 @@ public class UDPAdapter extends DatagramAdapter {
                         callErrorCallbacks("SymmetricKey.AuthenticationFailed in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
                         e.printStackTrace();
                     } catch (EncryptionError e) {
-                        callErrorCallbacks("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+                        callErrorCallbacks(getLabel() + " EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
                         for (Session s : sessionsById.values()) {
-                            System.err.println("---");
-                            System.err.println("local node: " + myNodeInfo.getNumber() + " remote node: " + s.remoteNodeId);
-                            System.err.println("local nonce: " + s.localNonce + " remote nonce: " + s.remoteNonce);
-                            System.err.println("state: " + s.state);
-                            System.err.println("session key: " + s.sessionKey.hashCode());
+                            report(getLabel(), ">>---", VerboseLevel.BASE);
+                            report(getLabel(), ">>local node: " + myNodeInfo.getNumber() + " remote node: " + s.remoteNodeId, VerboseLevel.BASE);
+                            report(getLabel(), ">>local nonce: " + s.localNonce + " remote nonce: " + s.remoteNonce, VerboseLevel.BASE);
+                            report(getLabel(), ">>state: " + s.state, VerboseLevel.BASE);
+                            report(getLabel(), ">>session key: " + s.sessionKey.hashCode(), VerboseLevel.BASE);
                         }
                         e.printStackTrace();
                     } catch (IOException e) {
@@ -619,10 +628,11 @@ public class UDPAdapter extends DatagramAdapter {
                 case PacketTypes.HELLO:
                     report(getLabel(), "got hello from " + block.senderNodeId, VerboseLevel.BASE);
                     PublicKey key = new PublicKey(block.payload);
-                    session = sessionsById.get(block.senderNodeId);
-                    if (session == null) {
-                        session = createSession(block.senderNodeId, block.address, block.port);
-                    }
+//                    session = sessionsById.get(block.senderNodeId);
+//                    if (session == null) {
+//                        session = getOrCreateSession(block.senderNodeId, block.address, block.port);
+//                    }
+                    session = getOrCreateSession(block.senderNodeId, block.address, block.port);
                     session.publicKey = key;
                     session.makeBlockDeliveredByType(PacketTypes.HELLO);
                     if(session.state == Session.HANDSHAKE ||
@@ -851,7 +861,12 @@ public class UDPAdapter extends DatagramAdapter {
             if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                 sendAck(session, block.blockId);
             } else {
-                session = createSession(block.senderNodeId, address, port);
+                if(session != null) {
+                    if(sessionsById.containsKey(session.remoteNodeId)) {
+                        sessionsById.remove(session.remoteNodeId);
+                    }
+                }
+                session = getOrCreateSession(block.senderNodeId, address, port);
                 // we remove block from obtained because it broken and will can be regiven with correct data
                 obtainedBlocks.remove(block.blockId);
                 sendNack(session, block.blockId);
