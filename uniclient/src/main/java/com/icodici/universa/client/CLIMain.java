@@ -1738,6 +1738,7 @@ public class CLIMain {
 
     public static void setNodeUrl(String url) {
         nodeUrl = url;
+        clientNetwork = null;
     }
 
     public static Reporter getReporter() {

@@ -337,6 +337,15 @@ public class UDPAdapter extends DatagramAdapter {
         session.remoteNodeId = remoteId;
         session.sessionKey = sessionKey;
         report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
+        if(sessionsById.containsKey(remoteId)) {
+            Session s = sessionsById.get(remoteId);
+            System.err.println("Session was exist for node " + remoteId + " at the node " + myNodeInfo.getNumber());
+            System.err.println("local node: " + myNodeInfo.getNumber() + " remote node: " + s.remoteNodeId);
+            System.err.println("local nonce: " + s.localNonce + " remote nonce: " + s.remoteNonce);
+            System.err.println("state: " + s.state);
+            System.err.println("session key: " + s.sessionKey.hashCode());
+            System.err.println("new local nonce: " + session.localNonce);
+        }
         sessionsById.putIfAbsent(remoteId, session);
 
         return session;
@@ -561,6 +570,13 @@ public class UDPAdapter extends DatagramAdapter {
                         e.printStackTrace();
                     } catch (EncryptionError e) {
                         callErrorCallbacks("EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+                        for (Session s : sessionsById.values()) {
+                            System.err.println("---");
+                            System.err.println("local node: " + myNodeInfo.getNumber() + " remote node: " + s.remoteNodeId);
+                            System.err.println("local nonce: " + s.localNonce + " remote nonce: " + s.remoteNonce);
+                            System.err.println("state: " + s.state);
+                            System.err.println("session key: " + s.sessionKey.hashCode());
+                        }
                         e.printStackTrace();
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -674,7 +690,7 @@ public class UDPAdapter extends DatagramAdapter {
                                     }
 //                                    session.makeBlockDeliveredByType(PacketTypes.SESSION);
                                 } else {
-                                    throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid (not equals with current)");
+                                    throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid (not equals with current). Got nonce: " + receiverNonce + " from node " + block.senderNodeId + " with sender nonce " + senderNonce);
                                 }
                             } else {
                                 throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");

@@ -26,9 +26,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -61,61 +59,67 @@ public class BasicHttpClient {
      * before any use.
      */
     public void start(PrivateKey privateKey, PublicKey nodePublicKey) throws IOException {
-        this.nodePublicKey = nodePublicKey;
 
-        if (sessionKey != null)
-            throw new IllegalStateException("session already started");
+        synchronized (this) {
+            if (sessionKey != null)
+                throw new IllegalStateException("session already started");
 
-        this.privateKey = privateKey;
+            this.nodePublicKey = nodePublicKey;
 
-        Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
+            this.privateKey = privateKey;
 
-        sessionId = a.data.getLongOrThrow("session_id");
+            Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
 
-        byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
-        byte[] client_nonce = Do.randomBytes(47);
-        byte[] data = Boss.pack(Binder.fromKeysValues(
-                "client_nonce", client_nonce,
-                "server_nonce", server_nonce
-        ));
+            sessionId = a.data.getLongOrThrow("session_id");
 
-        a = requestOrThrow("get_token",
-                           "signature", privateKey.sign(data, HashType.SHA512),
-                           "data", data,
-                           "session_id", sessionId
-        );
+            byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
+            byte[] client_nonce = Do.randomBytes(47);
+            byte[] data = Boss.pack(Binder.fromKeysValues(
+                    "client_nonce", client_nonce,
+                    "server_nonce", server_nonce
+            ));
 
-        data = a.data.getBinaryOrThrow("data");
+            a = requestOrThrow("get_token",
+                    "signature", privateKey.sign(data, HashType.SHA512),
+                    "data", data,
+                    "session_id", sessionId
+            );
 
-        if (!nodePublicKey.verify(data, a.data.getBinaryOrThrow("signature"), HashType.SHA512))
-            throw new IOException("node signature failed");
+            data = a.data.getBinaryOrThrow("data");
 
-        Binder params = Boss.unpack(data);
+            if (!nodePublicKey.verify(data, a.data.getBinaryOrThrow("signature"), HashType.SHA512))
+                throw new IOException("node signature failed");
 
-        if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
-            throw new IOException("client nonce mismatch");
+            Binder params = Boss.unpack(data);
 
-        byte[] key = Boss.unpack(
-                privateKey.decrypt(
-                        params.getBinaryOrThrow("encrypted_token")
-                )
-        )
-                .getBinaryOrThrow("sk");
+            if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
+                throw new IOException("client nonce mismatch");
 
-        sessionKey = new SymmetricKey(key);
+            byte[] key = Boss.unpack(
+                    privateKey.decrypt(
+                            params.getBinaryOrThrow("encrypted_token")
+                    )
+            )
+                    .getBinaryOrThrow("sk");
 
-        Binder result = command("hello");
+            sessionKey = new SymmetricKey(key);
 
-        this.connectMessage = result.getStringOrThrow("message");
+            Binder result = command("hello");
 
-        if (!result.getStringOrThrow("status").equals("OK"))
-            throw new ConnectionFailedException("" + result);
+            this.connectMessage = result.getStringOrThrow("message");
+
+            if (!result.getStringOrThrow("status").equals("OK"))
+                throw new ConnectionFailedException("" + result);
+        }
 
     }
 
     public void restart() throws IOException {
-        sessionKey = null;
-        start(privateKey, nodePublicKey);
+        synchronized (this) {
+            sessionKey = null;
+            System.err.println("RESTART");
+            start(privateKey, nodePublicKey);
+        }
     }
 
     /**
@@ -144,52 +148,63 @@ public class BasicHttpClient {
      * @throws IOException if the commadn can't be executed after several retries or the remote side reports error.
      */
     public Binder command(String name, Binder params) throws IOException {
-        if (sessionKey == null)
-            throw new IllegalStateException("session key is not yet setlled");
-        Binder call = Binder.fromKeysValues(
-                "command", name,
-                "params", params
-        );
-        for (int i = 0; i < DEFAULT_RECONNECT_TIMES; i++) {
-            ErrorRecord er = null;
-            try {
-                Answer a = requestOrThrow("command",
-                                          "command", "command",
-                                          "params", sessionKey.encrypt(Boss.pack(call)),
-                                          "session_id", sessionId
-                );
-                Binder data = Boss.unpack(
-                        sessionKey.decrypt(a.data.getBinaryOrThrow("result"))
-                );
-                Binder result = data.getBinder("result", null);
-                if( result != null )
-                    return result;
-                System.out.println("result: " + result);
-                er = (ErrorRecord)data.get("error");;
-                if( er == null )
-                    er = new ErrorRecord(Errors.FAILURE, "", "unprocessablereply");
-            } catch (EndpointException e) {
-                // this is not good = we'd better pass it in the encoded block
-                ErrorRecord r = e.getFirstError();
-                if( r.getError() == Errors.COMMAND_FAILED )
-                    throw e;
-            } catch (IOException e) {
-                e.printStackTrace();
-                log.d("error executing command " + name + ": " + e);
+
+        synchronized (this) {
+            if (sessionKey == null)
+                throw new IllegalStateException("session key is not yet settled");
+            Binder call = Binder.fromKeysValues(
+                    "command", name,
+                    "params", params
+            );
+            for (int i = 0; i < DEFAULT_RECONNECT_TIMES; i++) {
+                ErrorRecord er = null;
+                try {
+                    Answer a = requestOrThrow("command",
+                            "command", "command",
+                            "params", sessionKey.encrypt(Boss.pack(call)),
+                            "session_id", sessionId
+                    );
+                    Binder data = Boss.unpack(
+                            sessionKey.decrypt(a.data.getBinaryOrThrow("result"))
+                    );
+                    Binder result = data.getBinder("result", null);
+                    if (result != null)
+                        return result;
+                    System.out.println("result: " + result);
+                    er = (ErrorRecord) data.get("error");
+                    if (er == null)
+                        er = new ErrorRecord(Errors.FAILURE, "", "unprocessablereply");
+                } catch (EndpointException e) {
+                    // this is not good = we'd better pass it in the encoded block
+                    ErrorRecord r = e.getFirstError();
+                    if (r.getError() == Errors.COMMAND_FAILED)
+                        throw e;
+                } catch (SocketTimeoutException e) {
+//                    e.printStackTrace();
+                    System.err.println("Socket timeout while executing command " + name);
+                    log.d("Socket timeout while executing command " + name + ": " + e);
+                } catch (ConnectException e) {
+//                    e.printStackTrace();
+                    System.err.println("Connection refused while executing command " + name);
+                    log.d("Connection refused while executing command " + name + ": " + e);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    log.d("error executing command " + name + ": " + e);
+                }
+                // if we get here with error, we need to throw it.
+                if (er != null)
+                    throw new CommandFailedException(er);
+                // otherwise it is an recoverable error and we must retry
+                log.d("repeating command " + name + ", attempt " + (i + 1));
+                try {
+                    Thread.sleep(i * 3 * 100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                restart();
             }
-            // if we get here with error, we need to throw it.
-            if( er != null )
-                throw new CommandFailedException(er);
-            // otherwise it is an recoverable error and we must retry
-            log.d("repeating command " + name + ", attempt " + (i + 1));
-            try {
-                Thread.sleep(i*3*100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            restart();
+            throw new IOException("Failed to execute command " + name);
         }
-        throw new IOException("Failed to execute command " + name);
     }
 
     /**
@@ -223,48 +238,50 @@ public class BasicHttpClient {
     }
 
     public Answer request(String path, Binder params) throws IOException {
-        String charset = "UTF-8";
+        synchronized (this) {
+            String charset = "UTF-8";
 
-        byte[] data = Boss.pack(params);
+            byte[] data = Boss.pack(params);
 
-        String boundary = "==boundary==" + Ut.randomString(48);
+            String boundary = "==boundary==" + Ut.randomString(48);
 
-        String CRLF = "\r\n"; // Line separator required by multipart/form-data.
+            String CRLF = "\r\n"; // Line separator required by multipart/form-data.
 
-        URLConnection connection = new URL(url + "/" + path).openConnection();
+            URLConnection connection = new URL(url + "/" + path).openConnection();
 
-        connection.setDoOutput(true);
+            connection.setDoOutput(true);
 
-        connection.setConnectTimeout(CONNECTION_TIMEOUT);
-        connection.setReadTimeout(CONNECTION_READ_TIMEOUT);
-        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-        connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setConnectTimeout(CONNECTION_TIMEOUT);
+            connection.setReadTimeout(CONNECTION_READ_TIMEOUT);
+            connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
 
 
-        try (
-                OutputStream output = connection.getOutputStream();
-                PrintWriter writer = new PrintWriter(new OutputStreamWriter(output, charset), true);
-        ) {
-            // Send normal param.
+            try (
+                    OutputStream output = connection.getOutputStream();
+                    PrintWriter writer = new PrintWriter(new OutputStreamWriter(output, charset), true);
+            ) {
+                // Send normal param.
 
-            // Send binary file.
-            writer.append("--" + boundary).append(CRLF);
-            writer.append("Content-Disposition: form-data; name=\"requestData\"; filename=\"requestData.boss\"").append(CRLF);
-            writer.append("Content-Type: application/octet-stream").append(CRLF);
-            writer.append("Content-Transfer-Encoding: binary").append(CRLF);
-            writer.append(CRLF).flush();
-            output.write(data);
-            output.flush(); // Important before continuing with writer!
-            writer.append(CRLF).flush(); // CRLF is important! It indicates end of boundary.
+                // Send binary file.
+                writer.append("--" + boundary).append(CRLF);
+                writer.append("Content-Disposition: form-data; name=\"requestData\"; filename=\"requestData.boss\"").append(CRLF);
+                writer.append("Content-Type: application/octet-stream").append(CRLF);
+                writer.append("Content-Transfer-Encoding: binary").append(CRLF);
+                writer.append(CRLF).flush();
+                output.write(data);
+                output.flush(); // Important before continuing with writer!
+                writer.append(CRLF).flush(); // CRLF is important! It indicates end of boundary.
 
-            // End of multipart/form-data.
-            writer.append("--" + boundary + "--").append(CRLF).flush();
+                // End of multipart/form-data.
+                writer.append("--" + boundary + "--").append(CRLF).flush();
+            }
+
+            HttpURLConnection httpConnection = (HttpURLConnection) connection;
+            int responseCode = httpConnection.getResponseCode();
+            byte[] answer = Do.read(httpConnection.getInputStream());
+            return new Answer(responseCode, Binder.from(Boss.load(answer)));
         }
-
-        HttpURLConnection httpConnection = (HttpURLConnection) connection;
-        int responseCode = httpConnection.getResponseCode();
-        byte[] answer = Do.read(httpConnection.getInputStream());
-        return new Answer(responseCode, Binder.from(Boss.load(answer)));
     }
 
     @Override
