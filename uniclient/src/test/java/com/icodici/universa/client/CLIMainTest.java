@@ -16,10 +16,7 @@ import com.icodici.universa.contract.TransactionContract;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node2.ItemCache;
 import com.icodici.universa.node2.Main;
-import com.icodici.universa.node2.network.Client;
-import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -1557,6 +1554,67 @@ public class CLIMainTest {
         }
 
         assertEquals(0, CLIMain.getReporter().getErrors().size());
+    }
+
+    @Test
+    public void registerContractFromVariousNetworks() throws Exception {
+
+        final Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
+        // let's make this key among owners
+        ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.seal();
+
+//        CLIMain.registerContract(c);
+
+        List<ClientNetwork> clientNetworks = new ArrayList<>();
+
+        int numConnections = 10;
+        for (int i = 0; i < numConnections; i++) {
+            clientNetworks.add(new ClientNetwork("http://localhost:8080", new PrivateKey(2048)));
+        }
+
+        for (int i = 0; i < numConnections; i++) {
+            final int index = i;
+            try {
+                clientNetworks.get(index).ping();
+//                System.out.println("result (" + index + "): " + r1.toString());
+            } catch (IOException e) {
+                if (e.getCause() instanceof SocketTimeoutException) {
+                    System.err.println(">>>> ERROR 1: " + e.getMessage());
+                } else if (e.getCause() instanceof ConnectException) {
+                    System.err.println(">>>> ERROR 1: " + e.getMessage());
+                } else if (e.getCause() instanceof IllegalStateException) {
+                    System.err.println(">>>> ERROR 1: " + e.getMessage());
+                } else {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        for (int i = 0; i < numConnections; i++) {
+            final int index = i;
+            Thread thread1 = new Thread(() -> {
+                try {
+                    ItemResult r1 = clientNetworks.get(index).register(c.getPackedTransaction());
+                    System.out.println("result from thread (" + index + "): " + r1.toString());
+                } catch (IOException e) {
+                    if (e.getCause() instanceof SocketTimeoutException) {
+                        System.err.println(">>>> ERROR 1: " + e.getMessage());
+                    } else if (e.getCause() instanceof ConnectException) {
+                        System.err.println(">>>> ERROR 1: " + e.getMessage());
+                    } else if (e.getCause() instanceof IllegalStateException) {
+                        System.err.println(">>>> ERROR 1: " + e.getMessage());
+                    } else {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            thread1.start();
+        }
+
+//        Thread.sleep(10000);
     }
 
     @Test

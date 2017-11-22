@@ -62,7 +62,7 @@ public class Client {
         return false;
     }
 
-    private boolean ping() throws IOException {
+    public boolean ping() throws IOException {
         client.command("sping");
         return true;
     }

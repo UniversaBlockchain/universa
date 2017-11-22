@@ -1,5 +1,6 @@
 package com.icodici.universa.client;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
@@ -45,8 +46,20 @@ public class ClientNetwork {
         reporter.message("Network version: " + client.getVersion());
     }
 
+    public ClientNetwork(String nodeUrl, PrivateKey privateKey) throws IOException {
+        client = new Client(nodeUrl, privateKey);
+        if (client == null)
+            throw new IOException("failed to connect to to the universa network");
+        reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
+        reporter.message("Network version: " + client.getVersion());
+    }
+
     public ItemResult register(byte[] packedContract) throws ClientError {
         return client.register(packedContract, 0);
+    }
+
+    public boolean ping() throws IOException {
+        return client.ping();
     }
 
     /**
