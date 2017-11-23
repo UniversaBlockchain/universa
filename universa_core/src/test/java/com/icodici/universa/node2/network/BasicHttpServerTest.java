@@ -36,7 +36,7 @@ public class BasicHttpServerTest extends TestCase {
         BasicHttpServer s = new BasicHttpServer(nodeKey, 15600, 32, log);
 
         BasicHttpClient c = new BasicHttpClient("http://localhost:15600");
-        c.start(clientKey, nodeKey.getPublicKey());
+        c.start(clientKey, nodeKey.getPublicKey(), null);
 
         Binder res = c.command("sping");
         assertEquals("spong", res.getStringOrThrow("sping"));
@@ -56,7 +56,7 @@ public class BasicHttpServerTest extends TestCase {
         PrivateKey clientKey = TestKeys.privateKey(2);
         BasicHttpServer s = new BasicHttpServer(nodeKey, 15600, 32, log);
         BasicHttpClient c = new BasicHttpClient("http://localhost:15600");
-        c.start(clientKey, nodeKey.getPublicKey());
+        c.start(clientKey, nodeKey.getPublicKey(), null);
         assertThrows(CommandFailedException.class, ()->c.command("test_error"));
     }
 

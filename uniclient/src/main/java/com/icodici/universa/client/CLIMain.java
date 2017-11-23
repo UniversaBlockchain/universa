@@ -12,6 +12,7 @@ import com.google.gson.GsonBuilder;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionContract;
@@ -19,6 +20,8 @@ import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node2.network.BasicHttpClient;
+import com.icodici.universa.node2.network.BasicHttpClientSession;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.Converter;
@@ -33,6 +36,7 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -52,7 +56,10 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static java.util.Arrays.asList;
 
@@ -228,9 +235,9 @@ public class CLIMain {
                 usage(null);
             }
             if (options.has("v")) {
-                reporter.setVerboseMode(true);
+                setVerboseMode(true);
             } else {
-                reporter.setVerboseMode(false);
+                setVerboseMode(false);
             }
             if (options.has("k")) {
                 keyFileNames = (List<String>) options.valuesOf("k");
@@ -819,6 +826,7 @@ public class CLIMain {
     ///////////////////////////
 
     private static PrivateKey privateKey;
+    private static BasicHttpClientSession session;
     private static Preferences prefs = Preferences.userRoot();
 
     static public PrivateKey getPrivateKey() throws IOException {
@@ -857,6 +865,101 @@ public class CLIMain {
             }
         }
         return privateKey;
+    }
+
+    static public BasicHttpClientSession getSession(int nodeNumber) throws IOException {
+        if (session == null) {
+            String keyFileName = prefs.get("session_" + nodeNumber, null);
+            if (keyFileName != null) {
+                reporter.verbose("Loading session from " + keyFileName);
+                try {
+                    session = BasicHttpClientSession.reconstructSession(Boss.unpack(Do.read(keyFileName)));
+                } catch (Exception e) {
+                    reporter.warning("can't read session file: " + keyFileName);
+                    e.printStackTrace();
+                }
+
+            } else {
+                reporter.verbose("No session found at the prefs ");
+            }
+        }
+        return session;
+    }
+
+    /**
+     * Only for test purposes
+     *
+     * @param nodeNumber
+     * @throws IOException
+     */
+    static public void breakSession(int nodeNumber) throws IOException {
+        BasicHttpClientSession s = getSession(nodeNumber);
+        s.setSessionId(666);
+        s.setSessionKey(new SymmetricKey());
+
+        Path keysDir = Paths.get(System.getProperty("user.home") + "/.universa");
+        if (!Files.exists(keysDir)) {
+            reporter.verbose("creating new keys directory: " + keysDir.toString());
+            final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwx------");
+            final FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(perms);
+            Files.createDirectory(keysDir, ownerOnly);
+        }
+
+        Path sessionFile = keysDir.resolve("node_" + nodeNumber + ".session");
+        try (OutputStream out = Files.newOutputStream(sessionFile)) {
+            out.write(Boss.pack(s.asBinder()));
+        }
+        final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
+        Files.setPosixFilePermissions(sessionFile, perms);
+        prefs.put("session_" + nodeNumber, sessionFile.toString());
+        report("Broken session has been stored to the " + keysDir + "/" + sessionFile);
+    }
+
+    static public void clearSession() {
+        clearSession(true);
+    }
+
+    static public void clearSession(boolean full) {
+        session = null;
+        if(full) {
+            try {
+                String[] keys = prefs.keys();
+                for (int i = 0; i < keys.length; i++) {
+                    if (keys[i].indexOf("session_") == 0) {
+                        prefs.remove(keys[i]);
+                    }
+                }
+            } catch (BackingStoreException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    static public void saveSession() throws IOException {
+        int nodeNumber = getClientNetwork().getNodeNumber();
+        reporter.verbose("Session from ClientNetwork is exist: " + (session != null));
+        if(session != null) {
+            Path keysDir = Paths.get(System.getProperty("user.home") + "/.universa");
+            if (!Files.exists(keysDir)) {
+                reporter.verbose("creating new keys directory: " + keysDir.toString());
+                final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwx------");
+                final FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(perms);
+                Files.createDirectory(keysDir, ownerOnly);
+            }
+
+            Path sessionFile = keysDir.resolve("node_" + nodeNumber + ".session");
+            try (OutputStream out = Files.newOutputStream(sessionFile)) {
+                out.write(Boss.pack(session.asBinder()));
+            }
+            final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
+            Files.setPosixFilePermissions(sessionFile, perms);
+            prefs.put("session_" + nodeNumber, sessionFile.toString());
+            report("Session has been stored to the " + keysDir + "/" + sessionFile);
+        }
+    }
+
+    static public void setVerboseMode(boolean verboseMode) {
+        reporter.setVerboseMode(verboseMode);
     }
 
 
@@ -1700,6 +1803,11 @@ public class CLIMain {
 
     private static void finish() {
         // print reports if need
+        try {
+            saveSession();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         throw new Finished();
     }
 
@@ -1758,11 +1866,43 @@ public class CLIMain {
 
     public static synchronized ClientNetwork getClientNetwork() throws IOException {
         if (clientNetwork == null) {
-            if(nodeUrl != null)
-                clientNetwork = new ClientNetwork(nodeUrl);
-            else
-                clientNetwork = new ClientNetwork();
+            reporter.verbose("ClientNetwork not exist, create one");
+
+            int nodeNumber = -1;
+
+            BasicHttpClientSession s = null;
+            if(nodeUrl != null) {
+                if( nodeNumber < 0 ) {
+                    Matcher matcher = Pattern.compile("node-(\\d+)-").matcher(nodeUrl);
+                    if( matcher.find() ) {
+                        nodeNumber = Integer.valueOf(matcher.group(1));
+                    }
+                }
+                s = getSession(nodeNumber);
+                reporter.verbose("Session is exist: " + (s != null));
+                clientNetwork = new ClientNetwork(nodeUrl, s);
+            } else {
+                for (int i = 1; i < 10; i++) {
+                    nodeNumber = Do.randomIntInRange(1, 10);
+                    nodeUrl = "http://node-" + nodeNumber +
+                        "-com.universa.io:8080";
+                    s = getSession(nodeNumber);
+                    reporter.verbose("Session for " + nodeNumber + " is exist: " + (s != null));
+                    reporter.verbose(nodeUrl);
+                    try {
+                        clientNetwork = new ClientNetwork(nodeUrl, s);
+                        break;
+                    } catch (IOException e) {
+                        reporter.warning("failed to read network from node " + i);
+                    }
+                }
+            }
+            if (clientNetwork.client == null)
+                throw new IOException("failed to connect to to the universa network");
+
         }
+        if(clientNetwork != null)
+            session = clientNetwork.getSession();
         return clientNetwork;
     }
 

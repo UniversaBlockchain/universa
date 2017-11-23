@@ -1453,9 +1453,9 @@ public class CLIMainTest {
     @Test
     public void registerManyContractsFromVariousNodes() throws Exception {
 
-        ClientNetwork clientNetwork1 = new ClientNetwork("http://localhost:8080");
-        ClientNetwork clientNetwork2 = new ClientNetwork("http://localhost:6002");
-        ClientNetwork clientNetwork3 = new ClientNetwork("http://localhost:6004");
+        ClientNetwork clientNetwork1 = new ClientNetwork("http://localhost:8080", null);
+        ClientNetwork clientNetwork2 = new ClientNetwork("http://localhost:6002", null);
+        ClientNetwork clientNetwork3 = new ClientNetwork("http://localhost:6004", null);
 
 
         int numContracts = 10;
@@ -1572,7 +1572,7 @@ public class CLIMainTest {
 
         int numConnections = 10;
         for (int i = 0; i < numConnections; i++) {
-            clientNetworks.add(new ClientNetwork("http://localhost:8080", new PrivateKey(2048)));
+            clientNetworks.add(new ClientNetwork("http://localhost:8080", new PrivateKey(2048), null));
         }
 
         for (int i = 0; i < numConnections; i++) {
@@ -1615,6 +1615,78 @@ public class CLIMainTest {
         }
 
 //        Thread.sleep(10000);
+    }
+
+    @Test
+    public void checkSessionReusing() throws Exception {
+
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
+        // let's make this key among owners
+        ((SimpleRole) c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.seal();
+
+        CLIMain.setVerboseMode(true);
+
+        Thread.sleep(1000);
+
+
+        CLIMain.clearSession();
+
+        System.out.println("---session cleared---");
+
+        CLIMain.registerContract(c);
+
+
+        Thread.sleep(1000);
+
+        CLIMain.setNodeUrl("http://localhost:8080");
+
+        System.out.println("---session should be reused from variable---");
+
+        CLIMain.registerContract(c);
+
+
+        CLIMain.saveSession();
+
+        Thread.sleep(1000);
+
+        CLIMain.clearSession(false);
+
+        CLIMain.setNodeUrl("http://localhost:8080");
+
+        System.out.println("---session should be reused from file---");
+
+        CLIMain.registerContract(c);
+
+
+        CLIMain.saveSession();
+
+        Thread.sleep(1000);
+
+        CLIMain.clearSession(false);
+
+        CLIMain.setNodeUrl(null);
+
+        System.out.println("---session should be created for remote network---");
+
+        CLIMain.registerContract(c);
+
+        CLIMain.saveSession();
+
+
+        CLIMain.breakSession(-1);
+
+        Thread.sleep(2000);
+
+        CLIMain.clearSession(false);
+
+        CLIMain.setNodeUrl("http://localhost:8080");
+
+        System.out.println("---broken session should be recreated---");
+
+        CLIMain.registerContract(c);
     }
 
     @Test

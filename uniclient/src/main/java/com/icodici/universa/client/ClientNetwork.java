@@ -4,8 +4,11 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node2.network.BasicHttpClient;
+import com.icodici.universa.node2.network.BasicHttpClientSession;
 import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
 
@@ -21,33 +24,33 @@ public class ClientNetwork {
 
     Client client;
 
-    public ClientNetwork() throws IOException {
-        for (int i = 1; i < 10; i++) {
-            try {
-                client = new Client("http://node-" +
-                        Do.randomIntInRange(1, 10) +
-                        "-com.universa.io:8080", CLIMain.getPrivateKey());
-                break;
-            } catch (IOException e) {
-                reporter.warning("failed to read network from node " + i);
-            }
-        }
+//    public ClientNetwork(BasicHttpClientSession session) throws IOException {
+//        for (int i = 1; i < 10; i++) {
+//            try {
+//                client = new Client("http://node-" +
+//                        Do.randomIntInRange(1, 10) +
+//                        "-com.universa.io:8080", CLIMain.getPrivateKey(), session);
+//                break;
+//            } catch (IOException e) {
+//                reporter.warning("failed to read network from node " + i);
+//            }
+//        }
+//        if (client == null)
+//            throw new IOException("failed to connect to to the universa network");
+//        reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
+//        reporter.message("Network version: " + client.getVersion());
+//    }
+
+    public ClientNetwork(String nodeUrl, BasicHttpClientSession session) throws IOException {
+        client = new Client(nodeUrl, CLIMain.getPrivateKey(), session);
         if (client == null)
             throw new IOException("failed to connect to to the universa network");
         reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
         reporter.message("Network version: " + client.getVersion());
     }
 
-    public ClientNetwork(String nodeUrl) throws IOException {
-        client = new Client(nodeUrl, CLIMain.getPrivateKey());
-        if (client == null)
-            throw new IOException("failed to connect to to the universa network");
-        reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
-        reporter.message("Network version: " + client.getVersion());
-    }
-
-    public ClientNetwork(String nodeUrl, PrivateKey privateKey) throws IOException {
-        client = new Client(nodeUrl, privateKey);
+    public ClientNetwork(String nodeUrl, PrivateKey privateKey, BasicHttpClientSession session) throws IOException {
+        client = new Client(nodeUrl, privateKey, session);
         if (client == null)
             throw new IOException("failed to connect to to the universa network");
         reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
@@ -85,6 +88,14 @@ public class ClientNetwork {
 
     public int size() {
         return client.size();
+    }
+
+    public BasicHttpClientSession getSession() throws IllegalStateException {
+        return client.getSession();
+    }
+
+    public int getNodeNumber() {
+        return client.getNodeNumber();
     }
 
     public int checkNetworkState(Reporter reporter) {

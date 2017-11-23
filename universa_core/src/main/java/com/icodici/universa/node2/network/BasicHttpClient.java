@@ -39,93 +39,158 @@ public class BasicHttpClient {
     private final static int CONNECTION_TIMEOUT = 2000;
 
     static private LogPrinter log = new LogPrinter("HTCL");
-    private String connectMessage;
-    private PrivateKey privateKey;
-    private SymmetricKey sessionKey;
-    private long sessionId;
     private String url;
-    private PublicKey nodePublicKey;
+    protected BasicHttpClientSession session;
 
     public BasicHttpClient(String rootUrlString) {
         this.url = rootUrlString;
     }
 
     public String getConnectMessage() {
-        return connectMessage;
+        if(session != null)
+            return session.getConnectMessage();
+
+        throw new IllegalStateException("Session does not exist. Start BasicHttpClient for create session.");
+    }
+
+    public BasicHttpClientSession getSession() {
+        if(session != null)
+            return session;
+
+        throw new IllegalStateException("Session does not exist. Start BasicHttpClient for create session.");
     }
 
     /**
-     * Authenticte self to the remote party. Blocks until the handshake is done. It is important to start() connection
+     * Authenticate self to the remote party. Blocks until the handshake is done. It is important to start() connection
      * before any use.
      */
-    public void start(PrivateKey privateKey, PublicKey nodePublicKey) throws IOException {
+    public BasicHttpClientSession start(PrivateKey privateKey, PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
 
         synchronized (this) {
-            if (sessionKey != null)
-                throw new IllegalStateException("session already started");
+            if (session != null) {
+                this.session = session;
+                this.session.setNodePublicKey(nodePublicKey);
+                this.session.setPrivateKey(privateKey);
 
-            this.nodePublicKey = nodePublicKey;
+//                this.session.setNodePublicKey(nodePublicKey);
+//
+//                this.session.setPrivateKey(privateKey);
 
-            this.privateKey = privateKey;
+//                Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
+//
+//                this.session.setSessionId(a.data.getLongOrThrow("session_id"));
 
-            Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
+//                byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
+//                byte[] client_nonce = Do.randomBytes(47);
+//                byte[] data = Boss.pack(Binder.fromKeysValues(
+//                        "client_nonce", client_nonce,
+//                        "server_nonce", server_nonce
+//                ));
+//
+//                a = requestOrThrow("get_token",
+//                        "signature", privateKey.sign(data, HashType.SHA512),
+//                        "data", data,
+//                        "session_id", this.session.getSessionId()
+//                );
+//
+//                data = a.data.getBinaryOrThrow("data");
+//
+//                if (!nodePublicKey.verify(data, a.data.getBinaryOrThrow("signature"), HashType.SHA512))
+//                    throw new IOException("node signature failed");
+//
+//                Binder params = Boss.unpack(data);
+//
+//                if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
+//                    throw new IOException("client nonce mismatch");
+//
+//                byte[] key = Boss.unpack(
+//                        privateKey.decrypt(
+//                                params.getBinaryOrThrow("encrypted_token")
+//                        )
+//                )
+//                        .getBinaryOrThrow("sk");
 
-            sessionId = a.data.getLongOrThrow("session_id");
+//                this.session.sessionKey = new SymmetricKey(key);
 
-            byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
-            byte[] client_nonce = Do.randomBytes(47);
-            byte[] data = Boss.pack(Binder.fromKeysValues(
-                    "client_nonce", client_nonce,
-                    "server_nonce", server_nonce
-            ));
+                Binder result = command("hello");
 
-            a = requestOrThrow("get_token",
-                    "signature", privateKey.sign(data, HashType.SHA512),
-                    "data", data,
-                    "session_id", sessionId
-            );
+                this.session.setConnectMessage(result.getStringOrThrow("message"));
 
-            data = a.data.getBinaryOrThrow("data");
+                if (!result.getStringOrThrow("status").equals("OK"))
+                    throw new ConnectionFailedException("" + result);
 
-            if (!nodePublicKey.verify(data, a.data.getBinaryOrThrow("signature"), HashType.SHA512))
-                throw new IOException("node signature failed");
+//                throw new IllegalStateException("session already started");
+            } else {
 
-            Binder params = Boss.unpack(data);
+                this.session = new BasicHttpClientSession();
 
-            if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
-                throw new IOException("client nonce mismatch");
+                this.session.setNodePublicKey(nodePublicKey);
 
-            byte[] key = Boss.unpack(
-                    privateKey.decrypt(
-                            params.getBinaryOrThrow("encrypted_token")
-                    )
-            )
-                    .getBinaryOrThrow("sk");
+                this.session.setPrivateKey(privateKey);
 
-            sessionKey = new SymmetricKey(key);
+                Answer a = requestOrThrow("connect", "client_key", privateKey.getPublicKey().pack());
 
-            Binder result = command("hello");
+                this.session.setSessionId(a.data.getLongOrThrow("session_id"));
 
-            this.connectMessage = result.getStringOrThrow("message");
+                byte[] server_nonce = a.data.getBinaryOrThrow("server_nonce");
+                byte[] client_nonce = Do.randomBytes(47);
+                byte[] data = Boss.pack(Binder.fromKeysValues(
+                        "client_nonce", client_nonce,
+                        "server_nonce", server_nonce
+                ));
 
-            if (!result.getStringOrThrow("status").equals("OK"))
-                throw new ConnectionFailedException("" + result);
+                a = requestOrThrow("get_token",
+                        "signature", privateKey.sign(data, HashType.SHA512),
+                        "data", data,
+                        "session_id", this.session.getSessionId()
+                );
+
+                data = a.data.getBinaryOrThrow("data");
+
+                if (!nodePublicKey.verify(data, a.data.getBinaryOrThrow("signature"), HashType.SHA512))
+                    throw new IOException("node signature failed");
+
+                Binder params = Boss.unpack(data);
+
+                if (!Arrays.equals(client_nonce, params.getBinaryOrThrow("client_nonce")))
+                    throw new IOException("client nonce mismatch");
+
+                byte[] key = Boss.unpack(
+                        privateKey.decrypt(
+                                params.getBinaryOrThrow("encrypted_token")
+                        )
+                )
+                        .getBinaryOrThrow("sk");
+
+                this.session.setSessionKey(new SymmetricKey(key));
+
+                Binder result = command("hello");
+
+                this.session.setConnectMessage(result.getStringOrThrow("message"));
+
+                if (!result.getStringOrThrow("status").equals("OK"))
+                    throw new ConnectionFailedException("" + result);
+            }
+
+            return this.session;
         }
 
     }
 
     public void restart() throws IOException {
         synchronized (this) {
-            sessionKey = null;
             System.err.println("RESTART");
-            start(privateKey, nodePublicKey);
+            PrivateKey privateKey = session.getPrivateKey();
+            PublicKey nodePublicKey = session.getNodePublicKey();
+            session = null;
+            start(privateKey, nodePublicKey,  null);
         }
     }
 
     /**
      * Ping remote side to ensure it is connected
      *
-     * @return true is remote side answers properly. false generally meand we have to recconnect.
+     * @return true is remote side answers properly. false generally meant we have to reconnect.
      */
     public boolean ping() {
         try {
@@ -150,8 +215,9 @@ public class BasicHttpClient {
     public Binder command(String name, Binder params) throws IOException {
 
         synchronized (this) {
-            if (sessionKey == null)
-                throw new IllegalStateException("session key is not yet settled");
+            if (session == null || session.getSessionKey() == null)
+                throw new IllegalStateException("Session does not created or session key is not got yet.");
+
             Binder call = Binder.fromKeysValues(
                     "command", name,
                     "params", params
@@ -161,11 +227,11 @@ public class BasicHttpClient {
                 try {
                     Answer a = requestOrThrow("command",
                             "command", "command",
-                            "params", sessionKey.encrypt(Boss.pack(call)),
-                            "session_id", sessionId
+                            "params", session.getSessionKey().encrypt(Boss.pack(call)),
+                            "session_id", session.getSessionId()
                     );
                     Binder data = Boss.unpack(
-                            sessionKey.decrypt(a.data.getBinaryOrThrow("result"))
+                            session.getSessionKey().decrypt(a.data.getBinaryOrThrow("result"))
                     );
                     Binder result = data.getBinder("result", null);
                     if (result != null)
@@ -179,6 +245,7 @@ public class BasicHttpClient {
                     ErrorRecord r = e.getFirstError();
                     if (r.getError() == Errors.COMMAND_FAILED)
                         throw e;
+                    System.err.println(r);
                 } catch (SocketTimeoutException e) {
 //                    e.printStackTrace();
                     System.err.println("Socket timeout while executing command " + name);
@@ -347,7 +414,17 @@ public class BasicHttpClient {
 
         private Answer(int code, @NonNull Binder data) {
             this.code = code;
-            this.data = data.getBinderOrThrow("response");
+            Binder got;
+            try {
+                got = data.getBinderOrThrow("response");
+            } catch (IllegalArgumentException e) {
+                got = Binder.fromKeysValues("errors", Arrays.asList(
+                        new ErrorRecord(Errors.FAILURE,
+                                "",
+                                data.getString("error", "Got data has not response field."))));
+
+            }
+            this.data = got;
         }
 
         @Override

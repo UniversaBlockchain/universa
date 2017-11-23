@@ -164,7 +164,7 @@ public class NetworkV2 extends Network {
         synchronized (cachedClients) {
             client = cachedClients.get(nodeInfo);
             if( client == null ) {
-                client = new Client(myKey, nodeInfo);
+                client = new Client(myKey, nodeInfo, null);
                 cachedClients.put(nodeInfo, client);
             }
         }

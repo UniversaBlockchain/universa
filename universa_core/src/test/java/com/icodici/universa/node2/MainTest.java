@@ -55,7 +55,8 @@ public class MainTest {
         Client client = new Client(
                 "http://localhost:8080",
                 TestKeys.privateKey(3),
-                main.getNodePublicKey()
+                main.getNodePublicKey(),
+                null
         );
 
         Binder data = client.command("status");
@@ -133,7 +134,7 @@ public class MainTest {
         c.seal();
         assertTrue(c.isOk());
 
-        Client client = new Client(myKey, main.myInfo);
+        Client client = new Client(myKey, main.myInfo, null);
 
         ItemResult r = client.getState(c.getId());
         assertEquals(ItemState.UNDEFINED, r.state);
@@ -161,7 +162,7 @@ public class MainTest {
     public void checkRealNetwork() throws Exception {
 
         PrivateKey clientKey = TestKeys.privateKey(3);
-        Client client = new Client("http://node-17-com.universa.io:8080", clientKey);
+        Client client = new Client("http://node-17-com.universa.io:8080", clientKey, null);
 
         Contract c = new Contract(clientKey);
         c.setExpiresAt(ZonedDateTime.now().plusSeconds(300));

@@ -63,7 +63,7 @@ public class Client {
     }
 
     public boolean ping() throws IOException {
-        client.command("sping");
+        httpClient.command("sping");
         return true;
     }
 
@@ -71,7 +71,7 @@ public class Client {
         Client c = clients.get(i);
         if (c == null) {
             NodeRecord r = nodes.get(i);
-            c = new Client(r.url, clientPrivateKey, r.key);
+            c = new Client(r.url, clientPrivateKey, r.key, null);
             clients.set(i, c);
         }
         return c;
@@ -81,22 +81,22 @@ public class Client {
         T execute() throws Exception;
     }
 
-    final BasicHttpClient client;
+    final BasicHttpClient httpClient;
 
     public Client(String rootUrlString, PrivateKey clientPrivateKey,
-                  PublicKey nodePublicKey) throws IOException {
-        client = new BasicHttpClient(rootUrlString);
+                  PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
+        httpClient = new BasicHttpClient(rootUrlString);
         this.clientPrivateKey = clientPrivateKey;
-        client.start(clientPrivateKey, nodePublicKey);
+        httpClient.start(clientPrivateKey, nodePublicKey, session);
     }
 
-    public Client(PrivateKey myPrivateKey, NodeInfo nodeInfo) throws IOException {
-        client = new BasicHttpClient(nodeInfo.publicUrlString());
+    public Client(PrivateKey myPrivateKey, NodeInfo nodeInfo, BasicHttpClientSession session) throws IOException {
+        httpClient = new BasicHttpClient(nodeInfo.publicUrlString());
         this.clientPrivateKey = myPrivateKey;
-        client.start(myPrivateKey, nodeInfo.getPublicKey());
+        httpClient.start(myPrivateKey, nodeInfo.getPublicKey(), session);
     }
 
-    public Client(String someNodeUrl, PrivateKey clientPrivateKey) throws IOException {
+    public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session) throws IOException {
         this.clientPrivateKey = clientPrivateKey;
         loadNetworkFrom(someNodeUrl);
         clients = new ArrayList<>(size());
@@ -104,12 +104,21 @@ public class Client {
             clients.add(null);
         }
         NodeRecord r = Do.sample(nodes);
-        client = new BasicHttpClient(r.url);
-        client.start(clientPrivateKey, r.key);
+        httpClient = new BasicHttpClient(r.url);
+        httpClient.start(clientPrivateKey, r.key, session);
     }
 
     public String getUrl() {
-        return client.getUrl();
+        return httpClient.getUrl();
+    }
+
+
+    public BasicHttpClientSession getSession() throws IllegalStateException {
+        return httpClient.getSession();
+    }
+
+    public BasicHttpClientSession getSession(int i) throws IllegalStateException, IOException {
+        return getClient(i).httpClient.getSession();
     }
 
     public class NodeRecord {
@@ -164,7 +173,7 @@ public class Client {
     }
 
     public ItemResult register(byte[] packed, long millisToWait) throws ClientError {
-        ItemResult lastResult = protect(() -> (ItemResult) client.command("approve", "packedItem", packed)
+        ItemResult lastResult = protect(() -> (ItemResult) httpClient.command("approve", "packedItem", packed)
                 .get("itemResult"));
         if (millisToWait > 0 && lastResult.state.isPending()) {
             Instant end = Instant.now().plusMillis(millisToWait);
@@ -196,7 +205,7 @@ public class Client {
 //                                                    "itemId", itemId).getOrThrow("itemResult");
 //                System.out.println(">> " + r);
 //            }
-            return (ItemResult) client.command("getState",
+            return (ItemResult) httpClient.command("getState",
                                                "itemId", itemId).getOrThrow("itemResult");
         });
     }
@@ -209,7 +218,7 @@ public class Client {
 //                                                    "itemId", itemId).getOrThrow("itemResult");
 //                System.out.println(">> " + r);
 //            }
-            return (ItemResult) client.command("getState",
+            return (ItemResult) httpClient.command("getState",
                                                "itemId", itemId).getOrThrow("itemResult");
         });
     }
@@ -292,16 +301,16 @@ public class Client {
         });
     }
 
-    private int getNodeNumber() {
-        return client.getNodeNumber();
+    public int getNodeNumber() {
+        return httpClient.getNodeNumber();
     }
 
     public Binder command(String name, Object... params) throws IOException {
-        return client.command(name, params);
+        return httpClient.command(name, params);
     }
 
     public BasicHttpClient.Answer request(String name, Object... params) throws IOException {
-        return client.request(name, params);
+        return httpClient.request(name, params);
     }
 
     protected final <T> T protect(Executor<T> e) throws ClientError {
