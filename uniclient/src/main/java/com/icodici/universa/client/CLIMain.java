@@ -586,7 +586,7 @@ public class CLIMain {
 
 //            contract.seal();
             report("registering the contract " + contract.getId().toBase64String() + " from " + source);
-            registerContract(contract);
+            registerContract(contract, (int)options.valueOf("wait"));
         }
         finish();
     }
@@ -1547,7 +1547,7 @@ public class CLIMain {
 
         tc.seal();
 
-        registerContract(tc, true);
+        registerContract(tc, 0,true);
 
         return tc;
     }
@@ -1556,9 +1556,10 @@ public class CLIMain {
      * Register a specified contract.
      *
      * @param contract              must be a sealed binary.
+     * @param waitTime - wait time for responce.
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
      */
-    public static void registerContract(Contract contract, Boolean fromPackedTransaction) throws IOException {
+    public static void registerContract(Contract contract, int waitTime, Boolean fromPackedTransaction) throws IOException {
 //        checkContract(contract);
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
@@ -1570,9 +1571,9 @@ public class CLIMain {
 
             ItemResult r;
             if (fromPackedTransaction) {
-                r = getClientNetwork().register(contract.getPackedTransaction(), (int)options.valueOf("wait"));
+                r = getClientNetwork().register(contract.getPackedTransaction(), waitTime);
             } else {
-                r = getClientNetwork().register(contract.getLastSealedBinary(), (int)options.valueOf("wait"));
+                r = getClientNetwork().register(contract.getLastSealedBinary(), waitTime);
             }
             report("submitted with result:");
             report(r.toString());
@@ -1585,7 +1586,17 @@ public class CLIMain {
      * @param contract must be a sealed binary file.
      */
     public static void registerContract(Contract contract) throws IOException {
-        registerContract(contract, true);
+        registerContract(contract, 0, true);
+    }
+
+    /**
+     * Register a specified contract.
+     *
+     * @param contract must be a sealed binary file.
+     * @param waitTime - wait time for responce.
+     */
+    public static void registerContract(Contract contract, int waitTime) throws IOException {
+        registerContract(contract, waitTime, true);
     }
 
 
