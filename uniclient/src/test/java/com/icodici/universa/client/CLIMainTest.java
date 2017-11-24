@@ -262,7 +262,12 @@ public class CLIMainTest {
     @Test
     public void checkTheNetwork() throws Exception {
         Reporter r = callMain("--network", "--verbose");
-        assertThat(r.getMessage(-1), matches("3 node"));
+        assertThat(r.getMessage(-1) +
+                        r.getMessage(-2) +
+                        r.getMessage(-3) +
+                        r.getMessage(-4) +
+                        r.getMessage(-5),
+                matches("3 node"));
     }
 
     @Test

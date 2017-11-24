@@ -1879,6 +1879,7 @@ public class CLIMain {
 
             s = getSession(clientNetwork.getNodeNumber());
             reporter.verbose("Session for " + clientNetwork.getNodeNumber() + " is exist: " + (s != null));
+            if(s != null) reporter.verbose("Session id is " + s.getSessionId());
             clientNetwork.start(s);
 
         }

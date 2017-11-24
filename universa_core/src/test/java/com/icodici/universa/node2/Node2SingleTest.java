@@ -124,7 +124,7 @@ public class Node2SingleTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 100);
+        ItemResult result = node.waitItem(item.getId(), 200);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.waitItem(item.getId(), 100);
@@ -361,7 +361,7 @@ public class Node2SingleTest extends TestCase {
 
         TestItem existing = new TestItem(true);
         node.registerItem(existing);
-        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 100);
+        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 200);
 
         // but second is missing
         HashId missingId = HashId.createRandom();

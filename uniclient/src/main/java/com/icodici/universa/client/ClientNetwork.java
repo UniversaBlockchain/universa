@@ -50,7 +50,7 @@ public class ClientNetwork {
     }
 
     public ClientNetwork(String nodeUrl, BasicHttpClientSession session, boolean delayedStart) throws IOException {
-        client = new Client(nodeUrl, CLIMain.getPrivateKey(), session);
+        client = new Client(nodeUrl, CLIMain.getPrivateKey(), session, delayedStart);
         if (client == null)
             throw new IOException("failed to connect to to the universa network");
         reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
