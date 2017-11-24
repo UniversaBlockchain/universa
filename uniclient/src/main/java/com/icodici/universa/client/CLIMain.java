@@ -1868,37 +1868,18 @@ public class CLIMain {
         if (clientNetwork == null) {
             reporter.verbose("ClientNetwork not exist, create one");
 
-            int nodeNumber = -1;
-
             BasicHttpClientSession s = null;
             if(nodeUrl != null) {
-                if( nodeNumber < 0 ) {
-                    Matcher matcher = Pattern.compile("node-(\\d+)-").matcher(nodeUrl);
-                    if( matcher.find() ) {
-                        nodeNumber = Integer.valueOf(matcher.group(1));
-                    }
-                }
-                s = getSession(nodeNumber);
-                reporter.verbose("Session is exist: " + (s != null));
-                clientNetwork = new ClientNetwork(nodeUrl, s);
+                clientNetwork = new ClientNetwork(nodeUrl, null, true);
             } else {
-                for (int i = 1; i < 10; i++) {
-                    nodeNumber = Do.randomIntInRange(1, 10);
-                    nodeUrl = "http://node-" + nodeNumber +
-                        "-com.universa.io:8080";
-                    s = getSession(nodeNumber);
-                    reporter.verbose("Session for " + nodeNumber + " is exist: " + (s != null));
-                    reporter.verbose(nodeUrl);
-                    try {
-                        clientNetwork = new ClientNetwork(nodeUrl, s);
-                        break;
-                    } catch (IOException e) {
-                        reporter.warning("failed to read network from node " + i);
-                    }
-                }
+                clientNetwork = new ClientNetwork(null, true);
             }
             if (clientNetwork.client == null)
                 throw new IOException("failed to connect to to the universa network");
+
+            s = getSession(clientNetwork.getNodeNumber());
+            reporter.verbose("Session for " + clientNetwork.getNodeNumber() + " is exist: " + (s != null));
+            clientNetwork.start(s);
 
         }
         if(clientNetwork != null)

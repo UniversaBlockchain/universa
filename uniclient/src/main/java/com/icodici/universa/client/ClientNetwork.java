@@ -24,24 +24,32 @@ public class ClientNetwork {
 
     Client client;
 
-//    public ClientNetwork(BasicHttpClientSession session) throws IOException {
-//        for (int i = 1; i < 10; i++) {
-//            try {
-//                client = new Client("http://node-" +
-//                        Do.randomIntInRange(1, 10) +
-//                        "-com.universa.io:8080", CLIMain.getPrivateKey(), session);
-//                break;
-//            } catch (IOException e) {
-//                reporter.warning("failed to read network from node " + i);
-//            }
-//        }
-//        if (client == null)
-//            throw new IOException("failed to connect to to the universa network");
-//        reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
-//        reporter.message("Network version: " + client.getVersion());
-//    }
+    public ClientNetwork(BasicHttpClientSession session) throws IOException {
+        this(session, false);
+    }
+
+    public ClientNetwork(BasicHttpClientSession session, boolean delayedStart) throws IOException {
+        for (int i = 1; i < 10; i++) {
+            try {
+                client = new Client("http://node-" +
+                        Do.randomIntInRange(1, 10) +
+                        "-com.universa.io:8080", CLIMain.getPrivateKey(), session, delayedStart);
+                break;
+            } catch (IOException e) {
+                reporter.warning("failed to read network from node " + i);
+            }
+        }
+        if (client == null)
+            throw new IOException("failed to connect to to the universa network");
+        reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
+        reporter.message("Network version: " + client.getVersion());
+    }
 
     public ClientNetwork(String nodeUrl, BasicHttpClientSession session) throws IOException {
+        this(nodeUrl, session, false);
+    }
+
+    public ClientNetwork(String nodeUrl, BasicHttpClientSession session, boolean delayedStart) throws IOException {
         client = new Client(nodeUrl, CLIMain.getPrivateKey(), session);
         if (client == null)
             throw new IOException("failed to connect to to the universa network");
@@ -55,6 +63,10 @@ public class ClientNetwork {
             throw new IOException("failed to connect to to the universa network");
         reporter.verbose("Read Universa network configuration: " + client.size() + " nodes");
         reporter.message("Network version: " + client.getVersion());
+    }
+
+    public void start(BasicHttpClientSession session) throws IOException {
+        client.start(session);
     }
 
     public ItemResult register(byte[] packedContract) throws ClientError {

@@ -46,6 +46,8 @@ public class Client {
 
     private final PrivateKey clientPrivateKey;
 
+    private final PublicKey nodePublicKey;
+
     List<Client> clients;
 
     private String version;
@@ -87,16 +89,22 @@ public class Client {
                   PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
         httpClient = new BasicHttpClient(rootUrlString);
         this.clientPrivateKey = clientPrivateKey;
+        this.nodePublicKey = nodePublicKey;
         httpClient.start(clientPrivateKey, nodePublicKey, session);
     }
 
     public Client(PrivateKey myPrivateKey, NodeInfo nodeInfo, BasicHttpClientSession session) throws IOException {
         httpClient = new BasicHttpClient(nodeInfo.publicUrlString());
         this.clientPrivateKey = myPrivateKey;
+        this.nodePublicKey = nodeInfo.getPublicKey();
         httpClient.start(myPrivateKey, nodeInfo.getPublicKey(), session);
     }
 
     public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session) throws IOException {
+        this(someNodeUrl, clientPrivateKey, session, false);
+    }
+
+    public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session, boolean delayedStart) throws IOException {
         this.clientPrivateKey = clientPrivateKey;
         loadNetworkFrom(someNodeUrl);
         clients = new ArrayList<>(size());
@@ -105,7 +113,13 @@ public class Client {
         }
         NodeRecord r = Do.sample(nodes);
         httpClient = new BasicHttpClient(r.url);
-        httpClient.start(clientPrivateKey, r.key, session);
+        this.nodePublicKey = r.key;
+        if(!delayedStart)
+            httpClient.start(clientPrivateKey, r.key, session);
+    }
+
+    public void start(BasicHttpClientSession session) throws IOException {
+        httpClient.start(clientPrivateKey, nodePublicKey, session);
     }
 
     public String getUrl() {
