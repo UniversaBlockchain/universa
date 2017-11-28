@@ -14,8 +14,8 @@ import java.util.concurrent.Callable;
 
 /**
  * Local storage for {@link StateRecord} objects, sort of a database. The implementations should not, except where
- * noted, implement any business logic, which is incapsulated in {@link StateRecord}, {@link Elections} and
- * {@link LocalNode} clazses. This is only some type of a storage.
+ * noted, implement any business logic, which is incapsulated in {@link StateRecord} and
+ * {@link com.icodici.universa.node2.Node} classes. This is only some type of a storage.
  * <p>
  * Created by sergeych on 16/07/2017.
  */
@@ -69,6 +69,18 @@ public interface Ledger {
     default boolean isApproved(HashId id) {
         StateRecord r = getRecord(id);
         return r != null && r.getState().isApproved();
+    }
+
+    /**
+     * Shortcut method: check that record exists and its state returns {@link ItemState#isConsensusFound()}}. Check it to
+     * ensure its meaning.
+     *
+     * @param id
+     * @return true if it is.
+     */
+    default boolean isConsensusFound(HashId id) {
+        StateRecord r = getRecord(id);
+        return r != null && r.getState().isConsensusFound();
     }
 
     /**

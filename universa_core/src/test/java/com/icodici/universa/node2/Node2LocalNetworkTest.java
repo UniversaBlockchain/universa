@@ -17,14 +17,12 @@ import com.icodici.universa.node2.network.DatagramAdapter;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.StopWatch;
-import net.sergeych.utils.LogPrinter;
 import org.junit.After;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -139,7 +137,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
                 for (Node n : nodes.values()) {
                     try {
                         ItemResult r = n.waitItem(ok.getId(), 5500);
-                        if( !r.state.consensusFound())
+                        if( !r.state.isConsensusFound())
                             Thread.sleep(30);
                         assertEquals("In node "+n+" item "+ok.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {

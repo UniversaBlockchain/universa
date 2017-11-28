@@ -45,6 +45,11 @@ public class Config {
     private Duration resyncTime = Duration.ofMillis(1000);
     private Duration maxResyncTime = Duration.ofMinutes(5);
 
+    /**
+     * num of unknown (not approved, declined, revoked or locked) subcontracts of a complex contract that starts resync
+     */
+    private int unknownSubContractsToResync;
+
     public int getPositiveConsensus() {
         return positiveConsensus;
     }
@@ -142,5 +147,12 @@ public class Config {
         if (n > getPositiveConsensus())
             n = getNegativeConsensus();
         return n;
+    }
+
+    /**
+     * num of unknown (not approved, declined, revoked or locked) subcontracts of a complex contract that starts resync
+      */
+    public int getUnknownSubContractsToResync() {
+        return unknownSubContractsToResync;
     }
 }

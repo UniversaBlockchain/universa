@@ -441,6 +441,7 @@ public class Node {
                 throw new RuntimeException("double check!");
 
             ItemState newState;
+            List<HashId> unknownParts = new ArrayList<>();
             debug("Checking " + itemId + " state was " + record.getState());
             // Check the internal state
             // Too bad if basic check isn't passed, we will not process it further
@@ -450,6 +451,9 @@ public class Node {
                     if (!ledger.isApproved(id)) {
                         item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                     }
+                    if (!ledger.isConsensusFound(id)) {
+                        unknownParts.add(id);
+                    }
                 }
                 // check revoking items
                 for (Approvable a : item.getRevokingItems()) {
@@ -458,6 +462,10 @@ public class Node {
                         item.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
                     } else
                         lockedToRevoke.add(r);
+
+                    if (!ledger.isConsensusFound(a.getId())) {
+                        unknownParts.add(a.getId());
+                    }
                 }
                 // check new items
                 for (Approvable newItem : item.getNewItems()) {
@@ -466,27 +474,34 @@ public class Node {
                     } else {
                         StateRecord r = record.createOutputLockRecord(newItem.getId());
                         if (r == null) {
-                            item.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item existst in ledger");
+                            item.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
                         } else {
                             lockedToCreate.add(r);
                         }
                     }
                 }
             }
-            boolean checkPassed = item.getErrors().isEmpty();
+            boolean checkPassed = item.getErrors().isEmpty() && unknownParts.size() < config.getUnknownSubContractsToResync();
             synchronized (mutex) {
                 if (record.getState() == ItemState.PENDING) {
-                    newState = checkPassed ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE;
-                    setState(newState);
+                    if(checkPassed) {
+                        newState = ItemState.PENDING_POSITIVE;
+                        setState(newState);
+                    }
                 }
             }
             if (!checkPassed) {
                 informer.inform(item);
             }
-            record.setExpiresAt(item.getExpiresAt());
-            record.save();
-            vote(myInfo, record.getState());
-            broadcastMyState();
+            if(unknownParts.size() < config.getUnknownSubContractsToResync()) {
+                record.setExpiresAt(item.getExpiresAt());
+                record.save();
+                vote(myInfo, record.getState());
+                broadcastMyState();
+            } else {
+                // TODO: run resync
+                debug("Some of sub-contracts was not approved, its should be resync");
+            }
         }
 
         //////////// polling section /////////////
