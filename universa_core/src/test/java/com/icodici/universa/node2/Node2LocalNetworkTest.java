@@ -228,9 +228,6 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/for_offed_node.transaction";
-
-//        LogPrinter.showDebug(true);
 
         for (TestLocalNetwork ln : networks) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
@@ -240,7 +237,9 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         AsyncEvent ae = new AsyncEvent();
 
-        Contract contract = readContract(transactionName, true);
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        contract.seal();
 
         addDetailsToAllLedgers(contract);
 
@@ -286,16 +285,15 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void checkRegisterContractOnTemporaryOffedNetwork() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/for_offed_node.transaction";
-
-//        LogPrinter.showDebug(true);
 
         networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
         networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
 
         AsyncEvent ae = new AsyncEvent();
 
-        Contract contract = readContract(transactionName, true);
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        contract.seal();
 
         addDetailsToAllLedgers(contract);
 
@@ -358,16 +356,15 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void checkRegisterContractOnTemporaryOffedAndHalfOnedNetwork() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/for_offed_node.transaction";
-
-//        LogPrinter.showDebug(true);
 
         networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
         networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
 
         AsyncEvent ae = new AsyncEvent();
 
-        Contract contract = readContract(transactionName, true);
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        contract.seal();
 
         addDetailsToAllLedgers(contract);
 
