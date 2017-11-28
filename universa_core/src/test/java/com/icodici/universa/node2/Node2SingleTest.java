@@ -288,7 +288,7 @@ public class Node2SingleTest extends TestCase {
         return;
     }
 
-    @Test(timeout = 500)
+    @Test(timeout = 2500)
     public void badReferencesDeclineListStates() throws Exception {
         for (ItemState badState : Arrays.asList(
                 ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
