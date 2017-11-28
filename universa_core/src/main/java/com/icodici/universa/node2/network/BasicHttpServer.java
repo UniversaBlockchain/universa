@@ -100,10 +100,10 @@ public class BasicHttpServer {
         Binder execute(Binder params, Session session) throws Exception;
     }
 
-    private final ConcurrentHashMap<String, SecureEndpoint> secureEncpoins = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SecureEndpoint> secureEndpoints = new ConcurrentHashMap<>();
 
     public void addSecureEndpoint(String commandName, SecureEndpoint ep) {
-        secureEncpoins.put(commandName, ep);
+        secureEndpoints.put(commandName, ep);
     }
 
     public void addEndpoint(String path, Endpoint ep) {
@@ -378,7 +378,7 @@ public class BasicHttpServer {
                     case "test_error":
                         throw new IllegalAccessException("sample error");
                     default:
-                        SecureEndpoint sep = secureEncpoins.get(cmd);
+                        SecureEndpoint sep = secureEndpoints.get(cmd);
                         if (sep != null)
                             return sep.execute(params.getBinder("params", Binder.EMPTY), this);
                 }
