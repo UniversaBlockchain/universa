@@ -2,7 +2,7 @@
 __type: SmartContract
 
 # minimum Universa smart contract API level required to process this contract
-api_level: 2
+api_level: 3
 
 # this is an required and immutable section that must be copied between states. it defines main contract
 # properties and permissions.
