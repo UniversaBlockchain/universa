@@ -40,6 +40,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
     public static List<Node> nodes = new ArrayList<>();
 
     public void setUp() throws Exception {
+        nodes = new ArrayList<>();
         config = new Config();
         config.setPositiveConsensus(2);
         config.setNegativeConsensus(1);
@@ -74,6 +75,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         }
         network = en;
         node = nodes.get(0);
+        Thread.sleep(100);
     }
 
     @Test
