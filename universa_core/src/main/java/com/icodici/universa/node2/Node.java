@@ -225,7 +225,6 @@ public class Node {
         debug("resync state before: " + ir.state);
         debug("x instanceof ItemProcessor " + (x instanceof ItemProcessor));
         if (x instanceof ItemProcessor) {
-//            ((ItemProcessor) x).doneEvent.await(millisToWait);
             ((ItemProcessor) x).startResync();
         }
 
