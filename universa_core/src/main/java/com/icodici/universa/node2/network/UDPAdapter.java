@@ -350,10 +350,10 @@ public class UDPAdapter extends DatagramAdapter {
         Session session;
 
         session = new Session(address, port);
-        report(getLabel(), "session created for nodeId " + remoteId);
+        report(getLabel(), "session created for nodeId " + remoteId, VerboseLevel.BASE);
         session.remoteNodeId = remoteId;
         session.sessionKey = sessionKey;
-        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
+        report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " localNonce is " + session.localNonce + " for " + session.remoteNodeId, VerboseLevel.BASE);
         sessionsById.putIfAbsent(remoteId, session);
 
         return session;
@@ -367,10 +367,10 @@ public class UDPAdapter extends DatagramAdapter {
             blocksToRemove = new ArrayList();
             for (Block block : session.sendingBlocksQueue) {
                 if(!block.isDelivered()) {
-                    report(getLabel(), "block: " + block.blockId + " type: " + block.type + " sendAttempts: " + block.sendAttempts + " not delivered", VerboseLevel.BASE);
+                    report(getLabel(), "block: " + block.blockId + " type: " + block.type + " sendAttempts: " + block.sendAttempts + " not delivered");
                     try {
                         if(block.sendAttempts >= RETRANSMIT_MAX_ATTEMPTS) {
-                            report(getLabel(), "block " + block.blockId + " type " + block.type + " will be removed", VerboseLevel.BASE);
+                            report(getLabel(), "block " + block.blockId + " type " + block.type + " will be removed");
                             blocksToRemove.add(block);
                         } else {
                             sendBlock(block, session);
@@ -537,6 +537,7 @@ public class UDPAdapter extends DatagramAdapter {
 //                                    if (session == null) {
 //                                        session = getOrCreateSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
 //                                    }
+                                    report(getLabel(), "got packet type: " + packet.type + " brotherPacketsNum: " + packet.brotherPacketsNum + " from " + packet.senderNodeId, VerboseLevel.BASE);
                                     Session session = getOrCreateSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
                                     sendPacketAck(session, packet.blockId, packet.packetId);
                                     switch (packet.type) {
@@ -861,11 +862,12 @@ public class UDPAdapter extends DatagramAdapter {
             if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                 sendAck(session, block.blockId);
             } else {
-                if(session != null) {
-                    if(sessionsById.containsKey(session.remoteNodeId)) {
-                        sessionsById.remove(session.remoteNodeId);
-                    }
-                }
+//                if(session != null) {
+//                    if(sessionsById.containsKey(session.remoteNodeId)) {
+//                        sessionsById.remove(session.remoteNodeId);
+//                    }
+//                }
+                report(getLabel(), "answerAckOrNack " + session, VerboseLevel.BASE);
                 session = getOrCreateSession(block.senderNodeId, address, port);
                 // we remove block from obtained because it broken and will can be regiven with correct data
                 obtainedBlocks.remove(block.blockId);
