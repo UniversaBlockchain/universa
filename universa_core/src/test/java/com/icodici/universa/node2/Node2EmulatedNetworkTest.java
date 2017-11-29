@@ -183,10 +183,12 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void checkSimpleCase() throws Exception {
-        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+//        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
 
         for (int i = 0; i < 5; i++) {
-            Contract contract = readContract(transactionName, true);
+            Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            contract.seal();
 
             addDetailsToAllLedgers(contract);
 
