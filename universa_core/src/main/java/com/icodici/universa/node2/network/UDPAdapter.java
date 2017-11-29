@@ -748,7 +748,7 @@ public class UDPAdapter extends DatagramAdapter {
                                 throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
                             }
                         } else {
-                            throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session is broken or does not exist");
+                            throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session does not exist");
                         }
                     }
                     break;

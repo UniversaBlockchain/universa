@@ -418,7 +418,7 @@ public class PermissionsTest extends ContractTestBase {
         sealCheckTrace(c2, false);
     }
 
-    @Test
+//    @Test
 //    public void shouldCheckSplitJoinAndSent80coins() throws Exception {
 ////        String transactionName = "./src/test_contracts/transaction/0a875b1f-d979-45d4-85f5-a388e70692a3.transaction";
 //
