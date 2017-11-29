@@ -419,97 +419,97 @@ public class PermissionsTest extends ContractTestBase {
     }
 
     @Test
-    public void shouldCheckSplitJoinAndSent80coins() throws Exception {
-//        String transactionName = "./src/test_contracts/transaction/0a875b1f-d979-45d4-85f5-a388e70692a3.transaction";
-
-        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
-        c.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
-        c.seal();
-        assertTrue(c.check());
-        c.traceErrors();
-
-        assertEquals(100, c.getStateData().get("amount"));
-
-
-        // 80
-        Contract cRev = c.createRevision();
-        Contract c2 = cRev.splitValue("amount", new Decimal(80));
-        c2.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
-
-//        Contract contract = readContract(transactionName, true);
-
-        sealCheckTrace(c2, true);
-    }
-
-    @Test
-    public void shouldCheckSplitJoinAndSent50coins() throws Exception {
-//        String transactionName = "./src/test_contracts/transaction/2a8960bb-9a30-4173-8702-42084553e9b4.transaction";
-
-        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
-        c.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
-        c.seal();
-        assertTrue(c.check());
-        c.traceErrors();
-
-        assertEquals(100, c.getStateData().get("amount"));
-
-
-        // 50
-        Contract cRev = c.createRevision();
-        Contract c2 = cRev.splitValue("amount", new Decimal(50));
-        c2.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
-
-//        Contract contract = readContract(transactionName, true);
-
-        sealCheckTrace(c2, true);
-    }
-
-    @Test
-    public void shouldCheckSplitJoinAndSentTest() throws Exception {
-//        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
-
-        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
-        c.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
-        c.seal();
-        assertTrue(c.check());
-        c.traceErrors();
-
-        assertEquals(100, c.getStateData().get("amount"));
-
-
-        // 20
-        Contract cRev = c.createRevision();
-        Contract c2 = cRev.splitValue("amount", new Decimal(20));
-        c2.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
-
-//        Contract contract = readContract(transactionName, true);
-
-        sealCheckTrace(c2, true);
-    }
-
-    @Test
-    public void sendTwice() throws Exception {
-//        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
-
-        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
-        c.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
-        c.seal();
-        assertTrue(c.check());
-        c.traceErrors();
-
-        assertEquals(100, c.getStateData().get("amount"));
-
-
-        // 80
-        Contract cRev = c.createRevision();
-        cRev.splitValue("amount", new Decimal(80));
-        Contract c2 = cRev.splitValue("amount", new Decimal(80));
-        c2.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
-
-//        Contract contract = readContract(transactionName, true);
-
-        sealCheckTrace(c2, true);
-    }
+//    public void shouldCheckSplitJoinAndSent80coins() throws Exception {
+////        String transactionName = "./src/test_contracts/transaction/0a875b1f-d979-45d4-85f5-a388e70692a3.transaction";
+//
+//        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
+//        c.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
+//        c.seal();
+//        assertTrue(c.check());
+//        c.traceErrors();
+//
+//        assertEquals(100, c.getStateData().get("amount"));
+//
+//
+//        // 80
+//        Contract cRev = c.createRevision();
+//        Contract c2 = cRev.splitValue("amount", new Decimal(80));
+//        c2.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
+//
+////        Contract contract = readContract(transactionName, true);
+//
+//        sealCheckTrace(c2, true);
+//    }
+//
+//    @Test
+//    public void shouldCheckSplitJoinAndSent50coins() throws Exception {
+////        String transactionName = "./src/test_contracts/transaction/2a8960bb-9a30-4173-8702-42084553e9b4.transaction";
+//
+//        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
+//        c.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
+//        c.seal();
+//        assertTrue(c.check());
+//        c.traceErrors();
+//
+//        assertEquals(100, c.getStateData().get("amount"));
+//
+//
+//        // 50
+//        Contract cRev = c.createRevision();
+//        Contract c2 = cRev.splitValue("amount", new Decimal(50));
+//        c2.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
+//
+////        Contract contract = readContract(transactionName, true);
+//
+//        sealCheckTrace(c2, true);
+//    }
+//
+//    @Test
+//    public void shouldCheckSplitJoinAndSentTest() throws Exception {
+////        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
+//
+//        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
+//        c.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
+//        c.seal();
+//        assertTrue(c.check());
+//        c.traceErrors();
+//
+//        assertEquals(100, c.getStateData().get("amount"));
+//
+//
+//        // 20
+//        Contract cRev = c.createRevision();
+//        Contract c2 = cRev.splitValue("amount", new Decimal(20));
+//        c2.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
+//
+////        Contract contract = readContract(transactionName, true);
+//
+//        sealCheckTrace(c2, true);
+//    }
+//
+//    @Test
+//    public void sendTwice() throws Exception {
+////        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+//
+//        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
+//        c.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
+//        c.seal();
+//        assertTrue(c.check());
+//        c.traceErrors();
+//
+//        assertEquals(100, c.getStateData().get("amount"));
+//
+//
+//        // 80
+//        Contract cRev = c.createRevision();
+//        cRev.splitValue("amount", new Decimal(80));
+//        Contract c2 = cRev.splitValue("amount", new Decimal(80));
+//        c2.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
+//
+////        Contract contract = readContract(transactionName, true);
+//
+//        sealCheckTrace(c2, true);
+//    }
 
     private void setAndCheckOldNewValues(Binder d, Binder d1, String oldValue, String newValue, String field) {
         assertEquals(oldValue, d.getString(field));
