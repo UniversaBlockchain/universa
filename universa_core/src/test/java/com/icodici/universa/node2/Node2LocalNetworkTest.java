@@ -228,6 +228,74 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     }
 
     @Test
+    public void emulateNonStableNetworkWithoutStableCore() throws Exception {
+
+        LogPrinter.showDebug(true);
+
+//        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+//        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        int numSubContracts = 5;
+        List<Contract> subContracts = new ArrayList<>();
+        for (int i = 0; i < numSubContracts; i++) {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            c.seal();
+
+//            addDetailsToAllLedgers(c);
+//            addToAllLedgers(c, ItemState.UNDEFINED);
+
+            subContracts.add(c);
+        }
+
+        for (int i = 0; i < numSubContracts; i++) {
+            node.registerItem(subContracts.get(i));
+        }
+
+        Thread.sleep(5000);
+
+        for (int i = 0; i < numSubContracts; i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+//        Timer timer = new Timer();
+//        timer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//
+//                System.out.println("-----------nodes state--------------");
+//
+//                boolean all_is_approved = true;
+//                for (Node n : nodes.values()) {
+//                    ItemResult r = n.checkItem(contract.getId());
+//                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+//                    if(r.state != ItemState.APPROVED) {
+//                        all_is_approved = false;
+//                    }
+//                }
+//
+////                if(all_is_approved) ae.fire();
+//            }
+//        }, 0, 1000);
+//
+//        try {
+//            ae.await(30000);
+//        } catch (TimeoutException e) {
+//            System.out.println("time is up");
+//        }
+//
+//        timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+    }
+
+    @Test
     public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
 
         for (TestLocalNetwork ln : networks) {
