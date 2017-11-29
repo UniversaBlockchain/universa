@@ -48,7 +48,12 @@ public class Config {
     /**
      * num of unknown (not approved, declined, revoked or locked) subcontracts of a complex contract that starts resync
      */
-    private int unknownSubContractsToResync;
+    private int unknownSubContractsToResync = 1;
+
+    /**
+     * num of known (approved, declined, revoked or locked) subcontracts of a complex contract that starts resync if some another contracts is unknown
+     */
+    private int knownSubContractsToResync = 1;
 
     public int getPositiveConsensus() {
         return positiveConsensus;
@@ -151,8 +156,15 @@ public class Config {
 
     /**
      * num of unknown (not approved, declined, revoked or locked) subcontracts of a complex contract that starts resync
-      */
+     */
     public int getUnknownSubContractsToResync() {
         return unknownSubContractsToResync;
+    }
+
+    /**
+     * num of known (approved, declined, revoked or locked) subcontracts of a complex contract that starts resync if some another contracts is unknown
+     */
+    public int getKnownSubContractsToResync() {
+        return knownSubContractsToResync;
     }
 }

@@ -429,19 +429,22 @@ public class Node {
             synchronized (cache) {
                 cache.put(item);
             }
-            checkItem();
-            downloadedEvent.fire();
-            pulseStartPolling();
+            Boolean noNeedToResync = checkItem();
+            if(noNeedToResync) {
+                downloadedEvent.fire();
+                pulseStartPolling();
+            }
         }
 
         //////////// check state section /////////////
 
-        private final void checkItem() {
+        private final Boolean checkItem() {
             if (checkStarted)
                 throw new RuntimeException("double check!");
 
             ItemState newState;
             List<HashId> unknownParts = new ArrayList<>();
+            List<HashId> knownParts = new ArrayList<>();
             debug("Checking " + itemId + " state was " + record.getState());
             // Check the internal state
             // Too bad if basic check isn't passed, we will not process it further
@@ -453,6 +456,8 @@ public class Node {
                     }
                     if (!ledger.isConsensusFound(id)) {
                         unknownParts.add(id);
+                    } else {
+                        knownParts.add(id);
                     }
                 }
                 // check revoking items
@@ -465,6 +470,8 @@ public class Node {
 
                     if (!ledger.isConsensusFound(a.getId())) {
                         unknownParts.add(a.getId());
+                    } else {
+                        knownParts.add(a.getId());
                     }
                 }
                 // check new items
@@ -481,7 +488,16 @@ public class Node {
                     }
                 }
             }
-            boolean checkPassed = item.getErrors().isEmpty() && unknownParts.size() < config.getUnknownSubContractsToResync();
+            boolean checkPassed;
+            // contract is complex and consist from parts
+            if(unknownParts.size() + knownParts.size() > 0) {
+                checkPassed = item.getErrors().isEmpty() &&
+                        unknownParts.size() < config.getUnknownSubContractsToResync() &&
+                        knownParts.size() >= config.getKnownSubContractsToResync();
+            } else {
+                checkPassed = item.getErrors().isEmpty();
+            }
+
             synchronized (mutex) {
                 if (record.getState() == ItemState.PENDING) {
                     if(checkPassed) {
@@ -493,6 +509,11 @@ public class Node {
             if (!checkPassed) {
                 informer.inform(item);
             }
+            debug("Checking " + itemId + " checkPassed: " + checkPassed + " state: " + record.getState() +
+                    " errors: " + item.getErrors().size() +
+                    " unknownParts: " + unknownParts.size() +
+                    " knownParts: " + knownParts.size() +
+                    " num to resync: " + config.getUnknownSubContractsToResync());
             if(unknownParts.size() < config.getUnknownSubContractsToResync()) {
                 record.setExpiresAt(item.getExpiresAt());
                 record.save();
@@ -501,7 +522,10 @@ public class Node {
             } else {
                 // TODO: run resync
                 debug("Some of sub-contracts was not approved, its should be resync");
+                return false;
             }
+
+            return true;
         }
 
         //////////// polling section /////////////

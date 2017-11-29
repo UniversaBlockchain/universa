@@ -228,12 +228,9 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     }
 
     @Test
-    public void emulateNonStableNetworkWithoutStableCore() throws Exception {
+    public void resyncContractWithSomeUndefindSubContracts() throws Exception {
 
         LogPrinter.showDebug(true);
-
-//        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-//        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -242,24 +239,36 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         for (int i = 0; i < numSubContracts; i++) {
             Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
             c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
             c.seal();
 
-//            addDetailsToAllLedgers(c);
-//            addToAllLedgers(c, ItemState.UNDEFINED);
+            addToAllLedgers(c, ItemState.UNDEFINED);
 
             subContracts.add(c);
         }
 
         for (int i = 0; i < numSubContracts; i++) {
-            node.registerItem(subContracts.get(i));
-        }
-
-        Thread.sleep(5000);
-
-        for (int i = 0; i < numSubContracts; i++) {
             ItemResult r = node.checkItem(subContracts.get(i).getId());
             System.out.println("Contract: " + i + " state: " + r.state);
         }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(contract.check());
+
+        for (int i = 0; i < numSubContracts; i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        node.registerItem(contract);
+
+        Thread.sleep(2000);
+
+        ItemResult r = node.checkItem(contract.getId());
+        System.out.println("Complex contract state: " + r.state);
 
 //        Timer timer = new Timer();
 //        timer.scheduleAtFixedRate(new TimerTask() {
