@@ -242,7 +242,10 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
             assertTrue(c.check());
             c.seal();
 
-            addToAllLedgers(c, ItemState.UNDEFINED);
+            if(i == 0)
+                addToAllLedgers(c, ItemState.APPROVED);
+            else
+                addToAllLedgers(c, ItemState.UNDEFINED);
 
             subContracts.add(c);
         }
@@ -265,43 +268,33 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         node.registerItem(contract);
 
-        Thread.sleep(2000);
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
 
-        ItemResult r = node.checkItem(contract.getId());
-        System.out.println("Complex contract state: " + r.state);
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
 
-//        Timer timer = new Timer();
-//        timer.scheduleAtFixedRate(new TimerTask() {
-//            @Override
-//            public void run() {
-//
-//                System.out.println("-----------nodes state--------------");
-//
-//                boolean all_is_approved = true;
-//                for (Node n : nodes.values()) {
-//                    ItemResult r = n.checkItem(contract.getId());
-//                    System.out.println("Node: " + n.toString() + " state: " + r.state);
-//                    if(r.state != ItemState.APPROVED) {
-//                        all_is_approved = false;
-//                    }
-//                }
-//
-////                if(all_is_approved) ae.fire();
-//            }
-//        }, 0, 1000);
-//
-//        try {
-//            ae.await(30000);
-//        } catch (TimeoutException e) {
-//            System.out.println("time is up");
-//        }
-//
-//        timer.cancel();
+                if(r.state == ItemState.APPROVED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
 
         for (TestLocalNetwork ln : networks) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
+
+        ItemResult r = node.checkItem(contract.getId());
+        assertEquals(ItemState.APPROVED, r.state);
     }
 
     @Test
