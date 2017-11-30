@@ -92,7 +92,7 @@ public enum ItemState {
      *
      * @return
      */
-    public boolean consensusFound() {
+    public boolean isConsensusFound() {
         switch (this) {
             case LOCKED:
             case APPROVED:

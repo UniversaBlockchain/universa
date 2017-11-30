@@ -7,8 +7,13 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.universa.Approvable;
+import com.icodici.universa.HashId;
+
 import java.time.Duration;
 import java.time.temporal.TemporalAmount;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Config {
 
@@ -44,6 +49,11 @@ public class Config {
     private Duration maxConsensusReceivedCheckTime = Duration.ofMinutes(15);
     private Duration resyncTime = Duration.ofMillis(1000);
     private Duration maxResyncTime = Duration.ofMinutes(5);
+
+    /**
+     * num of known (approved, declined, revoked or locked) subcontracts of a complex contract that starts resync if some another contracts is unknown
+     */
+    private int knownSubContractsToResync = 1;
 
     public int getPositiveConsensus() {
         return positiveConsensus;
@@ -142,5 +152,13 @@ public class Config {
         if (n > getPositiveConsensus())
             n = getNegativeConsensus();
         return n;
+    }
+
+    /**
+     * num of known (approved, declined, revoked or locked) subcontracts of a complex contract that starts resync
+     * if some another contracts is unknown
+     */
+    public int getKnownSubContractsToResync() {
+        return knownSubContractsToResync;
     }
 }

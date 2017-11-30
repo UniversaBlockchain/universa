@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
@@ -24,7 +25,6 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -106,6 +106,10 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     private List<TestLocalNetwork> networks = new ArrayList<>();
 
+    private interface RunnableWithException<T> {
+        void run(T param) throws Exception;
+    }
+
     @Test
     public void networkPassesData() throws Exception {
         AsyncEvent<Void> ae = new AsyncEvent<>();
@@ -141,8 +145,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
                 for (Node n : nodes.values()) {
                     try {
                         ItemResult r = n.waitItem(ok.getId(), 5500);
-                        System.out.println(i + " " + r.state);
-                        if( !r.state.consensusFound())
+                        if( !r.state.isConsensusFound())
                             Thread.sleep(30);
                         assertEquals("In node "+n+" item "+ok.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
@@ -216,8 +219,14 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 //    }
 
     private void addToAllLedgers(Contract c, ItemState state) {
+        addToAllLedgers(c, state, null);
+    }
+
+    private void addToAllLedgers(Contract c, ItemState state, Node exceptNode) {
         for( Node n: nodes.values() ) {
-            n.getLedger().findOrCreate(c.getId()).setState(state).save();
+            if(n != exceptNode) {
+                n.getLedger().findOrCreate(c.getId()).setState(state).save();
+            }
         }
     }
 
@@ -225,6 +234,431 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         node.registerItem(c);
         ItemResult itemResult = node.waitItem(c.getId(), 1500);
         assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+//
+//    @Test
+//    public void resyncContractWithSomeUndefindSubContracts() throws Exception {
+//
+//        LogPrinter.showDebug(true);
+//
+//        AsyncEvent ae = new AsyncEvent();
+//
+//        int numSubContracts = 5;
+//        List<Contract> subContracts = new ArrayList<>();
+//        for (int i = 0; i < numSubContracts; i++) {
+//            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+//            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//            assertTrue(c.check());
+//            c.seal();
+//
+//            if(i < config.getKnownSubContractsToResync())
+//                addToAllLedgers(c, ItemState.APPROVED);
+//            else
+//                addToAllLedgers(c, ItemState.APPROVED, node);
+//
+//            subContracts.add(c);
+//        }
+//
+//        for (int i = 0; i < numSubContracts; i++) {
+//            ItemResult r = node.checkItem(subContracts.get(i).getId());
+//            System.out.println("Contract: " + i + " state: " + r.state);
+//        }
+//
+//        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+//        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(contract.check());
+//
+//        for (int i = 0; i < numSubContracts; i++) {
+//            contract.addRevokingItems(subContracts.get(i));
+//        }
+//        contract.seal();
+//        contract.check();
+//        contract.traceErrors();
+//
+//        node.registerItem(contract);
+//
+//        Timer timer = new Timer();
+//        timer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//
+//                ItemResult r = node.checkItem(contract.getId());
+//                System.out.println("Complex contract state: " + r.state);
+//
+//                if(r.state == ItemState.APPROVED) ae.fire();
+//            }
+//        }, 0, 500);
+//
+//        try {
+//            ae.await(5000);
+//        } catch (TimeoutException e) {
+//            System.out.println("time is up");
+//        }
+//
+//        timer.cancel();
+//
+//        for (TestLocalNetwork ln : networks) {
+//            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+//            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+//        }
+//
+//        ItemResult r = node.checkItem(contract.getId());
+//        assertEquals(ItemState.APPROVED, r.state);
+//    }
+
+    public void shouldNotResyncWithLessKnownContractsEx(ItemState undefinedState, ItemState definedState) throws Exception {
+
+        // Test should broke condition to resync:
+        // should be at least one known (APPROVED, DECLINED, LOCKED, REVOKED) subcontract to start resync
+
+//        LogPrinter.showDebug(true);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        List<Contract> subContracts = new ArrayList<>();
+
+        RunnableWithException<ItemState> addContract = (ItemState state) -> {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+            addToAllLedgers(c, state);
+            subContracts.add(c);
+        };
+
+        int wantedSubContracts = 5;
+
+        int knownSubContractsToResync = config.getKnownSubContractsToResync();
+        System.out.println("knownSubContractsToResync: " + knownSubContractsToResync);
+
+        int numDefinedSubContracts = Math.min(wantedSubContracts, knownSubContractsToResync-1);
+        System.out.println("add "+numDefinedSubContracts+" defined subcontracts (with state="+definedState+")");
+        for (int i = 0; i < numDefinedSubContracts; ++i)
+            addContract.run(definedState);
+
+        int numUndefinedSubContracts = Math.max(0, wantedSubContracts - subContracts.size());
+        System.out.println("add "+numUndefinedSubContracts+" "+undefinedState+" subcontract");
+        for (int i = 0; i < numUndefinedSubContracts; ++i)
+            addContract.run(undefinedState);
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        assertTrue(contract.check());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
+
+                if(r.state == ItemState.DECLINED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+
+        ItemResult r = node.checkItem(contract.getId());
+        assertEquals(ItemState.DECLINED, r.state);
+    }
+
+    @Test
+    public void shouldNotResyncWithLessKnownContracts_APPROVED() throws Exception {
+        shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.APPROVED);
+    }
+
+    @Test
+    public void shouldNotResyncWithLessKnownContracts_LOCKED() throws Exception {
+        shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.LOCKED);
+    }
+
+    @Test
+    public void shouldNotResyncWithLessKnownContracts_DECLINED() throws Exception {
+        shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.DECLINED);
+    }
+
+    @Test
+    public void shouldNotResyncWithLessKnownContracts_REVOKED() throws Exception {
+        shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.REVOKED);
+    }
+
+    public void shouldNotResyncWithLessUnknownContractsEx(ItemState definedState, ItemState undefinedState) throws Exception {
+
+        // Test should broke condition to resync:
+        // should be at least one unknown subcontract to start resync
+
+//        LogPrinter.showDebug(true);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        List<Contract> subContracts = new ArrayList<>();
+
+        RunnableWithException<ItemState> addContract = (ItemState state) -> {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+            addToAllLedgers(c, state);
+            subContracts.add(c);
+        };
+
+        int wantedSubContracts = 5;
+
+        System.out.println("add "+wantedSubContracts+" "+definedState+" subcontract");
+        for (int i = 0; i < wantedSubContracts; ++i)
+            addContract.run(definedState);
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        assertTrue(contract.check());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
+
+                if(r.state == ItemState.APPROVED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+
+        ItemResult r = node.checkItem(contract.getId());
+        ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
+        assertEquals(expectedState, r.state);
+    }
+
+    @Test
+    public void shouldNotResyncWithLessUnknownContracts_APPROVED() throws Exception {
+        shouldNotResyncWithLessUnknownContractsEx(ItemState.APPROVED, ItemState.UNDEFINED);
+    }
+
+    @Test
+    public void shouldNotResyncWithLessUnknownContracts_LOCKED() throws Exception {
+        shouldNotResyncWithLessUnknownContractsEx(ItemState.LOCKED, ItemState.UNDEFINED);
+    }
+
+    @Test
+    public void shouldNotResyncWithLessUnknownContracts_DECLINED() throws Exception {
+        shouldNotResyncWithLessUnknownContractsEx(ItemState.DECLINED, ItemState.UNDEFINED);
+    }
+
+    @Test
+    public void shouldNotResyncWithLessUnknownContracts_REVOKED() throws Exception {
+        shouldNotResyncWithLessUnknownContractsEx(ItemState.REVOKED, ItemState.UNDEFINED);
+    }
+
+    @Test
+    public void shouldNotResyncWithFalseComplexState() throws Exception {
+
+        // Test should broke condition to resync:
+        // complex contract should has no errors itself
+
+//        LogPrinter.showDebug(true);
+
+        ItemState definedState = ItemState.APPROVED;
+        ItemState undefinedState = ItemState.UNDEFINED;
+
+        AsyncEvent ae = new AsyncEvent();
+
+        List<Contract> subContracts = new ArrayList<>();
+
+        RunnableWithException<ItemState> addContract = (ItemState state) -> {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+            addToAllLedgers(c, state);
+            subContracts.add(c);
+        };
+
+        int wantedSubContracts = 5;
+
+        int knownSubContractsToResync = config.getKnownSubContractsToResync();
+        System.out.println("knownSubContractsToResync: " + knownSubContractsToResync);
+
+        int numDefinedSubContracts = Math.min(wantedSubContracts, knownSubContractsToResync);
+        System.out.println("add "+numDefinedSubContracts+" defined subcontracts (with state="+definedState+")");
+        for (int i = 0; i < numDefinedSubContracts; ++i)
+            addContract.run(definedState);
+
+        int numUndefinedSubContracts = Math.max(0, wantedSubContracts - subContracts.size());
+        System.out.println("add "+numUndefinedSubContracts+" "+undefinedState+" subcontract");
+        for (int i = 0; i < numUndefinedSubContracts; ++i)
+            addContract.run(undefinedState);
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKey(new PrivateKey(2048));
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        assertFalse(contract.check());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
+
+                if(r.state == ItemState.DECLINED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+
+        ItemResult r = node.checkItem(contract.getId());
+        assertEquals(ItemState.DECLINED, r.state);
+    }
+
+    @Test
+    public void resyncContractWithSomeUndefindSubContracts() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        int numSubContracts = 5;
+        List<Contract> subContracts = new ArrayList<>();
+        for (int i = 0; i < numSubContracts; i++) {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+
+            if(i < config.getKnownSubContractsToResync())
+                addToAllLedgers(c, ItemState.APPROVED);
+            else
+                addToAllLedgers(c, ItemState.APPROVED, node);
+
+            subContracts.add(c);
+        }
+
+        for (int i = 0; i < numSubContracts; i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(contract.check());
+
+        for (int i = 0; i < numSubContracts; i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
+
+                if(r.state == ItemState.APPROVED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+
+        ItemResult r = node.checkItem(contract.getId());
+        assertEquals(ItemState.APPROVED, r.state);
     }
 
     @Test
