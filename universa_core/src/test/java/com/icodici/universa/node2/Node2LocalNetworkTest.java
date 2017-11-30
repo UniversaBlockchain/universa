@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
@@ -501,6 +502,87 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     @Test
     public void shouldNotResyncWithLessUnknownContracts_REVOKED() throws Exception {
         shouldNotResyncWithLessUnknownContractsEx(ItemState.REVOKED, ItemState.UNDEFINED);
+    }
+
+    @Test
+    public void shouldNotResyncWithFalseComplexState() throws Exception {
+        ItemState definedState = ItemState.APPROVED;
+        ItemState undefinedState = ItemState.UNDEFINED;
+
+        AsyncEvent ae = new AsyncEvent();
+
+        List<Contract> subContracts = new ArrayList<>();
+
+        RunnableWithException<ItemState> addContract = (ItemState state) -> {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+            addToAllLedgers(c, state);
+            subContracts.add(c);
+        };
+
+        int wantedSubContracts = 5;
+
+        int knownSubContractsToResync = config.getKnownSubContractsToResync();
+        System.out.println("knownSubContractsToResync: " + knownSubContractsToResync);
+
+        int numDefinedSubContracts = Math.min(wantedSubContracts, knownSubContractsToResync-1);
+        System.out.println("add "+numDefinedSubContracts+" defined subcontracts (with state="+definedState+")");
+        for (int i = 0; i < numDefinedSubContracts; ++i)
+            addContract.run(definedState);
+
+        int numUndefinedSubContracts = Math.max(0, wantedSubContracts - subContracts.size());
+        System.out.println("add "+numUndefinedSubContracts+" "+undefinedState+" subcontract");
+        for (int i = 0; i < numUndefinedSubContracts; ++i)
+            addContract.run(undefinedState);
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKey(new PrivateKey(2048));
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        assertFalse(contract.check());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
+
+                if(r.state == ItemState.DECLINED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+
+        ItemResult r = node.checkItem(contract.getId());
+        assertEquals(ItemState.DECLINED, r.state);
     }
 
     @Test
