@@ -449,7 +449,7 @@ public class Node {
             synchronized (mutex) {
                 if (!subItemsResynced) {
                     long millis = config.getResyncTime().toMillis();
-                    itemChecker = executorService.scheduleAtFixedRate(() -> checkItem(), millis, millis, TimeUnit.MILLISECONDS);
+                    itemChecker = executorService.scheduleAtFixedRate(() -> checkItem(), 0, millis, TimeUnit.MILLISECONDS);
                 }
             }
         }
@@ -560,7 +560,7 @@ public class Node {
         public synchronized List<HashId> isNeedToResync() {
             List<HashId> unknownParts = new ArrayList<>();
             List<HashId> knownParts = new ArrayList<>();
-//            if (item.getErrors().isEmpty()) {
+            if (item.getErrors().isEmpty()) {
                 // check the referenced items
                 for (HashId id : item.getReferencedItems()) {
                     if (!ledger.isConsensusFound(id)) {
@@ -578,11 +578,11 @@ public class Node {
                         knownParts.add(a.getId());
                     }
                 }
-//            }
+            }
             boolean needToResync = false;
             // contract is complex and consist from parts
             if(unknownParts.size() + knownParts.size() > 0) {
-                needToResync = //item.getErrors().isEmpty() &&
+                needToResync = item.getErrors().isEmpty() &&
                         unknownParts.size() >= config.getUnknownSubContractsToResync() &&
                                 knownParts.size() >= config.getKnownSubContractsToResync();
             }
