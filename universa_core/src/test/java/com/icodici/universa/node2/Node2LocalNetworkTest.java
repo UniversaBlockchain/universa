@@ -103,6 +103,10 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     private List<TestLocalNetwork> networks = new ArrayList<>();
 
+    private interface RunnableWithException<T> {
+        void run(T param) throws Exception;
+    }
+
     @Test
     public void networkPassesData() throws Exception {
         AsyncEvent<Void> ae = new AsyncEvent<>();
@@ -297,6 +301,107 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         ItemResult r = node.checkItem(contract.getId());
         assertEquals(ItemState.APPROVED, r.state);
+    }
+
+    public void resyncContractWithSomeDefinedSubContractsEx(ItemState undefinedState, ItemState definedState) throws Exception {
+
+        LogPrinter.showDebug(true);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        List<Contract> subContracts = new ArrayList<>();
+
+        RunnableWithException<ItemState> addContract = (ItemState state) -> {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+            addToAllLedgers(c, state);
+            subContracts.add(c);
+        };
+
+        int wantedSubContracts = 5;
+
+        int knownSubContractsToResync = config.getKnownSubContractsToResync();
+        System.out.println("knownSubContractsToResync: " + knownSubContractsToResync);
+
+        int numUndefinedSubContracts = 2;
+
+        System.out.println("add "+numUndefinedSubContracts+" "+undefinedState+" subcontract");
+        for (int i = 0; i < numUndefinedSubContracts; ++i)
+            addContract.run(undefinedState);
+
+        int numDefinedSubContracts = Math.min(wantedSubContracts-subContracts.size(), knownSubContractsToResync-1);
+        System.out.println("add "+numDefinedSubContracts+" defined subcontracts (with state="+definedState+")");
+        for (int i = 0; i < numDefinedSubContracts; ++i)
+            addContract.run(definedState);
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        assertTrue(contract.check());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
+
+                if(r.state == ItemState.APPROVED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+
+        ItemResult r = node.checkItem(contract.getId());
+        assertEquals(ItemState.DECLINED, r.state);
+    }
+
+    @Test
+    public void resyncContractWithSomeDefinedSubContracts_APPROVED() throws Exception {
+        resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.APPROVED);
+    }
+
+    @Test
+    public void resyncContractWithSomeDefinedSubContracts_LOCKED() throws Exception {
+        resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.LOCKED);
+    }
+
+    @Test
+    public void resyncContractWithSomeDefinedSubContracts_DECLINED() throws Exception {
+        resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.DECLINED);
+    }
+
+    @Test
+    public void resyncContractWithSomeDefinedSubContracts_REVOKED() throws Exception {
+        resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.REVOKED);
     }
 
     @Test
