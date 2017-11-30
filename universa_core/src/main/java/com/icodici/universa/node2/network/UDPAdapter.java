@@ -862,16 +862,16 @@ public class UDPAdapter extends DatagramAdapter {
             if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                 sendAck(session, block.blockId);
             } else {
-//                if(session != null) {
-//                    if(sessionsById.containsKey(session.remoteNodeId)) {
-//                        sessionsById.remove(session.remoteNodeId);
-//                    }
-//                }
                 report(getLabel(), "answerAckOrNack " + session, VerboseLevel.BASE);
                 session = getOrCreateSession(block.senderNodeId, address, port);
                 // we remove block from obtained because it broken and will can be regiven with correct data
                 obtainedBlocks.remove(block.blockId);
                 sendNack(session, block.blockId);
+                if(session != null && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+                    if(sessionsById.containsKey(session.remoteNodeId)) {
+                        sessionsById.remove(session.remoteNodeId);
+                    }
+                }
             }
         }
     }
