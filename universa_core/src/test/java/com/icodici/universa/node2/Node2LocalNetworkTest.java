@@ -506,6 +506,12 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void shouldNotResyncWithFalseComplexState() throws Exception {
+
+        // Test should broke condition to resync:
+        // complex contract should has no errors itself
+
+//        LogPrinter.showDebug(true);
+
         ItemState definedState = ItemState.APPROVED;
         ItemState undefinedState = ItemState.UNDEFINED;
 
@@ -527,7 +533,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         int knownSubContractsToResync = config.getKnownSubContractsToResync();
         System.out.println("knownSubContractsToResync: " + knownSubContractsToResync);
 
-        int numDefinedSubContracts = Math.min(wantedSubContracts, knownSubContractsToResync-1);
+        int numDefinedSubContracts = Math.min(wantedSubContracts, knownSubContractsToResync);
         System.out.println("add "+numDefinedSubContracts+" defined subcontracts (with state="+definedState+")");
         for (int i = 0; i < numDefinedSubContracts; ++i)
             addContract.run(definedState);
