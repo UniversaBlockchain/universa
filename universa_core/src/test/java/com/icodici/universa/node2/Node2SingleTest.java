@@ -13,6 +13,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
@@ -273,7 +274,7 @@ public class Node2SingleTest extends TestCase {
         node.registerItem(main);
 
         ItemResult itemResult = node.checkItem(main.getId());
-        assertThat(itemResult.state, anyOf(equalTo(ItemState.PENDING), equalTo(ItemState.DECLINED)));
+        assertThat(itemResult.state, anyOf(equalTo(ItemState.PENDING), equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
 
         @NonNull ItemResult itemNew1 = node.checkItem(new1.getId());
         assertEquals(ItemState.UNDEFINED, itemNew1.state);
@@ -358,11 +359,14 @@ public class Node2SingleTest extends TestCase {
 
     @Test
     public void missingReferencesDecline() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         TestItem main = new TestItem(true);
 
         TestItem existing = new TestItem(true);
         node.registerItem(existing);
-        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 200);
+        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 2000);
 
         // but second is missing
         HashId missingId = HashId.createRandom();
@@ -371,7 +375,7 @@ public class Node2SingleTest extends TestCase {
 
         // check that main is fully approved
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 5000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // and the references are intact

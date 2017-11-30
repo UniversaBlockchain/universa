@@ -14,6 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Assert;
 import org.junit.Test;
@@ -283,7 +284,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
     public void registerBadItem() throws Exception {
         TestItem bad = new TestItem(false);
         node.registerItem(bad);
-        ItemResult r = node.waitItem(bad.getId(), 100);
+        ItemResult r = node.waitItem(bad.getId(), 500);
         assertEquals(ItemState.DECLINED, r.state);
     }
 
@@ -293,8 +294,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         TestItem bad = new TestItem(false);
         node.registerItem(ok);
         node.registerItem(bad);
-        node.waitItem(ok.getId(), 100);
-        node.waitItem(bad.getId(), 100);
+        node.waitItem(ok.getId(), 500);
+        node.waitItem(bad.getId(), 500);
         assertEquals(ItemState.APPROVED, node.checkItem(ok.getId()).state);
         assertEquals(ItemState.DECLINED, node.checkItem(bad.getId()).state);
     }
@@ -380,7 +381,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 500);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -393,6 +394,9 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void rejectBadNewItem() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
         TestItem new2 = new TestItem(false);
@@ -402,7 +406,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         assertEquals(2, main.getNewItems().size());
 
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 500);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -493,7 +497,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
             // check that main is fully approved
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 100);
+            ItemResult itemResult = node.waitItem(main.getId(), 500);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
@@ -520,7 +524,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         // check that main is fully approved
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 2500);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         assertEquals(ItemState.UNDEFINED, node.checkItem(new1.getId()).state);
@@ -535,11 +539,14 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void missingReferencesDecline() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         TestItem main = new TestItem(true);
 
         TestItem existing = new TestItem(true);
         node.registerItem(existing);
-        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 100);
+        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 1500);
 
         // but second is missing
         HashId missingId = HashId.createRandom();
@@ -548,7 +555,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         // check that main is fully approved
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 5000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // and the references are intact
@@ -597,7 +604,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 100);
+            ItemResult itemResult = node.waitItem(main.getId(), 1500);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
@@ -631,7 +638,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         c.seal();
 
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 100);
+        ItemResult itemResult = node.waitItem(c.getId(), 1500);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
