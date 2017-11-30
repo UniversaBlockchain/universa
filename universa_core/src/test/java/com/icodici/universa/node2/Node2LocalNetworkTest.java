@@ -305,12 +305,12 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 //        assertEquals(ItemState.APPROVED, r.state);
 //    }
 
-    public void resyncContractWithSomeDefinedSubContractsEx(ItemState undefinedState, ItemState definedState) throws Exception {
-
-//        LogPrinter.showDebug(true);
+    public void shouldNotResyncWithLessKnownContractsEx(ItemState undefinedState, ItemState definedState) throws Exception {
 
         // Test should broke condition to resync:
         // should be at least one known (APPROVED, DECLINED, LOCKED, REVOKED) subcontract to start resync
+
+//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -389,31 +389,31 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     }
 
     @Test
-    public void resyncContractWithSomeDefinedSubContracts_APPROVED() throws Exception {
-        resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.APPROVED);
+    public void shouldNotResyncWithLessKnownContracts_APPROVED() throws Exception {
+        shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.APPROVED);
     }
 
     @Test
-    public void resyncContractWithSomeDefinedSubContracts_LOCKED() throws Exception {
-        resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.LOCKED);
+    public void shouldNotResyncWithLessKnownContracts_LOCKED() throws Exception {
+        shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.LOCKED);
     }
 
     @Test
-    public void resyncContractWithSomeDefinedSubContracts_DECLINED() throws Exception {
-        resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.DECLINED);
+    public void shouldNotResyncWithLessKnownContracts_DECLINED() throws Exception {
+        shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.DECLINED);
     }
 
     @Test
-    public void resyncContractWithSomeDefinedSubContracts_REVOKED() throws Exception {
-        resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.REVOKED);
+    public void shouldNotResyncWithLessKnownContracts_REVOKED() throws Exception {
+        shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.REVOKED);
     }
 
-    public void resyncContractWithSomeUndefinedSubContractsEx(ItemState definedState, ItemState undefinedState) throws Exception {
-
-//        LogPrinter.showDebug(true);
+    public void shouldNotResyncWithLessUnknownContractsEx(ItemState definedState, ItemState undefinedState) throws Exception {
 
         // Test should broke condition to resync:
         // should be at least one unknown subcontract to start resync
+
+//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -430,17 +430,8 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         int wantedSubContracts = 5;
 
-        int unknownSubContractsToResync = config.getUnknownSubContractsToResync();
-        System.out.println("unknownSubContractsToResync: " + unknownSubContractsToResync);
-
-        int numUndefinedSubContracts = Math.min(wantedSubContracts, unknownSubContractsToResync-1);
-        System.out.println("add "+numUndefinedSubContracts+" undefined subcontracts (with state="+undefinedState+")");
-        for (int i = 0; i < numUndefinedSubContracts; ++i)
-            addContract.run(undefinedState);
-
-        int numDefinedSubContracts = Math.max(0, wantedSubContracts - subContracts.size());
-        System.out.println("add "+numDefinedSubContracts+" "+definedState+" subcontract");
-        for (int i = 0; i < numDefinedSubContracts; ++i)
+        System.out.println("add "+wantedSubContracts+" "+definedState+" subcontract");
+        for (int i = 0; i < wantedSubContracts; ++i)
             addContract.run(definedState);
 
         for (int i = 0; i < subContracts.size(); i++) {
@@ -488,27 +479,28 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         }
 
         ItemResult r = node.checkItem(contract.getId());
-        assertEquals(ItemState.APPROVED, r.state);
+        ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
+        assertEquals(expectedState, r.state);
     }
 
     @Test
-    public void resyncContractWithSomeUndefinedSubContracts_APPROVED() throws Exception {
-        resyncContractWithSomeUndefinedSubContractsEx(ItemState.APPROVED, ItemState.UNDEFINED);
+    public void shouldNotResyncWithLessUnknownContracts_APPROVED() throws Exception {
+        shouldNotResyncWithLessUnknownContractsEx(ItemState.APPROVED, ItemState.UNDEFINED);
     }
 
     @Test
-    public void resyncContractWithSomeUndefinedSubContracts_LOCKED() throws Exception {
-        resyncContractWithSomeUndefinedSubContractsEx(ItemState.LOCKED, ItemState.UNDEFINED);
+    public void shouldNotResyncWithLessUnknownContracts_LOCKED() throws Exception {
+        shouldNotResyncWithLessUnknownContractsEx(ItemState.LOCKED, ItemState.UNDEFINED);
     }
 
     @Test
-    public void resyncContractWithSomeUndefinedSubContracts_DECLINED() throws Exception {
-        resyncContractWithSomeUndefinedSubContractsEx(ItemState.DECLINED, ItemState.UNDEFINED);
+    public void shouldNotResyncWithLessUnknownContracts_DECLINED() throws Exception {
+        shouldNotResyncWithLessUnknownContractsEx(ItemState.DECLINED, ItemState.UNDEFINED);
     }
 
     @Test
-    public void resyncContractWithSomeUndefinedSubContracts_REVOKED() throws Exception {
-        resyncContractWithSomeUndefinedSubContractsEx(ItemState.REVOKED, ItemState.UNDEFINED);
+    public void shouldNotResyncWithLessUnknownContracts_REVOKED() throws Exception {
+        shouldNotResyncWithLessUnknownContractsEx(ItemState.REVOKED, ItemState.UNDEFINED);
     }
 
     @Test

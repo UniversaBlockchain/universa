@@ -583,14 +583,13 @@ public class Node {
             // contract is complex and consist from parts
             if(unknownParts.size() + knownParts.size() > 0) {
                 needToResync = item.getErrors().isEmpty() &&
-                        unknownParts.size() >= config.getUnknownSubContractsToResync() &&
+                        unknownParts.size() > 0 &&
                                 knownParts.size() >= config.getKnownSubContractsToResync();
             }
             debug("isNeedToResync " + itemId + ", needToResync: " + needToResync + ", state: " + record.getState() +
                     ", errors: " + item.getErrors().size() +
                     ", unknownParts: " + unknownParts.size() +
                     ", knownParts: " + knownParts.size() +
-                    ", num unknowns to resync (>=): " + config.getUnknownSubContractsToResync() +
                     ", num knowns to resync (>=): " + config.getKnownSubContractsToResync());
 
             if(needToResync)
