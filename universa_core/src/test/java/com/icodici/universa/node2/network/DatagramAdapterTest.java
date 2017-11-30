@@ -858,8 +858,8 @@ public class DatagramAdapterTest {
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
 
-//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2".getBytes();

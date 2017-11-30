@@ -863,14 +863,18 @@ public class UDPAdapter extends DatagramAdapter {
                 sendAck(session, block.blockId);
             } else {
                 report(getLabel(), "answerAckOrNack " + session, VerboseLevel.BASE);
-                session = getOrCreateSession(block.senderNodeId, address, port);
                 // we remove block from obtained because it broken and will can be regiven with correct data
                 obtainedBlocks.remove(block.blockId);
-                sendNack(session, block.blockId);
-                if(session != null && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
-                    if(sessionsById.containsKey(session.remoteNodeId)) {
-                        sessionsById.remove(session.remoteNodeId);
+                if(session != null) {
+                    if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
+                        sendNack(session, block.blockId);
+                        if (sessionsById.containsKey(session.remoteNodeId)) {
+                            sessionsById.remove(session.remoteNodeId);
+                        }
                     }
+                } else {
+                    session = getOrCreateSession(block.senderNodeId, address, port);
+                    sendNack(session, block.blockId);
                 }
             }
         }
