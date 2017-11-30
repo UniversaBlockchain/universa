@@ -8,6 +8,7 @@
 package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
@@ -473,7 +474,11 @@ public class Node {
             debug("Checking " + itemId + " state was " + record.getState());
             // Check the internal state
             // Too bad if basic check isn't passed, we will not process it further
+            List<HashId> itemsToResync = new ArrayList<>();
             if (item.check()) {
+
+                itemsToResync = isNeedToResync();
+
                 // check the referenced items
                 for (HashId id : item.getReferencedItems()) {
                     if (!ledger.isApproved(id)) {
@@ -501,9 +506,12 @@ public class Node {
                         }
                     }
                 }
+            } else {
+                debug("Found " + item.getErrors() + " errors:");
+                Collection<ErrorRecord> errors = item.getErrors();
+                errors.forEach(e -> debug("Found error: " + e));
             }
             boolean checkPassed = item.getErrors().isEmpty();
-            List<HashId> itemsToResync = isNeedToResync();
             boolean needToResync = !itemsToResync.isEmpty();
 
             synchronized (mutex) {
@@ -560,7 +568,8 @@ public class Node {
         public synchronized List<HashId> isNeedToResync() {
             List<HashId> unknownParts = new ArrayList<>();
             List<HashId> knownParts = new ArrayList<>();
-            if (item.getErrors().isEmpty()) {
+            boolean checkPassed = item.check();
+            if (checkPassed) {
                 // check the referenced items
                 for (HashId id : item.getReferencedItems()) {
                     if (!ledger.isConsensusFound(id)) {
@@ -578,11 +587,15 @@ public class Node {
                         knownParts.add(a.getId());
                     }
                 }
+            } else {
+                debug("Found " + item.getErrors().size() + " errors:");
+                Collection<ErrorRecord> errors = item.getErrors();
+                errors.forEach(e -> debug("Found error: " + e));
             }
             boolean needToResync = false;
             // contract is complex and consist from parts
             if(unknownParts.size() + knownParts.size() > 0) {
-                needToResync = item.getErrors().isEmpty() &&
+                needToResync = checkPassed &&
                         unknownParts.size() > 0 &&
                                 knownParts.size() >= config.getKnownSubContractsToResync();
             }
