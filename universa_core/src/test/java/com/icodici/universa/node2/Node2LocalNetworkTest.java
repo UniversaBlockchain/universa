@@ -234,80 +234,83 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         ItemResult itemResult = node.waitItem(c.getId(), 1500);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
-
-    @Test
-    public void resyncContractWithSomeUndefindSubContracts() throws Exception {
-
-        LogPrinter.showDebug(true);
-
-        AsyncEvent ae = new AsyncEvent();
-
-        int numSubContracts = 5;
-        List<Contract> subContracts = new ArrayList<>();
-        for (int i = 0; i < numSubContracts; i++) {
-            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            assertTrue(c.check());
-            c.seal();
-
-            if(i < config.getKnownSubContractsToResync())
-                addToAllLedgers(c, ItemState.APPROVED);
-            else
-                addToAllLedgers(c, ItemState.APPROVED, node);
-
-            subContracts.add(c);
-        }
-
-        for (int i = 0; i < numSubContracts; i++) {
-            ItemResult r = node.checkItem(subContracts.get(i).getId());
-            System.out.println("Contract: " + i + " state: " + r.state);
-        }
-
-        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(contract.check());
-
-        for (int i = 0; i < numSubContracts; i++) {
-            contract.addRevokingItems(subContracts.get(i));
-        }
-        contract.seal();
-        contract.check();
-        contract.traceErrors();
-
-        node.registerItem(contract);
-
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-
-                ItemResult r = node.checkItem(contract.getId());
-                System.out.println("Complex contract state: " + r.state);
-
-                if(r.state == ItemState.APPROVED) ae.fire();
-            }
-        }, 0, 500);
-
-        try {
-            ae.await(5000);
-        } catch (TimeoutException e) {
-            System.out.println("time is up");
-        }
-
-        timer.cancel();
-
-        for (TestLocalNetwork ln : networks) {
-            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
-            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
-        }
-
-        ItemResult r = node.checkItem(contract.getId());
-        assertEquals(ItemState.APPROVED, r.state);
-    }
+//
+//    @Test
+//    public void resyncContractWithSomeUndefindSubContracts() throws Exception {
+//
+//        LogPrinter.showDebug(true);
+//
+//        AsyncEvent ae = new AsyncEvent();
+//
+//        int numSubContracts = 5;
+//        List<Contract> subContracts = new ArrayList<>();
+//        for (int i = 0; i < numSubContracts; i++) {
+//            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+//            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//            assertTrue(c.check());
+//            c.seal();
+//
+//            if(i < config.getKnownSubContractsToResync())
+//                addToAllLedgers(c, ItemState.APPROVED);
+//            else
+//                addToAllLedgers(c, ItemState.APPROVED, node);
+//
+//            subContracts.add(c);
+//        }
+//
+//        for (int i = 0; i < numSubContracts; i++) {
+//            ItemResult r = node.checkItem(subContracts.get(i).getId());
+//            System.out.println("Contract: " + i + " state: " + r.state);
+//        }
+//
+//        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+//        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(contract.check());
+//
+//        for (int i = 0; i < numSubContracts; i++) {
+//            contract.addRevokingItems(subContracts.get(i));
+//        }
+//        contract.seal();
+//        contract.check();
+//        contract.traceErrors();
+//
+//        node.registerItem(contract);
+//
+//        Timer timer = new Timer();
+//        timer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//
+//                ItemResult r = node.checkItem(contract.getId());
+//                System.out.println("Complex contract state: " + r.state);
+//
+//                if(r.state == ItemState.APPROVED) ae.fire();
+//            }
+//        }, 0, 500);
+//
+//        try {
+//            ae.await(5000);
+//        } catch (TimeoutException e) {
+//            System.out.println("time is up");
+//        }
+//
+//        timer.cancel();
+//
+//        for (TestLocalNetwork ln : networks) {
+//            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+//            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+//        }
+//
+//        ItemResult r = node.checkItem(contract.getId());
+//        assertEquals(ItemState.APPROVED, r.state);
+//    }
 
     public void resyncContractWithSomeDefinedSubContractsEx(ItemState undefinedState, ItemState definedState) throws Exception {
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
+
+        // Test should broke condition to resync:
+        // should be at least one known (APPROVED, DECLINED, LOCKED, REVOKED) subcontract to start resync
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -407,7 +410,10 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     public void resyncContractWithSomeUndefinedSubContractsEx(ItemState definedState, ItemState undefinedState) throws Exception {
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
+
+        // Test should broke condition to resync:
+        // should be at least one unknown subcontract to start resync
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -508,7 +514,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     @Test
     public void resyncContractWithSomeUndefindSubContracts() throws Exception {
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 

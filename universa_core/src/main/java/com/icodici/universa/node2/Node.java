@@ -349,6 +349,7 @@ public class Node {
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
         private HashMap<ItemState, Set<NodeInfo>> resyncNodes = new HashMap<>();
+        private Set<HashId> resyncingHashes = new HashSet<>();
         private List<StateRecord> lockedToRevoke = new ArrayList<>();
         private List<StateRecord> lockedToCreate = new ArrayList<>();
         private boolean consensusFound;
