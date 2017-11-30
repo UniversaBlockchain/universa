@@ -594,6 +594,8 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
     @Test
     public void resyncContractWithSomeUndefindSubContracts() throws Exception {
 
+        // Test should run resync of each unknown part of a contract
+
 //        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
