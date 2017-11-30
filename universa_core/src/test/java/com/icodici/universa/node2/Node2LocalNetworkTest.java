@@ -325,16 +325,15 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         int knownSubContractsToResync = config.getKnownSubContractsToResync();
         System.out.println("knownSubContractsToResync: " + knownSubContractsToResync);
 
-        int numUndefinedSubContracts = 2;
-
-        System.out.println("add "+numUndefinedSubContracts+" "+undefinedState+" subcontract");
-        for (int i = 0; i < numUndefinedSubContracts; ++i)
-            addContract.run(undefinedState);
-
-        int numDefinedSubContracts = Math.min(wantedSubContracts-subContracts.size(), knownSubContractsToResync-1);
+        int numDefinedSubContracts = Math.min(wantedSubContracts, knownSubContractsToResync-1);
         System.out.println("add "+numDefinedSubContracts+" defined subcontracts (with state="+definedState+")");
         for (int i = 0; i < numDefinedSubContracts; ++i)
             addContract.run(definedState);
+
+        int numUndefinedSubContracts = Math.max(0, wantedSubContracts - subContracts.size());
+        System.out.println("add "+numUndefinedSubContracts+" "+undefinedState+" subcontract");
+        for (int i = 0; i < numUndefinedSubContracts; ++i)
+            addContract.run(undefinedState);
 
         for (int i = 0; i < subContracts.size(); i++) {
             ItemResult r = node.checkItem(subContracts.get(i).getId());
@@ -363,7 +362,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
                 ItemResult r = node.checkItem(contract.getId());
                 System.out.println("Complex contract state: " + r.state);
 
-                if(r.state == ItemState.APPROVED) ae.fire();
+                if(r.state == ItemState.DECLINED) ae.fire();
             }
         }, 0, 500);
 
