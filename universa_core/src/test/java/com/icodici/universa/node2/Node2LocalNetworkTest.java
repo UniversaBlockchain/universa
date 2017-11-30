@@ -142,7 +142,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
                     try {
                         ItemResult r = n.waitItem(ok.getId(), 5500);
                         System.out.println(i + " " + r.state);
-                        if( !r.state.consensusFound())
+                        if( !r.state.isConsensusFound())
                             Thread.sleep(30);
                         assertEquals("In node "+n+" item "+ok.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
