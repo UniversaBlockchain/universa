@@ -216,8 +216,14 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 //    }
 
     private void addToAllLedgers(Contract c, ItemState state) {
+        addToAllLedgers(c, state, null);
+    }
+
+    private void addToAllLedgers(Contract c, ItemState state, Node exceptNode) {
         for( Node n: nodes.values() ) {
-            n.getLedger().findOrCreate(c.getId()).setState(state).save();
+            if(n != exceptNode) {
+                n.getLedger().findOrCreate(c.getId()).setState(state).save();
+            }
         }
     }
 
@@ -242,10 +248,10 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
             assertTrue(c.check());
             c.seal();
 
-            if(i == 0)
+            if(i < config.getKnownSubContractsToResync())
                 addToAllLedgers(c, ItemState.APPROVED);
             else
-                addToAllLedgers(c, ItemState.UNDEFINED);
+                addToAllLedgers(c, ItemState.APPROVED, node);
 
             subContracts.add(c);
         }

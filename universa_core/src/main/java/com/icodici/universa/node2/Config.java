@@ -7,8 +7,13 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.universa.Approvable;
+import com.icodici.universa.HashId;
+
 import java.time.Duration;
 import java.time.temporal.TemporalAmount;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Config {
 

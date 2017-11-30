@@ -349,17 +349,20 @@ public class Node {
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
         private HashMap<ItemState, Set<NodeInfo>> resyncNodes = new HashMap<>();
+        private Set<HashId> resyncingHashes = new HashSet<>();
         private List<StateRecord> lockedToRevoke = new ArrayList<>();
         private List<StateRecord> lockedToCreate = new ArrayList<>();
         private boolean consensusFound;
         private boolean consensusPossiblyReceivedByAll;
         private boolean consensusResynced;
+        private boolean subItemsResynced;
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
 
         private final Object mutex;
-        private ScheduledFuture<?> poller;
         private ScheduledFuture<?> downloader;
+        private ScheduledFuture<?> itemChecker;
+        private ScheduledFuture<?> poller;
         private ScheduledFuture<?> consensusReceivedChecker;
         private ScheduledFuture<?> resyncer;
 
@@ -376,6 +379,7 @@ public class Node {
             consensusFound = false;
             consensusPossiblyReceivedByAll = false;
             consensusResynced = false;
+            subItemsResynced = false;
 
             resyncNodes.put(ItemState.APPROVED, new HashSet<>());
             resyncNodes.put(ItemState.REVOKED, new HashSet<>());
@@ -429,22 +433,43 @@ public class Node {
             synchronized (cache) {
                 cache.put(item);
             }
-            Boolean noNeedToResync = checkItem();
-            if(noNeedToResync) {
-                downloadedEvent.fire();
-                pulseStartPolling();
-            }
+            pulseCheckItem();
+//            Boolean noNeedToResync = checkItem();
+            downloadedEvent.fire();
+//            if(subItemsResynced) {
+//                downloadedEvent.fire();
+//                pulseStartPolling();
+//            }
         }
 
         //////////// check state section /////////////
 
-        private final Boolean checkItem() {
-            if (checkStarted)
-                throw new RuntimeException("double check!");
+        private final void pulseCheckItem() {
+            // at this poing the item is with us, so we can start
+            synchronized (mutex) {
+                if (!subItemsResynced) {
+                    long millis = config.getResyncTime().toMillis();
+                    itemChecker = executorService.scheduleAtFixedRate(() -> checkItem(), millis, millis, TimeUnit.MILLISECONDS);
+                }
+            }
+        }
+
+        private final synchronized void checkItem() {
 
             ItemState newState;
-            List<HashId> unknownParts = new ArrayList<>();
-            List<HashId> knownParts = new ArrayList<>();
+
+            if (subItemsResynced)
+                return;
+
+            if (isResyncExpired()) {
+                newState = ItemState.PENDING_NEGATIVE;
+                setState(newState);
+                subItemsResynced = true;
+                if(itemChecker != null)
+                    itemChecker.cancel(false);
+                commitCheckedAndStartPolling();
+                return;
+            }
             debug("Checking " + itemId + " state was " + record.getState());
             // Check the internal state
             // Too bad if basic check isn't passed, we will not process it further
@@ -454,11 +479,6 @@ public class Node {
                     if (!ledger.isApproved(id)) {
                         item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                     }
-                    if (!ledger.isConsensusFound(id)) {
-                        unknownParts.add(id);
-                    } else {
-                        knownParts.add(id);
-                    }
                 }
                 // check revoking items
                 for (Approvable a : item.getRevokingItems()) {
@@ -467,12 +487,6 @@ public class Node {
                         item.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
                     } else
                         lockedToRevoke.add(r);
-
-                    if (!ledger.isConsensusFound(a.getId())) {
-                        unknownParts.add(a.getId());
-                    } else {
-                        knownParts.add(a.getId());
-                    }
                 }
                 // check new items
                 for (Approvable newItem : item.getNewItems()) {
@@ -488,44 +502,100 @@ public class Node {
                     }
                 }
             }
-            boolean checkPassed;
-            // contract is complex and consist from parts
-            if(unknownParts.size() + knownParts.size() > 0) {
-                checkPassed = item.getErrors().isEmpty() &&
-                        unknownParts.size() < config.getUnknownSubContractsToResync() &&
-                        knownParts.size() >= config.getKnownSubContractsToResync();
-            } else {
-                checkPassed = item.getErrors().isEmpty();
-            }
+            boolean checkPassed = item.getErrors().isEmpty();
+            List<HashId> itemsToResync = isNeedToResync();
+            boolean needToResync = !itemsToResync.isEmpty();
 
             synchronized (mutex) {
                 if (record.getState() == ItemState.PENDING) {
-                    if(checkPassed) {
-                        newState = ItemState.PENDING_POSITIVE;
-                        setState(newState);
+                    if(!needToResync) {
+                        if (checkPassed) {
+                            newState = ItemState.PENDING_POSITIVE;
+                            setState(newState);
+                        } else {
+                            newState = ItemState.PENDING_NEGATIVE;
+                            setState(newState);
+                        }
                     }
                 }
             }
             if (!checkPassed) {
                 informer.inform(item);
             }
-            debug("Checking " + itemId + " checkPassed: " + checkPassed + " state: " + record.getState() +
-                    " errors: " + item.getErrors().size() +
-                    " unknownParts: " + unknownParts.size() +
-                    " knownParts: " + knownParts.size() +
-                    " num to resync: " + config.getUnknownSubContractsToResync());
-            if(unknownParts.size() < config.getUnknownSubContractsToResync()) {
-                record.setExpiresAt(item.getExpiresAt());
-                record.save();
-                vote(myInfo, record.getState());
-                broadcastMyState();
+            debug("Checking " + itemId + ", checkPassed: " + checkPassed  + ", needToResync: " + needToResync
+                    + ", state: " + record.getState() +
+                    ", errors: " + item.getErrors().size() +
+                    ", errors: " + item.getErrors().isEmpty());
+            if(!needToResync) {
+                subItemsResynced = true;
+                commitCheckedAndStartPolling();
             } else {
-                // TODO: run resync
-                debug("Some of sub-contracts was not approved, its should be resync");
-                return false;
+                synchronized (mutex) {
+                    debug("Some of sub-contracts was not approved, its should be resync");
+                    for (HashId hid : itemsToResync) {
+                        try {
+                            if (!resyncingHashes.contains(hid)) {
+                                resync(hid);
+                                resyncingHashes.add(hid);
+                                subItemsResynced = false;
+                            } else {
+                                debug(hid + " already resyncing");
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
             }
+        }
 
-            return true;
+        private final void commitCheckedAndStartPolling() {
+            record.setExpiresAt(item.getExpiresAt());
+            record.save();
+            vote(myInfo, record.getState());
+            broadcastMyState();
+            pulseStartPolling();
+        }
+
+        public synchronized List<HashId> isNeedToResync() {
+            List<HashId> unknownParts = new ArrayList<>();
+            List<HashId> knownParts = new ArrayList<>();
+//            if (item.getErrors().isEmpty()) {
+                // check the referenced items
+                for (HashId id : item.getReferencedItems()) {
+                    if (!ledger.isConsensusFound(id)) {
+                        unknownParts.add(id);
+                    } else {
+                        knownParts.add(id);
+                    }
+                }
+                // check revoking items
+                for (Approvable a : item.getRevokingItems()) {
+                    StateRecord r = record.lockToRevoke(a.getId());
+                    if (!ledger.isConsensusFound(a.getId())) {
+                        unknownParts.add(a.getId());
+                    } else {
+                        knownParts.add(a.getId());
+                    }
+                }
+//            }
+            boolean needToResync = false;
+            // contract is complex and consist from parts
+            if(unknownParts.size() + knownParts.size() > 0) {
+                needToResync = //item.getErrors().isEmpty() &&
+                        unknownParts.size() >= config.getUnknownSubContractsToResync() &&
+                                knownParts.size() >= config.getKnownSubContractsToResync();
+            }
+            debug("isNeedToResync " + itemId + ", needToResync: " + needToResync + ", state: " + record.getState() +
+                    ", errors: " + item.getErrors().size() +
+                    ", unknownParts: " + unknownParts.size() +
+                    ", knownParts: " + knownParts.size() +
+                    ", num unknowns to resync (>=): " + config.getUnknownSubContractsToResync() +
+                    ", num knowns to resync (>=): " + config.getKnownSubContractsToResync());
+
+            if(needToResync)
+                return unknownParts;
+            return new ArrayList<>();
         }
 
         //////////// polling section /////////////
