@@ -403,6 +403,106 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         resyncContractWithSomeDefinedSubContractsEx(ItemState.UNDEFINED, ItemState.REVOKED);
     }
 
+    public void resyncContractWithSomeUndefinedSubContractsEx(ItemState definedState, ItemState undefinedState) throws Exception {
+
+        LogPrinter.showDebug(true);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        List<Contract> subContracts = new ArrayList<>();
+
+        RunnableWithException<ItemState> addContract = (ItemState state) -> {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+            addToAllLedgers(c, state);
+            subContracts.add(c);
+        };
+
+        int wantedSubContracts = 5;
+
+        int unknownSubContractsToResync = config.getUnknownSubContractsToResync();
+        System.out.println("unknownSubContractsToResync: " + unknownSubContractsToResync);
+
+        int numUndefinedSubContracts = Math.min(wantedSubContracts, unknownSubContractsToResync-1);
+        System.out.println("add "+numUndefinedSubContracts+" undefined subcontracts (with state="+undefinedState+")");
+        for (int i = 0; i < numUndefinedSubContracts; ++i)
+            addContract.run(undefinedState);
+
+        int numDefinedSubContracts = Math.max(0, wantedSubContracts - subContracts.size());
+        System.out.println("add "+numDefinedSubContracts+" "+definedState+" subcontract");
+        for (int i = 0; i < numDefinedSubContracts; ++i)
+            addContract.run(definedState);
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+
+        for (int i = 0; i < subContracts.size(); i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        assertTrue(contract.check());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
+
+                if(r.state == ItemState.APPROVED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+
+        ItemResult r = node.checkItem(contract.getId());
+        assertEquals(ItemState.APPROVED, r.state);
+    }
+
+    @Test
+    public void resyncContractWithSomeUndefinedSubContracts_APPROVED() throws Exception {
+        resyncContractWithSomeUndefinedSubContractsEx(ItemState.APPROVED, ItemState.UNDEFINED);
+    }
+
+    @Test
+    public void resyncContractWithSomeUndefinedSubContracts_LOCKED() throws Exception {
+        resyncContractWithSomeUndefinedSubContractsEx(ItemState.LOCKED, ItemState.UNDEFINED);
+    }
+
+    @Test
+    public void resyncContractWithSomeUndefinedSubContracts_DECLINED() throws Exception {
+        resyncContractWithSomeUndefinedSubContractsEx(ItemState.DECLINED, ItemState.UNDEFINED);
+    }
+
+    @Test
+    public void resyncContractWithSomeUndefinedSubContracts_REVOKED() throws Exception {
+        resyncContractWithSomeUndefinedSubContractsEx(ItemState.REVOKED, ItemState.UNDEFINED);
+    }
+
     @Test
     public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
         String transactionName = "./src/test_contracts/transaction/for_offed_node.transaction";
