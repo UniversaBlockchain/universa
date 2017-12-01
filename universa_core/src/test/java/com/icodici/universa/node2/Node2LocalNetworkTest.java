@@ -597,7 +597,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         // Test should run resync of each unknown part of a contract
 
-//        LogPrinter.showDebug(true);
+        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 

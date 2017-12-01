@@ -121,57 +121,114 @@ public class Node {
     private final void onNotification(Notification notification) {
         if (notification instanceof ItemResyncNotification) {
             ItemResyncNotification in = (ItemResyncNotification) notification;
-            // get processor, create if need
-            // register my vote
-            Object x = checkItemInternal(in.getItemId(), null, true);
-            debug("onItemResyncNotification  x is " + x.getClass() + " and answerIsRequested: " + in.answerIsRequested());
+
+            HashMap<HashId, ItemState> itemsToResync = in.getItemsToResync();
+            HashMap<HashId, ItemState> answersForItems = new HashMap<>();
+
             NodeInfo from = in.getFrom();
-            if (x instanceof ItemResult) {
-                ItemResult r = (ItemResult) x;
-                // we have solution and need not answer, we answer if requested:
+            Object itemObject = checkItemInternal(in.getItemId(), null, false);
+            debug("onItemResyncNotification from: " + from.getNumber() +
+                    " and for item exist processor: " + (itemObject instanceof ItemProcessor) +
+                    " and answerIsRequested: " + in.answerIsRequested());
+
+            if (itemObject instanceof ItemResult) {
                 if (in.answerIsRequested()) {
+                    for (HashId hid : itemsToResync.keySet()) {
+                        debug("Looking for: " + hid);
+                        Object subitemObject = checkItemInternal(hid, null, false);
+                        ItemResult subresult = null;
+                        if (subitemObject instanceof ItemResult) {
+                            subresult = (ItemResult) subitemObject;
+                        } else if (subitemObject instanceof ItemProcessor) {
+                            ItemProcessor ip = (ItemProcessor) subitemObject;
+                            subresult = ip.getResult();
+                        } else {
+                            subresult = null;
+                        }
+                        debug("for id: " + hid + " found state: " + subresult.state);
+                        if (subresult != null) {
+                            if (subresult.state.isConsensusFound()) {
+                                debug("deliver answer to: " + from.getNumber() + ", state: " + subresult.state);
+                                answersForItems.put(hid, subresult.state);
+                            } else {
+                                debug("deliver answer to: " + from.getNumber() + ", state: " + ItemState.UNDEFINED);
+                                answersForItems.put(hid, ItemState.UNDEFINED);
+                            }
+                        } else {
+                            debug("deliver answer (no result) to: " + from.getNumber() + ", state: " + ItemState.UNDEFINED);
+                            answersForItems.put(hid, ItemState.UNDEFINED);
+                        }
+                    }
                     network.deliver(
                             from,
-                            new ItemResyncNotification(myInfo, in.getItemId(), r, false)
+                            new ItemResyncNotification(myInfo, in.getItemId(), answersForItems, false)
                     );
                 }
-                return;
+            } else if (itemObject instanceof ItemProcessor) {
+                ItemProcessor ip = (ItemProcessor) itemObject;
+                debug("Found item processor is in the state " + ip.processingState);
+                if(ip.resyncingItems.size() > 0) {
+                    ip.lock(() -> {
+                        // we might still need to download and process it
+//                    if (result.haveCopy) {
+////                    debug("reported source for "+ip.itemId+": "+in.getFrom());
+//                        ip.addToSources(from);
+//                    }
+                        for (HashId hid : itemsToResync.keySet()) {
+                            ip.resyncVote(hid, from, itemsToResync.get(hid));
+                        }
+
+                        return null;
+                    });
+                }
+
             }
-            if (x instanceof ItemProcessor) {
-                ItemProcessor ip = (ItemProcessor) x;
-                ItemResult result = in.getItemResult();
-                ip.lock(() -> {
-                    debug("notification from " + in.getFrom() + ": " + in.getItemId() + ": " + in.getItemResult() + ", " + in.answerIsRequested());
-                    debug("my state in it " + ip.getState() + " and I have a copy: " + (ip.item != null));
-                    // we might still need to download and process it
-                    if (result.haveCopy) {
-//                    debug("reported source for "+ip.itemId+": "+in.getFrom());
-                        ip.addToSources(from);
-                    }
-                    if (result.state.isConsensusFound())
-                        ip.resyncVote(from, result.state);
-                    else
-                        ip.resyncVote(from, ItemState.UNDEFINED);
-//                        log.e("-- pending vote on " + in.getItemId() + " from " + from);
-                    // We answer only if (1) answer is requested and (2) we have position on the subject:
-                    if (in.answerIsRequested()) {
-//                        if(ip.record.getState() != ItemState.PENDING) {
-//
-//                        } else {
-//                        }
-                        network.deliver(
-                                from,
-                                new ItemResyncNotification(myInfo,
-                                        in.getItemId(),
-                                        ip.getResult(),
-                                        ip.needsResyncVoteFrom(from))
-                        );
-                    }
-                    return null;
-                });
-                return;
-            }
-            debug("impossible state: onNotification can't have invalid state from local check\n" + x);
+//            if (x instanceof ItemResult) {
+//                ItemResult r = (ItemResult) x;
+//                // we have solution and need not answer, we answer if requested:
+//                if (in.answerIsRequested()) {
+//                    network.deliver(
+//                            from,
+//                            new ItemResyncNotification(myInfo, in.getItemId(), r, false)
+//                    );
+//                }
+//                return;
+//            }
+//            if (x instanceof ItemProcessor) {
+//                ItemProcessor ip = (ItemProcessor) x;
+//                ItemResult result = in.getItemResult();
+//                ip.lock(() -> {
+//                    debug("notification from " + in.getFrom() + ": " + in.getItemId() + ": " + in.getItemResult() + ", " + in.answerIsRequested());
+//                    debug("my state in it " + ip.getState() + " and I have a copy: " + (ip.item != null));
+//                    // we might still need to download and process it
+//                    if (result.haveCopy) {
+////                    debug("reported source for "+ip.itemId+": "+in.getFrom());
+//                        ip.addToSources(from);
+//                    }
+//                    if (result.state.isConsensusFound())
+//                        ip.resyncVote(from, result.state);
+//                    else
+//                        ip.resyncVote(from, ItemState.UNDEFINED);
+////                        log.e("-- pending vote on " + in.getItemId() + " from " + from);
+//                    // We answer only if (1) answer is requested and (2) we have position on the subject:
+//                    if (in.answerIsRequested()) {
+////                        if(ip.record.getState() != ItemState.PENDING) {
+////
+////                        } else {
+////                        }
+//                        network.deliver(
+//                                from,
+//                                new ItemResyncNotification(myInfo,
+//                                        in.getItemId(),
+//                                        ip.getResult(),
+//                                        ip.needsResyncVoteFrom(from))
+//                        );
+//                    }
+//                    return null;
+//                });
+//                return;
+//            }
+//            debug("impossible state: onNotification can't have invalid state from local check\n" + x);
         } else if (notification instanceof ItemNotification) {
             ItemNotification in = (ItemNotification) notification;
             // get processor, create if need
@@ -281,7 +338,7 @@ public class Node {
                 StateRecord r = ledger.getRecord(itemId);
                 // if it is not pending, it means it is already processed:
                 if (r != null && !r.isPending()) {
-                    debug("record is already processed: " + r.getState());
+                    debug("record for " + itemId + " is already processed: " + r.getState());
                     // it is, and we may still have it cached - we do not put it again:
                     return new ItemResult(r, cache.get(itemId) != null);
                 }
@@ -356,6 +413,14 @@ public class Node {
 
     private class ItemProcessor {
 
+        static public final int WAITING_ITEM =         0;
+        static public final int DOWNLOADING =          1;
+        static public final int CHECKING =             2;
+        static public final int RESYNCING =            3;
+        static public final int POLLING =              4;
+        static public final int SENDING_CONSENSUS =    5;
+//        static public final int CLOSING =              6;
+
         private Approvable item;
         private final StateRecord record;
         private final HashId itemId;
@@ -364,16 +429,17 @@ public class Node {
         private Instant consensusReceivedExpiresAt;
         private Instant resyncExpiresAt;
 
+        private int processingState;
+
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
-        private HashMap<ItemState, Set<NodeInfo>> resyncNodes = new HashMap<>();
-        private Set<HashId> resyncingHashes = new HashSet<>();
+        private HashMap<HashId, ResyncingItem> resyncingItems = new HashMap<>();
         private List<StateRecord> lockedToRevoke = new ArrayList<>();
         private List<StateRecord> lockedToCreate = new ArrayList<>();
         private boolean consensusFound;
         private boolean consensusPossiblyReceivedByAll;
-        private boolean consensusResynced;
         private boolean subItemsResynced;
+        private boolean consensusResynced;
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
 
@@ -385,6 +451,9 @@ public class Node {
         private ScheduledFuture<?> resyncer;
 
         public ItemProcessor(HashId itemId, Approvable item, Object lock) {
+
+            processingState = WAITING_ITEM;
+
             mutex = lock;
             this.itemId = itemId;
             if (item == null)
@@ -399,11 +468,6 @@ public class Node {
             consensusResynced = false;
             subItemsResynced = false;
 
-            resyncNodes.put(ItemState.APPROVED, new HashSet<>());
-            resyncNodes.put(ItemState.REVOKED, new HashSet<>());
-            resyncNodes.put(ItemState.DECLINED, new HashSet<>());
-            resyncNodes.put(ItemState.UNDEFINED, new HashSet<>());
-
             if (this.item != null)
                 executorService.submit(() -> itemDownloaded());
         }
@@ -411,6 +475,9 @@ public class Node {
         //////////// download section /////////////
 
         private void pulseDownload() {
+
+            processingState = DOWNLOADING;
+
             synchronized (mutex) {
                 if (item == null && (downloader == null || downloader.isDone())) {
                     debug("submitting download");
@@ -452,7 +519,7 @@ public class Node {
             synchronized (cache) {
                 cache.put(item);
             }
-            pulseCheckItem();
+            checkItem();
 //            Boolean noNeedToResync = checkItem();
             downloadedEvent.fire();
 //            if(subItemsResynced) {
@@ -463,112 +530,56 @@ public class Node {
 
         //////////// check state section /////////////
 
-        private final void pulseCheckItem() {
-            // at this poing the item is with us, so we can start
-            synchronized (mutex) {
-                if (!subItemsResynced) {
-                    long millis = config.getCheckItemTime().toMillis();
-                    itemChecker = executorService.scheduleAtFixedRate(() -> checkItem(), 0, millis, TimeUnit.MILLISECONDS);
-                }
-            }
-        }
-
         private final synchronized void checkItem() {
 
-            ItemState newState;
+            processingState = CHECKING;
 
-            if (subItemsResynced)
-                return;
+//            if (subItemsResynced)
+//                return;
 
-            if (isResyncExpired()) {
-                newState = ItemState.PENDING_NEGATIVE;
-                setState(newState);
-                subItemsResynced = true;
-                if(itemChecker != null)
-                    itemChecker.cancel(false);
-                commitCheckedAndStartPolling();
-                return;
-            }
+//            if (isResyncExpired()) {
+//                newState = ItemState.PENDING_NEGATIVE;
+//                setState(newState);
+//                subItemsResynced = true;
+//                if(itemChecker != null)
+//                    itemChecker.cancel(false);
+//                commitCheckedAndStartPolling();
+//                return;
+//            }
             debug("Checking " + itemId + " state was " + record.getState());
             // Check the internal state
             // Too bad if basic check isn't passed, we will not process it further
-            List<HashId> itemsToResync = new ArrayList<>();
+            HashMap<HashId, StateRecord> itemsToResync = new HashMap<>();
+            boolean needToResync = false;
             if (item.check()) {
 
-                itemsToResync = isNeedToResync();
+                itemsToResync = isNeedToResync(true);
+                needToResync = !itemsToResync.isEmpty();
 
-                // check the referenced items
-                for (HashId id : item.getReferencedItems()) {
-                    if (!ledger.isApproved(id)) {
-                        item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
-                    }
-                }
-                // check revoking items
-                for (Approvable a : item.getRevokingItems()) {
-                    StateRecord r = record.lockToRevoke(a.getId());
-                    if (r == null) {
-                        item.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
-                    } else {
-                        if(!lockedToRevoke.contains(r))
-                            lockedToRevoke.add(r);
-                    }
-                }
-                // check new items
-                for (Approvable newItem : item.getNewItems()) {
-                    if (!newItem.check()) {
-                        item.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
-                    } else {
-                        StateRecord r = record.createOutputLockRecord(newItem.getId());
-                        if (r == null) {
-                            item.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
-                        } else {
-                            if(!lockedToCreate.contains(r))
-                                lockedToCreate.add(r);
-                        }
-                    }
+                if(!needToResync) {
+                    checkSubItems();
                 }
             } else {
                 debug("Found " + item.getErrors() + " errors:");
                 Collection<ErrorRecord> errors = item.getErrors();
                 errors.forEach(e -> debug("Found error: " + e));
             }
-            boolean checkPassed = item.getErrors().isEmpty();
-            boolean needToResync = !itemsToResync.isEmpty();
 
-            if(!needToResync) {
-                synchronized (mutex) {
-                    if (record.getState() == ItemState.PENDING) {
-                        if (checkPassed) {
-                            newState = ItemState.PENDING_POSITIVE;
-                            setState(newState);
-                        } else {
-                            newState = ItemState.PENDING_NEGATIVE;
-                            setState(newState);
-                        }
-                    }
-                }
-            }
-
-            if (!checkPassed) {
-                informer.inform(item);
-            }
-            debug("Checking " + itemId + ", checkPassed: " + checkPassed  + ", needToResync: " + needToResync
+            debug("Checking " + itemId + ",  needToResync: " + needToResync
                     + ", state: " + record.getState() +
                     ", errors: " + item.getErrors().size() +
                     ", errors: " + item.getErrors().isEmpty());
+
             if(!needToResync) {
-                subItemsResynced = true;
-                if(itemChecker != null)
-                    itemChecker.cancel(false);
                 commitCheckedAndStartPolling();
             } else {
                 debug("Some of sub-contracts was not approved, its should be resync");
-                for (HashId hid : itemsToResync) {
+                for (HashId hid : itemsToResync.keySet()) {
                     try {
-                        if (!resyncingHashes.contains(hid)) {
+                        if (!resyncingItems.containsKey(hid)) {
                             debug("item " + hid + " will be resynced " + record.getState());
-                            resync(hid);
-                            resyncingHashes.add(hid);
+//                            resync(hid);
+                            resyncingItems.put(hid, new ResyncingItem(hid, itemsToResync.get(hid)));
                             subItemsResynced = false;
                         } else {
                             debug(hid + " already resyncing");
@@ -577,10 +588,106 @@ public class Node {
                         e.printStackTrace();
                     }
                 }
+
+                pulseResync();
+                pulseCheckIfSubItemsResynced();
+            }
+        }
+
+        private final void pulseCheckIfSubItemsResynced() {
+
+            synchronized (mutex) {
+                if (!subItemsResynced) {
+                    long millis = config.getCheckItemTime().toMillis();
+                    itemChecker = executorService.scheduleAtFixedRate(() -> checkIfSubItemsResynced(), 0, millis, TimeUnit.MILLISECONDS);
+                }
+            }
+        }
+
+        private final void checkIfSubItemsResynced() {
+
+            HashMap<HashId, ResyncingItem> itemsToRemove = new HashMap<>();
+            for(HashId hid : resyncingItems.keySet()) {
+                if(resyncingItems.get(hid).consensusComitted) {
+                    itemsToRemove.put(hid, resyncingItems.get(hid));
+                }
+            }
+
+            for(HashId hid : itemsToRemove.keySet()) {
+                debug("remove resynced item " + hid);
+                if(resyncingItems.containsKey(hid)) {
+                    resyncingItems.remove(hid, resyncingItems.get(hid));
+                }
+            }
+
+            if(resyncingItems.isEmpty()) {
+
+                processingState = CHECKING;
+
+                checkSubItems();
+                commitCheckedAndStartPolling();
+            }
+        }
+
+        private final void checkSubItems() {// check the referenced items
+            for (HashId id : item.getReferencedItems()) {
+                if (!ledger.isApproved(id)) {
+                    item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
+                }
+            }
+            // check revoking items
+            for (Approvable a : item.getRevokingItems()) {
+                StateRecord r = record.lockToRevoke(a.getId());
+                if (r == null) {
+                    item.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
+                } else {
+                    if(!lockedToRevoke.contains(r))
+                        lockedToRevoke.add(r);
+                }
+            }
+            // check new items
+            for (Approvable newItem : item.getNewItems()) {
+                if (!newItem.check()) {
+                    item.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
+                } else {
+                    StateRecord r = record.createOutputLockRecord(newItem.getId());
+                    if (r == null) {
+                        item.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
+                    } else {
+                        if(!lockedToCreate.contains(r))
+                            lockedToCreate.add(r);
+                    }
+                }
             }
         }
 
         private final void commitCheckedAndStartPolling() {
+
+            boolean checkPassed = item.getErrors().isEmpty();
+
+            debug("Checking " + itemId + ", checkPassed: " + checkPassed
+                    + ", state: " + record.getState() +
+                    ", errors: " + item.getErrors().size() +
+                    ", errors: " + item.getErrors().isEmpty());
+
+            if (!checkPassed) {
+                informer.inform(item);
+            }
+
+            synchronized (mutex) {
+                if (record.getState() == ItemState.PENDING) {
+                    if (checkPassed) {
+                        setState(ItemState.PENDING_POSITIVE);
+                    } else {
+                        setState(ItemState.PENDING_NEGATIVE);
+                    }
+                }
+            }
+
+            subItemsResynced = true;
+            if(itemChecker != null)
+                itemChecker.cancel(false);
+
             record.setExpiresAt(item.getExpiresAt());
             record.save();
             vote(myInfo, record.getState());
@@ -588,31 +695,35 @@ public class Node {
             pulseStartPolling();
         }
 
-        public List<HashId> isNeedToResync() {
-            List<HashId> unknownParts = new ArrayList<>();
-            List<HashId> knownParts = new ArrayList<>();
-            boolean checkPassed = item.check();
-            if (checkPassed) {
+        public HashMap<HashId, StateRecord> isNeedToResync(boolean baseCheckPassed) {
+            HashMap<HashId, StateRecord>  unknownParts = new HashMap<>();
+            HashMap<HashId, StateRecord> knownParts = new HashMap<>();
+            if (baseCheckPassed) {
                 // check the referenced items
                 for (HashId id : item.getReferencedItems()) {
                     StateRecord r = ledger.getRecord(id);
                     if(r != null)
-                        debug(">> item " + id + " is " + r.getState());
+                        debug(">> referenced subitem " + id + " is " + r.getState());
                     else
-                        debug(">> item " + id + " is " + r);
-                    if (!ledger.isConsensusFound(id)) {
-                        unknownParts.add(id);
+                        debug(">> referenced subitem " + id + " is " + r);
+                    if (r == null || !r.getState().isConsensusFound()) {
+                        unknownParts.put(id, r);
                     } else {
-                        knownParts.add(id);
+                        knownParts.put(id, r);
                     }
                 }
                 // check revoking items
                 for (Approvable a : item.getRevokingItems()) {
-                    StateRecord r = record.lockToRevoke(a.getId());
-                    if (!ledger.isConsensusFound(a.getId())) {
-                        unknownParts.add(a.getId());
+                    StateRecord r = ledger.getRecord(a.getId());
+//                    StateRecord r = record.lockToRevoke(a.getId());
+                    if(r != null)
+                        debug(">> revoking subitem " + a.getId() + " is " + r.getState());
+                    else
+                        debug(">> revoking subitem " + a.getId() + " is " + r);
+                    if (r == null || !r.getState().isConsensusFound()) {
+                        unknownParts.put(a.getId(), r);
                     } else {
-                        knownParts.add(a.getId());
+                        knownParts.put(a.getId(), r);
                     }
                 }
             } else {
@@ -623,7 +734,7 @@ public class Node {
             boolean needToResync = false;
             // contract is complex and consist from parts
             if(unknownParts.size() + knownParts.size() > 0) {
-                needToResync = checkPassed &&
+                needToResync = baseCheckPassed &&
                         unknownParts.size() > 0 &&
                                 knownParts.size() >= config.getKnownSubContractsToResync();
             }
@@ -635,12 +746,15 @@ public class Node {
 
             if(needToResync)
                 return unknownParts;
-            return new ArrayList<>();
+            return new HashMap<>();
         }
 
         //////////// polling section /////////////
 
         private final void pulseStartPolling() {
+
+            processingState = POLLING;
+
             // at this poing the item is with us, so we can start
             synchronized (mutex) {
                 if (!consensusFound) {
@@ -807,6 +921,9 @@ public class Node {
         //////////// sending new state section /////////////
 
         private final void pulseSendNewConsensus() {
+
+            processingState = SENDING_CONSENSUS;
+
             synchronized (mutex) {
                 long millis = config.getConsensusReceivedCheckTime().toMillis();
                 consensusReceivedChecker = executorService.scheduleAtFixedRate(() -> sendNewConsensusNotification(),
@@ -858,11 +975,18 @@ public class Node {
         //////////// resync section /////////////
 
         private final void pulseResync() {
-            // vote itself
-            if (record.getState().isConsensusFound())
-                resyncVote(myInfo, record.getState());
-            else
-                resyncVote(myInfo, ItemState.UNDEFINED);
+
+            processingState = RESYNCING;
+
+            for (ResyncingItem ri : resyncingItems.values()) {
+                // vote itself
+                if(ri.needsResyncVoteFrom(myInfo)) {
+                    if (ri.getState().isConsensusFound())
+                        resyncVote(ri.getId(), myInfo, ri.record.getState());
+                    else
+                        resyncVote(ri.getId(), myInfo, ItemState.UNDEFINED);
+                }
+            }
 
             synchronized (mutex) {
                 long millis = config.getResyncTime().toMillis();
@@ -885,172 +1009,191 @@ public class Node {
                     return;
                 }
             }
-            // at this point we should requery the nodes that did not yet answered us
-            ItemResyncNotification notification = new ItemResyncNotification(myInfo, itemId, getResult(), true);
             network.eachNode(node -> {
-                if (needsResyncVoteFrom(node)) {
-                    debug("Resync at the " + node.getNumber() + ", deliver resync notification");
+                HashMap<HashId, ItemState> itemsToResync = new HashMap<>();
+                for (HashId hid : resyncingItems.keySet()) {
+                    if (resyncingItems.get(hid).needsResyncVoteFrom(node)) {
+                        itemsToResync.put(hid, resyncingItems.get(hid).getState());
+                    }
+                }
+                if(itemsToResync.size() > 0) {
+                    ItemResyncNotification notification = new ItemResyncNotification(myInfo, itemId, itemsToResync, true);
+                    debug("Resync at the " + node.getNumber() + " for " + itemId + ", and subitems: " + itemsToResync);
                     network.deliver(node, notification);
                 }
             });
         }
 
-        private final void resyncVote(NodeInfo node, ItemState state) {
-            boolean approvedConsenus = false;
-            boolean revokedConsenus = false;
-            boolean declinedConsenus = false;
-            boolean undefinedConsenus = false;
+        private final void resyncVote(HashId hid, NodeInfo node, ItemState state) {
             synchronized (mutex) {
-                for (ItemState is : resyncNodes.keySet()) {
-                    resyncNodes.get(is).remove(node);
-                }
-                if(!resyncNodes.containsKey(state)) {
-                    resyncNodes.put(state, new HashSet<>());
-                }
-                resyncNodes.get(state).add(node);
-
-//                Set<NodeInfo> add, remove;
-//                if (state == ItemState.APPROVED) {
-//                    add = positiveResyncNodes;
-//                    remove = negativeResyncNodes;
-//                } else if (state == ItemState.DECLINED || state == ItemState.REVOKED) {
-//                    add = negativeResyncNodes;
-//                    remove = positiveResyncNodes;
-//                } else {
+                if(resyncingItems.containsKey(hid))
+                    resyncingItems.get(hid).resyncVote(node, state);
+            }
+//            boolean approvedConsenus = false;
+//            boolean revokedConsenus = false;
+//            boolean declinedConsenus = false;
+//            boolean undefinedConsenus = false;
+//            synchronized (mutex) {
+//                for (ItemState is : resyncNodes.keySet()) {
+//                    resyncNodes.get(is).remove(node);
+//                }
+//                if(!resyncNodes.containsKey(state)) {
+//                    resyncNodes.put(state, new HashSet<>());
+//                }
+//                resyncNodes.get(state).add(node);
+//
+////                Set<NodeInfo> add, remove;
+////                if (state == ItemState.APPROVED) {
+////                    add = positiveResyncNodes;
+////                    remove = negativeResyncNodes;
+////                } else if (state == ItemState.DECLINED || state == ItemState.REVOKED) {
+////                    add = negativeResyncNodes;
+////                    remove = positiveResyncNodes;
+////                } else {
+////                    return;
+////                }
+////                add.add(node);
+////                remove.remove(node);
+//
+//                if (consensusResynced) {
+////                    debug("consensusResynced already found, but vote for " + itemId + " from " + node + ": " + state + " > " + positiveResyncNodes.size() + "/" +
+////                            negativeResyncNodes.size());
+////                    checkIfAllReceivedConsensus();
 //                    return;
 //                }
-//                add.add(node);
-//                remove.remove(node);
-
-                if (consensusResynced) {
-//                    debug("consensusResynced already found, but vote for " + itemId + " from " + node + ": " + state + " > " + positiveResyncNodes.size() + "/" +
-//                            negativeResyncNodes.size());
-//                    checkIfAllReceivedConsensus();
-                    return;
-                }
-
-                if (resyncNodes.get(ItemState.REVOKED).size() >= config.getPositiveConsensus()) {
-                    consensusResynced = revokedConsenus = true;
-                } else if (resyncNodes.get(ItemState.DECLINED).size() >= config.getPositiveConsensus()) {
-                    consensusResynced = declinedConsenus = true;
-                } else if (resyncNodes.get(ItemState.APPROVED).size() >= config.getPositiveConsensus()) {
-                    consensusResynced = approvedConsenus = true;
-                } else if (resyncNodes.get(ItemState.UNDEFINED).size() >= config.getResyncBreakConsensus()) {
-                    consensusResynced = undefinedConsenus = true;
-                }
-                debug("resync vote for " + itemId + " from " + node + ": " + state + " (APPROVED/REVOKED/DECLINED/UNDEFINED)> " +
-                        resyncNodes.get(ItemState.APPROVED).size() + "/" +
-                        resyncNodes.get(ItemState.REVOKED).size() +  "/" +
-                        resyncNodes.get(ItemState.DECLINED).size() +  "/" +
-                        resyncNodes.get(ItemState.UNDEFINED).size() + " consFound=" + consensusResynced +
-                        ": approvedConsenus=" + approvedConsenus +
-                        ": revokedConsenus=" + revokedConsenus +
-                        ": declinedConsenus=" + declinedConsenus +
-                        ": undefinedConsenus=" + undefinedConsenus);
-                if (!consensusResynced)
-                    return;
-            }
-            if(consensusResynced) {
-                stopResync();
-            }
-            if (revokedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.REVOKED));
-            } else if (declinedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.DECLINED));
-            } else if (approvedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.APPROVED));
-            } else if (undefinedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.UNDEFINED));
-            } else
-                throw new RuntimeException("error: resync consensus reported without consensus");
-        }
-
-        private final void resyncAndCommit(ItemState committingState) {
-//            final DeferredResult result = new DeferredResult();
-            final AtomicInteger latch = new AtomicInteger(config.getResyncThreshold());
-            final AtomicInteger rest = new AtomicInteger(config.getPositiveConsensus()+1);
-            debug("resync latch is set to " + latch);
-            debug("resync rest is set to " + rest);
-//            final LinkedList<NodeInfo> test = new LinkedList<>(network.allNodes());
-
-            final Average startDateAvg = new Average();
-            final Average expiresAtAvg = new Average();
-
-//            for(int i=0; i<5; i++ ) {
-            executorService.submit(()->{
-//                    while( rest.get() > 1 && latch.get() > 0 ) {
-//                        NodeInfo ni = null;
-//                        synchronized (test) {
-//                            if (!test.isEmpty())
-//                                ni = test.removeFirst();
-//                        }
-//                    for (ItemState itState : resyncNodes.keySet()) {
-                Set<NodeInfo> rNodes = new HashSet<>();
-                Set<NodeInfo> nowNodes = resyncNodes.get(committingState);
-                // make local set of nodes to prevent changing set of nodes while commiting
-                synchronized (resyncNodes) {
-                    for (NodeInfo ni : nowNodes) {
-                        rNodes.add(ni);
-                    }
-                }
-                debug("--resync commit state: " + committingState  + " rNodes: " + rNodes + " nowNodes: " + nowNodes);
-                for (NodeInfo ni : rNodes) {
-                    if (ni != null) {
-                        try {
-                            ItemResult r = network.getItemState(ni, itemId);
-                            debug("--got from " + ni + " : " + r + " remote state is: " + r.state);
-                            if (r != null && r.state == committingState || (!r.state.isConsensusFound() && committingState == ItemState.UNDEFINED)) {
-                                startDateAvg.update(r.createdAt.toEpochSecond());
-                                expiresAtAvg.update(r.expiresAt.toEpochSecond());
-                                int count = latch.decrementAndGet();
-                                if (count < 1) {
-                                    debug("resync success on " + itemId);
-                                    ZonedDateTime createdAt = ZonedDateTime.ofInstant(
-                                            Instant.ofEpochSecond((long) startDateAvg.average()), ZoneId.systemDefault());
-                                    ZonedDateTime expiresAt = ZonedDateTime.ofInstant(
-                                            Instant.ofEpochSecond((long) expiresAtAvg.average()), ZoneId.systemDefault());
-                                    debug("created at " + startDateAvg + " : " + createdAt);
-                                    debug("expires at " + expiresAtAvg + " : " + expiresAt);
-                                    if(!r.state.isConsensusFound() && committingState == ItemState.UNDEFINED) {
-                                        ledger.findOrCreate(itemId).setState(ItemState.DECLINED)
-                                                .setCreatedAt(createdAt)
-                                                .setExpiresAt(expiresAt)
-                                                .save();
-                                    } else {
-                                        ledger.findOrCreate(itemId).setState(committingState)
-                                                .setCreatedAt(createdAt)
-                                                .setExpiresAt(expiresAt)
-                                                .save();
-                                    }
-                                    debug("resync finished");
-//                                            result.sendSuccess(null);
-                                    break;
-                                }
-                            } else {
-                                debug("not approved from " + ni);
-                                if (rest.decrementAndGet() < 1) {
-//                                            result.sendFailure(null);
-                                    return;
-                                }
-                            }
-                        } catch (IOException e) {
-                            debug("failed to get state from " + ni + ": " + e);
-//                                synchronized (test) {
-//                                    test.addLast(ni);
-//                                }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    } else {
+//
+//                if (resyncNodes.get(ItemState.REVOKED).size() >= config.getPositiveConsensus()) {
+//                    consensusResynced = revokedConsenus = true;
+//                } else if (resyncNodes.get(ItemState.DECLINED).size() >= config.getPositiveConsensus()) {
+//                    consensusResynced = declinedConsenus = true;
+//                } else if (resyncNodes.get(ItemState.APPROVED).size() >= config.getPositiveConsensus()) {
+//                    consensusResynced = approvedConsenus = true;
+//                } else if (resyncNodes.get(ItemState.UNDEFINED).size() >= config.getResyncBreakConsensus()) {
+//                    consensusResynced = undefinedConsenus = true;
+//                }
+//                debug("resync vote for " + itemId + " from " + node + ": " + state + " (APPROVED/REVOKED/DECLINED/UNDEFINED)> " +
+//                        resyncNodes.get(ItemState.APPROVED).size() + "/" +
+//                        resyncNodes.get(ItemState.REVOKED).size() +  "/" +
+//                        resyncNodes.get(ItemState.DECLINED).size() +  "/" +
+//                        resyncNodes.get(ItemState.UNDEFINED).size() + " consFound=" + consensusResynced +
+//                        ": approvedConsenus=" + approvedConsenus +
+//                        ": revokedConsenus=" + revokedConsenus +
+//                        ": declinedConsenus=" + declinedConsenus +
+//                        ": undefinedConsenus=" + undefinedConsenus);
+//                if (!consensusResynced)
+//                    return;
+//            }
+            synchronized (mutex) {
+                boolean isAllResynced = true;
+                for (ResyncingItem ri : resyncingItems.values()) {
+                    if(!ri.consensusResynced) {
+                        isAllResynced = false;
                         break;
                     }
                 }
-//                    }
-//                    }
-                debug("exiting resync thread");
-            });
-//            }
+                consensusResynced = isAllResynced;
+                if (consensusResynced) {
+                    stopResync();
+                }
+            }
+//            if (revokedConsenus) {
+//                executorService.submit(() -> resyncAndCommit(ItemState.REVOKED));
+//            } else if (declinedConsenus) {
+//                executorService.submit(() -> resyncAndCommit(ItemState.DECLINED));
+//            } else if (approvedConsenus) {
+//                executorService.submit(() -> resyncAndCommit(ItemState.APPROVED));
+//            } else if (undefinedConsenus) {
+//                executorService.submit(() -> resyncAndCommit(ItemState.UNDEFINED));
+//            } else
+//                throw new RuntimeException("error: resync consensus reported without consensus");
         }
+
+//        private final void resyncAndCommit(ItemState committingState) {
+////            final DeferredResult result = new DeferredResult();
+//            final AtomicInteger latch = new AtomicInteger(config.getResyncThreshold());
+//            final AtomicInteger rest = new AtomicInteger(config.getPositiveConsensus()+1);
+//            debug("resync latch is set to " + latch);
+//            debug("resync rest is set to " + rest);
+////            final LinkedList<NodeInfo> test = new LinkedList<>(network.allNodes());
+//
+//            final Average startDateAvg = new Average();
+//            final Average expiresAtAvg = new Average();
+//
+////            for(int i=0; i<5; i++ ) {
+//            executorService.submit(()->{
+////                    while( rest.get() > 1 && latch.get() > 0 ) {
+////                        NodeInfo ni = null;
+////                        synchronized (test) {
+////                            if (!test.isEmpty())
+////                                ni = test.removeFirst();
+////                        }
+////                    for (ItemState itState : resyncNodes.keySet()) {
+//                Set<NodeInfo> rNodes = new HashSet<>();
+//                Set<NodeInfo> nowNodes = resyncNodes.get(committingState);
+//                // make local set of nodes to prevent changing set of nodes while commiting
+//                synchronized (resyncNodes) {
+//                    for (NodeInfo ni : nowNodes) {
+//                        rNodes.add(ni);
+//                    }
+//                }
+//                debug("--resync commit state: " + committingState  + " rNodes: " + rNodes + " nowNodes: " + nowNodes);
+//                for (NodeInfo ni : rNodes) {
+//                    if (ni != null) {
+//                        try {
+//                            ItemResult r = network.getItemState(ni, itemId);
+//                            debug("--got from " + ni + " : " + r + " remote state is: " + r.state);
+//                            if (r != null && r.state == committingState || (!r.state.isConsensusFound() && committingState == ItemState.UNDEFINED)) {
+//                                startDateAvg.update(r.createdAt.toEpochSecond());
+//                                expiresAtAvg.update(r.expiresAt.toEpochSecond());
+//                                int count = latch.decrementAndGet();
+//                                if (count < 1) {
+//                                    debug("resync success on " + itemId);
+//                                    ZonedDateTime createdAt = ZonedDateTime.ofInstant(
+//                                            Instant.ofEpochSecond((long) startDateAvg.average()), ZoneId.systemDefault());
+//                                    ZonedDateTime expiresAt = ZonedDateTime.ofInstant(
+//                                            Instant.ofEpochSecond((long) expiresAtAvg.average()), ZoneId.systemDefault());
+//                                    debug("created at " + startDateAvg + " : " + createdAt);
+//                                    debug("expires at " + expiresAtAvg + " : " + expiresAt);
+//                                    if(!r.state.isConsensusFound() && committingState == ItemState.UNDEFINED) {
+//                                        ledger.findOrCreate(itemId).setState(ItemState.DECLINED)
+//                                                .setCreatedAt(createdAt)
+//                                                .setExpiresAt(expiresAt)
+//                                                .save();
+//                                    } else {
+//                                        ledger.findOrCreate(itemId).setState(committingState)
+//                                                .setCreatedAt(createdAt)
+//                                                .setExpiresAt(expiresAt)
+//                                                .save();
+//                                    }
+//                                    debug("resync finished");
+////                                            result.sendSuccess(null);
+//                                    break;
+//                                }
+//                            } else {
+//                                debug("not approved from " + ni);
+//                                if (rest.decrementAndGet() < 1) {
+////                                            result.sendFailure(null);
+//                                    return;
+//                                }
+//                            }
+//                        } catch (IOException e) {
+//                            debug("failed to get state from " + ni + ": " + e);
+////                                synchronized (test) {
+////                                    test.addLast(ni);
+////                                }
+//                        } catch (Exception e) {
+//                            e.printStackTrace();
+//                        }
+//                    } else {
+//                        break;
+//                    }
+//                }
+////                    }
+////                    }
+//                debug("exiting resync thread");
+//            });
+////            }
+//        }
 
         private boolean isResyncExpired() {
             return resyncExpiresAt.isBefore(Instant.now());
@@ -1117,20 +1260,6 @@ public class Node {
             return record.getState().isPending() && !positiveNodes.contains(node) && !negativeNodes.contains(node);
         }
 
-        /**
-         * true if we need to get vote from a node
-         *
-         * @param node we might need vote from
-         *
-         * @return
-         */
-        private final boolean needsResyncVoteFrom(NodeInfo node) {
-            return !resyncNodes.get(ItemState.APPROVED).contains(node) &&
-                    !resyncNodes.get(ItemState.REVOKED).contains(node) &&
-                    !resyncNodes.get(ItemState.DECLINED).contains(node) &&
-                    !resyncNodes.get(ItemState.UNDEFINED).contains(node);
-        }
-
         private final void addToSources(NodeInfo node) {
             if (item != null)
                 return;
@@ -1146,6 +1275,182 @@ public class Node {
             synchronized (mutex) {
                 return (T) c.get();
             }
+        }
+    }
+
+    private class ResyncingItem {
+
+        private HashId hashId;
+        private StateRecord record;
+        private boolean consensusResynced = false;
+        private boolean consensusComitted = false;
+        private HashMap<ItemState, Set<NodeInfo>> resyncNodes = new HashMap<>();
+        private final Object mutex = new Object();
+
+        public ResyncingItem(HashId hid, StateRecord record) {
+            this.hashId = hid;
+            this.record = record;
+
+            resyncNodes.put(ItemState.APPROVED, new HashSet<>());
+            resyncNodes.put(ItemState.REVOKED, new HashSet<>());
+            resyncNodes.put(ItemState.DECLINED, new HashSet<>());
+            resyncNodes.put(ItemState.UNDEFINED, new HashSet<>());
+        }
+
+        private final void resyncVote(NodeInfo node, ItemState state) {
+            boolean approvedConsenus = false;
+            boolean revokedConsenus = false;
+            boolean declinedConsenus = false;
+            boolean undefinedConsenus = false;
+            synchronized (mutex) {
+                for (ItemState is : resyncNodes.keySet()) {
+                    resyncNodes.get(is).remove(node);
+                }
+                if(!resyncNodes.containsKey(state)) {
+                    resyncNodes.put(state, new HashSet<>());
+                }
+                resyncNodes.get(state).add(node);
+
+                if (consensusResynced) {
+//                    debug("consensusResynced already found, but vote for " + itemId + " from " + node + ": " + state + " > " + positiveResyncNodes.size() + "/" +
+//                            negativeResyncNodes.size());
+//                    checkIfAllReceivedConsensus();
+                    return;
+                }
+
+                if (resyncNodes.get(ItemState.REVOKED).size() >= config.getPositiveConsensus()) {
+                    consensusResynced = revokedConsenus = true;
+                } else if (resyncNodes.get(ItemState.DECLINED).size() >= config.getPositiveConsensus()) {
+                    consensusResynced = declinedConsenus = true;
+                } else if (resyncNodes.get(ItemState.APPROVED).size() >= config.getPositiveConsensus()) {
+                    consensusResynced = approvedConsenus = true;
+                } else if (resyncNodes.get(ItemState.UNDEFINED).size() >= config.getResyncBreakConsensus()) {
+                    consensusResynced = undefinedConsenus = true;
+                }
+                debug("resync vote for " + hashId + " from " + node + ": " + state + " (APPROVED/REVOKED/DECLINED/UNDEFINED)> " +
+                        resyncNodes.get(ItemState.APPROVED).size() + "/" +
+                        resyncNodes.get(ItemState.REVOKED).size() +  "/" +
+                        resyncNodes.get(ItemState.DECLINED).size() +  "/" +
+                        resyncNodes.get(ItemState.UNDEFINED).size() + " consFound=" + consensusResynced +
+                        ": approvedConsenus=" + approvedConsenus +
+                        ": revokedConsenus=" + revokedConsenus +
+                        ": declinedConsenus=" + declinedConsenus +
+                        ": undefinedConsenus=" + undefinedConsenus);
+                if (!consensusResynced)
+                    return;
+            }
+//            if(consensusResynced) {
+//                stopResync();
+//            }
+            if (revokedConsenus) {
+                executorService.submit(() -> resyncAndCommit(ItemState.REVOKED));
+            } else if (declinedConsenus) {
+                executorService.submit(() -> resyncAndCommit(ItemState.DECLINED));
+            } else if (approvedConsenus) {
+                executorService.submit(() -> resyncAndCommit(ItemState.APPROVED));
+            } else if (undefinedConsenus) {
+                executorService.submit(() -> resyncAndCommit(ItemState.UNDEFINED));
+            } else
+                throw new RuntimeException("error: resync consensus reported without consensus");
+        }
+
+        private final void resyncAndCommit(ItemState committingState) {
+            final AtomicInteger latch = new AtomicInteger(config.getResyncThreshold());
+            final AtomicInteger rest = new AtomicInteger(config.getPositiveConsensus()+1);
+            debug("resync latch is set to " + latch);
+            debug("resync rest is set to " + rest);
+
+            final Average startDateAvg = new Average();
+            final Average expiresAtAvg = new Average();
+
+            executorService.submit(()->{
+                Set<NodeInfo> rNodes = new HashSet<>();
+                Set<NodeInfo> nowNodes = resyncNodes.get(committingState);
+                // make local set of nodes to prevent changing set of nodes while commiting
+                synchronized (resyncNodes) {
+                    for (NodeInfo ni : nowNodes) {
+                        rNodes.add(ni);
+                    }
+                }
+                debug("--resync commit state: " + committingState  + " rNodes: " + rNodes + " nowNodes: " + nowNodes);
+                for (NodeInfo ni : rNodes) {
+                    if (ni != null) {
+                        try {
+                            ItemResult r = network.getItemState(ni, hashId);
+                            debug("--got from " + ni + " : " + r + " remote state is: " + r.state);
+                            if (r != null && r.state == committingState && r.createdAt != null && r.expiresAt != null) {// || (!r.state.isConsensusFound() && committingState == ItemState.UNDEFINED)) {
+
+                                startDateAvg.update(r.createdAt.toEpochSecond());
+                                expiresAtAvg.update(r.expiresAt.toEpochSecond());
+
+                                int count = latch.decrementAndGet();
+                                if (count < 1) {
+                                    debug("resync success on " + hashId);
+                                    ZonedDateTime createdAt = ZonedDateTime.ofInstant(
+                                            Instant.ofEpochSecond((long) startDateAvg.average()), ZoneId.systemDefault());
+                                    ZonedDateTime expiresAt = ZonedDateTime.ofInstant(
+                                            Instant.ofEpochSecond((long) expiresAtAvg.average()), ZoneId.systemDefault());
+                                    debug("created at " + startDateAvg + " : " + createdAt);
+                                    debug("expires at " + expiresAtAvg + " : " + expiresAt);
+//                                    if(!r.state.isConsensusFound() && committingState == ItemState.UNDEFINED) {
+//                                        ledger.findOrCreate(hashId).setState(ItemState.DECLINED)
+//                                                .setCreatedAt(createdAt)
+//                                                .setExpiresAt(expiresAt)
+//                                                .save();
+//                                    } else {
+                                        ledger.findOrCreate(hashId).setState(committingState)
+                                                .setCreatedAt(createdAt)
+                                                .setExpiresAt(expiresAt)
+                                                .save();
+//                                    }
+                                    debug("resync finished");
+//                                            result.sendSuccess(null);
+                                    break;
+                                }
+                            } else {
+                                debug("not approved from " + ni);
+                                if (rest.decrementAndGet() < 1) {
+//                                            result.sendFailure(null);
+                                    return;
+                                }
+                            }
+                        } catch (IOException e) {
+                            debug("failed to get state from " + ni + ": " + e);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                debug("exiting resync commit for " + hashId);
+                consensusComitted = true;
+            });
+        }
+
+        /**
+         * true if we need to get vote from a node
+         *
+         * @param node we might need vote from
+         *
+         * @return
+         */
+        public final boolean needsResyncVoteFrom(NodeInfo node) {
+            return !resyncNodes.get(ItemState.APPROVED).contains(node) &&
+                    !resyncNodes.get(ItemState.REVOKED).contains(node) &&
+                    !resyncNodes.get(ItemState.DECLINED).contains(node) &&
+                    !resyncNodes.get(ItemState.UNDEFINED).contains(node);
+        }
+
+        public HashId getId() {
+            return hashId;
+        }
+
+        public ItemState getState() {
+            if(record != null)
+                return record.getState();
+
+            return ItemState.UNDEFINED;
         }
     }
 }

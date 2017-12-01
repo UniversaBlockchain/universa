@@ -98,6 +98,7 @@ public class TestLocalNetwork extends Network {
             }
             return nn;
         } catch (Exception e) {
+            e.printStackTrace();
             System.err.println("failed to unpack notification: " + e);
             throw new IOException("failed to unpack notifications");
         }
