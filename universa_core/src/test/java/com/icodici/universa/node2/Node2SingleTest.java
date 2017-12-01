@@ -244,7 +244,7 @@ public class Node2SingleTest extends TestCase {
         assertEquals(2, main.getNewItems().size());
 
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 1000);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -277,7 +277,7 @@ public class Node2SingleTest extends TestCase {
         assertThat(itemResult.state, anyOf(equalTo(ItemState.PENDING), equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
 
         @NonNull ItemResult itemNew1 = node.checkItem(new1.getId());
-        assertEquals(ItemState.UNDEFINED, itemNew1.state);
+        assertThat(itemNew1.state, anyOf(equalTo(ItemState.UNDEFINED), equalTo(ItemState.LOCKED_FOR_CREATION)));
 
         // and this one was created before
         @NonNull ItemResult itemNew2 = node.checkItem(new2.getId());
@@ -289,13 +289,17 @@ public class Node2SingleTest extends TestCase {
         return;
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 30000)
     public void badReferencesDeclineListStates() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         for (ItemState badState : Arrays.asList(
                 ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
                 ) {
 
+            System.out.println("-------------- check bad state " + badState + " isConsensusFind(" + badState.isConsensusFound() + ") --------");
             TestItem main = new TestItem(true);
 
             StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
@@ -309,7 +313,7 @@ public class Node2SingleTest extends TestCase {
 
             // check that main is fully approved
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 1500);
+            ItemResult itemResult = node.waitItem(main.getId(), 10000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
@@ -319,9 +323,20 @@ public class Node2SingleTest extends TestCase {
             }
             assertEquals(ItemState.APPROVED, existing1.reload().getState());
 
-            Thread.sleep(200);
-
-            assertEquals(badState, existing2.reload().getState());
+            if(!badState.isConsensusFound()) {
+                while (ItemState.DECLINED != existing2.reload().getState() && badState != existing2.reload().getState()) {
+                    Thread.sleep(200);
+                    System.out.println(existing2.reload().getState());
+                }
+                assertThat(existing2.reload().getState(), anyOf(equalTo(ItemState.DECLINED), equalTo(badState)));
+            }
+            else {
+                while (badState != existing2.reload().getState()) {
+                    Thread.sleep(200);
+                    System.out.println(existing2.reload().getState());
+                }
+                assertEquals(badState, existing2.reload().getState());
+            }
         }
     }
 
@@ -362,7 +377,7 @@ public class Node2SingleTest extends TestCase {
     @Test
     public void missingReferencesDecline() throws Exception {
 
-//        LogPrinter.showDebug(true);
+        LogPrinter.showDebug(true);
 
         TestItem main = new TestItem(true);
 
@@ -408,12 +423,17 @@ public class Node2SingleTest extends TestCase {
 //        assertEquals(ItemState.REVOKED, node.checkItem(existing2.getId()).state);
 //    }
 //
-    @Test
+    @Test(timeout = 30000)
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         for (ItemState badState : Arrays.asList(
                 ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
                 ) {
+
+            System.out.println("-------------- check bad state " + badState + " isConsensusFind(" + badState.isConsensusFound() + ") --------");
 
             Thread.sleep(200);
             TestItem main = new TestItem(true);
@@ -427,12 +447,26 @@ public class Node2SingleTest extends TestCase {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 1500);
+            ItemResult itemResult = node.waitItem(main.getId(), 5000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
             assertEquals(ItemState.APPROVED, existing1.reload().getState());
-            assertEquals(badState, existing2.reload().getState());
+
+            if(!badState.isConsensusFound()) {
+                while (ItemState.DECLINED != existing2.reload().getState() && badState != existing2.reload().getState()) {
+                    Thread.sleep(200);
+                    System.out.println(existing2.reload().getState());
+                }
+                assertThat(existing2.reload().getState(), anyOf(equalTo(ItemState.DECLINED), equalTo(badState)));
+            }
+            else {
+                while (badState != existing2.reload().getState()) {
+                    Thread.sleep(200);
+                    System.out.println(existing2.reload().getState());
+                }
+                assertEquals(badState, existing2.reload().getState());
+            }
 
         }
     }
@@ -644,7 +678,7 @@ public class Node2SingleTest extends TestCase {
         // when the system will not get the answer
         config.setPositiveConsensus(posCons);
         config.setNegativeConsensus(negCons);
-        config.setResyncBreakConsensus(2);
+        config.setResyncBreakConsensus(1);
 
         myInfo = new NodeInfo(getNodePublicKey(0), 1, "node1", "localhost",
                 7101, 7102, 7104);
@@ -659,6 +693,7 @@ public class Node2SingleTest extends TestCase {
 
         ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING, properties);
         node = new Node(config, myInfo, ledger, network);
+        ((TestSingleNetwork)network).addNode(myInfo, node);
     }
 
 

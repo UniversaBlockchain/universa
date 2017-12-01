@@ -1040,7 +1040,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         timer.cancel();
         config.setMaxResyncTime(wasMaxResyncTime);
 
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.DECLINED, node.checkItem(c.getId()).state);
     }
 
 //    @Test
@@ -1129,7 +1129,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         TestItem bad = new TestItem(false);
         node.registerItem(bad);
         for (Node n : nodes.values()) {
-            ItemResult r = node.waitItem(bad.getId(), 100);
+            ItemResult r = node.waitItem(bad.getId(), 500);
             assertEquals(ItemState.DECLINED, r.state);
         }
     }

@@ -9,12 +9,18 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.Network;
 
+import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class TestSingleNetwork extends Network {
+
+    private Map<NodeInfo, Node> nodes = new HashMap<>();
 
     public TestSingleNetwork(NetConfig nc) {
         super(nc);
@@ -33,5 +39,14 @@ public class TestSingleNetwork extends Network {
     @Override
     public Approvable getItem(HashId itemId, NodeInfo node, Duration maxTimeout) throws InterruptedException {
         return null;
+    }
+
+    @Override
+    public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
+        return nodes.get(nodeInfo).checkItem(id);
+    }
+
+    public void addNode(NodeInfo ni, Node node) {
+        nodes.put(ni, node);
     }
 }

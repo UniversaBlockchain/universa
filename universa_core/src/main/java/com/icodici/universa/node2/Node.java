@@ -148,7 +148,7 @@ public class Node {
 //                    debug("reported source for "+ip.itemId+": "+in.getFrom());
                         ip.addToSources(from);
                     }
-                    if (result.state != ItemState.PENDING)
+                    if (result.state.isConsensusFound())
                         ip.resyncVote(from, result.state);
                     else
                         ip.resyncVote(from, ItemState.UNDEFINED);
@@ -233,6 +233,9 @@ public class Node {
         debug("x instanceof ItemProcessor " + (x instanceof ItemProcessor));
         if (x instanceof ItemProcessor) {
             ((ItemProcessor) x).pulseResync();
+        } else {
+            ItemProcessor processor = createItemProcessorForResync(id);
+            processor.pulseResync();
         }
 
 //        if( ledger.getRecord(id) != null ) {
@@ -242,6 +245,14 @@ public class Node {
 
 
 //        return result;
+    }
+    public ItemProcessor createItemProcessorForResync(HashId id) throws Exception {
+
+        return ItemLock.synchronize(id, (lock) -> {
+            ItemProcessor processor = new ItemProcessor(id, null, lock);
+            processors.put(id, processor);
+            return processor;
+        });
     }
 
 
@@ -547,6 +558,8 @@ public class Node {
                     ", errors: " + item.getErrors().isEmpty());
             if(!needToResync) {
                 subItemsResynced = true;
+                if(itemChecker != null)
+                    itemChecker.cancel(false);
                 commitCheckedAndStartPolling();
             } else {
                 debug("Some of sub-contracts was not approved, its should be resync");
@@ -845,6 +858,12 @@ public class Node {
         //////////// resync section /////////////
 
         private final void pulseResync() {
+            // vote itself
+            if (record.getState().isConsensusFound())
+                resyncVote(myInfo, record.getState());
+            else
+                resyncVote(myInfo, ItemState.UNDEFINED);
+
             synchronized (mutex) {
                 long millis = config.getResyncTime().toMillis();
                 resyncer = executorService.scheduleAtFixedRate(() -> sendResyncNotification(),
@@ -980,7 +999,7 @@ public class Node {
                         try {
                             ItemResult r = network.getItemState(ni, itemId);
                             debug("--got from " + ni + " : " + r + " remote state is: " + r.state);
-                            if (r != null && r.state == committingState || (r.state == ItemState.PENDING && committingState == ItemState.UNDEFINED)) {
+                            if (r != null && r.state == committingState || (!r.state.isConsensusFound() && committingState == ItemState.UNDEFINED)) {
                                 startDateAvg.update(r.createdAt.toEpochSecond());
                                 expiresAtAvg.update(r.expiresAt.toEpochSecond());
                                 int count = latch.decrementAndGet();
@@ -992,7 +1011,7 @@ public class Node {
                                             Instant.ofEpochSecond((long) expiresAtAvg.average()), ZoneId.systemDefault());
                                     debug("created at " + startDateAvg + " : " + createdAt);
                                     debug("expires at " + expiresAtAvg + " : " + expiresAt);
-                                    if(r.state == ItemState.PENDING && committingState == ItemState.UNDEFINED) {
+                                    if(!r.state.isConsensusFound() && committingState == ItemState.UNDEFINED) {
                                         ledger.findOrCreate(itemId).setState(ItemState.DECLINED)
                                                 .setCreatedAt(createdAt)
                                                 .setExpiresAt(expiresAt)
