@@ -13,6 +13,8 @@ import java.io.FileReader;
 import java.util.Properties;
 
 import static java.util.Arrays.asList;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 
 public class ResearchTest extends TestCase {
@@ -53,6 +55,20 @@ public class ResearchTest extends TestCase {
         System.out.println(node.toString());
     }
 
+
+
+    @Test
+    public void quantiserTest() throws Exception {
+        Quantiser quantiser = new Quantiser(10);
+        quantiser.addWorkCost(Quantiser.PRICE_APPLICABLE_PERM);
+        quantiser.addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
+        try {
+            quantiser.addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
+            assertFalse(true); // must throw QuantiserException
+        } catch (Quantiser.QuantiserException e) {
+            return;
+        }
+    }
 
 
 
