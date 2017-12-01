@@ -43,7 +43,7 @@ public class Config {
     private Duration maxGetItemTime = Duration.ofSeconds(30);
     private int negativeConsensus;
     private int positiveConsensus;
-    private int resyncBreakConsensus = 2;
+    private int resyncBreakConsensus;
     private Duration maxElectionsTime = Duration.ofMinutes(15);
     private Duration pollTime = Duration.ofMillis(1000);
     private Duration consensusReceivedCheckTime = Duration.ofMillis(1000);
@@ -67,6 +67,10 @@ public class Config {
 
     public int getResyncBreakConsensus() {
         return resyncBreakConsensus;
+    }
+
+    public void setResyncBreakConsensus(int resyncBreakConsensus) {
+        this.resyncBreakConsensus = resyncBreakConsensus;
     }
 
     public Duration getMaxItemCreationAge() {

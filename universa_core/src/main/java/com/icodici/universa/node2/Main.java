@@ -129,9 +129,13 @@ public class Main {
         int positive = (int) Math.floor(n * 0.66);
         if( negative+positive == n)
             negative += 1;
-        log("Network consensus is set to: " + negative + " / " + positive);
+        int resyncBreak = (int) Math.ceil(n * 0.2);
+        if (resyncBreak < 1)
+            resyncBreak = 1;
+        log("Network consensus is set to (negative/positive/resyncBreak): " + negative + " / " + positive + " / " + resyncBreak);
         config.setPositiveConsensus(positive);
         config.setNegativeConsensus(negative);
+        config.setResyncBreakConsensus(resyncBreak);
         network = new NetworkV2(netConfig, myInfo, nodeKey);
         node = new Node(config, myInfo, ledger, network);
         cache = node.getCache();

@@ -644,6 +644,7 @@ public class Node2SingleTest extends TestCase {
         // when the system will not get the answer
         config.setPositiveConsensus(posCons);
         config.setNegativeConsensus(negCons);
+        config.setResyncBreakConsensus(2);
 
         myInfo = new NodeInfo(getNodePublicKey(0), 1, "node1", "localhost",
                 7101, 7102, 7104);

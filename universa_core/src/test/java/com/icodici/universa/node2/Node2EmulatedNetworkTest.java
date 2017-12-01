@@ -45,6 +45,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         config = new Config();
         config.setPositiveConsensus(2);
         config.setNegativeConsensus(1);
+        config.setResyncBreakConsensus(2);
 
         Properties properties = new Properties();
         File file = new File(CONFIG_2_PATH + "config/config.yaml");
