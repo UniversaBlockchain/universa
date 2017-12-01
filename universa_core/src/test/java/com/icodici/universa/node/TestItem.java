@@ -51,6 +51,10 @@ public class TestItem implements Approvable {
 
     @Override
     public boolean check(String __) {
+        // common check for all cases
+        errors.clear();
+        if( !isGood)
+            addError(new ErrorRecord(Errors.BAD_VALUE,"me", "I'm bad"));
         return isGood;
     }
 

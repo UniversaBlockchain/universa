@@ -340,12 +340,12 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 1000);
+        ItemResult result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(item.getId(), 1000);
+        result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(item.getId(), 1000);
+        result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.checkItem(item.getId());
@@ -356,12 +356,12 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         TestItem item2 = new TestItem(false);
 
         node.registerItem(item2);
-        ItemResult result2 = node.waitItem(item2.getId(), 1000);
+        ItemResult result2 = node.waitItem(item2.getId(), 2000);
         assertEquals(ItemState.DECLINED, result2.state);
 
-        result2 = node.waitItem(item2.getId(), 1000);
+        result2 = node.waitItem(item2.getId(), 2000);
         assertEquals(ItemState.DECLINED, result2.state);
-        result2 = node.waitItem(item2.getId(), 1000);
+        result2 = node.waitItem(item2.getId(), 2000);
         assertEquals(ItemState.DECLINED, result2.state);
 
         result2 = node.checkItem(item2.getId());
@@ -436,7 +436,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         node.registerItem(main);
 
         ItemResult itemResult = node.checkItem(main.getId());
-        assertEquals(ItemState.PENDING, itemResult.state);
+        assertThat(itemResult.state, anyOf(equalTo(ItemState.PENDING), equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
 
         @NonNull ItemResult itemNew1 = node.checkItem(new1.getId());
         assertEquals(ItemState.UNDEFINED, itemNew1.state);
@@ -500,6 +500,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
             ItemResult itemResult = node.waitItem(main.getId(), 500);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
+            Thread.sleep(500);
+
             // and the references are intact
             assertEquals(ItemState.APPROVED, existing1.reload().getState());
             assertEquals(badState, existing2.reload().getState());
@@ -508,6 +510,9 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void badReferencesDecline() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
         TestItem new2 = new TestItem(true);
@@ -515,16 +520,22 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         TestItem existing1 = new TestItem(false);
         TestItem existing2 = new TestItem(true);
+
+        System.out.println("--------resister (bad) item " + existing1.getId() + " ---------");
         node.registerItem(existing1);
+
+        System.out.println("--------resister (good) item " + existing2.getId() + " ---------");
         node.registerItem(existing2);
 
         main.addReferencedItems(existing1.getId(), existing2.getId());
         main.addNewItems(new1, new2);
 
+        System.out.println("--------resister (main) item " + main.getId() + " ---------");
+
         // check that main is fully approved
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 2500);
+        ItemResult itemResult = node.waitItem(main.getId(), 15000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         assertEquals(ItemState.UNDEFINED, node.checkItem(new1.getId()).state);
@@ -555,11 +566,13 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         // check that main is fully approved
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 5000);
+        ItemResult itemResult = node.waitItem(main.getId(), 15000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // and the references are intact
         assertEquals(ItemState.APPROVED, existingItem.state);
+
+        System.out.println(node.getItem(missingId));
 
         assertNull(node.getItem(missingId));
     }
@@ -588,6 +601,9 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         for (ItemState badState : Arrays.asList(
                 ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)

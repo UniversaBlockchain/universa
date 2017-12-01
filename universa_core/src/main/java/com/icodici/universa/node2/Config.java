@@ -49,6 +49,7 @@ public class Config {
     private Duration consensusReceivedCheckTime = Duration.ofMillis(1000);
     private Duration maxConsensusReceivedCheckTime = Duration.ofMinutes(15);
     private Duration resyncTime = Duration.ofMillis(1000);
+    private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
 
     /**
@@ -138,6 +139,10 @@ public class Config {
 
     public Duration getResyncTime() {
         return resyncTime;
+    }
+
+    public Duration getCheckItemTime() {
+        return checkItemTime;
     }
 
     public void setResyncTime(Duration resyncTime) {

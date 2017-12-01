@@ -125,12 +125,12 @@ public class Node2SingleTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 200);
+        ItemResult result = node.waitItem(item.getId(), 500);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(item.getId(), 100);
+        result = node.waitItem(item.getId(), 500);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(item.getId(), 100);
+        result = node.waitItem(item.getId(), 500);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.checkItem(item.getId());
@@ -141,12 +141,12 @@ public class Node2SingleTest extends TestCase {
         TestItem item2 = new TestItem(false);
 
         node.registerItem(item2);
-        ItemResult result2 = node.waitItem(item2.getId(), 100);
+        ItemResult result2 = node.waitItem(item2.getId(), 500);
         assertEquals(ItemState.DECLINED, result2.state);
 
-        result2 = node.waitItem(item2.getId(), 100);
+        result2 = node.waitItem(item2.getId(), 500);
         assertEquals(ItemState.DECLINED, result2.state);
-        result2 = node.waitItem(item2.getId(), 100);
+        result2 = node.waitItem(item2.getId(), 500);
         assertEquals(ItemState.DECLINED, result2.state);
 
         result2 = node.checkItem(item2.getId());
@@ -318,6 +318,8 @@ public class Node2SingleTest extends TestCase {
                 System.out.println(existing1.reload().getState());
             }
             assertEquals(ItemState.APPROVED, existing1.reload().getState());
+
+            Thread.sleep(200);
 
             assertEquals(badState, existing2.reload().getState());
         }

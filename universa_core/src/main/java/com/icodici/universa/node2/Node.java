@@ -42,6 +42,7 @@ public class Node {
     private final Config config;
     private final NodeInfo myInfo;
     private final Ledger ledger;
+    private final Object ledgerRollbackLock = new Object();
     private final Network network;
     private final ItemCache cache;
     private final ItemInformer informer = new ItemInformer();
@@ -455,7 +456,7 @@ public class Node {
             // at this poing the item is with us, so we can start
             synchronized (mutex) {
                 if (!subItemsResynced) {
-                    long millis = config.getResyncTime().toMillis();
+                    long millis = config.getCheckItemTime().toMillis();
                     itemChecker = executorService.scheduleAtFixedRate(() -> checkItem(), 0, millis, TimeUnit.MILLISECONDS);
                 }
             }
@@ -496,8 +497,10 @@ public class Node {
                     StateRecord r = record.lockToRevoke(a.getId());
                     if (r == null) {
                         item.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
-                    } else
-                        lockedToRevoke.add(r);
+                    } else {
+                        if(!lockedToRevoke.contains(r))
+                            lockedToRevoke.add(r);
+                    }
                 }
                 // check new items
                 for (Approvable newItem : item.getNewItems()) {
@@ -508,7 +511,8 @@ public class Node {
                         if (r == null) {
                             item.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
                         } else {
-                            lockedToCreate.add(r);
+                            if(!lockedToCreate.contains(r))
+                                lockedToCreate.add(r);
                         }
                     }
                 }
@@ -520,9 +524,9 @@ public class Node {
             boolean checkPassed = item.getErrors().isEmpty();
             boolean needToResync = !itemsToResync.isEmpty();
 
-            synchronized (mutex) {
-                if (record.getState() == ItemState.PENDING) {
-                    if(!needToResync) {
+            if(!needToResync) {
+                synchronized (mutex) {
+                    if (record.getState() == ItemState.PENDING) {
                         if (checkPassed) {
                             newState = ItemState.PENDING_POSITIVE;
                             setState(newState);
@@ -533,6 +537,7 @@ public class Node {
                     }
                 }
             }
+
             if (!checkPassed) {
                 informer.inform(item);
             }
@@ -544,21 +549,19 @@ public class Node {
                 subItemsResynced = true;
                 commitCheckedAndStartPolling();
             } else {
-                synchronized (mutex) {
-                    debug("Some of sub-contracts was not approved, its should be resync");
-                    for (HashId hid : itemsToResync) {
-                        try {
-                            if (!resyncingHashes.contains(hid)) {
-                                debug("item " + hid + " will be resynced " + record.getState());
-                                resync(hid);
-                                resyncingHashes.add(hid);
-                                subItemsResynced = false;
-                            } else {
-                                debug(hid + " already resyncing");
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                debug("Some of sub-contracts was not approved, its should be resync");
+                for (HashId hid : itemsToResync) {
+                    try {
+                        if (!resyncingHashes.contains(hid)) {
+                            debug("item " + hid + " will be resynced " + record.getState());
+                            resync(hid);
+                            resyncingHashes.add(hid);
+                            subItemsResynced = false;
+                        } else {
+                            debug(hid + " already resyncing");
                         }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
             }
@@ -572,7 +575,7 @@ public class Node {
             pulseStartPolling();
         }
 
-        public synchronized List<HashId> isNeedToResync() {
+        public List<HashId> isNeedToResync() {
             List<HashId> unknownParts = new ArrayList<>();
             List<HashId> knownParts = new ArrayList<>();
             boolean checkPassed = item.check();
@@ -749,25 +752,39 @@ public class Node {
         }
 
         private void rollbackChanges(ItemState newState) {
-            debug(" rollbacks to: " + itemId + " as " + newState + " consensus: " + positiveNodes.size() + "/" + negativeNodes.size());
-            ledger.transaction(() -> {
-                for (StateRecord r : lockedToRevoke)
-                    r.unlock().save();
-                lockedToRevoke.clear();
-                // form created records, we touch only these that we have actually created
-                for (StateRecord r : lockedToCreate)
-                    r.unlock().save();
-                // todo: concurrent modification can happen here!
-                lockedToCreate.clear();
-                setState(newState);
-                ZonedDateTime expiration = ZonedDateTime.now()
-                        .plus(newState == ItemState.REVOKED ?
-                                config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
-                record.setExpiresAt(expiration);
-                record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
-                return null;
-            });
-            close();
+            synchronized (ledgerRollbackLock) {
+                debug(" rollbacks to: " + itemId + " as " + newState + " consensus: " + positiveNodes.size() + "/" + negativeNodes.size());
+                ledger.transaction(() -> {
+                    debug(" unlocking to revoke");
+                    for (StateRecord r : lockedToRevoke)
+                        r.unlock().save();
+                    debug(" unlocked to revoke");
+                    lockedToRevoke.clear();
+                    debug(" locked to revoke cleared");
+                    // form created records, we touch only these that we have actually created
+                    debug(" unlocking to create");
+                    for (StateRecord r : lockedToCreate) {
+                        debug(" unlocking to create, item: " + r.getId() + " state: " + r.getState());
+                        r.unlock().save();
+                    }
+                    debug(" unlocked to create");
+                    // todo: concurrent modification can happen here!
+                    lockedToCreate.clear();
+                    debug(" locked to create cleared");
+                    debug(" setting state: " + newState.name());
+                    setState(newState);
+                    ZonedDateTime expiration = ZonedDateTime.now()
+                            .plus(newState == ItemState.REVOKED ?
+                                    config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
+                    record.setExpiresAt(expiration);
+                    debug(" saving ");
+                    record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+                    debug(" saved ");
+                    return null;
+                });
+                debug(" closing ");
+                close();
+            }
         }
 
         private boolean isPollingExpired() {
@@ -914,6 +931,9 @@ public class Node {
                 if (!consensusResynced)
                     return;
             }
+            if(consensusResynced) {
+                stopResync();
+            }
             if (revokedConsenus) {
                 executorService.submit(() -> resyncAndCommit(ItemState.REVOKED));
             } else if (declinedConsenus) {
@@ -946,12 +966,20 @@ public class Node {
 //                                ni = test.removeFirst();
 //                        }
 //                    for (ItemState itState : resyncNodes.keySet()) {
-                Set<NodeInfo> rNodes = resyncNodes.get(committingState);
+                Set<NodeInfo> rNodes = new HashSet<>();
+                Set<NodeInfo> nowNodes = resyncNodes.get(committingState);
+                // make local set of nodes to prevent changing set of nodes while commiting
+                synchronized (resyncNodes) {
+                    for (NodeInfo ni : nowNodes) {
+                        rNodes.add(ni);
+                    }
+                }
+                debug("--resync commit state: " + committingState  + " rNodes: " + rNodes + " nowNodes: " + nowNodes);
                 for (NodeInfo ni : rNodes) {
                     if (ni != null) {
                         try {
                             ItemResult r = network.getItemState(ni, itemId);
-                            debug("got from " + ni + " : " + r);
+                            debug("--got from " + ni + " : " + r + " remote state is: " + r.state);
                             if (r != null && r.state == committingState || (r.state == ItemState.PENDING && committingState == ItemState.UNDEFINED)) {
                                 startDateAvg.update(r.createdAt.toEpochSecond());
                                 expiresAtAvg.update(r.expiresAt.toEpochSecond());
@@ -1007,6 +1035,11 @@ public class Node {
 
         private boolean isResyncExpired() {
             return resyncExpiresAt.isBefore(Instant.now());
+        }
+
+        private void stopResync() {
+            if (resyncer != null)
+                resyncer.cancel(false);
         }
 
         //////////// common section /////////////
