@@ -377,7 +377,7 @@ public class Node2SingleTest extends TestCase {
     @Test
     public void missingReferencesDecline() throws Exception {
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
 
         TestItem main = new TestItem(true);
 
