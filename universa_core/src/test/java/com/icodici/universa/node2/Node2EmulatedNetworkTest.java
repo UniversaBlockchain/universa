@@ -481,12 +481,15 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
     @Test
     public void badReferencesDeclineListStates() throws Exception {
 
-//        LogPrinter.showDebug(true);
+        LogPrinter.showDebug(true);
 
         for (ItemState badState : Arrays.asList(
                 ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
                 ) {
+
+
+            System.out.println("--------state " + badState + " ---------");
 
             TestItem main = new TestItem(true);
 

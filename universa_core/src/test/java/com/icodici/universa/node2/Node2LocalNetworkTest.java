@@ -597,7 +597,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         // Test should run resync of each unknown part of a contract
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -662,6 +662,89 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
         ItemResult r = node.checkItem(contract.getId());
         assertEquals(ItemState.APPROVED, r.state);
+    }
+
+    @Test
+    public void resyncContractWithSomeUndefindSubContractsWithTimeout() throws Exception {
+
+        // Test should run resync of each unknown part of a contract
+        // But resync should failed by timeout. And complex contract should be declined.
+
+//        LogPrinter.showDebug(true);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        int numSubContracts = 5;
+        List<Contract> subContracts = new ArrayList<>();
+        for (int i = 0; i < numSubContracts; i++) {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+
+            if(i < config.getKnownSubContractsToResync())
+                addToAllLedgers(c, ItemState.APPROVED);
+            else
+                addToAllLedgers(c, ItemState.APPROVED, node);
+
+            subContracts.add(c);
+        }
+
+        for (int i = 0; i < numSubContracts; i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(contract.check());
+
+        for (int i = 0; i < numSubContracts; i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+
+        Duration wasDuration = config.getMaxResyncTime();
+        config.setMaxResyncTime(Duration.ofMillis(2000));
+
+        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+
+        // preparing is finished
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                ItemResult r = node.checkItem(contract.getId());
+                System.out.println("Complex contract state: " + r.state);
+
+                if(r.state == ItemState.DECLINED) ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        config.setMaxResyncTime(wasDuration);
+
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        }
+
+        ItemResult r = node.checkItem(contract.getId());
+        assertEquals(ItemState.DECLINED, r.state);
     }
 
     @Test
@@ -770,7 +853,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         }
 
         try {
-            ae.await(500);
+            ae.await(1000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
@@ -1041,6 +1124,119 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         timer.cancel();
 
         assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+    }
+
+    @Test
+    public void resyncWithTimeout() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
+        AsyncEvent ae = new AsyncEvent();
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.APPROVED);
+
+        Duration wasDuration = config.getMaxResyncTime();
+        config.setMaxResyncTime(Duration.ofMillis(2000));
+
+        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        node.resync(c.getId());
+        assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
+
+        // Start checking nodes
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                if( ItemState.UNDEFINED == node.checkItem(c.getId()).state)
+                    ae.fire();
+            }
+        }, 0, 500);
+
+        try {
+            ae.await(6000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+        config.setMaxResyncTime(wasDuration);
+
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+    }
+
+    @Test
+    public void resyncComplex() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
+        int numSubContracts = 5;
+        List<Contract> subContracts = new ArrayList<>();
+        for (int i = 0; i < numSubContracts; i++) {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+
+            if(i < config.getKnownSubContractsToResync())
+                addToAllLedgers(c, ItemState.APPROVED);
+            else
+                addToAllLedgers(c, ItemState.APPROVED, node);
+
+            subContracts.add(c);
+        }
+
+        for (int i = 0; i < numSubContracts; i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        AsyncEvent ae = new AsyncEvent();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+
+        for (int i = 0; i < numSubContracts; i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        addToAllLedgers(contract, ItemState.PENDING_POSITIVE);
+
+        node.getLedger().getRecord(contract.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(contract.getId()).state);
+        node.resync(contract.getId());
+        assertEquals(ItemState.PENDING, node.checkItem(contract.getId()).state);
+
+        // Start checking nodes
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                boolean all_is_approved = true;
+                for (Node n : nodes.values()) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.UNDEFINED) {
+                        all_is_approved = false;
+                    }
+                }
+
+                if(all_is_approved) ae.fire();
+            }
+        }, 0, 1000);
+
+        try {
+            ae.await(6000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        assertEquals(ItemState.UNDEFINED, node.checkItem(contract.getId()).state);
     }
 
 //    @Test
