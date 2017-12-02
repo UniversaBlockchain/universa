@@ -865,6 +865,9 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void resyncApproved() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         AsyncEvent ae = new AsyncEvent();
         Contract c = new Contract(TestKeys.privateKey(0));
         c.seal();
@@ -997,13 +1000,18 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     @Test
     public void resyncOther() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         AsyncEvent ae = new AsyncEvent();
         Contract c = new Contract(TestKeys.privateKey(0));
         c.seal();
         addToAllLedgers(c, ItemState.PENDING_POSITIVE);
 
-        Duration wasMaxResyncTime = config.getMaxResyncTime();
-        config.setMaxResyncTime(Duration.ofMillis(5000));
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        node.resync(c.getId());
+        assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
 
         // Start checking nodes
         Timer timer = new Timer();
@@ -1013,23 +1021,16 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
                 boolean all_is_approved = true;
                 for (Node n : nodes.values()) {
-//                    System.out.println(n.getLedger().getRecord(c.getId()));
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
-//                    if(r.state != ItemState.APPROVED) {
-//                        all_is_approved = false;
-//                    }
+                    if(r.state != ItemState.UNDEFINED) {
+                        all_is_approved = false;
+                    }
                 }
 
-//                if(all_is_approved) ae.fire();
+                if(all_is_approved) ae.fire();
             }
         }, 0, 1000);
-
-        node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
-
-//        LogPrinter.showDebug(true);
-        node.resync(c.getId());
 
         try {
             ae.await(6000);
@@ -1038,9 +1039,8 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         }
 
         timer.cancel();
-        config.setMaxResyncTime(wasMaxResyncTime);
 
-        assertEquals(ItemState.DECLINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
     }
 
 //    @Test
