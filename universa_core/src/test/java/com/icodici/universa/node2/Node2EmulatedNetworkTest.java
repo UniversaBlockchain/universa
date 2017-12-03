@@ -221,7 +221,12 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
 //        LogPrinter.showDebug(true);
         node.resync(c.getId());
-        System.out.println(node.checkItem(c.getId()));
+
+        while(ItemState.APPROVED != node.checkItem(c.getId()).state) {
+            Thread.sleep(100);
+            System.out.println(node.checkItem(c.getId()));
+        }
+        assertEquals(ItemState.APPROVED, node.checkItem(c.getId()).state);
     }
 
     private void addToAllLedgers(Contract c, ItemState state) {
