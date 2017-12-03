@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class QuantiserSingleton {
 
-    private static QuantiserSingleton ourInstance_s = new QuantiserSingleton();
+    private static final QuantiserSingleton ourInstance_s = new QuantiserSingleton();
 
     private Map<HashId,Quantiser> quantiserMap_ = new ConcurrentHashMap<>();
 
