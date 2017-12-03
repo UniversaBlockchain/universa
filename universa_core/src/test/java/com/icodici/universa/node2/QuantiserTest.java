@@ -230,7 +230,7 @@ public class QuantiserTest extends TestCase {
 
 
     @Test
-    public void singleQunatiserConcurrency() throws Exception {
+    public void singleQuantiserConcurrency() throws Exception {
         AtomicInteger assertsCounter = new AtomicInteger(0);
         ExecutorService executor = Executors.newFixedThreadPool(8);
         byte[] hashBytes = new byte[128];
