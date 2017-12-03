@@ -94,7 +94,7 @@ public class QuantiserTest extends TestCase {
 
 
     @Test
-    public void concurrency() throws Exception {
+    public void concurrencySum() throws Exception {
         AtomicInteger assertsCounter = new AtomicInteger(0);
         ExecutorService executor = Executors.newFixedThreadPool(8);
         class Work implements Runnable  {
@@ -117,6 +117,47 @@ public class QuantiserTest extends TestCase {
                 }
                 if (wantedIterations*Quantiser.PRICE_CHECK_4096_SIG != QuantiserSingleton.getInstance().getQuantiser().getQuantaSum())
                     assertsCounter.incrementAndGet();
+                //System.out.println("work.run(n="+workNum_+")... done!");
+                fail();
+            }
+
+            private int workNum_ = 0;
+        };
+        int N = 20;
+        for (int i = 0; i < N; ++i) {
+            executor.submit(new Work(i));
+        }
+        executor.shutdown();
+        executor.awaitTermination(30, TimeUnit.SECONDS);
+        assertTrue(executor.isTerminated());
+        assertEquals(0, assertsCounter.get());
+    }
+
+
+
+    @Test
+    public void concurrencyLimit() throws Exception {
+        AtomicInteger assertsCounter = new AtomicInteger(0);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        class Work implements Runnable  {
+            public Work(int workNum) {
+                workNum_ = workNum;
+            }
+
+            @Override
+            public void run() {
+                //System.out.println("work.run(n="+workNum_+")...");
+                int wantedIterations = randInt(10, 30);
+                QuantiserSingleton.getInstance().resetQuantiser(wantedIterations*Quantiser.PRICE_CHECK_4096_SIG);
+                for (int i = 0; i < wantedIterations+10; ++i) {
+                    try {
+                        QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
+                        if (i >= wantedIterations)
+                            assertsCounter.incrementAndGet();
+                    } catch (Quantiser.QuantiserException e) {
+                    }
+                    try{Thread.sleep(randInt(10, 50));}catch(Exception e){}
+                }
                 //System.out.println("work.run(n="+workNum_+")... done!");
                 fail();
             }
