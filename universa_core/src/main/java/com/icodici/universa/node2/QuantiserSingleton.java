@@ -10,12 +10,28 @@ public class QuantiserSingleton {
     private QuantiserSingleton() {
     }
 
+
+
     public static QuantiserSingleton getInstance() {
         return ourInstance_s;
     }
 
+
+
     public Quantiser getQuantiser() {
         return quantiser_;
+    }
+
+
+
+    public void resetQuantiser(int newLimit) {
+        quantiser_ = new Quantiser(newLimit);
+    }
+
+
+
+    public void resetQuantiserNoLimit() {
+        resetQuantiser(-1);
     }
 
 }
