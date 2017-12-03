@@ -145,7 +145,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
                 node.registerItem(ok);
                 for (Node n : nodes.values()) {
                     try {
-                        ItemResult r = n.waitItem(ok.getId(), 5500);
+                        ItemResult r = n.waitItem(ok.getId(), 500);
                         if( !r.state.isConsensusFound())
                             Thread.sleep(30);
                         assertEquals("In node "+n+" item "+ok.getId(), ItemState.APPROVED, r.state);

@@ -313,30 +313,21 @@ public class Node2SingleTest extends TestCase {
 
             // check that main is fully approved
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 10000);
+            ItemResult itemResult = node.waitItem(main.getId(), 500);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
             while(ItemState.APPROVED != existing1.reload().getState()) {
                 Thread.sleep(100);
-                System.out.println(existing1.reload().getState());
+                System.out.println(existing1.getState());
             }
-            assertEquals(ItemState.APPROVED, existing1.reload().getState());
+            assertEquals(ItemState.APPROVED, existing1.getState());
 
-            if(!badState.isConsensusFound()) {
-                while (ItemState.DECLINED != existing2.reload().getState() && badState != existing2.reload().getState()) {
-                    Thread.sleep(200);
-                    System.out.println(existing2.reload().getState());
-                }
-                assertThat(existing2.reload().getState(), anyOf(equalTo(ItemState.DECLINED), equalTo(badState)));
+            while (badState != existing2.reload().getState()) {
+                Thread.sleep(100);
+                System.out.println(existing2.getState());
             }
-            else {
-                while (badState != existing2.reload().getState()) {
-                    Thread.sleep(200);
-                    System.out.println(existing2.reload().getState());
-                }
-                assertEquals(badState, existing2.reload().getState());
-            }
+            assertEquals(badState, existing2.getState());
         }
     }
 
@@ -423,7 +414,7 @@ public class Node2SingleTest extends TestCase {
 //        assertEquals(ItemState.REVOKED, node.checkItem(existing2.getId()).state);
 //    }
 //
-    @Test(timeout = 30000)
+    @Test(timeout = 15000)
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
 
 //        LogPrinter.showDebug(true);
@@ -447,26 +438,21 @@ public class Node2SingleTest extends TestCase {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 5000);
+            ItemResult itemResult = node.waitItem(main.getId(), 500);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
-            assertEquals(ItemState.APPROVED, existing1.reload().getState());
+            while (ItemState.APPROVED != existing1.reload().getState()) {
+                Thread.sleep(100);
+                System.out.println(existing1.getState());
+            }
+            assertEquals(ItemState.APPROVED, existing1.getState());
 
-            if(!badState.isConsensusFound()) {
-                while (ItemState.DECLINED != existing2.reload().getState() && badState != existing2.reload().getState()) {
-                    Thread.sleep(200);
-                    System.out.println(existing2.reload().getState());
-                }
-                assertThat(existing2.reload().getState(), anyOf(equalTo(ItemState.DECLINED), equalTo(badState)));
+            while (badState != existing2.reload().getState()) {
+                Thread.sleep(100);
+                System.out.println(existing2.getState());
             }
-            else {
-                while (badState != existing2.reload().getState()) {
-                    Thread.sleep(200);
-                    System.out.println(existing2.reload().getState());
-                }
-                assertEquals(badState, existing2.reload().getState());
-            }
+            assertEquals(badState, existing2.getState());
 
         }
     }

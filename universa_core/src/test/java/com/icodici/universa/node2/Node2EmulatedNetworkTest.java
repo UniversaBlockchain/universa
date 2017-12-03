@@ -616,6 +616,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
                 ) {
 
+            System.out.println("--------state " + badState + " ---------");
+
             TestItem main = new TestItem(true);
 
             StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
@@ -627,12 +629,21 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 1500);
+            ItemResult itemResult = node.waitItem(main.getId(), 500);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
-            assertEquals(ItemState.APPROVED, existing1.reload().getState());
-            assertEquals(badState, existing2.reload().getState());
+            while(ItemState.APPROVED != existing1.reload().getState()) {
+                Thread.sleep(100);
+                System.out.println(existing1.getState());
+            }
+            assertEquals(ItemState.APPROVED, existing1.getState());
+
+            while (badState != existing2.reload().getState()) {
+                Thread.sleep(100);
+                System.out.println(existing2.getState());
+            }
+            assertEquals(badState, existing2.getState());
 
         }
     }
