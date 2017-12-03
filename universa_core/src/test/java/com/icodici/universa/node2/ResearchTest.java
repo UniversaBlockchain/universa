@@ -59,7 +59,8 @@ public class ResearchTest extends TestCase {
 
     @Test
     public void quantiserTest() throws Exception {
-        Quantiser quantiser = new Quantiser(10);
+        Quantiser quantiser = new Quantiser();
+        quantiser.reset(10);
         quantiser.addWorkCost(Quantiser.PRICE_APPLICABLE_PERM);
         quantiser.addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
         try {

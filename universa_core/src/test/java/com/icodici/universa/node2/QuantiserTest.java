@@ -2,6 +2,7 @@ package com.icodici.universa.node2;
 
 
 
+import com.icodici.universa.HashId;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import org.junit.After;
@@ -11,6 +12,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileReader;
 import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -44,15 +46,20 @@ public class QuantiserTest extends TestCase {
                 Quantiser.PRICE_REVOKE_VERSION +
                 Quantiser.PRICE_SPLITJOIN_PERM;
         try {
-            QuantiserSingleton.getInstance().resetQuantiser(wantedSum);
-            QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_APPLICABLE_PERM);
-            QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_CHECK_2048_SIG);
-            QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
-            QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_CHECK_VERSION);
-            QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
-            QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_REVOKE_VERSION);
-            QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_SPLITJOIN_PERM);
-            assertEquals(wantedSum, QuantiserSingleton.getInstance().getQuantiser().getQuantaSum()); // must throw QuantiserException
+            byte[] hashBytes = new byte[128];
+            new Random().nextBytes(hashBytes);
+            HashId hashId = new HashId(hashBytes);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).reset(wantedSum);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_APPLICABLE_PERM);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_CHECK_2048_SIG);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_CHECK_VERSION);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_REVOKE_VERSION);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_SPLITJOIN_PERM);
+            assertEquals(wantedSum, QuantiserSingleton.getInstance().getQuantiser(hashId).getQuantaSum());
+            QuantiserSingleton.getInstance().deleteQuantiser(hashId);
+            assertEquals(0, QuantiserSingleton.getInstance().getQuantiserCount());
         } catch (Quantiser.QuantiserException e) {
             fail();
         }
@@ -63,9 +70,14 @@ public class QuantiserTest extends TestCase {
     @Test
     public void noLimit() throws Exception {
         try {
-            QuantiserSingleton.getInstance().resetQuantiserNoLimit();
+            byte[] hashBytes = new byte[128];
+            new Random().nextBytes(hashBytes);
+            HashId hashId = new HashId(hashBytes);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).resetNoLimit();
             for (int i = 0; i < 1000000; ++i)
-                QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
+                QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
+            QuantiserSingleton.getInstance().deleteQuantiser(hashId);
+            assertEquals(0, QuantiserSingleton.getInstance().getQuantiserCount());
         } catch(Quantiser.QuantiserException e) {
             fail();
         }
@@ -75,12 +87,17 @@ public class QuantiserTest extends TestCase {
 
     @Test
     public void limit() throws Exception {
+        byte[] hashBytes = new byte[128];
+        new Random().nextBytes(hashBytes);
+        HashId hashId = new HashId(hashBytes);
         try {
-            QuantiserSingleton.getInstance().resetQuantiser(1000);
+            QuantiserSingleton.getInstance().getQuantiser(hashId).reset(1000);
             for (int i = 0; i < 1000000; ++i)
-                QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
+                QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
             fail();
         } catch(Quantiser.QuantiserException e) {
+            QuantiserSingleton.getInstance().deleteQuantiser(hashId);
+            assertEquals(0, QuantiserSingleton.getInstance().getQuantiserCount());
             return;
         }
     }
@@ -93,8 +110,7 @@ public class QuantiserTest extends TestCase {
 
 
 
-    @Test
-    public void concurrencySum() throws Exception {
+    private void concurrencySum(boolean makeDelays, int worksCount, int eachWorkIterationsCount) throws Exception {
         AtomicInteger assertsCounter = new AtomicInteger(0);
         ExecutorService executor = Executors.newFixedThreadPool(8);
         class Work implements Runnable  {
@@ -105,25 +121,29 @@ public class QuantiserTest extends TestCase {
             @Override
             public void run() {
                 //System.out.println("work.run(n="+workNum_+")...");
-                int wantedIterations = randInt(10, 30);
-                QuantiserSingleton.getInstance().resetQuantiser(wantedIterations*Quantiser.PRICE_CHECK_4096_SIG);
+                byte[] hashBytes = new byte[128];
+                new Random().nextBytes(hashBytes);
+                HashId hashId = new HashId(hashBytes);
+                int wantedIterations = randInt(eachWorkIterationsCount, eachWorkIterationsCount*2);
+                QuantiserSingleton.getInstance().getQuantiser(hashId).reset(wantedIterations*Quantiser.PRICE_CHECK_4096_SIG);
                 for (int i = 0; i < wantedIterations; ++i) {
                     try {
-                        QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
+                        QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
                     } catch (Quantiser.QuantiserException e) {
                         assertsCounter.incrementAndGet();
                     }
-                    try{Thread.sleep(randInt(10, 50));}catch(Exception e){}
+                    if (makeDelays)
+                        try{Thread.sleep(randInt(10, 50));}catch(Exception e){}
                 }
-                if (wantedIterations*Quantiser.PRICE_CHECK_4096_SIG != QuantiserSingleton.getInstance().getQuantiser().getQuantaSum())
+                if (wantedIterations*Quantiser.PRICE_CHECK_4096_SIG != QuantiserSingleton.getInstance().getQuantiser(hashId).getQuantaSum())
                     assertsCounter.incrementAndGet();
                 //System.out.println("work.run(n="+workNum_+")... done!");
-                fail();
+                QuantiserSingleton.getInstance().deleteQuantiser(hashId);
             }
 
             private int workNum_ = 0;
         };
-        int N = 20;
+        int N = worksCount;
         for (int i = 0; i < N; ++i) {
             executor.submit(new Work(i));
         }
@@ -131,12 +151,26 @@ public class QuantiserTest extends TestCase {
         executor.awaitTermination(30, TimeUnit.SECONDS);
         assertTrue(executor.isTerminated());
         assertEquals(0, assertsCounter.get());
+        assertEquals(0, QuantiserSingleton.getInstance().getQuantiserCount());
     }
 
 
 
     @Test
-    public void concurrencyLimit() throws Exception {
+    public void concurrencySumWithoutDelays() throws Exception {
+        concurrencySum(false, 20000, 1000);
+    }
+
+
+
+    @Test
+    public void concurrencySumWithDelays() throws Exception {
+        concurrencySum(true, 20, 15);
+    }
+
+
+
+    private void concurrencyLimit(boolean makeDelays, int worksCount, int eachWorkIterationsCount) throws Exception {
         AtomicInteger assertsCounter = new AtomicInteger(0);
         ExecutorService executor = Executors.newFixedThreadPool(8);
         class Work implements Runnable  {
@@ -147,24 +181,28 @@ public class QuantiserTest extends TestCase {
             @Override
             public void run() {
                 //System.out.println("work.run(n="+workNum_+")...");
-                int wantedIterations = randInt(10, 30);
-                QuantiserSingleton.getInstance().resetQuantiser(wantedIterations*Quantiser.PRICE_CHECK_4096_SIG);
+                byte[] hashBytes = new byte[128];
+                new Random().nextBytes(hashBytes);
+                HashId hashId = new HashId(hashBytes);
+                int wantedIterations = randInt(eachWorkIterationsCount, eachWorkIterationsCount*2);
+                QuantiserSingleton.getInstance().getQuantiser(hashId).reset(wantedIterations*Quantiser.PRICE_CHECK_4096_SIG);
                 for (int i = 0; i < wantedIterations+10; ++i) {
                     try {
-                        QuantiserSingleton.getInstance().getQuantiser().addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
+                        QuantiserSingleton.getInstance().getQuantiser(hashId).addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
                         if (i >= wantedIterations)
                             assertsCounter.incrementAndGet();
                     } catch (Quantiser.QuantiserException e) {
                     }
-                    try{Thread.sleep(randInt(10, 50));}catch(Exception e){}
+                    if (makeDelays)
+                        try{Thread.sleep(randInt(10, 50));}catch(Exception e){}
                 }
                 //System.out.println("work.run(n="+workNum_+")... done!");
-                fail();
+                QuantiserSingleton.getInstance().deleteQuantiser(hashId);
             }
 
             private int workNum_ = 0;
         };
-        int N = 20;
+        int N = worksCount;
         for (int i = 0; i < N; ++i) {
             executor.submit(new Work(i));
         }
@@ -172,6 +210,21 @@ public class QuantiserTest extends TestCase {
         executor.awaitTermination(30, TimeUnit.SECONDS);
         assertTrue(executor.isTerminated());
         assertEquals(0, assertsCounter.get());
+        assertEquals(0, QuantiserSingleton.getInstance().getQuantiserCount());
+    }
+
+
+
+    @Test
+    public void concurrencyLimitWithoutDelays() throws Exception {
+        concurrencyLimit(false, 20000, 1000);
+    }
+
+
+
+    @Test
+    public void concurrencyLimitWithDelays() throws Exception {
+        concurrencyLimit(true, 20, 15);
     }
 
 }

@@ -1,9 +1,15 @@
 package com.icodici.universa.node2;
 
+import com.icodici.universa.HashId;
+
+import java.util.HashMap;
+import java.util.Map;
+
 public class QuantiserSingleton {
 
     private static QuantiserSingleton ourInstance_s = new QuantiserSingleton();
-    private Quantiser quantiser_ = new Quantiser(100);
+
+    private Map<HashId,Quantiser> quantiserMap_ = new HashMap<>();
 
 
 
@@ -12,26 +18,31 @@ public class QuantiserSingleton {
 
 
 
-    public static QuantiserSingleton getInstance() {
+    public synchronized static QuantiserSingleton getInstance() {
         return ourInstance_s;
     }
 
 
 
-    public Quantiser getQuantiser() {
-        return quantiser_;
+    public synchronized Quantiser getQuantiser(HashId hashId) {
+        Quantiser q = quantiserMap_.get(hashId);
+        if (q == null) {
+            q = new Quantiser();
+            quantiserMap_.put(hashId, q);
+        }
+        return q;
     }
 
 
 
-    public void resetQuantiser(int newLimit) {
-        quantiser_ = new Quantiser(newLimit);
+    public synchronized void deleteQuantiser(HashId hashId) {
+        quantiserMap_.remove(hashId);
     }
 
 
 
-    public void resetQuantiserNoLimit() {
-        resetQuantiser(-1);
+    public synchronized int getQuantiserCount() {
+        return quantiserMap_.size();
     }
 
 }

@@ -15,17 +15,26 @@ public class Quantiser {
 
 
 
-    public Quantiser(int quantaLimit) {
-        quantaLimit_ = quantaLimit;
-    }
 
     public Quantiser() {
-        quantaLimit_ = -1;
     }
 
 
 
-    public void addWorkCost(int price) throws QuantiserException {
+    public synchronized void reset(int newLimit) {
+        quantaSum_ = 0;
+        quantaLimit_ = newLimit;
+    }
+
+
+
+    public synchronized void resetNoLimit() {
+        reset(-1);
+    }
+
+
+
+    public synchronized void addWorkCost(int price) throws QuantiserException {
         quantaSum_ += price;
         if (quantaLimit_ >= 0)
             if (quantaSum_ > quantaLimit_)
@@ -34,8 +43,14 @@ public class Quantiser {
 
 
 
-    public int getQuantaSum() {
+    public synchronized int getQuantaSum() {
         return quantaSum_;
+    }
+
+
+
+    public synchronized int getQuantaLimit() {
+        return quantaLimit_;
     }
 
 
