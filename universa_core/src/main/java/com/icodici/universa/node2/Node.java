@@ -70,6 +70,7 @@ public class Node {
      * @return current (or last known) item state
      */
     public @NonNull ItemResult registerItem(Approvable item) {
+
         Object x = checkItemInternal(item.getId(), item, true);
         return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
     }
@@ -82,7 +83,8 @@ public class Node {
      * @return last known state
      */
     public @NonNull ItemResult checkItem(HashId itemId) {
-        Object x = checkItemInternal(itemId, null, false);
+
+        Object x = checkItemInternal(itemId);
         ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
         ItemInformer.Record record = informer.takeFor(itemId);
         if (record != null)
@@ -91,6 +93,7 @@ public class Node {
     }
 
     public @NonNull Binder extendedCheckItem(HashId itemId) {
+
         ItemResult ir = checkItem(itemId);
         Binder result = Binder.of("itemResult", ir);
         if (ir != null && ir.state == ItemState.LOCKED) {
@@ -98,6 +101,24 @@ public class Node {
 //            result.put("lockedBy", ledger.getRecord(itemId).getOwner());
         }
         return result;
+    }
+
+
+    /**
+     * Resync the item. This method launch resync process, call to network to know what consensus is or hasn't consensus for the item.
+     *
+     * @param id item to resync
+     *
+     */
+    public void resync(HashId id) throws Exception {
+
+        Object x = checkItemInternal(id, null, true, true);
+        // todo: prevent double launch of resync and break another processes
+        if (x instanceof ItemProcessor) {
+            ((ItemProcessor) x).pulseResync(true);
+        } else {
+            log.e("ItemProcessor hasn't found or created for " + id.toBase64String());
+        }
     }
 
     /**
@@ -109,7 +130,7 @@ public class Node {
      * @return item state
      */
     public ItemResult waitItem(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
-        Object x = checkItemInternal(itemId, null, false);
+        Object x = checkItemInternal(itemId);
         if (x instanceof ItemProcessor) {
             ((ItemProcessor) x).doneEvent.await(millisToWait);
             return ((ItemProcessor) x).getResult();
@@ -118,167 +139,180 @@ public class Node {
         return (ItemResult) x;
     }
 
-
+    /**
+     * Notification handler. Checking type of notification and call needed obtainer.
+     *
+     */
     private final void onNotification(Notification notification) {
+
         if (notification instanceof ItemResyncNotification) {
-            ItemResyncNotification in = (ItemResyncNotification) notification;
-
-            HashMap<HashId, ItemState> itemsToResync = in.getItemsToResync();
-            HashMap<HashId, ItemState> answersForItems = new HashMap<>();
-
-            NodeInfo from = in.getFrom();
-            Object itemObject = checkItemInternal(in.getItemId(), null, false);
-            debug("onItemResyncNotification from: " + from.getNumber() +
-                    " and for item exist processor: " + (itemObject instanceof ItemProcessor) +
-                    " and answerIsRequested: " + in.answerIsRequested());
-
-            if (itemObject instanceof ItemResult) {
-                if (in.answerIsRequested()) {
-                    for (HashId hid : itemsToResync.keySet()) {
-                        debug("Looking for: " + hid);
-                        Object subitemObject = checkItemInternal(hid, null, false);
-                        ItemResult subresult = null;
-                        if (subitemObject instanceof ItemResult) {
-                            subresult = (ItemResult) subitemObject;
-                        } else if (subitemObject instanceof ItemProcessor) {
-                            ItemProcessor ip = (ItemProcessor) subitemObject;
-                            subresult = ip.getResult();
-                        } else {
-                            subresult = null;
-                        }
-                        debug("for id: " + hid + " found state: " + subresult.state);
-                        if (subresult != null) {
-                            if (subresult.state.isConsensusFound()) {
-                                debug("deliver answer to: " + from.getNumber() + ", state: " + subresult.state);
-                                answersForItems.put(hid, subresult.state);
-                            } else {
-                                debug("deliver answer to: " + from.getNumber() + ", state: " + ItemState.UNDEFINED);
-                                answersForItems.put(hid, ItemState.UNDEFINED);
-                            }
-                        } else {
-                            debug("deliver answer (no result) to: " + from.getNumber() + ", state: " + ItemState.UNDEFINED);
-                            answersForItems.put(hid, ItemState.UNDEFINED);
-                        }
-                    }
-                    network.deliver(
-                            from,
-                            new ItemResyncNotification(myInfo, in.getItemId(), answersForItems, false)
-                    );
-                }
-            } else if (itemObject instanceof ItemProcessor) {
-                ItemProcessor ip = (ItemProcessor) itemObject;
-                debug("Found item processor is in the state " + ip.processingState);
-                if(!ip.subItemsResynced) {
-                    ip.lock(() -> {
-                        for (HashId hid : itemsToResync.keySet()) {
-                            ip.resyncVote(hid, from, itemsToResync.get(hid));
-                        }
-
-                        return null;
-                    });
-                }
-
-            }
+            obtainResyncNotification((ItemResyncNotification) notification);
         } else if (notification instanceof ItemNotification) {
-            ItemNotification in = (ItemNotification) notification;
-            // get processor, create if need
-            // register my vote
-            Object x = checkItemInternal(in.getItemId(), null, true);
-            debug("onNotification x is " + x.getClass() + " and answerIsRequested: " + in.answerIsRequested());
-            NodeInfo from = in.getFrom();
-            if (x instanceof ItemResult) {
-                ItemResult r = (ItemResult) x;
-                // we have solution and need not answer, we answer if requested:
-                if (in.answerIsRequested()) {
-                    network.deliver(
-                            from,
-                            new ItemNotification(myInfo, in.getItemId(), r, false)
-                    );
+            obtainCommonNotification((ItemNotification) notification);
+        }
+    }
+
+
+    /**
+     * Obtain got resync notification: looking for result or item processor and register resync vote
+     *
+     * @param notification resync notification
+     *
+     */
+    private final void obtainResyncNotification(ItemResyncNotification notification) {
+
+        debug("got " + notification);
+
+        HashMap<HashId, ItemState> itemsToResync = notification.getItemsToResync();
+        HashMap<HashId, ItemState> answersForItems = new HashMap<>();
+
+        NodeInfo from = notification.getFrom();
+
+        // get processor, do not create new if not exist
+        // register resync vote for waiting processor or deliver resync vote
+        Object itemObject = checkItemInternal(notification.getItemId());
+
+        if (itemObject instanceof ItemResult) {
+            debug("found ItemResult for parent item with state: " + ((ItemResult) itemObject).state);
+
+            if (notification.answerIsRequested()) {
+                // iterate on subItems of parent item that need to resync (stored at ItemResyncNotification.getItemsToResync())
+                for (HashId hid : itemsToResync.keySet()) {
+                    Object subitemObject = checkItemInternal(hid);
+                    ItemResult subItemResult;
+                    ItemState subItemState;
+
+                    if (subitemObject instanceof ItemResult) {
+                        // we have solution for resyncing subitem:
+                        subItemResult = (ItemResult) subitemObject;
+                    } else if (subitemObject instanceof ItemProcessor) {
+                        // resyncing subitem is still processing, but may be has solution:
+                        subItemResult = ((ItemProcessor) subitemObject).getResult();
+                    } else {
+                        // we has not solution:
+                        subItemResult = null;
+                    }
+
+                    debug("for subitem " + hid + " found state: " + (subItemResult == null ? null : subItemResult.state));
+                    // we answer only states with consensus, in other cases we answer ItemState.UNDEFINED
+                    if (subItemResult != null) {
+                        subItemState = subItemResult.state.isConsensusFound() ? subItemResult.state : ItemState.UNDEFINED;
+                    } else {
+                        subItemState = ItemState.UNDEFINED;
+                    }
+
+                    debug("answer for subitem: " + hid + " will be : " + subItemState);
+                    answersForItems.put(hid, subItemState);
                 }
-                return;
+
+                network.deliver(
+                        from,
+                        new ItemResyncNotification(myInfo, notification.getItemId(), answersForItems, false)
+                );
             }
-            if (x instanceof ItemProcessor) {
-                ItemProcessor ip = (ItemProcessor) x;
-                ItemResult result = in.getItemResult();
+
+        } else if (itemObject instanceof ItemProcessor) {
+            ItemProcessor ip = (ItemProcessor) itemObject;
+            debug("found ItemProcessor for parent item with state: " + ip.getState() + ", and it processing state is: " + ip.processingState);
+            if(!ip.subItemsResynced) {
                 ip.lock(() -> {
-                    debug("notification from " + in.getFrom() + ": " + in.getItemId() + ": " + in.getItemResult() + ", " + in.answerIsRequested());
-                    debug("my state in it " + ip.getState() + " and I have a copy: " + (ip.item != null));
-                    // we might still need to download and process it
-                    if (result.haveCopy) {
-//                    debug("reported source for "+ip.itemId+": "+in.getFrom());
-                        ip.addToSources(from);
+                    for (HashId hid : itemsToResync.keySet()) {
+                        ip.resyncVote(hid, from, itemsToResync.get(hid));
                     }
-                    if (result.state != ItemState.PENDING)
-                        ip.vote(from, result.state);
-                    else
-                        log.e("-- pending vote on " + in.getItemId() + " from " + from);
-                    // We answer only if (1) answer is requested and (2) we have position on the subject:
-                    if (in.answerIsRequested() && ip.record.getState() != ItemState.PENDING) {
-                        network.deliver(
-                                from,
-                                new ItemNotification(myInfo,
-                                        in.getItemId(),
-                                        ip.getResult(),
-                                        ip.needsVoteFrom(from))
-                        );
-                    }
+
                     return null;
                 });
-                return;
             }
+
+        }
+    }
+
+
+    /**
+     * Obtain got common item notification: looking for result or item processor and register vote
+     *
+     * @param notification common item notification
+     *
+     */
+    private final void obtainCommonNotification(ItemNotification notification) {
+
+        debug("got " + notification);
+
+        // get processor, create if need
+        // register my vote
+        Object x = checkItemInternal(notification.getItemId(), null, true);
+        NodeInfo from = notification.getFrom();
+
+        if (x instanceof ItemResult) {
+            ItemResult r = (ItemResult) x;
+            // we have solution and need not answer, we answer if requested:
+            if (notification.answerIsRequested()) {
+                network.deliver(
+                        from,
+                        new ItemNotification(myInfo, notification.getItemId(), r, false)
+                );
+            }
+        } else if (x instanceof ItemProcessor) {
+            ItemProcessor ip = (ItemProcessor) x;
+            ItemResult result = notification.getItemResult();
+            ip.lock(() -> {
+                debug("found ItemProcessor for item with state: " + ip.getState()
+                        + ", it processing state is: " + ip.processingState
+                        + ", have a copy: " + (ip.item != null));
+
+                // we might still need to download and process it
+                if (result.haveCopy) {
+                    ip.addToSources(from);
+                }
+                if (result.state != ItemState.PENDING)
+                    ip.vote(from, result.state);
+                else
+                    log.e("pending vote on " + notification.getItemId() + " from " + from);
+
+                // We answer only if (1) answer is requested and (2) we have position on the subject:
+                if (notification.answerIsRequested() && ip.record.getState() != ItemState.PENDING) {
+                    network.deliver(
+                            from,
+                            new ItemNotification(myInfo,
+                                    notification.getItemId(),
+                                    ip.getResult(),
+                                    ip.needsVoteFrom(from))
+                    );
+                }
+                return null;
+            });
+        } else {
             debug("impossible state: onNotification can't have invalid state from local check\n" + x);
         }
     }
 
-
-    public void resync(HashId id) throws Exception {
-//        final DeferredResult result = new DeferredResult();
-
-        Object x = checkItemInternal(id, null, true);
-        ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
-        debug("resync state before: " + ir.state);
-        debug("x instanceof ItemProcessor " + (x instanceof ItemProcessor));
-        // todo: prevent double launch of resync and break another processes
-        ItemProcessor processor;
-        if (x instanceof ItemProcessor) {
-            processor = ((ItemProcessor) x);
-        } else {
-            processor = createItemProcessorForResync(id);
-        }
-        StateRecord r = ledger.getRecord(id);
-        processor.pulseResync(true);
-
-//        if( ledger.getRecord(id) != null ) {
-//            result.sendFailure(null);
-//            return result;
-//        }
-
-
-//        return result;
-    }
-    public ItemProcessor createItemProcessorForResync(HashId id) throws Exception {
-
-        return ItemLock.synchronize(id, (lock) -> {
-            ItemProcessor processor = new ItemProcessor(id, null, lock);
-            processors.put(id, processor);
-            return processor;
-        });
+    protected Object checkItemInternal(@NonNull HashId itemId) {
+        return checkItemInternal(itemId, null);
     }
 
+    protected Object checkItemInternal(@NonNull HashId itemId, Approvable item) {
+        return checkItemInternal(itemId, item, false);
+    }
+
+    protected Object checkItemInternal(@NonNull HashId itemId, Approvable item, boolean autoStart) {
+        return checkItemInternal(itemId, item, autoStart, false);
+    }
 
     /**
      * Optimized for various usages, check the item, start processing as need, return object depending on the current
      * state. Note that actuall error codes are set to the item itself.
      *
-     * @param itemId    item to check the state
-     * @param item      provide item if any, can be null
-     * @param autoStart
+     * @param itemId    item to check the state.
+     * @param item      provide item if any, can be null. Default is null.
+     * @param autoStart - create new ItemProcessor if not exist. Default is false.
+     * @param ommitItemResult - do not return ItemResult for processed item,
+     *                        create new ItemProcessor instead (if autoStart is true). Default is false.
      *
-     * @return instance od {@link ItemProcessor} if the item is being processed (also if it was started by the call),
+     * @return instance of {@link ItemProcessor} if the item is being processed (also if it was started by the call),
      *         {@link ItemResult} if it is already processed or can't be processed, say, created_at field is too far in
      *         the past, in which case result state will be {@link ItemState#DISCARDED}.
      */
-    protected Object checkItemInternal(@NonNull HashId itemId, Approvable item, boolean autoStart) {
+    protected Object checkItemInternal(@NonNull HashId itemId, Approvable item, boolean autoStart, boolean ommitItemResult) {
         try {
             // first, let's lock to the item id:
             return ItemLock.synchronize(itemId, (lock) -> {
@@ -288,25 +322,29 @@ public class Node {
                     return ip;
                 }
 
-                StateRecord r = ledger.getRecord(itemId);
-                // if it is not pending, it means it is already processed:
-                if (r != null && !r.isPending()) {
-                    debug("record for " + itemId + " is already processed: " + r.getState());
-                    // it is, and we may still have it cached - we do not put it again:
-                    return new ItemResult(r, cache.get(itemId) != null);
+                // if we want to get already processed result for item
+                if(!ommitItemResult) {
+                    StateRecord r = ledger.getRecord(itemId);
+                    // if it is not pending, it means it is already processed:
+                    if (r != null && !r.isPending()) {
+                        debug("record for " + itemId + " is already processed: " + r.getState());
+                        // it is, and we may still have it cached - we do not put it again:
+                        return new ItemResult(r, cache.get(itemId) != null);
+                    }
+
+                    debug("no record in ledger found for " + itemId.toBase64String());
+
+                    // we have no consensus on it. We might need to find one, after some precheck.
+                    // The contract should not be too old to process:
+                    if (item != null &&
+                            item.getCreatedAt().isBefore(ZonedDateTime.now().minus(config.getMaxItemCreationAge()))) {
+                        // it is too old - client must manually check other nodes. For us it's unknown
+                        item.addError(Errors.EXPIRED, "created_at", "too old");
+                        return ItemResult.DISCARDED;
+                    }
                 }
 
-                debug("no record in ledger found for " + itemId.toBase64String());
-
-                // we have no consensus on it. We might need to find one, after some precheck.
-                // The contract should not be too old to process:
-                if (item != null &&
-                        item.getCreatedAt().isBefore(ZonedDateTime.now().minus(config.getMaxItemCreationAge()))) {
-                    // it is too old - client must manually check other nodes. For us it's unknown
-                    item.addError(Errors.EXPIRED, "created_at", "too old");
-                    return ItemResult.DISCARDED;
-                }
-
+                // if we want to create new ItemProcessor
                 if (autoStart) {
                     if (item != null) {
                         synchronized (cache) {

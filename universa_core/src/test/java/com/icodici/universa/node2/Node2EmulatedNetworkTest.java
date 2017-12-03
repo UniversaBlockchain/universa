@@ -90,7 +90,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
                 node.registerItem(ok);
                 for (Node n : nodes) {
                     try {
-                        ItemResult r = n.waitItem(ok.getId(), 2500);
+                        ItemResult r = n.waitItem(ok.getId(), 1500);
                         assertEquals(ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
                         fail("timeout");

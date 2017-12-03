@@ -16,22 +16,12 @@ public class ItemResyncNotification extends ItemNotification {
 
     private HashMap<HashId, ItemState> itemsToResync;
 
-//    public ItemResyncNotification(NodeInfo from, HashId itemId, ItemResult itemResult, boolean requestResult) {
-//        super(from, itemId, itemResult, requestResult);
-//        itemsToResync = new HashMap<>();
-//    }
-
     public ItemResyncNotification(NodeInfo from, HashId itemId, HashMap<HashId, ItemState> itemsToResync, boolean requestResult) {
         // itemResult not use.
         super(from, itemId, new ItemResult(new StateRecord(itemId)), requestResult);
         this.itemsToResync = itemsToResync;
     }
 
-//    protected ItemResyncNotification(NodeInfo from) throws IOException {
-//        super(from);
-//        itemsToResync = new HashMap<>();
-//    }
-//
     protected ItemResyncNotification() {
         super();
         itemsToResync = new HashMap<>();
@@ -61,6 +51,15 @@ public class ItemResyncNotification extends ItemNotification {
     @Override
     protected int getTypeCode() {
         return CODE_ITEM_RESYNC_NOTIFICATION;
+    }
+
+    @Override
+    public String toString() {
+        return "[ItemResyncNotification from: " + getFrom()
+                + " for item: " + getItemId()
+                + ", items to resync: " + itemsToResync
+                + ", is answer requested: " + answerIsRequested()
+                + "]";
     }
 
     public HashMap<HashId, ItemState> getItemsToResync() {

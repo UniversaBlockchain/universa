@@ -99,6 +99,14 @@ public class ItemNotification extends Notification {
         return result;
     }
 
+    public String toString() {
+        return "[ItemNotification from " + getFrom()
+                + " for item: " + getItemId()
+                + ", item result: " + itemResult
+                + ", is answer requested: " + answerIsRequested()
+                + "]";
+    }
+
     static {
         registerClass(CODE_ITEM_NOTIFICATION, ItemNotification.class);
     }
