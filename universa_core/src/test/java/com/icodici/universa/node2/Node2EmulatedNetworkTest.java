@@ -420,6 +420,9 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     @Test
     public void badNewDocumentsPreventAccepting() throws Exception {
+
+//        LogPrinter.showDebug(true);
+
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
         TestItem new2 = new TestItem(true);
@@ -445,6 +448,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         // and this one was created before
         @NonNull ItemResult itemNew2 = node.checkItem(new2.getId());
         Assert.assertThat(itemNew2.state, anyOf(equalTo(ItemState.APPROVED), equalTo(ItemState.PENDING_POSITIVE)));
+
+        LogPrinter.showDebug(false);
     }
 
 //    @Test
@@ -553,6 +558,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         if (node.checkItem(existing2.getId()).state.isPending())
             Thread.sleep(500);
         assertEquals(ItemState.APPROVED, node.checkItem(existing2.getId()).state);
+
+//        LogPrinter.showDebug(false);
     }
 
     @Test
