@@ -13,6 +13,10 @@ Bulk operations for import, export, register and check.
 
 Probe files, not only ids.
 
+### 2.2.? (??.12.2017)
+
+* Added `--cost` as standalone key and as key for use with `--register`.
+
 ### 2.2.3 (16.11.2017)
 
 * Added `--wait` and `--register` keys.

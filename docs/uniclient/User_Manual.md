@@ -340,6 +340,23 @@ And you can pack them together using:
 
 As a result, the `contract.unicon` file will be created from the counterpart contracts. Note: use `--name` to save the contract with the name different from the original contract.
 
+#### Calculating cost of contract processing 
+
+If you want to know how much cost of contract processing you registering is, add key `-cost` at the end:
+
+    uniclient --register contract.unicon -cost
+
+This key will calculate cost of processing and prints it to the console.
+
+
+However, you can calculate cost of contract processing, but without withdraw that cost, using `--cost` as standalone:
+
+    uniclient --cost contract.unicon
+
+This command will calculate cost of processing and prints it to the console, but without real calls to the Universa network. 
+
+Command works with multiple files as other commands.
+
 #### Output control
 
 It is possible to format all uniclient output in the JSON format for easy parsing and further processing. Use `--json` key.
