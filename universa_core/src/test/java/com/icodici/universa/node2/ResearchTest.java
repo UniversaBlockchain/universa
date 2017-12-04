@@ -2,6 +2,7 @@ package com.icodici.universa.node2;
 
 
 
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import org.junit.After;
@@ -69,6 +70,19 @@ public class ResearchTest extends TestCase {
         } catch (Quantiser.QuantiserException e) {
             return;
         }
+    }
+
+
+
+    @Test
+    public void quantiserInContract() throws Exception {
+        Contract c = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
+        c.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
+        c.check();
+        c.traceErrors();
+        assertTrue(c.check());
+        c.seal();
+        System.out.println(c.getProcessedCost());
     }
 
 

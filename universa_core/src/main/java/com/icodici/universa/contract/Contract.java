@@ -18,6 +18,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.Config;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
@@ -65,6 +66,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Reference references;
     private TransactionPack transactionPack;
 
+    private Quantiser quantiser = new Quantiser();
+
     /**
      * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
      * the transaction pack fails to resove a link, no error will be reported - not sure it's a good idea. If need, the
@@ -78,6 +81,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws IllegalArgumentException on the various format errors
      */
     public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
+        this.quantiser.reset(500); // debug const. need to get quantaLimit from TransactionPack here
         this.sealedBinary = sealed;
         this.transactionPack = pack;
         Binder data = Boss.unpack(sealed);
@@ -332,7 +336,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             index++;
         }
         checkDupesCreation();
+        quantiser.finishCalculation();
         return errors.size() == 0;
+    }
+
+    public int getProcessedCost() {
+        return quantiser.getQuantaSum();
     }
 
     /**
@@ -365,7 +374,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     /**
      * Create new root contract to be created. It may have parent, but does not have origin, as it is an origin itself.
      */
-    private void checkRootContract() {
+    private void checkRootContract() throws Quantiser.QuantiserException {
         // root contract must be issued ny the issuer
         Role issuer = getRole("issuer");
         if (issuer == null || !issuer.isValid()) {
@@ -392,15 +401,24 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         checkRootDependencies();
     }
 
-    private void checkRootDependencies() {
+    private void checkRootDependencies() throws Quantiser.QuantiserException {
         // Revoke dependencies: _issuer_ of the root contract must have right to revoke
+        List<Quantiser.QuantiserException> caughtExceptions = new ArrayList<>();
         revokingItems.forEach(item -> {
             if (!(item instanceof Contract))
                 addError(BAD_REF, "revokingItem", "revoking item is not a Contract");
             Contract rc = (Contract) item;
+            try {
+                quantiser.addWorkCost(Quantiser.PRICE_APPLICABLE_PERM);
+            } catch (Quantiser.QuantiserException e) {
+                caughtExceptions.add(e);
+            }
             if (!rc.isPermitted("revoke", getIssuer()))
                 addError(FORBIDDEN, "revokingItem", "revocation not permitted for item " + rc.getId());
         });
+        if (caughtExceptions.size() > 0) {
+            throw caughtExceptions.get(0);
+        }
     }
 
     public void addError(Errors code, String field, String text) {
@@ -410,7 +428,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         errors.add(new ErrorRecord(code1, field1, text1));
     }
 
-    private void checkChangedContract() {
+    private void checkChangedContract() throws Quantiser.QuantiserException {
         // get the previous version
         Contract parent = getContext().base;
         if (parent == null) {
@@ -418,6 +436,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         } else {
             // checking parent:
             // proper origin
+            quantiser.addWorkCost(Quantiser.PRICE_CHECK_VERSION);
             HashId rootId = parent.getRootId();
             if (!rootId.equals(getRawOrigin())) {
                 addError(BAD_VALUE, "state.origin", "wrong origin, should be root");
@@ -464,12 +483,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @param toRevoke
      */
-    public void addRevokingItems(Contract... toRevoke) {
-        for (Contract c : toRevoke)
+    public void addRevokingItems(Contract... toRevoke) throws Quantiser.QuantiserException {
+        for (Contract c : toRevoke) {
+            quantiser.addWorkCost(Quantiser.PRICE_REVOKE_VERSION);
             revokingItems.add(c);
+        }
     }
 
-    private void basicCheck() {
+    private void basicCheck() throws Quantiser.QuantiserException {
         if (definition.createdAt == null ||
                 definition.createdAt.isAfter(ZonedDateTime.now()) ||
                 definition.createdAt.isBefore(getEarliestCreationTime())) {
@@ -507,7 +528,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             addError(NOT_SIGNED, "", "missing creator signature(s)");
     }
 
-    private boolean isSignedBy(Role role) {
+    private boolean isSignedBy(Role role) throws Quantiser.QuantiserException {
         if (role == null)
             return false;
 
@@ -515,6 +536,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         if (role == null)
             return false;
+
+        quantiser.addWorkCost(Quantiser.PRICE_CHECK_2048_SIG);
 
         if (!sealedByKeys.isEmpty())
             return role.isAllowedForKeys(getSealedByKeys());
@@ -794,6 +817,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public Contract createRevision() {
         try {
+            quantiser.addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
             // We need deep copy, so, simple while not that fast.
             // note that revisions are create on clients where speed it not of big importance!
             Contract newRevision = copy();
@@ -936,7 +960,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return array of just created siblings, to modify their state only.
      */
-    public Contract[] split(int count) {
+    public Contract[] split(int count) throws Quantiser.QuantiserException {
+        quantiser.addWorkCost(Quantiser.PRICE_SPLITJOIN_PERM);
         // we can split only the new revision and only once this time
         if (state.getBranchRevision() == state.revision)
             throw new IllegalArgumentException("this revision is already split");
@@ -975,7 +1000,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return new sibling contract with the extracted value.
      */
-    public Contract splitValue(String fieldName, Decimal valueToExtract) {
+    public Contract splitValue(String fieldName, Decimal valueToExtract) throws Quantiser.QuantiserException {
         Contract sibling = split(1)[0];
         Binder stateData = getStateData();
         Decimal value = new Decimal(stateData.getStringOrThrow(fieldName));
@@ -1252,7 +1277,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return true if the set of keys is enough revoke this contract.
      */
-    public boolean canBeRevoked(Set<PublicKey> keys) {
+    public boolean canBeRevoked(Set<PublicKey> keys) throws Quantiser.QuantiserException {
+        quantiser.addWorkCost(Quantiser.PRICE_REVOKE_VERSION);
         for (Permission perm : permissions.getList("revoke")) {
             if (perm.isAllowedForKeys(keys))
                 return true;

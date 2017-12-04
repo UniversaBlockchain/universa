@@ -4,6 +4,7 @@ public class Quantiser {
 
     private int quantaSum_ = 0;
     private int quantaLimit_ = -1;
+    private boolean isCalculationFinished_ = false;
 
     public static final int PRICE_CHECK_2048_SIG       = 1;
     public static final int PRICE_CHECK_4096_SIG       = 8;
@@ -24,6 +25,7 @@ public class Quantiser {
     public synchronized void reset(int newLimit) {
         quantaSum_ = 0;
         quantaLimit_ = newLimit;
+        isCalculationFinished_ = false;
     }
 
 
@@ -52,6 +54,14 @@ public class Quantiser {
     public synchronized int getQuantaLimit() {
         return quantaLimit_;
     }
+
+
+
+    public synchronized boolean isCalculationFinished() {return isCalculationFinished_;}
+
+
+
+    public synchronized void finishCalculation() {isCalculationFinished_ = true;}
 
 
 
