@@ -1881,6 +1881,104 @@ public class CLIMainTest {
         callMain2("-v", "--check", "/Users/sergeych/dev/!/0199efcd-0313-4e2c-8f19-62d6bd1c9755.transaction");
     }
 
+    @Test
+    public void checkContractProcessingCostFromBinary() throws Exception {
+
+        // Should use a binary contract, call -cost command and print cost of processing it.
+
+        int costShouldBe = 1;
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+        sealCheckTrace(contract, true);
+
+        CLIMain.saveContract(contract, basePath + "contract_for_cost.unicon");
+
+        System.out.println("--- cost checking ---");
+
+        callMain("--cost", basePath + "contract_for_cost.unicon");
+        System.out.println(output);
+
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN) for contract found at " + basePath + "contract_for_cost.unicon") >= 0);
+    }
+
+    @Test
+    public void checkContractProcessingCostFromJSON() throws Exception {
+
+        // Should use a json contract, call -cost command and print cost of processing it.
+
+        int costShouldBe = 1;
+
+        System.out.println("--- cost checking ---");
+
+        callMain("--cost", basePath + "contract_to_import.json");
+        System.out.println(output);
+
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN) for contract found at " + basePath + "contract_to_import.json") >= 0);
+    }
+
+    @Test
+    public void checkContractProcessingCostFromXML() throws Exception {
+
+        // Should use an xml contract, call -cost command and print cost of processing it.
+
+        int costShouldBe = 1;
+
+        System.out.println("--- cost checking ---");
+
+        callMain("--cost", basePath + "contract_to_import.xml");
+        System.out.println(output);
+
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN) for contract found at " + basePath + "contract_to_import.xml") >= 0);
+    }
+
+    @Test
+    public void checkContractProcessingCostFromYAML() throws Exception {
+
+        // Should use an yaml contract, call -cost command and print cost of processing it.
+
+        int costShouldBe = 1;
+
+        System.out.println("--- cost checking ---");
+
+        callMain("--cost", basePath + "contract_to_import.yaml");
+        System.out.println(output);
+
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN) for contract found at " + basePath + "contract_to_import.yaml") >= 0);
+    }
+
+    @Test
+    public void checkContractProcessingCostFromManySources() throws Exception {
+
+        // Should use contracts from all sources, call one -cost command for all of them and print cost of processing it.
+
+        int costShouldBe = 1;
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+        sealCheckTrace(contract, true);
+
+        CLIMain.saveContract(contract, basePath + "contract_for_cost.unicon");
+
+        System.out.println("--- cost checking ---");
+
+        callMain("--cost",
+                basePath + "contract_for_cost.unicon",
+                basePath + "contract_to_import.json",
+                basePath + "contract_to_import.xml",
+                basePath + "contract_to_import.yaml");
+        System.out.println(output);
+
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN) for contract found at " + basePath + "contract_for_cost.unicon") >= 0);
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN) for contract found at " + basePath + "contract_to_import.json") >= 0);
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN) for contract found at " + basePath + "contract_to_import.xml") >= 0);
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN) for contract found at " + basePath + "contract_to_import.yaml") >= 0);
+    }
+
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
         List<Contract> contracts = new ArrayList<>();
 

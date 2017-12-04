@@ -20,6 +20,8 @@ import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node2.Quantiser;
+import com.icodici.universa.node2.QuantiserSingleton;
 import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
 import com.icodici.universa.wallet.Wallet;
@@ -221,6 +223,13 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("file.unicon");
+                acceptsAll(asList("cost"), "Print cost of operations with given hashes of contracts" +
+                        "(if command run as standalone command) " +
+                        "or with processing contracts (if use command as option for another commands.")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("file");
 
 
 //                acceptsAll(asList("ie"), "Test - delete.")
@@ -300,6 +309,9 @@ public class CLIMain {
             }
             if (options.has("unpack")) {
                 doUnpackWith();
+            }
+            if (options.has("cost")) {
+                doCost();
             }
 
             usage(null);
@@ -676,34 +688,39 @@ public class CLIMain {
             if (names.size() > s) name = names.get(s);
 
             Contract contract = loadContract(source, true);
-            if (contract != null) {
-                if (contract.check()) {
-                    report("pack contract from " + source);
-                    if (siblingItems != null) {
-                        for (Object sibFile : siblingItems) {
-                            Contract siblingContract = loadContract((String) sibFile, true);
-                            report("add sibling from " + sibFile);
-                            contract.addNewItems(siblingContract);
+            try {
+                if (contract != null) {
+                    if (contract.check()) {
+                        report("pack contract from " + source);
+                        if (siblingItems != null) {
+                            for (Object sibFile : siblingItems) {
+                                Contract siblingContract = loadContract((String) sibFile, true);
+                                report("add sibling from " + sibFile);
+                                contract.addNewItems(siblingContract);
+                            }
                         }
-                    }
-                    if (revokeItems != null) {
-                        for (Object revokeFile : revokeItems) {
-                            Contract revokeContract = loadContract((String) revokeFile, true);
-                            report("add revoke from " + revokeFile);
-                            contract.addRevokingItems(revokeContract);
+                        if (revokeItems != null) {
+                            for (Object revokeFile : revokeItems) {
+                                Contract revokeContract = loadContract((String) revokeFile, true);
+                                report("add revoke from " + revokeFile);
+                                contract.addRevokingItems(revokeContract);
+                            }
                         }
+                        if (name == null) {
+                            name = source;
+                        }
+                        if (siblingItems != null || revokeItems != null) {
+                            contract.seal();
+                            saveContract(contract, name, true);
+                        }
+                    } else {
+                        addErrors(contract.getErrors());
                     }
-                    if (name == null) {
-                        name = source;
-                    }
-                    if (siblingItems != null || revokeItems != null) {
-                        contract.seal();
-                        saveContract(contract, name, true);
-                    }
-                } else {
-                    addErrors(contract.getErrors());
                 }
+            } catch (Quantiser.QuantiserException e) {
+                addError(Errors.FAILED_CHECK.name(), contract.toString(), e.getMessage());
             }
+
         }
 
         finish();
@@ -757,6 +774,44 @@ public class CLIMain {
 
         finish();
     }
+
+
+    private static void doCost() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("cost"));
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+
+            ContractFileTypes fileType = getFileType(source);
+
+            report("Calculating cost of " + source + ", type is " + fileType + "...");
+
+            Contract contract = null;
+            if (fileType == ContractFileTypes.BINARY) {
+                contract = loadContract(source);
+            } else {
+                contract = importContract(source);
+            }
+
+            if(contract != null) {
+                contract.check();
+                addErrors(contract.getErrors());
+                if (contract.getErrors().size() == 0) {
+                    report("Contract is valid");
+                }
+                report("Contract processing cost is " + contract.getProcessedCost() + " (UTN) for contract found at " + source);
+            }
+        }
+
+        finish();
+    }
+
 
     private static void cleanNonOptionalArguments(List sources) throws IOException {
 
@@ -1173,13 +1228,7 @@ public class CLIMain {
      */
     private static Contract importContract(String sourceName) throws IOException {
 
-        String extension = "";
-        int i = sourceName.lastIndexOf('.');
-        if (i > 0) {
-            extension = sourceName.substring(i + 1);
-        }
-
-        extension = extension.toLowerCase();
+        ContractFileTypes fileType = getFileType(sourceName);
 
         Contract contract = null;
         File pathFile = new File(sourceName);
@@ -1188,10 +1237,10 @@ public class CLIMain {
                 Binder binder;
 
                 FileReader reader = new FileReader(sourceName);
-                if ("yaml".equals(extension) || "yml".equals(extension)) {
+                if (fileType == ContractFileTypes.YAML) {
                     Yaml yaml = new Yaml();
                     binder = Binder.convertAllMapsToBinders(yaml.load(reader));
-                } else if ("json".equals(extension)) {
+                } else if (fileType == ContractFileTypes.JSON) {
                     Gson gson = new GsonBuilder().create();
                     binder = Binder.convertAllMapsToBinders(gson.fromJson(reader, Binder.class));
                 } else {
@@ -1207,7 +1256,7 @@ public class CLIMain {
 
                 report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contract.getCreatedAt()));
 
-                report("import from " + extension + " ok");
+                report("import from " + fileType.toString().toLowerCase() + " ok");
             } catch (Exception e) {
                 addError(Errors.FAILURE.name(), sourceName, e.getMessage());
             }
@@ -1811,6 +1860,31 @@ public class CLIMain {
         throw new Finished();
     }
 
+    private static ContractFileTypes getFileType(String source) {
+
+        String extension = "";
+        int i = source.lastIndexOf('.');
+        if (i > 0) {
+            extension = source.substring(i + 1);
+        }
+
+        extension = extension.toLowerCase();
+
+        if ("unicon".equals(extension)) {
+            return ContractFileTypes.BINARY;
+        }
+        if ("yaml".equals(extension) || "yml".equals(extension)) {
+            return ContractFileTypes.YAML;
+        }
+        if ("json".equals(extension)) {
+            return ContractFileTypes.JSON;
+        }
+        if ("xml".equals(extension)) {
+            return ContractFileTypes.XML;
+        }
+        return ContractFileTypes.UNKNOWN;
+    }
+
     private static void report(String message) {
         reporter.message(message);
     }
@@ -2101,5 +2175,14 @@ public class CLIMain {
         static public final String BINARY = "binary";
 
 
+    }
+
+
+    public enum ContractFileTypes {
+        JSON,
+        XML,
+        YAML,
+        BINARY,
+        UNKNOWN
     }
 }
