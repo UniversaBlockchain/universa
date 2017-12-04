@@ -223,9 +223,8 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("file.unicon");
-                acceptsAll(asList("cost"), "Print cost of operations with given hashes of contracts" +
-                        "(if command run as standalone command) " +
-                        "or with processing contracts (if use command as option for another commands.")
+                acceptsAll(asList("cost"), "Print cost of operations for contracts with given files of contracts. " +
+                        "Can be used as key with -register command.")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
@@ -600,14 +599,19 @@ public class CLIMain {
 
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
-//            Contract contract = Contract.fromSealedFile(source);
             Contract contract = loadContract(source);
 
-//            contract.seal();
             report("registering the contract " + contract.getId().toBase64String() + " from " + source);
             registerContract(contract, (int)options.valueOf("wait"));
         }
-        finish();
+
+        // print cost of processing if asked
+        report("options has cost param " + options.has("cost"));
+        if (options.has("cost")) {
+            doCost();
+        } else {
+            finish();
+        }
     }
 
     private static void doProbe() throws IOException {
@@ -778,6 +782,11 @@ public class CLIMain {
 
     private static void doCost() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("cost"));
+        // if command use as key for -register command
+        List<String> registerSources = new ArrayList<String>((List) options.valuesOf("register"));
+        for (String opt : registerSources) {
+            sources.addAll(asList(opt.split(",")));
+        }
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -790,22 +799,25 @@ public class CLIMain {
 
             ContractFileTypes fileType = getFileType(source);
 
+            report("");
             report("Calculating cost of " + source + ", type is " + fileType + "...");
 
             Contract contract = null;
             if (fileType == ContractFileTypes.BINARY) {
                 contract = loadContract(source);
             } else {
-                contract = importContract(source);
+//                contract = Contract.fromPackedTransaction(importContract(source).getPackedTransaction());
+                addError(Errors.COMMAND_FAILED.name(), source, "Contract should be sealed binary");
             }
 
             if(contract != null) {
                 contract.check();
-                addErrors(contract.getErrors());
-                if (contract.getErrors().size() == 0) {
-                    report("Contract is valid");
-                }
-                report("Contract processing cost is " + contract.getProcessedCost() + " (UTN) for contract found at " + source);
+//                addErrors(contract.getErrors());
+//                if (contract.getErrors().size() == 0) {
+//                    report("Contract is valid");
+//                }
+
+                printProcessingCost(contract);
             }
         }
 
@@ -1849,6 +1861,16 @@ public class CLIMain {
             }
         }
     }
+
+    /**
+     * Print processing cost (that was spent while checking) of a contract to console.
+     *
+     * @param contract
+     */
+    private static void printProcessingCost(Contract contract) {
+        report("Contract processing cost is " + contract.getProcessedCost() + " (UTN)");
+    }
+
 
     private static void finish() {
         // print reports if need
