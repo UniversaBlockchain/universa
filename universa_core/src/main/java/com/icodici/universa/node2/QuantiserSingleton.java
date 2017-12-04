@@ -26,12 +26,8 @@ public class QuantiserSingleton {
 
 
     public Quantiser getQuantiser(HashId hashId) {
-        Quantiser q = quantiserMap_.get(hashId);
-        if (q == null) {
-            q = new Quantiser();
-            quantiserMap_.put(hashId, q);
-        }
-        return q;
+        quantiserMap_.putIfAbsent(hashId, new Quantiser());
+        return quantiserMap_.get(hashId);
     }
 
 
