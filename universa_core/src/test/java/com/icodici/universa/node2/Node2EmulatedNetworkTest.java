@@ -80,17 +80,24 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         Thread.sleep(100);
     }
 
-    @Test
+    @Test(timeout = 20000)
     public void registerGoodItem() throws Exception {
         int N = 100;
         for (int k = 0; k < 1; k++) {
 //            StopWatch.measure(true, () -> {
             for (int i = 0; i < N; i++) {
                 TestItem ok = new TestItem(true);
+                System.out.println("\n--------------register item " + ok.getId() + " ------------\n");
                 node.registerItem(ok);
                 for (Node n : nodes) {
                     try {
-                        ItemResult r = n.waitItem(ok.getId(), 1500);
+                        ItemResult r = n.waitItem(ok.getId(), 500);
+                        while( !r.state.isConsensusFound()) {
+                            System.out.println("wait for consensus receiving on the node " + n);
+                            Thread.sleep(200);
+                            r = n.waitItem(ok.getId(), 500);
+                        }
+                        System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
                         assertEquals(ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
                         fail("timeout");

@@ -133,6 +133,7 @@ public class Node {
         Object x = checkItemInternal(itemId);
         if (x instanceof ItemProcessor) {
             ((ItemProcessor) x).doneEvent.await(millisToWait);
+
             return ((ItemProcessor) x).getResult();
         }
         debug("it is not processor: " + x);
@@ -256,7 +257,7 @@ public class Node {
             ItemProcessor ip = (ItemProcessor) x;
             ItemResult result = notification.getItemResult();
             ip.lock(() -> {
-                debug("found ItemProcessor for item with state: " + ip.getState()
+                debug("found ItemProcessor for item " + notification.getItemId() + "  with state: " + ip.getState()
                         + ", it processing state is: " + ip.processingState
                         + ", have a copy: " + (ip.item != null));
 
@@ -565,7 +566,7 @@ public class Node {
                 }
                 alreadyChecked = true;
 
-                debug("Checking " + itemId + ", is need to resync: " + needToResync);
+                debug("Checking for resync, item " + itemId + " is need to resync: " + needToResync);
 
                 if (!needToResync) {
                     commitCheckedAndStartPolling();
@@ -661,7 +662,7 @@ public class Node {
                     }
                 }
 
-                debug("Checking subitems " + itemId
+                debug("Checking subitems of item " + itemId
                         + ", state: " + record.getState() +
                         ", errors: " + item.getErrors().size());
             }
@@ -672,7 +673,7 @@ public class Node {
             if(!processingState.isProcessedToConsensus()) {
                 boolean checkPassed = item.getErrors().isEmpty();
 
-                debug("Checked " + itemId + ", checkPassed: " + checkPassed
+                debug("Checked item " + itemId + ", checkPassed: " + checkPassed
                         + ", state: " + record.getState() +
                         ", errors: " + item.getErrors().size());
 
@@ -692,6 +693,7 @@ public class Node {
 
                 record.setExpiresAt(item.getExpiresAt());
                 record.save();
+
                 vote(myInfo, record.getState());
                 broadcastMyState();
                 pulseStartPolling();
@@ -736,7 +738,7 @@ public class Node {
                         unknownParts.size() > 0 &&
                                 knownParts.size() >= config.getKnownSubContractsToResync();
             }
-            debug("is item " + itemId + "need to resync: " + needToResync + ", state: " + record.getState() +
+            debug("is item " + itemId + " need to resync: " + needToResync + ", state: " + record.getState() +
                     ", errors: " + item.getErrors().size() +
                     ", unknownParts: " + unknownParts.size() +
                     ", knownParts: " + knownParts.size() +
@@ -1120,9 +1122,10 @@ public class Node {
 
         private void close() {
             debug("closing " + itemId + " : " + getState() + " it was self-resync: " + resyncItselfOnly);
-            doneEvent.fire();
 
             stopPoller();
+
+            doneEvent.fire();
 
             // If we not just resynced itslef
             if(!resyncItselfOnly) {
@@ -1371,7 +1374,7 @@ public class Node {
                                             .setExpiresAt(expiresAt)
                                             .save();
 
-                                    debug("resyncing commit success for " + hashId + " with state " + committingState + " (" + getItemState() + ")");
+                                    debug("resyncing commit success for " + hashId + " with state " + committingState);
 
                                     resyncingState = ResyncingItemProcessingState.COMMIT_SUCCESSFUL;
                                     break;

@@ -134,7 +134,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
         ae.await(500);
     }
 
-    @Test
+    @Test(timeout = 20000)
     public void registerGoodItem() throws Exception {
         int N = 100;
 //        LogPrinter.showDebug(true);
@@ -142,18 +142,22 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
             StopWatch.measure(true, () -> {
             for (int i = 0; i < N; i++) {
                 TestItem ok = new TestItem(true);
+                System.out.println("\n--------------register item " + ok.getId() + " ------------\n");
                 node.registerItem(ok);
                 for (Node n : nodes.values()) {
                     try {
                         ItemResult r = n.waitItem(ok.getId(), 500);
-                        if( !r.state.isConsensusFound())
-                            Thread.sleep(30);
-                        assertEquals("In node "+n+" item "+ok.getId(), ItemState.APPROVED, r.state);
+                        while( !r.state.isConsensusFound()) {
+                            System.out.println("wait for consensus receiving on the node " + n);
+                            Thread.sleep(200);
+                            r = n.waitItem(ok.getId(), 500);
+                        }
+                        System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
+                        assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
                         fail("timeout");
                     }
                 }
-//                System.out.println("\n\n--------------------------\n\n");
                 assertThat(node.countElections(), is(lessThan(10)));
 
                 ItemResult r = node.waitItem(ok.getId(), 5500);
