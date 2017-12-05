@@ -121,6 +121,11 @@ public class ContractTestBase extends TestCase {
         return createCoin(rootPath + "coin.yml");
     }
 
+    protected Contract createCoin100apiv3() throws IOException {
+        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
+        return c;
+    }
+
     protected Contract createCoin(String yamlFilePath) throws IOException {
         Contract c = Contract.fromDslFile(yamlFilePath);
         c.setOwnerKey(ownerKey2);

@@ -28,7 +28,17 @@ public class Quantiser {
 
     public synchronized void addWorkCost(QuantiserProcesses process) throws QuantiserException {
         quantaSum_ += process.getCost();
-//        System.out.println("Add processing cost for " + process);
+        System.out.println("Add processing cost for " + process + " (" + process.getCost() + "), now cost is " + quantaSum_);
+        if (quantaLimit_ >= 0)
+            if (quantaSum_ > quantaLimit_)
+                throw new QuantiserException();
+    }
+
+
+
+    public synchronized void addWorkCostFrom(Quantiser quantiser) throws QuantiserException {
+        quantaSum_ += quantiser.getQuantaSum();
+        System.out.println("Add processing cost from " + quantiser.getClass().getSimpleName() + " (" + quantiser.getQuantaSum() + "), now cost is " + quantaSum_);
         if (quantaLimit_ >= 0)
             if (quantaSum_ > quantaLimit_)
                 throw new QuantiserException();

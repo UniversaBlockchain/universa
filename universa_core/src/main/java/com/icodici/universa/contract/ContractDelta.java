@@ -126,7 +126,7 @@ public class ContractDelta {
         Set<PublicKey> creatorKeys = creator.getKeys();
         for (Permission permission : existing.getPermissions().values()) {
             if (permission.isAllowedForKeys(creatorKeys)) {
-                existing.checkApplicablePermissionQuantized(permission);
+                changed.checkApplicablePermissionQuantized(permission);
                 permission.checkChanges(existing, changed, stateChanges);
             }
         }

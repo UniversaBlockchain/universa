@@ -323,6 +323,60 @@ public class ContractTest extends ContractTestBase {
         assertEquals(costShouldBe, processingContract.getProcessedCost());
     }
 
+    @Test
+    public void calculateSplitProcessingCost() throws Exception {
+
+        // Should create contract, sign and seal it, then create revision and split. Then calculate cost of processing.
+        // should repeat contract processing procedure on the Node
+        // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
+
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(contract, true);
+
+        System.out.println("Split");
+        Contract forSplit = contract.createRevision();
+        Contract splitted = forSplit.splitValue(FIELD_NAME, new Decimal(20));
+        splitted.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(splitted, true);
+        sealCheckTrace(forSplit, true);
+        assertEquals(new Decimal(80), forSplit.getStateData().get("amount"));
+        assertEquals(new Decimal(20), new Decimal(Long.valueOf(splitted.getStateData().get("amount").toString())));
+
+        System.out.println("Calculated processing cost (forSplit): " + forSplit.getProcessedCost() + " (UTN)");
+        System.out.println("Calculated processing cost (splitted): " + splitted.getProcessedCost() + " (UTN)");
+
+        // Register a self version (20) +
+        // Check 2048 bits signature (1) +
+        // Register new item a version (20) +
+        // Register revoking item a version (20) +
+        // Check self change owner permission (1) +
+        // Check self change split join permission (1+2) +
+        // Check self change revoke permission (1) +
+        // Check self change revoke permission (1) +
+        // Check new item change owner permission (1) +
+        // Check new item change split join permission (1+2) +
+        // Check new item change revoke permission (1) +
+        // Check new item change revoke permission (1) +
+        // Check node new item change owner permission (1) +
+        // Check node new item change split join permission (1+2) +
+        // Check node new item change revoke permission (1) +
+        // Check node new item change revoke permission (1) +
+        int costShouldBeForSplit = 79;
+
+        Contract processingContract = processContractAsItWillBeOnTheNode(forSplit);
+        System.out.println("Calculated processing cost (forSplit): " + processingContract.getProcessedCost() + " (UTN)");
+        assertEquals(costShouldBeForSplit, processingContract.getProcessedCost());
+
+        // Register a version (20) +
+        // Check 2048 bits signature (1)
+        int costShouldBeSplitted = 21;
+        processingContract = processContractAsItWillBeOnTheNode(splitted);
+        System.out.println("Calculated processing cost (splitted): " + processingContract.getProcessedCost() + " (UTN)");
+        assertEquals(costShouldBeSplitted, processingContract.getProcessedCost());
+
+    }
+
     /**
      * Imitate procedure of contract processing as it will be on the Node.
      * Gte contract from param, create from it new contract,
@@ -332,10 +386,14 @@ public class ContractTest extends ContractTestBase {
      * @throws Exception
      */
     public Contract processContractAsItWillBeOnTheNode(Contract contract) throws Exception {
-        Contract processingContract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+
+        byte[] data = contract.getPackedTransaction();
+        System.out.println("Imitate registering");
+        Contract processingContract = Contract.fromPackedTransaction(data);
         processingContract.check();
+        System.out.println("check newItems");
         for (Approvable newItem : processingContract.getNewItems()) {
-            newItem.check();
+            processingContract.checkSubItemQuantized((Contract) newItem);
         }
 
         return processingContract;

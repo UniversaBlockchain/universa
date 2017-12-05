@@ -350,7 +350,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         int index = 0;
         for (Contract c : newItems) {
             String p = prefix + "new[" + index + "].";
-            c.check(p);
+            checkSubItemQuantized(c, p);
             if (!c.isOk()) {
                 c.errors.forEach(e -> {
                     String name = e.getObjectName();
@@ -1333,6 +1333,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if(permission instanceof SplitJoinPermission) {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_SPLITJOIN_PERM);
         }
+    }
+
+
+    public void checkSubItemQuantized(Contract contract) throws Quantiser.QuantiserException {
+        // Add checks from subItem quanta
+        checkSubItemQuantized(contract, "");
+    }
+
+
+    public void checkSubItemQuantized(Contract contract, String prefix) throws Quantiser.QuantiserException {
+        // Add checks from subItem quanta
+        contract.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
+        contract.check(prefix);
+        quantiser.addWorkCostFrom(contract.quantiser);
     }
 
 
