@@ -42,6 +42,7 @@ public class ContractTestBase extends TestCase {
     protected final String SUBSCRIPTION_PATH = rootPath + SUBSCRIPTION;
     protected final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
 
+    protected static final String FIELD_NAME = "amount";
 
     protected PrivateKey ownerKey1;
     protected PrivateKey ownerKey2;

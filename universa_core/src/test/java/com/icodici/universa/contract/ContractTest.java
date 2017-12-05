@@ -10,6 +10,7 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -298,6 +299,28 @@ public class ContractTest extends ContractTestBase {
             assertFalse(c.getOwner().isValid());
             assertFalse(c.getCreator().isValid());
         }
+    }
+
+    @Test
+    public void calculateProcessingCostSimple() throws Exception {
+
+        // Should create contract, sign and seal it. Then calculate cost of processing.
+        // should repeat contract processing procedure on the Node
+        // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
+
+        int costShouldBe = 1;
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+        contract.check();
+        for (Approvable newItem : contract.getNewItems()) {
+            newItem.check();
+        }
+
+        System.out.println("Calculated processing cost: " + contract.getProcessedCost() + " (UTN)");
+
+        assertEquals(costShouldBe, contract.getProcessedCost());
     }
 
 //    @Test

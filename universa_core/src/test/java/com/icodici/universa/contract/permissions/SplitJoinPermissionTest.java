@@ -21,8 +21,6 @@ import static org.junit.Assert.*;
 
 public class SplitJoinPermissionTest extends ContractTestBase {
 
-    private static final String FIELD_NAME = "amount";
-
     @Test
     public void splitJoinHasTwoDifferentCoinTypes() throws Exception {
         Contract root = createCoinWithAmount("200", FIELD_NAME);

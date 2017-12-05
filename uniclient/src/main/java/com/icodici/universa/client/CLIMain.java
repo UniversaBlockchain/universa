@@ -802,6 +802,8 @@ public class CLIMain {
             report("");
             report("Calculating cost of " + source + ", type is " + fileType + "...");
 
+            // Here should repeat procedure of contract processi on the Node
+            // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
             Contract contract = null;
             if (fileType == ContractFileTypes.BINARY) {
                 contract = loadContract(source);

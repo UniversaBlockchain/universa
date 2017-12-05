@@ -1892,7 +1892,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
-        sealCheckTrace(contract, true);
+//        sealCheckTrace(contract, true);
 
         CLIMain.saveContract(contract, basePath + "contract_for_cost.unicon");
 
@@ -1915,7 +1915,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
-        sealCheckTrace(contract, true);
+//        sealCheckTrace(contract, true);
 
         CLIMain.saveContract(contract, basePath + "contract_for_cost1.unicon");
         CLIMain.saveContract(contract, basePath + "contract_for_cost.unicon2");
@@ -1941,7 +1941,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
-        sealCheckTrace(contract, true);
+//        sealCheckTrace(contract, true);
 
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
@@ -1966,7 +1966,7 @@ public class CLIMainTest {
             contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
             contract.seal();
 
-            sealCheckTrace(contract, true);
+//            sealCheckTrace(contract, true);
 
             CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost" + i + ".unicon");
         }
