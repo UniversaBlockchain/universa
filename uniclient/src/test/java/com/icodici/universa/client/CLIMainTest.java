@@ -1886,7 +1886,6 @@ public class CLIMainTest {
 
         // Should use a binary contract, call -cost command and print cost of processing it.
 
-        int costShouldBe = 1;
         Contract contract = createCoin();
         contract.getStateData().set(FIELD_NAME, new Decimal(100));
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
@@ -1898,6 +1897,9 @@ public class CLIMainTest {
 
         System.out.println("--- cost checking ---");
 
+        // Register a version (20) +
+        // Check 2048 bits signature (1)
+        int costShouldBe = 21;
         callMain("--cost", basePath + "contract_for_cost.unicon");
         System.out.println(output);
 
@@ -1909,7 +1911,6 @@ public class CLIMainTest {
 
         // Should use contracts from all sources, call one -cost command for all of them and print cost of processing it.
 
-        int costShouldBe = 1;
         Contract contract = createCoin();
         contract.getStateData().set(FIELD_NAME, new Decimal(100));
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
@@ -1918,16 +1919,19 @@ public class CLIMainTest {
 //        sealCheckTrace(contract, true);
 
         CLIMain.saveContract(contract, basePath + "contract_for_cost1.unicon");
-        CLIMain.saveContract(contract, basePath + "contract_for_cost.unicon2");
+        CLIMain.saveContract(contract, basePath + "contract_for_cost2.unicon");
 
         System.out.println("--- cost checking ---");
 
+        // Register a version (20) +
+        // Check 2048 bits signature (1)
+        int costShouldBe = 21;
         callMain("--cost",
-                basePath + "contract_for_cost.unicon1",
-                basePath + "contract_for_cost.unicon2");
+                basePath + "contract_for_cost1.unicon",
+                basePath + "contract_for_cost2.unicon");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN)") >= 4);
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN)") >= 2);
     }
 
     @Test
@@ -1935,7 +1939,6 @@ public class CLIMainTest {
 
         // Should register contracts and use -cost as key to print cost of processing it.
 
-        int costShouldBe = 1;
         Contract contract = createCoin();
         contract.getStateData().set(FIELD_NAME, new Decimal(100));
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
@@ -1947,6 +1950,9 @@ public class CLIMainTest {
 
         System.out.println("--- registering contract (with processing cost print) ---");
 
+        // Register a version (20) +
+        // Check 2048 bits signature (1)
+        int costShouldBe = 21;
         callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
         System.out.println(output);
 
@@ -1957,8 +1963,6 @@ public class CLIMainTest {
     public void registerManyContractAndPrintProcessingCost() throws Exception {
 
         // Should register contracts and use -cost as key to print cost of processing it.
-
-        int costShouldBe = 1;
 
         for (int i = 0; i < 2; i++) {
             Contract contract = createCoin();
@@ -1973,6 +1977,9 @@ public class CLIMainTest {
 
         System.out.println("--- registering contract (with processing cost print) ---");
 
+        // Register a version (20) +
+        // Check 2048 bits signature (1)
+        int costShouldBe = 21;
         callMain("--register",
                 basePath + "contract_for_register_and_cost0.unicon",
                 basePath + "contract_for_register_and_cost1.unicon",

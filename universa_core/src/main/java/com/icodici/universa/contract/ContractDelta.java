@@ -9,7 +9,9 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
+import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiMapper;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.diff.ChangedItem;
@@ -37,7 +39,7 @@ public class ContractDelta {
         this.changed = changed;
     }
 
-    public void check() {
+    public void check() throws Quantiser.QuantiserException {
         try {
             BiMapper mapper = BossBiMapper.getInstance();
             MapDelta rootDelta = Delta.between(mapper.serialize(existing), mapper.serialize(changed));
@@ -66,7 +68,7 @@ public class ContractDelta {
     static private final  Set<String> insignificantKeys = new HashSet<>(asList("created_at", "created_by",
                                                                                "revision", "branch_id", "parent",
                                                                                "origin"));
-    private void checkStateChange() {
+    private void checkStateChange() throws Quantiser.QuantiserException {
         stateChanges = stateDelta.getChanges();
         stateChanges.remove("created_by");
 
@@ -120,12 +122,14 @@ public class ContractDelta {
 
     }
 
-    private void excludePermittedChanges() {
+    private void excludePermittedChanges() throws Quantiser.QuantiserException {
         Set<PublicKey> creatorKeys = creator.getKeys();
-        existing.getPermissions().values().forEach(permission -> {
-            if (permission.isAllowedForKeys(creatorKeys))
+        for (Permission permission : existing.getPermissions().values()) {
+            if (permission.isAllowedForKeys(creatorKeys)) {
+                existing.checkApplicablePermissionQuantized(permission);
                 permission.checkChanges(existing, changed, stateChanges);
-        });
+            }
+        }
     }
 
     private void checkOwnerChanged() {

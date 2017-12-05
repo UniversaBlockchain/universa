@@ -62,10 +62,10 @@ public class ResearchTest extends TestCase {
     public void quantiserTest() throws Exception {
         Quantiser quantiser = new Quantiser();
         quantiser.reset(10);
-        quantiser.addWorkCost(Quantiser.PRICE_APPLICABLE_PERM);
-        quantiser.addWorkCost(Quantiser.PRICE_CHECK_4096_SIG);
+        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_APPLICABLE_PERM);
+        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_4096_SIG);
         try {
-            quantiser.addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
+            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
             assertFalse(true); // must throw QuantiserException
         } catch (Quantiser.QuantiserException e) {
             return;

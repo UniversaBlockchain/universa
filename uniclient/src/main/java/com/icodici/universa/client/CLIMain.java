@@ -722,7 +722,7 @@ public class CLIMain {
                     }
                 }
             } catch (Quantiser.QuantiserException e) {
-                addError(Errors.FAILED_CHECK.name(), contract.toString(), e.getMessage());
+                addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
             }
 
         }
@@ -1068,6 +1068,8 @@ public class CLIMain {
             checkContract(tp.getContract());
         } catch (IOException e) {
             addError("READ_ERROR", f.getPath(), e.toString());
+        } catch (Quantiser.QuantiserException e) {
+            addError("QUANTIZER_COST_LIMIT", f.getPath(), e.toString());
         }
     }
 
@@ -1228,6 +1230,8 @@ public class CLIMain {
         } catch (IOException e) {
             addError(Errors.BAD_VALUE.name(), "byte[] data", e.getMessage());
             return false;
+        } catch (Quantiser.QuantiserException e) {
+            addError("QUANTIZER_COST_LIMIT", "", e.toString());
         }
 
         return true;
@@ -1300,10 +1304,14 @@ public class CLIMain {
             Path path = Paths.get(fileName);
             byte[] data = Files.readAllBytes(path);
 
-            if (fromPackedTransaction) {
-                contract = Contract.fromPackedTransaction(data);
-            } else {
-                contract = new Contract(data);
+            try {
+                if (fromPackedTransaction) {
+                    contract = Contract.fromPackedTransaction(data);
+                } else {
+                    contract = new Contract(data);
+                }
+            } catch (Quantiser.QuantiserException e) {
+                addError("QUANTIZER_COST_LIMIT", fileName, e.toString());
             }
         } else {
             addError(Errors.NOT_FOUND.name(), fileName, "Path " + fileName + " does not exist");

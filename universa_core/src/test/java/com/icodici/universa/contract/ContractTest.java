@@ -308,13 +308,14 @@ public class ContractTest extends ContractTestBase {
         // should repeat contract processing procedure on the Node
         // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
 
-        int costShouldBe = 1;
         Contract contract = createCoin();
         contract.getStateData().set(FIELD_NAME, new Decimal(100));
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
-
+        // Register a version (20) +
+        // Check 2048 bits signature (1)
+        int costShouldBe = 21;
         Contract processingContract = processContractAsItWillBeOnTheNode(contract);
 
         System.out.println("Calculated processing cost: " + processingContract.getProcessedCost() + " (UTN)");

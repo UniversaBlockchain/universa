@@ -11,6 +11,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.utils.Base64;
 import org.junit.Before;
 import org.junit.Test;
@@ -133,7 +134,7 @@ public class TransactionPackTest {
             return n1;
         }
 
-        public TestContracts invoke() throws EncryptionError {
+        public TestContracts invoke() throws EncryptionError, Quantiser.QuantiserException {
             r0 = new Contract(TestKeys.privateKey(0));
             r0.seal();
             c = r0.createRevision(TestKeys.privateKey(0));

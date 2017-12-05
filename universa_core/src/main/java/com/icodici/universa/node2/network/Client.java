@@ -183,11 +183,11 @@ public class Client {
             nodes.add(new NodeRecord(b));
     }
 
-    public ItemResult register(byte[] packed) throws ClientError, Quantiser.QuantiserException {
+    public ItemResult register(byte[] packed) throws ClientError {
         return register(packed, 0);
     }
 
-    public ItemResult register(byte[] packed, long millisToWait) throws ClientError, Quantiser.QuantiserException {
+    public ItemResult register(byte[] packed, long millisToWait) throws ClientError {
         ItemResult lastResult = protect(() -> (ItemResult) httpClient.command("approve", "packedItem", packed)
                 .get("itemResult"));
         if (millisToWait > 0 && lastResult.state.isPending()) {
@@ -203,6 +203,8 @@ public class Client {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
+            } catch (Quantiser.QuantiserException e) {
+                throw new ClientError(e);
             }
         }
         return lastResult;
