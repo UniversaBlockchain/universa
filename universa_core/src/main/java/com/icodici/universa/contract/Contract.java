@@ -110,15 +110,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             // Legacy format: revoking and new items are included (so the contract pack grows)
             for (Object packed : payload.getList("revoking", Collections.EMPTY_LIST)) {
                 Contract c = new Contract(((Bytes) packed).toArray(), pack);
-                addRevokingItemQuantized(c);
-//                revokingItems.add(c);
+                revokingItems.add(c);
                 pack.addReference(c);
             }
 
             for (Object packed : payload.getList("new", Collections.EMPTY_LIST)) {
                 Contract c = new Contract(((Bytes) packed).toArray(), pack);
-                addNewItemQuantized(c);
-//                newItems.add(c);
+                newItems.add(c);
                 pack.addReference(c);
             }
         } else {
@@ -127,16 +125,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
                 Contract r = pack.getReference(hid);
                 if (r != null) {
-                    addRevokingItemQuantized(r);
-//                    revokingItems.add(r);
+                    revokingItems.add(r);
                 }
             }
             for (Binder b : (List<Binder>) payload.getList("new", Collections.EMPTY_LIST)) {
                 HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
                 Contract n = pack.getReference(hid);
                 if (n != null) {
-                    addNewItemQuantized(n);
-//                    newItems.add(n);
+                    newItems.add(n);
                 }
             }
         }
@@ -198,15 +194,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         for (Object r : payload.getList("revoking", Collections.EMPTY_LIST)) {
             Contract c = new Contract(((Bytes) r).toArray(), pack);
-            addRevokingItemQuantized(c);
-//            revokingItems.add(c);
+            revokingItems.add(c);
             pack.addReference(c);
         }
 
         for (Object r : payload.getList("new", Collections.EMPTY_LIST)) {
             Contract c = new Contract(((Bytes) r).toArray(), pack);
-            addNewItemQuantized(c);
-//            newItems.add(c);
+            newItems.add(c);
             pack.addReference(c);
         }
 
@@ -326,7 +320,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public boolean check(String prefix) {
+    public boolean check(String prefix) throws Quantiser.QuantiserException {
+
+        // quantize newItems, revokingItems and referencedItems
+        for (int i = 0; i < newItems.size(); i++) {
+            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
+        }
+        for (int i = 0; i < revokingItems.size(); i++) {
+            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
+        }
+        for (int i = 0; i < referencedItems.size(); i++) {
+            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
+        }
+
         try {
             // common check for all cases
             errors.clear();
@@ -335,6 +341,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 checkRootContract();
             else
                 checkChangedContract();
+        } catch (Quantiser.QuantiserException e) {
+            throw e;
         } catch (Exception e) {
             e.printStackTrace();
             addError(FAILED_CHECK, prefix, e.toString());
@@ -495,8 +503,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public void addRevokingItems(Contract... toRevoke) throws Quantiser.QuantiserException {
         for (Contract c : toRevoke) {
-            addRevokingItemQuantized(c);
-//            revokingItems.add(c);
+            revokingItems.add(c);
         }
     }
 
@@ -827,7 +834,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public Contract createRevision() {
         try {
-//            quantiser.addWorkCost(Quantiser.PRICE_REGISTER_VERSION);
             // We need deep copy, so, simple while not that fast.
             // note that revisions are create on clients where speed it not of big importance!
             Contract newRevision = copy();
@@ -836,8 +842,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             newRevision.state.createdAt = ZonedDateTime.now();
             newRevision.state.parent = getId();
             newRevision.state.origin = state.revision == 1 ? getId() : state.origin;
-            newRevision.addRevokingItemQuantized(this);
-//            newRevision.revokingItems.add(this);
+            newRevision.revokingItems.add(this);
             return newRevision;
         } catch (Exception e) {
             throw new IllegalStateException("failed to create revision", e);
@@ -972,7 +977,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return array of just created siblings, to modify their state only.
      */
     public Contract[] split(int count) throws Quantiser.QuantiserException {
-//        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_SPLITJOIN_PERM);
         // we can split only the new revision and only once this time
         if (state.getBranchRevision() == state.revision)
             throw new IllegalArgumentException("this revision is already split");
@@ -994,8 +998,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             // and it should refer the same parent to and set of siblings
             c.context = context;
             context.siblings.add(c);
-            addNewItemQuantized(c);
-//            newItems.add(c);
+            newItems.add(c);
             results[i] = c;
         }
         return results;
@@ -1039,8 +1042,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public void addNewItems(Contract... newContracts) throws Quantiser.QuantiserException {
         for (Contract c : newContracts) {
-            addNewItemQuantized(c);
-//            newItems.add(c);
+            newItems.add(c);
         }
     }
 
@@ -1316,36 +1318,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return ExtendedSignature.verify(key, signature, contractBytes);
     }
 
-    /**
-     * Add new item to newItems, but before quantize this operation.
-     * @param contract
-     * @throws Quantiser.QuantiserException
-     */
-    protected void addNewItemQuantized(Contract contract) throws Quantiser.QuantiserException {
-        // Add register a version quanta
-        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
-        newItems.add(contract);
-    }
 
     /**
-     * Add new item to revokingItems, but before quantize this operation.
-     * @param contract
+     * Quantize given permission (add cost for that permission).
+     * Use for permissions that will be applicated, but before checking.
+     * @param permission
      * @throws Quantiser.QuantiserException
      */
-    protected void addRevokingItemQuantized(Contract contract) throws Quantiser.QuantiserException {
-        // Add revoke a version quanta
-        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
-        revokingItems.add(contract);
-    }
-
-
-    protected void addReferencedItemnQuantized(HashId hashId) throws Quantiser.QuantiserException {
-        // Add check a referenced version quanta
-        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
-        referencedItems.add(hashId);
-    }
-
-
     public void checkApplicablePermissionQuantized(Permission permission) throws Quantiser.QuantiserException {
         // Add check an applicable permission quanta
         quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_APPLICABLE_PERM);

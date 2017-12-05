@@ -606,7 +606,6 @@ public class CLIMain {
         }
 
         // print cost of processing if asked
-        report("options has cost param " + options.has("cost"));
         if (options.has("cost")) {
             doCost();
         } else {
@@ -661,11 +660,15 @@ public class CLIMain {
             Contract contract = loadContract(source);
             report("doRevoke " + contract);
             if (contract != null) {
-                if (contract.check()) {
-                    report("revoke contract from " + source);
-                    revokeContract(contract, keysMap().values().toArray(new PrivateKey[0]));
-                } else {
-                    addErrors(contract.getErrors());
+                try {
+                    if (contract.check()) {
+                        report("revoke contract from " + source);
+                        revokeContract(contract, keysMap().values().toArray(new PrivateKey[0]));
+                    } else {
+                        addErrors(contract.getErrors());
+                    }
+                } catch (Quantiser.QuantiserException e) {
+                    addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
                 }
             }
         }
@@ -745,33 +748,37 @@ public class CLIMain {
 
             Contract contract = loadContract(source, true);
             if (contract != null) {
-                if (contract.check()) {
-                    report("unpack contract from " + source);
-                    int i = 1;
-                    if (contract.getNewItems() != null) {
-                        for (Approvable newItem : contract.getNewItems()) {
-                            String newItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_new_item_" + i + ".unicon");
-                            report("save newItem to " + newItemFileName);
-//                            ((Contract) newItem).seal();
-                            saveContract((Contract) newItem, newItemFileName);
-                            i++;
+                try {
+                    if (contract.check()) {
+                        report("unpack contract from " + source);
+                        int i = 1;
+                        if (contract.getNewItems() != null) {
+                            for (Approvable newItem : contract.getNewItems()) {
+                                String newItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_new_item_" + i + ".unicon");
+                                report("save newItem to " + newItemFileName);
+    //                            ((Contract) newItem).seal();
+                                saveContract((Contract) newItem, newItemFileName);
+                                i++;
+                            }
                         }
-                    }
-                    i = 1;
-                    if (contract.getRevokingItems() != null) {
-                        for (Approvable revokeItem : contract.getRevokingItems()) {
-                            String revokeItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_revoke_" + i + ".unicon");
-                            report("save revokeItem to " + revokeItemFileName);
-//                            ((Contract) revokeItem).seal();
-                            saveContract((Contract) revokeItem, revokeItemFileName);
-                            i++;
+                        i = 1;
+                        if (contract.getRevokingItems() != null) {
+                            for (Approvable revokeItem : contract.getRevokingItems()) {
+                                String revokeItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_revoke_" + i + ".unicon");
+                                report("save revokeItem to " + revokeItemFileName);
+    //                            ((Contract) revokeItem).seal();
+                                saveContract((Contract) revokeItem, revokeItemFileName);
+                                i++;
+                            }
                         }
+    //                    String parentFileName = source.replaceAll("(?i)\\.(unicon)$", "_parent.unicon");
+    //                    report("save parentFileName to " + parentFileName);
+    //                    saveContract(contract, parentFileName);
+                    } else {
+                        addErrors(contract.getErrors());
                     }
-//                    String parentFileName = source.replaceAll("(?i)\\.(unicon)$", "_parent.unicon");
-//                    report("save parentFileName to " + parentFileName);
-//                    saveContract(contract, parentFileName);
-                } else {
-                    addErrors(contract.getErrors());
+                } catch (Quantiser.QuantiserException e) {
+                    addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
                 }
             }
         }
@@ -813,7 +820,11 @@ public class CLIMain {
             }
 
             if(contract != null) {
-                contract.check();
+                try {
+                    contract.check();
+                } catch (Quantiser.QuantiserException e) {
+                    addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+                }
 //                addErrors(contract.getErrors());
 //                if (contract.getErrors().size() == 0) {
 //                    report("Contract is valid");
@@ -1165,7 +1176,11 @@ public class CLIMain {
             sjs.forEach(sj -> checkSj(contract, sj));
         }
 
-        contract.check();
+        try {
+            contract.check();
+        } catch (Quantiser.QuantiserException e) {
+            addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+        }
         addErrors(contract.getErrors());
         if (contract.getErrors().size() == 0) {
             report("Contract is valid");
@@ -1602,10 +1617,14 @@ public class CLIMain {
             fs.write(data);
             fs.close();
         }
-        if (contract.check()) {
-            report("Sealed contract has no errors");
-        } else
-            addErrors(contract.getErrors());
+        try {
+            if (contract.check()) {
+                report("Sealed contract has no errors");
+            } else
+                addErrors(contract.getErrors());
+        } catch (Quantiser.QuantiserException e) {
+            addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+        }
     }
 
     /**

@@ -17,6 +17,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Main;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Reporter;
@@ -2035,7 +2036,11 @@ public class CLIMainTest {
 
     protected static void sealCheckTrace(Contract c, boolean isOk) {
         c.seal();
-        c.check();
+        try {
+            c.check();
+        } catch (Quantiser.QuantiserException e) {
+            e.printStackTrace();
+        }
         c.traceErrors();
 
         if (isOk)

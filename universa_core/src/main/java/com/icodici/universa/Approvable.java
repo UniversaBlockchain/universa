@@ -7,6 +7,8 @@
 
 package com.icodici.universa;
 
+import com.icodici.universa.node2.Quantiser;
+
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
@@ -64,9 +66,9 @@ public interface Approvable extends HashIdentifiable {
      *
      * @return true if this instance is completely checked with positive result.
      */
-    boolean check(String prefix);
+    boolean check(String prefix) throws Quantiser.QuantiserException;
 
-    default boolean check() {
+    default boolean check() throws Quantiser.QuantiserException {
         return check("");
     }
 

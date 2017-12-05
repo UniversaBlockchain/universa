@@ -13,6 +13,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.TestCase;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.Quantiser;
 import org.junit.Before;
 
 import java.io.IOException;
@@ -103,7 +104,11 @@ public class ContractTestBase extends TestCase {
 
     protected void sealCheckTrace(Contract c, boolean isOk) {
         c.seal();
-        c.check();
+        try {
+            c.check();
+        } catch (Quantiser.QuantiserException e) {
+            e.printStackTrace();
+        }
         c.traceErrors();
 
         if (isOk)
