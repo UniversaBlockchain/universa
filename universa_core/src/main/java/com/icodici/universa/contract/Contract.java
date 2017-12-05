@@ -86,9 +86,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException, Quantiser.QuantiserException {
         this.quantiser.reset(500); // debug const. need to get quantaLimit from TransactionPack here
 
-        // Add register a version quanta (for self)
-        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
-
         this.sealedBinary = sealed;
         this.transactionPack = pack;
         Binder data = Boss.unpack(sealed);
@@ -322,10 +319,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     @Override
     public boolean check(String prefix) throws Quantiser.QuantiserException {
 
+        // Add register a version quanta (for self)
+        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
+
         // quantize newItems, revokingItems and referencedItems
-        for (int i = 0; i < newItems.size(); i++) {
-            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
-        }
+//        for (int i = 0; i < newItems.size(); i++) {
+//            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
+//        }
         for (int i = 0; i < revokingItems.size(); i++) {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
         }

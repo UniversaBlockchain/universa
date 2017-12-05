@@ -362,7 +362,7 @@ public class ContractTest extends ContractTestBase {
         // Check node new item change split join permission (1+2) +
         // Check node new item change revoke permission (1) +
         // Check node new item change revoke permission (1) +
-        int costShouldBeForSplit = 79;
+        int costShouldBeForSplit = 73;
 
         Contract processingContract = processContractAsItWillBeOnTheNode(forSplit);
         System.out.println("Calculated processing cost (forSplit): " + processingContract.getProcessedCost() + " (UTN)");
