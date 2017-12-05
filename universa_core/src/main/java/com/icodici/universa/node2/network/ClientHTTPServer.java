@@ -12,10 +12,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.BasicHTTPService;
-import com.icodici.universa.node2.ItemCache;
-import com.icodici.universa.node2.Main;
-import com.icodici.universa.node2.NetConfig;
-import com.icodici.universa.node2.Node;
+import com.icodici.universa.node2.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 
@@ -96,7 +93,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         throw new IOException("just a test");
     }
 
-    private Binder approve(Binder params, Session session) throws IOException {
+    private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode();
         return Binder.of(
                 "itemResult",

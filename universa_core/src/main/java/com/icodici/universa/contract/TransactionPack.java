@@ -10,6 +10,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -142,12 +143,21 @@ public class TransactionPack implements BiSerializable {
         );
         if (ll != null) {
             for (Bytes b : ll) {
-                Contract c = new Contract(b.toArray(), this);
+                Contract c = null;
+                try {
+                    c = new Contract(b.toArray(), this);
+                } catch (Quantiser.QuantiserException e) {
+                    throw new IOException(e);
+                }
                 references.put(c.getId(), c);
             }
         }
         byte[] bb = data.getBinaryOrThrow("contract");
-        contract = new Contract(bb, this);
+        try {
+            contract = new Contract(bb, this);
+        } catch (Quantiser.QuantiserException e) {
+            throw new IOException(e);
+        }
     }
 
     @Override
@@ -175,7 +185,7 @@ public class TransactionPack implements BiSerializable {
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
-    public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransacions) throws IOException {
+    public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransacions) throws IOException, Quantiser.QuantiserException {
         packedBinary = packOrContractBytes;
 
         Object x = Boss.load(packOrContractBytes);
@@ -202,7 +212,7 @@ public class TransactionPack implements BiSerializable {
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
-    public static TransactionPack unpack(byte[] packOrContractBytes) throws IOException {
+    public static TransactionPack unpack(byte[] packOrContractBytes) throws IOException, Quantiser.QuantiserException {
         return unpack(packOrContractBytes, true);
     }
 

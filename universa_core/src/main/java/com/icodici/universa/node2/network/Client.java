@@ -18,6 +18,7 @@ import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeInfo;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
@@ -182,11 +183,11 @@ public class Client {
             nodes.add(new NodeRecord(b));
     }
 
-    public ItemResult register(byte[] packed) throws ClientError {
+    public ItemResult register(byte[] packed) throws ClientError, Quantiser.QuantiserException {
         return register(packed, 0);
     }
 
-    public ItemResult register(byte[] packed, long millisToWait) throws ClientError {
+    public ItemResult register(byte[] packed, long millisToWait) throws ClientError, Quantiser.QuantiserException {
         ItemResult lastResult = protect(() -> (ItemResult) httpClient.command("approve", "packedItem", packed)
                 .get("itemResult"));
         if (millisToWait > 0 && lastResult.state.isPending()) {

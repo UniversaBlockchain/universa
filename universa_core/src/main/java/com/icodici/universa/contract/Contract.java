@@ -66,6 +66,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Reference references;
     private TransactionPack transactionPack;
 
+    /**
+     * Instance that keep cost of processing contract
+     */
     private Quantiser quantiser = new Quantiser();
 
     /**
@@ -80,7 +83,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @throws IllegalArgumentException on the various format errors
      */
-    public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
+    public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException, Quantiser.QuantiserException {
         this.quantiser.reset(500); // debug const. need to get quantaLimit from TransactionPack here
         this.sealedBinary = sealed;
         this.transactionPack = pack;
@@ -142,6 +145,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             Bytes keyId = ExtendedSignature.extractKeyId(s);
             PublicKey key = keys.get(keyId);
             if (key != null) {
+                // Check signature quanta
+                System.out.println("key info: " + key.info());
+                System.out.println("key length: " + key.info().getKeyLength());
+//                quantiser.addWorkCost(Quantiser.PRICE_CHECK_2048_SIG);
                 ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
                 if (es != null) {
                     sealedByKeys.put(key, es);
@@ -151,7 +158,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
-    public Contract(byte[] data) throws IOException {
+    public Contract(byte[] data) throws IOException, Quantiser.QuantiserException {
         this(data, new TransactionPack());
     }
 
@@ -166,7 +173,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @throws IllegalArgumentException on the various format errors
      */
-    public Contract(byte[] sealed, Binder data, TransactionPack pack) throws IOException {
+    public Contract(byte[] sealed, Binder data, TransactionPack pack) throws IOException, Quantiser.QuantiserException {
         this.sealedBinary = sealed;
         if (!data.getStringOrThrow("type").equals("unicapsule"))
             throw new IllegalArgumentException("wrong object type, unicapsule required");
@@ -1170,7 +1177,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return result;
     }
 
-    public static Contract fromSealedFile(String contractFileName) throws IOException {
+    public static Contract fromSealedFile(String contractFileName) throws IOException, Quantiser.QuantiserException {
         return new Contract(Do.read(contractFileName), new TransactionPack());
     }
 
@@ -1223,7 +1230,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @throws IOException if the packedItem is broken
      */
-    public static Contract fromPackedTransaction(@NonNull byte[] packedItem) throws IOException {
+    public static Contract fromPackedTransaction(@NonNull byte[] packedItem) throws IOException, Quantiser.QuantiserException {
         TransactionPack tp = TransactionPack.unpack(packedItem);
         return tp.getContract();
     }

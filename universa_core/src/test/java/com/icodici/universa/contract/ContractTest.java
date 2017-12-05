@@ -313,14 +313,31 @@ public class ContractTest extends ContractTestBase {
         contract.getStateData().set(FIELD_NAME, new Decimal(100));
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
-        contract.check();
-        for (Approvable newItem : contract.getNewItems()) {
+
+
+        Contract processingContract = processContractAsItWillBeOnTheNode(contract);
+
+        System.out.println("Calculated processing cost: " + processingContract.getProcessedCost() + " (UTN)");
+
+        assertEquals(costShouldBe, processingContract.getProcessedCost());
+    }
+
+    /**
+     * Imitate procedure of contract processing as it will be on the Node.
+     * Gte contract from param, create from it new contract,
+     * that will be processed and return processed contract with cost inside.
+     * @param contract - from which contract will be created contract for processing.
+     * @return new contract that was processed.
+     * @throws Exception
+     */
+    public Contract processContractAsItWillBeOnTheNode(Contract contract) throws Exception {
+        Contract processingContract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+        processingContract.check();
+        for (Approvable newItem : processingContract.getNewItems()) {
             newItem.check();
         }
 
-        System.out.println("Calculated processing cost: " + contract.getProcessedCost() + " (UTN)");
-
-        assertEquals(costShouldBe, contract.getProcessedCost());
+        return processingContract;
     }
 
 //    @Test

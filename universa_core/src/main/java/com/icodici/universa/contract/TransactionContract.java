@@ -9,13 +9,14 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 
 import java.io.IOException;
 import java.util.List;
 
 public class TransactionContract extends Contract {
-    public TransactionContract(byte[] sealed) throws IOException {
+    public TransactionContract(byte[] sealed) throws IOException, Quantiser.QuantiserException {
         super(sealed);
     }
 
