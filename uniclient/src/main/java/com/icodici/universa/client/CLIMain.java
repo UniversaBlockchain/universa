@@ -601,8 +601,10 @@ public class CLIMain {
             String source = sources.get(s);
             Contract contract = loadContract(source);
 
-            report("registering the contract " + contract.getId().toBase64String() + " from " + source);
-            registerContract(contract, (int)options.valueOf("wait"));
+            if(contract != null) {
+                report("registering the contract " + contract.getId().toBase64String() + " from " + source);
+                registerContract(contract, (int) options.valueOf("wait"));
+            }
         }
 
         // print cost of processing if asked
@@ -1077,10 +1079,10 @@ public class CLIMain {
             }
             System.out.println();
             checkContract(tp.getContract());
-        } catch (IOException e) {
-            addError("READ_ERROR", f.getPath(), e.toString());
         } catch (Quantiser.QuantiserException e) {
             addError("QUANTIZER_COST_LIMIT", f.getPath(), e.toString());
+        } catch (IOException e) {
+            addError("READ_ERROR", f.getPath(), e.toString());
         }
     }
 
@@ -1242,11 +1244,11 @@ public class CLIMain {
         } catch (RuntimeException e) {
             addError(Errors.BAD_VALUE.name(), "byte[] data", e.getMessage());
             return false;
+        } catch (Quantiser.QuantiserException e) {
+            addError("QUANTIZER_COST_LIMIT", "", e.toString());
         } catch (IOException e) {
             addError(Errors.BAD_VALUE.name(), "byte[] data", e.getMessage());
             return false;
-        } catch (Quantiser.QuantiserException e) {
-            addError("QUANTIZER_COST_LIMIT", "", e.toString());
         }
 
         return true;

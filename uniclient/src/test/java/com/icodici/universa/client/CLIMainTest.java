@@ -1898,9 +1898,9 @@ public class CLIMainTest {
 
         System.out.println("--- cost checking ---");
 
-        // Register a version (20) +
-        // Check 2048 bits signature (1)
-        int costShouldBe = 21;
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
         callMain("--cost", basePath + "contract_for_cost.unicon");
         System.out.println(output);
 
@@ -1924,9 +1924,9 @@ public class CLIMainTest {
 
         System.out.println("--- cost checking ---");
 
-        // Register a version (20) +
-        // Check 2048 bits signature (1)
-        int costShouldBe = 21;
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
         callMain("--cost",
                 basePath + "contract_for_cost1.unicon",
                 basePath + "contract_for_cost2.unicon");
@@ -1951,13 +1951,67 @@ public class CLIMainTest {
 
         System.out.println("--- registering contract (with processing cost print) ---");
 
-        // Register a version (20) +
-        // Check 2048 bits signature (1)
-        int costShouldBe = 21;
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
         callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
         System.out.println(output);
 
         assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN)") >= 0);
+    }
+
+    @Test
+    public void registerContractAndPrintProcessingCostBreak() throws Exception {
+
+        // Should register contracts and use -cost as key to print cost of processing it.
+
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+//        sealCheckTrace(contract, true);
+
+        CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
+
+        System.out.println("--- registering contract (with processing cost print) ---");
+
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
+        Contract.setTestQuantaLimit(15);
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
+        System.out.println(output);
+
+        assert (output.indexOf("ERROR: QUANTIZER_COST_LIMIT") >= 0);
+        Contract.setTestQuantaLimit(-1);
+    }
+
+    @Test
+    public void registerContractAndPrintProcessingCostBreakWhileUnpacking() throws Exception {
+
+        // Should register contracts and use -cost as key to print cost of processing it.
+
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+//        sealCheckTrace(contract, true);
+
+        CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
+
+        System.out.println("--- registering contract (with processing cost print) ---");
+
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
+        Contract.setTestQuantaLimit(1);
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
+        System.out.println(output);
+
+        assert (output.indexOf("ERROR: QUANTIZER_COST_LIMIT") >= 0);
+        Contract.setTestQuantaLimit(-1);
     }
 
     @Test
@@ -1978,9 +2032,9 @@ public class CLIMainTest {
 
         System.out.println("--- registering contract (with processing cost print) ---");
 
-        // Register a version (20) +
-        // Check 2048 bits signature (1)
-        int costShouldBe = 21;
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
         callMain("--register",
                 basePath + "contract_for_register_and_cost0.unicon",
                 basePath + "contract_for_register_and_cost1.unicon",
@@ -2056,6 +2110,11 @@ public class CLIMainTest {
     protected Contract createCoin(String yamlFilePath) throws IOException {
         Contract c = Contract.fromDslFile(yamlFilePath);
         c.setOwnerKey(ownerKey2);
+        return c;
+    }
+
+    protected Contract createCoin100apiv3() throws IOException {
+        Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
         return c;
     }
 
