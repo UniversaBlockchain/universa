@@ -97,7 +97,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @throws IllegalArgumentException on the various format errors
      */
-    public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException, Quantiser.QuantiserException {
+    public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
 
         this.sealedBinary = sealed;
@@ -172,7 +172,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
-    public Contract(byte[] data) throws IOException, Quantiser.QuantiserException {
+    public Contract(byte[] data) throws IOException {
         this(data, new TransactionPack());
     }
 
@@ -187,7 +187,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @throws IllegalArgumentException on the various format errors
      */
-    public Contract(byte[] sealed, Binder data, TransactionPack pack) throws IOException, Quantiser.QuantiserException {
+    public Contract(byte[] sealed, Binder data, TransactionPack pack) throws IOException {
         this.sealedBinary = sealed;
         if (!data.getStringOrThrow("type").equals("unicapsule"))
             throw new IllegalArgumentException("wrong object type, unicapsule required");
@@ -461,8 +461,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (!(item instanceof Contract))
                 addError(BAD_REF, "revokingItem", "revoking item is not a Contract");
             Contract rc = (Contract) item;
-            // Add check an applicable permission quanta
-//            quantiser.addWorkCost(Quantiser.PRICE_APPLICABLE_PERM);
             if (!rc.isPermitted("revoke", getIssuer()))
                 addError(FORBIDDEN, "revokingItem", "revocation not permitted for item " + rc.getId());
         }
@@ -483,7 +481,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         } else {
             // checking parent:
             // proper origin
-//            quantiser.addWorkCost(Quantiser.PRICE_CHECK_REFERENCED_VERSION);
             HashId rootId = parent.getRootId();
             if (!rootId.equals(getRawOrigin())) {
                 addError(BAD_VALUE, "state.origin", "wrong origin, should be root");
@@ -582,8 +579,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         if (role == null)
             return false;
-
-//        quantiser.addWorkCost(Quantiser.PRICE_CHECK_2048_SIG);
 
         if (!sealedByKeys.isEmpty())
             return role.isAllowedForKeys(getSealedByKeys());
@@ -1219,7 +1214,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return result;
     }
 
-    public static Contract fromSealedFile(String contractFileName) throws IOException, Quantiser.QuantiserException {
+    public static Contract fromSealedFile(String contractFileName) throws IOException {
         return new Contract(Do.read(contractFileName), new TransactionPack());
     }
 
@@ -1370,13 +1365,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
 
-    public void checkSubItemQuantized(Contract contract) throws Quantiser.QuantiserException {
+    protected void checkSubItemQuantized(Contract contract) throws Quantiser.QuantiserException {
         // Add checks from subItem quanta
         checkSubItemQuantized(contract, "");
     }
 
 
-    public void checkSubItemQuantized(Contract contract, String prefix) throws Quantiser.QuantiserException {
+    protected void checkSubItemQuantized(Contract contract, String prefix) throws Quantiser.QuantiserException {
         // Add checks from subItem quanta
         contract.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
         contract.check(prefix);
