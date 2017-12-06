@@ -1,5 +1,7 @@
 package com.icodici.universa.node2;
 
+import java.io.IOException;
+
 public class Quantiser {
 
     private int quantaSum_ = 0;
@@ -107,6 +109,6 @@ public class Quantiser {
         }
     }
 
-    public class QuantiserException extends Exception {}
+    public class QuantiserException extends IOException {}
 
 }

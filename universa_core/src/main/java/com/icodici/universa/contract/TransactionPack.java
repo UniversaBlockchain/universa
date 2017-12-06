@@ -138,26 +138,25 @@ public class TransactionPack implements BiSerializable {
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
+
+        // It is independed quantiser that should throw exception
+        // if limit is got while deserializing TransactionPack.
+        Quantiser quantiser = new Quantiser();
+        quantiser.reset(Contract.getTestQuantaLimit());
+
         List<Bytes> ll = deserializer.deserializeCollection(
                 data.getListOrThrow("references")
         );
         if (ll != null) {
             for (Bytes b : ll) {
-                Contract c = null;
-                try {
-                    c = new Contract(b.toArray(), this);
-                } catch (Quantiser.QuantiserException e) {
-                    throw new IOException(e);
-                }
+                Contract c = new Contract(b.toArray(), this);
+                quantiser.addWorkCostFrom(c.getQuantiser());
                 references.put(c.getId(), c);
             }
         }
         byte[] bb = data.getBinaryOrThrow("contract");
-        try {
-            contract = new Contract(bb, this);
-        } catch (Quantiser.QuantiserException e) {
-            throw new IOException(e);
-        }
+        contract = new Contract(bb, this);
+        quantiser.addWorkCostFrom(contract.getQuantiser());
     }
 
     @Override
@@ -185,7 +184,7 @@ public class TransactionPack implements BiSerializable {
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
-    public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransacions) throws IOException, Quantiser.QuantiserException {
+    public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransacions) throws IOException {
         packedBinary = packOrContractBytes;
 
         Object x = Boss.load(packOrContractBytes);
@@ -212,7 +211,7 @@ public class TransactionPack implements BiSerializable {
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
-    public static TransactionPack unpack(byte[] packOrContractBytes) throws IOException, Quantiser.QuantiserException {
+    public static TransactionPack unpack(byte[] packOrContractBytes) throws IOException {
         return unpack(packOrContractBytes, true);
     }
 

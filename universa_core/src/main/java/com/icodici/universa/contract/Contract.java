@@ -66,10 +66,24 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Reference references;
     private TransactionPack transactionPack;
 
+    public Quantiser getQuantiser() {
+        return quantiser;
+    }
+
     /**
      * Instance that keep cost of processing contract
      */
     private Quantiser quantiser = new Quantiser();
+
+    public static int getTestQuantaLimit() {
+        return testQuantaLimit;
+    }
+
+    public static void setTestQuantaLimit(int testQuantaLimit) {
+        Contract.testQuantaLimit = testQuantaLimit;
+    }
+
+    private static int testQuantaLimit = -1;
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
@@ -84,7 +98,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws IllegalArgumentException on the various format errors
      */
     public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException, Quantiser.QuantiserException {
-        this.quantiser.reset(500); // debug const. need to get quantaLimit from TransactionPack here
+        this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
 
         this.sealedBinary = sealed;
         this.transactionPack = pack;
@@ -148,8 +162,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             Bytes keyId = ExtendedSignature.extractKeyId(s);
             PublicKey key = keys.get(keyId);
             if (key != null) {
-//                ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
-                ExtendedSignature es = verifySignatureQuantized(key, s, contractBytes);
+                verifySignatureQuantized(key);
+                ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
                 if (es != null) {
                     sealedByKeys.put(key, es);
                 } else
@@ -215,8 +229,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             Bytes keyId = ExtendedSignature.extractKeyId(s);
             PublicKey key = keys.get(keyId);
             if (key != null) {
-//                ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
-                ExtendedSignature es = verifySignatureQuantized(key, s, contractBytes);
+                verifySignatureQuantized(key);
+                ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
                 if (es != null) {
                     sealedByKeys.put(key, es);
                 } else
@@ -319,14 +333,29 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     @Override
     public boolean check(String prefix) throws Quantiser.QuantiserException {
 
+        quantiser.reset(quantiser.getQuantaLimit());
+        // Add key verify quanta again (we just reset quantiser)
+        for (PublicKey key : sealedByKeys.keySet()) {
+            if (key != null) {
+                verifySignatureQuantized(key);
+            }
+        }
+
         // Add register a version quanta (for self)
         quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
 
         // quantize newItems, revokingItems and referencedItems
+        // new items will be quanted in own check()
 //        for (int i = 0; i < newItems.size(); i++) {
 //            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
 //        }
-        for (int i = 0; i < revokingItems.size(); i++) {
+        for (Contract r : revokingItems) {
+            // Add key verify quanta for revoking again (we just reset quantiser)
+            for (PublicKey key : r.sealedByKeys.keySet()) {
+                if (key != null) {
+                    verifySignatureQuantized(key);
+                }
+            }
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
         }
         for (int i = 0; i < referencedItems.size(); i++) {
@@ -654,7 +683,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return role;
     }
 
-    public boolean isPermitted(String permissionName, KeyRecord keyRecord) {
+    public boolean isPermitted(String permissionName, KeyRecord keyRecord) throws Quantiser.QuantiserException {
         return isPermitted(permissionName, keyRecord.getPublicKey());
     }
 
@@ -681,29 +710,33 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         permissions.put(perm.getName(), perm);
     }
 
-    public boolean isPermitted(String permissionName, PublicKey key) {
+    public boolean isPermitted(String permissionName, PublicKey key) throws Quantiser.QuantiserException {
         Collection<Permission> cp = permissions.get(permissionName);
         if (cp != null) {
             for (Permission p : cp) {
-                if (p.isAllowedForKeys(key))
+                if (p.isAllowedForKeys(key)){
+                    checkApplicablePermissionQuantized(p);
                     return true;
+                }
             }
         }
         return false;
     }
 
-    public boolean isPermitted(String permissionName, Collection<PublicKey> keys) {
+    public boolean isPermitted(String permissionName, Collection<PublicKey> keys) throws Quantiser.QuantiserException {
         Collection<Permission> cp = permissions.get(permissionName);
         if (cp != null) {
             for (Permission p : cp) {
-                if (p.isAllowedForKeys(keys))
+                if (p.isAllowedForKeys(keys)) {
+                    checkApplicablePermissionQuantized(p);
                     return true;
+                }
             }
         }
         return false;
     }
 
-    public boolean isPermitted(String permissionName, Role role) {
+    public boolean isPermitted(String permissionName, Role role) throws Quantiser.QuantiserException {
         return isPermitted(permissionName, role.getKeys());
     }
 
@@ -1239,7 +1272,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @throws IOException if the packedItem is broken
      */
-    public static Contract fromPackedTransaction(@NonNull byte[] packedItem) throws IOException, Quantiser.QuantiserException {
+    public static Contract fromPackedTransaction(@NonNull byte[] packedItem) throws IOException {
         TransactionPack tp = TransactionPack.unpack(packedItem);
         return tp.getContract();
     }
@@ -1294,10 +1327,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return true if the set of keys is enough revoke this contract.
      */
     public boolean canBeRevoked(Set<PublicKey> keys) throws Quantiser.QuantiserException {
-//        quantiser.addWorkCost(Quantiser.PRICE_REVOKE_VERSION);
         for (Permission perm : permissions.getList("revoke")) {
-            if (perm.isAllowedForKeys(keys))
+            if (perm.isAllowedForKeys(keys)){
+                checkApplicablePermissionQuantized(perm);
                 return true;
+            }
         }
         return false;
     }
@@ -1307,15 +1341,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     /**
      * Verify signature, but before quantize this operation.
      * @param key
-     * @param signature
-     * @param contractBytes
-     * @return
      * @throws Quantiser.QuantiserException
      */
-    protected ExtendedSignature verifySignatureQuantized(PublicKey key, byte[] signature, byte[] contractBytes) throws Quantiser.QuantiserException {
+    protected void verifySignatureQuantized(PublicKey key) throws Quantiser.QuantiserException {
         // Add check signature quanta
-        quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_2048_SIG);
-        return ExtendedSignature.verify(key, signature, contractBytes);
+        if( key.getBitStrength() == 2048) {
+            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_2048_SIG);
+        } else {
+            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_4096_SIG);
+        }
     }
 
 

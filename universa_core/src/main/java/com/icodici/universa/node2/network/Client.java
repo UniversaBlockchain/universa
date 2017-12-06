@@ -201,10 +201,10 @@ public class Client {
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
             } catch (Quantiser.QuantiserException e) {
                 throw new ClientError(e);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
         return lastResult;

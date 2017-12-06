@@ -16,6 +16,8 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.node2.Quantiser;
+import net.sergeych.biserializer.BiSerializationException;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.collections.Multimap;
@@ -308,15 +310,95 @@ public class ContractTest extends ContractTestBase {
         // should repeat contract processing procedure on the Node
         // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
 
-        Contract contract = createCoin();
-        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        Contract contract = createCoin100apiv3();
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        contract.seal();
+        sealCheckTrace(contract, true);
 
-        // Register a version (20) +
-        // Check 2048 bits signature (1)
-        int costShouldBe = 21;
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
         Contract processingContract = processContractAsItWillBeOnTheNode(contract);
+
+        System.out.println("Calculated processing cost: " + processingContract.getProcessedCost() + " (UTN)");
+
+        assertEquals(costShouldBe, processingContract.getProcessedCost());
+    }
+
+    @Test
+    public void calculateProcessingCostSimpleBreak() throws Exception {
+
+        // Should create contract, sign and seal it. Then while calculating cost should break.
+        // should repeat contract processing procedure on the Node
+        // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
+
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(contract, true);
+
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
+        boolean exceptionThrown = false;
+        try {
+            processContractAsItWillBeOnTheNode(contract, 10);
+        } catch (Quantiser.QuantiserException e) {
+            System.out.println("Thrown correct exception: " + e.toString());
+            exceptionThrown = true;
+        }
+        assertEquals(true, exceptionThrown);
+    }
+
+    @Test
+    public void calculateProcessingCostSimpleBreakWhileUnpacking() throws Exception {
+
+        // Should create contract, sign and seal it. Then while calculating cost should break while unpacking contract (signs verifying).
+        // should repeat contract processing procedure on the Node
+        // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
+
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(contract, true);
+
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = 28;
+        boolean exceptionThrown = false;
+        try {
+            processContractAsItWillBeOnTheNode(contract, 1);
+        } catch (Quantiser.QuantiserException e) {
+            System.out.println("Thrown correct exception: " + e.getMessage());
+            exceptionThrown = true;
+        } catch (BiSerializationException e) {
+            System.out.println("Thrown correct exception: " + e.getMessage());
+            exceptionThrown = true;
+        }
+        assertEquals(true, exceptionThrown);
+    }
+
+    @Test
+    public void calculateRevisionProcessingCost() throws Exception {
+
+        // Should create contract, sign and seal it. Then calculate cost of processing.
+        // should repeat contract processing procedure on the Node
+        // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
+
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(contract, true);
+
+        Contract forRevision = contract.createRevision();
+        forRevision.set("state.data.amount", Binder.fromKeysValues("data", 111));
+        forRevision.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(forRevision, true);
+
+        // Check 4096 bits signature (8) +
+        // Register a version (20) +
+        // Check self change owner permission (1) +
+        // Check self change split join permission (1+2) +
+        // Check self change revoke permission (1) +
+        // Check self change revoke permission (1) +
+        int costShouldBe = 34;
+        Contract processingContract = processContractAsItWillBeOnTheNode(forRevision);
 
         System.out.println("Calculated processing cost: " + processingContract.getProcessedCost() + " (UTN)");
 
@@ -346,35 +428,163 @@ public class ContractTest extends ContractTestBase {
         System.out.println("Calculated processing cost (forSplit): " + forSplit.getProcessedCost() + " (UTN)");
         System.out.println("Calculated processing cost (splitted): " + splitted.getProcessedCost() + " (UTN)");
 
+        // Check 4096 bits signature own (8) +
+        // Check 4096 bits signature new item (8) +
+        // Check 4096 bits signature revoking item (8) +
         // Register a self version (20) +
-        // Check 2048 bits signature (1) +
         // Register new item a version (20) +
         // Register revoking item a version (20) +
         // Check self change owner permission (1) +
         // Check self change split join permission (1+2) +
         // Check self change revoke permission (1) +
+        // Check new item change owner permission (1) +
+        // Check new item change split join permission (1+2) +
+        // Check new item change revoke permission (1)
+        int costShouldBeForSplit = 94;
+
+        Contract processingContract = processContractAsItWillBeOnTheNode(forSplit);
+        System.out.println("Calculated processing cost (forSplit): " + processingContract.getProcessedCost() + " (UTN)");
+        assertEquals(costShouldBeForSplit, processingContract.getProcessedCost());
+    }
+
+    @Test
+    public void calculateSplitProcessingCostbreakWhileUnpacking() throws Exception {
+
+        // Should create contract, sign and seal it, then create revision and split.
+        // Then while calculating cost should break while unpacking contract (signs verifying).
+        // should repeat contract processing procedure on the Node
+        // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
+
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(contract, true);
+
+        System.out.println("Split");
+        Contract forSplit = contract.createRevision();
+        Contract splitted = forSplit.splitValue(FIELD_NAME, new Decimal(20));
+        splitted.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(splitted, true);
+        sealCheckTrace(forSplit, true);
+        assertEquals(new Decimal(80), forSplit.getStateData().get("amount"));
+        assertEquals(new Decimal(20), new Decimal(Long.valueOf(splitted.getStateData().get("amount").toString())));
+
+        System.out.println("Calculated processing cost (forSplit): " + forSplit.getProcessedCost() + " (UTN)");
+        System.out.println("Calculated processing cost (splitted): " + splitted.getProcessedCost() + " (UTN)");
+
+        // Check 4096 bits signature own (8) +
+        // Check 4096 bits signature new item (8) +
+        // Check 4096 bits signature revoking item (8) +
+        // Register a self version (20) +
+        // Register new item a version (20) +
+        // Register revoking item a version (20) +
+        // Check self change owner permission (1) +
+        // Check self change split join permission (1+2) +
         // Check self change revoke permission (1) +
+        // Check new item change owner permission (1) +
+        // Check new item change split join permission (1+2) +
+        // Check new item change revoke permission (1)
+        int costShouldBeForSplit = 94;
+
+        boolean exceptionThrown = false;
+        try {
+            processContractAsItWillBeOnTheNode(forSplit, 20);
+        } catch (Quantiser.QuantiserException e) {
+            System.out.println("Thrown correct exception: " + e.getMessage());
+            exceptionThrown = true;
+        } catch (BiSerializationException e) {
+            System.out.println("Thrown correct exception: " + e.getMessage());
+            exceptionThrown = true;
+        }
+        assertEquals(true, exceptionThrown);
+    }
+
+    @Test
+    public void calculateSplitTwiceProcessingCost() throws Exception {
+
+        // Should create contract, sign and seal it, then create revision and split. Then calculate cost of processing.
+        // should repeat contract processing procedure on the Node
+        // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check() -> Contract.getNewItems.check())
+
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(contract, true);
+
+        System.out.println("Split");
+        Contract forSplit = contract.createRevision();
+        Contract splitted = forSplit.splitValue(FIELD_NAME, new Decimal(20));
+        splitted.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(splitted, true);
+
+        splitted = splitted.createRevision();
+        Contract splitted2 = splitted.splitValue(FIELD_NAME, new Decimal(5));
+        splitted2.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        sealCheckTrace(splitted, true);
+        sealCheckTrace(splitted2, true);
+        sealCheckTrace(forSplit, true);
+        assertEquals(new Decimal(80), forSplit.getStateData().get("amount"));
+        assertEquals(new Decimal(15), new Decimal(Long.valueOf(splitted.getStateData().get("amount").toString())));
+        assertEquals(new Decimal(5), new Decimal(Long.valueOf(splitted2.getStateData().get("amount").toString())));
+
+        System.out.println(">>> forSplit " + forSplit.getNewItems().size() + ":" + forSplit.getRevokingItems().size());
+        System.out.println(">>> splitted " + splitted.getNewItems().size() + ":" + splitted.getRevokingItems().size());
+        System.out.println(">>> splitted2 " + splitted2.getNewItems().size() + ":" + splitted2.getRevokingItems().size());
+        System.out.println("Calculated processing cost (forSplit): " + forSplit.getProcessedCost() + " (UTN)");
+        System.out.println("Calculated processing cost (splitted): " + splitted.getProcessedCost() + " (UTN)");
+
+        // Register a self version (20) +
+        // Check 4096 bits signature (8) +
+        // Register new item a version (20) +
+        // Register revoking item a version (20) +
+        // Check self change owner permission (1) +
+        // Check self change split join permission (1+2) +
+        // Check self change revoke permission (1) +
+        // Check self change revoke permission (1) + +
         // Check new item change owner permission (1) +
         // Check new item change split join permission (1+2) +
         // Check new item change revoke permission (1) +
         // Check new item change revoke permission (1) +
-        // Check node new item change owner permission (1) +
-        // Check node new item change split join permission (1+2) +
-        // Check node new item change revoke permission (1) +
-        // Check node new item change revoke permission (1) +
-        int costShouldBeForSplit = 73;
+        int costShouldBeForSplit = 80;
 
         Contract processingContract = processContractAsItWillBeOnTheNode(forSplit);
         System.out.println("Calculated processing cost (forSplit): " + processingContract.getProcessedCost() + " (UTN)");
         assertEquals(costShouldBeForSplit, processingContract.getProcessedCost());
 
+        System.out.println("------------");
+        System.out.println(">>> splitted " + splitted.getNewItems().size() + ":" + splitted.getRevokingItems().size());
         // Register a version (20) +
-        // Check 2048 bits signature (1)
-        int costShouldBeSplitted = 21;
+        // Check 2048 bits signature (8) +
+        // Check self change owner permission (1) +
+        // Check self change split join permission (1+2) +
+        // Check self change revoke permission (1) +
+        // Check self change revoke permission (1) +
+        int costShouldBeSplitted = 34;
         processingContract = processContractAsItWillBeOnTheNode(splitted);
         System.out.println("Calculated processing cost (splitted): " + processingContract.getProcessedCost() + " (UTN)");
         assertEquals(costShouldBeSplitted, processingContract.getProcessedCost());
 
+    }
+
+    /**
+     * Imitate procedure of contract processing as it will be on the Node.
+     * Gte contract from param, create from it new contract,
+     * that will be processed and return processed contract with cost inside.
+     * @param contract - from which contract will be created contract for processing.
+     * @param limit - Quantizer limit.
+     * @return new contract that was processed.
+     * @throws Exception
+     */
+    public Contract processContractAsItWillBeOnTheNode(Contract contract, int limit) throws Exception {
+
+        System.out.println("------ Imitate registering -------");
+        Contract.setTestQuantaLimit(limit);
+        byte[] data = contract.getPackedTransaction();
+        Contract processingContract = Contract.fromPackedTransaction(data);
+        System.out.println("------ final check -------");
+        processingContract.check();
+        Contract.setTestQuantaLimit(-1);
+
+        return processingContract;
     }
 
     /**
@@ -387,16 +597,7 @@ public class ContractTest extends ContractTestBase {
      */
     public Contract processContractAsItWillBeOnTheNode(Contract contract) throws Exception {
 
-        byte[] data = contract.getPackedTransaction();
-        System.out.println("Imitate registering");
-        Contract processingContract = Contract.fromPackedTransaction(data);
-        processingContract.check();
-        System.out.println("check newItems");
-        for (Approvable newItem : processingContract.getNewItems()) {
-            processingContract.checkSubItemQuantized((Contract) newItem);
-        }
-
-        return processingContract;
+        return processContractAsItWillBeOnTheNode(contract, -1);
     }
 
 //    @Test

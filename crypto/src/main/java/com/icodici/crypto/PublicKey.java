@@ -59,6 +59,10 @@ public class PublicKey extends AbstractKey {
         return true;
     }
 
+    public int getBitStrength() {
+        return publicKey.getBitStrength();
+    }
+
     public void unpack(byte[] bytes, KeyInfo info) throws EncryptionError {
         List parts = Boss.load(bytes);
         if ((Integer) parts.get(0) != 1)

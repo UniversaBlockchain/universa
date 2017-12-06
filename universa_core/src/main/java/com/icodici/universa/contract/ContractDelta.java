@@ -19,6 +19,7 @@ import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
 
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -124,15 +125,22 @@ public class ContractDelta {
 
     private void excludePermittedChanges() throws Quantiser.QuantiserException {
         Set<PublicKey> creatorKeys = creator.getKeys();
-        for (Permission permission : existing.getPermissions().values()) {
-            if (permission.isAllowedForKeys(creatorKeys)) {
-                changed.checkApplicablePermissionQuantized(permission);
-                permission.checkChanges(existing, changed, stateChanges);
+        for (String key : existing.getPermissions().keySet()) {
+            Collection<Permission> permissions = existing.getPermissions().get(key);
+            boolean permissionQuantized = false;
+            for (Permission permission : permissions) {
+                if (permission.isAllowedForKeys(creatorKeys)) {
+                    if(!permissionQuantized) {
+                        changed.checkApplicablePermissionQuantized(permission);
+                        permissionQuantized = true;
+                    }
+                    permission.checkChanges(existing, changed, stateChanges);
+                }
             }
         }
     }
 
-    private void checkOwnerChanged() {
+    private void checkOwnerChanged() throws Quantiser.QuantiserException {
         ChangedItem<Role, Role> oc = (ChangedItem<Role, Role>) stateChanges.get("owner");
         if (oc != null) {
             stateChanges.remove("owner");
