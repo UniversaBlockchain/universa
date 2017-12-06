@@ -543,6 +543,53 @@ public class Node2SingleTest extends TestCase {
     }
 
     @Test
+    public void shouldBreakByQuantizer() throws Exception {
+        // 100
+        Contract.setTestQuantaLimit(10);
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(c.check());
+        c.seal();
+
+        node.registerItem(c);
+        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        System.out.println(itemResult);
+        Contract.setTestQuantaLimit(-1);
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+    }
+
+    @Test
+    public void shouldBreakByQuantizerSplit() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(c.check());
+        c.seal();
+
+        registerAndCheckApproved(c);
+
+
+        Contract.setTestQuantaLimit(60);
+        // 50
+        Contract forSplit = c.createRevision();
+        Contract c2 = forSplit.splitValue("amount", new Decimal(30));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(c2.check());
+        c2.seal();
+        forSplit.seal();
+        assertEquals(new Decimal(30), new Decimal(Long.valueOf(c2.getStateData().get("amount").toString())));
+        assertEquals(new Decimal(70), forSplit.getStateData().get("amount"));
+
+        node.registerItem(forSplit);
+        ItemResult itemResult = node.waitItem(forSplit.getId(), 1500);
+        System.out.println(itemResult);
+        Contract.setTestQuantaLimit(-1);
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+    }
+
+    @Test
     public void shouldApproveSplitAndJoinWithNewSend() throws Exception {
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");

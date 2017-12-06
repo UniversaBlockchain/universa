@@ -188,6 +188,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws IllegalArgumentException on the various format errors
      */
     public Contract(byte[] sealed, Binder data, TransactionPack pack) throws IOException {
+        this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
+
         this.sealedBinary = sealed;
         if (!data.getStringOrThrow("type").equals("unicapsule"))
             throw new IllegalArgumentException("wrong object type, unicapsule required");
@@ -241,6 +243,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
 
     public Contract() {
+        this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
+
         definition = new Definition();
         state = new State();
     }

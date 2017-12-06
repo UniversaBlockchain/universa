@@ -11,6 +11,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.Ledger;
@@ -558,6 +559,7 @@ public class Node {
                     boolean needToResync = false;
 
                     try {
+                        debug("Contract limit: " + Contract.getTestQuantaLimit());
                         if (item.check()) {
 
                             itemsToResync = isNeedToResync(true);
