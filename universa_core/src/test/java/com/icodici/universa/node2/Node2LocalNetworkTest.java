@@ -166,10 +166,15 @@ public class Node2LocalNetworkTest extends TestCase {
         );
         ae.await(500);
         n1.removeAllSubscribes();
+
+        // fully recreate network - we broke subscribers
+        tearDown();
+        setUp();
     }
 
     @Test(timeout = 90000)
     public void registerGoodItem() throws Exception {
+
         int N = 100;
 //        LogPrinter.showDebug(true);
         for (int k = 0; k < 1; k++) {
@@ -659,7 +664,7 @@ public class Node2LocalNetworkTest extends TestCase {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.checkItem(contract.getId());
+        ItemResult r = node.waitItem(contract.getId(), 2000);
         assertEquals(ItemState.APPROVED, r.state);
     }
 
@@ -789,13 +794,15 @@ public class Node2LocalNetworkTest extends TestCase {
                     }
                 }
 
-//                if(all_is_approved) ae.fire();
+                if(all_is_approved) ae.fire();
             }
         }, 0, 1000);
 
+        boolean time_is_up = false;
         try {
             ae.await(30000);
         } catch (TimeoutException e) {
+            time_is_up = true;
             System.out.println("time is up");
         }
 
@@ -805,11 +812,14 @@ public class Node2LocalNetworkTest extends TestCase {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
+
+        assertFalse(time_is_up);
     }
 
     @Test
     public void checkRegisterContractOnTemporaryOffedNetwork() throws Exception {
 
+        // switch off half network
         for (int i = 0; i < NODES/2; i++) {
             networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
             networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
@@ -826,6 +836,8 @@ public class Node2LocalNetworkTest extends TestCase {
         contract.check();
         contract.traceErrors();
         assertTrue(contract.isOk());
+
+//        LogPrinter.showDebug(true);
 
         node.registerItem(contract);
 
@@ -848,13 +860,14 @@ public class Node2LocalNetworkTest extends TestCase {
             }
         }, 0, 1000);
 
+        // wait and now switch on full network
         try {
             ae.await(5000);
         } catch (TimeoutException e) {
             timer.cancel();
-            System.out.println("switching on node 2");
-            for (int i = 0; i < NODES/2; i++) {
-                networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            System.out.println("switching on network");
+            for (TestLocalNetwork ln : networks) {
+                ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             }
         }
 
@@ -889,17 +902,17 @@ public class Node2LocalNetworkTest extends TestCase {
             }
         }
 
+        LogPrinter.showDebug(false);
+
         assertEquals(all_is_approved, true);
 
-        for (TestLocalNetwork ln : networks) {
-            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
-            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
-        }
+
     }
 
     @Test
     public void checkRegisterContractOnTemporaryOffedAndHalfOnedNetwork() throws Exception {
 
+        // switch off half network
         for (int i = 0; i < NODES/2; i++) {
             networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
             networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
@@ -1444,12 +1457,12 @@ public class Node2LocalNetworkTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 500);
+        ItemResult result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(item.getId(), 500);
+        result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(item.getId(), 500);
+        result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.checkItem(item.getId());
@@ -1475,6 +1488,7 @@ public class Node2LocalNetworkTest extends TestCase {
     @Test
     public void timeoutError() throws Exception {
 
+        Duration maxElectionsTime = config.getMaxElectionsTime();
         config.setMaxElectionsTime(Duration.ofMillis(200));
 
         TestItem item = new TestItem(true);
@@ -1493,6 +1507,8 @@ public class Node2LocalNetworkTest extends TestCase {
 
         itemResult = node.checkItem(item.getId());
         assertEquals(ItemState.UNDEFINED, itemResult.state);
+
+        config.setMaxElectionsTime(maxElectionsTime);
     }
 
     @Test
@@ -1558,15 +1574,17 @@ public class Node2LocalNetworkTest extends TestCase {
 
         node.registerItem(main);
 
-        ItemResult itemResult = node.checkItem(main.getId());
-        Assert.assertThat(itemResult.state, anyOf(equalTo(ItemState.PENDING), equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
+        ItemResult itemResult = node.waitItem(main.getId(), 2000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+//        Assert.assertThat(itemResult.state, anyOf(equalTo(ItemState.PENDING), equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
 
-        @NonNull ItemResult itemNew1 = node.checkItem(new1.getId());
-        Assert.assertThat(itemNew1.state, anyOf(equalTo(ItemState.UNDEFINED), equalTo(ItemState.LOCKED_FOR_CREATION)));
+        @NonNull ItemResult itemNew1 = node.waitItem(new1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, itemNew1.state);
+//        Assert.assertThat(itemNew1.state, anyOf(equalTo(ItemState.UNDEFINED), equalTo(ItemState.LOCKED_FOR_CREATION)));
 
         // and this one was created before
-        @NonNull ItemResult itemNew2 = node.checkItem(new2.getId());
-        Assert.assertThat(itemNew2.state, anyOf(equalTo(ItemState.APPROVED), equalTo(ItemState.PENDING_POSITIVE)));
+        @NonNull ItemResult itemNew2 = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, itemNew2.state);
     }
 
     @Test

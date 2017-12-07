@@ -805,7 +805,7 @@ public class Node {
                     synchronized (mutex) {
                         if (isPollingExpired()) {
                             // cancel by timeout expired
-                            debug("consensus not found in maximum allowed time, cancelling " + itemId);
+                            debug("WARNING: consensus not found in maximum allowed time, cancelling " + itemId);
 
                             processingState = ItemProcessingState.GOT_CONSENSUS;
 
