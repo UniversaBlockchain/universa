@@ -21,6 +21,7 @@ import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.LogPrinter;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -44,6 +45,7 @@ public class Node2LocalNetworkTest extends Node2SingleTest {
 
     public static String CONFIG_2_PATH = "../../deploy/samplesrv/";
 
+    @BeforeClass
     public static void setUp() throws Exception {
         nodesMap = new HashMap<>();
         networks = new ArrayList<>();

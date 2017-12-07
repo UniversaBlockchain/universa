@@ -17,6 +17,7 @@ import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -40,8 +41,10 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
     public static List<Node> nodes = new ArrayList<>();
 
+    @BeforeClass
     public static void setUp() throws Exception {
 
+        System.out.println("setup");
         nodes = new ArrayList<>();
         config = new Config();
         config.setPositiveConsensus(7);
@@ -78,6 +81,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         }
         network = en;
         node = nodes.get(0);
+        System.out.println("created network on the nodes: " + nodes);
         Thread.sleep(100);
     }
 
@@ -221,9 +225,14 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         Contract c = new Contract(TestKeys.privateKey(0));
         c.seal();
         addToAllLedgers(c, ItemState.APPROVED);
+
+        System.out.println(nodes);
         nodes.forEach(n -> {
             System.out.println(n.getLedger().getRecord(c.getId()));
         });
+        System.out.println(node);
+        System.out.println(node.getLedger());
+        System.out.println(node.getLedger().getRecord(c.getId()));
         node.getLedger().getRecord(c.getId()).destroy();
         assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
 

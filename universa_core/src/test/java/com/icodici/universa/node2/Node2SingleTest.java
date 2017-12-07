@@ -633,8 +633,9 @@ public class Node2SingleTest extends TestCase {
         assertTrue(c.check());
         c.seal();
 
-
+        LogPrinter.showDebug(true);
         registerAndCheckApproved(c);
+        LogPrinter.showDebug(false);
         assertEquals(100, c.getStateData().get("amount"));
 
 
@@ -663,13 +664,13 @@ public class Node2SingleTest extends TestCase {
 
     private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        ItemResult itemResult = node.waitItem(c.getId(), 5000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
     private void registerAndCheckDeclined(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        ItemResult itemResult = node.waitItem(c.getId(), 5000);
         assertEquals(ItemState.DECLINED, itemResult.state);
     }
 
