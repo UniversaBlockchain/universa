@@ -27,6 +27,8 @@ public class TestEmulatedNetwork extends Network {
     private Map<NodeInfo, Node> nodes = new HashMap<>();
     private HashMap<NodeInfo, Consumer<Notification>> consumers = new HashMap<>();
 
+    private HashMap<Node, Boolean> test_nodeWorkStates = new HashMap<>();
+
     private static LogPrinter log = new LogPrinter("TEMN");
 
     public TestEmulatedNetwork(NetConfig netConfig) {
@@ -35,15 +37,18 @@ public class TestEmulatedNetwork extends Network {
 
     public void addNode(NodeInfo ni, Node node) {
         nodes.put(ni, node);
+        test_nodeWorkStates.put(node, true);
     }
 
     @Override
     public void deliver(NodeInfo toNode, Notification notification) {
-        executorService.submit(() -> {
-            Consumer<Notification> consumer = consumers.get(toNode);
-            assert consumer != null;
-            consumer.accept(notification);
-        });
+        if(test_nodeWorkStates.get(getNode(toNode))) {
+            executorService.submit(() -> {
+                Consumer<Notification> consumer = consumers.get(toNode);
+                assert consumer != null;
+                consumer.accept(notification);
+            });
+        }
     }
 
     @Override
@@ -64,5 +69,18 @@ public class TestEmulatedNetwork extends Network {
 
     public Node getNode(NodeInfo info) {
         return nodes.get(info);
+    }
+
+    public void switchOnAllNodesTestMode() {
+
+        for (Node n : test_nodeWorkStates.keySet()) {
+            test_nodeWorkStates.put(n, true);
+        }
+    }
+
+    public void switchOffNodeTestMode(Node node) {
+
+        if(test_nodeWorkStates.containsKey(node))
+            test_nodeWorkStates.put(node, false);
     }
 }

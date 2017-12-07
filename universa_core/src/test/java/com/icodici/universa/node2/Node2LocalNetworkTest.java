@@ -1224,11 +1224,11 @@ public class Node2LocalNetworkTest extends TestCase {
         timer.cancel();
         config.setMaxResyncTime(wasDuration);
 
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
         for (int i = 0; i < NODES; i++) {
             networks.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
         }
-
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
     }
 
     @Test
