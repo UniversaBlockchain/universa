@@ -61,7 +61,7 @@ public class TestCase {
 
     static List<PrivateKey> nodeKeys = new ArrayList<>();
 
-    protected PrivateKey getNodeKey(int index) throws IOException {
+    protected static PrivateKey getNodeKey(int index) throws IOException {
         if (nodeKeys.size() == 0) {
             Files.list(Paths.get("src/test_config_2/tmp"))
                     .filter(Files::isRegularFile)
@@ -79,7 +79,7 @@ public class TestCase {
         return nodeKeys.get(index);
     }
 
-    protected PublicKey getNodePublicKey(int index) throws IOException {
+    protected static PublicKey getNodePublicKey(int index) throws IOException {
         return getNodeKey(index).getPublicKey();
     }
 

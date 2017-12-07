@@ -15,9 +15,7 @@ import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 
 import java.io.File;
 import java.io.FileReader;
@@ -39,21 +37,21 @@ public class Node2SingleTest extends TestCase {
     protected static final String ROOT_PATH = "./src/test_contracts/";
     protected static final String CONFIG_2_PATH = "./src/test_config_2/";
 
-    Network network;
-    NetConfig nc;
-    Config config;
-    Node node;
-    NodeInfo myInfo;
-    Ledger ledger;
+    static Network network;
+    static NetConfig nc;
+    static Config config;
+    static Node node;
+    static NodeInfo myInfo;
+    static Ledger ledger;
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeClass
+    public static void setUp() throws Exception {
         init(1, 1);
         ((PostgresLedger)ledger).testClearLedger();
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @AfterClass
+    public static void tearDown() throws Exception {
 //        ledger.close();
         network.shutdown();
     }
@@ -704,7 +702,7 @@ public class Node2SingleTest extends TestCase {
         registerAndCheckApproved(c);
     }
 
-    private void init(int posCons, int negCons) throws IOException, SQLException {
+    private static void init(int posCons, int negCons) throws IOException, SQLException {
         config = new Config();
 
         // The quorum bigger than the network capacity: we model the situation
