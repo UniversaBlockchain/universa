@@ -878,9 +878,18 @@ public class Node2LocalNetworkTest extends TestCase {
 
                 System.out.println("-----------nodes state--------------");
 
+                boolean all_is_approved = true;
                 for (Node n : nodesMap.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
+
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+
+                    if(all_is_approved) {
+                        ae.fire();
+                    }
                 }
             }
         }, 0, 1000);
@@ -896,7 +905,6 @@ public class Node2LocalNetworkTest extends TestCase {
         boolean all_is_approved = true;
         for (Node n : nodesMap.values()) {
             ItemResult r = n.checkItem(contract.getId());
-            System.out.println("Node: " + n.toString() + " state: " + r.state);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
             }

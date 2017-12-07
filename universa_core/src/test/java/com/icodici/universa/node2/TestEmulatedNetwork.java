@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.function.Consumer;
@@ -28,6 +29,16 @@ public class TestEmulatedNetwork extends Network {
     private HashMap<NodeInfo, Consumer<Notification>> consumers = new HashMap<>();
 
     private HashMap<Node, Boolean> test_nodeWorkStates = new HashMap<>();
+
+    public int getTest_nodeBeingOffedChance() {
+        return test_nodeBeingOffedChance;
+    }
+
+    public void setTest_nodeBeingOffedChance(int test_nodeBeingOffedChance) {
+        this.test_nodeBeingOffedChance = test_nodeBeingOffedChance;
+    }
+
+    private int test_nodeBeingOffedChance = 0;
 
     private static LogPrinter log = new LogPrinter("TEMN");
 
@@ -42,12 +53,14 @@ public class TestEmulatedNetwork extends Network {
 
     @Override
     public void deliver(NodeInfo toNode, Notification notification) {
-        if(test_nodeWorkStates.get(getNode(toNode))) {
-            executorService.submit(() -> {
-                Consumer<Notification> consumer = consumers.get(toNode);
-                assert consumer != null;
-                consumer.accept(notification);
-            });
+        if(new Random().nextInt(100) > test_nodeBeingOffedChance) {
+            if (test_nodeWorkStates.get(getNode(toNode))) {
+                executorService.submit(() -> {
+                    Consumer<Notification> consumer = consumers.get(toNode);
+                    assert consumer != null;
+                    consumer.accept(notification);
+                });
+            }
         }
     }
 

@@ -101,6 +101,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
         System.out.println("setup test");
         System.out.println("Switch on  network full mode");
         network.switchOnAllNodesTestMode();
+        network.setTest_nodeBeingOffedChance(0);
     }
 
     @After
@@ -869,6 +870,158 @@ public class Node2EmulatedNetworkTest extends TestCase {
         node.registerItem(c);
         ItemResult itemResult = node.waitItem(c.getId(), 5000);
         assertEquals(ItemState.DECLINED, itemResult.state);
+    }
+
+    @Test
+    public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
+
+        network.setTest_nodeBeingOffedChance(75);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        contract.seal();
+
+        addDetailsToAllLedgers(contract);
+
+        contract.check();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                boolean all_is_approved = true;
+                for (Node n : nodes) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+                }
+
+                if(all_is_approved) ae.fire();
+            }
+        }, 0, 1000);
+
+        boolean time_is_up = false;
+        try {
+            ae.await(30000);
+        } catch (TimeoutException e) {
+            time_is_up = true;
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        network.setTest_nodeBeingOffedChance(0);
+
+        assertFalse(time_is_up);
+    }
+
+    @Test
+    public void checkRegisterContractOnTemporaryOffedNetwork() throws Exception {
+
+        // switch off half network
+        for (int i = 0; i < NODES/2; i++) {
+            network.switchOffNodeTestMode(nodes.get(NODES-i-1));
+        }
+
+        AsyncEvent ae = new AsyncEvent();
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        contract.seal();
+
+        addDetailsToAllLedgers(contract);
+
+        contract.check();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
+
+//        LogPrinter.showDebug(true);
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                boolean all_is_approved = true;
+                for (Node n : nodes) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+                }
+                assertEquals(all_is_approved, false);
+            }
+        }, 0, 1000);
+
+        // wait and now switch on full network
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            timer.cancel();
+            System.out.println("switching on network");
+            network.switchOnAllNodesTestMode();
+        }
+
+        Timer timer2 = new Timer();
+        timer2.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                boolean all_is_approved = true;
+                for (Node n : nodes) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+
+                    if(all_is_approved) {
+                        ae.fire();
+                    }
+                }
+            }
+        }, 0, 1000);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        timer2.cancel();
+
+        boolean all_is_approved = true;
+        for (Node n : nodes) {
+            ItemResult r = n.checkItem(contract.getId());
+            if(r.state != ItemState.APPROVED) {
+                all_is_approved = false;
+            }
+        }
+
+        LogPrinter.showDebug(false);
+
+        assertEquals(all_is_approved, true);
+
+
     }
 
 
