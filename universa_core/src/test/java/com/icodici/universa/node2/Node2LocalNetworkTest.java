@@ -117,6 +117,27 @@ public class Node2LocalNetworkTest extends TestCase {
         nodesMap.forEach((i,n)->n.getLedger().close());
     }
 
+    @Before
+    public void setUpTest() throws Exception {
+        System.out.println("setup test");
+        System.out.println("Switch on UDP network full mode");
+        for (int i = 0; i < NODES; i++) {
+            networks.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            networks.get(i).setUDPAdapterLostPacketsPercentInTestMode(0);
+        }
+        for (TestLocalNetwork ln : networks) {
+            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            ln.setUDPAdapterLostPacketsPercentInTestMode(0);
+//            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        }
+
+    }
+
+    @After
+    public void tearDownTest() throws Exception {
+        System.out.println("tear down test");
+    }
+
     private static List<TestLocalNetwork> networks = new ArrayList<>();
 
     private interface RunnableWithException<T> {
@@ -755,15 +776,17 @@ public class Node2LocalNetworkTest extends TestCase {
 
         timer.cancel();
 
-        config.setMaxResyncTime(wasDuration);
+//        ItemResult r = node.waitItem(contract.getId(), 5000);
+        ItemResult r = node.checkItem(contract.getId());
+        // If resync broken but need more then oned nodes to decline, state should be PENDING_NEGATIVE
+        Assert.assertThat(r.state, anyOf(equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
 
         for (TestLocalNetwork ln : networks) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.waitItem(contract.getId(), 2000);
-        assertEquals(ItemState.DECLINED, r.state);
+        config.setMaxResyncTime(wasDuration);
     }
 
     @Test
@@ -870,16 +893,31 @@ public class Node2LocalNetworkTest extends TestCase {
             timer.cancel();
             System.out.println("switching on node 2");
             for (int i = 0; i < NODES/2; i++) {
-                networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-                networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(50);
+                networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             }
         }
 
+        Timer timer2 = new Timer();
+        timer2.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                for (Node n : nodesMap.values()) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                }
+            }
+        }, 0, 1000);
+
         try {
-            ae.await(10000);
+            ae.await(5000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
+
+        timer2.cancel();
 
         boolean all_is_approved = true;
         for (Node n : nodesMap.values()) {
@@ -951,11 +989,27 @@ public class Node2LocalNetworkTest extends TestCase {
             }
         }
 
+        Timer timer2 = new Timer();
+        timer2.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                for (Node n : nodesMap.values()) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                }
+            }
+        }, 0, 1000);
+
         try {
             ae.await(5000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
+
+        timer2.cancel();
 
         boolean all_is_approved = true;
         for (Node n : nodesMap.values()) {
