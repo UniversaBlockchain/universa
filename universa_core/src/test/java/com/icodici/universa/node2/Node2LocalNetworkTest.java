@@ -60,8 +60,8 @@ public class Node2LocalNetworkTest extends TestCase {
         networks = new ArrayList<>();
 
         config = new Config();
-        config.setPositiveConsensus(2);
-        config.setNegativeConsensus(1);
+        config.setPositiveConsensus(7);
+        config.setNegativeConsensus(4);
         config.setResyncBreakConsensus(2);
 
         Properties properties = new Properties();
@@ -144,6 +144,7 @@ public class Node2LocalNetworkTest extends TestCase {
                                             false)
         );
         ae.await(500);
+        n1.removeAllSubscribes();
     }
 
     @Test(timeout = 20000)
@@ -249,7 +250,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
     private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        ItemResult itemResult = node.waitItem(c.getId(), 5000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 //
@@ -725,8 +726,10 @@ public class Node2LocalNetworkTest extends TestCase {
         Duration wasDuration = config.getMaxResyncTime();
         config.setMaxResyncTime(Duration.ofMillis(2000));
 
-        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+        for (int i = 0; i < NODES/2; i++) {
+            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+        }
 
         // preparing is finished
 
@@ -759,7 +762,7 @@ public class Node2LocalNetworkTest extends TestCase {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.checkItem(contract.getId());
+        ItemResult r = node.waitItem(contract.getId(), 2000);
         assertEquals(ItemState.DECLINED, r.state);
     }
 
@@ -894,8 +897,10 @@ public class Node2LocalNetworkTest extends TestCase {
     @Test
     public void checkRegisterContractOnTemporaryOffedAndHalfOnedNetwork() throws Exception {
 
-        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+        for (int i = 0; i < NODES/2; i++) {
+            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+        }
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -935,12 +940,15 @@ public class Node2LocalNetworkTest extends TestCase {
         } catch (TimeoutException e) {
             timer.cancel();
             System.out.println("switching on node 2");
-            networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(50);
+
+            for (int i = 0; i < NODES/2; i++) {
+                networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+                networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(50);
+            }
         }
 
         try {
-            ae.await(2000);
+            ae.await(5000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
@@ -1006,7 +1014,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         timer.cancel();
 
-        assertEquals(ItemState.APPROVED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 2000).state);
     }
 
     @Test
@@ -1050,7 +1058,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         timer.cancel();
 
-        assertEquals(ItemState.REVOKED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 2000).state);
     }
 
     @Test
@@ -1094,7 +1102,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         timer.cancel();
 
-        assertEquals(ItemState.DECLINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 2000).state);
     }
 
     @Test
@@ -1139,7 +1147,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         timer.cancel();
 
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
     }
 
     @Test
@@ -1155,8 +1163,10 @@ public class Node2LocalNetworkTest extends TestCase {
         Duration wasDuration = config.getMaxResyncTime();
         config.setMaxResyncTime(Duration.ofMillis(2000));
 
-        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+        for (int i = 0; i < NODES/2; i++) {
+            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+        }
 
         node.getLedger().getRecord(c.getId()).destroy();
         assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
@@ -1171,7 +1181,7 @@ public class Node2LocalNetworkTest extends TestCase {
                 if( ItemState.UNDEFINED == node.checkItem(c.getId()).state)
                     ae.fire();
             }
-        }, 0, 500);
+        }, 100, 500);
 
         try {
             ae.await(6000);
@@ -1181,6 +1191,10 @@ public class Node2LocalNetworkTest extends TestCase {
 
         timer.cancel();
         config.setMaxResyncTime(wasDuration);
+
+        for (int i = 0; i < NODES; i++) {
+            networks.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+        }
 
         assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
     }
@@ -1341,7 +1355,7 @@ public class Node2LocalNetworkTest extends TestCase {
         TestItem bad = new TestItem(false);
         node.registerItem(bad);
         for (Node n : nodesMap.values()) {
-            ItemResult r = node.waitItem(bad.getId(), 500);
+            ItemResult r = node.waitItem(bad.getId(), 2000);
             assertEquals(ItemState.DECLINED, r.state);
         }
     }
@@ -1377,12 +1391,12 @@ public class Node2LocalNetworkTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 200);
+        ItemResult result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(item.getId(), 200);
+        result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(item.getId(), 200);
+        result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.checkItem(item.getId());
@@ -1474,7 +1488,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 100);
+        ItemResult itemResult = node.waitItem(main.getId(), 2000);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -1565,19 +1579,19 @@ public class Node2LocalNetworkTest extends TestCase {
 
             // check that main is fully approved
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 500);
+            ItemResult itemResult = node.waitItem(main.getId(), 5000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
-            while(ItemState.APPROVED != existing1.reload().getState()) {
-                Thread.sleep(100);
-                System.out.println(existing1.getState());
+            while(ItemState.APPROVED != existing1.getState()) {
+                Thread.sleep(500);
+                System.out.println(existing1.reload().getState());
             }
             assertEquals(ItemState.APPROVED, existing1.getState());
 
-            while (badState != existing2.reload().getState()) {
-                Thread.sleep(100);
-                System.out.println(existing2.getState());
+            while (badState != existing2.getState()) {
+                Thread.sleep(500);
+                System.out.println(existing2.reload().getState());
             }
             assertEquals(badState, existing2.getState());
         }
@@ -1668,22 +1682,21 @@ public class Node2LocalNetworkTest extends TestCase {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 500);
+            ItemResult itemResult = node.waitItem(main.getId(), 2000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
-            while (ItemState.APPROVED != existing1.reload().getState()) {
-                Thread.sleep(100);
-                System.out.println(existing1.getState());
+            while (ItemState.APPROVED != existing1.getState()) {
+                Thread.sleep(500);
+                System.out.println(existing1.reload().getState());
             }
             assertEquals(ItemState.APPROVED, existing1.getState());
 
-            while (badState != existing2.reload().getState()) {
-                Thread.sleep(100);
-                System.out.println(existing2.getState());
+            while (badState != existing2.getState()) {
+                Thread.sleep(500);
+                System.out.println(existing2.reload().getState());
             }
             assertEquals(badState, existing2.getState());
-
         }
     }
 

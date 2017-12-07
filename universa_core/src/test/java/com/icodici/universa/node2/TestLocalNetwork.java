@@ -151,6 +151,10 @@ public class TestLocalNetwork extends Network {
         consumer = notificationConsumer;
     }
 
+    public void removeAllSubscribes() {
+        consumer = null;
+    }
+
     @Override
     public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         Node node = nodes.get(nodeInfo);
