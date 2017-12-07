@@ -14,7 +14,7 @@ public class Quantiser {
 
 
 
-    public synchronized void reset(int newLimit) {
+    public void reset(int newLimit) {
         quantaSum_ = 0;
         quantaLimit_ = newLimit;
         isCalculationFinished_ = false;
@@ -22,13 +22,13 @@ public class Quantiser {
 
 
 
-    public synchronized void resetNoLimit() {
+    public void resetNoLimit() {
         reset(-1);
     }
 
 
 
-    public synchronized void addWorkCost(QuantiserProcesses process) throws QuantiserException {
+    public void addWorkCost(QuantiserProcesses process) throws QuantiserException {
         quantaSum_ += process.getCost();
 //        System.out.println("Add processing cost for " + process + " (" + process.getCost() + "), now cost is " + quantaSum_ + ", limit is " + quantaLimit_);
         if (quantaLimit_ >= 0)
@@ -40,7 +40,7 @@ public class Quantiser {
 
 
 
-    public synchronized void addWorkCostFrom(Quantiser quantiser) throws QuantiserException {
+    public void addWorkCostFrom(Quantiser quantiser) throws QuantiserException {
         quantaSum_ += quantiser.getQuantaSum();
 //        System.out.println("Add processing cost from " + quantiser.getClass().getSimpleName() + " (" + quantiser.getQuantaSum() + "), now cost is " + quantaSum_ + ", limit is " + quantaLimit_);
         if (quantaLimit_ >= 0)
@@ -52,23 +52,23 @@ public class Quantiser {
 
 
 
-    public synchronized int getQuantaSum() {
+    public int getQuantaSum() {
         return quantaSum_;
     }
 
 
 
-    public synchronized int getQuantaLimit() {
+    public int getQuantaLimit() {
         return quantaLimit_;
     }
 
 
 
-    public synchronized boolean isCalculationFinished() {return isCalculationFinished_;}
+    public boolean isCalculationFinished() {return isCalculationFinished_;}
 
 
 
-    public synchronized void finishCalculation() {isCalculationFinished_ = true;}
+    public void finishCalculation() {isCalculationFinished_ = true;}
 
 
     public enum QuantiserProcesses {

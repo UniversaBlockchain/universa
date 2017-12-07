@@ -21,8 +21,6 @@ import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.Quantiser;
-import com.icodici.universa.node2.QuantiserSingleton;
-import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
@@ -60,8 +58,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static java.util.Arrays.asList;
 
