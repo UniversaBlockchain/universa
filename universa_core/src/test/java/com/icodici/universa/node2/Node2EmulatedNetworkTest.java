@@ -14,6 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.network.Network;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Assert;
@@ -22,6 +23,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FileReader;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -35,16 +38,26 @@ import static org.hamcrest.core.Is.is;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 
-public class Node2EmulatedNetworkTest extends Node2SingleTest {
+public class Node2EmulatedNetworkTest extends TestCase {
+
+    protected static final String ROOT_PATH = "./src/test_contracts/";
+    protected static final String CONFIG_2_PATH = "./src/test_config_2/";
 
     public static int NODES = 10;
 
     public static List<Node> nodes = new ArrayList<>();
 
+    private static Network network;
+    private static NetConfig nc;
+    private static Config config;
+    private static Node node;
+    private static NodeInfo myInfo;
+    private static Ledger ledger;
+
     @BeforeClass
     public static void setUp() throws Exception {
 
-        System.out.println("setup");
+        System.out.println("Emulated network setup");
         nodes = new ArrayList<>();
         config = new Config();
         config.setPositiveConsensus(7);
@@ -81,7 +94,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         }
         network = en;
         node = nodes.get(0);
-        System.out.println("created network on the nodes: " + nodes);
+        System.out.println("Emulated network created on the nodes: " + nodes);
+        System.out.println("Emulated network base node is: " + node);
         Thread.sleep(100);
     }
 
@@ -96,11 +110,11 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
                 node.registerItem(ok);
                 for (Node n : nodes) {
                     try {
-                        ItemResult r = n.waitItem(ok.getId(), 500);
+                        ItemResult r = n.waitItem(ok.getId(), 2500);
                         while( !r.state.isConsensusFound()) {
                             System.out.println("wait for consensus receiving on the node " + n);
                             Thread.sleep(200);
-                            r = n.waitItem(ok.getId(), 500);
+                            r = n.waitItem(ok.getId(), 2500);
                         }
                         System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
                         assertEquals(ItemState.APPROVED, r.state);
@@ -317,8 +331,8 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         TestItem bad = new TestItem(false);
         node.registerItem(ok);
         node.registerItem(bad);
-        node.waitItem(ok.getId(), 500);
-        node.waitItem(bad.getId(), 500);
+        node.waitItem(ok.getId(), 2000);
+        node.waitItem(bad.getId(), 2000);
         assertEquals(ItemState.APPROVED, node.checkItem(ok.getId()).state);
         assertEquals(ItemState.DECLINED, node.checkItem(bad.getId()).state);
     }
@@ -461,15 +475,15 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         node.registerItem(main);
 
-        ItemResult itemResult = node.checkItem(main.getId());
-        assertThat(itemResult.state, anyOf(equalTo(ItemState.PENDING), equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
+        ItemResult itemResult = node.waitItem(main.getId(), 2000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
 
-        @NonNull ItemResult itemNew1 = node.checkItem(new1.getId());
+        @NonNull ItemResult itemNew1 = node.waitItem(new1.getId(), 2000);
         assertEquals(ItemState.UNDEFINED, itemNew1.state);
 
         // and this one was created before
-        @NonNull ItemResult itemNew2 = node.checkItem(new2.getId());
-        Assert.assertThat(itemNew2.state, anyOf(equalTo(ItemState.APPROVED), equalTo(ItemState.PENDING_POSITIVE)));
+        @NonNull ItemResult itemNew2 = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, itemNew2.state);
 
         LogPrinter.showDebug(false);
     }
@@ -666,13 +680,13 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
             // and the references are intact
             while(ItemState.APPROVED != existing1.reload().getState()) {
-                Thread.sleep(100);
+                Thread.sleep(500);
                 System.out.println(existing1.getState());
             }
             assertEquals(ItemState.APPROVED, existing1.getState());
 
             while (badState != existing2.reload().getState()) {
-                Thread.sleep(100);
+                Thread.sleep(500);
                 System.out.println(existing2.getState());
             }
             assertEquals(badState, existing2.getState());
@@ -706,6 +720,217 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         node.registerItem(c);
         ItemResult itemResult = node.waitItem(c.getId(), 1500);
         assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+
+    public void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
+        System.out.println("registerAndCheckApproved " + this);
+        System.out.println("registerAndCheckApproved " + node + " " + nodes);
+        node.registerItem(c);
+        ItemResult itemResult = node.waitItem(c.getId(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+    public void registerAndCheckDeclined(Contract c) throws TimeoutException, InterruptedException {
+        node.registerItem(c);
+        ItemResult itemResult = node.waitItem(c.getId(), 5000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+    }
+
+
+    /////////////////////////////// from Node2Single
+
+    @Test
+    public void acceptWithReferences() throws Exception {
+        return;
+    }
+
+
+    @Test
+    public void shouldDeclineSplit() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+
+        // 50
+        c = c.createRevision();
+        Contract c2 = c.splitValue("amount", new Decimal(550));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertFalse(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(-450), c.getStateData().get("amount"));
+
+        registerAndCheckDeclined(c2);
+    }
+
+    @Test
+    public void shouldApproveSplit() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+
+        // 50
+        c = c.createRevision();
+        Contract c2 = c.splitValue("amount", new Decimal(50));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(50), c.getStateData().get("amount"));
+
+        registerAndCheckApproved(c2);
+        assertEquals("50", c2.getStateData().get("amount"));
+    }
+
+    @Test
+    public void shouldBreakByQuantizer() throws Exception {
+        // 100
+        Contract.setTestQuantaLimit(10);
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(c.check());
+        c.seal();
+
+        node.registerItem(c);
+        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        System.out.println(itemResult);
+        Contract.setTestQuantaLimit(-1);
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+    }
+
+    @Test
+    public void shouldBreakByQuantizerSplit() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(c.check());
+        c.seal();
+
+        registerAndCheckApproved(c);
+
+
+        Contract.setTestQuantaLimit(60);
+        // 50
+        Contract forSplit = c.createRevision();
+        Contract c2 = forSplit.splitValue("amount", new Decimal(30));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(c2.check());
+        c2.seal();
+        forSplit.seal();
+        assertEquals(new Decimal(30), new Decimal(Long.valueOf(c2.getStateData().get("amount").toString())));
+        assertEquals(new Decimal(70), forSplit.getStateData().get("amount"));
+
+        node.registerItem(forSplit);
+        ItemResult itemResult = node.waitItem(forSplit.getId(), 1500);
+        System.out.println(itemResult);
+        Contract.setTestQuantaLimit(-1);
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+    }
+
+    @Test
+    public void shouldApproveSplitAndJoinWithNewSend() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+        assertEquals(100, c.getStateData().get("amount"));
+
+
+        // 50
+        Contract cRev = c.createRevision();
+        Contract c2 = cRev.splitValue("amount", new Decimal(50));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
+
+        registerAndCheckApproved(c2);
+        assertEquals("50", c2.getStateData().get("amount"));
+
+
+        //send 150 out of 2 contracts (100 + 50)
+        Contract c3 = c2.createRevision();
+        c3.getStateData().set("amount", (new Decimal((Integer)c.getStateData().get("amount"))).
+                add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
+        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c3.addRevokingItems(c);
+        assertTrue(c3.check());
+        c3.seal();
+
+        registerAndCheckApproved(c3);
+        assertEquals(new Decimal(150), c3.getStateData().get("amount"));
+    }
+
+    @Test
+    public void shouldDeclineSplitAndJoinWithWrongAmount() throws Exception {
+        // 100
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+        System.out.println("------------ register base contract -------------");
+        registerAndCheckApproved(c);
+        assertEquals(100, c.getStateData().get("amount"));
+
+
+        // 50
+        Contract cRev = c.createRevision();
+        Contract c2 = cRev.splitValue("amount", new Decimal(50));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c2.check());
+        c2.seal();
+        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
+
+        System.out.println("------------ register split contract -------------");
+        registerAndCheckApproved(c2);
+        assertEquals("50", c2.getStateData().get("amount"));
+
+
+        //wrong. send 500 out of 2 contracts (100 + 50)
+        Contract c3 = c2.createRevision();
+        c3.getStateData().set("amount", new Decimal(500));
+        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c3.addRevokingItems(c);
+        assertFalse(c3.check());
+        c3.seal();
+
+        System.out.println("------------ register join contract -------------");
+        registerAndCheckDeclined(c3);
+    }
+
+    @Test
+    public void itemsCachedThenPurged() throws Exception {
+
+        // todo: rewrite
+//        config.setMaxElectionsTime(Duration.ofMillis(100));
+//
+//        TestItem main = new TestItem(true);
+//        main.setExpiresAtPlusFive(false);
+//
+//        node.registerItem(main);
+//        ItemResult itemResult = node.waitItem(main.getId(), 1500);
+//        assertEquals(ItemState.APPROVED, itemResult.state);
+//        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
+//
+//        assertEquals(main, node.getItem(main.getId()));
+//        Thread.sleep(500);
+//        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
     }
 
 
