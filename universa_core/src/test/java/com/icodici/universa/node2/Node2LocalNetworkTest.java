@@ -826,8 +826,10 @@ public class Node2LocalNetworkTest extends TestCase {
     @Test
     public void checkRegisterContractOnTemporaryOffedNetwork() throws Exception {
 
-        networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-        networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(100);
+        for (int i = 0; i < NODES/2; i++) {
+            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+        }
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -867,12 +869,14 @@ public class Node2LocalNetworkTest extends TestCase {
         } catch (TimeoutException e) {
             timer.cancel();
             System.out.println("switching on node 2");
-            networks.get(2).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
-            networks.get(2).setUDPAdapterLostPacketsPercentInTestMode(50);
+            for (int i = 0; i < NODES/2; i++) {
+                networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+                networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(50);
+            }
         }
 
         try {
-            ae.await(1000);
+            ae.await(10000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
