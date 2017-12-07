@@ -168,7 +168,7 @@ public class Node2LocalNetworkTest extends TestCase {
         n1.removeAllSubscribes();
     }
 
-    @Test(timeout = 20000)
+    @Test(timeout = 90000)
     public void registerGoodItem() throws Exception {
         int N = 100;
 //        LogPrinter.showDebug(true);
@@ -180,11 +180,15 @@ public class Node2LocalNetworkTest extends TestCase {
                 node.registerItem(ok);
                 for (Node n : nodesMap.values()) {
                     try {
-                        ItemResult r = n.waitItem(ok.getId(), 500);
+                        ItemResult r = n.waitItem(ok.getId(), 2000);
+                        int numIterations = 0;
                         while( !r.state.isConsensusFound()) {
                             System.out.println("wait for consensus receiving on the node " + n);
-                            Thread.sleep(200);
-                            r = n.waitItem(ok.getId(), 500);
+                            Thread.sleep(500);
+                            r = n.waitItem(ok.getId(), 2000);
+                            numIterations++;
+                            if(numIterations > 20)
+                                break;
                         }
                         System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
                         assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
@@ -399,33 +403,14 @@ public class Node2LocalNetworkTest extends TestCase {
 
         node.registerItem(contract);
 
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-
-                ItemResult r = node.checkItem(contract.getId());
-                System.out.println("Complex contract state: " + r.state);
-
-                if(r.state == ItemState.DECLINED) ae.fire();
-            }
-        }, 0, 500);
-
-        try {
-            ae.await(5000);
-        } catch (TimeoutException e) {
-            System.out.println("time is up");
-        }
-
-        timer.cancel();
+        ItemResult r = node.waitItem(contract.getId(), 5000);
+        System.out.println("Complex contract state: " + r.state);
+        assertEquals(ItemState.DECLINED, r.state);
 
         for (TestLocalNetwork ln : networks) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
-
-        ItemResult r = node.checkItem(contract.getId());
-        assertEquals(ItemState.DECLINED, r.state);
     }
 
     @Test
@@ -493,32 +478,8 @@ public class Node2LocalNetworkTest extends TestCase {
 
         node.registerItem(contract);
 
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-
-                ItemResult r = node.checkItem(contract.getId());
-                System.out.println("Complex contract state: " + r.state);
-
-                if(r.state == ItemState.APPROVED) ae.fire();
-            }
-        }, 0, 500);
-
-        try {
-            ae.await(5000);
-        } catch (TimeoutException e) {
-            System.out.println("time is up");
-        }
-
-        timer.cancel();
-
-        for (TestLocalNetwork ln : networks) {
-            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
-            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
-        }
-
-        ItemResult r = node.checkItem(contract.getId());
+        ItemResult r = node.waitItem(contract.getId(), 5000);
+        System.out.println("Complex contract state: " + r.state);
         ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
         assertEquals(expectedState, r.state);
     }
@@ -1466,12 +1427,12 @@ public class Node2LocalNetworkTest extends TestCase {
         TestItem item = new TestItem(false);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 100);
+        ItemResult result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.DECLINED, result.state);
 
-        result = node.waitItem(item.getId(), 100);
+        result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.DECLINED, result.state);
-        result = node.waitItem(item.getId(), 100);
+        result = node.waitItem(item.getId(), 2000);
         assertEquals(ItemState.DECLINED, result.state);
 
         result = node.checkItem(item.getId());
