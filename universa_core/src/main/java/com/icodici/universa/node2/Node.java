@@ -634,6 +634,7 @@ public class Node {
                                     return;
                                 }
                             }
+                            processingState = ItemProcessingState.FINISHED;
                             close();
                         } else {
                             try {
@@ -992,7 +993,7 @@ public class Node {
                     if (isConsensusReceivedExpired()) {
                         // cancel by timeout expired
                         debug("WARNING: Checking if all nodes got consensus is timed up, cancelling " + itemId);
-                        processingState = ItemProcessingState.CONSENSUS_SENT_AND_RECEIVED;
+                        processingState = ItemProcessingState.FINISHED;
                         stopConsensusReceivedChecker();
                         return;
                     }
@@ -1012,8 +1013,9 @@ public class Node {
             if(processingState.canContinue()) {
                 Boolean allReceived = network.allNodes().size() == positiveNodes.size() + negativeNodes.size();
 
+                debug("is for item " + itemId + " all got consensus: " + allReceived + " : " + network.allNodes().size() + "/" + positiveNodes.size() + "+" + negativeNodes.size());
                 if (allReceived) {
-                    processingState = ItemProcessingState.CONSENSUS_SENT_AND_RECEIVED;
+                    processingState = ItemProcessingState.FINISHED;
                     stopConsensusReceivedChecker();
                 }
 
@@ -1187,6 +1189,7 @@ public class Node {
                 // If we not just resynced itslef
                 if (!resyncItselfOnly) {
                     checkIfAllReceivedConsensus();
+                    debug("after check if all received consensus for item " + itemId + " processing state: " + processingState);
                     if (processingState.isGotConsensus()) {
                         pulseSendNewConsensus();
                     } else {
@@ -1228,9 +1231,16 @@ public class Node {
         }
 
         private final void removeSelf() {
-            if((poller == null || poller.isCancelled()) && (resyncer == null || resyncer.isCancelled())) {
+            debug("Continue closing, processing state: " + processingState + " for item " + itemId);
+            if(processingState.canRemoveSelf()) {
                 processors.remove(itemId);
-                debug("closed " + itemId.toBase64String());
+
+                stopDownloader();
+                stopPoller();
+                stopConsensusReceivedChecker();
+                stopResync();
+
+                debug("closed " + itemId.toBase64String() + " processing state: " + processingState);
             }
         }
 
@@ -1278,7 +1288,7 @@ public class Node {
         POLLING,
         GOT_CONSENSUS,
         SENDING_CONSENSUS,
-        CONSENSUS_SENT_AND_RECEIVED,
+        FINISHED,
         EMERGENCY_BREAK;
 
 
@@ -1291,14 +1301,14 @@ public class Node {
             switch (this) {
                 case GOT_CONSENSUS:
                 case SENDING_CONSENSUS:
-                case CONSENSUS_SENT_AND_RECEIVED:
+                case FINISHED:
                     return true;
             }
             return false;
         }
 
         public boolean isConsensusSentAndReceived() {
-            return this == CONSENSUS_SENT_AND_RECEIVED;
+            return this == FINISHED;
         }
 
         public boolean isGotConsensus() {
@@ -1315,6 +1325,15 @@ public class Node {
 
         public boolean canContinue() {
             return this != EMERGENCY_BREAK;
+        }
+
+        public boolean canRemoveSelf() {
+            switch (this) {
+                case EMERGENCY_BREAK:
+                case FINISHED:
+                    return true;
+            }
+            return false;
         }
     }
 
@@ -1414,7 +1433,7 @@ public class Node {
             resyncingState = ResyncingItemProcessingState.IS_COMMITTING;
 
             final AtomicInteger latch = new AtomicInteger(config.getResyncThreshold());
-            final AtomicInteger rest = new AtomicInteger(config.getPositiveConsensus());
+            final AtomicInteger rest = new AtomicInteger(config.getResyncBreakConsensus());
 
             final Average startDateAvg = new Average();
             final Average expiresAtAvg = new Average();

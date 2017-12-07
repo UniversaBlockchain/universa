@@ -419,7 +419,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
         assertEquals(2, main.getNewItems().size());
 
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 500);
+        ItemResult itemResult = node.waitItem(main.getId(), 2000);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -521,7 +521,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
             // check that main is fully approved
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 500);
+            ItemResult itemResult = node.waitItem(main.getId(), 2000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             Thread.sleep(500);
@@ -583,16 +583,19 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
         TestItem existing = new TestItem(true);
         node.registerItem(existing);
-        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 1500);
+        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 2000);
 
         // but second is missing
         HashId missingId = HashId.createRandom();
 
         main.addReferencedItems(existing.getId(), missingId);
 
-        // check that main is fully approved
+        // check that main is declined
+        System.out.println("--------- missind id: " + missingId);
+        System.out.println("--------- existing id: " + existing.getId());
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 15000);
+        // need some time to resync missingId
+        ItemResult itemResult = node.waitItem(main.getId(), 5000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // and the references are intact
@@ -648,7 +651,7 @@ public class Node2EmulatedNetworkTest extends Node2SingleTest {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 500);
+            ItemResult itemResult = node.waitItem(main.getId(), 2000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
