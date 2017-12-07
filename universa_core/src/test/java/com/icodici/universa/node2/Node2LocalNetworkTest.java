@@ -280,7 +280,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
     private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 5000);
+        ItemResult itemResult = node.waitItem(c.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 //
@@ -878,16 +878,20 @@ public class Node2LocalNetworkTest extends TestCase {
 
                 System.out.println("-----------nodes state--------------");
 
-                boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
-                    ItemResult r = n.checkItem(contract.getId());
-                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                Object lock = new Object();
+                synchronized (lock) {
+                    int num_approved = 0;
+                    for (Node n : nodesMap.values()) {
+                        ItemResult r = n.checkItem(contract.getId());
 
-                    if(r.state != ItemState.APPROVED) {
-                        all_is_approved = false;
+                        if (r.state == ItemState.APPROVED) {
+                            num_approved++;
+                        }
+                        System.out.println("Node: " + n.toString() + " state: " + r.state);
                     }
 
-                    if(all_is_approved) {
+                    if (num_approved == NODES) {
+                        System.out.println("All approved: " + num_approved);
                         ae.fire();
                     }
                 }
@@ -1465,12 +1469,12 @@ public class Node2LocalNetworkTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 2000);
+        ItemResult result = node.waitItem(item.getId(), 3000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(item.getId(), 2000);
+        result = node.waitItem(item.getId(), 3000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(item.getId(), 2000);
+        result = node.waitItem(item.getId(), 3000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.checkItem(item.getId());
@@ -1481,12 +1485,12 @@ public class Node2LocalNetworkTest extends TestCase {
         TestItem item2 = new TestItem(false);
 
         node.registerItem(item2);
-        ItemResult result2 = node.waitItem(item2.getId(), 500);
+        ItemResult result2 = node.waitItem(item2.getId(), 2000);
         assertEquals(ItemState.DECLINED, result2.state);
 
-        result2 = node.waitItem(item2.getId(), 500);
+        result2 = node.waitItem(item2.getId(), 2000);
         assertEquals(ItemState.DECLINED, result2.state);
-        result2 = node.waitItem(item2.getId(), 500);
+        result2 = node.waitItem(item2.getId(), 2000);
         assertEquals(ItemState.DECLINED, result2.state);
 
         result2 = node.checkItem(item2.getId());
@@ -1685,7 +1689,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         TestItem existing = new TestItem(true);
         node.registerItem(existing);
-        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 2000);
+        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 3000);
 
         // but second is missing
         HashId missingId = HashId.createRandom();
