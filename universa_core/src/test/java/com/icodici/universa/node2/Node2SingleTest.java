@@ -182,12 +182,15 @@ public class Node2SingleTest extends TestCase {
         }
 
         checkedItem = node.checkItem(item2.getId());
+
+        init(1, 1);
+
         assertEquals(ItemState.PENDING_NEGATIVE, checkedItem.state);
     }
 
     @Test
     public void timeoutError() throws Exception {
-        init(1, 1);
+
         config.setMaxElectionsTime(Duration.ofMillis(200));
 
         TestItem item = new TestItem(true);
@@ -633,9 +636,7 @@ public class Node2SingleTest extends TestCase {
         assertTrue(c.check());
         c.seal();
 
-        LogPrinter.showDebug(true);
         registerAndCheckApproved(c);
-        LogPrinter.showDebug(false);
         assertEquals(100, c.getStateData().get("amount"));
 
 
