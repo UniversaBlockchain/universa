@@ -36,15 +36,15 @@ import static org.junit.Assert.*;
 
 public class Node2EmulatedNetworkTest extends Node2SingleTest {
 
-    public static int NODES = 3;
+    public static int NODES = 10;
 
     public static List<Node> nodes = new ArrayList<>();
 
     public void setUp() throws Exception {
         nodes = new ArrayList<>();
         config = new Config();
-        config.setPositiveConsensus(2);
-        config.setNegativeConsensus(1);
+        config.setPositiveConsensus(7);
+        config.setNegativeConsensus(4);
         config.setResyncBreakConsensus(2);
 
         Properties properties = new Properties();
