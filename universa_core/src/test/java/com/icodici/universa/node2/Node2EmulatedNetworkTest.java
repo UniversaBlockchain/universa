@@ -551,8 +551,18 @@ public class Node2EmulatedNetworkTest extends TestCase {
             Thread.sleep(500);
 
             // and the references are intact
-            assertEquals(ItemState.APPROVED, existing1.reload().getState());
-            assertEquals(badState, existing2.reload().getState());
+
+            while(ItemState.APPROVED != existing1.getState()) {
+                Thread.sleep(500);
+                System.out.println(existing1.reload().getState());
+            }
+            assertEquals(ItemState.APPROVED, existing1.getState());
+
+            while (badState != existing2.getState()) {
+                Thread.sleep(500);
+                System.out.println(existing2.reload().getState());
+            }
+            assertEquals(badState, existing2.getState());
         }
     }
 
@@ -583,7 +593,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
         // check that main is fully approved
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 15000);
+        ItemResult itemResult = node.waitItem(main.getId(), 5000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         assertEquals(ItemState.UNDEFINED, node.checkItem(new1.getId()).state);
@@ -656,6 +666,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
 
 //        LogPrinter.showDebug(true);
+        // todo: check LOCKED situation
 
         for (ItemState badState : Arrays.asList(
                 ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
@@ -679,15 +690,15 @@ public class Node2EmulatedNetworkTest extends TestCase {
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
-            while(ItemState.APPROVED != existing1.reload().getState()) {
+            while(ItemState.APPROVED != existing1.getState()) {
                 Thread.sleep(500);
-                System.out.println(existing1.getState());
+                System.out.println(existing1.reload().getState());
             }
             assertEquals(ItemState.APPROVED, existing1.getState());
 
-            while (badState != existing2.reload().getState()) {
+            while (badState != existing2.getState()) {
                 Thread.sleep(500);
-                System.out.println(existing2.getState());
+                System.out.println(existing2.reload().getState());
             }
             assertEquals(badState, existing2.getState());
 
@@ -931,6 +942,32 @@ public class Node2EmulatedNetworkTest extends TestCase {
 //        assertEquals(main, node.getItem(main.getId()));
 //        Thread.sleep(500);
 //        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
+    }
+
+    @Test
+    public void timeoutError() throws Exception {
+
+        Duration maxElectionsTime = config.getMaxElectionsTime();
+        config.setMaxElectionsTime(Duration.ofMillis(200));
+
+        TestItem item = new TestItem(true);
+
+        // We start elections but no node in the network know the source, so it
+        // will short-circuit to self and then stop by the timeout:
+
+        ItemResult itemResult = node.checkItem(item.getId());
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+        assertFalse(itemResult.haveCopy);
+        assertNull(itemResult.createdAt);
+        assertNull(itemResult.expiresAt);
+
+        itemResult = node.waitItem(item.getId(), 100);
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+
+        itemResult = node.checkItem(item.getId());
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+
+        config.setMaxElectionsTime(maxElectionsTime);
     }
 
 
