@@ -73,7 +73,7 @@ public class BaseNetworkTest extends TestCase {
     public void registerBadItem() throws Exception {
         TestItem bad = new TestItem(false);
         node.registerItem(bad);
-        ItemResult r = node.waitItem(bad.getId(), 500);
+        ItemResult r = node.waitItem(bad.getId(), 2000);
         assertEquals(ItemState.DECLINED, r.state);
     }
 
