@@ -8,11 +8,13 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TransactionContract extends Contract {
@@ -54,6 +56,34 @@ public class TransactionContract extends Contract {
             getRevokingItems().add(c);
             actions.add(Binder.fromKeysValues("action", "remove", "id", c.getId()));
         }
+    }
+
+    public List<Contract> swapOwners(Contract contract1, Contract contract2) {
+
+        Role role1 = contract1.getOwner();
+        Role role2 = contract2.getOwner();
+
+        Contract newContract1 = contract1.createRevision(getKeysToSignWith());
+        Contract newContract2 = contract2.createRevision(getKeysToSignWith());
+
+        newContract1.setOwnerKeys(role2.getKeys());
+        newContract2.setOwnerKeys(role1.getKeys());
+
+        addNewItems(newContract1, newContract2);
+        addContractToRemove(contract1);
+        addContractToRemove(contract2);
+
+//        if( !getRevokingItems().contains(c)) {
+//            Binder data = getDefinition().getData();
+//            List<Binder> actions = data.getOrCreateList("actions");
+//            getRevokingItems().add(c);
+//            actions.add(Binder.fromKeysValues("action", "remove", "id", c.getId()));
+//        }
+
+        List<Contract> swappedContracts = new ArrayList<>();
+        swappedContracts.add(newContract1);
+        swappedContracts.add(newContract2);
+        return swappedContracts;
     }
 
 }

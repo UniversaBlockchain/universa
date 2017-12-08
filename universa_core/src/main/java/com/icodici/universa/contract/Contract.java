@@ -597,7 +597,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     /**
      * Resolve object describing role and create either: - new role object - symlink to named role instance, ensure it
-     * is register and return it, if it is a Map, tries to contruct and register {@link Role} thent return it.
+     * is register and return it, if it is a Map, tries to construct and register {@link Role} then return it.
      *
      * @param roleObject
      *
@@ -1072,7 +1072,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @param newContracts
      */
-    public void addNewItems(Contract... newContracts) throws Quantiser.QuantiserException {
+    public void addNewItems(Contract... newContracts) {
         for (Contract c : newContracts) {
             newItems.add(c);
         }
