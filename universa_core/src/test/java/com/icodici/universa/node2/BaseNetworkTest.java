@@ -6,11 +6,16 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.TransactionContract;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.tools.Do;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Test;
 
@@ -716,5 +721,125 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
     }
 
+
+    @Test
+    public void swapContractShouldAprrove() throws Exception {
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        delorean.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
+        delorean.seal();
+        System.out.println("DeLorean ownership contract is valid: " + delorean.check());
+        delorean.traceErrors();
+        registerAndCheckApproved(delorean);
+        Role martyMcflyRole = delorean.getOwner();
+        System.out.println("DeLorean ownership is belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        lamborghini.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
+        lamborghini.seal();
+        System.out.println("Lamborghini ownership contract is valid: " + lamborghini.check());
+        lamborghini.traceErrors();
+        registerAndCheckApproved(lamborghini);
+        Role stepanMamontovRole = lamborghini.getOwner();
+        System.out.println("Lamborghini ownership is belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+
+        // swap owners in the contracts
+        System.out.println("--- swap owners in the contracts ---");
+
+        delorean = delorean.createRevision(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        delorean.setOwnerKeys(stepanMamontovRole.getKeys());
+        System.out.println("DeLorean ownership contract revision " + delorean.getRevision() + " is valid: " + delorean.check());
+        delorean.traceErrors();
+
+        lamborghini = lamborghini.createRevision(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        lamborghini.setOwnerKeys(martyMcflyRole.getKeys());
+        System.out.println("Lamborghini ownership contract revision " + lamborghini.getRevision() + " is valid: " + lamborghini.check());
+        lamborghini.traceErrors();
+
+        // register swapped contracts using TransactionContract
+        System.out.println("--- register swapped contracts using TransactionContract ---");
+
+        TransactionContract transaction = new TransactionContract();
+        // issuer is trusted person (f. e. one of swap members)
+        transaction.setIssuer(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        transaction.addNewItems(delorean, lamborghini);
+        transaction.seal();
+        System.out.println("Transaction contract for swapping is valid: " + transaction.check());
+        registerAndCheckApproved(transaction);
+
+        // check new revisions for ownership contracts
+        System.out.println("--- check new revisions for ownership contracts ---");
+
+        ItemResult deloreanResult = node.waitItem(delorean.getId(), 5000);
+        System.out.println("DeLorean ownership contract revision " + delorean.getRevision() + " is " + deloreanResult + " by Network");
+        System.out.println("DeLorean ownership is belongs to Stepa: " + delorean.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+        assertEquals(ItemState.APPROVED, deloreanResult.state);
+
+        ItemResult lamborghiniResult = node.waitItem(lamborghini.getId(), 5000);
+        System.out.println("Lamborghini ownership contract revision " + lamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
+        System.out.println("DeLorean ownership is belongs to Marty: " + lamborghini.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+        assertEquals(ItemState.APPROVED, lamborghiniResult.state);
+    }
+
+    @Test
+    public void swapContractShouldDecline() throws Exception {
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        delorean.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
+        delorean.seal();
+        System.out.println("DeLorean ownership contract is valid: " + delorean.check());
+        delorean.traceErrors();
+        registerAndCheckApproved(delorean);
+        Role martyMcflyRole = delorean.getOwner();
+        System.out.println("DeLorean ownership is belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        lamborghini.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
+        lamborghini.seal();
+        System.out.println("Lamborghini ownership contract is valid: " + lamborghini.check());
+        lamborghini.traceErrors();
+        registerAndCheckApproved(lamborghini);
+        Role stepanMamontovRole = lamborghini.getOwner();
+        System.out.println("Lamborghini ownership is belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+
+        // swap owners in the contracts
+        System.out.println("--- swap owners in the contracts ---");
+
+        delorean = delorean.createRevision(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        // Marty frode us and change owner of the car to his friend
+//        delorean.setOwnerKeys(stepanMamontovRole.getKeys());
+        delorean.setOwnerKeys(TestKeys.publicKey(0));
+        System.out.println("DeLorean ownership contract revision " + delorean.getRevision() + " is valid: " + delorean.check());
+        delorean.traceErrors();
+
+        lamborghini = lamborghini.createRevision(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        lamborghini.setOwnerKeys(martyMcflyRole.getKeys());
+        System.out.println("Lamborghini ownership contract revision " + lamborghini.getRevision() + " is valid: " + lamborghini.check());
+        lamborghini.traceErrors();
+
+        // register swapped contracts using TransactionContract
+        System.out.println("--- register swapped contracts using TransactionContract ---");
+
+        TransactionContract transaction = new TransactionContract();
+        // issuer is trusted person (f. e. one of swap members)
+        transaction.setIssuer(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        transaction.addNewItems(delorean, lamborghini);
+        transaction.seal();
+        System.out.println("Transaction contract for swapping is valid: " + transaction.check());
+//        LogPrinter.showDebug(true);
+        registerAndCheckDeclined(transaction);
+
+        // check new revisions for ownership contracts
+        System.out.println("--- check new revisions for ownership contracts ---");
+
+        ItemResult deloreanResult = node.waitItem(delorean.getId(), 5000);
+        System.out.println("DeLorean ownership contract revision " + delorean.getRevision() + " is " + deloreanResult + " by Network");
+        System.out.println("DeLorean ownership is still belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+        assertEquals(ItemState.UNDEFINED, deloreanResult.state);
+
+        ItemResult lamborghiniResult = node.waitItem(lamborghini.getId(), 5000);
+        System.out.println("Lamborghini ownership contract revision " + lamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
+        System.out.println("DeLorean ownership is still belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+        assertEquals(ItemState.UNDEFINED, lamborghiniResult.state);
+
+    }
 
 }

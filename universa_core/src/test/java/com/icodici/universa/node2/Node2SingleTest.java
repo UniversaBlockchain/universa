@@ -8,11 +8,16 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.TransactionContract;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.*;
