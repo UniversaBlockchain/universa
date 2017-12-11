@@ -1904,7 +1904,7 @@ public class CLIMainTest {
         callMain("--cost", basePath + "contract_for_cost.unicon");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN)") >= 0);
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
     }
 
     @Test
@@ -1932,7 +1932,7 @@ public class CLIMainTest {
                 basePath + "contract_for_cost2.unicon");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN)") >= 2);
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 2);
     }
 
     @Test
@@ -1957,7 +1957,7 @@ public class CLIMainTest {
         callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN)") >= 0);
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
     }
 
     @Test
@@ -2041,7 +2041,7 @@ public class CLIMainTest {
                 "--cost");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " (UTN)") >= 1);
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 1);
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
