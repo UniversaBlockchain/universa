@@ -61,10 +61,13 @@ public class TransactionContract extends Contract {
         }
     }
 
-    public List<Contract> swapOwners(Contract oldContract1, Contract newContract1, Contract oldContract2, Contract newContract2) {
+    public List<Contract> swapOwners(Contract oldContract1, Contract oldContract2) {
 
         Role role1 = oldContract1.getOwner();
         Role role2 = oldContract2.getOwner();
+
+        Contract newContract1 = oldContract1.createRevision();
+        Contract newContract2 = oldContract2.createRevision();
 
         newContract1.setOwnerKeys(role2.getKeys());
         newContract2.setOwnerKeys(role1.getKeys());
@@ -82,10 +85,9 @@ public class TransactionContract extends Contract {
     private List<Contract> swappingContracts = new ArrayList<>();
     private List<Contract> swappedContracts = new ArrayList<>();
 
-    public boolean addForSwap(Contract contract, PrivateKey privateKey) {
+    public boolean addForSwap(Contract contract) {
         if (swappingContracts.size() < 2) {
             swappingContracts.add(contract);
-            swappedContracts.add(contract.createRevision(privateKey));
         } else {
             throw new IllegalArgumentException("You cannot swap more then 2 contracts.");
         }
@@ -95,7 +97,8 @@ public class TransactionContract extends Contract {
     }
 
     public List<Contract> swapOwners() {
-        return swapOwners(swappingContracts.get(0), swappedContracts.get(1), swappingContracts.get(1), swappedContracts.get(1));
+        swappedContracts = swapOwners(swappingContracts.get(0), swappingContracts.get(1));
+        return swappedContracts;
     }
 
 //    @Override
