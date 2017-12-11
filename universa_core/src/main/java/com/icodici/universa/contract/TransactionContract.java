@@ -12,6 +12,9 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Quantiser;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 
 import java.io.IOException;
@@ -23,6 +26,7 @@ import java.util.Set;
 public class TransactionContract extends Contract {
     public TransactionContract(byte[] sealed) throws IOException, Quantiser.QuantiserException {
         super(sealed);
+        System.out.println("new TransactionContract " + swappingContracts);
     }
 
     public TransactionContract() {
@@ -82,12 +86,18 @@ public class TransactionContract extends Contract {
         return swappedContracts;
     }
 
-    private List<Contract> swappingContracts = new ArrayList<>();
-    private List<Contract> swappedContracts = new ArrayList<>();
+    private List<Contract> swappingContracts;
+    private List<Contract> swappedContracts;
 
     public boolean addForSwap(Contract contract) {
+        if(swappingContracts == null)
+            swappingContracts = new ArrayList<>();
+        if(swappedContracts == null)
+            swappedContracts = new ArrayList<>();
+        System.out.println("addForSwap " + swappingContracts.size());
         if (swappingContracts.size() < 2) {
             swappingContracts.add(contract);
+            System.out.println("addForSwap after " + swappingContracts.size());
         } else {
             throw new IllegalArgumentException("You cannot swap more then 2 contracts.");
         }
@@ -101,33 +111,59 @@ public class TransactionContract extends Contract {
         return swappedContracts;
     }
 
+
 //    @Override
-//    public byte[] seal() {
-//        for (Contract c : swappedContracts) {
-//            c.seal();
+//    public void deserialize(Binder data, BiDeserializer deserializer) {
+//        super.deserialize(data, deserializer);
+//        System.out.println("deserialize " + data.getListOrThrow("swappingContracts").size());
+//        List swappingContractsList = data.getListOrThrow("swappingContracts");
+//        if(swappingContracts == null)
+//            swappingContracts = new ArrayList<>();
+//        for(Object o : swappingContractsList) {
+////            Contract contract = new Contract((byte[]) o);
+////            contract.deserialize((Binder) o, deserializer);
+////            contract.seal();
+//            try {
+//                swappingContracts.add(new Contract((byte[]) ((Binder)o).get("data")));
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
 //        }
-//        return super.seal();
+//        System.out.println("deserialize " + swappingContracts.size());
+//    }
+//
+//    @Override
+//    public Binder serialize(BiSerializer s) {
+//        Binder binder = super.serialize(s);
+//        binder.put("swappingContracts", swappingContracts);
+//        List swappingContractsList = new ArrayList();
+//        for(Contract c : swappingContracts) {
+//            swappingContractsList.add(Binder.fromKeysValues("data", c.seal()));
+//        }
+//        System.out.println("serialize " + binder.getListOrThrow("swappingContracts").size());
+//        return binder;
 //    }
 
     @Override
-
     public void addSignerKey(PrivateKey privateKey) {
 
         Set<KeyRecord> krs = new HashSet<>();
-        for (Contract c : swappedContracts) {
-            krs.add(new KeyRecord(privateKey.getPublicKey()));
-            boolean isOwnerKey = false;
-            for (PublicKey k : c.getOwner().getKeys()) {
-                if(privateKey.getPublicKey().equals(k)) {
-                    isOwnerKey = true;
+        if(swappedContracts != null) {
+            for (Contract c : swappedContracts) {
+                krs.add(new KeyRecord(privateKey.getPublicKey()));
+                boolean isOwnerKey = false;
+                for (PublicKey k : c.getOwner().getKeys()) {
+                    if (privateKey.getPublicKey().equals(k)) {
+                        isOwnerKey = true;
+                    }
                 }
-            }
-            // we set as creator for this key, if it not belongs to new owner (and belongs to old owner)
-            // and sign with it
-            if(!isOwnerKey) {
-                c.setCreator(krs);
-                c.addSignerKey(privateKey);
-                c.seal();
+                // we set as creator for this key, if it not belongs to new owner (and belongs to old owner)
+                // and sign with it
+                if (!isOwnerKey) {
+                    c.setCreator(krs);
+                    c.addSignerKey(privateKey);
+                    c.seal();
+                }
             }
         }
         super.addSignerKey(privateKey);
