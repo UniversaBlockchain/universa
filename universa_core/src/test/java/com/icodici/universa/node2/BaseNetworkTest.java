@@ -979,4 +979,73 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, lamborghiniResult.state);
     }
 
+
+    @Test
+    public void swapContractsViaTransactionSnatch() throws Exception {
+
+        PrivateKey martyPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+        System.out.println("DeLorean ownership contract is valid: " + delorean.check());
+        delorean.traceErrors();
+        registerAndCheckApproved(delorean);
+        Role martyMcflyRole = delorean.getOwner();
+        System.out.println("DeLorean ownership is belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        lamborghini.addSignerKey(manufacturePrivateKey);
+        lamborghini.seal();
+        System.out.println("Lamborghini ownership contract is valid: " + lamborghini.check());
+        lamborghini.traceErrors();
+        registerAndCheckApproved(lamborghini);
+        Role stepanMamontovRole = lamborghini.getOwner();
+        System.out.println("Lamborghini ownership is belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+
+        // register swapped contracts using TransactionContract
+        System.out.println("--- register swapped contracts using TransactionContract ---");
+
+        List<Contract> swappedContracts;
+
+        // first Marty create transaction, add own contract
+        TransactionContract transaction_step_1 = new TransactionContract();
+        transaction_step_1.setIssuer(manufacturePrivateKey);
+        transaction_step_1.addForSwap(delorean);
+
+        // then Marty send draft transaction to Stepa
+        // and Stepa add own contract and swap it (transaction still being draft)
+        TransactionContract transaction_step_2 = transaction_step_1;
+        transaction_step_2.addForSwap(lamborghini);
+        swappedContracts = transaction_step_2.swapOwners();
+
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign it
+        TransactionContract transaction_step_3 = transaction_step_2;
+        transaction_step_3.addSignerKey(martyPrivateKey);
+
+        // then Marty send final draft transaction to Stepa
+        // and Stepa don't sign it, just get both cars
+        System.out.println("--- now steal the car ---");
+        //delorean = transaction_step_3.hackerGetContract(0);
+        delorean = swappedContracts.get(0);
+        System.out.println("delorean.check(): " + delorean.check());
+        System.out.println("lamborghini.check(): " + lamborghini.check());
+        registerAndCheckApproved(delorean);
+        registerAndCheckApproved(lamborghini);
+        System.out.println("DeLorean ownership is belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+        System.out.println("DeLorean ownership is belongs to Stepa: " + delorean.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+        System.out.println("Lamborghini ownership is belongs to Marty: " + lamborghini.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+        System.out.println("Lamborghini ownership is belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+        ItemResult deloreanResult = node.waitItem(delorean.getId(), 5000);
+        System.out.println("delorean.state: " + deloreanResult.state);
+        ItemResult lamborghiniResult = node.waitItem(lamborghini.getId(), 5000);
+        System.out.println("lamborghini.state: " + lamborghiniResult.state);
+        assertEquals(false, delorean.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()) && lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+        assertEquals(ItemState.DECLINED, deloreanResult.state);
+        assertEquals(ItemState.APPROVED, lamborghiniResult.state);
+    }
+
 }
