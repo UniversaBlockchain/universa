@@ -866,6 +866,10 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsTrustedShouldApprove() throws Exception {
+
+        PrivateKey martyPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+
         Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
         delorean.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
         delorean.seal();
@@ -888,15 +892,19 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("--- register swapped contracts using TransactionContract ---");
 
         List<Contract> swappedContracts;
+
         TransactionContract transaction = new TransactionContract();
-        // issuer is all of swap members)
-        transaction.setIssuer(
-                new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")),
-                new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"))
-        );
-//        transaction.addSignerKeyFromFile(ROOT_PATH + "keys/marty_mcfly.private.unikey");
-//        transaction.addSignerKeyFromFile(ROOT_PATH + "keys/stepan_mamontov.private.unikey");
-        swappedContracts = transaction.swapOwners(delorean, lamborghini);
+        transaction.setIssuer(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+
+        transaction.addForSwap(delorean, martyPrivateKey);
+        // here Marty send draft transaction to Stepa
+        transaction.addForSwap(lamborghini, stepaPrivateKey);
+        swappedContracts = transaction.swapOwners();
+        // here Stepa send draft transaction back to Marty
+        transaction.addSignerKey(martyPrivateKey);
+        // here Marty send final draft transaction to Stepa
+        transaction.addSignerKey(stepaPrivateKey);
+
         transaction.seal();
         transaction.check();
         transaction.traceErrors();
@@ -907,13 +915,13 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("--- check old revisions for ownership contracts ---");
 
         ItemResult deloreanResult = node.waitItem(delorean.getId(), 5000);
-        System.out.println("DeLorean ownership contract revision " + delorean.getRevision() + " is " + deloreanResult + " by Network");
-        System.out.println("DeLorean ownership is still belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+        System.out.println("DeLorean revoked ownership contract revision " + delorean.getRevision() + " is " + deloreanResult + " by Network");
+        System.out.println("DeLorean revoked ownership was belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
         assertEquals(ItemState.REVOKED, deloreanResult.state);
 
         ItemResult lamborghiniResult = node.waitItem(lamborghini.getId(), 5000);
-        System.out.println("Lamborghini ownership contract revision " + lamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
-        System.out.println("DeLorean ownership is still belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+        System.out.println("Lamborghini revoked ownership contract revision " + lamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
+        System.out.println("Lamborghini revoked ownership was belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
         assertEquals(ItemState.REVOKED, lamborghiniResult.state);
 
         // check new revisions for ownership contracts
@@ -927,7 +935,7 @@ public class BaseNetworkTest extends TestCase {
         Contract newLamborgini = swappedContracts.get(1);
         lamborghiniResult = node.waitItem(newLamborgini.getId(), 5000);
         System.out.println("Lamborghini ownership contract revision " + newLamborgini.getRevision() + " is " + lamborghiniResult + " by Network");
-        System.out.println("DeLorean ownership is now belongs to Marty: " + newLamborgini.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+        System.out.println("Lamborghini ownership is now belongs to Marty: " + newLamborgini.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
         assertEquals(ItemState.APPROVED, lamborghiniResult.state);
     }
 

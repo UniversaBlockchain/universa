@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Quantiser;
@@ -15,7 +16,9 @@ import net.sergeych.tools.Binder;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class TransactionContract extends Contract {
     public TransactionContract(byte[] sealed) throws IOException, Quantiser.QuantiserException {
@@ -58,32 +61,73 @@ public class TransactionContract extends Contract {
         }
     }
 
-    public List<Contract> swapOwners(Contract contract1, Contract contract2) {
+    public List<Contract> swapOwners(Contract oldContract1, Contract newContract1, Contract oldContract2, Contract newContract2) {
 
-        Role role1 = contract1.getOwner();
-        Role role2 = contract2.getOwner();
-
-        Contract newContract1 = contract1.createRevision(getKeysToSignWith());
-        Contract newContract2 = contract2.createRevision(getKeysToSignWith());
+        Role role1 = oldContract1.getOwner();
+        Role role2 = oldContract2.getOwner();
 
         newContract1.setOwnerKeys(role2.getKeys());
         newContract2.setOwnerKeys(role1.getKeys());
 
         addNewItems(newContract1, newContract2);
-        addContractToRemove(contract1);
-        addContractToRemove(contract2);
-
-//        if( !getRevokingItems().contains(c)) {
-//            Binder data = getDefinition().getData();
-//            List<Binder> actions = data.getOrCreateList("actions");
-//            getRevokingItems().add(c);
-//            actions.add(Binder.fromKeysValues("action", "remove", "id", c.getId()));
-//        }
+        addContractToRemove(oldContract1);
+        addContractToRemove(oldContract2);
 
         List<Contract> swappedContracts = new ArrayList<>();
         swappedContracts.add(newContract1);
         swappedContracts.add(newContract2);
         return swappedContracts;
+    }
+
+    private List<Contract> swappingContracts = new ArrayList<>();
+    private List<Contract> swappedContracts = new ArrayList<>();
+
+    public boolean addForSwap(Contract contract, PrivateKey privateKey) {
+        if (swappingContracts.size() < 2) {
+            swappingContracts.add(contract);
+            swappedContracts.add(contract.createRevision(privateKey));
+        } else {
+            throw new IllegalArgumentException("You cannot swap more then 2 contracts.");
+        }
+
+        // Is swap seats is all busy?
+        return swappingContracts.size() == 2;
+    }
+
+    public List<Contract> swapOwners() {
+        return swapOwners(swappingContracts.get(0), swappedContracts.get(1), swappingContracts.get(1), swappedContracts.get(1));
+    }
+
+//    @Override
+//    public byte[] seal() {
+//        for (Contract c : swappedContracts) {
+//            c.seal();
+//        }
+//        return super.seal();
+//    }
+
+    @Override
+
+    public void addSignerKey(PrivateKey privateKey) {
+
+        Set<KeyRecord> krs = new HashSet<>();
+        for (Contract c : swappedContracts) {
+            krs.add(new KeyRecord(privateKey.getPublicKey()));
+            boolean isOwnerKey = false;
+            for (PublicKey k : c.getOwner().getKeys()) {
+                if(privateKey.getPublicKey().equals(k)) {
+                    isOwnerKey = true;
+                }
+            }
+            // we set as creator for this key, if it not belongs to new owner (and belongs to old owner)
+            // and sign with it
+            if(!isOwnerKey) {
+                c.setCreator(krs);
+                c.addSignerKey(privateKey);
+                c.seal();
+            }
+        }
+        super.addSignerKey(privateKey);
     }
 
 }
