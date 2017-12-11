@@ -402,6 +402,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return quantiser.getQuantaSum();
     }
 
+    public int getProcessedCostUTN() {
+        return (int) Math.floor(quantiser.getQuantaSum() / Quantiser.quantaPerUTN) + 1;
+    }
+
     /**
      * All new items and self must have uniqie identication for its level, e.g. origin + revision + branch should always
      * ve different.

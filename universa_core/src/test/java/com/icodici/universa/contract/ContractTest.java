@@ -30,10 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.*;
 
@@ -475,6 +472,68 @@ public class ContractTest extends ContractTestBase {
         processingContract = processContractAsItWillBeOnTheNode(forJoin);
         System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCost() + " (UTN)");
         assertEquals(costShouldBeForJoin, processingContract.getProcessedCost());
+    }
+
+    @Test
+    public void calculateSplit7To2ProcessingCost() throws Exception {
+
+        // Should create 7 contracts, sign and seal it all, then create revision and split to 2 contracts. Then calculate cost of processing.
+        // should repeat contract processing procedure on the Node
+        // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check())
+
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(contract, true);
+
+        System.out.println("----- split -----");
+        List<Contract> splittedList = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            contract = contract.createRevision();
+            Contract splitted = contract.splitValue(FIELD_NAME, new Decimal(15));
+            splitted.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+            sealCheckTrace(splitted, true);
+            assertEquals(new Decimal(15), new Decimal(Long.valueOf(splitted.getStateData().get("amount").toString())));
+            sealCheckTrace(contract, true);
+            assertEquals(new Decimal(85 - i*15), contract.getStateData().get("amount"));
+            splittedList.add(splitted);
+            Thread.sleep(1000);
+        }
+
+
+        Contract forJoin = contract.createRevision();
+        Contract splittedChanges;
+        for (int i = 0; i < 6; i++) {
+            if(i < 5) {
+                forJoin.getRevokingItems().add(splittedList.get(i));
+            } else {
+                Contract splitting = splittedList.get(i).createRevision();
+                splittedChanges = splitting.splitValue(FIELD_NAME, new Decimal(5));
+                splittedChanges.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+                sealCheckTrace(splittedChanges, true);
+                sealCheckTrace(splitting, true);
+                forJoin.getRevokingItems().add(splitting);
+                forJoin.addNewItems(splittedChanges);
+            }
+        }
+        forJoin.getStateData().set(FIELD_NAME, new Decimal(95));
+        forJoin.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        sealCheckTrace(forJoin, true);
+
+        // x9 Check 4096 bits signature own (8*9=72) +
+        // Register a self version (20) +
+        // Register new item a version (20) +
+        // x7 Register revoking item a version (20*7=140) +
+        // Check self change owner permission (1) +
+        // Check self change split join permission (1+2) +
+        // Check self change revoke permission (1) +
+        // Check new item change owner permission (1) +
+        // Check new item change split join permission (1+2) +
+        // Check new item change revoke permission (1)
+        int costShouldBeForSplit = 262;
+
+        Contract processingContract = processContractAsItWillBeOnTheNode(forJoin);
+        System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCost() + " (UTN)");
+        assertEquals(costShouldBeForSplit, processingContract.getProcessedCost());
     }
 
     @Test

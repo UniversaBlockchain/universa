@@ -1895,7 +1895,7 @@ public class CLIMain {
      * @param contract
      */
     private static void printProcessingCost(Contract contract) {
-        report("Contract processing cost is " + contract.getProcessedCost() + " (UTN)");
+        report("Contract processing cost is " + contract.getProcessedCostUTN() + " (UTN)");
     }
 
 
