@@ -51,6 +51,7 @@ definition:
     # by its owner - but we require also issuer signature on it:
     revoke:
       - owner
+      - issuer
 #      - role:
 #        name: list_role
 #        type: ALL_OF
