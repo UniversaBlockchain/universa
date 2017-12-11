@@ -669,9 +669,9 @@ public class Node {
                         }
                     }
                     // check new items
-                    try {
+//                    try {
                         for (Approvable newItem : item.getNewItems()) {
-                            if (!newItem.check()) {
+                            if (!newItem.getErrors().isEmpty()) {
                                 item.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
                             } else {
                                 StateRecord r = record.createOutputLockRecord(newItem.getId());
@@ -683,10 +683,10 @@ public class Node {
                                 }
                             }
                         }
-                    } catch (Quantiser.QuantiserException e) {
-                        emergencyBreak();
-                        return;
-                    }
+//                    } catch (Quantiser.QuantiserException e) {
+//                        emergencyBreak();
+//                        return;
+//                    }
 
                     debug("Checking subitems of item " + itemId
                             + ", state: " + record.getState() +
