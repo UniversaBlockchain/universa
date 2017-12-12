@@ -832,9 +832,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 "data", theContract
         );
         List<byte[]> signatures = new ArrayList<>();
+
+//        for (ExtendedSignature es : sealedByKeys.values()) {
+//            signatures.add(es.getSignature());
+//        }
+
         keysToSignWith.forEach(key -> {
-            signatures.add(ExtendedSignature.sign(key, theContract));
+            byte[] signature = ExtendedSignature.sign(key, theContract);
+
+            signatures.add(signature);
+
+
+//            verifySignatureQuantized(key.getPublicKey());
+            ExtendedSignature es = ExtendedSignature.verify(key.getPublicKey(), signature, theContract);
+            if (es != null) {
+                sealedByKeys.put(key.getPublicKey(), es);
+            }
         });
+
+
+
         result.put("data", theContract);
         result.put("signatures", signatures);
         setOwnBinary(result);
@@ -1707,6 +1724,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         }
         return context;
+    }
+
+    public void clearContext() {
+        context = null;
+        context = getContext();
     }
 
     /**

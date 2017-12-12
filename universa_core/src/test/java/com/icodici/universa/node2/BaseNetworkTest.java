@@ -7,10 +7,12 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionContract;
+import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
@@ -769,32 +771,31 @@ public class BaseNetworkTest extends TestCase {
 
         List<Contract> swappedContracts;
 
-        // first Marty create transaction, add own contract
+        // first Marty create transaction, add own contract and point to Stepa as swapper
         TransactionContract transaction_step_1 = new TransactionContract();
-        transaction_step_1.setIssuer(manufacturePrivateKey);
-        transaction_step_1.addForSwap(delorean);
+        transaction_step_1.setIssuer(martyPrivateKey.getPublicKey(), stepaPrivateKey.getPublicKey());
+        transaction_step_1.addForSwap(delorean, martyPrivateKey, stepaPrivateKey.getPublicKey());
 
         // then Marty send draft transaction to Stepa
-        // and Stepa add own contract and swap it (transaction still being draft)
-        TransactionContract transaction_step_2 = transaction_step_1;
-        transaction_step_2.addForSwap(lamborghini);
-        swappedContracts = transaction_step_2.swapOwners();
+        // and Stepa add own contract and point to Marty as swapper
+        TransactionContract transaction_step_2 = imitateSendingContractToPartner(transaction_step_1, manufacturePrivateKey);
+        transaction_step_2.addForSwap(lamborghini, stepaPrivateKey, martyPrivateKey.getPublicKey());
+        swappedContracts = (List<Contract>) transaction_step_2.getNew();
 
         // then Stepa send draft transaction back to Marty
         // and Marty sign it
-        TransactionContract transaction_step_3 = transaction_step_2;
+        TransactionContract transaction_step_3 = imitateSendingContractToPartner(transaction_step_2, manufacturePrivateKey);
         transaction_step_3.addSignerKey(martyPrivateKey);
 
         // then Marty send final draft transaction to Stepa
         // and Stepa sign it too and send to approving
-        TransactionContract transaction_step_4 = transaction_step_3;
+        TransactionContract transaction_step_4 = imitateSendingContractToPartner(transaction_step_3, manufacturePrivateKey);
         transaction_step_4.addSignerKey(stepaPrivateKey);
 
         transaction_step_4.seal();
         transaction_step_4.check();
         transaction_step_4.traceErrors();
         System.out.println("Transaction contract for swapping is valid: " + transaction_step_4.check());
-        LogPrinter.showDebug(true);
         registerAndCheckApproved(transaction_step_4);
 
         // check old revisions for ownership contracts
@@ -854,25 +855,35 @@ public class BaseNetworkTest extends TestCase {
         // register swapped contracts using TransactionContract
         System.out.println("--- register swapped contracts using TransactionContract ---");
 
+
         List<Contract> swappedContracts;
 
-        TransactionContract transaction = new TransactionContract();
-        transaction.setIssuer(manufacturePrivateKey);
+        // first Marty create transaction, add own contract and point to Stepa as swapper
+        TransactionContract transaction_step_1 = new TransactionContract();
+        transaction_step_1.setIssuer(martyPrivateKey.getPublicKey(), stepaPrivateKey.getPublicKey());
+        transaction_step_1.addForSwap(delorean, martyPrivateKey, stepaPrivateKey.getPublicKey());
 
-        transaction.addForSwap(delorean);
-        // here Marty send draft transaction to Stepa
-        transaction.addForSwap(lamborghini);
-        swappedContracts = transaction.swapOwners();
-        // here Stepa send draft transaction back to Marty
-        transaction.addSignerKey(martyPrivateKey);
-        // here Marty send final draft transaction to Stepa, but Stepa not sign transaction!
-//        transaction.addSignerKey(stepaPrivateKey);
+        // then Marty send draft transaction to Stepa
+        // and Stepa add own contract and point to Marty as swapper
+        TransactionContract transaction_step_2 = imitateSendingContractToPartner(transaction_step_1, manufacturePrivateKey);
+        transaction_step_2.addForSwap(lamborghini, stepaPrivateKey, martyPrivateKey.getPublicKey());
+        swappedContracts = (List<Contract>) transaction_step_2.getNew();
 
-        transaction.seal();
-        transaction.check();
-        transaction.traceErrors();
-        System.out.println("Transaction contract for swapping is valid: " + transaction.check());
-        registerAndCheckDeclined(transaction);
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign it
+        TransactionContract transaction_step_3 = imitateSendingContractToPartner(transaction_step_2, manufacturePrivateKey);
+        transaction_step_3.addSignerKey(martyPrivateKey);
+
+        // then Marty send final draft transaction to Stepa
+        // but Stepa do not sign it!
+        TransactionContract transaction_step_4 = imitateSendingContractToPartner(transaction_step_3, manufacturePrivateKey);
+//        transaction_step_4.addSignerKey(stepaPrivateKey);
+
+        transaction_step_4.seal();
+        transaction_step_4.check();
+        transaction_step_4.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + transaction_step_4.check());
+        registerAndCheckDeclined(transaction_step_4);
 
         // check old revisions for ownership contracts
         System.out.println("--- check old revisions for ownership contracts ---");
@@ -931,25 +942,36 @@ public class BaseNetworkTest extends TestCase {
         // register swapped contracts using TransactionContract
         System.out.println("--- register swapped contracts using TransactionContract ---");
 
+
         List<Contract> swappedContracts;
 
-        TransactionContract transaction = new TransactionContract();
-        transaction.setIssuer(manufacturePrivateKey);
+        // first Marty create transaction, add own contract and point to Stepa as swapper
+        TransactionContract transaction_step_1 = new TransactionContract();
+        transaction_step_1.setIssuer(martyPrivateKey.getPublicKey(), stepaPrivateKey.getPublicKey());
+        transaction_step_1.addForSwap(delorean, martyPrivateKey, stepaPrivateKey.getPublicKey());
 
-        transaction.addForSwap(delorean);
-        // here Marty send draft transaction to Stepa
-        transaction.addForSwap(lamborghini);
-        swappedContracts = transaction.swapOwners();
-        // here Stepa send draft transaction back to Marty
-        transaction.addSignerKey(martyPrivateKey);
-        // here Marty send final draft transaction to Stepa, but transaction is sign by third party!
-        transaction.addSignerKey(manufacturePrivateKey);
+        // then Marty send draft transaction to Stepa
+        // and Stepa add own contract and point to Marty as swapper
+        TransactionContract transaction_step_2 = imitateSendingContractToPartner(transaction_step_1, manufacturePrivateKey);
+        transaction_step_2.addForSwap(lamborghini, stepaPrivateKey, martyPrivateKey.getPublicKey());
+        swappedContracts = (List<Contract>) transaction_step_2.getNew();
 
-        transaction.seal();
-        transaction.check();
-        transaction.traceErrors();
-        System.out.println("Transaction contract for swapping is valid: " + transaction.check());
-        registerAndCheckDeclined(transaction);
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign it
+        TransactionContract transaction_step_3 = imitateSendingContractToPartner(transaction_step_2, manufacturePrivateKey);
+        transaction_step_3.addSignerKey(martyPrivateKey);
+
+        // then Marty send final draft transaction to Stepa
+        // but it signed by third party!
+        TransactionContract transaction_step_4 = imitateSendingContractToPartner(transaction_step_3, manufacturePrivateKey);
+//        transaction_step_4.addSignerKey(stepaPrivateKey);
+        transaction_step_4.addSignerKey(manufacturePrivateKey);
+
+        transaction_step_4.seal();
+        transaction_step_4.check();
+        transaction_step_4.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + transaction_step_4.check());
+        registerAndCheckDeclined(transaction_step_4);
 
         // check old revisions for ownership contracts
         System.out.println("--- check old revisions for ownership contracts ---");
@@ -1010,25 +1032,26 @@ public class BaseNetworkTest extends TestCase {
 
         List<Contract> swappedContracts;
 
-        // first Marty create transaction, add own contract
+        // first Marty create transaction, add own contract and point to Stepa as swapper
         TransactionContract transaction_step_1 = new TransactionContract();
-        transaction_step_1.setIssuer(manufacturePrivateKey);
-        transaction_step_1.addForSwap(delorean);
+        transaction_step_1.setIssuer(martyPrivateKey.getPublicKey(), stepaPrivateKey.getPublicKey());
+        transaction_step_1.addForSwap(delorean, martyPrivateKey, stepaPrivateKey.getPublicKey());
 
         // then Marty send draft transaction to Stepa
-        // and Stepa add own contract and swap it (transaction still being draft)
-        TransactionContract transaction_step_2 = transaction_step_1;
-        transaction_step_2.addForSwap(lamborghini);
-        swappedContracts = transaction_step_2.swapOwners();
+        // and Stepa add own contract and point to Marty as swapper
+        TransactionContract transaction_step_2 = imitateSendingContractToPartner(transaction_step_1, manufacturePrivateKey);
+        transaction_step_2.addForSwap(lamborghini, stepaPrivateKey, martyPrivateKey.getPublicKey());
+        swappedContracts = (List<Contract>) transaction_step_2.getNew();
 
         // then Stepa send draft transaction back to Marty
         // and Marty sign it
-        TransactionContract transaction_step_3 = transaction_step_2;
+        TransactionContract transaction_step_3 = imitateSendingContractToPartner(transaction_step_2, manufacturePrivateKey);
         transaction_step_3.addSignerKey(martyPrivateKey);
 
         // then Marty send final draft transaction to Stepa
         // and Stepa don't sign it, just get both cars
         System.out.println("--- now steal the car ---");
+        TransactionContract transaction_step_4 = imitateSendingContractToPartner(transaction_step_3, manufacturePrivateKey);
         //delorean = transaction_step_3.hackerGetContract(0);
         delorean = swappedContracts.get(0);
         System.out.println("delorean.check(): " + delorean.check());
@@ -1046,6 +1069,45 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(false, delorean.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()) && lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
         assertEquals(ItemState.DECLINED, deloreanResult.state);
         assertEquals(ItemState.APPROVED, lamborghiniResult.state);
+    }
+
+
+    public TransactionContract imitateSendingContractToPartner(TransactionContract sendingContract, PrivateKey manufacturePrivateKey) throws Exception {
+
+        System.out.println("--- imitate sending to partner ---");
+        sendingContract.addSignerKey(manufacturePrivateKey);
+        sendingContract.seal();
+
+        TransactionPack tp_before = sendingContract.getTransactionPack();
+//        tp_before.trace();
+        byte[] data = tp_before.pack();
+
+//        Thread.sleep(1000);
+
+        TransactionPack tp_after  = TransactionPack.unpack(data);
+        TransactionContract gotContract = new TransactionContract(tp_after.getContract().getLastSealedBinary(), tp_after);
+
+        // Add missing parents and resetContext
+        for (Approvable c : gotContract.getNewItems()) {
+
+            boolean parentExist = false;
+            for (Approvable c2 : ((Contract) c).getRevokingItems()) {
+                if(((Contract) c2).getId().equals(((Contract) c).getParent())) {
+                    parentExist = true;
+                }
+            }
+
+            if(!parentExist) {
+                for (Approvable c3 : gotContract.getRevokingItems()) {
+                    if(((Contract) c3).getId().equals(((Contract) c).getParent())) {
+                        ((Contract) c).addRevokingItems(((Contract) c3));
+                    }
+                }
+            }
+            ((Contract) c).clearContext();
+        }
+
+        return gotContract;
     }
 
 }

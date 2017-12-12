@@ -100,6 +100,10 @@ public class ListRole extends Role {
 
     @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
+        if(this.mode == null) {
+            this.mode = Mode.ALL;
+        }
+
         return this.mode == Mode.ANY && this.processAnyMode(keys) ||
                 this.mode == Mode.ALL && this.processAllMode(keys) ||
                 this.mode == Mode.QUORUM && this.processQuorumMode(keys);
