@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 
+import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
 import com.icodici.universa.node2.Quantiser;
@@ -147,6 +148,7 @@ public class TransactionPack implements BiSerializable {
         List<Bytes> ll = deserializer.deserializeCollection(
                 data.getListOrThrow("references")
         );
+
         if (ll != null) {
             for (Bytes b : ll) {
                 Contract c = new Contract(b.toArray(), this);
@@ -161,14 +163,16 @@ public class TransactionPack implements BiSerializable {
 
     @Override
     public Binder serialize(BiSerializer serializer) {
-        return Binder.of(
-                "contract", contract.getLastSealedBinary(),
-                "references",
-                serializer.serialize(
-                        references.values().stream()
-                                .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
-                )
-        );
+        synchronized (this) {
+            return Binder.of(
+                    "contract", contract.getLastSealedBinary(),
+                    "references",
+                    serializer.serialize(
+                            references.values().stream()
+                                    .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
+                    )
+            );
+        }
     }
 
     public final boolean isReconstructed() {

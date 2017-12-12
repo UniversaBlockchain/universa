@@ -99,6 +99,12 @@ public class ExtendedSignature {
         return Boss.unpack(src.getBinaryOrThrow("exts")).getBytesOrThrow("key");
     }
 
+
+    private byte[] signature;
+    public byte[] getSignature() {
+        return signature;
+    }
+
     /**
      * Unpack and the extended signature. On success, returns instance of the {@link ExtendedSignature} with a decoded
      * timestamp, {@link #getCreatedAt()}
@@ -109,7 +115,6 @@ public class ExtendedSignature {
      *
      * @return null if the signature is invalud, {@link ExtendedSignature} instance on success.
      */
-
     public static ExtendedSignature verify(PublicKey key, byte[] signature, byte[] data) {
         try {
             Binder src = Boss.unpack(signature);
@@ -120,6 +125,7 @@ public class ExtendedSignature {
                 Binder b = Boss.unpack(exts);
                 es.keyId = b.getBytesOrThrow("key");
                 es.createdAt = b.getZonedDateTimeOrThrow("created_at");
+                es.signature = signature;
                 Bytes hash = b.getBytesOrThrow("sha512");
                 Bytes dataHash = new Bytes(new Sha512().digest(data));
                 if (hash.equals(dataHash))
