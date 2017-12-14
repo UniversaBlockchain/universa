@@ -92,40 +92,4 @@ public class QuantiserTest extends TestCase {
         }
     }
 
-
-
-    @Test
-    public void singleQuantiserConcurrency() throws Exception {
-        AtomicInteger assertsCounter = new AtomicInteger(0);
-        ExecutorService executor = Executors.newFixedThreadPool(8);
-        byte[] hashBytes = new byte[128];
-        new Random().nextBytes(hashBytes);
-        HashId hashId = new HashId(hashBytes);
-        int N = 20000;
-        int workIterations = 1000;
-        Quantiser q = new Quantiser();
-        q.reset(N*workIterations*Quantiser.QuantiserProcesses.PRICE_CHECK_4096_SIG.getCost());
-
-        class Work implements Runnable  {
-            @Override
-            public void run() {
-                for (int i = 0; i < workIterations; ++i) {
-                    try {
-                        q.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_4096_SIG);
-                    } catch (Quantiser.QuantiserException e) {
-                        assertsCounter.incrementAndGet();
-                    }
-                }
-            }
-        };
-
-        for (int i = 0; i < N; ++i) {
-            executor.submit(new Work());
-        }
-        executor.shutdown();
-        executor.awaitTermination(30, TimeUnit.SECONDS);
-        assertEquals(N*workIterations*Quantiser.QuantiserProcesses.PRICE_CHECK_4096_SIG.getCost(), q.getQuantaSum());
-        assertEquals(0, assertsCounter.get());
-    }
-
 }
