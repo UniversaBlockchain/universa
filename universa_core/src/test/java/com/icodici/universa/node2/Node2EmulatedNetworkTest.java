@@ -673,7 +673,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
 
             // check that main is fully approved
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 2000);
+            ItemResult itemResult = node.waitItem(main.getId(), 5000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             Thread.sleep(500);
@@ -818,7 +818,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 2000);
+            ItemResult itemResult = node.waitItem(main.getId(), 5000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
@@ -1019,7 +1019,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
 
         boolean all_is_approved = true;
         for (Node n : nodes) {
-            ItemResult r = n.checkItem(contract.getId());
+            ItemResult r = n.waitItem(contract.getId(), 2000);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
             }

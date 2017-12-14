@@ -1714,6 +1714,8 @@ public class Node2LocalNetworkTest extends TestCase {
             // but second is not good
             StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
             existing2.setState(badState).save();
+            
+            Thread.sleep(200);
 
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
