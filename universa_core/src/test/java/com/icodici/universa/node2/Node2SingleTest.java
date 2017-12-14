@@ -265,6 +265,10 @@ public class Node2SingleTest extends TestCase {
         // and now we run the day for teh output document:
         node.registerItem(new2);
 
+        // and this one was created before
+        @NonNull ItemResult itemNew2before = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, itemNew2before.state);
+
         main.addNewItems(new1, new2);
 
         assertEquals(2, main.getNewItems().size());

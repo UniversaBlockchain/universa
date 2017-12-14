@@ -134,7 +134,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
                 }
             }
 //            });
-            assertThat(node.countElections(), is(lessThan(10)));
+//            assertThat(node.countElections(), is(lessThan(10)));
         }
     }
 
@@ -589,6 +589,10 @@ public class Node2EmulatedNetworkTest extends TestCase {
 
         // and now we run the day for teh output document:
         node.registerItem(new2);
+
+        // and this one was created before
+        @NonNull ItemResult itemNew2before = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, itemNew2before.state);
 
         main.addNewItems(new1, new2);
 

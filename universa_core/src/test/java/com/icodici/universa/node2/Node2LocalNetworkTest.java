@@ -201,7 +201,7 @@ public class Node2LocalNetworkTest extends TestCase {
                         fail("timeout");
                     }
                 }
-                assertThat(node.countElections(), is(lessThan(10)));
+//                assertThat(node.countElections(), is(lessThan(10)));
 
                 ItemResult r = node.waitItem(ok.getId(), 5500);
                 assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
@@ -1557,7 +1557,7 @@ public class Node2LocalNetworkTest extends TestCase {
         assertEquals(2, main.getNewItems().size());
 
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 1000);
+        ItemResult itemResult = node.waitItem(main.getId(), 2000);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -1576,6 +1576,10 @@ public class Node2LocalNetworkTest extends TestCase {
 
         // and now we run the day for teh output document:
         node.registerItem(new2);
+
+        // and this one was created before
+        @NonNull ItemResult itemNew2before = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, itemNew2before.state);
 
         main.addNewItems(new1, new2);
 
