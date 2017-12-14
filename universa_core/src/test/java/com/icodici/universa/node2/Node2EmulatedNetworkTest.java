@@ -244,7 +244,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
         }
     }
 
-    @Test(timeout = 3000)
+    @Test(timeout = 5000)
     public void resyncApproved() throws Exception {
         Contract c = new Contract(TestKeys.privateKey(0));
         c.seal();
@@ -306,7 +306,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void resyncWithTimeout() throws Exception {
 
 //        LogPrinter.showDebug(true);
@@ -710,8 +710,14 @@ public class Node2EmulatedNetworkTest extends TestCase {
         System.out.println("--------resister (bad) item " + existing1.getId() + " ---------");
         node.registerItem(existing1);
 
+        @NonNull ItemResult existing1Before = node.waitItem(existing1.getId(), 2000);
+        assertEquals(ItemState.DECLINED, existing1Before.state);
+
         System.out.println("--------resister (good) item " + existing2.getId() + " ---------");
         node.registerItem(existing2);
+
+        @NonNull ItemResult existing2Before = node.waitItem(existing2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, existing2Before.state);
 
         main.addReferencedItems(existing1.getId(), existing2.getId());
         main.addNewItems(new1, new2);
@@ -729,8 +735,6 @@ public class Node2EmulatedNetworkTest extends TestCase {
 
         // and the references are intact
         assertEquals(ItemState.DECLINED, node.checkItem(existing1.getId()).state);
-        if (node.checkItem(existing2.getId()).state.isPending())
-            Thread.sleep(500);
         assertEquals(ItemState.APPROVED, node.checkItem(existing2.getId()).state);
 
 //        LogPrinter.showDebug(false);
@@ -917,7 +921,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
 
         boolean time_is_up = false;
         try {
-            ae.await(30000);
+            ae.await(45000);
         } catch (TimeoutException e) {
             time_is_up = true;
             System.out.println("time is up");

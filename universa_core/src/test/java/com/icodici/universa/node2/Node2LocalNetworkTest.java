@@ -1194,7 +1194,7 @@ public class Node2LocalNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
     }
 
-    @Test
+    @Test(timeout = 5000)
     public void resyncWithTimeout() throws Exception {
 
 //        LogPrinter.showDebug(true);
@@ -1217,26 +1217,9 @@ public class Node2LocalNetworkTest extends TestCase {
         node.resync(c.getId());
         assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
 
-        // Start checking nodes
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                if( ItemState.UNDEFINED == node.checkItem(c.getId()).state)
-                    ae.fire();
-            }
-        }, 100, 500);
 
-        try {
-            ae.await(6000);
-        } catch (TimeoutException e) {
-            System.out.println("time is up");
-        }
-
-        timer.cancel();
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 5000).state);
         config.setMaxResyncTime(wasDuration);
-
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
 
         for (int i = 0; i < NODES; i++) {
             networks.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
