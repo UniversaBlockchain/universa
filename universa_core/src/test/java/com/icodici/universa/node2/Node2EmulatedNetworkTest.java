@@ -259,14 +259,14 @@ public class Node2EmulatedNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 5000).state);
     }
 
-    @Test
+    @Test(timeout = 10000)
     public void resyncRevoked() throws Exception {
         Contract c = new Contract(TestKeys.privateKey(0));
         c.seal();
         addToAllLedgers(c, ItemState.REVOKED);
 
         node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
 
 //        LogPrinter.showDebug(true);
         node.resync(c.getId());
@@ -815,7 +815,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
             // but second is not good
             StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
             existing2.setState(badState).save();
-            
+
             Thread.sleep(200);
 
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
