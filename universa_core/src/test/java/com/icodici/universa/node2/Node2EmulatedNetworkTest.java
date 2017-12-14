@@ -56,6 +56,8 @@ public class Node2EmulatedNetworkTest extends TestCase {
 
         System.out.println("Emulated network setup");
         nodes = new ArrayList<>();
+        System.gc();
+        Thread.sleep(1000);
         config = new Config();
         config.setPositiveConsensus(7);
         config.setNegativeConsensus(4);

@@ -58,6 +58,8 @@ public class Node2LocalNetworkTest extends TestCase {
     public static void setUp() throws Exception {
         nodesMap = new HashMap<>();
         networks = new ArrayList<>();
+        System.gc();
+        Thread.sleep(1000);
 
         config = new Config();
         config.setPositiveConsensus(7);
