@@ -1418,12 +1418,12 @@ public class Node2LocalNetworkTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 2000);
+        ItemResult result = node.waitItem(item.getId(), 3000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(item.getId(), 2000);
+        result = node.waitItem(item.getId(), 3000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(item.getId(), 2000);
+        result = node.waitItem(item.getId(), 3000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.checkItem(item.getId());
@@ -1720,7 +1720,7 @@ public class Node2LocalNetworkTest extends TestCase {
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 2000);
+            ItemResult itemResult = node.waitItem(main.getId(), 5000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
