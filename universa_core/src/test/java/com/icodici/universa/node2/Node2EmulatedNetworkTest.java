@@ -542,7 +542,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
 
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 500);
+        ItemResult itemResult = node.waitItem(main.getId(), 2000);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -794,7 +794,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
 //        assertEquals(ItemState.REVOKED, node.checkItem(existing2.getId()).state);
     }
 
-    @Test
+    @Test(timeout = 15000)
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
 
 //        LogPrinter.showDebug(true);
@@ -805,6 +805,7 @@ public class Node2EmulatedNetworkTest extends TestCase {
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
                 ) {
 
+            Thread.sleep(200);
             System.out.println("--------state " + badState + " ---------");
 
             TestItem main = new TestItem(true);
@@ -814,6 +815,8 @@ public class Node2EmulatedNetworkTest extends TestCase {
             // but second is not good
             StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
             existing2.setState(badState).save();
+            
+            Thread.sleep(200);
 
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
 

@@ -164,7 +164,7 @@ public class Node2LocalNetworkTest extends TestCase {
                                                            ZonedDateTime.now()),
                                             false)
         );
-        ae.await(500);
+        ae.await(1000);
         n1.removeAllSubscribes();
 
         // fully recreate network - we broke subscribers
@@ -800,7 +800,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         boolean time_is_up = false;
         try {
-            ae.await(30000);
+            ae.await(45000);
         } catch (TimeoutException e) {
             time_is_up = true;
             System.out.println("time is up");
@@ -908,7 +908,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap.values()) {
-            ItemResult r = n.checkItem(contract.getId());
+            ItemResult r = n.waitItem(contract.getId(), 2000);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
             }
@@ -999,7 +999,7 @@ public class Node2LocalNetworkTest extends TestCase {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap.values()) {
-            ItemResult r = n.checkItem(contract.getId());
+            ItemResult r = n.waitItem(contract.getId(), 2000);
             System.out.println("Node: " + n.toString() + " state: " + r.state);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
@@ -1714,7 +1714,7 @@ public class Node2LocalNetworkTest extends TestCase {
             // but second is not good
             StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
             existing2.setState(badState).save();
-            
+
             Thread.sleep(200);
 
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
