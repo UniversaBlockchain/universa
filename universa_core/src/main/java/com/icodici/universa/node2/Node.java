@@ -12,6 +12,7 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ReferenceModel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.Ledger;
@@ -653,7 +654,8 @@ public class Node {
         private final void checkSubItems() {// check the referenced items
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
-                    for (HashId id : item.getReferencedItems()) {
+                    for (ReferenceModel refModel : item.getReferencedItems()) {
+                        HashId id = refModel.contract_id;
                         if (!ledger.isApproved(id)) {
                             item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                         }
@@ -735,7 +737,8 @@ public class Node {
                 HashMap<HashId, StateRecord> knownParts = new HashMap<>();
                 if (baseCheckPassed) {
                     // check the referenced items
-                    for (HashId id : item.getReferencedItems()) {
+                    for (ReferenceModel refModel : item.getReferencedItems()) {
+                        HashId id = refModel.contract_id;
                         StateRecord r = ledger.getRecord(id);
                         debug(">> referenced subitem " + id + " is " + (r != null ? r.getState() : null));
 

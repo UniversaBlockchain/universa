@@ -7,6 +7,7 @@
 
 package com.icodici.universa;
 
+import com.icodici.universa.contract.ReferenceModel;
 import com.icodici.universa.node2.Quantiser;
 
 import java.time.ZonedDateTime;
@@ -35,7 +36,7 @@ public interface Approvable extends HashIdentifiable {
      *
      * @return referenced items list
      */
-    default Set<HashId> getReferencedItems() {
+    default Set<ReferenceModel> getReferencedItems() {
         return new HashSet<>();
     }
 
