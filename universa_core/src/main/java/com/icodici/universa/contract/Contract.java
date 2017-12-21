@@ -49,9 +49,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private final Set<ReferenceModel> referencedItems = new HashSet<>();
     private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
-    private Definition definition;
     private final Map<String, Role> roles = new HashMap<>();
+    private Definition definition;
     private State state;
+    private Transactional transactional;
     private byte[] sealedBinary;
     private int apiLevel = MAX_API_LEVEL;
     private Context context = null;
@@ -881,17 +882,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return new revision of this contract, identical to this one, to be modified.
      */
-    public Contract createRevision() {
+    public Contract createRevision(Transactional transactional) {
         try {
             // We need deep copy, so, simple while not that fast.
             // note that revisions are create on clients where speed it not of big importance!
             Contract newRevision = copy();
-            // modify th edeep copy for a new revision
+            // modify the deep copy for a new revision
             newRevision.state.revision = state.revision + 1;
             newRevision.state.createdAt = ZonedDateTime.now();
             newRevision.state.parent = getId();
             newRevision.state.origin = state.revision == 1 ? getId() : state.origin;
             newRevision.revokingItems.add(this);
+            newRevision.transactional = transactional;
             return newRevision;
         } catch (Exception e) {
             throw new IllegalStateException("failed to create revision", e);
@@ -916,11 +918,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public Contract createRevision(PrivateKey... keys) {
-        return createRevision(Do.list(keys));
+        return createRevision(null, keys);
+    }
+
+    public Contract createRevision(Transactional transactional, PrivateKey... keys) {
+        return createRevision(Do.list(keys), transactional);
     }
 
     public Contract createRevision(Collection<PrivateKey> keys) {
-        Contract newRevision = createRevision();
+        return createRevision(keys, null);
+    }
+
+    public Contract createRevision(Collection<PrivateKey> keys, Transactional transactional) {
+        Contract newRevision = createRevision(transactional);
         Set<KeyRecord> krs = new HashSet<>();
         keys.forEach(k -> {
             krs.add(new KeyRecord(k.getPublicKey()));
@@ -991,23 +1001,34 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (l > MAX_API_LEVEL)
             throw new RuntimeException("contract api level conflict: found " + l + " my level " + apiLevel);
         deserializer.withContext(this, () -> {
+
             if (definition == null)
                 definition = new Definition();
             definition.deserializeWith(data.getBinderOrThrow("definition"), deserializer);
+
             if (state == null)
                 state = new State();
             state.deserealizeWith(data.getBinderOrThrow("state"), deserializer);
+
+            if (transactional == null)
+                transactional = new Transactional();
+            transactional.deserializeWith(data.getBinder("transactional", null), deserializer);
         });
 //        throw new RuntimeException("not yet ready");
     }
 
     @Override
     public Binder serialize(BiSerializer s) {
-        return Binder.of(
-                "api_level", apiLevel,
-                "definition", definition.serializeWith(s),
-                "state", state.serializeWith(s)
+        Binder binder = Binder.of(
+                        "api_level", apiLevel,
+                        "definition", definition.serializeWith(s),
+                        "state", state.serializeWith(s)
         );
+
+        if(transactional != null)
+            binder.set("transactional", transactional.serializeWith(s));
+
+        return binder;
     }
 
     /**
@@ -1352,6 +1373,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return false;
     }
 
+
+    public Transactional createTransactionalSection() {
+        return new Transactional();
+    }
+
     // processes that should be quantized
 
     /**
@@ -1683,6 +1709,38 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             });
         }
 
+    }
+
+    public class Transactional {
+
+        private List<Reference> references;
+
+        private Transactional() {
+
+        }
+
+        public Binder serializeWith(BiSerializer serializer) {
+
+            Binder b = new Binder();
+
+            if (references != null)
+                b.set("references", references);
+
+            return serializer.serialize(b);
+        }
+
+        public void deserializeWith(Binder data, BiDeserializer d) {
+            if(data != null)
+                this.references = d.deserialize(data.getList("references", null));
+        }
+
+        public void addReference(Reference reference) {
+            if(references == null) {
+                references = new ArrayList<>();
+            }
+
+            references.add(reference);
+        }
     }
 
     public void traceErrors() {

@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -47,5 +48,27 @@ public class TransactionContractTest extends ContractTestBase {
 
         assertTrue(revokeContract.check());
 //        tc.traceErrors();
+    }
+
+
+    @Test
+    public void checkTransactional() throws Exception {
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+
+        Contract delorean = Contract.fromDslFile(rootPath + "DeLoreanOwnership.yml");
+        delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+        delorean.traceErrors();
+
+        Contract.Transactional transactional = delorean.createTransactionalSection();
+        Reference reference = new Reference();
+        reference.setName("transactional_example");
+        transactional.addReference(reference);
+        Contract deloreanTransactional = delorean.createRevision(transactional);
+        deloreanTransactional.addSignerKey(manufacturePrivateKey);
+        deloreanTransactional.seal();
+        deloreanTransactional.traceErrors();
+
     }
 }

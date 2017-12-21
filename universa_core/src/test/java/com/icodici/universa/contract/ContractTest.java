@@ -650,6 +650,12 @@ public class ContractTest extends ContractTestBase {
         assertEquals(costShouldBeAfterProcessing, processingContract.getProcessedCost());
     }
 
+
+    @Test
+    public void checkTransactional() throws Exception {
+
+    }
+
     /**
      * Imitate procedure of contract processing as it will be on the Node.
      * Gte contract from param, create from it new contract,
