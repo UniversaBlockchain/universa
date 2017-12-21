@@ -46,7 +46,7 @@ import static java.util.Arrays.asList;
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private static final int MAX_API_LEVEL = 3;
-    private final Set<HashId> referencedItems = new HashSet<>();
+    private final Set<ReferenceModel> referencedItems = new HashSet<>();
     private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
     private Definition definition;
@@ -320,7 +320,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public Set<HashId> getReferencedItems() {
+    public Set<ReferenceModel> getReferencedItems() {
         return referencedItems;
     }
 

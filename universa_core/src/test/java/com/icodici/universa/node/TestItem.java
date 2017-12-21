@@ -11,6 +11,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.ReferenceModel;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -27,14 +28,14 @@ public class TestItem implements Approvable {
     private boolean isGood = true;
     private HashId hashId = HashId.createRandom();
     private Set<Approvable> newItems = new HashSet<>();
-    private Set<HashId> referencedItems = new HashSet<>();
+    private Set<ReferenceModel> referencedItems = new HashSet<>();
     private Set<Approvable> revokingItems = new HashSet<>();
     private List<ErrorRecord> errors = new ArrayList<>();
 
     private boolean expiresAtPlusFive = true;
 
     @Override
-    public Set<HashId> getReferencedItems() {
+    public Set<ReferenceModel> getReferencedItems() {
         return referencedItems;
     }
 
@@ -68,7 +69,11 @@ public class TestItem implements Approvable {
     }
 
     public void addReferencedItems(HashId... itemIds) {
-        Stream.of(itemIds).forEach(i -> referencedItems.add(i));
+        Stream.of(itemIds).forEach(i -> {
+            ReferenceModel refModel = new ReferenceModel();
+            refModel.contract_id = i;
+            referencedItems.add(refModel);
+        });
     }
 
     @Override
