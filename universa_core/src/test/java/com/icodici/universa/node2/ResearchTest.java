@@ -3,13 +3,18 @@ package com.icodici.universa.node2;
 
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.contract.ReferenceModel;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -361,6 +366,86 @@ public class ResearchTest extends BaseNetworkTest {
         registerAndCheckApproved(loadedContract);
     }
 
+
+    private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for ( int j = 0; j < bytes.length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
+
+    @Test
+    public void contractSwapTest() throws Exception {
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey alicePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/marty_mcfly.private.unikey"));
+        PrivateKey bobPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/stepan_mamontov.private.unikey"));
+        System.out.println("manufacture fingerprint(): " + bytesToHex(manufacturePrivateKey.getPublicKey().fingerprint()));
+        System.out.println("alice fingerprint(): " + bytesToHex(alicePrivateKey.getPublicKey().fingerprint()));
+        System.out.println("bob fingerprint(): " + bytesToHex(bobPrivateKey.getPublicKey().fingerprint()));
+
+        Contract k0 = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        k0.addSignerKey(manufacturePrivateKey);
+        k0.seal();
+        System.out.println("k0.check(): " + k0.check());
+        k0.traceErrors();
+        byte[] k0signFingerprint = k0.getKeysToSignWith().iterator().next().getPublicKey().fingerprint();
+        System.out.println("k0 sign fingerprint(): " + bytesToHex(k0signFingerprint));
+
+        Contract l0 = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        l0.addSignerKey(manufacturePrivateKey);
+        l0.seal();
+        System.out.println("l0.check(): " + l0.check());
+        l0.traceErrors();
+        byte[] l0signFingerprint = l0.getKeysToSignWith().iterator().next().getPublicKey().fingerprint();
+        System.out.println("l0 sign fingerprint(): " + bytesToHex(l0signFingerprint));
+
+        PublicKey publicKeyAlice = l0.getOwner().getKeys().iterator().next();
+        System.out.println("alice role fingerprint: " + bytesToHex(publicKeyAlice.fingerprint()));
+
+        System.out.println("alice role fingerprint equals: " + publicKeyAlice.equals(manufacturePrivateKey.getPublicKey()));
+        System.out.println("alice role fingerprint equals: " + publicKeyAlice.equals(alicePrivateKey.getPublicKey()));
+        System.out.println("alice role fingerprint equals: " + publicKeyAlice.equals(bobPrivateKey.getPublicKey()));
+    }
+
+
+
+    @Test
+    public void referenceModelTest() throws Exception {
+        ReferenceModel rm = new ReferenceModel();
+        rm.name = "name123";
+        rm.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        rm.transactional_id = "qwerty123456";
+        rm.contract_id = HashId.createRandom();
+        rm.required = false;
+        rm.origin = HashId.createRandom();
+        System.out.println("before serialize: " + rm);
+        Binder serializedData = rm.serialize(new BiSerializer());
+        ReferenceModel rm2 = new ReferenceModel();
+        rm2.deserialize(serializedData, new BiDeserializer());
+        System.out.println("after deserialize: " + rm2);
+        assertTrue(rm.equals(rm2));
+    }
+
+    @Test
+    public void referenceModelTest_nulls() throws Exception {
+        ReferenceModel rm = new ReferenceModel();
+        rm.name = "name123";
+        rm.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        rm.transactional_id = "qwerty123456";
+        rm.contract_id = null;
+        rm.required = false;
+        rm.origin = null;
+        System.out.println("before serialize: " + rm);
+        Binder serializedData = rm.serialize(new BiSerializer());
+        ReferenceModel rm2 = new ReferenceModel();
+        rm2.deserialize(serializedData, new BiDeserializer());
+        System.out.println("after deserialize: " + rm2);
+        assertTrue(rm.equals(rm2));
+    }
 
 
 
