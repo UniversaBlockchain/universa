@@ -15,6 +15,7 @@ import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiMapper;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.diff.ChangedItem;
+import net.sergeych.diff.CreatedItem;
 import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
 
@@ -53,8 +54,16 @@ public class ContractDelta {
             // should be only one change here: state
             int allowedRootChanges = 1;
             Delta ch = rootDelta.getChange("api_level");
-            if( ch != null)
+            if( ch != null) {
                 allowedRootChanges++;
+            }
+
+            // or can be changed section "transactional"
+            MapDelta transactionalDelta = (MapDelta) rootDelta.getChange("transactional");
+            if(transactionalDelta != null) {
+                allowedRootChanges++;
+            }
+
             if (rootDelta.getChanges().size() > allowedRootChanges)
                 addError(ILLEGAL_CHANGE, "root", "root level changes are forbidden except the state");
 

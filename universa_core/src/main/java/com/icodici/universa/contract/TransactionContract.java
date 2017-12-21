@@ -96,4 +96,61 @@ public class TransactionContract extends Contract {
         addNewItems(newContract);
         newContract.seal();
     }
+
+    public void startSwap(Contract contract1, Contract contract2, PrivateKey fromKey, PublicKey toKey) {
+
+        Transactional transactional1 = contract1.createTransactionalSection();
+        Reference reference1 = new Reference();
+        reference1.setName("transactional_example_1");
+        transactional1.addReference(reference1);
+
+        Contract newContract1 = contract1.createRevision(transactional1, fromKey);
+        newContract1.setOwnerKeys(toKey);
+        addContractToRemove(contract1);
+        addNewItems(newContract1);
+        newContract1.seal();
+
+        //
+
+        Transactional transactional2 = contract1.createTransactionalSection();
+        Reference reference2 = new Reference();
+        reference2.setName("transactional_example_2");
+        transactional2.addReference(reference2);
+
+        Contract newContract2 = contract2.createRevision(transactional2);
+        newContract2.setOwnerKeys(fromKey.getPublicKey());
+        addContractToRemove(contract2);
+        addNewItems(newContract2);
+        newContract2.seal();
+    }
+
+    public void signPresentedSwap(PrivateKey key) {
+
+        List<Contract> swappedContracts = (List<Contract>) getNew();
+
+        for (Contract c : swappedContracts) {
+            for (PublicKey k : c.getOwner().getKeys()) {
+                if(!k.equals(key.getPublicKey())) {
+
+                    Set<KeyRecord> krs = new HashSet<>();
+                    krs.add(new KeyRecord(key.getPublicKey()));
+                    c.setCreator(krs);
+
+                }
+            }
+
+            c.addSignerKey(key);
+            c.seal();
+        }
+    }
+
+    public void finishSwap(PrivateKey key) {
+
+        List<Contract> swappedContracts = (List<Contract>) getNew();
+
+        for (Contract c : swappedContracts) {
+            c.addSignerKey(key);
+            c.seal();
+        }
+    }
 }
