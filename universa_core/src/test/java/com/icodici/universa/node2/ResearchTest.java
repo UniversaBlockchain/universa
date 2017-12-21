@@ -8,7 +8,9 @@ import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.ReferenceModel;
+import com.icodici.universa.contract.ReferenceRole;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
@@ -19,6 +21,7 @@ import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
+import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.*;
@@ -37,6 +40,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -367,61 +372,100 @@ public class ResearchTest extends BaseNetworkTest {
     }
 
 
-    private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
-    public static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for ( int j = 0; j < bytes.length; j++ ) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = hexArray[v >>> 4];
-            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
-        }
-        return new String(hexChars);
-    }
-
     @Test
     public void contractSwapTest() throws Exception {
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         PrivateKey alicePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/marty_mcfly.private.unikey"));
         PrivateKey bobPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/stepan_mamontov.private.unikey"));
-        System.out.println("manufacture fingerprint(): " + bytesToHex(manufacturePrivateKey.getPublicKey().fingerprint()));
-        System.out.println("alice fingerprint(): " + bytesToHex(alicePrivateKey.getPublicKey().fingerprint()));
-        System.out.println("bob fingerprint(): " + bytesToHex(bobPrivateKey.getPublicKey().fingerprint()));
+        System.out.println("manufacture fingerprint(): " + Bytes.toHex(manufacturePrivateKey.getPublicKey().fingerprint()));
+        System.out.println("alice fingerprint(): " + Bytes.toHex(alicePrivateKey.getPublicKey().fingerprint()));
+        System.out.println("bob fingerprint(): " + Bytes.toHex(bobPrivateKey.getPublicKey().fingerprint()));
+
+        Function<PublicKey, String> finger2name = pub -> {
+            if (pub.equals(alicePrivateKey.getPublicKey()))
+                return "Alice";
+            if (pub.equals(bobPrivateKey.getPublicKey()))
+                return "Bob";
+            if (pub.equals(manufacturePrivateKey.getPublicKey()))
+                return "manufacture";
+            return "unknown";
+        };
 
         Contract k0 = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
         k0.addSignerKey(manufacturePrivateKey);
         k0.seal();
         System.out.println("k0.check(): " + k0.check());
         k0.traceErrors();
-        byte[] k0signFingerprint = k0.getKeysToSignWith().iterator().next().getPublicKey().fingerprint();
-        System.out.println("k0 sign fingerprint(): " + bytesToHex(k0signFingerprint));
+        System.out.println("k0 seal fingerprint(): " + finger2name.apply(k0.getSealedByKeys().iterator().next()));
+        System.out.println("k0 owner fingerprint(): " + finger2name.apply(k0.getOwner().getKeys().iterator().next()));
 
         Contract l0 = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
         l0.addSignerKey(manufacturePrivateKey);
         l0.seal();
         System.out.println("l0.check(): " + l0.check());
         l0.traceErrors();
-        byte[] l0signFingerprint = l0.getKeysToSignWith().iterator().next().getPublicKey().fingerprint();
-        System.out.println("l0 sign fingerprint(): " + bytesToHex(l0signFingerprint));
+        System.out.println("l0 seal fingerprint(): " + finger2name.apply(l0.getSealedByKeys().iterator().next()));
+        System.out.println("l0 owner fingerprint(): " + finger2name.apply(l0.getOwner().getKeys().iterator().next()));
 
-        PublicKey publicKeyAlice = l0.getOwner().getKeys().iterator().next();
-        System.out.println("alice role fingerprint: " + bytesToHex(publicKeyAlice.fingerprint()));
+        ReferenceModel k1transactionRef = new ReferenceModel();
+        k1transactionRef.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        k1transactionRef.transactional_id = HashId.createRandom().toBase64String();
+        k1transactionRef.origin = l0.getOrigin();
+        k1transactionRef.signed_by.add(new ReferenceRole("owner", alicePrivateKey.getPublicKey().fingerprint()));
+        k1transactionRef.signed_by.add(new ReferenceRole("crator", bobPrivateKey.getPublicKey().fingerprint()));
 
-        System.out.println("alice role fingerprint equals: " + publicKeyAlice.equals(manufacturePrivateKey.getPublicKey()));
-        System.out.println("alice role fingerprint equals: " + publicKeyAlice.equals(alicePrivateKey.getPublicKey()));
-        System.out.println("alice role fingerprint equals: " + publicKeyAlice.equals(bobPrivateKey.getPublicKey()));
+        Contract.Transactional tr_k = k0.createTransactionalSection();
+        tr_k.setId(k1transactionRef.transactional_id);
+
+        Contract k1 = k0.createRevision(tr_k, bobPrivateKey);
+        k1.addRevokingItems(k0);
+        k1.setOwnerKey(alicePrivateKey.getPublicKey());
+        k1.getReferencedItems().add(k1transactionRef);
+        System.out.println("k1 owner fingerprint(): " + finger2name.apply(k1.getOwner().getKeys().iterator().next()));
+        System.out.println("k1 reference: " + k1.getReferencedItems().iterator().next());
+
+        ReferenceModel l1transactionRef = new ReferenceModel();
+        l1transactionRef.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        l1transactionRef.transactional_id = HashId.createRandom().toBase64String();
+        l1transactionRef.origin = k0.getOrigin();
+        l1transactionRef.signed_by.add(new ReferenceRole("owner", bobPrivateKey.getPublicKey().fingerprint()));
+        l1transactionRef.signed_by.add(new ReferenceRole("crator", bobPrivateKey.getPublicKey().fingerprint()));
+
+        Contract.Transactional tr_l = l0.createTransactionalSection();
+        tr_l.setId(k1transactionRef.transactional_id);
+
+        Contract l1 = l0.createRevision(tr_l, bobPrivateKey);
+        l1.addRevokingItems(l0);
+        l1.setOwnerKey(bobPrivateKey.getPublicKey());
+        l1.getReferencedItems().add(l1transactionRef);
+        System.out.println("l1 owner fingerprint(): " + finger2name.apply(l1.getOwner().getKeys().iterator().next()));
+        System.out.println("l1 reference: " + l1.getReferencedItems().iterator().next());
+
+
+
+        Binder bb = l1.serialize(new BiSerializer());
+        Contract l1d = new Contract();
+        l1d.deserialize(bb, new BiDeserializer());
+        System.out.println("l1d owner fingerprint(): " + finger2name.apply(l1d.getOwner().getKeys().iterator().next()));
+        System.out.println("l1 reference count: " + l1.getReferencedItems().size());
+        System.out.println("l1d reference count: " + l1d.getReferencedItems().size());
     }
 
 
 
     @Test
     public void referenceModelTest() throws Exception {
+        PrivateKey alicePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/marty_mcfly.private.unikey"));
+        PrivateKey bobPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/stepan_mamontov.private.unikey"));
         ReferenceModel rm = new ReferenceModel();
         rm.name = "name123";
         rm.type = ReferenceModel.TYPE_TRANSACTIONAL;
-        rm.transactional_id = "qwerty123456";
+        rm.transactional_id = HashId.createRandom().toBase64String();
         rm.contract_id = HashId.createRandom();
         rm.required = false;
         rm.origin = HashId.createRandom();
+        rm.signed_by.add(new ReferenceRole("owner", alicePrivateKey.getPublicKey().fingerprint()));
+        rm.signed_by.add(new ReferenceRole("crator", bobPrivateKey.getPublicKey().fingerprint()));
         System.out.println("before serialize: " + rm);
         Binder serializedData = rm.serialize(new BiSerializer());
         ReferenceModel rm2 = new ReferenceModel();
@@ -435,7 +479,7 @@ public class ResearchTest extends BaseNetworkTest {
         ReferenceModel rm = new ReferenceModel();
         rm.name = "name123";
         rm.type = ReferenceModel.TYPE_TRANSACTIONAL;
-        rm.transactional_id = "qwerty123456";
+        rm.transactional_id = "";
         rm.contract_id = null;
         rm.required = false;
         rm.origin = null;
