@@ -98,7 +98,9 @@ public class TransactionContract extends Contract {
         newContract.seal();
     }
 
-    public void startSwap(Contract contract1, Contract contract2, PrivateKey fromKey, PublicKey toKey) {
+    public static List<Contract> startSwap(Contract contract1, Contract contract2, PrivateKey fromKey, PublicKey toKey) {
+
+        List<Contract> swappingContracts = new ArrayList<>();
 
         Transactional transactional1 = contract1.createTransactionalSection();
         Reference reference1 = new Reference();
@@ -108,9 +110,10 @@ public class TransactionContract extends Contract {
 
         Contract newContract1 = contract1.createRevision(transactional1, fromKey);
         newContract1.setOwnerKeys(toKey);
-        addContractToRemove(contract1);
-        addNewItems(newContract1);
+//        addContractToRemove(contract1);
+//        addNewItems(newContract1);
         newContract1.seal();
+        swappingContracts.add(newContract1);
 
         //
 
@@ -122,16 +125,17 @@ public class TransactionContract extends Contract {
 
         Contract newContract2 = contract2.createRevision(transactional2);
         newContract2.setOwnerKeys(fromKey.getPublicKey());
-        addContractToRemove(contract2);
-        addNewItems(newContract2);
+//        addContractToRemove(contract2);
+//        addNewItems(newContract2);
         newContract2.seal();
+        swappingContracts.add(newContract2);
+
+        return swappingContracts;
     }
 
-    public void signPresentedSwap(PrivateKey key) {
+    public static List<Contract> signPresentedSwap(List<Contract> swappingContracts, PrivateKey key) {
 
-        List<Contract> swappedContracts = (List<Contract>) getNew();
-
-        for (Contract c : swappedContracts) {
+        for (Contract c : swappingContracts) {
             for (PublicKey k : c.getOwner().getKeys()) {
                 if(!k.equals(key.getPublicKey())) {
 
@@ -145,15 +149,17 @@ public class TransactionContract extends Contract {
             c.addSignerKey(key);
             c.seal();
         }
+
+        return swappingContracts;
     }
 
-    public void finishSwap(PrivateKey key) {
+    public static List<Contract> finishSwap(List<Contract> swappingContracts, PrivateKey key) {
 
-        List<Contract> swappedContracts = (List<Contract>) getNew();
-
-        for (Contract c : swappedContracts) {
+        for (Contract c : swappingContracts) {
             c.addSignerKey(key);
             c.seal();
         }
+
+        return swappingContracts;
     }
 }

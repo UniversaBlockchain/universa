@@ -59,7 +59,7 @@ public class ContractDelta {
             }
 
             // or can be changed section "transactional"
-            MapDelta transactionalDelta = (MapDelta) rootDelta.getChange("transactional");
+            Delta transactionalDelta =  rootDelta.getChange("transactional");
             if(transactionalDelta != null) {
                 allowedRootChanges++;
             }
