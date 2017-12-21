@@ -1717,6 +1717,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public class Transactional {
 
+        private String id;
         private List<Reference> references;
 
         private Transactional() {
@@ -1744,6 +1745,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
 
             references.add(reference);
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
         }
     }
 

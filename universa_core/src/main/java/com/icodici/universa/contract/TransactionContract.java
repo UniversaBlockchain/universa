@@ -17,6 +17,7 @@ import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -101,8 +102,9 @@ public class TransactionContract extends Contract {
 
         Transactional transactional1 = contract1.createTransactionalSection();
         Reference reference1 = new Reference();
-        reference1.setName("transactional_example_1");
+        reference1.setName("reference to swapping contract 2");
         transactional1.addReference(reference1);
+        transactional1.setId("" + Do.randomInt(1000000000));
 
         Contract newContract1 = contract1.createRevision(transactional1, fromKey);
         newContract1.setOwnerKeys(toKey);
@@ -114,8 +116,9 @@ public class TransactionContract extends Contract {
 
         Transactional transactional2 = contract1.createTransactionalSection();
         Reference reference2 = new Reference();
-        reference2.setName("transactional_example_2");
+        reference2.setName("reference to swapping contract 1");
         transactional2.addReference(reference2);
+        transactional2.setId("" + Do.randomInt(1000000000));
 
         Contract newContract2 = contract2.createRevision(transactional2);
         newContract2.setOwnerKeys(fromKey.getPublicKey());
