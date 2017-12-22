@@ -17,6 +17,7 @@ import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -32,9 +33,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -475,6 +479,58 @@ public class ResearchTest extends BaseNetworkTest {
     public void swapContractsViaTransactionAllGood_2() throws Exception {
         super.swapContractsViaTransactionAllGood_2();
     }
+
+
+
+    public static String md5Custom(String st) {
+        MessageDigest messageDigest = null;
+        byte[] digest = new byte[0];
+
+        try {
+            messageDigest = MessageDigest.getInstance("MD5");
+            messageDigest.reset();
+            messageDigest.update(st.getBytes());
+            digest = messageDigest.digest();
+        } catch (NoSuchAlgorithmException e) {
+            // тут можно обработать ошибку
+            // возникает она если в передаваемый алгоритм в getInstance(,,,) не существует
+            e.printStackTrace();
+        }
+
+        BigInteger bigInt = new BigInteger(1, digest);
+        String md5Hex = bigInt.toString(16);
+
+        while( md5Hex.length() < 32 ){
+            md5Hex = "0" + md5Hex;
+        }
+
+        return md5Hex;
+    }
+
+    @Test
+    public void contractSerializeTest2() throws Exception {
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+        Binder data1 = delorean.serialize(new BiSerializer());
+        byte[] byte1 = Boss.pack(data1);
+        System.out.println("data1: " + md5Custom(Bytes.toHex(byte1)));
+        delorean = new Contract();
+        delorean.deserialize(data1, new BiDeserializer());
+        delorean.seal();
+        Binder data2 = delorean.serialize(new BiSerializer());
+        byte[] byte2 = Boss.pack(data2);
+        System.out.println("data2: " + md5Custom(Bytes.toHex(byte2)));
+        delorean = new Contract();
+        delorean.deserialize(data2, new BiDeserializer());
+        delorean.seal();
+        Binder data3 = delorean.serialize(new BiSerializer());
+        byte[] byte3 = Boss.pack(data3);
+        System.out.println("data3: " + md5Custom(Bytes.toHex(byte3)));
+    }
+
 
 
     @Test
