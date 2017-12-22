@@ -154,22 +154,28 @@ public class TransactionContract extends Contract {
         }
 
         for (Contract c : swappingContracts) {
+            boolean isMyContract = false;
             for (PublicKey k : c.getOwner().getKeys()) {
                 if(!k.equals(key.getPublicKey())) {
-
-                    Set<KeyRecord> krs = new HashSet<>();
-                    krs.add(new KeyRecord(key.getPublicKey()));
-                    c.setCreator(krs);
-
-                    for (ReferenceModel rm : c.getTransactional().getReferences()) {
-                        rm.contract_id = contractHashId;
-                    }
-
+                    isMyContract = true;
+                    break;
                 }
             }
+            if(isMyContract) {
 
-            c.addSignerKey(key);
-            c.seal();
+                Set<KeyRecord> krs = new HashSet<>();
+                krs.add(new KeyRecord(key.getPublicKey()));
+                c.setCreator(krs);
+
+                for (ReferenceModel rm : c.getTransactional().getReferences()) {
+                    rm.contract_id = contractHashId;
+                }
+
+                c.addSignerKey(key);
+                c.seal();
+            } else {
+                c.addSignerKey(key);
+            }
         }
 
         return swappingContracts;
@@ -179,7 +185,7 @@ public class TransactionContract extends Contract {
 
         for (Contract c : swappingContracts) {
             c.addSignerKey(key);
-            c.seal();
+//            c.seal();
         }
 
         return swappingContracts;

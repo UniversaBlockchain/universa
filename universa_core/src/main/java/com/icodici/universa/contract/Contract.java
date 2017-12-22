@@ -424,7 +424,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private boolean checkReferences(Contract contractToCheck, Contract refContract) {
-        //System.out.println("checkReferences: " + contractToCheck.getId().toString() + " - " + refContract.getId().toString());
+        System.out.println("checkReferences: " + contractToCheck.getId().toString() + " - " + refContract.getId().toString());
         boolean res = true;
 
         if (contractToCheck.getReferencedItems().size() == 0) {
@@ -458,6 +458,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         for (ReferenceRole refRole : rm.signed_by) {
+            System.out.println("signed_by: " + refRole.name + " - " + refRole.fingerprint);
             if (!refContract.isSealedByFingerprint(refRole.fingerprint)) {
                 res = false;
                 addError(Errors.BAD_SIGNATURE, "fingerprint mismatch");
@@ -1808,7 +1809,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public Binder serializeWith(BiSerializer serializer) {
 
-            Binder b = new Binder();
+            Binder b = Binder.of(
+                    "id", id
+            );
 
             if (references != null)
                 b.set("references", references);
@@ -1817,8 +1820,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         public void deserializeWith(Binder data, BiDeserializer d) {
-            if(data != null)
-                this.references = d.deserialize(data.getList("references", null));
+            if(data != null) {
+                id = data.getString("id", null);
+                references = d.deserialize(data.getList("references", null));
+            }
         }
 
         public void addReference(ReferenceModel reference) {

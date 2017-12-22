@@ -26,7 +26,7 @@ public class ReferenceRole implements BiSerializable {
     public void deserialize(Binder data, BiDeserializer deserializer) {
         this.name = data.getString("name", null);
 
-        this.fingerprint = data.getBinary("type");
+        this.fingerprint = data.getBinary("fingerprint");
     }
 
     @Override
