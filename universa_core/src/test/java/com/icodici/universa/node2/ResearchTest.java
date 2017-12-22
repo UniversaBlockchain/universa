@@ -414,32 +414,51 @@ public class ResearchTest extends BaseNetworkTest {
         k1transactionRef.signed_by.add(new ReferenceRole("owner", alicePrivateKey.getPublicKey().fingerprint()));
         k1transactionRef.signed_by.add(new ReferenceRole("crator", bobPrivateKey.getPublicKey().fingerprint()));
 
-        Contract.Transactional tr_k = k0.createTransactionalSection();
-        tr_k.setId(k1transactionRef.transactional_id);
-
-        Contract k1 = k0.createRevision(tr_k, bobPrivateKey);
-        k1.addRevokingItems(k0);
-        k1.setOwnerKey(alicePrivateKey.getPublicKey());
-        k1.getReferencedItems().add(k1transactionRef);
-        System.out.println("k1 owner fingerprint(): " + finger2name.apply(k1.getOwner().getKeys().iterator().next()));
-        System.out.println("k1 reference: " + k1.getReferencedItems().iterator().next());
-
         ReferenceModel l1transactionRef = new ReferenceModel();
         l1transactionRef.type = ReferenceModel.TYPE_TRANSACTIONAL;
         l1transactionRef.transactional_id = HashId.createRandom().toBase64String();
         l1transactionRef.origin = k0.getOrigin();
         l1transactionRef.signed_by.add(new ReferenceRole("owner", bobPrivateKey.getPublicKey().fingerprint()));
-        l1transactionRef.signed_by.add(new ReferenceRole("crator", bobPrivateKey.getPublicKey().fingerprint()));
+        //l1 is created by bob and l1.owner is bob, but we need alice's sign too
+        l1transactionRef.signed_by.add(new ReferenceRole("crator", alicePrivateKey.getPublicKey().fingerprint()));
+
+        Contract.Transactional tr_k = k0.createTransactionalSection();
+        tr_k.setId(l1transactionRef.transactional_id);
+
+        Contract k1 = k0.createRevision(tr_k);
+        k1.setOwnerKey(alicePrivateKey.getPublicKey());
+        k1.getReferencedItems().add(k1transactionRef);
+        System.out.println("k1 owner fingerprint(): " + finger2name.apply(k1.getOwner().getKeys().iterator().next()));
+        System.out.println("k1 reference: " + k1.getReferencedItems().iterator().next());
 
         Contract.Transactional tr_l = l0.createTransactionalSection();
         tr_l.setId(k1transactionRef.transactional_id);
 
-        Contract l1 = l0.createRevision(tr_l, bobPrivateKey);
-        l1.addRevokingItems(l0);
+        Contract l1 = l0.createRevision(tr_l);
         l1.setOwnerKey(bobPrivateKey.getPublicKey());
         l1.getReferencedItems().add(l1transactionRef);
         System.out.println("l1 owner fingerprint(): " + finger2name.apply(l1.getOwner().getKeys().iterator().next()));
         System.out.println("l1 reference: " + l1.getReferencedItems().iterator().next());
+
+        k1.addSignerKey(alicePrivateKey);
+        k1.seal();
+        k1.addSignerKey(bobPrivateKey);
+        k1.seal();
+        l1.getReferencedItems().iterator().next().contract_id = k1.getId();
+        l1.addSignerKey(alicePrivateKey);
+        l1.seal();
+        l1.addSignerKey(bobPrivateKey);
+        l1.seal();
+
+//        k1.seal();
+//        l1.seal();
+
+        Contract transaction = new Contract();
+        transaction.addNewItems(k1, l1);
+        transaction.addRevokingItems(k0, l0);
+        System.out.println("checkTransaction: " + transaction.checkTransaction());
+
+
 
 
 
