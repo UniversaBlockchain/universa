@@ -20,9 +20,11 @@ import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiSerializationException;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Bytes;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -726,18 +728,42 @@ public class ContractTest extends ContractTestBase {
         Contract delorean = Contract.fromDslFile(rootPath + "DeLoreanOwnership.yml");
         delorean.addSignerKey(manufacturePrivateKey);
         delorean.seal();
+        System.out.println("----");
 
         byte[] firstSeal = delorean.getLastSealedBinary();
 
         TransactionPack tp_before = delorean.getTransactionPack();
         byte[] data = tp_before.pack();
+        System.out.println("----");
         TransactionPack tp_after = TransactionPack.unpack(data);
         Contract delorean2 = tp_after.getContract();
 
         System.out.println("----");
         delorean2.seal();
 
-        byte[] secondSeal = delorean.getLastSealedBinary();
+        byte[] secondSeal = delorean2.getLastSealedBinary();
+        Binder data1 = Boss.unpack(firstSeal);
+        byte[] contractBytes1 = data1.getBinaryOrThrow("data");
+
+        for (Object signature : (List) data1.getOrThrow("signatures")) {
+            byte[] s = ((Bytes) signature).toArray();
+            System.out.println(ExtendedSignature.verify(manufacturePrivateKey.getPublicKey(), s, contractBytes1));
+        }
+
+        System.out.println("----");
+        Binder data2 = Boss.unpack(secondSeal);
+        byte[] contractBytes2 = data2.getBinaryOrThrow("data");
+
+        for (Object signature : (List) data2.getOrThrow("signatures")) {
+            byte[] s = ((Bytes) signature).toArray();
+            System.out.println(ExtendedSignature.verify(manufacturePrivateKey.getPublicKey(), s, contractBytes2));
+        }
+
+        System.out.println("----");
+        for (Object signature : (List) data1.getOrThrow("signatures")) {
+            byte[] s = ((Bytes) signature).toArray();
+            System.out.println(ExtendedSignature.verify(manufacturePrivateKey.getPublicKey(), s, contractBytes2));
+        }
     }
 
     /**
