@@ -67,7 +67,7 @@ public class ReferenceModel implements BiSerializable {
         else
             this.origin = null;
 
-        this.signed_by = data.getList("signed_by", new ArrayList<>());
+        this.signed_by = deserializer.deserializeCollection(data.getList("signed_by", new ArrayList<>()));
     }
 
     @Override

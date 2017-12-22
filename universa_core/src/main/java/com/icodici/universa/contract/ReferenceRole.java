@@ -19,6 +19,9 @@ public class ReferenceRole implements BiSerializable {
         this.fingerprint = fingerprint;
     }
 
+    public ReferenceRole() {
+    }
+
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         this.name = data.getString("name", null);
