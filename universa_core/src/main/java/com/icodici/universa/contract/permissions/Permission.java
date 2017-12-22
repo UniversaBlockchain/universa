@@ -120,7 +120,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
     public Binder serialize(BiSerializer serializer) {
         Binder results = new Binder();
         if (params != null)
-            results.putAll(params);
+            results.put("params", params);
         results.put("name", name);
         results.put("role", serializer.serialize(role));
         return results;
@@ -130,7 +130,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
     public void deserialize(Binder data, BiDeserializer deserializer) {
         name = data.getStringOrThrow("name");
         role = deserializer.deserialize(data.get("role"));
-        params = data;
+        params = data.getBinder("params", null);
     }
 
     /**
