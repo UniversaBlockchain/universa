@@ -114,8 +114,8 @@ public class TransactionContract extends Contract {
         reference1.type = ReferenceModel.TYPE_TRANSACTIONAL;
         reference1.required = true;
         reference1.signed_by = new ArrayList<>();
-        reference1.signed_by.add(new ReferenceRole("owner", fromKey.getPublicKey().fingerprint()));
-        reference1.signed_by.add(new ReferenceRole("creator", toKey.fingerprint()));
+        reference1.signed_by.add(new SimpleRole("owner", new KeyRecord(fromKey.getPublicKey())));
+        reference1.signed_by.add(new SimpleRole("creator", new KeyRecord(toKey)));
         transactional1.addReference(reference1);
 
         ReferenceModel reference2 = new ReferenceModel();
@@ -123,8 +123,8 @@ public class TransactionContract extends Contract {
         reference2.type = ReferenceModel.TYPE_TRANSACTIONAL;
         reference2.required = true;
         reference2.signed_by = new ArrayList<>();
-        reference2.signed_by.add(new ReferenceRole("owner", toKey.fingerprint()));
-        reference2.signed_by.add(new ReferenceRole("creator", fromKey.getPublicKey().fingerprint()));
+        reference2.signed_by.add(new SimpleRole("owner", new KeyRecord(toKey)));
+        reference2.signed_by.add(new SimpleRole("creator", new KeyRecord(fromKey.getPublicKey())));
         transactional2.addReference(reference2);
 
 

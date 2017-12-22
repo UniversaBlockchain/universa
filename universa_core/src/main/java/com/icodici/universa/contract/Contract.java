@@ -406,7 +406,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return errors.size() == 0;
     }
 
-    public boolean checkTransaction() {
+    public boolean checkTransaction() throws Quantiser.QuantiserException {
         boolean res = true;
         ArrayList<Contract> newItemsList = new ArrayList<>(newItems);
         // check each contract inside transaction, all must be ok
@@ -443,7 +443,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return res;
     }
 
-    private boolean checkOneReference(ReferenceModel rm, Contract refContract) {
+    private boolean checkOneReference(ReferenceModel rm, Contract refContract) throws Quantiser.QuantiserException {
         boolean res = true;
 
         if (rm.type == ReferenceModel.TYPE_EXISTING) {
@@ -470,25 +470,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
 
-        for (ReferenceRole refRole : rm.signed_by) {
-            System.out.println("signed_by: " + refRole.name + " - " + refRole.fingerprint);
-            if (!refContract.isSealedByFingerprint(refRole.fingerprint)) {
+        for (Role refRole : rm.signed_by) {
+            System.out.println("signed_by: " + refRole.getName() + " - " + Bytes.toHex(refRole.getKeys().iterator().next().fingerprint()).substring(0, 8)+"...");
+            if (!refContract.isSignedBy(refRole)) {
                 res = false;
                 addError(Errors.BAD_SIGNATURE, "fingerprint mismatch");
             }
         }
 
         return res;
-    }
-
-    private boolean isSealedByFingerprint(byte[] fingerprint) {
-        Bytes bf = new Bytes(fingerprint);
-        for (PublicKey pubKey : getSealedByKeys()) {
-            if (bf.equals(new Bytes(pubKey.fingerprint()))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public int getProcessedCost() {

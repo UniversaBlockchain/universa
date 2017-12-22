@@ -411,16 +411,15 @@ public class ResearchTest extends BaseNetworkTest {
         k1transactionRef.type = ReferenceModel.TYPE_TRANSACTIONAL;
         k1transactionRef.transactional_id = HashId.createRandom().toBase64String();
         k1transactionRef.origin = l0.getOrigin();
-        k1transactionRef.signed_by.add(new ReferenceRole("owner", alicePrivateKey.getPublicKey().fingerprint()));
-        k1transactionRef.signed_by.add(new ReferenceRole("crator", bobPrivateKey.getPublicKey().fingerprint()));
+        k1transactionRef.signed_by.add(new SimpleRole("owner", new KeyRecord(alicePrivateKey.getPublicKey())));
+        k1transactionRef.signed_by.add(new SimpleRole("crator", new KeyRecord(bobPrivateKey.getPublicKey())));
 
         ReferenceModel l1transactionRef = new ReferenceModel();
         l1transactionRef.type = ReferenceModel.TYPE_TRANSACTIONAL;
         l1transactionRef.transactional_id = HashId.createRandom().toBase64String();
         l1transactionRef.origin = k0.getOrigin();
-        l1transactionRef.signed_by.add(new ReferenceRole("owner", bobPrivateKey.getPublicKey().fingerprint()));
-        //l1 is created by bob and l1.owner is bob, but we need alice's sign too
-        l1transactionRef.signed_by.add(new ReferenceRole("crator", alicePrivateKey.getPublicKey().fingerprint()));
+        l1transactionRef.signed_by.add(new SimpleRole("owner", new KeyRecord(bobPrivateKey.getPublicKey())));
+        l1transactionRef.signed_by.add(new SimpleRole("crator", new KeyRecord(alicePrivateKey.getPublicKey())));
 
         Contract.Transactional tr_k = k0.createTransactionalSection();
         tr_k.setId(l1transactionRef.transactional_id);
@@ -472,6 +471,11 @@ public class ResearchTest extends BaseNetworkTest {
     }
 
 
+    @Test
+    public void swapContractsViaTransactionAllGood_2() throws Exception {
+        super.swapContractsViaTransactionAllGood_2();
+    }
+
 
     @Test
     public void referenceModelTest() throws Exception {
@@ -484,8 +488,8 @@ public class ResearchTest extends BaseNetworkTest {
         rm.contract_id = HashId.createRandom();
         rm.required = false;
         rm.origin = HashId.createRandom();
-        rm.signed_by.add(new ReferenceRole("owner", alicePrivateKey.getPublicKey().fingerprint()));
-        rm.signed_by.add(new ReferenceRole("crator", bobPrivateKey.getPublicKey().fingerprint()));
+        rm.signed_by.add(new SimpleRole("owner", new KeyRecord(alicePrivateKey.getPublicKey())));
+        rm.signed_by.add(new SimpleRole("crator", new KeyRecord(bobPrivateKey.getPublicKey())));
         System.out.println("before serialize: " + rm);
         Binder serializedData = rm.serialize(new BiSerializer());
         ReferenceModel rm2 = new ReferenceModel();

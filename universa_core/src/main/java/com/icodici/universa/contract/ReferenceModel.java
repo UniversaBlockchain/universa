@@ -19,7 +19,7 @@ public class ReferenceModel implements BiSerializable {
     public HashId contract_id = null;
     public boolean required = true;
     public HashId origin = null;
-    public List<ReferenceRole> signed_by = new ArrayList<>();
+    public List<Role> signed_by = new ArrayList<>();
 
     public static final int TYPE_TRANSACTIONAL = 1;
     public static final int TYPE_EXISTING = 2;
@@ -29,7 +29,10 @@ public class ReferenceModel implements BiSerializable {
         String res = "{";
         res += "name:"+name;
         res += ", type:"+type;
-        res += ", transactional_id:"+transactional_id.substring(0, 8)+"...";
+        if (transactional_id.length() > 8)
+            res += ", transactional_id:"+transactional_id.substring(0, 8)+"...";
+        else
+            res += ", transactional_id:"+transactional_id;
         res += ", contract_id:"+contract_id;
         res += ", required:"+required;
         res += ", origin:"+origin;
@@ -37,8 +40,8 @@ public class ReferenceModel implements BiSerializable {
         for (int i = 0; i < signed_by.size(); ++i) {
             if (i > 0)
                 res += ", ";
-            ReferenceRole r = signed_by.get(i);
-            res += r.name + ":" + Bytes.toHex(r.fingerprint).substring(0, 8) + "...";
+            Role r = signed_by.get(i);
+            res += r.getName() + ":" + Bytes.toHex(r.getKeys().iterator().next().fingerprint()).substring(0, 8) + "...";
         }
         res += "]";
         res += "}";
