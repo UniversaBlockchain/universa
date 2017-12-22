@@ -409,29 +409,42 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public boolean checkTransaction() {
         boolean res = true;
         ArrayList<Contract> newItemsList = new ArrayList<>(newItems);
+        // check each contract inside transaction, all must be ok
         for (int i = 0; i < newItemsList.size(); ++i) {
-            for (int j = 0; j < newItemsList.size(); ++j) {
-                if (i != j) {
-                    Contract contractToCheck = newItemsList.get(i);
-                    if (!checkReferences(contractToCheck, newItemsList.get(j))) {
-                        res = false;
-                        addError(Errors.FAILED_CHECK, "check for contract (hashId="+contractToCheck.id.toString()+"): false");
+            boolean i_check = true;
+            Contract contractToCheck = newItemsList.get(i);
+
+            if (contractToCheck.getReferencedItems().size() == 0) {
+                // if contractToCheck has no references -> then it's transaction check is ok
+                i_check = true;
+            } else {
+                // check each reference inside contractToCheck, all must be ok
+                for (ReferenceModel rm : contractToCheck.getReferencedItems()) {
+                    // use all other contracts to check reference. at least one must be ok
+                    boolean rm_check = false;
+                    for (int j = 0; j < newItemsList.size(); ++j) {
+                        if (i != j) {
+                            if (checkOneReference(rm, newItemsList.get(j))) {
+                                rm_check = true;
+                            }
+                        }
                     }
+
+                    if (!rm_check)
+                        i_check = false;
                 }
+            }
+
+            if (!i_check) {
+                res = false;
+                addError(Errors.FAILED_CHECK, "check for contract (hashId="+contractToCheck.id.toString()+"): false");
             }
         }
         return res;
     }
 
-    private boolean checkReferences(Contract contractToCheck, Contract refContract) {
-        System.out.println("checkReferences: " + contractToCheck.getId().toString() + " - " + refContract.getId().toString());
+    private boolean checkOneReference(ReferenceModel rm, Contract refContract) {
         boolean res = true;
-
-        if (contractToCheck.getReferencedItems().size() == 0) {
-            addError(Errors.NOT_SUPPORTED, "referencedItems.size() in transaction can't be empty");
-            return false;
-        }
-        ReferenceModel rm = contractToCheck.getReferencedItems().iterator().next();
 
         if (rm.type == ReferenceModel.TYPE_EXISTING) {
             res = false;
