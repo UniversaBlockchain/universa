@@ -656,8 +656,10 @@ public class Node {
                 if (!processingState.isProcessedToConsensus()) {
                     for (ReferenceModel refModel : item.getReferencedItems()) {
                         HashId id = refModel.contract_id;
-                        if (!ledger.isApproved(id)) {
-                            item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
+                        if(refModel.type == ReferenceModel.TYPE_EXISTING && id != null) {
+                            if (!ledger.isApproved(id)) {
+                                item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
+                            }
                         }
                     }
                     // check revoking items
@@ -739,13 +741,15 @@ public class Node {
                     // check the referenced items
                     for (ReferenceModel refModel : item.getReferencedItems()) {
                         HashId id = refModel.contract_id;
-                        StateRecord r = ledger.getRecord(id);
-                        debug(">> referenced subitem " + id + " is " + (r != null ? r.getState() : null));
+                        if(refModel.type == ReferenceModel.TYPE_EXISTING && id != null) {
+                            StateRecord r = ledger.getRecord(id);
+                            debug(">> referenced subitem " + id + " is " + (r != null ? r.getState() : null));
 
-                        if (r == null || !r.getState().isConsensusFound()) {
-                            unknownParts.put(id, r);
-                        } else {
-                            knownParts.put(id, r);
+                            if (r == null || !r.getState().isConsensusFound()) {
+                                unknownParts.put(id, r);
+                            } else {
+                                knownParts.put(id, r);
+                            }
                         }
                     }
                     // check revoking items
