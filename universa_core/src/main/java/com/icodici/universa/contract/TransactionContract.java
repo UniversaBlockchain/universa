@@ -9,6 +9,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
@@ -103,10 +104,32 @@ public class TransactionContract extends Contract {
         List<Contract> swappingContracts = new ArrayList<>();
 
         Transactional transactional1 = contract1.createTransactionalSection();
-        Reference reference1 = new Reference();
-        reference1.setName("reference to swapping contract 2");
-        transactional1.addReference(reference1);
         transactional1.setId("" + Do.randomInt(1000000000));
+
+        Transactional transactional2 = contract1.createTransactionalSection();
+        transactional2.setId("" + Do.randomInt(1000000000));
+
+        ReferenceModel reference1 = new ReferenceModel();
+//        reference1.setName("reference to swapping contract 2");
+        reference1.transactional_id = transactional2.getId();
+        reference1.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        reference1.required = true;
+        reference1.signed_by = new ArrayList<>();
+        reference1.signed_by.add(new ReferenceRole("owner", fromKey.getPublicKey().fingerprint()));
+        reference1.signed_by.add(new ReferenceRole("creator", toKey.fingerprint()));
+        transactional1.addReference(reference1);
+
+        ReferenceModel reference2 = new ReferenceModel();
+//        reference2.setName("reference to swapping contract 1");
+        reference2.transactional_id = transactional1.getId();
+        reference2.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        reference2.required = true;
+        reference2.signed_by = new ArrayList<>();
+        reference2.signed_by.add(new ReferenceRole("owner", toKey.fingerprint()));
+        reference2.signed_by.add(new ReferenceRole("creator", fromKey.getPublicKey().fingerprint()));
+        transactional2.addReference(reference2);
+
+
 
         Contract newContract1 = contract1.createRevision(transactional1, fromKey);
         newContract1.setOwnerKeys(toKey);
@@ -114,14 +137,6 @@ public class TransactionContract extends Contract {
 //        addNewItems(newContract1);
         newContract1.seal();
         swappingContracts.add(newContract1);
-
-        //
-
-        Transactional transactional2 = contract1.createTransactionalSection();
-        Reference reference2 = new Reference();
-        reference2.setName("reference to swapping contract 1");
-        transactional2.addReference(reference2);
-        transactional2.setId("" + Do.randomInt(1000000000));
 
         Contract newContract2 = contract2.createRevision(transactional2);
         newContract2.setOwnerKeys(fromKey.getPublicKey());
@@ -135,6 +150,15 @@ public class TransactionContract extends Contract {
 
     public static List<Contract> signPresentedSwap(List<Contract> swappingContracts, PrivateKey key) {
 
+        HashId contractHashId = null;
+        for (Contract c : swappingContracts) {
+            for (PublicKey k : c.getOwner().getKeys()) {
+                if(k.equals(key.getPublicKey())) {
+                    contractHashId = c.getId();
+                }
+            }
+        }
+
         for (Contract c : swappingContracts) {
             for (PublicKey k : c.getOwner().getKeys()) {
                 if(!k.equals(key.getPublicKey())) {
@@ -142,6 +166,10 @@ public class TransactionContract extends Contract {
                     Set<KeyRecord> krs = new HashSet<>();
                     krs.add(new KeyRecord(key.getPublicKey()));
                     c.setCreator(krs);
+
+                    for (ReferenceModel rm : c.getTransactional().getReferences()) {
+                        rm.contract_id = contractHashId;
+                    }
 
                 }
             }

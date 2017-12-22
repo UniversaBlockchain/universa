@@ -312,6 +312,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return state;
     }
 
+    public Transactional getTransactional() {
+        return transactional;
+    }
+
     public int getApiLevel() {
         return apiLevel;
     }
@@ -1772,7 +1776,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public class Transactional {
 
         private String id;
-        private List<Reference> references;
+        private List<ReferenceModel> references;
 
         private Transactional() {
 
@@ -1793,12 +1797,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 this.references = d.deserialize(data.getList("references", null));
         }
 
-        public void addReference(Reference reference) {
+        public void addReference(ReferenceModel reference) {
             if(references == null) {
                 references = new ArrayList<>();
             }
 
             references.add(reference);
+        }
+
+        public List<ReferenceModel> getReferences() {
+            return references;
         }
 
         public String getId() {

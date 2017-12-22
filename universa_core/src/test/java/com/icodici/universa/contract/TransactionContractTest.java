@@ -62,8 +62,8 @@ public class TransactionContractTest extends ContractTestBase {
         delorean.traceErrors();
 
         Contract.Transactional transactional = delorean.createTransactionalSection();
-        Reference reference = new Reference();
-        reference.setName("transactional_example");
+        ReferenceModel reference = new ReferenceModel();
+//        reference.setName("transactional_example");
         transactional.addReference(reference);
         Contract deloreanTransactional = delorean.createRevision(transactional);
         deloreanTransactional.addSignerKey(manufacturePrivateKey);

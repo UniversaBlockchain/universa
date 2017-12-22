@@ -120,6 +120,6 @@ public class ReferenceModel implements BiSerializable {
     }
 
     static {
-        DefaultBiMapper.registerClass(Reference.class);
+        DefaultBiMapper.registerClass(ReferenceModel.class);
     }
 };
