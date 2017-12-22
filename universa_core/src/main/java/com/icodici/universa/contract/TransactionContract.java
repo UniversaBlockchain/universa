@@ -110,7 +110,6 @@ public class TransactionContract extends Contract {
         transactional2.setId("" + Do.randomInt(1000000000));
 
         ReferenceModel reference1 = new ReferenceModel();
-//        reference1.setName("reference to swapping contract 2");
         reference1.transactional_id = transactional2.getId();
         reference1.type = ReferenceModel.TYPE_TRANSACTIONAL;
         reference1.required = true;
@@ -120,7 +119,6 @@ public class TransactionContract extends Contract {
         transactional1.addReference(reference1);
 
         ReferenceModel reference2 = new ReferenceModel();
-//        reference2.setName("reference to swapping contract 1");
         reference2.transactional_id = transactional1.getId();
         reference2.type = ReferenceModel.TYPE_TRANSACTIONAL;
         reference2.required = true;
@@ -133,15 +131,11 @@ public class TransactionContract extends Contract {
 
         Contract newContract1 = contract1.createRevision(transactional1, fromKey);
         newContract1.setOwnerKeys(toKey);
-//        addContractToRemove(contract1);
-//        addNewItems(newContract1);
         newContract1.seal();
         swappingContracts.add(newContract1);
 
         Contract newContract2 = contract2.createRevision(transactional2);
         newContract2.setOwnerKeys(fromKey.getPublicKey());
-//        addContractToRemove(contract2);
-//        addNewItems(newContract2);
         newContract2.seal();
         swappingContracts.add(newContract2);
 
