@@ -961,6 +961,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         this.id = HashId.of(sealedBinary);
     }
 
+    public Contract createRevision() {
+        return createRevision((Transactional)null);
+    }
+
     /**
      * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
      * of this contract, with all fields and references correctly set. After this call one need to change mutable
