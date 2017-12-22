@@ -22,6 +22,7 @@ import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -713,6 +714,30 @@ public class ContractTest extends ContractTestBase {
     @Test
     public void checkTransactional() throws Exception {
 
+    }
+
+    @Test
+    public void checkSealedBytes() throws Exception {
+
+        PrivateKey martyPrivateKey = new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey"));
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+
+        Contract delorean = Contract.fromDslFile(rootPath + "DeLoreanOwnership.yml");
+        delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+
+        byte[] firstSeal = delorean.getLastSealedBinary();
+
+        TransactionPack tp_before = delorean.getTransactionPack();
+        byte[] data = tp_before.pack();
+        TransactionPack tp_after = TransactionPack.unpack(data);
+        Contract delorean2 = tp_after.getContract();
+
+        System.out.println("----");
+        delorean2.seal();
+
+        byte[] secondSeal = delorean.getLastSealedBinary();
     }
 
     /**

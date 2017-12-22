@@ -148,6 +148,10 @@ public class TransactionContract extends Contract {
         for (Contract c : swappingContracts) {
             for (PublicKey k : c.getOwner().getKeys()) {
                 if(k.equals(key.getPublicKey())) {
+
+                    c.addSignerKey(key);
+                    c.seal();
+
                     contractHashId = c.getId();
                 }
             }
@@ -174,7 +178,7 @@ public class TransactionContract extends Contract {
                 c.addSignerKey(key);
                 c.seal();
             } else {
-                c.addSignerKey(key);
+//                c.addSignerKey(key);
             }
         }
 
@@ -184,8 +188,17 @@ public class TransactionContract extends Contract {
     public static List<Contract> finishSwap(List<Contract> swappingContracts, PrivateKey key) {
 
         for (Contract c : swappingContracts) {
-            c.addSignerKey(key);
-//            c.seal();
+            boolean isMyContract = false;
+            for (PublicKey k : c.getOwner().getKeys()) {
+                if(!k.equals(key.getPublicKey())) {
+                    isMyContract = true;
+                    break;
+                }
+            }
+            if(isMyContract) {
+                c.addSignerKey(key);
+                c.seal();
+            }
         }
 
         return swappingContracts;

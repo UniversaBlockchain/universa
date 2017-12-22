@@ -31,6 +31,8 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
 import java.util.*;
@@ -471,7 +473,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         for (Role refRole : rm.signed_by) {
-            System.out.println("signed_by: " + refRole.getName() + " - " + Bytes.toHex(refRole.getKeys().iterator().next().fingerprint()).substring(0, 8)+"...");
             if (!refContract.isSignedBy(refRole)) {
                 res = false;
                 addError(Errors.BAD_SIGNATURE, "fingerprint mismatch");
@@ -896,18 +897,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public byte[] seal() {
-        byte[] theContract = Boss.pack(
-                BossBiMapper.serialize(
-                        Binder.of(
-                                "contract", this,
-                                "revoking", revokingItems.stream()
-                                        .map(i -> i.getId())
-                                        .collect(Collectors.toList()),
-                                "new", newItems.stream()
-                                        .map(i -> i.getId(true))
-                                        .collect(Collectors.toList())
-                        )
+        Object forPack = BossBiMapper.serialize(
+                Binder.of(
+                        "contract", this,
+                        "revoking", revokingItems.stream()
+                                .map(i -> i.getId())
+                                .collect(Collectors.toList()),
+                        "new", newItems.stream()
+                                .map(i -> i.getId(true))
+                                .collect(Collectors.toList())
                 )
+        );
+        byte[] theContract = Boss.pack(
+                forPack
         );
         Binder result = Binder.of(
                 "type", "unicapsule",
@@ -916,9 +918,29 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         );
         List<byte[]> signatures = new ArrayList<>();
 
-//        for (ExtendedSignature es : sealedByKeys.values()) {
-//            signatures.add(es.getSignature());
-//        }
+        HashMap<Bytes, PublicKey> keys__ = new HashMap<Bytes, PublicKey>();
+
+        roles.values().forEach(role -> {
+            role.getKeys().forEach(key -> keys__.put(ExtendedSignature.keyId(key), key));
+        });
+
+        if(sealedBinary != null) {
+            Binder data__ = Boss.unpack(sealedBinary);
+            byte[] contractBytes__ = data__.getBinaryOrThrow("data");
+
+            for (ExtendedSignature es : sealedByKeys.values()) {
+                Bytes keyId = ExtendedSignature.extractKeyId(es.getSignature());
+                PublicKey key__ = keys__.get(keyId);
+                System.out.println("seal, old bytes equals itself    ==: " + contractBytes__.equals(contractBytes__));
+                System.out.println("seal, old bytes equals new bytes ==: " + contractBytes__.equals(theContract));
+                System.out.println("seal, was old bytes hex =: " + Bytes.toHex(contractBytes__));
+                System.out.println("seal, was new bytes hex =: " + Bytes.toHex(theContract));
+                System.out.println("seal, verify sign from old bytes +: " + ExtendedSignature.verify(key__, es.getSignature(), contractBytes__));
+                System.out.println("seal, verify sign from new bytes -: " + ExtendedSignature.verify(key__, es.getSignature(), theContract));
+
+                signatures.add(es.getSignature());
+            }
+        }
 
         keysToSignWith.forEach(key -> {
             byte[] signature = ExtendedSignature.sign(key, theContract);
@@ -979,11 +1001,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             Contract newRevision = copy();
             // modify the deep copy for a new revision
             newRevision.state.revision = state.revision + 1;
-            newRevision.state.createdAt = ZonedDateTime.now();
+            newRevision.state.createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
             newRevision.state.parent = getId();
             newRevision.state.origin = state.revision == 1 ? getId() : state.origin;
             newRevision.revokingItems.add(this);
             newRevision.transactional = transactional;
+
             return newRevision;
         } catch (Exception e) {
             throw new IllegalStateException("failed to create revision", e);
@@ -1121,6 +1144,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         if(transactional != null)
             binder.set("transactional", transactional.serializeWith(s));
+
+
 
         return binder;
     }

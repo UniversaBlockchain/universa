@@ -866,6 +866,15 @@ public class BaseNetworkTest extends TestCase {
         TransactionPack tp_step_1 = imitateSendingTransactionToPartner(transactionContract, swappedContracts);
         transactionContract = new TransactionContract(tp_step_1.getContract().getLastSealedBinary(), tp_step_1);
         swappedContracts = new ArrayList<>(tp_step_1.getReferences().values());
+        for (Contract c : swappedContracts) {
+            if (c.getOrigin().equals(delorean.getId())) {
+                c.addRevokingItems(delorean);
+            }
+            if (c.getOrigin().equals(lamborghini.getId())) {
+                c.addRevokingItems(lamborghini);
+            }
+            c.clearContext();
+        }
         TransactionContract.signPresentedSwap(swappedContracts, stepaPrivateKey);
 
         // then Stepa send draft transaction back to Marty
@@ -873,7 +882,20 @@ public class BaseNetworkTest extends TestCase {
         TransactionPack tp_step_2 = imitateSendingTransactionToPartner(transactionContract, swappedContracts);
         transactionContract = new TransactionContract(tp_step_2.getContract().getLastSealedBinary(), tp_step_1);
         swappedContracts = new ArrayList<>(tp_step_2.getReferences().values());
+        for (Contract c : swappedContracts) {
+            if (c.getOrigin().equals(delorean.getId())) {
+                c.addRevokingItems(delorean);
+            }
+            if (c.getOrigin().equals(lamborghini.getId())) {
+                c.addRevokingItems(lamborghini);
+            }
+            c.clearContext();
+        }
         TransactionContract.finishSwap(swappedContracts, martyPrivateKey);
+
+        System.out.println(">>>> marty: " + martyPrivateKey + " " + martyPrivateKey.getPublicKey());
+        System.out.println(">>>> stepa: " + stepaPrivateKey + " " + stepaPrivateKey.getPublicKey());
+        System.out.println(">>>> manuf: " + manufacturePrivateKey + " " + manufacturePrivateKey.getPublicKey());
 
         for (Contract c : swappedContracts) {
             if(c.getOrigin().equals(delorean.getId())) {
