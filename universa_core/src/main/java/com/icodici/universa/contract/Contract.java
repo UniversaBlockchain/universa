@@ -399,6 +399,60 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return errors.size() == 0;
     }
 
+    public boolean checkTransaction() {
+        ArrayList<Contract> newItemsList = new ArrayList<>(newItems);
+        for (int i = 0; i < newItemsList.size(); ++i) {
+            for (int j = 0; j < newItemsList.size(); ++j) {
+                if (i != j)
+                    if (!checkReferences(newItemsList.get(i), newItemsList.get(j)))
+                        return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean checkReferences(Contract contractToCheck, Contract refContract) {
+        //System.out.println("checkReferences: " + contractToCheck.getId().toString() + " - " + refContract.getId().toString());
+
+        if (contractToCheck.getReferencedItems().size() == 0)
+            return false;
+        ReferenceModel rm = contractToCheck.getReferencedItems().iterator().next();
+
+        if (rm.type == ReferenceModel.TYPE_EXISTING) {
+            return false;
+        } else if (rm.type == ReferenceModel.TYPE_TRANSACTIONAL) {
+            if (!rm.transactional_id.equals(refContract.transactional.id))
+                return false;
+        }
+
+        if (rm.contract_id != null) {
+            if (!rm.contract_id.equals(refContract.id))
+                return false;
+        }
+
+        if (rm.origin != null) {
+            if (!rm.origin.equals(refContract.getOrigin()))
+                return false;
+        }
+
+        for (ReferenceRole refRole : rm.signed_by) {
+            if (!refContract.isSealedByFingerprint(refRole.fingerprint))
+                return false;
+        }
+
+        return true;
+    }
+
+    private boolean isSealedByFingerprint(byte[] fingerprint) {
+        Bytes bf = new Bytes(fingerprint);
+        for (PublicKey pubKey : getSealedByKeys()) {
+            if (bf.equals(new Bytes(pubKey.fingerprint()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public int getProcessedCost() {
         return quantiser.getQuantaSum();
     }
