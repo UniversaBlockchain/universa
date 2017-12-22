@@ -457,6 +457,7 @@ public class ResearchTest extends BaseNetworkTest {
         transaction.addNewItems(k1, l1);
         transaction.addRevokingItems(k0, l0);
         System.out.println("checkTransaction: " + transaction.checkTransaction());
+        transaction.traceErrors();
 
 
 

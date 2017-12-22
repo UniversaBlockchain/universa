@@ -404,47 +404,64 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public boolean checkTransaction() {
+        boolean res = true;
         ArrayList<Contract> newItemsList = new ArrayList<>(newItems);
         for (int i = 0; i < newItemsList.size(); ++i) {
             for (int j = 0; j < newItemsList.size(); ++j) {
-                if (i != j)
-                    if (!checkReferences(newItemsList.get(i), newItemsList.get(j)))
-                        return false;
+                if (i != j) {
+                    Contract contractToCheck = newItemsList.get(i);
+                    if (!checkReferences(contractToCheck, newItemsList.get(j))) {
+                        res = false;
+                        addError(Errors.FAILED_CHECK, "check for contract (hashId="+contractToCheck.id.toString()+"): false");
+                    }
+                }
             }
         }
-        return true;
+        return res;
     }
 
     private boolean checkReferences(Contract contractToCheck, Contract refContract) {
         //System.out.println("checkReferences: " + contractToCheck.getId().toString() + " - " + refContract.getId().toString());
+        boolean res = true;
 
-        if (contractToCheck.getReferencedItems().size() == 0)
+        if (contractToCheck.getReferencedItems().size() == 0) {
+            addError(Errors.NOT_SUPPORTED, "referencedItems.size() in transaction can't be empty");
             return false;
+        }
         ReferenceModel rm = contractToCheck.getReferencedItems().iterator().next();
 
         if (rm.type == ReferenceModel.TYPE_EXISTING) {
-            return false;
+            res = false;
+            addError(Errors.UNKNOWN_COMMAND, "ReferenceModel.TYPE_EXISTING not implemented");
         } else if (rm.type == ReferenceModel.TYPE_TRANSACTIONAL) {
-            if (!rm.transactional_id.equals(refContract.transactional.id))
-                return false;
+            if (!rm.transactional_id.equals(refContract.transactional.id)) {
+                res = false;
+                addError(Errors.BAD_REF, "transactional_id mismatch");
+            }
         }
 
         if (rm.contract_id != null) {
-            if (!rm.contract_id.equals(refContract.id))
-                return false;
+            if (!rm.contract_id.equals(refContract.id)) {
+                res = false;
+                addError(Errors.BAD_REF, "contract_id mismatch");
+            }
         }
 
         if (rm.origin != null) {
-            if (!rm.origin.equals(refContract.getOrigin()))
-                return false;
+            if (!rm.origin.equals(refContract.getOrigin())) {
+                res = false;
+                addError(Errors.BAD_REF, "origin mismatch");
+            }
         }
 
         for (ReferenceRole refRole : rm.signed_by) {
-            if (!refContract.isSealedByFingerprint(refRole.fingerprint))
-                return false;
+            if (!refContract.isSealedByFingerprint(refRole.fingerprint)) {
+                res = false;
+                addError(Errors.BAD_SIGNATURE, "fingerprint mismatch");
+            }
         }
 
-        return true;
+        return res;
     }
 
     private boolean isSealedByFingerprint(byte[] fingerprint) {
