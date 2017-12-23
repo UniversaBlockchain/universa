@@ -854,57 +854,35 @@ public class BaseNetworkTest extends TestCase {
         // register swapped contracts using TransactionContract
         System.out.println("--- register swapped contracts using TransactionContract ---");
 
-        List<Contract> swappedContracts;
+        List<Contract> swappingNewContracts;
+        List<Contract> swappingRevokingContracts = new ArrayList<>();
+        swappingRevokingContracts.add(delorean);
+        swappingRevokingContracts.add(lamborghini);
 
         // first Marty create transaction, add both contracts and swap owners, sign own new contract
         TransactionContract transactionContract = new TransactionContract();
         transactionContract.setIssuer(manufacturePrivateKey);
-        swappedContracts = TransactionContract.startSwap(delorean, lamborghini, martyPrivateKey, stepaPrivateKey.getPublicKey());
+        swappingNewContracts = TransactionContract.startSwap(delorean, lamborghini, martyPrivateKey, stepaPrivateKey.getPublicKey());
 
         // then Marty send new revisions to Stepa
         // and Stepa sign own new contract, Marty's new contract
-        TransactionPack tp_step_1 = imitateSendingTransactionToPartner(transactionContract, swappedContracts);
-        transactionContract = new TransactionContract(tp_step_1.getContract().getLastSealedBinary(), tp_step_1);
-        swappedContracts = new ArrayList<>(tp_step_1.getReferences().values());
-        for (Contract c : swappedContracts) {
-            if (c.getOrigin().equals(delorean.getId())) {
-                c.addRevokingItems(delorean);
-            }
-            if (c.getOrigin().equals(lamborghini.getId())) {
-                c.addRevokingItems(lamborghini);
-            }
-            c.clearContext();
-        }
-        TransactionContract.signPresentedSwap(swappedContracts, stepaPrivateKey);
+        List result_step_1 = imitateSendingTransactionToPartner(transactionContract, swappingNewContracts, swappingRevokingContracts);
+        transactionContract = (TransactionContract) result_step_1.get(0);
+        swappingNewContracts = (List<Contract>) result_step_1.get(1);
+        TransactionContract.signPresentedSwap(swappingNewContracts, stepaPrivateKey);
 
         // then Stepa send draft transaction back to Marty
         // and Marty sign Stepa's new contract and send to approving
-        TransactionPack tp_step_2 = imitateSendingTransactionToPartner(transactionContract, swappedContracts);
-        transactionContract = new TransactionContract(tp_step_2.getContract().getLastSealedBinary(), tp_step_1);
-        swappedContracts = new ArrayList<>(tp_step_2.getReferences().values());
-        for (Contract c : swappedContracts) {
-            if (c.getOrigin().equals(delorean.getId())) {
-                c.addRevokingItems(delorean);
-            }
-            if (c.getOrigin().equals(lamborghini.getId())) {
-                c.addRevokingItems(lamborghini);
-            }
-            c.clearContext();
-        }
-        TransactionContract.finishSwap(swappedContracts, martyPrivateKey);
+        List result_step_2 = imitateSendingTransactionToPartner(transactionContract, swappingNewContracts, swappingRevokingContracts);
+        transactionContract = (TransactionContract) result_step_2.get(0);
+        swappingNewContracts = (List<Contract>) result_step_2.get(1);
+        TransactionContract.finishSwap(swappingNewContracts, martyPrivateKey);
 
-        for (Contract c : swappedContracts) {
-            if(c.getOrigin().equals(delorean.getId())) {
-                c.addRevokingItems(delorean);
-            }
-            if(c.getOrigin().equals(lamborghini.getId())) {
-                c.addRevokingItems(lamborghini);
-            }
-            c.clearContext();
+        for (Contract c : swappingNewContracts) {
             transactionContract.addNewItems(c);
-            for (Contract rev : c.getRevoking()) {
-                transactionContract.addRevokingItems(rev);
-            }
+        }
+        for (Contract c : swappingRevokingContracts) {
+            transactionContract.addRevokingItems(c);
         }
         transactionContract.addSignerKey(manufacturePrivateKey);
         transactionContract.seal();
@@ -928,13 +906,13 @@ public class BaseNetworkTest extends TestCase {
 
         // check new revisions for ownership contracts
         System.out.println("--- check new revisions for ownership contracts ---");
-        Contract newDelorean = swappedContracts.get(0);
+        Contract newDelorean = swappingNewContracts.get(0);
         deloreanResult = node.waitItem(newDelorean.getId(), 5000);
         System.out.println("DeLorean ownership contract revision " + newDelorean.getRevision() + " is " + deloreanResult + " by Network");
         System.out.println("DeLorean ownership is now belongs to Stepa: " + newDelorean.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
         assertEquals(ItemState.APPROVED, deloreanResult.state);
 
-        Contract newLamborgini = swappedContracts.get(1);
+        Contract newLamborgini = swappingNewContracts.get(1);
         lamborghiniResult = node.waitItem(newLamborgini.getId(), 5000);
         System.out.println("Lamborghini ownership contract revision " + newLamborgini.getRevision() + " is " + lamborghiniResult + " by Network");
         System.out.println("Lamborghini ownership is now belongs to Marty: " + newLamborgini.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
@@ -1225,18 +1203,38 @@ public class BaseNetworkTest extends TestCase {
         return gotContract;
     }
 
-    public TransactionPack imitateSendingTransactionToPartner(TransactionContract mainContract, List<Contract> contracts) throws Exception {
+    public List imitateSendingTransactionToPartner(TransactionContract mainContract, List<Contract> newContracts, List<Contract> revokingContracts) throws Exception {
 
         mainContract.seal();
 
-        TransactionPack tp = mainContract.getTransactionPack();
-        for (Contract c : contracts) {
+        TransactionPack tp_before = mainContract.getTransactionPack();
+        for (Contract c : newContracts) {
 
-            tp.addReference(c);
+            tp_before.addReference(c);
         }
-        byte[] data = tp.pack();
+        byte[] data = tp_before.pack();
 
-        return TransactionPack.unpack(data);
+
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        TransactionContract gotMainContract = new TransactionContract(tp_after.getContract().getLastSealedBinary(), tp_after);
+        List<Contract> gotSwappingNewContracts = new ArrayList<>(tp_after.getReferences().values());
+
+        // repair revoking
+        for (Contract nc : gotSwappingNewContracts) {
+            for (Contract rc : revokingContracts) {
+                if (nc.getOrigin().equals(rc.getId())) {
+                    nc.addRevokingItems(rc);
+                }
+            }
+            nc.clearContext();
+        }
+
+        List list = new ArrayList();
+        list.add(gotMainContract);
+        list.add(gotSwappingNewContracts);
+
+        return list;
     }
 
 }
