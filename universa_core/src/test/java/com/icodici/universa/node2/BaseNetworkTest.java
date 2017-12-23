@@ -893,10 +893,6 @@ public class BaseNetworkTest extends TestCase {
         }
         TransactionContract.finishSwap(swappedContracts, martyPrivateKey);
 
-        System.out.println(">>>> marty: " + martyPrivateKey + " " + martyPrivateKey.getPublicKey());
-        System.out.println(">>>> stepa: " + stepaPrivateKey + " " + stepaPrivateKey.getPublicKey());
-        System.out.println(">>>> manuf: " + manufacturePrivateKey + " " + manufacturePrivateKey.getPublicKey());
-
         for (Contract c : swappedContracts) {
             if(c.getOrigin().equals(delorean.getId())) {
                 c.addRevokingItems(delorean);

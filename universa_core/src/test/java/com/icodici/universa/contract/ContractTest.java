@@ -730,7 +730,13 @@ public class ContractTest extends ContractTestBase {
         delorean.seal();
         System.out.println("----");
 
+        delorean = delorean.createRevision(manufacturePrivateKey);
+        delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+
         byte[] firstSeal = delorean.getLastSealedBinary();
+        System.out.println("--delorean 1--");
+        System.out.println(delorean.getRevoking().size());
 
         TransactionPack tp_before = delorean.getTransactionPack();
         byte[] data = tp_before.pack();
@@ -739,7 +745,10 @@ public class ContractTest extends ContractTestBase {
         Contract delorean2 = tp_after.getContract();
 
         System.out.println("----");
+        delorean2.addSignerKey(stepaPrivateKey);
         delorean2.seal();
+        System.out.println("--delorean 2--");
+        System.out.println(delorean2.getRevoking().size());
 
         byte[] secondSeal = delorean2.getLastSealedBinary();
         Binder data1 = Boss.unpack(firstSeal);
@@ -756,7 +765,8 @@ public class ContractTest extends ContractTestBase {
 
         for (Object signature : (List) data2.getOrThrow("signatures")) {
             byte[] s = ((Bytes) signature).toArray();
-            System.out.println(ExtendedSignature.verify(manufacturePrivateKey.getPublicKey(), s, contractBytes2));
+            System.out.println("m: " + ExtendedSignature.verify(manufacturePrivateKey.getPublicKey(), s, contractBytes2));
+            System.out.println("s: " + ExtendedSignature.verify(stepaPrivateKey.getPublicKey(), s, contractBytes2));
         }
 
         System.out.println("----");

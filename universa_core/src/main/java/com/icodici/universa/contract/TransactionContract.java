@@ -195,7 +195,7 @@ public class TransactionContract extends Contract {
                     break;
                 }
             }
-            if(isMyContract) {
+            if(!isMyContract) {
                 c.addSignerKey(key);
                 c.seal();
             }

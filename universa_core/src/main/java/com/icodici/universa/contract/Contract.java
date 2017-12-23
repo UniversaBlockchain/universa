@@ -924,23 +924,23 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             role.getKeys().forEach(key -> keys__.put(ExtendedSignature.keyId(key), key));
         });
 
-        if(sealedBinary != null) {
-            Binder data__ = Boss.unpack(sealedBinary);
-            byte[] contractBytes__ = data__.getBinaryOrThrow("data");
+//        if(sealedBinary != null) {
+//            Binder data__ = Boss.unpack(sealedBinary);
+//            byte[] contractBytes__ = data__.getBinaryOrThrow("data");
 
             for (ExtendedSignature es : sealedByKeys.values()) {
-                Bytes keyId = ExtendedSignature.extractKeyId(es.getSignature());
-                PublicKey key__ = keys__.get(keyId);
-                System.out.println("seal, old bytes equals itself    ==: " + contractBytes__.equals(contractBytes__));
-                System.out.println("seal, old bytes equals new bytes ==: " + contractBytes__.equals(theContract));
-                System.out.println("seal, was old bytes hex =: " + Bytes.toHex(contractBytes__));
-                System.out.println("seal, was new bytes hex =: " + Bytes.toHex(theContract));
-                System.out.println("seal, verify sign from old bytes +: " + ExtendedSignature.verify(key__, es.getSignature(), contractBytes__));
-                System.out.println("seal, verify sign from new bytes -: " + ExtendedSignature.verify(key__, es.getSignature(), theContract));
+//                Bytes keyId = ExtendedSignature.extractKeyId(es.getSignature());
+//                PublicKey key__ = keys__.get(keyId);
+//                System.out.println("seal, old bytes equals itself    ==: " + contractBytes__.equals(contractBytes__));
+//                System.out.println("seal, old bytes equals new bytes ==: " + contractBytes__.equals(theContract));
+//                System.out.println("seal, was old bytes hex =: " + Bytes.toHex(contractBytes__));
+//                System.out.println("seal, was new bytes hex =: " + Bytes.toHex(theContract));
+//                System.out.println("seal, verify sign from old bytes +: " + ExtendedSignature.verify(key__, es.getSignature(), contractBytes__));
+//                System.out.println("seal, verify sign from new bytes -: " + ExtendedSignature.verify(key__, es.getSignature(), theContract));
 
                 signatures.add(es.getSignature());
             }
-        }
+//        }
 
         keysToSignWith.forEach(key -> {
             byte[] signature = ExtendedSignature.sign(key, theContract);
@@ -1002,8 +1002,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             // modify the deep copy for a new revision
             newRevision.state.revision = state.revision + 1;
             newRevision.state.createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-            newRevision.state.parent = getId();
-            newRevision.state.origin = state.revision == 1 ? getId() : state.origin;
+            newRevision.state.parent = new HashId(sealedBinary);
+            newRevision.state.origin = state.revision == 1 ? new HashId(sealedBinary) : state.origin;
+//            newRevision.state.parent = HashId.withDigest(Binder.fromKeysValues("sha512", getId().getDigest()).getBinaryOrThrow("sha512"));
+
             newRevision.revokingItems.add(this);
             newRevision.transactional = transactional;
 
@@ -1596,7 +1598,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         public Binder serializeWith(BiSerializer serializer) {
-
 
             Binder of = Binder.of(
                     "created_at", createdAt,
