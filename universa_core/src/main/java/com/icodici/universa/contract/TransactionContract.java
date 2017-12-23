@@ -99,6 +99,19 @@ public class TransactionContract extends Contract {
         newContract.seal();
     }
 
+    /**
+     * First step of swap procedure. Calls from swapper1 part.
+     *
+     * Swapper1 create new revisions of existing contracts, change owners,
+     * added transactional sections with references to each other and ask two signs
+     * and sign contract that was own.
+     *
+     * @param contract1 - own (swapper1) existing contract
+     * @param contract2 - swapper2 existing contract
+     * @param fromKey - own (swapper1) private key
+     * @param toKey - swapper2 public key
+     * @return list of new revisions that need to send to swapper2
+     */
     public static List<Contract> startSwap(Contract contract1, Contract contract2, PrivateKey fromKey, PublicKey toKey) {
 
         List<Contract> swappingContracts = new ArrayList<>();
@@ -142,6 +155,17 @@ public class TransactionContract extends Contract {
         return swappingContracts;
     }
 
+    /**
+     * Second step of swap procedure. Calls from swapper2 part.
+     *
+     * Swapper2 got contract from swapper1, sign new contract where he is new owner,
+     * add to reference of new contract, that was own, contract_id and point it to contract that will be own.
+     * Then sign second contract too.
+     *
+     * @param swappingContracts - contracts got from swapper1
+     * @param key - own (swapper2) private key
+     * @return
+     */
     public static List<Contract> signPresentedSwap(List<Contract> swappingContracts, PrivateKey key) {
 
         HashId contractHashId = null;
@@ -189,17 +213,26 @@ public class TransactionContract extends Contract {
         return swappingContracts;
     }
 
+    /**
+     * Third and final step of swap procedure. Calls from swapper1 part.
+     *
+     * Swapper1 got contracts from swapper2 and finally sign contract that will be own.
+     *
+     * @param swappingContracts
+     * @param key
+     * @return
+     */
     public static List<Contract> finishSwap(List<Contract> swappingContracts, PrivateKey key) {
 
         for (Contract c : swappingContracts) {
             boolean isMyContract = false;
             for (PublicKey k : c.getOwner().getKeys()) {
-                if(!k.equals(key.getPublicKey())) {
+                if(k.equals(key.getPublicKey())) {
                     isMyContract = true;
                     break;
                 }
             }
-            if(!isMyContract) {
+            if(isMyContract) {
                 c.addSignerKey(key);
                 c.seal();
             }

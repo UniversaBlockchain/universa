@@ -1507,6 +1507,21 @@ public class BaseNetworkTest extends TestCase {
         return gotContract;
     }
 
+    /**
+     * Imitate of sending contract from one part of swappers to another.
+     *
+     * Method packs sending contracts with main swap contract (can be blank - doesn't matter) into TransactionPack.
+     * Then restore from packed binary main swap contract, contracts sending with.
+     * And fill sent contract with revokingContracts.
+     * It is hook because current implementation of uTransactionPack,unpack() missing them.
+     * Second hook is Contarct.clearContext() - if do not call, checking will fail. 
+     *
+     * @param mainContract
+     * @param newContracts
+     * @param revokingContracts
+     * @return
+     * @throws Exception
+     */
     public List imitateSendingTransactionToPartner(TransactionContract mainContract, List<Contract> newContracts, List<Contract> revokingContracts) throws Exception {
 
         mainContract.seal();
