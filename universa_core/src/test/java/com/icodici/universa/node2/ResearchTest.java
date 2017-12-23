@@ -476,8 +476,8 @@ public class ResearchTest extends BaseNetworkTest {
 
 
     @Test
-    public void swapContractsViaTransactionAllGood_2() throws Exception {
-        super.swapContractsViaTransactionAllGood_2();
+    public void swapContractsViaTransactionAllGood() throws Exception {
+        super.swapContractsViaTransactionAllGood();
     }
 
 
