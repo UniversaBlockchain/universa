@@ -975,6 +975,39 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return sealedBinary;
     }
 
+    public void addSignatureToSeal(PrivateKey privateKey) {
+        if (sealedBinary == null)
+            throw new IllegalStateException("failed to create revision");
+        Binder data = Boss.unpack(sealedBinary);
+        byte[] contractBytes = data.getBinaryOrThrow("data");
+        List<byte[]> signatures = data.getListOrThrow("signatures");
+        byte[] signature = ExtendedSignature.sign(privateKey, contractBytes);
+        signatures.add(signature);
+        data.put("signatures", signatures);
+        setOwnBinary(data);
+    }
+
+    public boolean findSignatureInSeal(PublicKey publicKey) {
+        if (sealedBinary == null)
+            throw new IllegalStateException("failed to create revision");
+        Binder data = Boss.unpack(sealedBinary);
+        byte[] contractBytes = data.getBinaryOrThrow("data");
+        List<Bytes> signatures = data.getListOrThrow("signatures");
+        for (Bytes s : signatures) {
+            if (ExtendedSignature.verify(publicKey, s.getData(), contractBytes) != null)
+                return true;
+        }
+        return false;
+    }
+
+    public byte[] extractTheContract() {
+        if (sealedBinary == null)
+            throw new IllegalStateException("failed to create revision");
+        Binder data = Boss.unpack(sealedBinary);
+        byte[] contractBytes = data.getBinaryOrThrow("data");
+        return contractBytes;
+    }
+
     /**
      * Get the last knwon packed representation pf the contract. Should be called if the contract was contructed from a
      * packed binary ({@link #Contract(byte[])} or was explicitly sealed {@link #seal()}.

@@ -522,16 +522,67 @@ public class ResearchTest extends BaseNetworkTest {
         System.out.println("data1: " + md5Custom(Bytes.toHex(byte1)));
         delorean = new Contract();
         delorean.deserialize(data1, new BiDeserializer());
-        delorean.seal();
+        //delorean.seal();
         Binder data2 = delorean.serialize(new BiSerializer());
         byte[] byte2 = Boss.pack(data2);
         System.out.println("data2: " + md5Custom(Bytes.toHex(byte2)));
         delorean = new Contract();
         delorean.deserialize(data2, new BiDeserializer());
-        delorean.seal();
+        //delorean.seal();
         Binder data3 = delorean.serialize(new BiSerializer());
         byte[] byte3 = Boss.pack(data3);
         System.out.println("data3: " + md5Custom(Bytes.toHex(byte3)));
+    }
+
+
+    @Test
+    public void contractMultiSign() throws Exception {
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey martyPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/marty_mcfly.private.unikey"));
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/stepan_mamontov.private.unikey"));
+
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        //delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+
+        System.out.println(delorean.findSignatureInSeal(manufacturePrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(martyPrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(stepaPrivateKey.getPublicKey()));
+        System.out.println("sealedBinary: " + md5Custom(Bytes.toHex(delorean.getLastSealedBinary())));
+        System.out.println("theContract: " + md5Custom(Bytes.toHex(delorean.extractTheContract())));
+        System.out.println("hashId: " + delorean.getId().toBase64String());
+        System.out.println("addSignatureToSeal...");
+        delorean.addSignatureToSeal(manufacturePrivateKey);
+        System.out.println(delorean.findSignatureInSeal(manufacturePrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(martyPrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(stepaPrivateKey.getPublicKey()));
+        System.out.println("sealedBinary: " + md5Custom(Bytes.toHex(delorean.getLastSealedBinary())));
+        System.out.println("theContract: " + md5Custom(Bytes.toHex(delorean.extractTheContract())));
+        System.out.println("hashId: " + delorean.getId().toBase64String());
+        System.out.println("addSignatureToSeal...");
+        delorean.addSignatureToSeal(stepaPrivateKey);
+        System.out.println(delorean.findSignatureInSeal(manufacturePrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(martyPrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(stepaPrivateKey.getPublicKey()));
+        System.out.println("sealedBinary: " + md5Custom(Bytes.toHex(delorean.getLastSealedBinary())));
+        System.out.println("theContract: " + md5Custom(Bytes.toHex(delorean.extractTheContract())));
+        System.out.println("hashId: " + delorean.getId().toBase64String());
+        System.out.println("addSignatureToSeal...");
+        delorean.addSignatureToSeal(martyPrivateKey);
+        System.out.println(delorean.findSignatureInSeal(manufacturePrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(martyPrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(stepaPrivateKey.getPublicKey()));
+        System.out.println("sealedBinary: " + md5Custom(Bytes.toHex(delorean.getLastSealedBinary())));
+        System.out.println("theContract: " + md5Custom(Bytes.toHex(delorean.extractTheContract())));
+        System.out.println("hashId: " + delorean.getId().toBase64String());
+        System.out.println("recreate contract...");
+        delorean = new Contract(delorean.getLastSealedBinary());
+        System.out.println(delorean.findSignatureInSeal(manufacturePrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(martyPrivateKey.getPublicKey()));
+        System.out.println(delorean.findSignatureInSeal(stepaPrivateKey.getPublicKey()));
+        System.out.println("sealedBinary: " + md5Custom(Bytes.toHex(delorean.getLastSealedBinary())));
+        System.out.println("theContract: " + md5Custom(Bytes.toHex(delorean.extractTheContract())));
+        System.out.println("hashId: " + delorean.getId().toBase64String());
     }
 
 
