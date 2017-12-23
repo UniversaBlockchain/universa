@@ -117,10 +117,10 @@ public class TransactionContract extends Contract {
         List<Contract> swappingContracts = new ArrayList<>();
 
         Transactional transactional1 = contract1.createTransactionalSection();
-        transactional1.setId("" + Do.randomInt(1000000000));
+        transactional1.setId(HashId.createRandom().toBase64String());
 
         Transactional transactional2 = contract1.createTransactionalSection();
-        transactional2.setId("" + Do.randomInt(1000000000));
+        transactional2.setId(HashId.createRandom().toBase64String());
 
         ReferenceModel reference1 = new ReferenceModel();
         reference1.transactional_id = transactional2.getId();
