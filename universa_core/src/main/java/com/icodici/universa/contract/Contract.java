@@ -452,12 +452,21 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             res = false;
             addError(Errors.UNKNOWN_COMMAND, "ReferenceModel.TYPE_EXISTING not implemented");
         } else if (rm.type == ReferenceModel.TYPE_TRANSACTIONAL) {
-            if(rm.transactional_id != null && refContract.transactional == null){
+            if ((rm.transactional_id == null) ||
+                (refContract.transactional == null) ||
+                (refContract.transactional.getId() == null) ||
+                "".equals(rm.transactional_id) ||
+                "".equals(refContract.transactional.id)) {
                 res = false;
-                addError(Errors.BAD_REF, "transactional not found");
-            } else if (!rm.transactional_id.equals(refContract.transactional.id)) {
-                res = false;
-                addError(Errors.BAD_REF, "transactional_id mismatch");
+                addError(Errors.BAD_REF, "transactional is missing");
+            } else {
+                if (rm.transactional_id != null && refContract.transactional == null) {
+                    res = false;
+                    addError(Errors.BAD_REF, "transactional not found");
+                } else if (!rm.transactional_id.equals(refContract.transactional.id)) {
+                    res = false;
+                    addError(Errors.BAD_REF, "transactional_id mismatch");
+                }
             }
         }
 
