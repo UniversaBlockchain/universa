@@ -1137,14 +1137,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 state = new State();
             state.deserealizeWith(data.getBinderOrThrow("state"), deserializer);
 
-            Binder transactionalBinder = data.getBinder("transactional", null);
-            if (transactionalBinder != null) {
-                if (transactional == null)
-                    transactional = new Transactional();
-                transactional.deserializeWith(transactionalBinder, deserializer);
-            } else {
-                transactional = null;
-            }
+            if (transactional == null)
+                transactional = new Transactional();
+            transactional.deserializeWith(data.getBinder("transactional", null), deserializer);
 
 //            referencedItems.addAll(definition.references);
             if(transactional != null && transactional.references != null)
@@ -1800,12 +1795,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public Binder serializeWith(BiSerializer serializer) {
             List<Permission> pp = permissions.values();
-            Collections.sort(pp);
             Binder pb = new Binder();
             int lastId = 0;
 
             // serialize permissions with a valid id
-            pp.forEach(perm -> {
+            permissions.values().forEach(perm -> {
                 String pid = perm.getId();
                 if (pid == null)
                     throw new IllegalStateException("permission without id: " + perm);
@@ -1814,6 +1808,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 pb.put(pid, perm);
             });
 
+            Collections.sort(pp);
             Binder of = Binder.of(
                     "issuer", getIssuer(),
                     "created_at", createdAt,
