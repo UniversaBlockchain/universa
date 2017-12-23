@@ -171,8 +171,12 @@ public class TransactionContract extends Contract {
                 krs.add(new KeyRecord(key.getPublicKey()));
                 c.setCreator(krs);
 
-                for (ReferenceModel rm : c.getTransactional().getReferences()) {
-                    rm.contract_id = contractHashId;
+                if(c.getTransactional() != null) {
+                    for (ReferenceModel rm : c.getTransactional().getReferences()) {
+                        rm.contract_id = contractHashId;
+                    }
+                } else {
+                    return swappingContracts;
                 }
 
                 c.addSignerKey(key);
