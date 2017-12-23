@@ -610,7 +610,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         c.seal();
 
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 1500);
+        ItemResult itemResult = node.waitItem(c.getId(), 2500);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 

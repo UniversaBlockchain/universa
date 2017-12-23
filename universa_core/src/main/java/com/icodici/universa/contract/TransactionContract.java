@@ -207,4 +207,117 @@ public class TransactionContract extends Contract {
 
         return swappingContracts;
     }
+
+    // for test purposes only
+
+
+
+    public static List<Contract> startSwap__WrongSignTest(Contract contract1, Contract contract2, PrivateKey fromKey, PublicKey toKey, PrivateKey wrongKey) {
+
+        List<Contract> swappingContracts = new ArrayList<>();
+
+        Transactional transactional1 = contract1.createTransactionalSection();
+        transactional1.setId("" + Do.randomInt(1000000000));
+
+        Transactional transactional2 = contract1.createTransactionalSection();
+        transactional2.setId("" + Do.randomInt(1000000000));
+
+        ReferenceModel reference1 = new ReferenceModel();
+        reference1.transactional_id = transactional2.getId();
+        reference1.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        reference1.required = true;
+        reference1.signed_by = new ArrayList<>();
+        reference1.signed_by.add(new SimpleRole("owner", new KeyRecord(fromKey.getPublicKey())));
+        reference1.signed_by.add(new SimpleRole("creator", new KeyRecord(toKey)));
+        transactional1.addReference(reference1);
+
+        ReferenceModel reference2 = new ReferenceModel();
+        reference2.transactional_id = transactional1.getId();
+        reference2.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        reference2.required = true;
+        reference2.signed_by = new ArrayList<>();
+        reference2.signed_by.add(new SimpleRole("owner", new KeyRecord(toKey)));
+        reference2.signed_by.add(new SimpleRole("creator", new KeyRecord(fromKey.getPublicKey())));
+        transactional2.addReference(reference2);
+
+
+
+        Contract newContract1 = contract1.createRevision(transactional1, wrongKey);
+        newContract1.setOwnerKeys(toKey);
+        newContract1.seal();
+        swappingContracts.add(newContract1);
+
+        Contract newContract2 = contract2.createRevision(transactional2);
+        newContract2.setOwnerKeys(fromKey.getPublicKey());
+        newContract2.seal();
+        swappingContracts.add(newContract2);
+
+        return swappingContracts;
+    }
+
+    public static List<Contract> signPresentedSwap__WrongSignTest(List<Contract> swappingContracts, PrivateKey key, PrivateKey wrongKey) {
+
+        HashId contractHashId = null;
+        for (Contract c : swappingContracts) {
+            for (PublicKey k : c.getOwner().getKeys()) {
+                if(k.equals(key.getPublicKey())) {
+
+                    c.addSignerKey(wrongKey);
+                    c.seal();
+
+                    contractHashId = c.getId();
+                }
+            }
+        }
+
+        for (Contract c : swappingContracts) {
+            boolean isMyContract = false;
+            for (PublicKey k : c.getOwner().getKeys()) {
+                if(!k.equals(key.getPublicKey())) {
+                    isMyContract = true;
+                    break;
+                }
+            }
+            if(isMyContract) {
+
+                Set<KeyRecord> krs = new HashSet<>();
+                krs.add(new KeyRecord(key.getPublicKey()));
+                c.setCreator(krs);
+
+                if(c.getTransactional() != null) {
+                    for (ReferenceModel rm : c.getTransactional().getReferences()) {
+                        rm.contract_id = contractHashId;
+                    }
+                } else {
+                    return swappingContracts;
+                }
+
+                c.addSignerKey(wrongKey);
+                c.seal();
+            } else {
+//                c.addSignerKey(key);
+            }
+        }
+
+        return swappingContracts;
+    }
+
+    public static List<Contract> finishSwap__WrongSignTest(List<Contract> swappingContracts, PrivateKey key, PrivateKey wrongKey) {
+
+        for (Contract c : swappingContracts) {
+            boolean isMyContract = false;
+            for (PublicKey k : c.getOwner().getKeys()) {
+                if(!k.equals(key.getPublicKey())) {
+                    isMyContract = true;
+                    break;
+                }
+            }
+            if(!isMyContract) {
+                c.addSignerKey(wrongKey);
+                c.seal();
+            }
+        }
+
+        return swappingContracts;
+    }
 }

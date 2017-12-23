@@ -145,15 +145,19 @@ public class KeyRecord extends Binder implements BiSerializable {
 //                result.put(key, this.get(key));
 //            }
 //        }
-        Binder name = this.getBinder("name", null);
+        Object name = this.get("name");
 
         if(name != null) {
-            SortedSet<String> keys2 = new TreeSet<String>(name.keySet());
-            Binder result2 = new Binder();
-            for (String key2 : keys2) {
-                result2.put(key2, name.get(key2));
+            if(name instanceof Map) {
+                SortedSet<String> keys2 = new TreeSet<String>(((Map)name).keySet());
+                Binder result2 = new Binder();
+                for (String key2 : keys2) {
+                    result2.put(key2, ((Map)name).get(key2));
+                }
+                result.put("name", result2);
+            } else {
+                result.put("name", name);
             }
-            result.put("name", result2);
         }
 //        result.putAll(this);
         result.put("key", s.serialize(publicKey));
