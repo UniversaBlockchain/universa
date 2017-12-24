@@ -1925,11 +1925,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return context;
     }
 
-    public void clearContext() {
-        context = null;
-        context = getContext();
-    }
-
     /**
      * Transction context. Holds temporary information about a context transaction relevant to create sibling, e.g.
      * contract splitting. Allow new items being created to get the base contract (that is creating) and get the full

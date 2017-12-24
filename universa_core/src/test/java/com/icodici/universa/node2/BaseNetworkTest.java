@@ -2062,57 +2062,16 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    public TransactionContract imitateSendingContractToPartner(TransactionContract sendingContract, PrivateKey manufacturePrivateKey) throws Exception {
-
-        System.out.println("--- imitate sending to partner ---");
-        sendingContract.addSignerKey(manufacturePrivateKey);
-        sendingContract.seal();
-
-        TransactionPack tp_before = sendingContract.getTransactionPack();
-//        tp_before.trace();
-        byte[] data = tp_before.pack();
-
-//        Thread.sleep(1000);
-
-        TransactionPack tp_after  = TransactionPack.unpack(data);
-        TransactionContract gotContract = new TransactionContract(tp_after.getContract().getLastSealedBinary(), tp_after);
-
-        // Add missing parents and resetContext
-        for (Approvable c : gotContract.getNewItems()) {
-
-            boolean parentExist = false;
-            for (Approvable c2 : ((Contract) c).getRevokingItems()) {
-                if(((Contract) c2).getId().equals(((Contract) c).getParent())) {
-                    parentExist = true;
-                }
-            }
-
-            if(!parentExist) {
-                for (Approvable c3 : gotContract.getRevokingItems()) {
-                    if(((Contract) c3).getId().equals(((Contract) c).getParent())) {
-                        ((Contract) c).addRevokingItems(((Contract) c3));
-                    }
-                }
-            }
-            ((Contract) c).clearContext();
-        }
-
-        return gotContract;
-    }
-
     /**
      * Imitate of sending contract from one part of swappers to another.
      *
      * Method packs sending contracts with main swap contract (can be blank - doesn't matter) into TransactionPack.
      * Then restore from packed binary main swap contract, contracts sending with.
-     * And fill sent contract with oldContracts.
-     * It is hook because current implementation of uTransactionPack,unpack() missing them.
-     * Second hook is Contarct.clearContext() - if do not call, checking will fail. 
      *
-     * @param mainContract
-     * @param newContracts
-     * @param oldContracts
-     * @return
+     * @param mainContract - main contract of TransactionPack. For swap procedure it can be blank contract.
+     * @param newContracts - new revisions of existing contracts
+     * @param oldContracts - existing contracts that should be removed
+     * @return list of "got" new contracts
      * @throws Exception
      */
     public List imitateSendingTransactionToPartner(TransactionContract mainContract, List<Contract> newContracts, List<Contract> oldContracts) throws Exception {
