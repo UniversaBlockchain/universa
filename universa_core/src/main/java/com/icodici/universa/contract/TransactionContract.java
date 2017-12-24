@@ -21,10 +21,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class TransactionContract extends Contract {
 
@@ -168,32 +165,29 @@ public class TransactionContract extends Contract {
      */
     public static List<Contract> signPresentedSwap(List<Contract> swappingContracts, PrivateKey key) {
 
+        Set<PublicKey> keys = new HashSet<>();
+        keys.add(key.getPublicKey());
+
         HashId contractHashId = null;
         for (Contract c : swappingContracts) {
-            for (PublicKey k : c.getOwner().getKeys()) {
-                if(k.equals(key.getPublicKey())) {
+            boolean willBeMine = c.getOwner().isAllowedForKeys(keys);
 
-                    c.addSignatureToSeal(key);
-                    contractHashId = c.getId();
-                }
+            if(willBeMine) {
+                c.addSignatureToSeal(key);
+                contractHashId = c.getId();
             }
         }
 
         for (Contract c : swappingContracts) {
-            boolean isMyContract = false;
-            for (PublicKey k : c.getOwner().getKeys()) {
-                if(!k.equals(key.getPublicKey())) {
-                    isMyContract = true;
-                    break;
-                }
-            }
-            if(isMyContract) {
+            boolean willBeNotMine = (!c.getOwner().isAllowedForKeys(keys));
+
+            if(willBeNotMine) {
 
                 Set<KeyRecord> krs = new HashSet<>();
                 krs.add(new KeyRecord(key.getPublicKey()));
                 c.setCreator(krs);
 
-                if(c.getTransactional() != null) {
+                if(c.getTransactional() != null && c.getTransactional().getReferences() != null) {
                     for (ReferenceModel rm : c.getTransactional().getReferences()) {
                         rm.contract_id = contractHashId;
                     }
@@ -220,15 +214,12 @@ public class TransactionContract extends Contract {
      */
     public static List<Contract> finishSwap(List<Contract> swappingContracts, PrivateKey key) {
 
+        Set<PublicKey> keys = new HashSet<>();
+        keys.add(key.getPublicKey());
         for (Contract c : swappingContracts) {
-            boolean isMyContract = false;
-            for (PublicKey k : c.getOwner().getKeys()) {
-                if(k.equals(key.getPublicKey())) {
-                    isMyContract = true;
-                    break;
-                }
-            }
-            if(isMyContract) {
+            boolean willBeMine = c.getOwner().isAllowedForKeys(keys);
+
+            if(willBeMine) {
                 c.addSignatureToSeal(key);
             }
         }

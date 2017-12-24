@@ -355,14 +355,12 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(main.getId(), 5000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
-        assertEquals(ItemState.UNDEFINED, node.checkItem(new1.getId()).state);
-        assertEquals(ItemState.UNDEFINED, node.checkItem(new2.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(new1.getId(), 3000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(new2.getId(), 3000).state);
 
         // and the references are intact
-        assertEquals(ItemState.DECLINED, node.checkItem(existing1.getId()).state);
-        if (node.checkItem(existing2.getId()).state.isPending())
-            Thread.sleep(500);
-        assertEquals(ItemState.APPROVED, node.checkItem(existing2.getId()).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(existing1.getId(), 3000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(existing2.getId(), 3000).state);
 
 //        LogPrinter.showDebug(false);
     }
@@ -2107,22 +2105,26 @@ public class BaseNetworkTest extends TestCase {
      *
      * Method packs sending contracts with main swap contract (can be blank - doesn't matter) into TransactionPack.
      * Then restore from packed binary main swap contract, contracts sending with.
-     * And fill sent contract with revokingContracts.
+     * And fill sent contract with oldContracts.
      * It is hook because current implementation of uTransactionPack,unpack() missing them.
      * Second hook is Contarct.clearContext() - if do not call, checking will fail. 
      *
      * @param mainContract
      * @param newContracts
-     * @param revokingContracts
+     * @param oldContracts
      * @return
      * @throws Exception
      */
-    public List imitateSendingTransactionToPartner(TransactionContract mainContract, List<Contract> newContracts, List<Contract> revokingContracts) throws Exception {
+    public List imitateSendingTransactionToPartner(TransactionContract mainContract, List<Contract> newContracts, List<Contract> oldContracts) throws Exception {
 
         mainContract.seal();
 
         TransactionPack tp_before = mainContract.getTransactionPack();
         for (Contract c : newContracts) {
+
+            tp_before.addReference(c);
+        }
+        for (Contract c : oldContracts) {
 
             tp_before.addReference(c);
         }
@@ -2132,16 +2134,17 @@ public class BaseNetworkTest extends TestCase {
         TransactionPack tp_after = TransactionPack.unpack(data);
 
         TransactionContract gotMainContract = new TransactionContract(tp_after.getContract().getLastSealedBinary(), tp_after);
-        List<Contract> gotSwappingNewContracts = new ArrayList<>(tp_after.getReferences().values());
+        List<Contract> gotSwappingNewContracts = new ArrayList<>();
 
-        // repair revoking
-        for (Contract nc : gotSwappingNewContracts) {
-            for (Contract rc : revokingContracts) {
-                if (nc.getOrigin().equals(rc.getId())) {
-                    nc.addRevokingItems(rc);
+        // filter new revisions from others contracts in the transaction
+        for (Contract c : tp_after.getReferences().values()) {
+            if(c.getParent() != null) {
+                for (Contract rc : oldContracts) {
+                    if (c.getParent().equals(rc.getId())) {
+                        gotSwappingNewContracts.add(c);
+                    }
                 }
             }
-            nc.clearContext();
         }
 
         List list = new ArrayList();
