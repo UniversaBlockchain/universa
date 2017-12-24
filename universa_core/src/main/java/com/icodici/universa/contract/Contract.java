@@ -1502,7 +1502,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
 
     public Transactional createTransactionalSection() {
-        return new Transactional();
+        transactional = new Transactional();
+        return transactional;
     }
 
     // processes that should be quantized

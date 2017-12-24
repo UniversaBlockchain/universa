@@ -116,10 +116,12 @@ public class TransactionContract extends Contract {
 
         List<Contract> swappingContracts = new ArrayList<>();
 
-        Transactional transactional1 = contract1.createTransactionalSection();
+        Contract newContract1 = contract1.createRevision(fromKey);
+        Transactional transactional1 = newContract1.createTransactionalSection();
         transactional1.setId(HashId.createRandom().toBase64String());
 
-        Transactional transactional2 = contract1.createTransactionalSection();
+        Contract newContract2 = contract2.createRevision();
+        Transactional transactional2 = newContract2.createTransactionalSection();
         transactional2.setId(HashId.createRandom().toBase64String());
 
         ReferenceModel reference1 = new ReferenceModel();
@@ -142,12 +144,10 @@ public class TransactionContract extends Contract {
 
 
 
-        Contract newContract1 = contract1.createRevision(transactional1, fromKey);
         newContract1.setOwnerKeys(toKey);
         newContract1.seal();
         swappingContracts.add(newContract1);
 
-        Contract newContract2 = contract2.createRevision(transactional2);
         newContract2.setOwnerKeys(fromKey.getPublicKey());
         newContract2.seal();
         swappingContracts.add(newContract2);
