@@ -656,7 +656,7 @@ public class Node {
                 if (!processingState.isProcessedToConsensus()) {
                     for (ReferenceModel refModel : item.getReferencedItems()) {
                         HashId id = refModel.contract_id;
-                        if(refModel.type == ReferenceModel.TYPE_EXISTING && id != null) {
+                        if(refModel.type == ReferenceModel.TYPE_EXISTING) {
                             if (!ledger.isApproved(id)) {
                                 item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                             }
