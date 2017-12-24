@@ -173,9 +173,7 @@ public class TransactionContract extends Contract {
             for (PublicKey k : c.getOwner().getKeys()) {
                 if(k.equals(key.getPublicKey())) {
 
-                    c.addSignerKey(key);
-                    c.seal();
-
+                    c.addSignatureToSeal(key);
                     contractHashId = c.getId();
                 }
             }
@@ -203,10 +201,8 @@ public class TransactionContract extends Contract {
                     return swappingContracts;
                 }
 
-                c.addSignerKey(key);
                 c.seal();
-            } else {
-//                c.addSignerKey(key);
+                c.addSignatureToSeal(key);
             }
         }
 
@@ -233,8 +229,7 @@ public class TransactionContract extends Contract {
                 }
             }
             if(isMyContract) {
-                c.addSignerKey(key);
-                c.seal();
+                c.addSignatureToSeal(key);
             }
         }
 
@@ -295,9 +290,7 @@ public class TransactionContract extends Contract {
             for (PublicKey k : c.getOwner().getKeys()) {
                 if(k.equals(key.getPublicKey())) {
 
-                    c.addSignerKey(wrongKey);
-                    c.seal();
-
+                    c.addSignatureToSeal(wrongKey);
                     contractHashId = c.getId();
                 }
             }
@@ -325,10 +318,8 @@ public class TransactionContract extends Contract {
                     return swappingContracts;
                 }
 
-                c.addSignerKey(wrongKey);
                 c.seal();
-            } else {
-//                c.addSignerKey(key);
+                c.addSignatureToSeal(wrongKey);
             }
         }
 
@@ -346,8 +337,7 @@ public class TransactionContract extends Contract {
                 }
             }
             if(!isMyContract) {
-                c.addSignerKey(wrongKey);
-                c.seal();
+                c.addSignatureToSeal(wrongKey);
             }
         }
 

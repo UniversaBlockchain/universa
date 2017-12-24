@@ -928,62 +928,35 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 "version", 3,
                 "data", theContract
         );
+
         List<byte[]> signatures = new ArrayList<>();
-
-        HashMap<Bytes, PublicKey> keys__ = new HashMap<Bytes, PublicKey>();
-
-        roles.values().forEach(role -> {
-            role.getKeys().forEach(key -> keys__.put(ExtendedSignature.keyId(key), key));
-        });
-
-//        if(sealedBinary != null) {
-//            Binder data__ = Boss.unpack(sealedBinary);
-//            byte[] contractBytes__ = data__.getBinaryOrThrow("data");
-
-            for (ExtendedSignature es : sealedByKeys.values()) {
-//                Bytes keyId = ExtendedSignature.extractKeyId(es.getSignature());
-//                PublicKey key__ = keys__.get(keyId);
-//                System.out.println("seal, old bytes equals itself    ==: " + contractBytes__.equals(contractBytes__));
-//                System.out.println("seal, old bytes equals new bytes ==: " + contractBytes__.equals(theContract));
-//                System.out.println("seal, was old bytes hex =: " + Bytes.toHex(contractBytes__));
-//                System.out.println("seal, was new bytes hex =: " + Bytes.toHex(theContract));
-//                System.out.println("seal, verify sign from old bytes +: " + ExtendedSignature.verify(key__, es.getSignature(), contractBytes__));
-//                System.out.println("seal, verify sign from new bytes -: " + ExtendedSignature.verify(key__, es.getSignature(), theContract));
-
-                signatures.add(es.getSignature());
-            }
-//        }
-
-        keysToSignWith.forEach(key -> {
-            byte[] signature = ExtendedSignature.sign(key, theContract);
-
-            signatures.add(signature);
-
-
-//            verifySignatureQuantized(key.getPublicKey());
-            ExtendedSignature es = ExtendedSignature.verify(key.getPublicKey(), signature, theContract);
-            if (es != null) {
-                sealedByKeys.put(key.getPublicKey(), es);
-            }
-        });
-
-
-
         result.put("data", theContract);
         result.put("signatures", signatures);
         setOwnBinary(result);
+
+        addSignatureToSeal(keysToSignWith.toArray(new PrivateKey[]{}));
+
         return sealedBinary;
     }
 
-    public void addSignatureToSeal(PrivateKey privateKey) {
+    public void addSignatureToSeal(PrivateKey... privateKeys) {
         if (sealedBinary == null)
-            throw new IllegalStateException("failed to create revision");
+            throw new IllegalStateException("failed to add signature: sealed binary does not exist");
         Binder data = Boss.unpack(sealedBinary);
         byte[] contractBytes = data.getBinaryOrThrow("data");
         List<byte[]> signatures = data.getListOrThrow("signatures");
-        byte[] signature = ExtendedSignature.sign(privateKey, contractBytes);
-        signatures.add(signature);
-        data.put("signatures", signatures);
+
+        for (PrivateKey key : privateKeys) {
+            byte[] signature = ExtendedSignature.sign(key, contractBytes);
+            signatures.add(signature);
+            data.put("signatures", signatures);
+
+            ExtendedSignature es = ExtendedSignature.verify(key.getPublicKey(), signature, contractBytes);
+            if (es != null) {
+                sealedByKeys.put(key.getPublicKey(), es);
+            }
+        }
+
         setOwnBinary(data);
     }
 

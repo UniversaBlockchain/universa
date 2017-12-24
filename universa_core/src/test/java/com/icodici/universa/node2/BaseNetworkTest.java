@@ -1483,6 +1483,7 @@ public class BaseNetworkTest extends TestCase {
         transactionContract = (TransactionContract) result_step_1.get(0);
         swappingNewContracts = (List<Contract>) result_step_1.get(1);
         swappingNewContracts.get(0).getTransactional().setId(HashId.createRandom().toBase64String());
+        swappingNewContracts.get(0).seal();
         TransactionContract.signPresentedSwap(swappingNewContracts, stepaPrivateKey);
 
         // then Stepa send draft transaction back to Marty
