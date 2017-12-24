@@ -355,11 +355,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // Add register a version quanta (for self)
         quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
 
-        // quantize newItems, revokingItems and referencedItems
-        // new items will be quanted in own check()
-//        for (int i = 0; i < newItems.size(); i++) {
-//            quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
-//        }
+        // quantize revokingItems and referencedItems
         for (Contract r : revokingItems) {
             // Add key verify quanta for revoking again (we just reset quantiser)
             for (PublicKey key : r.sealedByKeys.keySet()) {
@@ -401,7 +397,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             index++;
         }
         checkDupesCreation();
-//        quantiser.finishCalculation();
 
         checkTransaction();
 
@@ -1022,8 +1017,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             newRevision.state.createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
             newRevision.state.parent = getId();
             newRevision.state.origin = state.revision == 1 ? getId() : state.origin;
-//            newRevision.state.parent = HashId.withDigest(Binder.fromKeysValues("sha512", getId().getDigest()).getBinaryOrThrow("sha512"));
-
             newRevision.revokingItems.add(this);
             newRevision.transactional = transactional;
 
@@ -1075,8 +1068,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
 
     public Role setCreator(Collection<KeyRecord> records) {
-//        Role creator = new Role("creator", records);
-//        setCreator(creator);
         return setRole("creator", records);
     }
 
@@ -1147,7 +1138,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 transactional = new Transactional();
             transactional.deserializeWith(data.getBinder("transactional", null), deserializer);
 
-//            referencedItems.addAll(definition.references);
             if(transactional != null && transactional.references != null)
                 referencedItems.addAll(transactional.references);
         });
@@ -1164,8 +1154,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         if(transactional != null)
             binder.set("transactional", transactional.serializeWith(s));
-
-
 
         return binder;
     }
@@ -1570,7 +1558,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private Binder state;
         private ZonedDateTime createdAt;
         private ZonedDateTime expiresAt;
-        //        private Role createdBy;
         private HashId origin;
         private HashId parent;
         private Binder data;
@@ -1625,7 +1612,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
             if (expiresAt != null)
                 of.set("expires_at", expiresAt);
-
 
             return serializer.serialize(
                     of
