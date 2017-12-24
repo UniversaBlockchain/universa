@@ -695,7 +695,6 @@ public class BaseNetworkTest extends TestCase {
     private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
         ItemResult itemResult = node.waitItem(c.getId(), 8000);
-        c.traceErrors();
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 

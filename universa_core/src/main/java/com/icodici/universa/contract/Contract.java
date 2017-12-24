@@ -410,43 +410,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return errors.size() == 0;
     }
 
-//    public boolean checkReferencedItems() throws Quantiser.QuantiserException {
-//        boolean res = true;
-//        ArrayList<Contract> newItemsList = new ArrayList<>(newItems);
-//        // check each contract inside transaction, all must be ok
-//        for (int i = 0; i < newItemsList.size(); ++i) {
-//            boolean i_check = true;
-//            Contract contractToCheck = newItemsList.get(i);
-//
-//            if (contractToCheck.getReferencedItems().size() == 0) {
-//                // if contractToCheck has no references -> then it's transaction check is ok
-//                i_check = true;
-//            } else {
-//                // check each reference inside contractToCheck, all must be ok
-//                for (ReferenceModel rm : contractToCheck.getReferencedItems()) {
-//                    // use all other contracts to check reference. at least one must be ok
-//                    boolean rm_check = false;
-//                    for (int j = 0; j < newItemsList.size(); ++j) {
-//                        if (i != j) {
-//                            if (checkOneReference(rm, newItemsList.get(j))) {
-//                                rm_check = true;
-//                            }
-//                        }
-//                    }
-//
-//                    if (!rm_check)
-//                        i_check = false;
-//                }
-//            }
-//
-//            if (!i_check) {
-//                res = false;
-//                addError(Errors.FAILED_CHECK, "check for contract (hashId="+contractToCheck.id.toString()+"): false");
-//            }
-//        }
-//        return res;
-//    }
-
     private boolean checkReferencedItems(ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
         if (referencedItems.size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
@@ -466,12 +429,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     }
             }
 
-            if (rm_check == false)
+            if (rm_check == false) {
                 allRefs_check = false;
+                addError(Errors.FAILED_CHECK, "checkReferencedItems for contract (hashId="+getId().toString()+"): false");
+            }
         }
-
-        if (!allRefs_check)
-            addError(Errors.FAILED_CHECK, "checkReferencedItems for contract (hashId="+getId().toString()+"): false");
 
         return allRefs_check;
     }
