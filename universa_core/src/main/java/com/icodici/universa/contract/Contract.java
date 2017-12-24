@@ -343,6 +343,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public boolean check(String prefix) throws Quantiser.QuantiserException {
+        return check(prefix, null);
+    }
+
+    private boolean check(String prefix, ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+
+        if (neighbourContracts == null)
+            neighbourContracts = new ArrayList<>(newItems);
 
         quantiser.reset(quantiser.getQuantaLimit());
         // Add key verify quanta again (we just reset quantiser)
@@ -386,7 +393,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         int index = 0;
         for (Contract c : newItems) {
             String p = prefix + "new[" + index + "].";
-            checkSubItemQuantized(c, p);
+            checkSubItemQuantized(c, p, neighbourContracts);
             if (!c.isOk()) {
                 c.errors.forEach(e -> {
                     String name = e.getObjectName();
@@ -398,49 +405,40 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         checkDupesCreation();
 
-        checkReferencedItems();
+        checkReferencedItems(neighbourContracts);
 
         return errors.size() == 0;
     }
 
-    public boolean checkReferencedItems() throws Quantiser.QuantiserException {
-        boolean res = true;
-        ArrayList<Contract> newItemsList = new ArrayList<>(newItems);
-        // check each contract inside transaction, all must be ok
-        for (int i = 0; i < newItemsList.size(); ++i) {
-            boolean i_check = true;
-            Contract contractToCheck = newItemsList.get(i);
+    private boolean checkReferencedItems(ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+        if (referencedItems.size() == 0) {
+            // if contract has no references -> then it's checkReferencedItems check is ok
+            return true;
+        }
 
-            if (contractToCheck.getReferencedItems().size() == 0) {
-                // if contractToCheck has no references -> then it's transaction check is ok
-                i_check = true;
-            } else {
-                // check each reference inside contractToCheck, all must be ok
-                for (ReferenceModel rm : contractToCheck.getReferencedItems()) {
-                    // use all other contracts to check reference. at least one must be ok
-                    boolean rm_check = false;
-                    for (int j = 0; j < newItemsList.size(); ++j) {
-                        if (i != j) {
-                            if (checkOneReference(rm, newItemsList.get(j))) {
-                                rm_check = true;
-                            }
-                        }
+        // check each reference, all must be ok
+        boolean allRefs_check = true;
+        for (final ReferenceModel rm : referencedItems) {
+            // use all neighbourContracts to check reference. at least one must be ok
+            boolean rm_check = false;
+            for (int j = 0; j < neighbourContracts.size(); ++j) {
+                Contract neighbour = neighbourContracts.get(j);
+                if ((rm.transactional_id != null && rm.transactional_id.equals(neighbour.transactional.id)) || (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
+                    if (checkOneReference(rm, neighbour)) {
+                        rm_check = true;
                     }
-
-                    if (!rm_check)
-                        i_check = false;
-                }
             }
 
-            if (!i_check) {
-                res = false;
-                addError(Errors.FAILED_CHECK, "check for contract (hashId="+contractToCheck.id.toString()+"): false");
+            if (rm_check == false) {
+                allRefs_check = false;
+                addError(Errors.FAILED_CHECK, "checkReferencedItems for contract (hashId="+getId().toString()+"): false");
             }
         }
-        return res;
+
+        return allRefs_check;
     }
 
-    private boolean checkOneReference(ReferenceModel rm, Contract refContract) throws Quantiser.QuantiserException {
+    private boolean checkOneReference(final ReferenceModel rm, final Contract refContract) throws Quantiser.QuantiserException {
         boolean res = true;
 
         if (rm.type == ReferenceModel.TYPE_EXISTING) {
@@ -1547,9 +1545,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
 
     protected void checkSubItemQuantized(Contract contract, String prefix) throws Quantiser.QuantiserException {
+        checkSubItemQuantized(contract, prefix, null);
+    }
+
+
+    protected void checkSubItemQuantized(Contract contract, String prefix, ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
         // Add checks from subItem quanta
         contract.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
-        contract.check(prefix);
+        contract.check(prefix, neighbourContracts);
         quantiser.addWorkCostFrom(contract.quantiser);
     }
 

@@ -355,14 +355,12 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(main.getId(), 5000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
-        assertEquals(ItemState.UNDEFINED, node.checkItem(new1.getId()).state);
-        assertEquals(ItemState.UNDEFINED, node.checkItem(new2.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(new1.getId(), 3000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(new2.getId(), 3000).state);
 
         // and the references are intact
-        assertEquals(ItemState.DECLINED, node.checkItem(existing1.getId()).state);
-        if (node.checkItem(existing2.getId()).state.isPending())
-            Thread.sleep(500);
-        assertEquals(ItemState.APPROVED, node.checkItem(existing2.getId()).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(existing1.getId(), 3000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(existing2.getId(), 3000).state);
 
 //        LogPrinter.showDebug(false);
     }
@@ -1945,8 +1943,122 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    //@Test
-    public void swapContractsViaTransactionSnatch() throws Exception {
+    @Test
+    public void swapContractsViaTransactionSnatch1() throws Exception {
+
+        PrivateKey martyPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+        System.out.println("DeLorean ownership contract is valid: " + delorean.check());
+        delorean.traceErrors();
+        registerAndCheckApproved(delorean);
+        Role martyMcflyRole = delorean.getOwner();
+        System.out.println("DeLorean ownership is belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        lamborghini.addSignerKey(manufacturePrivateKey);
+        lamborghini.seal();
+        System.out.println("Lamborghini ownership contract is valid: " + lamborghini.check());
+        lamborghini.traceErrors();
+        registerAndCheckApproved(lamborghini);
+        Role stepanMamontovRole = lamborghini.getOwner();
+        System.out.println("Lamborghini ownership is belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+
+        // register swapped contracts using TransactionContract
+        System.out.println("--- register swapped contracts using TransactionContract ---");
+
+        List<Contract> swappingNewContracts;
+        List<Contract> swappingRevokingContracts = new ArrayList<>();
+        swappingRevokingContracts.add(delorean);
+        swappingRevokingContracts.add(lamborghini);
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        TransactionContract transactionContract = new TransactionContract();
+        transactionContract.setIssuer(manufacturePrivateKey);
+        swappingNewContracts = TransactionContract.startSwap(delorean, lamborghini, martyPrivateKey, stepaPrivateKey.getPublicKey());
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        List result_step_1 = imitateSendingTransactionToPartner(transactionContract, swappingNewContracts, swappingRevokingContracts);
+        transactionContract = (TransactionContract) result_step_1.get(0);
+        swappingNewContracts = (List<Contract>) result_step_1.get(1);
+
+        // stepa stole new revisions of contarcts and try to register it as single
+        swappingNewContracts.get(0).check();
+        swappingNewContracts.get(0).traceErrors();
+        registerAndCheckDeclined(swappingNewContracts.get(0));
+
+        swappingNewContracts.get(1).check();
+        swappingNewContracts.get(1).traceErrors();
+        registerAndCheckDeclined(swappingNewContracts.get(1));
+
+    }
+
+
+    @Test
+    public void swapContractsViaTransactionSnatch2() throws Exception {
+
+        PrivateKey martyPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+        System.out.println("DeLorean ownership contract is valid: " + delorean.check());
+        delorean.traceErrors();
+        registerAndCheckApproved(delorean);
+        Role martyMcflyRole = delorean.getOwner();
+        System.out.println("DeLorean ownership is belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        lamborghini.addSignerKey(manufacturePrivateKey);
+        lamborghini.seal();
+        System.out.println("Lamborghini ownership contract is valid: " + lamborghini.check());
+        lamborghini.traceErrors();
+        registerAndCheckApproved(lamborghini);
+        Role stepanMamontovRole = lamborghini.getOwner();
+        System.out.println("Lamborghini ownership is belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+
+        // register swapped contracts using TransactionContract
+        System.out.println("--- register swapped contracts using TransactionContract ---");
+
+        List<Contract> swappingNewContracts;
+        List<Contract> swappingRevokingContracts = new ArrayList<>();
+        swappingRevokingContracts.add(delorean);
+        swappingRevokingContracts.add(lamborghini);
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        TransactionContract transactionContract = new TransactionContract();
+        transactionContract.setIssuer(manufacturePrivateKey);
+        swappingNewContracts = TransactionContract.startSwap(delorean, lamborghini, martyPrivateKey, stepaPrivateKey.getPublicKey());
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        List result_step_1 = imitateSendingTransactionToPartner(transactionContract, swappingNewContracts, swappingRevokingContracts);
+        transactionContract = (TransactionContract) result_step_1.get(0);
+        swappingNewContracts = (List<Contract>) result_step_1.get(1);
+        TransactionContract.signPresentedSwap(swappingNewContracts, stepaPrivateKey);
+
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign Stepa's new contract and send to approving
+        List result_step_2 = imitateSendingTransactionToPartner(transactionContract, swappingNewContracts, swappingRevokingContracts);
+        transactionContract = (TransactionContract) result_step_2.get(0);
+        swappingNewContracts = (List<Contract>) result_step_2.get(1);
+
+        // marty stole new revisions of contracts and try to register it as single
+        swappingNewContracts.get(0).check();
+        swappingNewContracts.get(0).traceErrors();
+        registerAndCheckDeclined(swappingNewContracts.get(0));
+
+        swappingNewContracts.get(1).check();
+        swappingNewContracts.get(1).traceErrors();
+        registerAndCheckDeclined(swappingNewContracts.get(1));
+
     }
 
 
@@ -1993,22 +2105,26 @@ public class BaseNetworkTest extends TestCase {
      *
      * Method packs sending contracts with main swap contract (can be blank - doesn't matter) into TransactionPack.
      * Then restore from packed binary main swap contract, contracts sending with.
-     * And fill sent contract with revokingContracts.
+     * And fill sent contract with oldContracts.
      * It is hook because current implementation of uTransactionPack,unpack() missing them.
      * Second hook is Contarct.clearContext() - if do not call, checking will fail. 
      *
-     * @param mainContract - main contract of TransactionPack. For swap procedure it can be empty contract.
-     * @param newContracts - new revisions of existing contracts
-     * @param revokingContracts - existing contracts that should be removed
+     * @param mainContract
+     * @param newContracts
+     * @param oldContracts
      * @return
      * @throws Exception
      */
-    public List imitateSendingTransactionToPartner(TransactionContract mainContract, List<Contract> newContracts, List<Contract> revokingContracts) throws Exception {
+    public List imitateSendingTransactionToPartner(TransactionContract mainContract, List<Contract> newContracts, List<Contract> oldContracts) throws Exception {
 
         mainContract.seal();
 
         TransactionPack tp_before = mainContract.getTransactionPack();
         for (Contract c : newContracts) {
+
+            tp_before.addReference(c);
+        }
+        for (Contract c : oldContracts) {
 
             tp_before.addReference(c);
         }
@@ -2018,16 +2134,17 @@ public class BaseNetworkTest extends TestCase {
         TransactionPack tp_after = TransactionPack.unpack(data);
 
         TransactionContract gotMainContract = new TransactionContract(tp_after.getContract().getLastSealedBinary(), tp_after);
-        List<Contract> gotSwappingNewContracts = new ArrayList<>(tp_after.getReferences().values());
+        List<Contract> gotSwappingNewContracts = new ArrayList<>();
 
-        // repair revoking
-        for (Contract nc : gotSwappingNewContracts) {
-            for (Contract rc : revokingContracts) {
-                if (nc.getOrigin().equals(rc.getId())) {
-                    nc.addRevokingItems(rc);
+        // filter new revisions from others contracts in the transaction
+        for (Contract c : tp_after.getReferences().values()) {
+            if(c.getParent() != null) {
+                for (Contract rc : oldContracts) {
+                    if (c.getParent().equals(rc.getId())) {
+                        gotSwappingNewContracts.add(c);
+                    }
                 }
             }
-            nc.clearContext();
         }
 
         List list = new ArrayList();

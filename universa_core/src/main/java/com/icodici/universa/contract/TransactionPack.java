@@ -8,7 +8,6 @@
 package com.icodici.universa.contract;
 
 
-import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
 import com.icodici.universa.node2.Quantiser;
@@ -18,9 +17,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -145,12 +142,66 @@ public class TransactionPack implements BiSerializable {
         Quantiser quantiser = new Quantiser();
         quantiser.reset(Contract.getTestQuantaLimit());
 
-        List<Bytes> ll = deserializer.deserializeCollection(
+        List<Bytes> referenceBytesList = deserializer.deserializeCollection(
                 data.getListOrThrow("references")
         );
 
-        if (ll != null) {
-            for (Bytes b : ll) {
+        HashMap<ContractDependencies, Bytes> allContractsTrees = new HashMap<>();
+        ArrayList<Bytes> sortedReferenceBytesList = new ArrayList<>();
+
+        if (referenceBytesList != null) {
+            // First of all extract contracts dependencies from references
+            for (Bytes b : referenceBytesList) {
+                ContractDependencies ct = new ContractDependencies(b.toArray());
+                allContractsTrees.put(ct, b);
+            }
+
+            // then recursively from ends of dependencies tree to top go throw it level by level
+            // and add items to references on the each level of tree's hierarchy
+            do {
+                // first add contract from ends of trees, means without own subitems
+                sortedReferenceBytesList = new ArrayList<>();
+                List<ContractDependencies> removingContractDependencies = new ArrayList<>();
+                for (ContractDependencies ct : allContractsTrees.keySet()) {
+                    if (ct.dependencies.size() + ct.dependencies.size() == 0) {
+                        sortedReferenceBytesList.add(allContractsTrees.get(ct));
+                        removingContractDependencies.add(ct);
+                    }
+                }
+
+                // remove found items from tree's list
+                for (ContractDependencies ct : removingContractDependencies) {
+                    allContractsTrees.remove(ct);
+                }
+
+                // then add contract with already exist subitems in the references
+                removingContractDependencies = new ArrayList<>();
+                for (ContractDependencies ct : allContractsTrees.keySet()) {
+                    for (HashId hid : ct.dependencies) {
+                        if (references.containsKey(hid)) {
+                            sortedReferenceBytesList.add(allContractsTrees.get(ct));
+                            removingContractDependencies.add(ct);
+                        }
+                    }
+                }
+
+                // remove found items from tree's list
+                for (ContractDependencies ct : removingContractDependencies) {
+                    allContractsTrees.remove(ct);
+                }
+
+                // add found binaries on the hierarchy level to references
+                for (int i = 0; i < sortedReferenceBytesList.size(); i++) {
+                    Contract c = new Contract(sortedReferenceBytesList.get(i).toArray(), this);
+                    quantiser.addWorkCostFrom(c.getQuantiser());
+                    references.put(c.getId(), c);
+                }
+
+                // then repeat until we can find hierarchy
+            } while (sortedReferenceBytesList.size() != 0);
+
+            // finally add not found binaries on the hierarchy levels to references
+            for (Bytes b : allContractsTrees.values()) {
                 Contract c = new Contract(b.toArray(), this);
                 quantiser.addWorkCostFrom(c.getQuantiser());
                 references.put(c.getId(), c);
@@ -253,5 +304,35 @@ public class TransactionPack implements BiSerializable {
         contract.getRevokingItems().forEach(x -> System.out.println("\t\t\trevoke: " + x.getId()));
         System.out.println("\tReferences:");
         references.forEach((hashId, contract) -> System.out.println("\t\t" + hashId + " -> " + contract.getId()));
+    }
+
+    public class ContractDependencies {
+        private final Set<HashId> dependencies = new HashSet<>();
+
+        public ContractDependencies(byte[] sealed) throws IOException {
+            Binder data = Boss.unpack(sealed);
+            byte[] contractBytes = data.getBinaryOrThrow("data");
+
+            // This must be explained. By default, Boss.load will apply contract transformation in place
+            // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
+            // data without BiSerializer and then do it by hand calling deserialize:
+            Binder payload = Boss.load(contractBytes, null);
+
+            int apiLevel = data.getIntOrThrow("version");
+
+            if (apiLevel < 3) {
+                // no need to build tree - subitems will be reconstructed from binary, not from references
+            } else {
+                // new format: only references are included
+                for (Binder b : (List<Binder>) payload.getList("revoking", Collections.EMPTY_LIST)) {
+                    HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
+                    dependencies.add(hid);
+                }
+                for (Binder b : (List<Binder>) payload.getList("new", Collections.EMPTY_LIST)) {
+                    HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
+                    dependencies.add(hid);
+                }
+            }
+        }
     }
 }

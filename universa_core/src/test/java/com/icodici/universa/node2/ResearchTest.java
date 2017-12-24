@@ -451,7 +451,7 @@ public class ResearchTest extends BaseNetworkTest {
         Contract transaction = new Contract();
         transaction.addNewItems(k1, l1);
         transaction.addRevokingItems(k0, l0);
-        System.out.println("checkTransaction: " + transaction.checkReferencedItems());
+        System.out.println("checkTransaction: " + transaction.check());
         transaction.traceErrors();
 
 
