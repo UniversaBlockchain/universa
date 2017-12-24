@@ -1020,8 +1020,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             // modify the deep copy for a new revision
             newRevision.state.revision = state.revision + 1;
             newRevision.state.createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-            newRevision.state.parent = new HashId(sealedBinary);
-            newRevision.state.origin = state.revision == 1 ? new HashId(sealedBinary) : state.origin;
+            newRevision.state.parent = getId();
+            newRevision.state.origin = state.revision == 1 ? getId() : state.origin;
 //            newRevision.state.parent = HashId.withDigest(Binder.fromKeysValues("sha512", getId().getDigest()).getBinaryOrThrow("sha512"));
 
             newRevision.revokingItems.add(this);
