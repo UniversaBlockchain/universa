@@ -1997,9 +1997,9 @@ public class BaseNetworkTest extends TestCase {
      * It is hook because current implementation of uTransactionPack,unpack() missing them.
      * Second hook is Contarct.clearContext() - if do not call, checking will fail. 
      *
-     * @param mainContract
-     * @param newContracts
-     * @param revokingContracts
+     * @param mainContract - main contract of TransactionPack. For swap procedure it can be empty contract.
+     * @param newContracts - new revisions of existing contracts
+     * @param revokingContracts - existing contracts that should be removed
      * @return
      * @throws Exception
      */
