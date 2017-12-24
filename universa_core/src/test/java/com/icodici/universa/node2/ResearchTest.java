@@ -9,21 +9,15 @@ import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.boss.Boss;
-import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
-import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.Bytes;
-import net.sergeych.utils.LogPrinter;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.*;
-import org.spongycastle.util.encoders.Hex;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -36,20 +30,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.Is.is;
-import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 
@@ -462,7 +451,7 @@ public class ResearchTest extends BaseNetworkTest {
         Contract transaction = new Contract();
         transaction.addNewItems(k1, l1);
         transaction.addRevokingItems(k0, l0);
-        System.out.println("checkTransaction: " + transaction.checkTransaction());
+        System.out.println("checkTransaction: " + transaction.checkReferencedItems());
         transaction.traceErrors();
 
 

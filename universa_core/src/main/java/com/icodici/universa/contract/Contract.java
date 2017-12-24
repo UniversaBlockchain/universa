@@ -398,12 +398,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         checkDupesCreation();
 
-        checkTransaction();
+        checkReferencedItems();
 
         return errors.size() == 0;
     }
 
-    public boolean checkTransaction() throws Quantiser.QuantiserException {
+    public boolean checkReferencedItems() throws Quantiser.QuantiserException {
         boolean res = true;
         ArrayList<Contract> newItemsList = new ArrayList<>(newItems);
         // check each contract inside transaction, all must be ok
