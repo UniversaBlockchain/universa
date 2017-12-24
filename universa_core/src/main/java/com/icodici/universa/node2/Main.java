@@ -30,7 +30,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    public static final String NODE_VERSION = "2.2.7";
+    public static final String NODE_VERSION = "2.3.0";
     private OptionParser parser;
     private OptionSet options;
     public final Reporter reporter = new Reporter();
@@ -123,10 +123,10 @@ public class Main {
 
         int n = netConfig.size();
         // Until we fix the announcer
-        int negative = (int) Math.ceil(n * 0.34);
+        int negative = (int) Math.ceil(n * 0.11);
         if (negative < 1)
             negative = 1;
-        int positive = (int) Math.floor(n * 0.66);
+        int positive = (int) Math.floor(n * 0.90);
         if( negative+positive == n)
             negative += 1;
         int resyncBreak = (int) Math.ceil(n * 0.2);
