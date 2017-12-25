@@ -403,15 +403,15 @@ public class ResearchTest extends BaseNetworkTest {
         System.out.println("l0 seal fingerprint(): " + finger2name.apply(l0.getSealedByKeys().iterator().next()));
         System.out.println("l0 owner fingerprint(): " + finger2name.apply(l0.getOwner().getKeys().iterator().next()));
 
-        ReferenceModel k1transactionRef = new ReferenceModel();
-        k1transactionRef.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        Reference k1transactionRef = new Reference();
+        k1transactionRef.type = Reference.TYPE_TRANSACTIONAL;
         k1transactionRef.transactional_id = HashId.createRandom().toBase64String();
         k1transactionRef.origin = l0.getOrigin();
         k1transactionRef.signed_by.add(new SimpleRole("owner", new KeyRecord(alicePrivateKey.getPublicKey())));
         k1transactionRef.signed_by.add(new SimpleRole("crator", new KeyRecord(bobPrivateKey.getPublicKey())));
 
-        ReferenceModel l1transactionRef = new ReferenceModel();
-        l1transactionRef.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        Reference l1transactionRef = new Reference();
+        l1transactionRef.type = Reference.TYPE_TRANSACTIONAL;
         l1transactionRef.transactional_id = HashId.createRandom().toBase64String();
         l1transactionRef.origin = k0.getOrigin();
         l1transactionRef.signed_by.add(new SimpleRole("owner", new KeyRecord(bobPrivateKey.getPublicKey())));
@@ -580,9 +580,9 @@ public class ResearchTest extends BaseNetworkTest {
     public void referenceModelTest() throws Exception {
         PrivateKey alicePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/marty_mcfly.private.unikey"));
         PrivateKey bobPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/stepan_mamontov.private.unikey"));
-        ReferenceModel rm = new ReferenceModel();
+        Reference rm = new Reference();
         rm.name = "name123";
-        rm.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        rm.type = Reference.TYPE_TRANSACTIONAL;
         rm.transactional_id = HashId.createRandom().toBase64String();
         rm.contract_id = HashId.createRandom();
         rm.required = false;
@@ -591,7 +591,7 @@ public class ResearchTest extends BaseNetworkTest {
         rm.signed_by.add(new SimpleRole("crator", new KeyRecord(bobPrivateKey.getPublicKey())));
         System.out.println("before serialize: " + rm);
         Binder serializedData = rm.serialize(new BiSerializer());
-        ReferenceModel rm2 = new ReferenceModel();
+        Reference rm2 = new Reference();
         rm2.deserialize(serializedData, new BiDeserializer());
         System.out.println("after deserialize: " + rm2);
         assertTrue(rm.equals(rm2));
@@ -599,16 +599,16 @@ public class ResearchTest extends BaseNetworkTest {
 
     @Test
     public void referenceModelTest_nulls() throws Exception {
-        ReferenceModel rm = new ReferenceModel();
+        Reference rm = new Reference();
         rm.name = "name123";
-        rm.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        rm.type = Reference.TYPE_TRANSACTIONAL;
         rm.transactional_id = "";
         rm.contract_id = null;
         rm.required = false;
         rm.origin = null;
         System.out.println("before serialize: " + rm);
         Binder serializedData = rm.serialize(new BiSerializer());
-        ReferenceModel rm2 = new ReferenceModel();
+        Reference rm2 = new Reference();
         rm2.deserialize(serializedData, new BiDeserializer());
         System.out.println("after deserialize: " + rm2);
         assertTrue(rm.equals(rm2));

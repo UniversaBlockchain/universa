@@ -48,7 +48,7 @@ import static java.util.Arrays.asList;
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private static final int MAX_API_LEVEL = 3;
-    private final Set<ReferenceModel> referencedItems = new HashSet<>();
+    private final Set<Reference> referencedItems = new HashSet<>();
     private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
     private final Map<String, Role> roles = new HashMap<>();
@@ -66,7 +66,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private final Map<PublicKey, ExtendedSignature> sealedByKeys = new HashMap<>();
     private Set<PrivateKey> keysToSignWith = new HashSet<>();
     private HashId id;
-    private ReferenceModel references;
+    private Reference references;
     private TransactionPack transactionPack;
 
     public Quantiser getQuantiser() {
@@ -327,7 +327,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public Set<ReferenceModel> getReferencedItems() {
+    public Set<Reference> getReferencedItems() {
         return referencedItems;
     }
 
@@ -418,7 +418,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         // check each reference, all must be ok
         boolean allRefs_check = true;
-        for (final ReferenceModel rm : referencedItems) {
+        for (final Reference rm : referencedItems) {
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
             for (int j = 0; j < neighbourContracts.size(); ++j) {
@@ -438,13 +438,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return allRefs_check;
     }
 
-    private boolean checkOneReference(final ReferenceModel rm, final Contract refContract) throws Quantiser.QuantiserException {
+    private boolean checkOneReference(final Reference rm, final Contract refContract) throws Quantiser.QuantiserException {
         boolean res = true;
 
-        if (rm.type == ReferenceModel.TYPE_EXISTING) {
+        if (rm.type == Reference.TYPE_EXISTING) {
             res = false;
-            addError(Errors.UNKNOWN_COMMAND, "ReferenceModel.TYPE_EXISTING not implemented");
-        } else if (rm.type == ReferenceModel.TYPE_TRANSACTIONAL) {
+            addError(Errors.UNKNOWN_COMMAND, "Reference.TYPE_EXISTING not implemented");
+        } else if (rm.type == Reference.TYPE_TRANSACTIONAL) {
             if ((rm.transactional_id == null) ||
                 (refContract.transactional == null) ||
                 (refContract.transactional.getId() == null) ||
@@ -1691,7 +1691,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private ZonedDateTime expiresAt;
         private Binder definition;
         private Binder data;
-        private ReferenceModel references;
+        private Reference references;
 
 
         private Definition() {
@@ -1711,8 +1711,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return this;
         }
 
-        private ReferenceModel processReference(Binder binder) {
-            ReferenceModel result = new ReferenceModel();
+        private Reference processReference(Binder binder) {
+            Reference result = new Reference();
 
             if (binder.size() == 0) return null;
 
@@ -1733,7 +1733,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return result;
         }
 
-        public ReferenceModel getReferences() {
+        public Reference getReferences() {
             return this.references;
         }
 
@@ -1842,7 +1842,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public class Transactional {
 
         private String id;
-        private List<ReferenceModel> references;
+        private List<Reference> references;
 
         private Transactional() {
 
@@ -1867,7 +1867,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
 
-        public void addReference(ReferenceModel reference) {
+        public void addReference(Reference reference) {
             if(references == null) {
                 references = new ArrayList<>();
             }
@@ -1875,7 +1875,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             references.add(reference);
         }
 
-        public List<ReferenceModel> getReferences() {
+        public List<Reference> getReferences() {
             return references;
         }
 
@@ -2025,7 +2025,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(KeyRecord.class);
         DefaultBiMapper.registerClass(TransactionContract.class);
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
-        DefaultBiMapper.registerClass(ReferenceModel.class);
+        DefaultBiMapper.registerClass(Reference.class);
 
         DefaultBiMapper.registerClass(Permission.class);
     }

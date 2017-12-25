@@ -11,12 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.ListRole;
-import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
-import com.icodici.universa.node2.Quantiser;
-import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 
@@ -121,18 +116,18 @@ public class TransactionContract extends Contract {
         Transactional transactional2 = newContract2.createTransactionalSection();
         transactional2.setId(HashId.createRandom().toBase64String());
 
-        ReferenceModel reference1 = new ReferenceModel();
+        Reference reference1 = new Reference();
         reference1.transactional_id = transactional2.getId();
-        reference1.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        reference1.type = Reference.TYPE_TRANSACTIONAL;
         reference1.required = true;
         reference1.signed_by = new ArrayList<>();
         reference1.signed_by.add(new SimpleRole("owner", new KeyRecord(fromKey.getPublicKey())));
         reference1.signed_by.add(new SimpleRole("creator", new KeyRecord(toKey)));
         transactional1.addReference(reference1);
 
-        ReferenceModel reference2 = new ReferenceModel();
+        Reference reference2 = new Reference();
         reference2.transactional_id = transactional1.getId();
-        reference2.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        reference2.type = Reference.TYPE_TRANSACTIONAL;
         reference2.required = true;
         reference2.signed_by = new ArrayList<>();
         reference2.signed_by.add(new SimpleRole("owner", new KeyRecord(toKey)));
@@ -188,7 +183,7 @@ public class TransactionContract extends Contract {
                 c.setCreator(krs);
 
                 if(c.getTransactional() != null && c.getTransactional().getReferences() != null) {
-                    for (ReferenceModel rm : c.getTransactional().getReferences()) {
+                    for (Reference rm : c.getTransactional().getReferences()) {
                         rm.contract_id = contractHashId;
                     }
                 } else {
@@ -241,18 +236,18 @@ public class TransactionContract extends Contract {
         Transactional transactional2 = contract1.createTransactionalSection();
         transactional2.setId("" + Do.randomInt(1000000000));
 
-        ReferenceModel reference1 = new ReferenceModel();
+        Reference reference1 = new Reference();
         reference1.transactional_id = transactional2.getId();
-        reference1.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        reference1.type = Reference.TYPE_TRANSACTIONAL;
         reference1.required = true;
         reference1.signed_by = new ArrayList<>();
         reference1.signed_by.add(new SimpleRole("owner", new KeyRecord(fromKey.getPublicKey())));
         reference1.signed_by.add(new SimpleRole("creator", new KeyRecord(toKey)));
         transactional1.addReference(reference1);
 
-        ReferenceModel reference2 = new ReferenceModel();
+        Reference reference2 = new Reference();
         reference2.transactional_id = transactional1.getId();
-        reference2.type = ReferenceModel.TYPE_TRANSACTIONAL;
+        reference2.type = Reference.TYPE_TRANSACTIONAL;
         reference2.required = true;
         reference2.signed_by = new ArrayList<>();
         reference2.signed_by.add(new SimpleRole("owner", new KeyRecord(toKey)));
@@ -302,7 +297,7 @@ public class TransactionContract extends Contract {
                 c.setCreator(krs);
 
                 if(c.getTransactional() != null) {
-                    for (ReferenceModel rm : c.getTransactional().getReferences()) {
+                    for (Reference rm : c.getTransactional().getReferences()) {
                         rm.contract_id = contractHashId;
                     }
                 } else {

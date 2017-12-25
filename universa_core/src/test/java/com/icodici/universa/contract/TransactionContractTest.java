@@ -62,7 +62,7 @@ public class TransactionContractTest extends ContractTestBase {
         delorean.traceErrors();
 
         Contract.Transactional transactional = delorean.createTransactionalSection();
-        ReferenceModel reference = new ReferenceModel();
+        Reference reference = new Reference();
 //        reference.setName("transactional_example");
         transactional.addReference(reference);
         Contract deloreanTransactional = delorean.createRevision(transactional);

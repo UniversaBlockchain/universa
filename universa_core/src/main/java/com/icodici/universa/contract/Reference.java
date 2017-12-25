@@ -12,7 +12,7 @@ import net.sergeych.utils.Bytes;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReferenceModel implements BiSerializable {
+public class Reference implements BiSerializable {
     public String name = "";
     public int type = TYPE_EXISTING;
     public String transactional_id = "";
@@ -112,7 +112,7 @@ public class ReferenceModel implements BiSerializable {
         return data;
     }
 
-    public boolean equals(ReferenceModel a) {
+    public boolean equals(Reference a) {
         Binder dataThis = serialize(new BiSerializer());
         Binder dataA = a.serialize(new BiSerializer());
         return dataThis.equals(dataA);
@@ -127,7 +127,7 @@ public class ReferenceModel implements BiSerializable {
         return name;
     }
 
-    public ReferenceModel setName(String name) {
+    public Reference setName(String name) {
         this.name = name;
         return this;
     }
@@ -136,12 +136,12 @@ public class ReferenceModel implements BiSerializable {
         return roles;
     }
 
-    public ReferenceModel addRole(String role) {
+    public Reference addRole(String role) {
         this.roles.add(role);
         return this;
     }
 
-    public ReferenceModel setRoles(List<String> roles) {
+    public Reference setRoles(List<String> roles) {
         this.roles = roles;
         return this;
     }
@@ -150,7 +150,7 @@ public class ReferenceModel implements BiSerializable {
         return origin_bak;
     }
 
-    public ReferenceModel setOrigin(String origin) {
+    public Reference setOrigin(String origin) {
         this.origin_bak = origin;
         return this;
     }
@@ -159,12 +159,12 @@ public class ReferenceModel implements BiSerializable {
         return fields;
     }
 
-    public ReferenceModel addField(String field) {
+    public Reference addField(String field) {
         this.fields.add(field);
         return this;
     }
 
-    public ReferenceModel setFields(List<String> fields) {
+    public Reference setFields(List<String> fields) {
         this.fields = fields;
         return this;
     }
@@ -174,6 +174,6 @@ public class ReferenceModel implements BiSerializable {
 
 
     static {
-        DefaultBiMapper.registerClass(ReferenceModel.class);
+        DefaultBiMapper.registerClass(Reference.class);
     }
 };
