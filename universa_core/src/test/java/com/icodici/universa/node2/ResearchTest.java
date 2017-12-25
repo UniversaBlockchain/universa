@@ -597,6 +597,33 @@ public class ResearchTest extends BaseNetworkTest {
         assertTrue(rm.equals(rm2));
     }
 
+
+    @Test
+    public void referenceModelTest2() throws Exception {
+        PrivateKey alicePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/marty_mcfly.private.unikey"));
+        PrivateKey bobPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "/keys/stepan_mamontov.private.unikey"));
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Reference rm = new Reference();
+        rm.name = "name123";
+        rm.type = Reference.TYPE_TRANSACTIONAL;
+        rm.transactional_id = HashId.createRandom().toBase64String();
+        rm.contract_id = HashId.createRandom();
+        rm.required = false;
+        rm.origin = HashId.createRandom();
+        rm.signed_by.add(new SimpleRole("owner", new KeyRecord(alicePrivateKey.getPublicKey())));
+        rm.signed_by.add(new SimpleRole("crator", new KeyRecord(bobPrivateKey.getPublicKey())));
+        delorean.getDefinition().getReferences().add(rm);
+        delorean.seal();
+        System.out.println("before serialize: " + delorean.getDefinition().getReferences().iterator().next());
+        byte[] serializedData = delorean.getLastSealedBinary();
+        delorean = new Contract(serializedData);
+        System.out.println("after deserialize: " + delorean.getDefinition().getReferences().iterator().next());
+        Reference rm2 = delorean.getDefinition().getReferences().iterator().next();
+        assertTrue(rm.equals(rm2));
+    }
+
+
+
     @Test
     public void referenceModelTest_nulls() throws Exception {
         Reference rm = new Reference();

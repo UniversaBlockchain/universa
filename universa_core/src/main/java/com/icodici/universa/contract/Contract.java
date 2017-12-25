@@ -66,7 +66,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private final Map<PublicKey, ExtendedSignature> sealedByKeys = new HashMap<>();
     private Set<PrivateKey> keysToSignWith = new HashSet<>();
     private HashId id;
-    private Reference references;
     private TransactionPack transactionPack;
 
     public Quantiser getQuantiser() {
@@ -328,6 +327,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public Set<Reference> getReferencedItems() {
+        this.referencedItems.clear();
+        if (transactional != null && transactional.references != null)
+            referencedItems.addAll(transactional.references);
+        if (definition != null && definition.getReferences() != null)
+            referencedItems.addAll(definition.getReferences());
         return referencedItems;
     }
 
@@ -411,6 +415,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private boolean checkReferencedItems(ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+        getReferencedItems();
+
         if (referencedItems.size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
             return true;
@@ -1346,39 +1352,46 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private boolean isValidReference(Contract contract) {
-        boolean result = true;
+        boolean resultWrap = true;
 
-        references = this.getDefinition().getReferences();
+        List<Reference> referencesList = this.getDefinition().getReferences();
 
-        if (references == null) result = false;
+        for (Reference references: referencesList) {
+            boolean result = true;
 
-        //check roles
-        if (result) {
-            List<String> roles = references.getRoles();
-            Map<String, Role> contractRoles = contract.getRoles();
-            result = roles.stream()
-                    .filter(role -> contractRoles.containsKey(role))
-                    .collect(Collectors.toList()).size() > 0;
+            if (references == null) result = false;
+
+            //check roles
+            if (result) {
+                List<String> roles = references.getRoles();
+                Map<String, Role> contractRoles = contract.getRoles();
+                result = roles.stream()
+                        .filter(role -> contractRoles.containsKey(role))
+                        .collect(Collectors.toList()).size() > 0;
+            }
+
+            //check origin
+            if (result) {
+                final String origin = references.getOrigin();
+                result = (origin == null || !(contract.getOrigin().equals(this.getOrigin())));
+            }
+
+
+            //check fields
+            if (result) {
+                List<String> fields = references.getFields();
+                Binder stateData = contract.getStateData();
+                result = fields.stream()
+                        .filter(field -> stateData.get(field) != null)
+                        .collect(Collectors.toList()).size() > 0;
+            }
+
+            if (!result)
+                resultWrap = false;
         }
 
-        //check origin
-        if (result) {
-            final String origin = references.getOrigin();
-            result = (origin == null || !(contract.getOrigin().equals(this.getOrigin())));
-        }
 
-
-        //check fields
-        if (result) {
-            List<String> fields = references.getFields();
-            Binder stateData = contract.getStateData();
-            result = fields.stream()
-                    .filter(field -> stateData.get(field) != null)
-                    .collect(Collectors.toList()).size() > 0;
-        }
-
-
-        return result;
+        return resultWrap;
     }
 
     public static Contract fromSealedFile(String contractFileName) throws IOException {
@@ -1691,7 +1704,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private ZonedDateTime expiresAt;
         private Binder definition;
         private Binder data;
-        private Reference references;
+        private List<Reference> references = new ArrayList<>();
 
 
         private Definition() {
@@ -1707,33 +1720,33 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 expiresAt = decodeDslTime(t);
             registerRole(issuer);
             data = definition.getBinder("data");
-            references = processReference(definition.getBinder("references"));
+            //references = processReference(definition.getBinder("references"));
             return this;
         }
 
-        private Reference processReference(Binder binder) {
-            Reference result = new Reference();
-
-            if (binder.size() == 0) return null;
-
-            Binder conditions = binder.getBinder("conditions");
-
-            List<Object> roles = conditions.getList("roles", null);
-            if (roles != null && roles.size() > 0)
-                roles.forEach(role -> result.addRole((String) role));
-
-            List<Object> fields = conditions.getList("fields", null);
-            if (fields != null && fields.size() > 0)
-                fields.forEach(field -> result.addField((String) field));
-
+//        private Reference processReference(Binder binder) {
+//            Reference result = new Reference();
+//
+//            if (binder.size() == 0) return null;
+//
+//            Binder conditions = binder.getBinder("conditions");
+//
+//            List<Object> roles = conditions.getList("roles", null);
+//            if (roles != null && roles.size() > 0)
+//                roles.forEach(role -> result.addRole((String) role));
+//
+//            List<Object> fields = conditions.getList("fields", null);
+//            if (fields != null && fields.size() > 0)
+//                fields.forEach(field -> result.addField((String) field));
+//
 //            final String origin = conditions.getString("origin", null);
 //            if (origin != null)
 //                result.setOrigin(origin);
+//
+//            return result;
+//        }
 
-            return result;
-        }
-
-        public Reference getReferences() {
+        public List<Reference> getReferences() {
             return this.references;
         }
 
@@ -1829,7 +1842,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTime("expires_at", null);
             this.data = d.deserialize(data.getBinder("data", Binder.EMPTY));
-            this.references = d.deserialize(data.getBinder("references", null));
+            this.references = d.deserialize(data.getList("references", null));
             Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
             perms.forEach((id, perm) -> {
                 perm.setId(id);
