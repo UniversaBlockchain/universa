@@ -19,7 +19,10 @@ public class ReferenceModel implements BiSerializable {
     public HashId contract_id = null;
     public boolean required = true;
     public HashId origin = null;
+    public String origin_bak = null;
     public List<Role> signed_by = new ArrayList<>();
+    public List<String> fields = new ArrayList<>();
+    public List<String> roles = new ArrayList<>();
 
     public static final int TYPE_TRANSACTIONAL = 1;
     public static final int TYPE_EXISTING = 2;
@@ -71,6 +74,22 @@ public class ReferenceModel implements BiSerializable {
             this.origin = null;
 
         this.signed_by = deserializer.deserializeCollection(data.getList("signed_by", new ArrayList<>()));
+
+
+        this.origin_bak = data.getString("origin_bak", null);
+
+        List<String> roles = data.getList("roles", null);
+        if (roles != null) {
+            this.roles.clear();
+            roles.forEach(this::addRole);
+        }
+
+        List<String> fields = data.getList("fields", null);
+        if (fields != null) {
+            this.fields.clear();
+            fields.forEach(this::addField);
+        }
+
     }
 
     @Override
@@ -85,42 +104,74 @@ public class ReferenceModel implements BiSerializable {
         if (this.origin != null)
             data.set("origin", s.serialize(Bytes.toHex(this.origin.getDigest())));
         data.set("signed_by", s.serialize(signed_by));
+
+        data.set("origin_bak", s.serialize(this.origin_bak));
+        data.set("roles", s.serialize(this.roles));
+        data.set("fields", s.serialize(this.fields));
+
         return data;
     }
 
     public boolean equals(ReferenceModel a) {
-//        if (!this.name.equals(a.name))
-//            return false;
-//
-//        if (this.type != a.type)
-//            return false;
-//
-//        if ((this.transactional_id != null) && (a.transactional_id != null)) {
-//            if (!this.transactional_id.equals(a.transactional_id))
-//                return false;
-//        } else if ((this.transactional_id != null) || (a.transactional_id != null))
-//            return false;
-//
-//        if ((this.contract_id != null) && (a.contract_id != null)) {
-//            if (!this.contract_id.equals(a.contract_id))
-//                return false;
-//        } else if ((this.contract_id != null) || (a.contract_id != null))
-//            return false;
-//
-//        if (this.required != a.required)
-//            return false;
-//
-//        if ((this.origin != null) && (a.origin != null)) {
-//            if (!this.origin.equals(a.origin))
-//                return false;
-//        } else if ((this.origin != null) || (a.origin != null))
-//            return false;
-//
-//        return true;
         Binder dataThis = serialize(new BiSerializer());
         Binder dataA = a.serialize(new BiSerializer());
         return dataThis.equals(dataA);
     }
+
+
+
+
+
+
+    public String getName() {
+        return name;
+    }
+
+    public ReferenceModel setName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public List<String> getRoles() {
+        return roles;
+    }
+
+    public ReferenceModel addRole(String role) {
+        this.roles.add(role);
+        return this;
+    }
+
+    public ReferenceModel setRoles(List<String> roles) {
+        this.roles = roles;
+        return this;
+    }
+
+    public String getOrigin() {
+        return origin_bak;
+    }
+
+    public ReferenceModel setOrigin(String origin) {
+        this.origin_bak = origin;
+        return this;
+    }
+
+    public List<String> getFields() {
+        return fields;
+    }
+
+    public ReferenceModel addField(String field) {
+        this.fields.add(field);
+        return this;
+    }
+
+    public ReferenceModel setFields(List<String> fields) {
+        this.fields = fields;
+        return this;
+    }
+
+
+
+
 
     static {
         DefaultBiMapper.registerClass(ReferenceModel.class);

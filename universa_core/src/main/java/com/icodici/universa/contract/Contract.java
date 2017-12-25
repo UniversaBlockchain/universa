@@ -66,7 +66,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private final Map<PublicKey, ExtendedSignature> sealedByKeys = new HashMap<>();
     private Set<PrivateKey> keysToSignWith = new HashSet<>();
     private HashId id;
-    private Reference references;
+    private ReferenceModel references;
     private TransactionPack transactionPack;
 
     public Quantiser getQuantiser() {
@@ -1691,7 +1691,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private ZonedDateTime expiresAt;
         private Binder definition;
         private Binder data;
-        private Reference references;
+        private ReferenceModel references;
 
 
         private Definition() {
@@ -1711,8 +1711,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return this;
         }
 
-        private Reference processReference(Binder binder) {
-            Reference result = new Reference();
+        private ReferenceModel processReference(Binder binder) {
+            ReferenceModel result = new ReferenceModel();
 
             if (binder.size() == 0) return null;
 
@@ -1726,14 +1726,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (fields != null && fields.size() > 0)
                 fields.forEach(field -> result.addField((String) field));
 
-            final String origin = conditions.getString("origin", null);
-            if (origin != null)
-                result.setOrigin(origin);
+//            final String origin = conditions.getString("origin", null);
+//            if (origin != null)
+//                result.setOrigin(origin);
 
             return result;
         }
 
-        public Reference getReferences() {
+        public ReferenceModel getReferences() {
             return this.references;
         }
 
@@ -2025,7 +2025,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(KeyRecord.class);
         DefaultBiMapper.registerClass(TransactionContract.class);
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
-        DefaultBiMapper.registerClass(Reference.class);
+        DefaultBiMapper.registerClass(ReferenceModel.class);
 
         DefaultBiMapper.registerClass(Permission.class);
     }
