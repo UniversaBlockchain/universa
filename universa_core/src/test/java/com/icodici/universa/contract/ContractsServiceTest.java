@@ -16,7 +16,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class TransactionContractTest extends ContractTestBase {
+public class ContractsServiceTest extends ContractTestBase {
 
     @Test
     public void badRevoke() throws Exception {

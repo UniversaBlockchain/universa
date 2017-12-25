@@ -151,7 +151,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         getContext();
-        newItems.forEach(i -> i.context = context);
+        // TODO: to know why context of new items is set to current conext
+//        newItems.forEach(i -> i.context = context);
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -630,7 +631,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @param toRevoke
      */
-    public void addRevokingItems(Contract... toRevoke) throws Quantiser.QuantiserException {
+    public void addRevokingItems(Contract... toRevoke) {
         for (Contract c : toRevoke) {
             revokingItems.add(c);
         }
@@ -933,12 +934,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         result.put("signatures", signatures);
         setOwnBinary(result);
 
-        addSignatureToSeal(keysToSignWith.toArray(new PrivateKey[]{}));
+        addSignatureToSeal(keysToSignWith);
 
         return sealedBinary;
     }
 
-    public void addSignatureToSeal(PrivateKey... privateKeys) {
+    public void addSignatureToSeal(PrivateKey privateKey) {
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(privateKey);
+        addSignatureToSeal(keys);
+    }
+
+    public void addSignatureToSeal(Set<PrivateKey> privateKeys) {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to add signature: sealed binary does not exist");
         Binder data = Boss.unpack(sealedBinary);
@@ -1479,13 +1486,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return ready sealed contract that revokes this contract on registration
      */
     public Contract createRevocation(PrivateKey... keys) {
-        TransactionContract tc = new TransactionContract();
-
-        // among issuers there is now owner
-        tc.setIssuer(keys);
-        tc.addContractToRemove(this);
-        tc.seal();
-        return tc;
+        return ContractsService.createRevocation(this, keys);
     }
 
     public List<Contract> getRevoking() {
@@ -1938,11 +1939,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return context;
     }
 
-    public void clearContext() {
-        context = null;
-        context = getContext();
-    }
-
     /**
      * Transction context. Holds temporary information about a context transaction relevant to create sibling, e.g.
      * contract splitting. Allow new items being created to get the base contract (that is creating) and get the full
@@ -2036,7 +2032,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(SimpleRole.class);
         // other
         DefaultBiMapper.registerClass(KeyRecord.class);
-        DefaultBiMapper.registerClass(TransactionContract.class);
+        DefaultBiMapper.registerClass(ContractsService.class);
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
         DefaultBiMapper.registerClass(Reference.class);
 

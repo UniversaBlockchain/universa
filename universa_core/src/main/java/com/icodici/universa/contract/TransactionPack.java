@@ -103,9 +103,22 @@ public class TransactionPack implements BiSerializable {
             throw new IllegalArgumentException("the contract is already added");
         contract = c;
         packedBinary = null;
-        c.getRevokingItems().forEach(i -> putReference((Contract) i));
-        c.getNewItems().forEach(i -> putReference((Contract) i));
+
+        putAllSubitemsToReferencesRecursively(c);
         c.setTransactionPack(this);
+    }
+
+
+    protected void putAllSubitemsToReferencesRecursively(Contract c) {
+        c.getRevokingItems().forEach(i -> {
+            putReference((Contract) i);
+            putAllSubitemsToReferencesRecursively((Contract) i);
+        });
+        c.getNewItems().forEach(i -> {
+            putReference((Contract) i);
+            putAllSubitemsToReferencesRecursively((Contract) i);
+        });
+
     }
 
     /**
@@ -163,7 +176,7 @@ public class TransactionPack implements BiSerializable {
                 sortedReferenceBytesList = new ArrayList<>();
                 List<ContractDependencies> removingContractDependencies = new ArrayList<>();
                 for (ContractDependencies ct : allContractsTrees.keySet()) {
-                    if (ct.dependencies.size() + ct.dependencies.size() == 0) {
+                    if (ct.dependencies.size() == 0) {
                         sortedReferenceBytesList.add(allContractsTrees.get(ct));
                         removingContractDependencies.add(ct);
                     }

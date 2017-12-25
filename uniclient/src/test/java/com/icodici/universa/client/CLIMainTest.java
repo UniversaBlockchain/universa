@@ -12,7 +12,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
-import com.icodici.universa.contract.TransactionContract;
+import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -1337,13 +1337,7 @@ public class CLIMainTest {
 
 
         PrivateKey issuer1 = TestKeys.privateKey(1   );
-        TransactionContract tc = new TransactionContract();
-
-        // among issuers there is now owner
-        tc.setIssuer(issuer1, goodKey);
-        tc.addContractToRemove(c);
-
-        tc.seal();
+        Contract tc = ContractsService.createRevocation(c, issuer1, goodKey);
 
         assertTrue(tc.check());
 

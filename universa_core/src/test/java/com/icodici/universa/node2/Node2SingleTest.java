@@ -8,33 +8,19 @@
 
 package com.icodici.universa.node2;
 
-import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.Decimal;
-import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.TransactionContract;
-import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
-import net.sergeych.tools.Do;
-import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.*;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 import java.util.Properties;
 import java.util.concurrent.TimeoutException;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.anyOf;
-import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.*;
 
 public class Node2SingleTest extends BaseNetworkTest {

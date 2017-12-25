@@ -26,7 +26,7 @@ definition:
 
      # to show to the user
      description: >
-       DeLorean's factory.
+       Lamborghini's factory.
 
   # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
   # consult current Universa state, maximum delayed contract creation time varies. This time we make a template
@@ -50,8 +50,8 @@ definition:
     # for example by bying it back from the customer, it is possible ro revoke it. Very much like destroying banknotes
     # by its owner - but we require also issuer signature on it:
     revoke:
-      - issuer
       - owner
+      - issuer
 #      - role:
 #        name: list_role
 #        type: ALL_OF
@@ -63,9 +63,9 @@ definition:
   # this data will be also copied without change during any contract changes.
   data:
     # optional, but almost always needed name or four currency
-    name: DeLorean
+    name: Lamborghini
 
-    description: This contract represents the ownership of the car DeLorean.
+    description: This contract represents the ownership of the car Lamborghini.
 
 # required section. Data that represent current contract state, could be modified in accordance with
 # 'permissions' section above
@@ -73,18 +73,18 @@ state:
  # required. most often, we should specify contract owner. we could specify 'issuer' or provide a key
   owner:
     # we create contract to be owned by another person, so we must provide a key:
-    key: HggcAQABxAABp8V6gGoUG3lsypgABbqNREfvIupyjtTY8yOHOPA3RWAoIr8VLC6ypMKmlbcZ
-         o3OGx6y93BhpYphdOjv9N580044z8viFOEmxp9X6NTFCHEGVzY4YyW+i1LFwJxR2vEKhnrS4
-         dY1O3Ue9g0vbdjBpLoxgfmZQAyGPFHgb0SJiaO9SZA1IanzCu+yOeiuhJsJZeJe6tYyVnwpX
-         7ySuZhXMGhkdmkGjuuMlbscQ0bp9qHNwjvWnLheKcSeObjlhVv74ajh+CgDiQkCnsFqZZZKd
-         QGVkmBVgIhN5cMgDTx+trpATEf86GadnodGTqTUthckUvlRgOsBaWoLADpMhz69kgw==
-    # marty_mcfly.unikey
+    key: HggcAQABxAABnfB84zQkv23K46BM0iBsKvmDtGst/Rd62/0A30ep7SW21u1wPmcRJgy+3+/E
+         tdgYKvrTiTJxV4pM+iXGzqBTA6eV4n/8QfvF1w/U1iaR2JYP2rsTbaj6dCLjX9JJ95qRvLQm
+         RgQpcaNreuKDJdqkrJ3I/g9eAHbvLcnoAWyUwKH+zgXhBa7ZCYYy62V0nCa5B9T27X10t8zx
+         r+PPBrzzkNup+18kCyv+aimKStY4mgAQvRPqzET7WZN57n9z4xvfA6aA9in0dG7P8Wfw5mms
+         yFVFyKqld+3KdZfhSsxvvO+4jm2VG3spX0BkP1/t2PbRmiYxnUkI8ZUB4SDlldUp6w==
+    # stepan_mamontov.unikey
 
     # the rest is optional and application-specific
     name:
       salutation: Mr.
-      first: Marty
-      last: McFly
+      first: Stepan
+      last: Mamontov
 
   # required. who has created this document. for the root contract it is always the issues, for changed
   # states it is almost always the owner. The contract should be signed by this key.
@@ -115,8 +115,8 @@ state:
   # required section. any application data that could be changed.
   data:
     # we can recolor the car, but contract should still be valid
-    color: cccccc
+    color: 910119
     # registration number at the State Car Registration Institute
-    registration_number: e777kx39ru
+    registration_number: m777cc39ru
 
 
