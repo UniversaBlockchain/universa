@@ -643,101 +643,53 @@ public class ResearchTest extends BaseNetworkTest {
 
 
 
-//    @Test
-//    public void swapContractsViaTransaction_wrongTransactionalId() throws Exception {
-//
-//        PrivateKey martyPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
-//        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
-//        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-//
-//        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
-//        delorean.addSignerKey(manufacturePrivateKey);
-//        delorean.seal();
-//        System.out.println("DeLorean ownership contract is valid: " + delorean.check());
-//        delorean.traceErrors();
-//        registerAndCheckApproved(delorean);
-//        Role martyMcflyRole = delorean.getOwner();
-//        System.out.println("DeLorean ownership is belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
-//
-//        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
-//        lamborghini.addSignerKey(manufacturePrivateKey);
-//        lamborghini.seal();
-//        System.out.println("Lamborghini ownership contract is valid: " + lamborghini.check());
-//        lamborghini.traceErrors();
-//        registerAndCheckApproved(lamborghini);
-//        Role stepanMamontovRole = lamborghini.getOwner();
-//        System.out.println("Lamborghini ownership is belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
-//
-//        // register swapped contracts using ContractsService
-//        System.out.println("--- register swapped contracts using ContractsService ---");
-//
-//        Contract swapContract;
-//        List<Contract> swappingNewContracts;
-//        List<Contract> swappingRevokingContracts = new ArrayList<>();
-//        swappingRevokingContracts.add(delorean);
-//        swappingRevokingContracts.add(lamborghini);
-//        Map<Contract, List<Contract>> swapServiceResult;
-//
-//        // first Marty create transaction, add both contracts and swap owners, sign own new contract
-//        swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKey, stepaPrivateKey.getPublicKey());
-//        swappingNewContracts = (List<Contract>) swapContract.getNew();
-//
-//        // then Marty send new revisions to Stepa
-//        // and Stepa sign own new contract, Marty's new contract
-//        // at this step Stepa try to compromise transactional_id
-//        List result_step_1 = imitateSendingTransactionToPartner(swapContract, swappingNewContracts, swappingRevokingContracts);
-//        swapContract = (Contract) result_step_1.get(0);
-//        swappingNewContracts = (List<Contract>) result_step_1.get(1);
-//        swappingNewContracts.iterator().next().getTransactional().setId(HashId.createRandom().toBase64String());
-//        ContractsService.signPresentedSwap(swappingNewContracts, stepaPrivateKey);
-//
-//        // then Stepa send draft transaction back to Marty
-//        // and Marty sign Stepa's new contract and send to approving
-//        List result_step_2 = imitateSendingTransactionToPartner(swapContract, swappingNewContracts, swappingRevokingContracts);
-//        swapContract = (Contract) result_step_2.get(0);
-//        swappingNewContracts = (List<Contract>) result_step_2.get(1);
-//        ContractsService.finishSwap(swappingNewContracts, martyPrivateKey);
-//
-//        for (Contract c : swappingNewContracts) {
-//            swapContract.addNewItems(c);
-//        }
-//        for (Contract c : swappingRevokingContracts) {
-//            swapContract.addRevokingItems(c);
-//        }
-//        swapContract.addSignerKey(manufacturePrivateKey);
-//        swapContract.seal();
-//        swapContract.check();
-//        swapContract.traceErrors();
-//        System.out.println("Transaction contract for swapping is valid: " + swapContract.check());
-//        registerAndCheckDeclined(swapContract);
-//
-//        // check old revisions for ownership contracts
-//        System.out.println("--- check old revisions for ownership contracts ---");
-//
-//        ItemResult deloreanResult = node.waitItem(delorean.getId(), 5000);
-//        System.out.println("DeLorean revoked ownership contract revision " + delorean.getRevision() + " is " + deloreanResult + " by Network");
-//        System.out.println("DeLorean revoked ownership was belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
-//        assertEquals(ItemState.APPROVED, deloreanResult.state);
-//
-//        ItemResult lamborghiniResult = node.waitItem(lamborghini.getId(), 5000);
-//        System.out.println("Lamborghini revoked ownership contract revision " + lamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
-//        System.out.println("Lamborghini revoked ownership was belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
-//        assertEquals(ItemState.APPROVED, lamborghiniResult.state);
-//
-//        // check new revisions for ownership contracts
-//        System.out.println("--- check new revisions for ownership contracts ---");
-//        Contract newDelorean = swappingNewContracts.get(0);
-//        deloreanResult = node.waitItem(newDelorean.getId(), 5000);
-//        System.out.println("DeLorean ownership contract revision " + newDelorean.getRevision() + " is " + deloreanResult + " by Network");
-//        System.out.println("DeLorean ownership is now belongs to Stepa: " + newDelorean.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
-//        assertEquals(ItemState.UNDEFINED, deloreanResult.state);
-//
-//        Contract newLamborgini = swappingNewContracts.get(1);
-//        lamborghiniResult = node.waitItem(newLamborgini.getId(), 5000);
-//        System.out.println("Lamborghini ownership contract revision " + newLamborgini.getRevision() + " is " + lamborghiniResult + " by Network");
-//        System.out.println("Lamborghini ownership is now belongs to Marty: " + newLamborgini.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
-//        assertEquals(ItemState.UNDEFINED, lamborghiniResult.state);
-//    }
+    @Test
+    public void looseTransactionalOnTransfer() throws Exception {
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+
+        prepareContractsForSwap(martyPrivateKeys, martyPublicKeys, stepaPrivateKeys, stepaPublicKeys, delorean, lamborghini);
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKeys, stepaPublicKeys);
+        swapContract.getNew().get(0).getDefinition().getReferences().add(new Reference());
+        swapContract.getNew().get(1).getDefinition().getReferences().add(new Reference());
+        swapContract.getNew().get(0).getTransactional().getReferences().get(0).contract_id = HashId.createRandom();
+        System.out.println("before imitateSending:");
+        System.out.println("  swapContract.getNew().size(): " + swapContract.getNew().size());
+//        System.out.println(swapContract.getNew().get(0).getDefinition().getReferences().get(0).contract_id);
+//        System.out.println(swapContract.getNew().get(1).getDefinition().getReferences().get(0).contract_id);
+        System.out.println("  contract0, definition references count: " + swapContract.getNew().get(0).getDefinition().getReferences().size());
+        System.out.println("  contract1, definition references count: " + swapContract.getNew().get(1).getDefinition().getReferences().size());
+        System.out.println("  contract0, transactional references count: " + swapContract.getNew().get(0).getTransactional().getReferences().size());
+        System.out.println("  contract1, transactional references count: " + swapContract.getNew().get(1).getTransactional().getReferences().size());
+        System.out.println("  contract0, transactional.reference.contract_id: " + swapContract.getNew().get(0).getTransactional().getReferences().get(0).contract_id);
+        System.out.println("  contract1, transactional.reference.contract_id: " + swapContract.getNew().get(1).getTransactional().getReferences().get(0).contract_id);
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+
+        System.out.println("after imitateSending:");
+        System.out.println("  swapContract.getNew().size(): " + swapContract.getNew().size());
+//        System.out.println(swapContract.getNew().get(0).getDefinition().getReferences().get(0).contract_id);
+//        System.out.println(swapContract.getNew().get(1).getDefinition().getReferences().get(0).contract_id);
+        System.out.println("  contract0, definition references count: " + swapContract.getNew().get(0).getDefinition().getReferences().size());
+        System.out.println("  contract1, definition references count: " + swapContract.getNew().get(1).getDefinition().getReferences().size());
+        System.out.println("  contract0, transactional references count: " + swapContract.getNew().get(0).getTransactional().getReferences().size());
+        System.out.println("  contract1, transactional references count: " + swapContract.getNew().get(1).getTransactional().getReferences().size());
+        System.out.println("  contract0, transactional.reference.contract_id: " + swapContract.getNew().get(0).getTransactional().getReferences().get(0).contract_id);
+        System.out.println("  contract1, transactional.reference.contract_id: " + swapContract.getNew().get(1).getTransactional().getReferences().get(0).contract_id);
+    }
 
 
 
