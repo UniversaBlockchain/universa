@@ -1354,14 +1354,14 @@ public class BaseNetworkTest extends TestCase {
         }
         System.out.println(newDelorean.getTransactional().getId());
         System.out.println(newLamborghini.getTransactional().getId());
-        System.out.println(newDelorean.getReferencedItems().iterator().next().transactional_id);
-        System.out.println(newLamborghini.getReferencedItems().iterator().next().transactional_id);
+        System.out.println(newDelorean.getTransactional().getReferences().get(0).transactional_id);
+        System.out.println(newLamborghini.getTransactional().getReferences().get(0).transactional_id);
 
         // erase both of transactional_id
         newDelorean.getTransactional().setId("");
         newLamborghini.getTransactional().setId("");
-        newDelorean.getReferencedItems().iterator().next().transactional_id = "";
-        newLamborghini.getReferencedItems().iterator().next().transactional_id = "";
+        newDelorean.getTransactional().getReferences().get(0).transactional_id = "";
+        newLamborghini.getTransactional().getReferences().get(0).transactional_id = "";
 
         swapContract.check();
         swapContract.traceErrors();
@@ -1413,14 +1413,14 @@ public class BaseNetworkTest extends TestCase {
         }
         System.out.println(newDelorean.getTransactional().getId());
         System.out.println(newLamborghini.getTransactional().getId());
-        System.out.println(newDelorean.getReferencedItems().iterator().next().transactional_id);
-        System.out.println(newLamborghini.getReferencedItems().iterator().next().transactional_id);
+        System.out.println(newDelorean.getTransactional().getReferences().get(0).transactional_id);
+        System.out.println(newLamborghini.getTransactional().getReferences().get(0).transactional_id);
 
         // set both of transactional_id to null
         newDelorean.getTransactional().setId(null);
         newLamborghini.getTransactional().setId(null);
-        newDelorean.getReferencedItems().iterator().next().transactional_id = null;
-        newLamborghini.getReferencedItems().iterator().next().transactional_id = null;
+        newDelorean.getTransactional().getReferences().get(0).transactional_id = null;
+        newLamborghini.getTransactional().getReferences().get(0).transactional_id = null;
 
         swapContract.check();
         swapContract.traceErrors();
@@ -1475,8 +1475,13 @@ public class BaseNetworkTest extends TestCase {
         System.out.println(newDelorean.getReferencedItems().iterator().next().transactional_id);
         System.out.println(newLamborghini.getReferencedItems().iterator().next().transactional_id);
 
+        System.out.println(newDelorean.getTransactional().getReferences().get(0));
+        System.out.println(newLamborghini.getTransactional().getReferences().get(0));
+        System.out.println(swapContract.getNew().get(0).getTransactional().getReferences().get(0));
+        System.out.println(swapContract.getNew().get(1).getTransactional().getReferences().get(0));
+
         // set wrong reference.contract_id for second contract
-        newDelorean.getReferencedItems().iterator().next().contract_id = HashId.createRandom();
+        newDelorean.getTransactional().getReferences().get(0).contract_id = HashId.createRandom();
 
         swapContract.check();
         swapContract.traceErrors();
