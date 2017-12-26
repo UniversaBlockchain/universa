@@ -1455,6 +1455,15 @@ public class BaseNetworkTest extends TestCase {
         swapContract = imitateSendingTransactionToPartner(swapContract);
         ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
 
+        // set wrong reference.contract_id for second contract
+        int iHack = 1;
+        if(swapContract.getNew().get(0).getParent().equals(lamborghini.getId()))
+            iHack = 0;
+        swapContract.getNew().get(iHack).getTransactional().getReferences().get(0).contract_id = HashId.createRandom();
+        swapContract.getNew().get(iHack).seal();
+        swapContract.getNew().get(iHack).addSignatureToSeal(stepaPrivateKeys);
+        swapContract.seal();
+
         // then Stepa send draft transaction back to Marty
         // and Marty sign Stepa's new contract and send to approving
         swapContract = imitateSendingTransactionToPartner(swapContract);
@@ -1479,9 +1488,6 @@ public class BaseNetworkTest extends TestCase {
         System.out.println(newLamborghini.getTransactional().getReferences().get(0));
         System.out.println(swapContract.getNew().get(0).getTransactional().getReferences().get(0));
         System.out.println(swapContract.getNew().get(1).getTransactional().getReferences().get(0));
-
-        // set wrong reference.contract_id for second contract
-        newDelorean.getTransactional().getReferences().get(0).contract_id = HashId.createRandom();
 
         swapContract.check();
         swapContract.traceErrors();
