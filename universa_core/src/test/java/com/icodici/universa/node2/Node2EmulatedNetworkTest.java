@@ -53,6 +53,12 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         initTestSet();
     }
 
+    @AfterClass
+    public static void afterClass() throws Exception {
+        network_s.shutdown();
+        nodes_s.forEach((n)->n.getLedger().close());
+    }
+
     private static void initTestSet() throws Exception {
         initTestSet(1, 1);
     }
