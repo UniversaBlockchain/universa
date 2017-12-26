@@ -1379,7 +1379,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
             //check origin
             if (result) {
-                final String origin = references.getOrigin();
+                final HashId origin = references.origin;
                 result = (origin == null || !(contract.getOrigin().equals(this.getOrigin())));
             }
 

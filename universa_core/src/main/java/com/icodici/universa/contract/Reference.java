@@ -19,7 +19,6 @@ public class Reference implements BiSerializable {
     public HashId contract_id = null;
     public boolean required = true;
     public HashId origin = null;
-    public String origin_bak = null;
     public List<Role> signed_by = new ArrayList<>();
     public List<String> fields = new ArrayList<>();
     public List<String> roles = new ArrayList<>();
@@ -76,8 +75,6 @@ public class Reference implements BiSerializable {
         this.signed_by = deserializer.deserializeCollection(data.getList("signed_by", new ArrayList<>()));
 
 
-        this.origin_bak = data.getString("origin_bak", null);
-
         List<String> roles = data.getList("roles", null);
         if (roles != null) {
             this.roles.clear();
@@ -105,7 +102,6 @@ public class Reference implements BiSerializable {
             data.set("origin", s.serialize(Bytes.toHex(this.origin.getDigest())));
         data.set("signed_by", s.serialize(signed_by));
 
-        data.set("origin_bak", s.serialize(this.origin_bak));
         data.set("roles", s.serialize(this.roles));
         data.set("fields", s.serialize(this.fields));
 
@@ -143,15 +139,6 @@ public class Reference implements BiSerializable {
 
     public Reference setRoles(List<String> roles) {
         this.roles = roles;
-        return this;
-    }
-
-    public String getOrigin() {
-        return origin_bak;
-    }
-
-    public Reference setOrigin(String origin) {
-        this.origin_bak = origin;
         return this;
     }
 
