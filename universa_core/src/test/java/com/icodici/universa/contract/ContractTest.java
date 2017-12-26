@@ -391,20 +391,23 @@ public class ContractTest extends ContractTestBase {
         forRevision.getState().setExpiresAt(ZonedDateTime.now().plusDays(7));
         forRevision.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         forRevision.seal();
+        System.out.println("check started " + forRevision.getId());
         forRevision.check();
+        System.out.println("check finished " + forRevision.getId());
         forRevision.traceErrors();
 
-        // It is contract in vacuum, so signs not verifying
+        // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBeForParent = 20;
+        int costShouldBeForParent = 28;
 
-        // It is contract in vacuum, so signs not verifying
+        // Check 4096 bits signature (8) +
         // Register a version (20) +
+        // Check 4096 bits signature for revoking (8) +
         // Register revoking item a version (20) +
         // Check self change owner permission (1) +
         // Check self change split join permission (1+2) +
         // Check self change revoke permission (1)
-        int costShouldBeForRevision = 45;
+        int costShouldBeForRevision = 61;
 
         System.out.println("Calculated processing cost (parent): " + contract.getProcessedCost() + " (UTN)");
         System.out.println("Calculated processing cost (revision): " + forRevision.getProcessedCost() + " (UTN)");
@@ -441,11 +444,8 @@ public class ContractTest extends ContractTestBase {
         // Register revoking item a version (20) +
         // Check self change owner permission (1) +
         // Check self change split join permission (1+2) +
-        // Check self change revoke permission (1) +
-        // Check new item change owner permission (1) +
-        // Check new item change split join permission (1+2) +
-        // Check new item change revoke permission (1)
-        int costShouldBeForSplit = 94;
+        // Check self change revoke permission (1)
+        int costShouldBeForSplit = 89;
 
         Contract processingContract = processContractAsItWillBeOnTheNode(forSplit);
         System.out.println("Calculated processing cost (forSplit): " + processingContract.getProcessedCost() + " (UTN)");
@@ -529,10 +529,7 @@ public class ContractTest extends ContractTestBase {
         // Check self change owner permission (1) +
         // Check self change split join permission (1+2) +
         // Check self change revoke permission (1) +
-        // Check new item change owner permission (1) +
-        // Check new item change split join permission (1+2) +
-        // Check new item change revoke permission (1)
-        int costShouldBeForSplit = 262;
+        int costShouldBeForSplit = 257;
 
         Contract processingContract = processContractAsItWillBeOnTheNode(forJoin);
         System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCost() + " (UTN)");
@@ -689,6 +686,13 @@ public class ContractTest extends ContractTestBase {
 
         sealCheckTrace(contract, true);
 
+        // Check 4096 bits signature own (8) +
+        // Check 4096 bits signature c_1 (8) +
+        // Check 4096 bits signature c_2 (8) +
+        // Check 4096 bits signature c_1 -> c_2 (8) +
+        // Check 4096 bits signature c_1 -> c_3 (8) +
+        // Check 4096 bits signature c_2 -> c_3 (8) +
+        // Check 4096 bits signature c_1 -> c_2 -> c_3 (8) +
         // Register a self version (20) +
         // Register c_1 version (20) +
         // Register c_2 version (20) +
@@ -696,7 +700,7 @@ public class ContractTest extends ContractTestBase {
         // Register c_3 version from c_1 (20) +
         // Register c_3 version from c_2 version (20) +
         // Register c_3 version from c_2 version from c_1 (20)
-        int costShouldBe = 140;
+        int costShouldBe = 196;
         System.out.println("Calculated processing cost (contract): " + contract.getProcessedCost() + " (UTN)");
         assertEquals(costShouldBe, contract.getProcessedCost());
 
