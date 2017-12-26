@@ -152,7 +152,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         getContext();
         // TODO: to know why context of new items is set to current conext
-//        newItems.forEach(i -> i.context = context);
+        newItems.forEach(i -> i.context = context);
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -579,7 +579,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private void checkChangedContract() throws Quantiser.QuantiserException {
         // get the previous version
-        Contract parent = getContext().base;
+//        Contract parent = getContext().base;
+        // get context if not got yet
+        getContext();
+        Contract parent = getRevokingItem(getParent());
         if (parent == null) {
             addError(BAD_REF, "parent", "parent contract must be included");
         } else {
@@ -1214,6 +1217,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             c.setKeysToSignWith(getKeysToSignWith());
             // save branch information
             c.getState().setBranchNumber(i + 1);
+            // add revoking from this to each sibling
+            revokingItems.forEach(ri -> c.addRevokingItems(ri));
             // and it should refer the same parent to and set of siblings
             c.context = context;
             context.siblings.add(c);

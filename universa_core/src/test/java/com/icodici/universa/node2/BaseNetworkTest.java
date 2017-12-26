@@ -630,23 +630,27 @@ public class BaseNetworkTest extends TestCase {
         c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
         assertTrue(c2.check());
         c2.seal();
-        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
+        cRev.seal();
 
-        registerAndCheckApproved(c2);
+        registerAndCheckApproved(cRev);
+        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
         assertEquals("50", c2.getStateData().get("amount"));
 
 
-        //send 150 out of 2 contracts (100 + 50)
+        //send 100 out of 2 contracts (50 + 50)
         Contract c3 = c2.createRevision();
-        c3.getStateData().set("amount", (new Decimal((Integer)c.getStateData().get("amount"))).
+        c3.getStateData().set("amount", ((Decimal)cRev.getStateData().get("amount")).
                 add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
         c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        c3.addRevokingItems(c);
-        assertTrue(c3.check());
+        c3.addRevokingItems(cRev);
+        c3.check();
+        c3.traceErrors();
+        assertTrue(c3.isOk());
         c3.seal();
 
+//        LogPrinter.showDebug(true);
         registerAndCheckApproved(c3);
-        assertEquals(new Decimal(150), c3.getStateData().get("amount"));
+        assertEquals(new Decimal(100), c3.getStateData().get("amount"));
     }
 
 
@@ -896,7 +900,6 @@ public class BaseNetworkTest extends TestCase {
         swapContract.check();
         swapContract.traceErrors();
         System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
-        LogPrinter.showDebug(true);
         registerAndCheckApproved(swapContract);
 
         checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
