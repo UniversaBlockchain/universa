@@ -757,20 +757,14 @@ public class BaseNetworkTest extends TestCase {
         Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
         delorean.addSignerKey(manufacturePrivateKey);
         delorean.seal();
-        System.out.println("DeLorean ownership contract is valid: " + delorean.check());
         delorean.traceErrors();
         registerAndCheckApproved(delorean);
-        Role martyMcflyRole = delorean.getOwner();
-        System.out.println("DeLorean ownership is belongs to Marty: " + delorean.getOwner().isAllowedForKeys(martyMcflyRole.getKeys()));
 
         Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
         lamborghini.addSignerKey(manufacturePrivateKey);
         lamborghini.seal();
-        System.out.println("Lamborghini ownership contract is valid: " + lamborghini.check());
         lamborghini.traceErrors();
         registerAndCheckApproved(lamborghini);
-        Role stepanMamontovRole = lamborghini.getOwner();
-        System.out.println("Lamborghini ownership is belongs to Stepa: " + lamborghini.getOwner().isAllowedForKeys(stepanMamontovRole.getKeys()));
 
         // register swapped contracts using ContractsService
         System.out.println("--- register swapped contracts using ContractsService ---");
@@ -795,36 +789,44 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Transaction contract for swapping is valid: " + swapContract.check());
         registerAndCheckApproved(swapContract);
 
-        List<Contract> swappingNewContracts = (List<Contract>) swapContract.getNew();
-
         // check old revisions for ownership contracts
         System.out.println("--- check old revisions for ownership contracts ---");
 
         ItemResult deloreanResult = node.waitItem(delorean.getId(), 5000);
         System.out.println("DeLorean revoked ownership contract revision " + delorean.getRevision() + " is " + deloreanResult + " by Network");
-        System.out.println("DeLorean revoked ownership was belongs to Marty: " + delorean.getOwner().getKeys().containsAll(martyMcflyRole.getKeys()));
+        System.out.println("DeLorean revoked ownership was belongs to Marty: " + delorean.getOwner().isAllowedForKeys(martyPublicKeys));
 //        assertEquals(ItemState.REVOKED, deloreanResult.state);
 
         ItemResult lamborghiniResult = node.waitItem(lamborghini.getId(), 5000);
         System.out.println("Lamborghini revoked ownership contract revision " + lamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
-        System.out.println("Lamborghini revoked ownership was belongs to Stepa: " + lamborghini.getOwner().getKeys().containsAll(stepanMamontovRole.getKeys()));
+        System.out.println("Lamborghini revoked ownership was belongs to Stepa: " + lamborghini.getOwner().isAllowedForKeys(stepaPublicKeys));
 //        assertEquals(ItemState.REVOKED, lamborghiniResult.state);
 
         // check new revisions for ownership contracts
         System.out.println("--- check new revisions for ownership contracts ---");
-        Contract newDelorean = swappingNewContracts.get(0);
+
+        Contract newDelorean = null;
+        Contract newLamborgini = null;
+        for (Contract c : swapContract.getNew()) {
+            if(c.getParent().equals(delorean.getId())) {
+                newDelorean = c;
+            }
+            if(c.getParent().equals(lamborghini.getId())) {
+                newLamborgini = c;
+            }
+        }
+
         deloreanResult = node.waitItem(newDelorean.getId(), 5000);
         System.out.println("DeLorean ownership contract revision " + newDelorean.getRevision() + " is " + deloreanResult + " by Network");
-        System.out.println("DeLorean ownership is now belongs to Stepa: " + newDelorean.getOwner().isAllowedForKeys(stepanMamontovRole.getKeys()));
+        System.out.println("DeLorean ownership is now belongs to Stepa: " + newDelorean.getOwner().isAllowedForKeys(stepaPublicKeys));
         assertEquals(ItemState.APPROVED, deloreanResult.state);
-        assertTrue(newDelorean.getOwner().isAllowedForKeys(stepanMamontovRole.getKeys()));
+        assertTrue(newDelorean.getOwner().isAllowedForKeys(stepaPublicKeys));
 
-        Contract newLamborgini = swappingNewContracts.get(1);
         lamborghiniResult = node.waitItem(newLamborgini.getId(), 5000);
         System.out.println("Lamborghini ownership contract revision " + newLamborgini.getRevision() + " is " + lamborghiniResult + " by Network");
-        System.out.println("Lamborghini ownership is now belongs to Marty: " + newLamborgini.getOwner().isAllowedForKeys(martyMcflyRole.getKeys()));
+        System.out.println("Lamborghini ownership is now belongs to Marty: " + newLamborgini.getOwner().isAllowedForKeys(martyPublicKeys));
         assertEquals(ItemState.APPROVED, lamborghiniResult.state);
-        assertTrue(newLamborgini.getOwner().isAllowedForKeys(martyMcflyRole.getKeys()));
+        assertTrue(newLamborgini.getOwner().isAllowedForKeys(martyPublicKeys));
     }
 
 //
