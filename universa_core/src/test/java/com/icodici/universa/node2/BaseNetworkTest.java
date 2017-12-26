@@ -16,6 +16,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Test;
 
@@ -782,12 +783,12 @@ public class BaseNetworkTest extends TestCase {
         ItemResult deloreanResult = node.waitItem(delorean.getId(), 5000);
         System.out.println("DeLorean revoked ownership contract revision " + delorean.getRevision() + " is " + deloreanResult + " by Network");
         System.out.println("DeLorean revoked ownership was belongs to Marty: " + delorean.getOwner().isAllowedForKeys(martyPublicKeys));
-//        assertEquals(ItemState.REVOKED, deloreanResult.state);
+        assertEquals(ItemState.REVOKED, deloreanResult.state);
 
         ItemResult lamborghiniResult = node.waitItem(lamborghini.getId(), 5000);
         System.out.println("Lamborghini revoked ownership contract revision " + lamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
         System.out.println("Lamborghini revoked ownership was belongs to Stepa: " + lamborghini.getOwner().isAllowedForKeys(stepaPublicKeys));
-//        assertEquals(ItemState.REVOKED, lamborghiniResult.state);
+        assertEquals(ItemState.REVOKED, lamborghiniResult.state);
 
         // check new revisions for ownership contracts
         System.out.println("--- check new revisions for ownership contracts ---");
@@ -895,6 +896,7 @@ public class BaseNetworkTest extends TestCase {
         swapContract.check();
         swapContract.traceErrors();
         System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+        LogPrinter.showDebug(true);
         registerAndCheckApproved(swapContract);
 
         checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
