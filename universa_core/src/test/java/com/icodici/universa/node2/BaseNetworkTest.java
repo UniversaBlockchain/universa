@@ -484,11 +484,14 @@ public class BaseNetworkTest extends TestCase {
         c = c.createRevision();
         Contract c2 = c.splitValue("amount", new Decimal(550));
         c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        assertFalse(c2.check());
+        c2.check();
+        c2.traceErrors();
+//        assertFalse(c2.isOk());
         c2.seal();
+        c.seal();
         assertEquals(new Decimal(-450), c.getStateData().get("amount"));
 
-        registerAndCheckDeclined(c2);
+        registerAndCheckDeclined(c);
     }
 
 
