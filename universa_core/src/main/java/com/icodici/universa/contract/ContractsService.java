@@ -18,7 +18,7 @@ import net.sergeych.tools.Do;
 import java.io.IOException;
 import java.util.*;
 
-public class ContractsService extends Contract {
+public class ContractsService {
 
 //    public ContractsService(byte[] sealed) throws IOException {
 //        super(sealed);
@@ -86,7 +86,7 @@ public class ContractsService extends Contract {
 
         Contract tc = new Contract();
 
-        Definition cd = tc.getDefinition();
+        Contract.Definition cd = tc.getDefinition();
         // by default, transactions expire in 30 days
         cd.setExpiresAt(tc.getCreatedAt().plusDays(30));
 
@@ -136,7 +136,7 @@ public class ContractsService extends Contract {
         // you can think about this contract as about transaction
         Contract swapContract = new Contract();
 
-        Definition cd = swapContract.getDefinition();
+        Contract.Definition cd = swapContract.getDefinition();
         // by default, transactions expire in 30 days
         cd.setExpiresAt(swapContract.getCreatedAt().plusDays(30));
 
@@ -155,11 +155,11 @@ public class ContractsService extends Contract {
         // create new revisions of contracts and create transactional sections in it
 
         Contract newContract1 = contract1.createRevision(fromKeys);
-        Transactional transactional1 = newContract1.createTransactionalSection();
+        Contract.Transactional transactional1 = newContract1.createTransactionalSection();
         transactional1.setId(HashId.createRandom().toBase64String());
 
         Contract newContract2 = contract2.createRevision();
-        Transactional transactional2 = newContract2.createTransactionalSection();
+        Contract.Transactional transactional2 = newContract2.createTransactionalSection();
         transactional2.setId(HashId.createRandom().toBase64String());
 
 
@@ -310,113 +310,5 @@ public class ContractsService extends Contract {
         swapContract.addSignatureToSeal(keys);
 
         return swapContract;
-    }
-
-    // for test purposes only
-
-
-
-    public static List<Contract> startSwap__WrongSignTest(Contract contract1, Contract contract2, PrivateKey fromKey, PublicKey toKey, PrivateKey wrongKey) {
-
-        List<Contract> swappingContracts = new ArrayList<>();
-
-        Transactional transactional1 = contract1.createTransactionalSection();
-        transactional1.setId("" + Do.randomInt(1000000000));
-
-        Transactional transactional2 = contract1.createTransactionalSection();
-        transactional2.setId("" + Do.randomInt(1000000000));
-
-        Reference reference1 = new Reference();
-        reference1.transactional_id = transactional2.getId();
-        reference1.type = Reference.TYPE_TRANSACTIONAL;
-        reference1.required = true;
-        reference1.signed_by = new ArrayList<>();
-        reference1.signed_by.add(new SimpleRole("owner", new KeyRecord(fromKey.getPublicKey())));
-        reference1.signed_by.add(new SimpleRole("creator", new KeyRecord(toKey)));
-        transactional1.addReference(reference1);
-
-        Reference reference2 = new Reference();
-        reference2.transactional_id = transactional1.getId();
-        reference2.type = Reference.TYPE_TRANSACTIONAL;
-        reference2.required = true;
-        reference2.signed_by = new ArrayList<>();
-        reference2.signed_by.add(new SimpleRole("owner", new KeyRecord(toKey)));
-        reference2.signed_by.add(new SimpleRole("creator", new KeyRecord(fromKey.getPublicKey())));
-        transactional2.addReference(reference2);
-
-
-
-        Contract newContract1 = contract1.createRevision(transactional1, wrongKey);
-        newContract1.setOwnerKeys(toKey);
-        newContract1.seal();
-        swappingContracts.add(newContract1);
-
-        Contract newContract2 = contract2.createRevision(transactional2);
-        newContract2.setOwnerKeys(fromKey.getPublicKey());
-        newContract2.seal();
-        swappingContracts.add(newContract2);
-
-        return swappingContracts;
-    }
-
-    public static List<Contract> signPresentedSwap__WrongSignTest(List<Contract> swappingContracts, PrivateKey key, PrivateKey wrongKey) {
-
-        HashId contractHashId = null;
-        for (Contract c : swappingContracts) {
-            for (PublicKey k : c.getOwner().getKeys()) {
-                if(k.equals(key.getPublicKey())) {
-
-                    c.addSignatureToSeal(wrongKey);
-                    contractHashId = c.getId();
-                }
-            }
-        }
-
-        for (Contract c : swappingContracts) {
-            boolean isMyContract = false;
-            for (PublicKey k : c.getOwner().getKeys()) {
-                if(!k.equals(key.getPublicKey())) {
-                    isMyContract = true;
-                    break;
-                }
-            }
-            if(isMyContract) {
-
-                Set<KeyRecord> krs = new HashSet<>();
-                krs.add(new KeyRecord(key.getPublicKey()));
-                c.setCreator(krs);
-
-                if(c.getTransactional() != null) {
-                    for (Reference rm : c.getTransactional().getReferences()) {
-                        rm.contract_id = contractHashId;
-                    }
-                } else {
-                    return swappingContracts;
-                }
-
-                c.seal();
-                c.addSignatureToSeal(wrongKey);
-            }
-        }
-
-        return swappingContracts;
-    }
-
-    public static List<Contract> finishSwap__WrongSignTest(List<Contract> swappingContracts, PrivateKey key, PrivateKey wrongKey) {
-
-        for (Contract c : swappingContracts) {
-            boolean isMyContract = false;
-            for (PublicKey k : c.getOwner().getKeys()) {
-                if(!k.equals(key.getPublicKey())) {
-                    isMyContract = true;
-                    break;
-                }
-            }
-            if(!isMyContract) {
-                c.addSignatureToSeal(wrongKey);
-            }
-        }
-
-        return swappingContracts;
     }
 }

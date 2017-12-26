@@ -966,6 +966,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         setOwnBinary(data);
     }
 
+    public void removeAllSignatures() {
+        if (sealedBinary == null)
+            throw new IllegalStateException("failed to add signature: sealed binary does not exist");
+        Binder data = Boss.unpack(sealedBinary);
+        List<byte[]> signatures = new ArrayList<>();
+        data.put("signatures", signatures);
+        sealedByKeys.clear();
+
+        setOwnBinary(data);
+    }
+
     public boolean findSignatureInSeal(PublicKey publicKey) {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to create revision");
@@ -2032,7 +2043,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(SimpleRole.class);
         // other
         DefaultBiMapper.registerClass(KeyRecord.class);
-        DefaultBiMapper.registerClass(ContractsService.class);
+//        DefaultBiMapper.registerClass(ContractsService.class);
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
         DefaultBiMapper.registerClass(Reference.class);
 
