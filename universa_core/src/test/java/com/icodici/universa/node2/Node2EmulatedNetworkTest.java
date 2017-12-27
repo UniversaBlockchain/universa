@@ -595,20 +595,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
 
     @Test
-    public void createRealContract() throws Exception {
-        Contract c = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
-        c.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c.check());
-        c.seal();
-
-        node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 2500);
-        assertEquals(ItemState.APPROVED, itemResult.state);
-    }
-
-
-
-    @Test
     public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
 
         ((TestEmulatedNetwork)network).setTest_nodeBeingOffedChance(75);

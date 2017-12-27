@@ -779,12 +779,13 @@ public class BaseNetworkTest extends TestCase {
     @Test
     public void createRealContract() throws Exception {
         Contract c = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
-        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue(c.check());
         c.seal();
 
         registerAndCheckApproved(c);
     }
+
 
 
     public void prepareContractsForSwap(
