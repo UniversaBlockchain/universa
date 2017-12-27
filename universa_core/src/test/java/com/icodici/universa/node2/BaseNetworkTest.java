@@ -16,6 +16,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.Do;
+import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Test;
@@ -24,8 +25,11 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -39,14 +43,16 @@ public class BaseNetworkTest extends TestCase {
     protected Network network = null;
     protected Node node = null;
     protected List<Node> nodes = null;
+    protected Map<NodeInfo,Node> nodesMap = null;
     protected Ledger ledger = null;
     protected Config config = null;
 
 
 
-    public void init(Node node, List<Node> nodes, Network network, Ledger ledger, Config config) throws Exception {
+    public void init(Node node, List<Node> nodes, Map<NodeInfo,Node> nodesMap, Network network, Ledger ledger, Config config) throws Exception {
         this.node = node;
         this.nodes = nodes;
+        this.nodesMap = nodesMap;
         this.network = network;
         this.ledger = ledger;
         this.config = config;
@@ -54,12 +60,43 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test
+    @Test(timeout = 90000)
     public void registerGoodItem() throws Exception {
-        TestItem ok = new TestItem(true);
-        node.registerItem(ok);
-        ItemResult r = node.waitItem(ok.getId(), 100);
-        assertEquals(ItemState.APPROVED, r.state);
+
+        int N = 100;
+//        LogPrinter.showDebug(true);
+        for (int k = 0; k < 1; k++) {
+            StopWatch.measure(true, () -> {
+                for (int i = 0; i < N; i++) {
+                    TestItem ok = new TestItem(true);
+                    System.out.println("\n--------------register item " + ok.getId() + " ------------\n");
+                    node.registerItem(ok);
+                    for (Node n : nodesMap.values()) {
+                        try {
+                            ItemResult r = n.waitItem(ok.getId(), 2000);
+                            int numIterations = 0;
+                            while( !r.state.isConsensusFound()) {
+                                System.out.println("wait for consensus receiving on the node " + n);
+                                Thread.sleep(500);
+                                r = n.waitItem(ok.getId(), 2000);
+                                numIterations++;
+                                if(numIterations > 20)
+                                    break;
+                            }
+                            System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
+                            assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
+                        } catch (TimeoutException e) {
+                            fail("timeout");
+                        }
+                    }
+                    assertThat(node.countElections(), is(lessThan(10)));
+
+                    ItemResult r = node.waitItem(ok.getId(), 5500);
+                    assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
+
+                }
+            });
+        }
     }
 
 

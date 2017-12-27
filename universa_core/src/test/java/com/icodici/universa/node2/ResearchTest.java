@@ -151,7 +151,7 @@ public class ResearchTest extends BaseNetworkTest {
             ln.setUDPAdapterLostPacketsPercentInTestMode(0);
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         }
-        init(node_s, nodes_s, network_s, ledger_s, config_s);
+        init(node_s, nodes_s, null, network_s, ledger_s, config_s);
     }
 
 

@@ -44,7 +44,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     private static List<TestLocalNetwork> networks = new ArrayList<>();
     private static Node node_s = null;
     private static List<Node> nodes_s = null;
-    private static Map<NodeInfo,Node> nodesMap = new HashMap<>();
+    private static Map<NodeInfo,Node> nodesMap_s = new HashMap<>();
     private static Ledger ledger_s = null;
     private static NetConfig nc_s = null;
     private static Config config_s = null;
@@ -58,12 +58,27 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         initTestSet();
     }
 
+    @AfterClass
+    public static void afterClass() throws Exception {
+        networks.forEach(n->n.shutDown());
+        nodesMap_s.forEach((i,n)->n.getLedger().close());
+
+        network_s = null;
+        networks = null;
+        node_s = null;
+        nodes_s = null;
+        nodesMap_s = null;
+        ledger_s = null;
+        nc_s = null;
+        config_s = null;
+    }
+
     private static void initTestSet() throws Exception {
         initTestSet(1, 1);
     }
 
     private static void initTestSet(int posCons, int negCons) throws Exception {
-        nodesMap = new HashMap<>();
+        nodesMap_s = new HashMap<>();
         networks = new ArrayList<>();
 
         config_s = new Config();
@@ -108,11 +123,11 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             NodeInfo info = nc_s.getInfo(i);
 
             TestLocalNetwork ln = new TestLocalNetwork(nc_s, info, getNodeKey(i));
-            ln.setNodes(nodesMap);
+            ln.setNodes(nodesMap_s);
 //            ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
             Ledger ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
             Node n = new Node(config_s, info, ledger, ln);
-            nodesMap.put(info, n);
+            nodesMap_s.put(info, n);
             networks.add(ln);
 
             if (i == 0) {
@@ -120,15 +135,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 network_s = ln;
             }
         }
-        node_s = nodesMap.values().iterator().next();
-    }
-
-
-
-    @AfterClass
-    public static void afterClass() throws Exception {
-        networks.forEach(n->n.shutDown());
-        nodesMap.forEach((i,n)->n.getLedger().close());
+        node_s = nodesMap_s.values().iterator().next();
     }
 
 
@@ -146,7 +153,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterLostPacketsPercentInTestMode(0);
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         }
-        init(node_s, nodes_s, network_s, ledger_s, config_s);
+        init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
     }
 
 
@@ -184,47 +191,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         afterClass();
         beforeClass();
         setUp();
-    }
-
-
-
-    @Test(timeout = 90000)
-    public void registerGoodItem() throws Exception {
-
-        int N = 100;
-//        LogPrinter.showDebug(true);
-        for (int k = 0; k < 1; k++) {
-            StopWatch.measure(true, () -> {
-                for (int i = 0; i < N; i++) {
-                    TestItem ok = new TestItem(true);
-                    System.out.println("\n--------------register item " + ok.getId() + " ------------\n");
-                    node.registerItem(ok);
-                    for (Node n : nodesMap.values()) {
-                        try {
-                            ItemResult r = n.waitItem(ok.getId(), 2000);
-                            int numIterations = 0;
-                            while( !r.state.isConsensusFound()) {
-                                System.out.println("wait for consensus receiving on the node " + n);
-                                Thread.sleep(500);
-                                r = n.waitItem(ok.getId(), 2000);
-                                numIterations++;
-                                if(numIterations > 20)
-                                    break;
-                            }
-                            System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
-                            assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
-                        } catch (TimeoutException e) {
-                            fail("timeout");
-                        }
-                    }
-                    assertThat(node.countElections(), is(lessThan(10)));
-
-                    ItemResult r = node.waitItem(ok.getId(), 5500);
-                    assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
-
-                }
-            });
-        }
     }
 
 
@@ -277,7 +243,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //        Contract c = new Contract(TestKeys.privateKey(0));
 //        c.seal();
 //        addToAllLedgers(c, ItemState.APPROVED);
-//        nodesMap.values().forEach(n->{
+//        nodesMap_s.values().forEach(n->{
 //            System.out.println(node.getLedger().getRecord(c.getId()));
 //        });
 //        node.getLedger().getRecord(c.getId()).destroy();
@@ -295,7 +261,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     }
 
     private void addToAllLedgers(Contract c, ItemState state, Node exceptNode) {
-        for( Node n: nodesMap.values() ) {
+        for( Node n: nodesMap_s.values() ) {
             if(n != exceptNode) {
                 n.getLedger().findOrCreate(c.getId()).setState(state).save();
             }
@@ -820,7 +786,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 System.out.println("-----------nodes state--------------");
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.APPROVED) {
@@ -885,7 +851,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 System.out.println("-----------nodes state--------------");
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.APPROVED) {
@@ -917,7 +883,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 Object lock = new Object();
                 synchronized (lock) {
                     int num_approved = 0;
-                    for (Node n : nodesMap.values()) {
+                    for (Node n : nodesMap_s.values()) {
                         ItemResult r = n.checkItem(contract.getId());
 
                         if (r.state == ItemState.APPROVED) {
@@ -943,7 +909,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         timer2.cancel();
 
         boolean all_is_approved = true;
-        for (Node n : nodesMap.values()) {
+        for (Node n : nodesMap_s.values()) {
             ItemResult r = n.checkItem(contract.getId());
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
@@ -990,7 +956,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 System.out.println("-----------nodes state--------------");
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.APPROVED) {
@@ -1020,7 +986,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
                 System.out.println("-----------nodes state--------------");
 
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
                 }
@@ -1036,7 +1002,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         timer2.cancel();
 
         boolean all_is_approved = true;
-        for (Node n : nodesMap.values()) {
+        for (Node n : nodesMap_s.values()) {
             ItemResult r = n.checkItem(contract.getId());
             System.out.println("Node: " + n.toString() + " state: " + r.state);
             if(r.state != ItemState.APPROVED) {
@@ -1074,7 +1040,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
 //                    System.out.println(n.getLedger().getRecord(c.getId()));
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
@@ -1117,7 +1083,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
 //                    System.out.println(n.getLedger().getRecord(c.getId()));
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
@@ -1166,7 +1132,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
 //                    System.out.println(n.getLedger().getRecord(c.getId()));
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
@@ -1217,7 +1183,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.UNDEFINED) {
@@ -1340,7 +1306,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.UNDEFINED) {
@@ -1380,7 +1346,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //            public void run() {
 //
 //                boolean all_is_approved = true;
-//                for (Node n : nodesMap.values()) {
+//                for (Node n : nodesMap_s.values()) {
 ////                    System.out.println(n.getLedger().getRecord(c.getId()));
 //                    ItemResult r = n.checkItem(c.getId());
 //                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
@@ -1412,7 +1378,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         StateRecord orCreate;
         for (Approvable c : contract.getRevokingItems()) {
             id = c.getId();
-            for (Node nodeS : nodesMap.values()) {
+            for (Node nodeS : nodesMap_s.values()) {
                 orCreate = nodeS.getLedger().findOrCreate(id);
                 orCreate.setState(ItemState.APPROVED).save();
             }
@@ -1426,7 +1392,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     private void destroyFromAllNodesExistingNew(Contract c50_1) {
         StateRecord orCreate;
         for (Approvable c : c50_1.getNewItems()) {
-            for (Node nodeS : nodesMap.values()) {
+            for (Node nodeS : nodesMap_s.values()) {
                 orCreate = nodeS.getLedger().getRecord(c.getId());
                 if (orCreate != null)
                     orCreate.destroy();
@@ -1435,7 +1401,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     }
 
     private void destroyCurrentFromAllNodesIfExists(Contract finalC) {
-        for (Node nodeS : nodesMap.values()) {
+        for (Node nodeS : nodesMap_s.values()) {
             StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
             if (r != null) {
                 r.destroy();

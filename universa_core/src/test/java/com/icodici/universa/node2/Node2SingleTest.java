@@ -16,7 +16,7 @@ import org.junit.*;
 import java.io.File;
 import java.io.FileReader;
 import java.time.ZonedDateTime;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 import static java.util.Arrays.asList;
@@ -27,6 +27,8 @@ public class Node2SingleTest extends BaseNetworkTest {
 
     private static Network network_s = null;
     private static Node node_s = null;
+    private static List<Node> nodes_s = null;
+    private static Map<NodeInfo,Node> nodesMap_s = null;
     private static Ledger ledger_s = null;
     private static Config config_s = null;
 
@@ -35,6 +37,19 @@ public class Node2SingleTest extends BaseNetworkTest {
     @BeforeClass
     public static void beforeClass() throws Exception {
         initTestSet();
+    }
+
+    @AfterClass
+    public static void afterClass() throws Exception {
+        node_s.getLedger().close();
+        network_s.shutdown();
+
+        network_s = null;
+        node_s = null;
+        nodes_s = null;
+        nodesMap_s = null;
+        ledger_s = null;
+        config_s = null;
     }
 
     private static void initTestSet() throws Exception {
@@ -64,13 +79,19 @@ public class Node2SingleTest extends BaseNetworkTest {
         ledger_s = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING, properties);
         node_s = new Node(config_s, myInfo, ledger_s, network_s);
         ((TestSingleNetwork)network_s).addNode(myInfo, node_s);
+
+        nodes_s = new ArrayList<>();
+        nodes_s.add(node_s);
+
+        nodesMap_s = new HashMap<>();
+        nodesMap_s.put(myInfo, node_s);
     }
 
 
 
     @Before
     public void setUp() throws Exception {
-        init(node_s, null, network_s, ledger_s, config_s);
+        init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
     }
 
 

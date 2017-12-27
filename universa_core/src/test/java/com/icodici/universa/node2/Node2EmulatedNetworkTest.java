@@ -40,6 +40,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
     private static TestEmulatedNetwork network_s = null;
     private static Node node_s = null;
     private static List<Node> nodes_s = null;
+    private static Map<NodeInfo,Node> nodesMap_s = new HashMap<>();
     private static Ledger ledger_s = null;
     private static NetConfig nc_s = null;
     private static Config config_s = null;
@@ -57,6 +58,14 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
     public static void afterClass() throws Exception {
         network_s.shutdown();
         nodes_s.forEach((n)->n.getLedger().close());
+
+        network_s = null;
+        node_s = null;
+        nodes_s = null;
+        nodesMap_s = null;
+        ledger_s = null;
+        nc_s = null;
+        config_s = null;
     }
 
     private static void initTestSet() throws Exception {
@@ -104,6 +113,12 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         }
         network_s = en;
         node_s = nodes_s.get(0);
+
+        nodesMap_s = new HashMap<>();
+        for (int i = 0; i < NODES; i++) {
+            nodesMap_s.put(nc_s.getInfo(i), nodes_s.get(i));
+        }
+
         System.out.println("Emulated network created on the nodes: " + nodes_s);
         System.out.println("Emulated network base node is: " + node_s);
         Thread.sleep(100);
@@ -116,39 +131,9 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         System.out.println("Switch on network full mode");
         network_s.switchOnAllNodesTestMode();
         network_s.setTest_nodeBeingOffedChance(0);
-        init(node_s, nodes_s, network_s, ledger_s, config_s);
+        init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
     }
 
-
-
-    @Test(timeout = 20000)
-    public void registerGoodItem() throws Exception {
-        int N = 100;
-        for (int k = 0; k < 1; k++) {
-//            StopWatch.measure(true, () -> {
-            for (int i = 0; i < N; i++) {
-                TestItem ok = new TestItem(true);
-                System.out.println("\n--------------register item " + ok.getId() + " ------------\n");
-                node.registerItem(ok);
-                for (Node n : nodes) {
-                    try {
-                        ItemResult r = n.waitItem(ok.getId(), 2500);
-                        while( !r.state.isConsensusFound()) {
-                            System.out.println("wait for consensus receiving on the node " + n);
-                            Thread.sleep(200);
-                            r = n.waitItem(ok.getId(), 2500);
-                        }
-                        System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
-                        assertEquals(ItemState.APPROVED, r.state);
-                    } catch (TimeoutException e) {
-                        fail("timeout");
-                    }
-                }
-            }
-//            });
-            assertThat(node.countElections(), is(lessThan(10)));
-        }
-    }
 
 
 
