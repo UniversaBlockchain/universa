@@ -1640,6 +1640,51 @@ public class BaseNetworkTest extends TestCase {
 
     }
 
+
+
+    @Test
+    public void splitJoinTest() throws Exception {
+        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+
+        registerAndCheckApproved(c);
+        assertEquals(100, c.getStateData().get("amount"));
+
+
+        // 50
+        Contract cRev = c.createRevision();
+        Contract c2 = cRev.splitValue("amount", new Decimal(50));
+        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        assertTrue(c2.check());
+        c2.seal();
+        cRev.seal();
+        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
+
+        registerAndCheckApproved(cRev);
+        assertEquals("50", c2.getStateData().get("amount"));
+
+
+        //send 100 out of 2 contracts (50 + 50)
+        Contract c3 = c2.createRevision();
+        c3.getStateData().set("amount", ((Decimal)cRev.getStateData().get("amount")).
+                add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
+        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        c3.addRevokingItems(c);
+        c3.addRevokingItems(cRev);
+        c3.check();
+        c3.traceErrors();
+        assertTrue(c3.isOk());
+        c3.seal();
+
+        registerAndCheckApproved(c3);
+        assertEquals(new Decimal(100), c3.getStateData().get("amount"));
+    }
+
+
+
     public Contract startSwap_wrongKey(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, PrivateKey wrongKey) {
 
         Set<PublicKey> fromPublicKeys = new HashSet<>();

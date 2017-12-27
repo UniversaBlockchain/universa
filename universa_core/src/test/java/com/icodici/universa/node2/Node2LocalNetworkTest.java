@@ -41,10 +41,10 @@ import static org.junit.Assert.*;
 public class Node2LocalNetworkTest extends BaseNetworkTest {
 
     private static TestLocalNetwork network_s = null;
-    private static List<TestLocalNetwork> networks = new ArrayList<>();
+    private static List<TestLocalNetwork> networks_s = new ArrayList<>();
     private static Node node_s = null;
     private static List<Node> nodes_s = null;
-    private static Map<NodeInfo,Node> nodesMap_s = new HashMap<>();
+    private static Map<NodeInfo,Node> nodesMap_s = null;
     private static Ledger ledger_s = null;
     private static NetConfig nc_s = null;
     private static Config config_s = null;
@@ -60,11 +60,11 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
     @AfterClass
     public static void afterClass() throws Exception {
-        networks.forEach(n->n.shutDown());
+        networks_s.forEach(n->n.shutDown());
         nodesMap_s.forEach((i,n)->n.getLedger().close());
 
         network_s = null;
-        networks = null;
+        networks_s = null;
         node_s = null;
         nodes_s = null;
         nodesMap_s = null;
@@ -79,7 +79,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
     private static void initTestSet(int posCons, int negCons) throws Exception {
         nodesMap_s = new HashMap<>();
-        networks = new ArrayList<>();
+        networks_s = new ArrayList<>();
 
         config_s = new Config();
         config_s.setPositiveConsensus(7);
@@ -128,7 +128,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             Ledger ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
             Node n = new Node(config_s, info, ledger, ln);
             nodesMap_s.put(info, n);
-            networks.add(ln);
+            networks_s.add(ln);
 
             if (i == 0) {
                 ledger_s = ledger;
@@ -136,6 +136,11 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             }
         }
         node_s = nodesMap_s.values().iterator().next();
+
+        nodes_s = new ArrayList<>();
+        for (int i = 0; i < NODES; i++) {
+            nodes_s.add(nodesMap_s.get(nc_s.getInfo(i)));
+        }
     }
 
 
@@ -145,10 +150,10 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         System.out.println("setup test");
         System.out.println("Switch on UDP network full mode");
         for (int i = 0; i < NODES; i++) {
-            networks.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
-            networks.get(i).setUDPAdapterLostPacketsPercentInTestMode(0);
+            networks_s.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            networks_s.get(i).setUDPAdapterLostPacketsPercentInTestMode(0);
         }
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterLostPacketsPercentInTestMode(0);
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -167,8 +172,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     @Test
     public void networkPassesData() throws Exception {
         AsyncEvent<Void> ae = new AsyncEvent<>();
-        TestLocalNetwork n0 = networks.get(0);
-        TestLocalNetwork n1 = networks.get(1);
+        TestLocalNetwork n0 = networks_s.get(0);
+        TestLocalNetwork n1 = networks_s.get(1);
         NodeInfo i1 = n0.getInfo(1);
         NodeInfo i0 = n0.getInfo(0);
 
@@ -193,49 +198,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         setUp();
     }
 
-
-
-    @Test
-    public void splitJoinTest() throws Exception {
-        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c.check());
-        c.seal();
-
-
-        registerAndCheckApproved(c);
-        assertEquals(100, c.getStateData().get("amount"));
-
-
-        // 50
-        Contract cRev = c.createRevision();
-        Contract c2 = cRev.splitValue("amount", new Decimal(50));
-        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c2.check());
-        c2.seal();
-        cRev.seal();
-        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
-
-        registerAndCheckApproved(cRev);
-        assertEquals("50", c2.getStateData().get("amount"));
-
-
-        //send 100 out of 2 contracts (50 + 50)
-        Contract c3 = c2.createRevision();
-        c3.getStateData().set("amount", ((Decimal)cRev.getStateData().get("amount")).
-                add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
-        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-//        c3.addRevokingItems(c);
-        c3.addRevokingItems(cRev);
-        c3.check();
-        c3.traceErrors();
-        assertTrue(c3.isOk());
-        c3.seal();
-
-        registerAndCheckApproved(c3);
-        assertEquals(new Decimal(100), c3.getStateData().get("amount"));
-
-    }
 
     // This test will no
 //    @Test(timeout = 300000)
@@ -335,7 +297,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //
 //        timer.cancel();
 //
-//        for (TestLocalNetwork ln : networks) {
+//        for (TestLocalNetwork ln : networks_s) {
 //            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
 //        }
@@ -404,7 +366,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         System.out.println("Complex contract state: " + r.state);
         assertEquals(ItemState.DECLINED, r.state);
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -581,7 +543,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -655,7 +617,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -712,8 +674,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config.setMaxResyncTime(Duration.ofMillis(2000));
 
         for (int i = 0; i < NODES/2; i++) {
-            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
         }
 
         // preparing is finished
@@ -745,7 +707,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         // If resync broken but need more then oned nodes to decline, state should be PENDING_NEGATIVE
         Assert.assertThat(r.state, anyOf(equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -758,7 +720,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     @Test
     public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
             ln.setUDPAdapterLostPacketsPercentInTestMode(90);
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -808,7 +770,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -823,8 +785,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         // switch off half network
         for (int i = 0; i < NODES/2; i++) {
-            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
         }
 
         AsyncEvent ae = new AsyncEvent();
@@ -868,7 +830,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         } catch (TimeoutException e) {
             timer.cancel();
             System.out.println("switching on network");
-            for (TestLocalNetwork ln : networks) {
+            for (TestLocalNetwork ln : networks_s) {
                 ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             }
         }
@@ -930,8 +892,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         // switch off half network
         for (int i = 0; i < NODES/2; i++) {
-            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
         }
 
         AsyncEvent ae = new AsyncEvent();
@@ -974,8 +936,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             System.out.println("switching on node 2");
 
             for (int i = 0; i < NODES/2; i++) {
-                networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-                networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(50);
+                networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+                networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(50);
             }
         }
 
@@ -1012,7 +974,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertEquals(all_is_approved, true);
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -1222,8 +1184,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config.setMaxResyncTime(Duration.ofMillis(2000));
 
         for (int i = 0; i < NODES/2; i++) {
-            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
         }
 
         node.getLedger().getRecord(c.getId()).destroy();
@@ -1253,7 +1215,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
 
         for (int i = 0; i < NODES; i++) {
-            networks.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            networks_s.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
         }
     }
 
