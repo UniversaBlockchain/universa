@@ -100,7 +100,6 @@ public class Node {
         Binder result = Binder.of("itemResult", ir);
         if (ir != null && ir.state == ItemState.LOCKED) {
             ir.lockedById = ledger.getLockOwnerOf(itemId).getId();
-//            result.put("lockedBy", ledger.getRecord(itemId).getOwner());
         }
         return result;
     }
@@ -666,7 +665,7 @@ public class Node {
                 if (!processingState.isProcessedToConsensus()) {
                     for (Reference refModel : checkingItem.getReferencedItems()) {
                         HashId id = refModel.contract_id;
-                        if (refModel.type == Reference.TYPE_EXISTING) {
+                        if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
                             if (!ledger.isApproved(id)) {
                                 checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                             }
@@ -940,7 +939,7 @@ public class Node {
                     lockedToRevoke.clear();
                     record.save();
                     if (record.getState() != ItemState.APPROVED) {
-                        log.e("record is not approved2 " + record.getState());
+                        log.e("record is not approved " + record.getState());
                     }
                     debug("approval done for " + itemId + " : " + getState() + " have a copy " + (item == null));
                 } catch (TimeoutException | InterruptedException e) {

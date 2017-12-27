@@ -27,30 +27,6 @@ public class Reference implements BiSerializable {
     public static final int TYPE_EXISTING = 2;
 
     @Override
-    public String toString() {
-        String res = "{";
-        res += "name:"+name;
-        res += ", type:"+type;
-        if (transactional_id.length() > 8)
-            res += ", transactional_id:"+transactional_id.substring(0, 8)+"...";
-        else
-            res += ", transactional_id:"+transactional_id;
-        res += ", contract_id:"+contract_id;
-        res += ", required:"+required;
-        res += ", origin:"+origin;
-        res += ", signed_by:[";
-        for (int i = 0; i < signed_by.size(); ++i) {
-            if (i > 0)
-                res += ", ";
-            Role r = signed_by.get(i);
-            res += r.getName() + ":" + Bytes.toHex(r.getKeys().iterator().next().fingerprint()).substring(0, 8) + "...";
-        }
-        res += "]";
-        res += "}";
-        return res;
-    }
-
-    @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         this.name = data.getString("name", null);
 
@@ -154,6 +130,30 @@ public class Reference implements BiSerializable {
     public Reference setFields(List<String> fields) {
         this.fields = fields;
         return this;
+    }
+
+    @Override
+    public String toString() {
+        String res = "{";
+        res += "name:"+name;
+        res += ", type:"+type;
+        if (transactional_id.length() > 8)
+            res += ", transactional_id:"+transactional_id.substring(0, 8)+"...";
+        else
+            res += ", transactional_id:"+transactional_id;
+        res += ", contract_id:"+contract_id;
+        res += ", required:"+required;
+        res += ", origin:"+origin;
+        res += ", signed_by:[";
+        for (int i = 0; i < signed_by.size(); ++i) {
+            if (i > 0)
+                res += ", ";
+            Role r = signed_by.get(i);
+            res += r.getName() + ":" + Bytes.toHex(r.getKeys().iterator().next().fingerprint()).substring(0, 8) + "...";
+        }
+        res += "]";
+        res += "}";
+        return res;
     }
 
 

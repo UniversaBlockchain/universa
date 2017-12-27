@@ -48,7 +48,6 @@ import static java.util.Arrays.asList;
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private static final int MAX_API_LEVEL = 3;
-//    private final Set<Reference> referencedItems = new HashSet<>();
     private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
     private final Map<String, Role> roles = new HashMap<>();
@@ -151,7 +150,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         getContext();
-        // TODO: to know why context of new items is set to current conext
         newItems.forEach(i -> i.context = context);
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
@@ -282,16 +280,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private final List<ErrorRecord> errors = new ArrayList<>();
-
-//    /**
-//     * Test use only
-//     * @param root
-//     * @throws EncryptionError
-//     */
-//    Contract(Binder root) throws EncryptionError {
-//        this();
-//        deserialize(root, DefaultBiMapper.newDeserializer());
-//    }
 
     private Contract initializeWithDsl(Binder root) throws EncryptionError {
         apiLevel = root.getIntOrThrow("api_level");
@@ -448,8 +436,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         boolean res = true;
 
         if (rm.type == Reference.TYPE_EXISTING) {
-            res = false;
-            addError(Errors.UNKNOWN_COMMAND, "Reference.TYPE_EXISTING not implemented");
+//            res = false;
+//            addError(Errors.UNKNOWN_COMMAND, "Reference.TYPE_EXISTING not implemented");
         } else if (rm.type == Reference.TYPE_TRANSACTIONAL) {
             if ((rm.transactional_id == null) ||
                 (refContract.transactional == null) ||
@@ -795,7 +783,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Set<String> permissionIds;
 
     public void addPermission(Permission perm) {
-        // We need to assign contract-uniqie id
+        // We need to assign contract-unique id
         if (perm.getId() == null) {
             if (permissionIds == null) {
                 permissionIds =
@@ -951,19 +939,28 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         addSignatureToSeal(keys);
     }
 
+    /**
+     * Add signature to sealed (before) contract. Do not deserializing or changing contract bytes,
+     * but will change sealed and hashId.
+     *
+     * Useful if you got contracts from third-party (another computer) and need to sign it.
+     * F.e. contracts that shoul be sign with two persons.
+     *
+     * @param privateKeys - key to sign contract will with
+     */
     public void addSignatureToSeal(Set<PrivateKey> privateKeys) {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to add signature: sealed binary does not exist");
+
         Binder data = Boss.unpack(sealedBinary);
         byte[] contractBytes = data.getBinaryOrThrow("data");
-        List<byte[]> signatures = data.getListOrThrow("signatures");
 
+        List<byte[]> signatures = data.getListOrThrow("signatures");
         for (PrivateKey key : privateKeys) {
             byte[] signature = ExtendedSignature.sign(key, contractBytes);
             signatures.add(signature);
             data.put("signatures", signatures);
 
-//            verifySignatureQuantized(key.getPublicKey());
             ExtendedSignature es = ExtendedSignature.verify(key.getPublicKey(), signature, contractBytes);
             if (es != null) {
                 sealedByKeys.put(key.getPublicKey(), es);
@@ -1167,11 +1164,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (transactional == null)
                 transactional = new Transactional();
             transactional.deserializeWith(data.getBinder("transactional", null), deserializer);
-//
-//            if(transactional != null && transactional.references != null)
-//                referencedItems.addAll(transactional.references);
+
         });
-//        throw new RuntimeException("not yet ready");
     }
 
     @Override
@@ -1195,8 +1189,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * <p>
      * It the new revision is already split, it can't be split again.
      * <p>
-     * It is important to understant that this revision become a contract that has to be registered with Universa
-     * service, which will automatically register all requested siblings in a trancaction. Do not register siblings
+     * It is important to understand that this revision become a contract that has to be registered with Universa
+     * service, which will automatically register all requested siblings in a transaction. Do not register siblings
      * themselves: registering this contract will do all the work.
      *
      * @param count number of siblings to split
@@ -1208,7 +1202,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (state.getBranchRevision() == state.revision)
             throw new IllegalArgumentException("this revision is already split");
         if (count < 1)
-            throw new IllegalArgumentException("split: count snould be > 0");
+            throw new IllegalArgumentException("split: count should be > 0");
 
         // initialize context if not yet
         getContext();
@@ -1222,8 +1216,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             c.setKeysToSignWith(getKeysToSignWith());
             // save branch information
             c.getState().setBranchNumber(i + 1);
-            // add revoking from this to each sibling
-//            revokingItems.forEach(ri -> c.addRevokingItems(ri));
             // and it should refer the same parent to and set of siblings
             c.context = context;
             context.siblings.add(c);
@@ -1444,8 +1436,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
-     * Pack the contract to the most modern .unicon fromat, same as {@link TransactionPack#pack()}. Uses bounded {@link
-     * TransactionPack} instance to save togther the contract, revoking and new items (if any). This is a binary format
+     * Pack the contract to the most modern .unicon format, same as {@link TransactionPack#pack()}. Uses bounded {@link
+     * TransactionPack} instance to save together the contract, revoking and new items (if any). This is a binary format
      * using to submit for approval. Use {@link #fromPackedTransaction(byte[])} to read this format.
      *
      * @return packed binary form.
@@ -1461,7 +1453,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * <p>
      * The supported file variants are:
      * <p>
-     * - v2 legacy unicon. Is loaded with packed conterparts if any. Only for compatibility, avoid using it.
+     * - v2 legacy unicon. Is loaded with packed counterparts if any. Only for compatibility, avoid using it.
      * <p>
      * - v3 compacted unicon. Is loaded without counterparts, should be added later if need with {@link
      * #addNewItems(Contract...)} and {@link #addRevokingItems(Contract...)}. This is a good way to keep the long
@@ -1742,31 +1734,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 expiresAt = decodeDslTime(t);
             registerRole(issuer);
             data = definition.getBinder("data");
-            //references = processReference(definition.getBinder("references"));
             return this;
         }
-
-//        private Reference processReference(Binder binder) {
-//            Reference result = new Reference();
-//
-//            if (binder.size() == 0) return null;
-//
-//            Binder conditions = binder.getBinder("conditions");
-//
-//            List<Object> roles = conditions.getList("roles", null);
-//            if (roles != null && roles.size() > 0)
-//                roles.forEach(role -> result.addRole((String) role));
-//
-//            List<Object> fields = conditions.getList("fields", null);
-//            if (fields != null && fields.size() > 0)
-//                fields.forEach(field -> result.addField((String) field));
-//
-//            final String origin = conditions.getString("origin", null);
-//            if (origin != null)
-//                result.setOrigin(origin);
-//
-//            return result;
-//        }
 
         public List<Reference> getReferences() {
             return this.references;
@@ -1777,7 +1746,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
          */
         private void scanDslPermissions() {
             definition.getBinderOrThrow("permissions").forEach((name, params) -> {
-                // this cimplex logic is needed to process both yaml-imported structures
+                // this complex logic is needed to process both yaml-imported structures
                 // and regular serialized data in the same place
                 if (params instanceof Object[])
                     for (Object x : (Object[]) params)
@@ -1874,6 +1843,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     }
 
+    /**
+     * This section of a contract need for complex contracts, that consist of some contracts and need to be register all or no one.
+     * F.e. contract that has contracts in revoking or new items and new item shouldn't be registered separately.
+     * To do it, add transactional section with references to another contracts or their transactional sections.
+     * And that contracts will can be registered only together.
+     *
+     * Transactional lives only one revision, so if you created new revision from contract, section is became null.
+     *
+     * Section does not check for allowed modification.
+     */
     public class Transactional {
 
         private String id;
@@ -1964,7 +1943,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
-     * Transction context. Holds temporary information about a context transaction relevant to create sibling, e.g.
+     * Transaction context. Holds temporary information about a context transaction relevant to create sibling, e.g.
      * contract splitting. Allow new items being created to get the base contract (that is creating) and get the full
      * list of siblings.
      */
@@ -2042,7 +2021,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Config.forceInit(PublicKey.class);
         Config.forceInit(PrivateKey.class);
         Config.forceInit(KeyRecord.class);
-//        Config.forceInit(.class);
+
         DefaultBiMapper.registerClass(Contract.class);
         DefaultBiMapper.registerClass(ChangeNumberPermission.class);
         DefaultBiMapper.registerClass(ChangeOwnerPermission.class);
@@ -2056,7 +2035,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         DefaultBiMapper.registerClass(SimpleRole.class);
         // other
         DefaultBiMapper.registerClass(KeyRecord.class);
-//        DefaultBiMapper.registerClass(ContractsService.class);
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
         DefaultBiMapper.registerClass(Reference.class);
 
