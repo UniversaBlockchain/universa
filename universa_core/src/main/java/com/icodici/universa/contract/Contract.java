@@ -369,7 +369,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         // quantize revokingItems and referencedItems
         for (Contract r : revokingItems) {
-            // Add key verify quanta for revoking again (we just reset quantiser)
+            // Add key verify quanta for each revoking
             for (PublicKey key : r.sealedByKeys.keySet()) {
                 if (key != null) {
                     verifySignatureQuantized(key);
@@ -577,11 +577,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private void checkChangedContract() throws Quantiser.QuantiserException {
-        // get the previous version
-//        Contract parent = getContext().base;
         // get context if not got yet
         getContext();
-        Contract parent = getRevokingItem(getParent());
+        Contract parent;
+        // if exist siblings for contract (more then itself)
+        if(getSiblings().size() > 1) {
+            parent = getContext().base;
+        } else {
+            parent = getRevokingItem(getParent());
+        }
         if (parent == null) {
             addError(BAD_REF, "parent", "parent contract must be included");
         } else {
@@ -959,6 +963,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             signatures.add(signature);
             data.put("signatures", signatures);
 
+//            verifySignatureQuantized(key.getPublicKey());
             ExtendedSignature es = ExtendedSignature.verify(key.getPublicKey(), signature, contractBytes);
             if (es != null) {
                 sealedByKeys.put(key.getPublicKey(), es);
@@ -979,13 +984,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         setOwnBinary(data);
     }
 
-    public boolean findSignatureInSeal(PublicKey publicKey) {
+    public boolean findSignatureInSeal(PublicKey publicKey) throws Quantiser.QuantiserException {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to create revision");
         Binder data = Boss.unpack(sealedBinary);
         byte[] contractBytes = data.getBinaryOrThrow("data");
         List<Bytes> signatures = data.getListOrThrow("signatures");
         for (Bytes s : signatures) {
+            verifySignatureQuantized(publicKey);
             if (ExtendedSignature.verify(publicKey, s.getData(), contractBytes) != null)
                 return true;
         }
@@ -1217,7 +1223,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             // save branch information
             c.getState().setBranchNumber(i + 1);
             // add revoking from this to each sibling
-            revokingItems.forEach(ri -> c.addRevokingItems(ri));
+//            revokingItems.forEach(ri -> c.addRevokingItems(ri));
             // and it should refer the same parent to and set of siblings
             c.context = context;
             context.siblings.add(c);
@@ -1542,7 +1548,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     protected void verifySignatureQuantized(PublicKey key) throws Quantiser.QuantiserException {
         // Add check signature quanta
-        if( key.getBitStrength() == 2048) {
+        if(key.getBitStrength() == 2048) {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_2048_SIG);
         } else {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_4096_SIG);
