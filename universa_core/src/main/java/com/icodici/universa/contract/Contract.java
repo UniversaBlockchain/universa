@@ -1203,7 +1203,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return array of just created siblings, to modify their state only.
      */
-    public Contract[] split(int count) throws Quantiser.QuantiserException {
+    public Contract[] split(int count) {
         // we can split only the new revision and only once this time
         if (state.getBranchRevision() == state.revision)
             throw new IllegalArgumentException("this revision is already split");
@@ -1244,7 +1244,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return new sibling contract with the extracted value.
      */
-    public Contract splitValue(String fieldName, Decimal valueToExtract) throws Quantiser.QuantiserException {
+    public Contract splitValue(String fieldName, Decimal valueToExtract)  {
         Contract sibling = split(1)[0];
         Binder stateData = getStateData();
         Decimal value = new Decimal(stateData.getStringOrThrow(fieldName));

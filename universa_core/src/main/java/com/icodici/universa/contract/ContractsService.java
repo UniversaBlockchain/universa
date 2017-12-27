@@ -9,9 +9,11 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 
@@ -56,6 +58,54 @@ public class ContractsService {
         tc.seal();
 
         return tc;
+    }
+
+    /**
+     * Implementing split procedure.
+     * Service create new revision of given contract, split it to pair contract with split amount.
+     * @param c - contract should split be
+     * @param amount - amount that should be split from given contract
+     * @param fieldName - name of filed that should be split
+     * @param keys - keys from owner of c
+     * @return
+     */
+    public static Contract createSplit(Contract c, long amount, String fieldName, PrivateKey... keys) {
+        Contract splitFrom = c.createRevision();
+        Contract splitTo = splitFrom.splitValue(fieldName, new Decimal(amount));
+        for (int i = 0; i < keys.length; i++) {
+            splitTo.addSignerKey(keys[i]);
+        }
+        splitTo.seal();
+        splitFrom.seal();
+
+        return splitFrom;
+    }
+
+    /**
+     * Implementing join procedure.
+     * Service create new revision of first contract, update amount field with sum of amount fields in both contracts
+     * and put second contract in revoking items of created new revision.
+     * @param contract1 - contract should be join to
+     * @param contract2 - contract should be join
+     * @param fieldName - name of field that should be join by
+     * @param keys - keys from owner of both contracts
+     * @return
+     */
+    public static Contract createJoin(Contract contract1, Contract contract2, String fieldName, Set<PrivateKey> keys) {
+        Contract joinTo = contract1.createRevision();
+
+        joinTo.getStateData().set(
+                fieldName,
+                getDecimalField(contract1, fieldName).add(getDecimalField(contract2, fieldName))
+        );
+
+        for (PrivateKey key : keys) {
+            joinTo.addSignerKey(key);
+        }
+        joinTo.addRevokingItems(contract2);
+        joinTo.seal();
+
+        return joinTo;
     }
 
     /**
@@ -256,5 +306,18 @@ public class ContractsService {
         swapContract.addSignatureToSeal(keys);
 
         return swapContract;
+    }
+
+    public static Decimal getDecimalField(Contract contract, String fieldName) {
+
+        Object valueObject = contract.getStateData().get(fieldName);
+        if(valueObject instanceof String) {
+            return new Decimal(Integer.valueOf((String) valueObject));
+        }
+
+        if(valueObject instanceof Decimal) {
+            return (Decimal) valueObject;
+        }
+        return null;
     }
 }

@@ -577,25 +577,29 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldApproveSplit() throws Exception {
+        PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c.addSignerKey(key);
         assertTrue(c.check());
         c.seal();
 
 
         registerAndCheckApproved(c);
 
-        // 50
-        c = c.createRevision();
-        Contract c2 = c.splitValue("amount", new Decimal(50));
-        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c2.check());
-        c2.seal();
-        assertEquals(new Decimal(50), c.getStateData().get("amount"));
+        // 100 - 30 = 70
+        Contract c1 = ContractsService.createSplit(c, 30, "amount", key);
+        Contract c2 = c1.getNew().get(0);
+        assertEquals("70", c1.getStateData().get("amount").toString());
+        assertEquals("30", c2.getStateData().get("amount").toString());
 
-        registerAndCheckApproved(c2);
-        assertEquals("50", c2.getStateData().get("amount"));
+        registerAndCheckApproved(c1);
+        assertEquals("70", c1.getStateData().get("amount").toString());
+        assertEquals("30", c2.getStateData().get("amount").toString());
+
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c1.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c2.getId(), 5000).state);
     }
 
 
@@ -653,9 +657,12 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldApproveSplitAndJoinWithNewSend() throws Exception {
+        PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(key);
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        c.addSignerKey(key);
         assertTrue(c.check());
         c.seal();
 
@@ -663,34 +670,34 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
         assertEquals(100, c.getStateData().get("amount"));
 
+        // split 100 - 30 = 70
+        Contract c1 = ContractsService.createSplit(c, 30, "amount", key);
+        Contract c2 = c1.getNew().get(0);
+        assertEquals("70", c1.getStateData().get("amount").toString());
+        assertEquals("30", c2.getStateData().get("amount").toString());
 
-        // 50
-        Contract cRev = c.createRevision();
-        Contract c2 = cRev.splitValue("amount", new Decimal(50));
-        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c2.check());
-        c2.seal();
-        cRev.seal();
+        registerAndCheckApproved(c1);
+        assertEquals("70", c1.getStateData().get("amount").toString());
+        assertEquals("30", c2.getStateData().get("amount").toString());
 
-        registerAndCheckApproved(cRev);
-        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
-        assertEquals("50", c2.getStateData().get("amount"));
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c1.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c2.getId(), 5000).state);
 
 
-        //send 100 out of 2 contracts (50 + 50)
-        Contract c3 = c2.createRevision();
-        c3.getStateData().set("amount", ((Decimal)cRev.getStateData().get("amount")).
-                add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
-        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        c3.addRevokingItems(cRev);
+        // join 70 + 30 = 100
+        Contract c3 = ContractsService.createJoin(c1, c2, "amount", keys);
         c3.check();
         c3.traceErrors();
         assertTrue(c3.isOk());
-        c3.seal();
 
-//        LogPrinter.showDebug(true);
         registerAndCheckApproved(c3);
         assertEquals(new Decimal(100), c3.getStateData().get("amount"));
+
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c1.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c2.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c3.getId(), 5000).state);
     }
 
 
