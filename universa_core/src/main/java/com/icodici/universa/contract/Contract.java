@@ -48,7 +48,7 @@ import static java.util.Arrays.asList;
 public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private static final int MAX_API_LEVEL = 3;
-    private final Set<Reference> referencedItems = new HashSet<>();
+//    private final Set<Reference> referencedItems = new HashSet<>();
     private final Set<Contract> revokingItems = new HashSet<>();
     private final Set<Contract> newItems = new HashSet<>();
     private final Map<String, Role> roles = new HashMap<>();
@@ -328,7 +328,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public Set<Reference> getReferencedItems() {
-        this.referencedItems.clear();
+        Set<Reference> referencedItems = new HashSet<>();
         if (transactional != null && transactional.references != null)
             referencedItems.addAll(transactional.references);
         if (definition != null && definition.getReferences() != null)
@@ -377,7 +377,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
         }
-        for (int i = 0; i < referencedItems.size(); i++) {
+        for (int i = 0; i < getReferencedItems().size(); i++) {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
         }
 
@@ -416,16 +416,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private boolean checkReferencedItems(ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
-        getReferencedItems();
 
-        if (referencedItems.size() == 0) {
+        if (getReferencedItems().size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
             return true;
         }
 
         // check each reference, all must be ok
         boolean allRefs_check = true;
-        for (final Reference rm : referencedItems) {
+        for (final Reference rm : getReferencedItems()) {
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
             for (int j = 0; j < neighbourContracts.size(); ++j) {
@@ -1162,9 +1161,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (transactional == null)
                 transactional = new Transactional();
             transactional.deserializeWith(data.getBinder("transactional", null), deserializer);
-
-            if(transactional != null && transactional.references != null)
-                referencedItems.addAll(transactional.references);
+//
+//            if(transactional != null && transactional.references != null)
+//                referencedItems.addAll(transactional.references);
         });
 //        throw new RuntimeException("not yet ready");
     }
@@ -1885,7 +1884,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             );
 
             if (references != null)
-                b.set("references", references);
+                b.set("references", serializer.serialize(references));
 
             return serializer.serialize(b);
         }
@@ -1893,7 +1892,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         public void deserializeWith(Binder data, BiDeserializer d) {
             if(data != null) {
                 id = data.getString("id", null);
-                references = d.deserialize(data.getList("references", null));
+                List refs = data.getList("references", null);
+                if(refs != null) {
+                    references = d.deserializeCollection(refs);
+                }
             }
         }
 

@@ -247,23 +247,27 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
         assertTrue(c2.check());
         c2.seal();
+        cRev.seal();
         assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
 
-        registerAndCheckApproved(c2);
+        registerAndCheckApproved(cRev);
         assertEquals("50", c2.getStateData().get("amount"));
 
 
-        //send 150 out of 2 contracts (100 + 50)
+        //send 100 out of 2 contracts (50 + 50)
         Contract c3 = c2.createRevision();
-        c3.getStateData().set("amount", (new Decimal((Integer)c.getStateData().get("amount"))).
+        c3.getStateData().set("amount", ((Decimal)cRev.getStateData().get("amount")).
                 add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
         c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        c3.addRevokingItems(c);
-        assertTrue(c3.check());
+//        c3.addRevokingItems(c);
+        c3.addRevokingItems(cRev);
+        c3.check();
+        c3.traceErrors();
+        assertTrue(c3.isOk());
         c3.seal();
 
         registerAndCheckApproved(c3);
-        assertEquals(new Decimal(150), c3.getStateData().get("amount"));
+        assertEquals(new Decimal(100), c3.getStateData().get("amount"));
 
     }
 

@@ -9,6 +9,7 @@ package com.icodici.universa.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.icodici.crypto.Error;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -1178,6 +1179,8 @@ public class CLIMain {
             contract.check();
         } catch (Quantiser.QuantiserException e) {
             addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+        } catch (Exception e) {
+            addError(Errors.FAILURE.name(), contract.toString(), e.getMessage());
         }
         addErrors(contract.getErrors());
         if (contract.getErrors().size() == 0) {
@@ -1987,6 +1990,7 @@ public class CLIMain {
             reporter.verbose("ClientNetwork not exist, create one");
 
             BasicHttpClientSession s = null;
+            reporter.verbose("ClientNetwork nodeUrl: " + nodeUrl);
             if(nodeUrl != null) {
                 clientNetwork = new ClientNetwork(nodeUrl, null, true);
             } else {

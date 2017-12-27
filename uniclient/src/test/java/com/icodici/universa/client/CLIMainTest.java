@@ -1665,15 +1665,15 @@ public class CLIMainTest {
 
         Thread.sleep(1000);
 
-        CLIMain.clearSession(false);
-
-        CLIMain.setNodeUrl(null);
-
-        System.out.println("---session should be created for remote network---");
-
-        CLIMain.registerContract(c);
-
-        CLIMain.saveSession();
+//        CLIMain.clearSession(false);
+//
+//        CLIMain.setNodeUrl(null);
+//
+//        System.out.println("---session should be created for remote network---");
+//
+//        CLIMain.registerContract(c);
+//
+//        CLIMain.saveSession();
 
 
         CLIMain.breakSession(-1);
