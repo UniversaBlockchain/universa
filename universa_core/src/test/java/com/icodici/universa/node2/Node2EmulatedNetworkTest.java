@@ -450,6 +450,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         // and now we run the day for teh output document:
         node.registerItem(new2);
+        node.waitItem(new2.getId(), 2000);
 
         main.addNewItems(new1, new2);
 
