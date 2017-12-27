@@ -8,6 +8,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
@@ -784,6 +785,33 @@ public class BaseNetworkTest extends TestCase {
         c.seal();
 
         registerAndCheckApproved(c);
+    }
+
+
+
+    @Test
+    public void checkSimpleCase() throws Exception {
+//        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
+
+        for (int i = 0; i < 5; i++) {
+            Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            contract.seal();
+
+            addDetailsToAllLedgers(contract);
+
+            contract.check();
+            contract.traceErrors();
+            assertTrue(contract.isOk());
+
+            node.registerItem(contract);
+            ItemResult itemResult = node.waitItem(contract.getId(), 1500);
+            if (ItemState.APPROVED != itemResult.state)
+                fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
+                        " \r\ncontract_errors: " + contract.getErrors());
+
+            assertEquals(ItemState.APPROVED, itemResult.state);
+        }
     }
 
 
@@ -1881,6 +1909,44 @@ public class BaseNetworkTest extends TestCase {
         Contract gotMainContract = tp_after.getContract();
 
         return gotMainContract;
+    }
+
+
+
+    protected void addDetailsToAllLedgers(Contract contract) {
+        HashId id;
+        StateRecord orCreate;
+        for (Approvable c : contract.getRevokingItems()) {
+            id = c.getId();
+            for (Node nodeS : nodesMap.values()) {
+                orCreate = nodeS.getLedger().findOrCreate(id);
+                orCreate.setState(ItemState.APPROVED).save();
+            }
+        }
+
+        destroyFromAllNodesExistingNew(contract);
+
+        destroyCurrentFromAllNodesIfExists(contract);
+    }
+
+    protected void destroyFromAllNodesExistingNew(Contract c50_1) {
+        StateRecord orCreate;
+        for (Approvable c : c50_1.getNewItems()) {
+            for (Node nodeS : nodesMap.values()) {
+                orCreate = nodeS.getLedger().getRecord(c.getId());
+                if (orCreate != null)
+                    orCreate.destroy();
+            }
+        }
+    }
+
+    protected void destroyCurrentFromAllNodesIfExists(Contract finalC) {
+        for (Node nodeS : nodesMap.values()) {
+            StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
+            if (r != null) {
+                r.destroy();
+            }
+        }
     }
 
 }

@@ -1335,41 +1335,4 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //        assertEquals(ItemState.DECLINED, node.checkItem(c.getId()).state);
 //    }
 
-    private void addDetailsToAllLedgers(Contract contract) {
-        HashId id;
-        StateRecord orCreate;
-        for (Approvable c : contract.getRevokingItems()) {
-            id = c.getId();
-            for (Node nodeS : nodesMap_s.values()) {
-                orCreate = nodeS.getLedger().findOrCreate(id);
-                orCreate.setState(ItemState.APPROVED).save();
-            }
-        }
-
-        destroyFromAllNodesExistingNew(contract);
-
-        destroyCurrentFromAllNodesIfExists(contract);
-    }
-
-    private void destroyFromAllNodesExistingNew(Contract c50_1) {
-        StateRecord orCreate;
-        for (Approvable c : c50_1.getNewItems()) {
-            for (Node nodeS : nodesMap_s.values()) {
-                orCreate = nodeS.getLedger().getRecord(c.getId());
-                if (orCreate != null)
-                    orCreate.destroy();
-            }
-        }
-    }
-
-    private void destroyCurrentFromAllNodesIfExists(Contract finalC) {
-        for (Node nodeS : nodesMap_s.values()) {
-            StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
-            if (r != null) {
-                r.destroy();
-            }
-        }
-    }
-
-
 }

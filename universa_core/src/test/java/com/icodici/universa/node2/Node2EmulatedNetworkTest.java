@@ -209,39 +209,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
     }
 
-    private void destroyCurrentFromAllNodesIfExists(Contract finalC) {
-        for (Node nodeS : nodes) {
-            StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
-            if (r != null) {
-                r.destroy();
-            }
-        }
-    }
-
-    @Test
-    public void checkSimpleCase() throws Exception {
-//        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
-
-        for (int i = 0; i < 5; i++) {
-            Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-            contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            contract.seal();
-
-            addDetailsToAllLedgers(contract);
-
-            contract.check();
-            contract.traceErrors();
-            assertTrue(contract.isOk());
-
-            node.registerItem(contract);
-            ItemResult itemResult = node.waitItem(contract.getId(), 1500);
-            if (ItemState.APPROVED != itemResult.state)
-                fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
-                        " \r\ncontract_errors: " + contract.getErrors());
-
-            assertEquals(ItemState.APPROVED, itemResult.state);
-        }
-    }
 
     @Test(timeout = 3000)
     public void resyncApproved() throws Exception {
@@ -412,33 +379,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 //            assertEquals(ItemState.APPROVED, itemResult.state);
 //        }
 //    }
-
-    private void addDetailsToAllLedgers(Contract contract) {
-        HashId id;
-        StateRecord orCreate;
-        for (Approvable c : contract.getRevokingItems()) {
-            id = c.getId();
-            for (Node nodeS : nodes) {
-                orCreate = nodeS.getLedger().findOrCreate(id);
-                orCreate.setState(ItemState.APPROVED).save();
-            }
-        }
-
-        destroyFromAllNodesExistingNew(contract);
-
-        destroyCurrentFromAllNodesIfExists(contract);
-    }
-
-    private void destroyFromAllNodesExistingNew(Contract c50_1) {
-        StateRecord orCreate;
-        for (Approvable c : c50_1.getNewItems()) {
-            for (Node nodeS : nodes) {
-                orCreate = nodeS.getLedger().getRecord(c.getId());
-                if (orCreate != null)
-                    orCreate.destroy();
-            }
-        }
-    }
 
 
 
