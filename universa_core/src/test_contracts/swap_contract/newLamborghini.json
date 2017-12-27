@@ -1,0 +1,170 @@
+{
+  "api_level": 3,
+  "definition": {
+    "data": {
+      "name": "Lamborghini",
+      "description": "This contract represents the ownership of the car Lamborghini."
+    },
+    "references": [],
+    "permissions": {
+      "ei2UKE": {
+        "name": "revoke",
+        "role": {
+          "target_name": "owner",
+          "__type": "RoleLink",
+          "name": "@revoke"
+        },
+        "__type": "RevokePermission"
+      },
+      "TjwyRh": {
+        "name": "revoke",
+        "role": {
+          "target_name": "issuer",
+          "__type": "RoleLink",
+          "name": "@revoke"
+        },
+        "__type": "RevokePermission"
+      },
+      "pY_5YF": {
+        "name": "change_owner",
+        "role": {
+          "target_name": "owner",
+          "__type": "RoleLink",
+          "name": "@change_owner"
+        },
+        "__type": "ChangeOwnerPermission"
+      }
+    },
+    "created_at": {
+      "seconds": 1514385359,
+      "__type": "unixtime"
+    },
+    "issuer": {
+      "keys": [
+        {
+          "description": "Lamborghini\u0027s factory.\n",
+          "key": {
+            "__type": "RSAPublicKey",
+            "packed": {
+              "__type": "binary",
+              "base64": "HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0W\nsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOyta\nICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJ\nUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/na\nIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ\n/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzF\nbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GL\ny+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKx\nBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6\nDgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c\u003d"
+            }
+          },
+          "__type": "KeyRecord"
+        }
+      ],
+      "__type": "SimpleRole",
+      "name": "issuer"
+    }
+  },
+  "state": {
+    "owner": {
+      "keys": [
+        {
+          "key": {
+            "__type": "RSAPublicKey",
+            "packed": {
+              "__type": "binary",
+              "base64": "HggcAQABxAABp8V6gGoUG3lsypgABbqNREfvIupyjtTY8yOHOPA3RWAoIr8VLC6ypMKmlbcZ\no3OGx6y93BhpYphdOjv9N580044z8viFOEmxp9X6NTFCHEGVzY4YyW+i1LFwJxR2vEKhnrS4\ndY1O3Ue9g0vbdjBpLoxgfmZQAyGPFHgb0SJiaO9SZA1IanzCu+yOeiuhJsJZeJe6tYyVnwpX\n7ySuZhXMGhkdmkGjuuMlbscQ0bp9qHNwjvWnLheKcSeObjlhVv74ajh+CgDiQkCnsFqZZZKd\nQGVkmBVgIhN5cMgDTx+trpATEf86GadnodGTqTUthckUvlRgOsBaWoLADpMhz69kgw\u003d\u003d"
+            }
+          },
+          "__type": "KeyRecord"
+        }
+      ],
+      "__type": "SimpleRole",
+      "name": "owner"
+    },
+    "parent": {
+      "__type": "HashId",
+      "sha512": {
+        "__type": "binary",
+        "base64": "5OnueIk1yee4DIWKUj57piX7SR5TKtrh4kz3nOTCJ31uPCMlzh4ZWk7RUvsw7T/7G3ppvSfr\n2dcjV8XRjNDdJw\u003d\u003d"
+      }
+    },
+    "expires_at": {
+      "seconds": 1659720337,
+      "__type": "unixtime"
+    },
+    "data": {
+      "color": 910119,
+      "registration_number": "m777cc39ru"
+    },
+    "origin": {
+      "__type": "HashId",
+      "sha512": {
+        "__type": "binary",
+        "base64": "5OnueIk1yee4DIWKUj57piX7SR5TKtrh4kz3nOTCJ31uPCMlzh4ZWk7RUvsw7T/7G3ppvSfr\n2dcjV8XRjNDdJw\u003d\u003d"
+      }
+    },
+    "created_at": {
+      "seconds": 1514385361,
+      "__type": "unixtime"
+    },
+    "created_by": {
+      "keys": [
+        {
+          "key": {
+            "__type": "RSAPublicKey",
+            "packed": {
+              "__type": "binary",
+              "base64": "HggcAQABxAABnfB84zQkv23K46BM0iBsKvmDtGst/Rd62/0A30ep7SW21u1wPmcRJgy+3+/E\ntdgYKvrTiTJxV4pM+iXGzqBTA6eV4n/8QfvF1w/U1iaR2JYP2rsTbaj6dCLjX9JJ95qRvLQm\nRgQpcaNreuKDJdqkrJ3I/g9eAHbvLcnoAWyUwKH+zgXhBa7ZCYYy62V0nCa5B9T27X10t8zx\nr+PPBrzzkNup+18kCyv+aimKStY4mgAQvRPqzET7WZN57n9z4xvfA6aA9in0dG7P8Wfw5mms\nyFVFyKqld+3KdZfhSsxvvO+4jm2VG3spX0BkP1/t2PbRmiYxnUkI8ZUB4SDlldUp6w\u003d\u003d"
+            }
+          },
+          "__type": "KeyRecord"
+        }
+      ],
+      "__type": "SimpleRole",
+      "name": "creator"
+    },
+    "revision": 2
+  },
+  "transactional": {
+    "references": [
+      {
+        "signed_by": [
+          {
+            "keys": [
+              {
+                "key": {
+                  "__type": "RSAPublicKey",
+                  "packed": {
+                    "__type": "binary",
+                    "base64": "HggcAQABxAABnfB84zQkv23K46BM0iBsKvmDtGst/Rd62/0A30ep7SW21u1wPmcRJgy+3+/E\ntdgYKvrTiTJxV4pM+iXGzqBTA6eV4n/8QfvF1w/U1iaR2JYP2rsTbaj6dCLjX9JJ95qRvLQm\nRgQpcaNreuKDJdqkrJ3I/g9eAHbvLcnoAWyUwKH+zgXhBa7ZCYYy62V0nCa5B9T27X10t8zx\nr+PPBrzzkNup+18kCyv+aimKStY4mgAQvRPqzET7WZN57n9z4xvfA6aA9in0dG7P8Wfw5mms\nyFVFyKqld+3KdZfhSsxvvO+4jm2VG3spX0BkP1/t2PbRmiYxnUkI8ZUB4SDlldUp6w\u003d\u003d"
+                  }
+                },
+                "__type": "KeyRecord"
+              }
+            ],
+            "__type": "SimpleRole",
+            "name": "owner"
+          },
+          {
+            "keys": [
+              {
+                "key": {
+                  "__type": "RSAPublicKey",
+                  "packed": {
+                    "__type": "binary",
+                    "base64": "HggcAQABxAABp8V6gGoUG3lsypgABbqNREfvIupyjtTY8yOHOPA3RWAoIr8VLC6ypMKmlbcZ\no3OGx6y93BhpYphdOjv9N580044z8viFOEmxp9X6NTFCHEGVzY4YyW+i1LFwJxR2vEKhnrS4\ndY1O3Ue9g0vbdjBpLoxgfmZQAyGPFHgb0SJiaO9SZA1IanzCu+yOeiuhJsJZeJe6tYyVnwpX\n7ySuZhXMGhkdmkGjuuMlbscQ0bp9qHNwjvWnLheKcSeObjlhVv74ajh+CgDiQkCnsFqZZZKd\nQGVkmBVgIhN5cMgDTx+trpATEf86GadnodGTqTUthckUvlRgOsBaWoLADpMhz69kgw\u003d\u003d"
+                  }
+                },
+                "__type": "KeyRecord"
+              }
+            ],
+            "__type": "SimpleRole",
+            "name": "creator"
+          }
+        ],
+        "contract_id": "DC 61 38 ED F2 0B 52 75 B8 66 39 D3 E5 A5 3C AE 5F 9C 06 18 7A EE 64 DF BB C2 14 CA 83 35 69 0F 10 EF FD 7A D5 74 E6 B0 0B 5D 4D 28 D2 C3 86 5D 84 1B 23 E5 F6 73 60 DB CF F3 D7 FA 20 4E 3F 7D",
+        "roles": [],
+        "__type": "com.icodici.universa.contract.Reference",
+        "name": "",
+        "type": 1,
+        "fields": [],
+        "transactional_id": "AhDIiZeoDExjNVibCeI8LC6n4LEbpOyN/jx3RyKxl0/StuBjcZ2sC6U08BEp53ukukCvOkgMT9Dd90LtcLJMkg",
+        "required": true
+      }
+    ],
+    "id": "Yq0kRmPeVYUquQiV/wvoD6wW9gSw2TGfG7Qo2UHu7A/YZvJSnICkiDcgcxFZ6cwPSozn7BcwjNZiOySijHLtaQ"
+  }
+}
