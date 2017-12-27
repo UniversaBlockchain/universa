@@ -284,6 +284,7 @@ public class BaseNetworkTest extends TestCase {
 
         // and now we run the day for teh output document:
         node.registerItem(new2);
+        node.waitItem(new2.getId(), 2000);
 
         main.addNewItems(new1, new2);
 
@@ -294,15 +295,17 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerItem(main);
 
-        ItemResult itemResult = node.checkItem(main.getId());
-        assertThat(itemResult.state, anyOf(equalTo(ItemState.PENDING), equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
+        ItemResult itemResult = node.waitItem(main.getId(), 2000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
 
-        @NonNull ItemResult itemNew1 = node.checkItem(new1.getId());
-        assertThat(itemNew1.state, anyOf(equalTo(ItemState.UNDEFINED), equalTo(ItemState.LOCKED_FOR_CREATION)));
+        @NonNull ItemResult itemNew1 = node.waitItem(new1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, itemNew1.state);
 
         // and this one was created before
-        @NonNull ItemResult itemNew2 = node.checkItem(new2.getId());
-        assertThat(itemNew2.state, anyOf(equalTo(ItemState.APPROVED), equalTo(ItemState.PENDING_POSITIVE)));
+        @NonNull ItemResult itemNew2 = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, itemNew2.state);
+
+        LogPrinter.showDebug(false);
     }
 
 

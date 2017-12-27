@@ -382,40 +382,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
 
 
-    @Test
-    public void badNewDocumentsPreventAccepting() throws Exception {
-        TestItem main = new TestItem(true);
-        TestItem new1 = new TestItem(true);
-        TestItem new2 = new TestItem(true);
-
-        // and now we run the day for teh output document:
-        node.registerItem(new2);
-        node.waitItem(new2.getId(), 2000);
-
-        main.addNewItems(new1, new2);
-
-        assertEquals(2, main.getNewItems().size());
-
-        @NonNull ItemResult item = node.checkItem(main.getId());
-        assertEquals(ItemState.UNDEFINED, item.state);
-
-        node.registerItem(main);
-
-        ItemResult itemResult = node.waitItem(main.getId(), 2000);
-        assertEquals(ItemState.DECLINED, itemResult.state);
-
-        @NonNull ItemResult itemNew1 = node.waitItem(new1.getId(), 2000);
-        assertEquals(ItemState.UNDEFINED, itemNew1.state);
-
-        // and this one was created before
-        @NonNull ItemResult itemNew2 = node.waitItem(new2.getId(), 2000);
-        assertEquals(ItemState.APPROVED, itemNew2.state);
-
-        LogPrinter.showDebug(false);
-    }
-
-
-
 //    @Test
 //    public void acceptWithReferences() throws Exception {
 //        TestItem main = new TestItem(true);
