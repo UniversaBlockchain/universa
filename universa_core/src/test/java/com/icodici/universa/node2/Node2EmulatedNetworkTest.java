@@ -439,49 +439,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
 
 
-    @Test
-    public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
-
-//        LogPrinter.showDebug(true);
-        // todo: check LOCKED situation
-
-        for (ItemState badState : Arrays.asList(
-                ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
-                ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
-                ) {
-
-            System.out.println("--------state " + badState + " ---------");
-
-            TestItem main = new TestItem(true);
-
-            StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
-            existing1.setState(ItemState.APPROVED).save();
-            // but second is not good
-            StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
-            existing2.setState(badState).save();
-
-            main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
-
-            node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 3000);
-            assertEquals(ItemState.DECLINED, itemResult.state);
-
-            // and the references are intact
-            while(ItemState.APPROVED != existing1.getState()) {
-                Thread.sleep(500);
-                System.out.println(existing1.reload().getState());
-            }
-            assertEquals(ItemState.APPROVED, existing1.getState());
-
-            while (badState != existing2.getState()) {
-                Thread.sleep(500);
-                System.out.println(existing2.reload().getState());
-            }
-            assertEquals(badState, existing2.getState());
-
-        }
-    }
-
 //    @Test
 //    public void itemsCachedThenPurged() throws Exception {
 //        config.setMaxElectionsTime(Duration.ofMillis(100));
