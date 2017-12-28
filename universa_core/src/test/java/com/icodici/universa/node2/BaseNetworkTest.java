@@ -75,7 +75,6 @@ public class BaseNetworkTest extends TestCase {
                     TestItem ok = new TestItem(true);
                     System.out.println("--------------register item " + ok.getId() + " ------------");
                     node.registerItem(ok);
-                    Thread.sleep(100);
                     for (Node n : nodesMap.values()) {
                         try {
                             ItemResult r = n.waitItem(ok.getId(), 5000);
