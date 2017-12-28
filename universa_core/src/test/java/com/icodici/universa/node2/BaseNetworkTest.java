@@ -63,6 +63,10 @@ public class BaseNetworkTest extends TestCase {
 
     @Test(timeout = 90000)
     public void registerGoodItem() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
 
         int N = 100;
         for (int k = 0; k < 1; k++) {
@@ -101,6 +105,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void registerBadItem() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         TestItem bad = new TestItem(false);
         node.registerItem(bad);
         ItemResult r = node.waitItem(bad.getId(), 3000);
@@ -111,6 +120,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void checkItem() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         TestItem ok = new TestItem(true);
         TestItem bad = new TestItem(false);
         node.registerItem(ok);
@@ -125,6 +139,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldCreateItems() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
@@ -144,6 +163,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldDeclineItems() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         TestItem item = new TestItem(false);
 
         node.registerItem(item);
@@ -163,6 +187,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void singleNodeMixApprovedAndDeclined() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
@@ -198,6 +227,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void timeoutError() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Duration savedMaxElectionsTime = config.getMaxElectionsTime();
 
         config.setMaxElectionsTime(Duration.ofMillis(200));
@@ -226,6 +260,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void testNotCreatingOnReject() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         TestItem main = new TestItem(false);
         TestItem new1 = new TestItem(true);
         TestItem new2 = new TestItem(true);
@@ -251,6 +290,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void rejectBadNewItem() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
         TestItem new2 = new TestItem(false);
@@ -275,6 +319,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void badNewDocumentsPreventAccepting() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
         TestItem new2 = new TestItem(true);
@@ -316,6 +365,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test(timeout = 30000)
     public void badReferencesDeclineListStates() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
 
         for (ItemState badState : Arrays.asList(
                 ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
@@ -359,6 +413,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void badReferencesDecline() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
 
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
@@ -397,6 +456,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void missingReferencesDecline() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
 
         TestItem main = new TestItem(true);
 
@@ -454,6 +518,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test(timeout = 15000)
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
 
         for (ItemState badState : Arrays.asList(
                 ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
@@ -496,6 +565,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void createRealContract() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Contract c = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
         c.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue(c.check());
@@ -506,6 +580,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void checkSimpleCase() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
 //        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
 
         for (int i = 0; i < 5; i++) {
@@ -534,6 +613,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldApproveSplit() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
@@ -561,6 +645,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldDeclineSplit() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
@@ -586,6 +675,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldApproveSplitAndJoinWithNewSend() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(key);
@@ -631,6 +725,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldDeclineSplitAndJoinWithWrongAmount() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
@@ -706,6 +805,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldBreakByQuantizer() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         // 100
         Contract.setTestQuantaLimit(10);
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
@@ -722,6 +826,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void shouldBreakByQuantizerSplit() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
@@ -880,6 +989,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionAllGood() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -918,6 +1032,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionOneNotSign1() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -965,6 +1084,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionOneNotSign2() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1012,6 +1136,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionOneNotSign3() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1060,6 +1189,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionOneNotSign4() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1108,6 +1242,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionOneWrongSign1() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1151,6 +1290,10 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionOneWrongSign2() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
 
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
@@ -1193,6 +1336,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionOneWrongSign3() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1235,6 +1383,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionWrongTID1() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1283,6 +1436,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionWrongTID2() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1330,6 +1488,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionMissingTransactional1() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1389,6 +1552,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionMissingTransactional2() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1448,6 +1616,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionWrongCID() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1515,6 +1688,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionSnatch1() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -1562,6 +1740,11 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void swapContractsViaTransactionSnatch2() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PublicKey> martyPublicKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
