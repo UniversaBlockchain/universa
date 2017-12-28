@@ -61,7 +61,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 90000)
+    @Test(timeout = 120000)
     public void registerGoodItem() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -73,7 +73,7 @@ public class BaseNetworkTest extends TestCase {
             StopWatch.measure(true, () -> {
                 for (int i = 0; i < N; i++) {
                     TestItem ok = new TestItem(true);
-                    System.out.println("\n--------------register item " + ok.getId() + " ------------\n");
+                    System.out.println("--------------register item " + ok.getId() + " ------------");
                     node.registerItem(ok);
                     for (Node n : nodesMap.values()) {
                         try {
