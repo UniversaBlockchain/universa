@@ -472,7 +472,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.checkItem(contract.getId());
+        ItemResult r = node.waitItem(contract.getId(), 3000);
         assertEquals(ItemState.DECLINED, r.state);
     }
 
@@ -881,7 +881,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap_s.values()) {
-            ItemResult r = n.checkItem(contract.getId());
+            ItemResult r = n.waitItem(contract.getId(), 3000);
             System.out.println("Node: " + n.toString() + " state: " + r.state);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
@@ -1120,7 +1120,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         timer.cancel();
         config.setMaxResyncTime(wasDuration);
 
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 3000).state);
 
         for (int i = 0; i < NODES; i++) {
             networks_s.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);

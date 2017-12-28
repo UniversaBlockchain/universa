@@ -86,6 +86,11 @@ public class BaseNetworkTest extends TestCase {
                                 numIterations++;
                                 if(numIterations > 20)
                                     break;
+                                if(numIterations == 10) {
+                                    // cooldown lilbit
+                                    Thread.sleep(15000);
+                                    n.resync(ok.getId());
+                                }
                             }
                             assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
                         } catch (TimeoutException e) {
@@ -376,12 +381,15 @@ public class BaseNetworkTest extends TestCase {
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
                 ) {
 
+            Thread.sleep(100);
+
             System.out.println("-------------- check bad state " + badState + " isConsensusFind(" + badState.isConsensusFound() + ") --------");
 
             TestItem main = new TestItem(true);
 
             StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
             existing1.setState(ItemState.APPROVED).save();
+
 
             // but second is not good
             StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
@@ -601,7 +609,7 @@ public class BaseNetworkTest extends TestCase {
             assertTrue(contract.isOk());
 
             node.registerItem(contract);
-            ItemResult itemResult = node.waitItem(contract.getId(), 1500);
+            ItemResult itemResult = node.waitItem(contract.getId(), 3000);
             if (ItemState.APPROVED != itemResult.state)
                 fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
                         " \r\ncontract_errors: " + contract.getErrors());
