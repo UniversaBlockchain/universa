@@ -972,7 +972,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         }, 0, 1000);
 
         node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 3000).state);
 
         node.resync(c.getId());
 

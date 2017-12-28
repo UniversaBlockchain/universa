@@ -75,6 +75,7 @@ public class BaseNetworkTest extends TestCase {
                     TestItem ok = new TestItem(true);
                     System.out.println("--------------register item " + ok.getId() + " ------------");
                     node.registerItem(ok);
+                    Thread.sleep(100);
                     for (Node n : nodesMap.values()) {
                         try {
                             ItemResult r = n.waitItem(ok.getId(), 5000);
@@ -330,7 +331,7 @@ public class BaseNetworkTest extends TestCase {
 
         // and now we run the day for teh output document:
         node.registerItem(new2);
-        node.waitItem(new2.getId(), 2000);
+        node.waitItem(new2.getId(), 3000);
 
         main.addNewItems(new1, new2);
 
