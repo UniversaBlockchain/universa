@@ -544,7 +544,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.waitItem(contract.getId(), 2000);
+        ItemResult r = node.waitItem(contract.getId(), 3000);
         assertEquals(ItemState.APPROVED, r.state);
     }
 
@@ -790,7 +790,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap_s.values()) {
-            ItemResult r = n.waitItem(contract.getId(), 2000);
+            ItemResult r = n.waitItem(contract.getId(), 3000);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
             }
@@ -939,7 +939,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 3000).state);
     }
 
 
@@ -984,7 +984,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 3000).state);
     }
 
 
@@ -1030,7 +1030,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 3000).state);
     }
 
 
@@ -1075,7 +1075,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 3000).state);
     }
 
 
