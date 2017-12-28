@@ -98,12 +98,12 @@ public class Node2SingleTest extends BaseNetworkTest {
 
     @Test
     public void noQourumError() throws Exception {
+        afterClass();
         initTestSet(2, 2);
         setUp();
 
         TestItem item = new TestItem(true);
 
-//        LogPrinter.showDebug(true);
         node.registerItem(item);
         try {
             node.waitItem(item.getId(), 100);
@@ -129,6 +129,7 @@ public class Node2SingleTest extends BaseNetworkTest {
 
         checkedItem = node.checkItem(item2.getId());
 
+        afterClass();
         initTestSet(1, 1);
 
         assertEquals(ItemState.PENDING_NEGATIVE, checkedItem.state);
