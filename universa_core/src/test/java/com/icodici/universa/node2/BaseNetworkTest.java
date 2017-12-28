@@ -77,12 +77,12 @@ public class BaseNetworkTest extends TestCase {
                     node.registerItem(ok);
                     for (Node n : nodesMap.values()) {
                         try {
-                            ItemResult r = n.waitItem(ok.getId(), 2000);
+                            ItemResult r = n.waitItem(ok.getId(), 5000);
                             int numIterations = 0;
                             while( !r.state.isConsensusFound()) {
                                 System.out.println("wait for consensus receiving on the node " + n);
                                 Thread.sleep(500);
-                                r = n.waitItem(ok.getId(), 2000);
+                                r = n.waitItem(ok.getId(), 5000);
                                 numIterations++;
                                 if(numIterations > 20)
                                     break;
@@ -429,9 +429,11 @@ public class BaseNetworkTest extends TestCase {
 
         System.out.println("--------resister (bad) item " + existing1.getId() + " ---------");
         node.registerItem(existing1);
+        node.waitItem(existing1.getId(), 2000);
 
         System.out.println("--------resister (good) item " + existing2.getId() + " ---------");
         node.registerItem(existing2);
+        node.waitItem(existing2.getId(), 2000);
 
         main.addReferencedItems(existing1.getId(), existing2.getId());
         main.addNewItems(new1, new2);

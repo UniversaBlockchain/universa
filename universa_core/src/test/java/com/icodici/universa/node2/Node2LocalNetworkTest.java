@@ -790,13 +790,11 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap_s.values()) {
-            ItemResult r = n.checkItem(contract.getId());
+            ItemResult r = n.waitItem(contract.getId(), 2000);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
             }
         }
-
-        LogPrinter.showDebug(false);
 
         assertEquals(all_is_approved, true);
 
@@ -1131,7 +1129,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
 
 
-    @Test
+    @Test(timeout = 15000)
     public void resyncComplex() throws Exception {
 
         int numSubContracts = 5;
@@ -1196,7 +1194,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.UNDEFINED, node.checkItem(contract.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 3000).state);
     }
 //
 //    @Test

@@ -97,7 +97,7 @@ public class Node2SingleTest extends BaseNetworkTest {
 
 
     @Test
-    public void noQourumError() throws Exception {
+    public void noQuorumError() throws Exception {
         afterClass();
         initTestSet(2, 2);
         setUp();
@@ -106,7 +106,7 @@ public class Node2SingleTest extends BaseNetworkTest {
 
         node.registerItem(item);
         try {
-            node.waitItem(item.getId(), 100);
+            node.waitItem(item.getId(), 500);
             fail("Expected exception to be thrown.");
         } catch (TimeoutException te) {
             assertNotNull(te);
@@ -121,7 +121,7 @@ public class Node2SingleTest extends BaseNetworkTest {
 
         node.registerItem(item2);
         try {
-            node.waitItem(item2.getId(), 100);
+            node.waitItem(item2.getId(), 500);
             fail("Expected exception to be thrown.");
         } catch (TimeoutException te) {
             assertNotNull(te);

@@ -152,7 +152,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 5000).state);
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 15000)
     public void resyncRevoked() throws Exception {
         Contract c = new Contract(TestKeys.privateKey(0));
         c.seal();
@@ -163,10 +163,10 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         node.resync(c.getId());
 
-        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 3000).state);
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 15000)
     public void resyncDeclined() throws Exception {
         Contract c = new Contract(TestKeys.privateKey(0));
         c.seal();
@@ -180,7 +180,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 2000).state);
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 15000)
     public void resyncOther() throws Exception {
 
         Contract c = new Contract(TestKeys.privateKey(0));
@@ -196,7 +196,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 15000)
     public void resyncWithTimeout() throws Exception {
 
         Contract c = new Contract(TestKeys.privateKey(0));
@@ -223,7 +223,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         ((TestEmulatedNetwork)network).switchOnAllNodesTestMode();
     }
 
-    @Test(timeout = 10000)
+    @Test(timeout = 15000)
     public void resyncComplex() throws Exception {
 
         int numSubContracts = 5;
@@ -261,7 +261,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         node.resync(contract.getId());
         assertEquals(ItemState.PENDING, node.checkItem(contract.getId()).state);
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 2000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 3000).state);
     }
 
 
@@ -306,7 +306,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         boolean time_is_up = false;
         try {
-            ae.await(30000);
+            ae.await(45000);
         } catch (TimeoutException e) {
             time_is_up = true;
             System.out.println("time is up");
@@ -402,13 +402,11 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         boolean all_is_approved = true;
         for (Node n : nodes) {
-            ItemResult r = n.checkItem(contract.getId());
+            ItemResult r = n.waitItem(contract.getId(), 2000);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
             }
         }
-
-        LogPrinter.showDebug(false);
 
         assertEquals(all_is_approved, true);
 
