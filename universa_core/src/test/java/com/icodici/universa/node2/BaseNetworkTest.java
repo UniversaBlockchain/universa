@@ -1016,6 +1016,77 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
+    @Test
+    public void shouldBreakByQuantizerDeepTree() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+
+        prepareContractsForSwap(martyPrivateKeys, martyPublicKeys, stepaPrivateKeys, stepaPublicKeys, delorean, lamborghini);
+
+        Contract swapContract;
+
+        // swap contract has two contracts in new items, and each of them has one in own revoking
+        // so we have contracts tree with 3 levels
+        swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKeys, stepaPublicKeys);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+//        swapContract.check();
+//        swapContract.traceErrors();
+//        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+
+        // Check 4096 bits signature container contract (8) +
+        // register version container contract (20) +
+
+        // Check 2048 bits marty signature swap contract (1) +
+        // register version swap contract (20) +
+
+        // Check 2048 bits marty signature new delorean (1) +
+        // Check 2048 bits stepa signature new delorean (1) +
+        // register version new delorean contract (20) +
+        // Check 4096 bits signature revoking old delorean (8) +
+        // revoke version old delorean contract (20) +
+        // Check reference new delorean (1) +
+        // Check owner permission new delorean (1) +
+        // Check revoke permission old delorean (1) +
+
+        // Check 2048 bits stepa signature new lamborghini (1) +
+        // Check 2048 bits marty signature new lamborghini (1) +
+        // register version new lamborghini contract (20) +
+        // Check 4096 bits signature revoking old lamborghini (8) +
+        // revoke version old lamborghini contract (20) +
+        // Check reference new lamborghini (1) +
+        // Check owner permission new lamborghini (1) +
+        // Check revoke permission old lamborghini (1) +
+        Contract.setTestQuantaLimit(154);
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        Contract container = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        container.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        container.addNewItems(swapContract);
+        container.seal();
+        node.registerItem(container);
+
+        ItemResult result = node.waitItem(container.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+
+        result = node.waitItem(swapContract.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+
+        checkSwapResultDeclined(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
+
+        Contract.setTestQuantaLimit(-1);
+    }
+
+
     // swap section
 
     public void prepareContractsForSwap(

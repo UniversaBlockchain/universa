@@ -341,6 +341,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private boolean check(String prefix, ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
 
+        // now we looking for references only in one level of tree - among neighbours
+        // but for main contract (not from new items) we looking for
+        // references among new items
         if (neighbourContracts == null)
             neighbourContracts = new ArrayList<>(newItems);
 
@@ -386,7 +389,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         int index = 0;
         for (Contract c : newItems) {
             String p = prefix + "new[" + index + "].";
-            checkSubItemQuantized(c, p, neighbourContracts);
+            checkSubItemQuantized(c, p, new ArrayList<>(newItems));
             if (!c.isOk()) {
                 c.errors.forEach(e -> {
                     String name = e.getObjectName();
