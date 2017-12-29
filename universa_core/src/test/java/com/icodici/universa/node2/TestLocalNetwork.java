@@ -62,9 +62,9 @@ public class TestLocalNetwork extends Network {
     private final void onReceived(byte[] packedNotifications) {
         try {
             synchronized (this) {
-                if (consumer != null) {
-                    List<Notification> nn = unpack(packedNotifications);
-                    for (Notification n : nn) {
+                List<Notification> nn = unpack(packedNotifications);
+                for (Notification n : nn) {
+                    if (consumer != null) {
                         consumer.accept(n);
                     }
                 }
