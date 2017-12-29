@@ -68,29 +68,25 @@ public class BaseNetworkTest extends TestCase {
             return;
         }
 
+        Thread.sleep(500);
         int N = 100;
         for (int k = 0; k < 1; k++) {
-            StopWatch.measure(true, () -> {
+//            StopWatch.measure(true, () -> {
                 for (int i = 0; i < N; i++) {
                     TestItem ok = new TestItem(true);
                     System.out.println("--------------register item " + ok.getId() + " ------------");
                     node.registerItem(ok);
                     for (Node n : nodesMap.values()) {
                         try {
-                            ItemResult r = n.waitItem(ok.getId(), 5000);
+                            ItemResult r = n.waitItem(ok.getId(), 8000);
                             int numIterations = 0;
                             while( !r.state.isConsensusFound()) {
-                                System.out.println("wait for consensus receiving on the node " + n);
+                                System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
                                 Thread.sleep(500);
-                                r = n.waitItem(ok.getId(), 5000);
+                                r = n.waitItem(ok.getId(), 8000);
                                 numIterations++;
                                 if(numIterations > 20)
                                     break;
-                                if(numIterations == 10) {
-                                    // cooldown lilbit
-                                    Thread.sleep(15000);
-                                    n.resync(ok.getId());
-                                }
                             }
                             assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
                         } catch (TimeoutException e) {
@@ -102,7 +98,7 @@ public class BaseNetworkTest extends TestCase {
                     assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
 
                 }
-            });
+//            });
         }
     }
 
@@ -572,6 +568,143 @@ public class BaseNetworkTest extends TestCase {
             assertEquals(badState, existing2.getState());
         }
     }
+
+    @Test
+    public void registerDeepTree() throws Exception {
+
+        TestItem main = new TestItem(true);
+        TestItem new1 = new TestItem(true);
+        TestItem new2 = new TestItem(true);
+
+
+        TestItem new1_1 = new TestItem(true);
+        TestItem new2_1 = new TestItem(true);
+
+        new1.addNewItems(new1_1);
+        new2.addNewItems(new2_1);
+        main.addNewItems(new1, new2);
+
+        node.registerItem(main);
+        ItemResult result = node.waitItem(main.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+
+        result = node.waitItem(new1.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+        result = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+
+        result = node.waitItem(new1_1.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+        result = node.waitItem(new2_1.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+    }
+
+    @Test
+    public void registerDeepTreeWithRevoke() throws Exception {
+
+        TestItem main = new TestItem(true);
+        TestItem new1 = new TestItem(true);
+        TestItem new2 = new TestItem(true);
+
+
+        TestItem new1_1 = new TestItem(true);
+        TestItem new2_1 = new TestItem(true);
+        TestItem revoke1 = new TestItem(true);
+        TestItem revoke2 = new TestItem(true);
+
+        node.registerItem(revoke1);
+        assertEquals(ItemState.APPROVED, node.waitItem(revoke1.getId(), 2000).state);
+
+        node.registerItem(revoke2);
+        assertEquals(ItemState.APPROVED, node.waitItem(revoke2.getId(), 2000).state);
+
+        new1_1.addRevokingItems(revoke1);
+        new2_1.addRevokingItems(revoke2);
+        new1.addNewItems(new1_1);
+        new2.addNewItems(new2_1);
+        main.addNewItems(new1, new2);
+
+        node.registerItem(main);
+        ItemResult result = node.waitItem(main.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+
+        result = node.waitItem(new1.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+        result = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+
+        result = node.waitItem(new1_1.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+        result = node.waitItem(new2_1.getId(), 2000);
+        assertEquals(ItemState.APPROVED, result.state);
+
+        result = node.waitItem(revoke1.getId(), 2000);
+        assertEquals(ItemState.REVOKED, result.state);
+        result = node.waitItem(revoke2.getId(), 2000);
+        assertEquals(ItemState.REVOKED, result.state);
+    }
+
+    @Test
+    public void declineDeepTreeBadNew() throws Exception {
+
+        TestItem main = new TestItem(true);
+        TestItem new1 = new TestItem(true);
+        TestItem new2 = new TestItem(true);
+
+
+        TestItem new1_1 = new TestItem(true);
+        TestItem new2_1 = new TestItem(false);
+
+        new1.addNewItems(new1_1);
+        new2.addNewItems(new2_1);
+        main.addNewItems(new1, new2);
+
+        node.registerItem(main);
+        ItemResult result = node.waitItem(main.getId(), 2000);
+        assertEquals(ItemState.DECLINED, result.state);
+
+        result = node.waitItem(new1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+        result = node.waitItem(new2.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+
+        result = node.waitItem(new1_1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+        result = node.waitItem(new2_1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+    }
+
+    @Test
+    public void declineDeepTreeBadRevoke() throws Exception {
+
+        TestItem main = new TestItem(true);
+        TestItem new1 = new TestItem(true);
+        TestItem revoke1 = new TestItem(true);
+
+
+        TestItem new1_1 = new TestItem(true);
+        TestItem revoke1_1 = new TestItem(true);
+
+        new1_1.addRevokingItems(revoke1_1);
+        new1.addNewItems(new1_1);
+        new1.addRevokingItems(revoke1);
+        main.addNewItems(new1);
+
+        node.registerItem(main);
+        ItemResult result = node.waitItem(main.getId(), 2000);
+        assertEquals(ItemState.DECLINED, result.state);
+
+        result = node.waitItem(new1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+        result = node.waitItem(revoke1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+
+        result = node.waitItem(new1_1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+        result = node.waitItem(revoke1_1.getId(), 2000);
+        assertEquals(ItemState.UNDEFINED, result.state);
+    }
+
 
     @Test
     public void createRealContract() throws Exception {
@@ -1815,7 +1948,7 @@ public class BaseNetworkTest extends TestCase {
 
     private void registerAndCheckDeclined(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 5000);
+        ItemResult itemResult = node.waitItem(c.getId(), 8000);
         assertEquals(ItemState.DECLINED, itemResult.state);
     }
 

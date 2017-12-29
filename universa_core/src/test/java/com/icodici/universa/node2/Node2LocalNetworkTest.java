@@ -71,6 +71,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         ledger_s = null;
         nc_s = null;
         config_s = null;
+
+        Thread.sleep(5000);
     }
 
     private static void initTestSet() throws Exception {
