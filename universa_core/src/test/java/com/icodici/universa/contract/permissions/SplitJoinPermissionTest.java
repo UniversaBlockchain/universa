@@ -306,7 +306,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
             fail("Expected exception to be thrown.");
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().equalsIgnoreCase("split: count snould be > 0"));
+            assertTrue(e.getMessage().equalsIgnoreCase("split: count should be > 0"));
         }
 
         try {
@@ -314,7 +314,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
 
             fail("Expected exception to be thrown.");
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().equalsIgnoreCase("split: count snould be > 0"));
+            assertTrue(e.getMessage().equalsIgnoreCase("split: count should be > 0"));
         }
     }
 

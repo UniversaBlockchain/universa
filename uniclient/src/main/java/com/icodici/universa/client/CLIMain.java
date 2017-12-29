@@ -9,13 +9,14 @@ package com.icodici.universa.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.icodici.crypto.Error;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.TransactionContract;
+import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
@@ -1178,6 +1179,8 @@ public class CLIMain {
             contract.check();
         } catch (Quantiser.QuantiserException e) {
             addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+        } catch (Exception e) {
+            addError(Errors.FAILURE.name(), contract.toString(), e.getMessage());
         }
         addErrors(contract.getErrors());
         if (contract.getErrors().size() == 0) {
@@ -1726,18 +1729,13 @@ public class CLIMain {
      *
      * @param contract
      *
-     * @return TransactionContract - revoking transaction contract.
+     * @return Contract - revoking transaction contract.
      */
-    public static TransactionContract revokeContract(Contract contract, PrivateKey... key) throws IOException {
+    public static Contract revokeContract(Contract contract, PrivateKey... key) throws IOException {
 
         report("keys num: " + key.length);
 
-        TransactionContract tc = new TransactionContract();
-        tc.setIssuer(key);
-        tc.addContractToRemove(contract);
-
-        tc.seal();
-
+        Contract tc = ContractsService.createRevocation(contract, key);
         registerContract(tc, 0,true);
 
         return tc;
@@ -1992,6 +1990,7 @@ public class CLIMain {
             reporter.verbose("ClientNetwork not exist, create one");
 
             BasicHttpClientSession s = null;
+            reporter.verbose("ClientNetwork nodeUrl: " + nodeUrl);
             if(nodeUrl != null) {
                 clientNetwork = new ClientNetwork(nodeUrl, null, true);
             } else {

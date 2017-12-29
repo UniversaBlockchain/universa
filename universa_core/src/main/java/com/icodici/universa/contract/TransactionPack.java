@@ -91,7 +91,7 @@ public class TransactionPack implements BiSerializable {
      * Add contract that already includes all its references. It will be added as a contract per transactions, while its
      * references will be added to references if not already included.
      * <p>
-     * This is extremely importand that the contract is properly sealed as well as its possibly new items, and revoking
+     * This is extremely important that the contract is properly sealed as well as its possibly new items, and revoking
      * items have binary image attached. <b>Do not ever seal the approved contract</b>: it will break it's id and cancel
      * the approval blockchain, so the new state will not be approved. If it was done by mistake, reload the packed
      * contract to continue.
@@ -103,9 +103,22 @@ public class TransactionPack implements BiSerializable {
             throw new IllegalArgumentException("the contract is already added");
         contract = c;
         packedBinary = null;
-        c.getRevokingItems().forEach(i -> putReference((Contract) i));
-        c.getNewItems().forEach(i -> putReference((Contract) i));
+
+        putAllSubitemsToReferencesRecursively(c);
         c.setTransactionPack(this);
+    }
+
+
+    protected void putAllSubitemsToReferencesRecursively(Contract c) {
+        c.getRevokingItems().forEach(i -> {
+            putReference((Contract) i);
+            putAllSubitemsToReferencesRecursively((Contract) i);
+        });
+        c.getNewItems().forEach(i -> {
+            putReference((Contract) i);
+            putAllSubitemsToReferencesRecursively((Contract) i);
+        });
+
     }
 
     /**
@@ -137,7 +150,7 @@ public class TransactionPack implements BiSerializable {
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
 
-        // It is independed quantiser that should throw exception
+        // It is local quantiser that should throw exception
         // if limit is got while deserializing TransactionPack.
         Quantiser quantiser = new Quantiser();
         quantiser.reset(Contract.getTestQuantaLimit());
@@ -163,7 +176,7 @@ public class TransactionPack implements BiSerializable {
                 sortedReferenceBytesList = new ArrayList<>();
                 List<ContractDependencies> removingContractDependencies = new ArrayList<>();
                 for (ContractDependencies ct : allContractsTrees.keySet()) {
-                    if (ct.dependencies.size() + ct.dependencies.size() == 0) {
+                    if (ct.dependencies.size() == 0) {
                         sortedReferenceBytesList.add(allContractsTrees.get(ct));
                         removingContractDependencies.add(ct);
                     }
@@ -231,15 +244,15 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * Unpack either old contract binary (all included), or newer transaction pack. Could be used to load old contarcts
+     * Unpack either old contract binary (all included), or newer transaction pack. Could be used to load old contracts
      * to perform a transaction.
      *
      * @param packOrContractBytes
-     * @param allowNonTransacions if false, non-trasnaction pack data will cause IOException.
+     * @param allowNonTransactions if false, non-trasnaction pack data will cause IOException.
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
-    public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransacions) throws IOException {
+    public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransactions) throws IOException {
         packedBinary = packOrContractBytes;
 
         Object x = Boss.load(packOrContractBytes);
@@ -248,7 +261,7 @@ public class TransactionPack implements BiSerializable {
             return (TransactionPack) x;
         }
 
-        if (!allowNonTransacions)
+        if (!allowNonTransactions)
             throw new IOException("expected transaction pack");
 
         // This is an old v2 self-contained contract or a root v3 contract, no revokes, no siblings.
@@ -259,7 +272,7 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * Unpack either old contract binary (all included), or newer transaction pack. Could be used to load old contarcts
+     * Unpack either old contract binary (all included), or newer transaction pack. Could be used to load old contracts
      * to perform a transaction.
      *
      * @param packOrContractBytes
@@ -306,6 +319,9 @@ public class TransactionPack implements BiSerializable {
         references.forEach((hashId, contract) -> System.out.println("\t\t" + hashId + " -> " + contract.getId()));
     }
 
+    /**
+     * Class that extracts subitems from given contract bytes and build dependencies. But do not do anything more.
+     */
     public class ContractDependencies {
         private final Set<HashId> dependencies = new HashSet<>();
 

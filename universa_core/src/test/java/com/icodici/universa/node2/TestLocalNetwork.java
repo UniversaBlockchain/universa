@@ -26,14 +26,15 @@ import java.util.function.Consumer;
 
 public class TestLocalNetwork extends Network {
 
-    private final NodeInfo myInfo;
-    private final PrivateKey myKey;
-    private final UDPAdapter adapter;
+    private NodeInfo myInfo;
+    private PrivateKey myKey;
+    private UDPAdapter adapter;
     //    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(8);
     private Map<NodeInfo, Node> nodes = new HashMap<>();
 
     private static LogPrinter log = new LogPrinter("TLN");
     private Consumer<Notification> consumer;
+    private Boolean shutdown = false;
 
     public TestLocalNetwork(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
         super(netConfig);
@@ -60,10 +61,12 @@ public class TestLocalNetwork extends Network {
 
     private final void onReceived(byte[] packedNotifications) {
         try {
-            if (consumer != null) {
-                List<Notification> nn = unpack(packedNotifications);
-                for (Notification n : nn) {
-                    consumer.accept(n);
+            synchronized (this) {
+                if (consumer != null) {
+                    List<Notification> nn = unpack(packedNotifications);
+                    for (Notification n : nn) {
+                        consumer.accept(n);
+                    }
                 }
             }
 
@@ -131,18 +134,21 @@ public class TestLocalNetwork extends Network {
 
     @Override
     public void deliver(NodeInfo toNode, Notification notification) {
-        try {
-            byte[] data = packNotifications(myInfo, Do.listOf(notification));
+        if(!shutdown) {
             try {
-                unpack(data);
+                byte[] data = packNotifications(myInfo, Do.listOf(notification));
+                try {
+                    unpack(data);
+                } catch (Exception e) {
+                    System.err.println("-- pack test failed -- " + e);
+                    e.printStackTrace();
+                    System.exit(75);
+                }
+                adapter.send(toNode, data);
             } catch (Exception e) {
-                System.err.println("-- pack test failed -- " + e);
+                System.out.println("--------------> " + shutdown + " " + myInfo + " " + adapter + " " + consumer);
                 e.printStackTrace();
-                System.exit(75);
             }
-            adapter.send(toNode, data);
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
@@ -172,6 +178,12 @@ public class TestLocalNetwork extends Network {
 
     public void shutDown() {
         adapter.shutdown();
+        myInfo = null;
+        myKey = null;
+        adapter = null;
+        nodes = null;
+        consumer = null;
+        shutdown = true;
     }
 
     @Override

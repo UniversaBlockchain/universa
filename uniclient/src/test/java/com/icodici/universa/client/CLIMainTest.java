@@ -8,11 +8,12 @@
 package com.icodici.universa.client;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
-import com.icodici.universa.contract.TransactionContract;
+import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -20,6 +21,7 @@ import com.icodici.universa.node2.Main;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
+import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -35,10 +37,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static com.icodici.universa.client.RegexMatcher.matches;
 import static org.junit.Assert.*;
@@ -1337,13 +1336,7 @@ public class CLIMainTest {
 
 
         PrivateKey issuer1 = TestKeys.privateKey(1   );
-        TransactionContract tc = new TransactionContract();
-
-        // among issuers there is now owner
-        tc.setIssuer(issuer1, goodKey);
-        tc.addContractToRemove(c);
-
-        tc.seal();
+        Contract tc = ContractsService.createRevocation(c, issuer1, goodKey);
 
         assertTrue(tc.check());
 
@@ -1671,15 +1664,15 @@ public class CLIMainTest {
 
         Thread.sleep(1000);
 
-        CLIMain.clearSession(false);
-
-        CLIMain.setNodeUrl(null);
-
-        System.out.println("---session should be created for remote network---");
-
-        CLIMain.registerContract(c);
-
-        CLIMain.saveSession();
+//        CLIMain.clearSession(false);
+//
+//        CLIMain.setNodeUrl(null);
+//
+//        System.out.println("---session should be created for remote network---");
+//
+//        CLIMain.registerContract(c);
+//
+//        CLIMain.saveSession();
 
 
         CLIMain.breakSession(-1);
@@ -2042,6 +2035,79 @@ public class CLIMainTest {
         System.out.println(output);
 
         assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 1);
+    }
+
+
+//    @Test
+    public void showSwapResult() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        PrivateKey martyPrivateKey = new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey"));
+        martyPrivateKeys.add(martyPrivateKey);
+        martyPublicKeys.add(martyPrivateKey.getPublicKey());
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+        stepaPrivateKeys.add(stepaPrivateKey);
+        stepaPublicKeys.add(stepaPrivateKey.getPublicKey());
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+
+        Contract delorean = Contract.fromDslFile(rootPath + "DeLoreanOwnership.yml");
+        Contract lamborghini = Contract.fromDslFile(rootPath + "LamborghiniOwnership.yml");
+        delorean.addSignerKey(manufacturePrivateKey);
+        delorean.seal();
+        delorean.traceErrors();
+        CLIMain.saveContract(delorean, rootPath + "delorean.unicon");
+
+        lamborghini.addSignerKey(manufacturePrivateKey);
+        lamborghini.seal();
+        lamborghini.traceErrors();
+        CLIMain.saveContract(lamborghini, rootPath + "lamborghini.unicon");
+
+
+        callMain("--register",
+                rootPath + "delorean.unicon",
+                rootPath + "lamborghini.unicon",
+                "-wait", "5000");
+
+        Contract swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKeys, stepaPublicKeys);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+        Contract newDelorean = null;
+        Contract newLamborghini = null;
+        for (Contract c : swapContract.getNew()) {
+            if(c.getParent().equals(delorean.getId())) {
+                newDelorean = c;
+            }
+            if(c.getParent().equals(lamborghini.getId())) {
+                newLamborghini = c;
+            }
+        }
+
+        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true);
+        CLIMain.saveContract(newDelorean, rootPath + "newDelorean.unicon");
+        CLIMain.saveContract(newLamborghini, rootPath + "newLamborghini.unicon");
+
+        callMain("--register",
+                rootPath + "swapContract.unicon",
+                "-wait", "5000");
+
+        System.out.println("delorean: " + delorean.check());
+        System.out.println("lamborghini: " + lamborghini.check());
+        System.out.println("newDelorean: " + newDelorean.check());
+        System.out.println("newLamborghini: " + newLamborghini.check());
+        System.out.println("swapContract: " + swapContract.check());
+
+        callMain("-e",
+                rootPath + "delorean.unicon",
+                rootPath + "lamborghini.unicon",
+                rootPath + "newDelorean.unicon",
+                rootPath + "newLamborghini.unicon",
+                rootPath + "swapContract.unicon",
+                "-pretty");
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {

@@ -41,10 +41,10 @@ import static org.junit.Assert.*;
 public class Node2LocalNetworkTest extends BaseNetworkTest {
 
     private static TestLocalNetwork network_s = null;
-    private static List<TestLocalNetwork> networks = new ArrayList<>();
+    private static List<TestLocalNetwork> networks_s = new ArrayList<>();
     private static Node node_s = null;
     private static List<Node> nodes_s = null;
-    private static Map<NodeInfo,Node> nodesMap = new HashMap<>();
+    private static Map<NodeInfo,Node> nodesMap_s = null;
     private static Ledger ledger_s = null;
     private static NetConfig nc_s = null;
     private static Config config_s = null;
@@ -58,13 +58,30 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         initTestSet();
     }
 
+    @AfterClass
+    public static void afterClass() throws Exception {
+        networks_s.forEach(n->n.shutDown());
+        nodesMap_s.forEach((i,n)->n.getLedger().close());
+
+        network_s = null;
+        networks_s = null;
+        node_s = null;
+        nodes_s = null;
+        nodesMap_s = null;
+        ledger_s = null;
+        nc_s = null;
+        config_s = null;
+
+        Thread.sleep(5000);
+    }
+
     private static void initTestSet() throws Exception {
         initTestSet(1, 1);
     }
 
     private static void initTestSet(int posCons, int negCons) throws Exception {
-        nodesMap = new HashMap<>();
-        networks = new ArrayList<>();
+        nodesMap_s = new HashMap<>();
+        networks_s = new ArrayList<>();
 
         config_s = new Config();
         config_s.setPositiveConsensus(7);
@@ -108,27 +125,24 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             NodeInfo info = nc_s.getInfo(i);
 
             TestLocalNetwork ln = new TestLocalNetwork(nc_s, info, getNodeKey(i));
-            ln.setNodes(nodesMap);
+            ln.setNodes(nodesMap_s);
 //            ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
             Ledger ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
             Node n = new Node(config_s, info, ledger, ln);
-            nodesMap.put(info, n);
-            networks.add(ln);
+            nodesMap_s.put(info, n);
+            networks_s.add(ln);
 
             if (i == 0) {
                 ledger_s = ledger;
                 network_s = ln;
             }
         }
-        node_s = nodesMap.values().iterator().next();
-    }
+        node_s = nodesMap_s.values().iterator().next();
 
-
-
-    @AfterClass
-    public static void afterClass() throws Exception {
-        networks.forEach(n->n.shutDown());
-        nodesMap.forEach((i,n)->n.getLedger().close());
+        nodes_s = new ArrayList<>();
+        for (int i = 0; i < NODES; i++) {
+            nodes_s.add(nodesMap_s.get(nc_s.getInfo(i)));
+        }
     }
 
 
@@ -138,15 +152,15 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         System.out.println("setup test");
         System.out.println("Switch on UDP network full mode");
         for (int i = 0; i < NODES; i++) {
-            networks.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
-            networks.get(i).setUDPAdapterLostPacketsPercentInTestMode(0);
+            networks_s.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            networks_s.get(i).setUDPAdapterLostPacketsPercentInTestMode(0);
         }
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterLostPacketsPercentInTestMode(0);
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         }
-        init(node_s, nodes_s, network_s, ledger_s, config_s);
+        init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
     }
 
 
@@ -160,8 +174,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     @Test
     public void networkPassesData() throws Exception {
         AsyncEvent<Void> ae = new AsyncEvent<>();
-        TestLocalNetwork n0 = networks.get(0);
-        TestLocalNetwork n1 = networks.get(1);
+        TestLocalNetwork n0 = networks_s.get(0);
+        TestLocalNetwork n1 = networks_s.get(1);
         NodeInfo i1 = n0.getInfo(1);
         NodeInfo i0 = n0.getInfo(0);
 
@@ -187,93 +201,13 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     }
 
 
-
-    @Test(timeout = 90000)
-    public void registerGoodItem() throws Exception {
-
-        int N = 100;
-//        LogPrinter.showDebug(true);
-        for (int k = 0; k < 1; k++) {
-            StopWatch.measure(true, () -> {
-                for (int i = 0; i < N; i++) {
-                    TestItem ok = new TestItem(true);
-                    System.out.println("\n--------------register item " + ok.getId() + " ------------\n");
-                    node.registerItem(ok);
-                    for (Node n : nodesMap.values()) {
-                        try {
-                            ItemResult r = n.waitItem(ok.getId(), 2000);
-                            int numIterations = 0;
-                            while( !r.state.isConsensusFound()) {
-                                System.out.println("wait for consensus receiving on the node " + n);
-                                Thread.sleep(500);
-                                r = n.waitItem(ok.getId(), 2000);
-                                numIterations++;
-                                if(numIterations > 20)
-                                    break;
-                            }
-                            System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
-                            assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
-                        } catch (TimeoutException e) {
-                            fail("timeout");
-                        }
-                    }
-                    assertThat(node.countElections(), is(lessThan(10)));
-
-                    ItemResult r = node.waitItem(ok.getId(), 5500);
-                    assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
-
-                }
-            });
-        }
-    }
-
-
-
-    @Test
-    public void splitJoinTest() throws Exception {
-        Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-        c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c.check());
-        c.seal();
-
-
-        registerAndCheckApproved(c);
-        assertEquals(100, c.getStateData().get("amount"));
-
-
-        // 50
-        Contract cRev = c.createRevision();
-        Contract c2 = cRev.splitValue("amount", new Decimal(50));
-        c2.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c2.check());
-        c2.seal();
-        assertEquals(new Decimal(50), cRev.getStateData().get("amount"));
-
-        registerAndCheckApproved(c2);
-        assertEquals("50", c2.getStateData().get("amount"));
-
-
-        //send 150 out of 2 contracts (100 + 50)
-        Contract c3 = c2.createRevision();
-        c3.getStateData().set("amount", (new Decimal((Integer)c.getStateData().get("amount"))).
-                add(new Decimal(Integer.valueOf((String)c3.getStateData().get("amount")))));
-        c3.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        c3.addRevokingItems(c);
-        assertTrue(c3.check());
-        c3.seal();
-
-        registerAndCheckApproved(c3);
-        assertEquals(new Decimal(150), c3.getStateData().get("amount"));
-
-    }
-
     // This test will no
 //    @Test(timeout = 300000)
 //    public void resync() throws Exception {
 //        Contract c = new Contract(TestKeys.privateKey(0));
 //        c.seal();
 //        addToAllLedgers(c, ItemState.APPROVED);
-//        nodesMap.values().forEach(n->{
+//        nodesMap_s.values().forEach(n->{
 //            System.out.println(node.getLedger().getRecord(c.getId()));
 //        });
 //        node.getLedger().getRecord(c.getId()).destroy();
@@ -291,7 +225,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     }
 
     private void addToAllLedgers(Contract c, ItemState state, Node exceptNode) {
-        for( Node n: nodesMap.values() ) {
+        for( Node n: nodesMap_s.values() ) {
             if(n != exceptNode) {
                 n.getLedger().findOrCreate(c.getId()).setState(state).save();
             }
@@ -303,76 +237,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         ItemResult itemResult = node.waitItem(c.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
-//
-//    @Test
-//    public void resyncContractWithSomeUndefindSubContracts() throws Exception {
-//
-//        LogPrinter.showDebug(true);
-//
-//        AsyncEvent ae = new AsyncEvent();
-//
-//        int numSubContracts = 5;
-//        List<Contract> subContracts = new ArrayList<>();
-//        for (int i = 0; i < numSubContracts; i++) {
-//            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-//            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-//            assertTrue(c.check());
-//            c.seal();
-//
-//            if(i < config.getKnownSubContractsToResync())
-//                addToAllLedgers(c, ItemState.APPROVED);
-//            else
-//                addToAllLedgers(c, ItemState.APPROVED, node);
-//
-//            subContracts.add(c);
-//        }
-//
-//        for (int i = 0; i < numSubContracts; i++) {
-//            ItemResult r = node.checkItem(subContracts.get(i).getId());
-//            System.out.println("Contract: " + i + " state: " + r.state);
-//        }
-//
-//        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-//        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-//        assertTrue(contract.check());
-//
-//        for (int i = 0; i < numSubContracts; i++) {
-//            contract.addRevokingItems(subContracts.get(i));
-//        }
-//        contract.seal();
-//        contract.check();
-//        contract.traceErrors();
-//
-//        node.registerItem(contract);
-//
-//        Timer timer = new Timer();
-//        timer.scheduleAtFixedRate(new TimerTask() {
-//            @Override
-//            public void run() {
-//
-//                ItemResult r = node.checkItem(contract.getId());
-//                System.out.println("Complex contract state: " + r.state);
-//
-//                if(r.state == ItemState.APPROVED) ae.fire();
-//            }
-//        }, 0, 500);
-//
-//        try {
-//            ae.await(5000);
-//        } catch (TimeoutException e) {
-//            System.out.println("time is up");
-//        }
-//
-//        timer.cancel();
-//
-//        for (TestLocalNetwork ln : networks) {
-//            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
-//            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
-//        }
-//
-//        ItemResult r = node.checkItem(contract.getId());
-//        assertEquals(ItemState.APPROVED, r.state);
-//    }
 
 
 
@@ -380,8 +244,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         // Test should broke condition to resync:
         // should be at least one known (APPROVED, DECLINED, LOCKED, REVOKED) subcontract to start resync
-
-//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -434,7 +296,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         System.out.println("Complex contract state: " + r.state);
         assertEquals(ItemState.DECLINED, r.state);
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -464,8 +326,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         // Test should broke condition to resync:
         // should be at least one unknown subcontract to start resync
-
-//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -539,8 +399,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         // Test should broke condition to resync:
         // complex contract should has no errors itself
 
-//        LogPrinter.showDebug(true);
-
         ItemState definedState = ItemState.APPROVED;
         ItemState undefinedState = ItemState.UNDEFINED;
 
@@ -611,12 +469,12 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.checkItem(contract.getId());
+        ItemResult r = node.waitItem(contract.getId(), 3000);
         assertEquals(ItemState.DECLINED, r.state);
     }
 
@@ -626,8 +484,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     public void resyncContractWithSomeUndefindSubContracts() throws Exception {
 
         // Test should run resync of each unknown part of a contract
-
-//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -685,12 +541,12 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.waitItem(contract.getId(), 2000);
+        ItemResult r = node.waitItem(contract.getId(), 3000);
         assertEquals(ItemState.APPROVED, r.state);
     }
 
@@ -701,8 +557,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         // Test should run resync of each unknown part of a contract
         // But resync should failed by timeout. And complex contract should be declined.
-
-//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -742,8 +596,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config.setMaxResyncTime(Duration.ofMillis(2000));
 
         for (int i = 0; i < NODES/2; i++) {
-            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
         }
 
         // preparing is finished
@@ -775,7 +629,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         // If resync broken but need more then oned nodes to decline, state should be PENDING_NEGATIVE
         Assert.assertThat(r.state, anyOf(equalTo(ItemState.PENDING_NEGATIVE), equalTo(ItemState.DECLINED)));
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -788,7 +642,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     @Test
     public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
             ln.setUDPAdapterLostPacketsPercentInTestMode(90);
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -816,7 +670,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 System.out.println("-----------nodes state--------------");
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.APPROVED) {
@@ -838,7 +692,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -853,8 +707,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         // switch off half network
         for (int i = 0; i < NODES/2; i++) {
-            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
         }
 
         AsyncEvent ae = new AsyncEvent();
@@ -869,8 +723,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         contract.traceErrors();
         assertTrue(contract.isOk());
 
-//        LogPrinter.showDebug(true);
-
         node.registerItem(contract);
 
         Timer timer = new Timer();
@@ -881,7 +733,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 System.out.println("-----------nodes state--------------");
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.APPROVED) {
@@ -898,7 +750,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         } catch (TimeoutException e) {
             timer.cancel();
             System.out.println("switching on network");
-            for (TestLocalNetwork ln : networks) {
+            for (TestLocalNetwork ln : networks_s) {
                 ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             }
         }
@@ -913,7 +765,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 Object lock = new Object();
                 synchronized (lock) {
                     int num_approved = 0;
-                    for (Node n : nodesMap.values()) {
+                    for (Node n : nodesMap_s.values()) {
                         ItemResult r = n.checkItem(contract.getId());
 
                         if (r.state == ItemState.APPROVED) {
@@ -939,14 +791,12 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         timer2.cancel();
 
         boolean all_is_approved = true;
-        for (Node n : nodesMap.values()) {
-            ItemResult r = n.checkItem(contract.getId());
+        for (Node n : nodesMap_s.values()) {
+            ItemResult r = n.waitItem(contract.getId(), 3000);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
             }
         }
-
-        LogPrinter.showDebug(false);
 
         assertEquals(all_is_approved, true);
 
@@ -960,8 +810,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         // switch off half network
         for (int i = 0; i < NODES/2; i++) {
-            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
         }
 
         AsyncEvent ae = new AsyncEvent();
@@ -986,7 +836,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                 System.out.println("-----------nodes state--------------");
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.APPROVED) {
@@ -1004,8 +854,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             System.out.println("switching on node 2");
 
             for (int i = 0; i < NODES/2; i++) {
-                networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-                networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(50);
+                networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+                networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(50);
             }
         }
 
@@ -1016,7 +866,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
                 System.out.println("-----------nodes state--------------");
 
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println("Node: " + n.toString() + " state: " + r.state);
                 }
@@ -1032,8 +882,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         timer2.cancel();
 
         boolean all_is_approved = true;
-        for (Node n : nodesMap.values()) {
-            ItemResult r = n.checkItem(contract.getId());
+        for (Node n : nodesMap_s.values()) {
+            ItemResult r = n.waitItem(contract.getId(), 3000);
             System.out.println("Node: " + n.toString() + " state: " + r.state);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
@@ -1042,7 +892,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertEquals(all_is_approved, true);
 
-        for (TestLocalNetwork ln : networks) {
+        for (TestLocalNetwork ln : networks_s) {
             ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
@@ -1052,8 +902,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
     @Test
     public void resyncApproved() throws Exception {
-
-//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
         Contract c = new Contract(TestKeys.privateKey(0));
@@ -1070,7 +918,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
 //                    System.out.println(n.getLedger().getRecord(c.getId()));
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
@@ -1083,7 +931,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             }
         }, 0, 1000);
 
-//        LogPrinter.showDebug(true);
         node.resync(c.getId());
 
         try {
@@ -1094,7 +941,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 3000).state);
     }
 
 
@@ -1113,7 +960,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
 //                    System.out.println(n.getLedger().getRecord(c.getId()));
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
@@ -1127,9 +974,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         }, 0, 1000);
 
         node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 3000).state);
 
-//        LogPrinter.showDebug(true);
         node.resync(c.getId());
 
         try {
@@ -1140,7 +986,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 3000).state);
     }
 
 
@@ -1162,7 +1008,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
 //                    System.out.println(n.getLedger().getRecord(c.getId()));
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
@@ -1186,15 +1032,13 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 3000).state);
     }
 
 
 
     @Test
     public void resyncOther() throws Exception {
-
-//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
         Contract c = new Contract(TestKeys.privateKey(0));
@@ -1213,7 +1057,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(c.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.UNDEFINED) {
@@ -1233,15 +1077,13 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 3000).state);
     }
 
 
 
     @Test
     public void resyncWithTimeout() throws Exception {
-
-//        LogPrinter.showDebug(true);
 
         AsyncEvent ae = new AsyncEvent();
         Contract c = new Contract(TestKeys.privateKey(0));
@@ -1252,8 +1094,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config.setMaxResyncTime(Duration.ofMillis(2000));
 
         for (int i = 0; i < NODES/2; i++) {
-            networks.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
         }
 
         node.getLedger().getRecord(c.getId()).destroy();
@@ -1280,19 +1122,17 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         timer.cancel();
         config.setMaxResyncTime(wasDuration);
 
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 3000).state);
 
         for (int i = 0; i < NODES; i++) {
-            networks.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+            networks_s.get(i).setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
         }
     }
 
 
 
-    @Test
+    @Test(timeout = 15000)
     public void resyncComplex() throws Exception {
-
-//        LogPrinter.showDebug(true);
 
         int numSubContracts = 5;
         List<Contract> subContracts = new ArrayList<>();
@@ -1336,7 +1176,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             public void run() {
 
                 boolean all_is_approved = true;
-                for (Node n : nodesMap.values()) {
+                for (Node n : nodesMap_s.values()) {
                     ItemResult r = n.checkItem(contract.getId());
                     System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
                     if(r.state != ItemState.UNDEFINED) {
@@ -1356,8 +1196,78 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.UNDEFINED, node.checkItem(contract.getId()).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 3000).state);
     }
+//
+//    @Test
+//    public void resyncContractWithSomeUndefindSubContracts() throws Exception {
+//
+//        LogPrinter.showDebug(true);
+//
+//        AsyncEvent ae = new AsyncEvent();
+//
+//        int numSubContracts = 5;
+//        List<Contract> subContracts = new ArrayList<>();
+//        for (int i = 0; i < numSubContracts; i++) {
+//            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+//            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//            assertTrue(c.check());
+//            c.seal();
+//
+//            if(i < config.getKnownSubContractsToResync())
+//                addToAllLedgers(c, ItemState.APPROVED);
+//            else
+//                addToAllLedgers(c, ItemState.APPROVED, node);
+//
+//            subContracts.add(c);
+//        }
+//
+//        for (int i = 0; i < numSubContracts; i++) {
+//            ItemResult r = node.checkItem(subContracts.get(i).getId());
+//            System.out.println("Contract: " + i + " state: " + r.state);
+//        }
+//
+//        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+//        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue(contract.check());
+//
+//        for (int i = 0; i < numSubContracts; i++) {
+//            contract.addRevokingItems(subContracts.get(i));
+//        }
+//        contract.seal();
+//        contract.check();
+//        contract.traceErrors();
+//
+//        node.registerItem(contract);
+//
+//        Timer timer = new Timer();
+//        timer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//
+//                ItemResult r = node.checkItem(contract.getId());
+//                System.out.println("Complex contract state: " + r.state);
+//
+//                if(r.state == ItemState.APPROVED) ae.fire();
+//            }
+//        }, 0, 500);
+//
+//        try {
+//            ae.await(5000);
+//        } catch (TimeoutException e) {
+//            System.out.println("time is up");
+//        }
+//
+//        timer.cancel();
+//
+//        for (TestLocalNetwork ln : networks_s) {
+//            ln.setUDPAdapterTestMode(DatagramAdapter.TestModes.NONE);
+//            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+//        }
+//
+//        ItemResult r = node.checkItem(contract.getId());
+//        assertEquals(ItemState.APPROVED, r.state);
+//    }
 
 //    @Test
 //    public void resyncFaked() throws Exception {
@@ -1376,7 +1286,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //            public void run() {
 //
 //                boolean all_is_approved = true;
-//                for (Node n : nodesMap.values()) {
+//                for (Node n : nodesMap_s.values()) {
 ////                    System.out.println(n.getLedger().getRecord(c.getId()));
 //                    ItemResult r = n.checkItem(c.getId());
 //                    System.out.println(">>>Node: " + n.toString() + " state: " + r.state);
@@ -1402,42 +1312,5 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //
 //        assertEquals(ItemState.DECLINED, node.checkItem(c.getId()).state);
 //    }
-
-    private void addDetailsToAllLedgers(Contract contract) {
-        HashId id;
-        StateRecord orCreate;
-        for (Approvable c : contract.getRevokingItems()) {
-            id = c.getId();
-            for (Node nodeS : nodesMap.values()) {
-                orCreate = nodeS.getLedger().findOrCreate(id);
-                orCreate.setState(ItemState.APPROVED).save();
-            }
-        }
-
-        destroyFromAllNodesExistingNew(contract);
-
-        destroyCurrentFromAllNodesIfExists(contract);
-    }
-
-    private void destroyFromAllNodesExistingNew(Contract c50_1) {
-        StateRecord orCreate;
-        for (Approvable c : c50_1.getNewItems()) {
-            for (Node nodeS : nodesMap.values()) {
-                orCreate = nodeS.getLedger().getRecord(c.getId());
-                if (orCreate != null)
-                    orCreate.destroy();
-            }
-        }
-    }
-
-    private void destroyCurrentFromAllNodesIfExists(Contract finalC) {
-        for (Node nodeS : nodesMap.values()) {
-            StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
-            if (r != null) {
-                r.destroy();
-            }
-        }
-    }
-
 
 }

@@ -12,7 +12,7 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ReferenceModel;
+import com.icodici.universa.contract.Reference;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.Ledger;
@@ -100,7 +100,6 @@ public class Node {
         Binder result = Binder.of("itemResult", ir);
         if (ir != null && ir.state == ItemState.LOCKED) {
             ir.lockedById = ledger.getLockOwnerOf(itemId).getId();
-//            result.put("lockedBy", ledger.getRecord(itemId).getOwner());
         }
         return result;
     }
@@ -651,50 +650,58 @@ public class Node {
             }
         }
 
-        private final void checkSubItems() {// check the referenced items
+        // check subitems of main item and lock subitems in the ledger
+        private final void checkSubItems() {
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
-                    for (ReferenceModel refModel : item.getReferencedItems()) {
+                    checkSubItemsOf(item);
+                }
+            }
+        }
+
+        // check subitems of given item recursively (down for newItems line)
+        private final void checkSubItemsOf(Approvable checkingItem) {
+            if(processingState.canContinue()) {
+                if (!processingState.isProcessedToConsensus()) {
+                    for (Reference refModel : checkingItem.getReferencedItems()) {
                         HashId id = refModel.contract_id;
-                        if(refModel.type == ReferenceModel.TYPE_EXISTING) {
+                        if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
                             if (!ledger.isApproved(id)) {
-                                item.addError(Errors.BAD_REF, id.toString(), "reference not approved");
+                                checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                             }
                         }
                     }
                     // check revoking items
-                    for (Approvable a : item.getRevokingItems()) {
+                    for (Approvable a : checkingItem.getRevokingItems()) {
                         StateRecord r = record.lockToRevoke(a.getId());
                         if (r == null) {
-                            item.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
+                            checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
                         } else {
                             if (!lockedToRevoke.contains(r))
                                 lockedToRevoke.add(r);
                         }
                     }
                     // check new items
-//                    try {
-                        for (Approvable newItem : item.getNewItems()) {
-                            if (!newItem.getErrors().isEmpty()) {
-                                item.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
+                    for (Approvable newItem : checkingItem.getNewItems()) {
+
+                        checkSubItemsOf(newItem);
+
+                        if (!newItem.getErrors().isEmpty()) {
+                            checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
+                        } else {
+                            StateRecord r = record.createOutputLockRecord(newItem.getId());
+                            if (r == null) {
+                                checkingItem.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
                             } else {
-                                StateRecord r = record.createOutputLockRecord(newItem.getId());
-                                if (r == null) {
-                                    item.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
-                                } else {
-                                    if (!lockedToCreate.contains(r))
-                                        lockedToCreate.add(r);
-                                }
+                                if (!lockedToCreate.contains(r))
+                                    lockedToCreate.add(r);
                             }
                         }
-//                    } catch (Quantiser.QuantiserException e) {
-//                        emergencyBreak();
-//                        return;
-//                    }
+                    }
 
                     debug("Checking subitems of item " + itemId
                             + ", state: " + record.getState() +
-                            ", errors: " + item.getErrors().size());
+                            ", errors: " + checkingItem.getErrors().size());
                 }
             }
         }
@@ -739,9 +746,9 @@ public class Node {
                 HashMap<HashId, StateRecord> knownParts = new HashMap<>();
                 if (baseCheckPassed) {
                     // check the referenced items
-                    for (ReferenceModel refModel : item.getReferencedItems()) {
+                    for (Reference refModel : item.getReferencedItems()) {
                         HashId id = refModel.contract_id;
-                        if(refModel.type == ReferenceModel.TYPE_EXISTING && id != null) {
+                        if(refModel.type == Reference.TYPE_EXISTING && id != null) {
                             StateRecord r = ledger.getRecord(id);
                             debug(">> referenced subitem " + id + " is " + (r != null ? r.getState() : null));
 
@@ -888,6 +895,28 @@ public class Node {
             }
         }
 
+        // commit subitems of given item to the ledger
+        private void downloadAndCommitSubItemsOf(Approvable commitingItem) {
+            if(processingState.canContinue()) {
+                for (Approvable revokingItem : commitingItem.getRevokingItems()) {
+                    // The record may not exist due to ledger desync, so we create it if need
+                    StateRecord r = ledger.findOrCreate(revokingItem.getId());
+                    r.setState(ItemState.REVOKED);
+                    r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
+                    r.save();
+                }
+                for (Approvable newItem : commitingItem.getNewItems()) {
+                    // The record may not exist due to ledger desync too, so we create it if need
+                    StateRecord r = ledger.findOrCreate(newItem.getId());
+                    r.setState(ItemState.APPROVED);
+                    r.setExpiresAt(newItem.getExpiresAt());
+                    r.save();
+
+                    downloadAndCommitSubItemsOf(newItem);
+                }
+            }
+        }
+
         private void downloadAndCommit() {
             if(processingState.canContinue()) {
                 // it may happen that consensus is found earlier than item is download
@@ -903,25 +932,14 @@ public class Node {
                     // We use the caching capability of ledger so we do not get records from
                     // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
                     // yields. We just clean them up afterwards:
-                    for (Approvable a : item.getRevokingItems()) {
-                        // The record may not exist due to ledger desync, so we create it if need
-                        StateRecord r = ledger.findOrCreate(a.getId());
-                        r.setState(ItemState.REVOKED);
-                        r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
-                        r.save();
-                    }
-                    for (Approvable item : item.getNewItems()) {
-                        // The record may not exist due to ledger desync too, so we create it if need
-                        StateRecord r = ledger.findOrCreate(item.getId());
-                        r.setState(ItemState.APPROVED);
-                        r.setExpiresAt(item.getExpiresAt());
-                        r.save();
-                    }
+
+                    downloadAndCommitSubItemsOf(item);
+
                     lockedToCreate.clear();
                     lockedToRevoke.clear();
                     record.save();
                     if (record.getState() != ItemState.APPROVED) {
-                        log.e("record is not approved2 " + record.getState());
+                        log.e("record is not approved " + record.getState());
                     }
                     debug("approval done for " + itemId + " : " + getState() + " have a copy " + (item == null));
                 } catch (TimeoutException | InterruptedException e) {

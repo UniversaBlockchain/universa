@@ -40,6 +40,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
     private static TestEmulatedNetwork network_s = null;
     private static Node node_s = null;
     private static List<Node> nodes_s = null;
+    private static Map<NodeInfo,Node> nodesMap_s = new HashMap<>();
     private static Ledger ledger_s = null;
     private static NetConfig nc_s = null;
     private static Config config_s = null;
@@ -51,6 +52,20 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
     @BeforeClass
     public static void beforeClass() throws Exception {
         initTestSet();
+    }
+
+    @AfterClass
+    public static void afterClass() throws Exception {
+        network_s.shutdown();
+        nodes_s.forEach((n)->n.getLedger().close());
+
+        network_s = null;
+        node_s = null;
+        nodes_s = null;
+        nodesMap_s = null;
+        ledger_s = null;
+        nc_s = null;
+        config_s = null;
     }
 
     private static void initTestSet() throws Exception {
@@ -98,6 +113,12 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         }
         network_s = en;
         node_s = nodes_s.get(0);
+
+        nodesMap_s = new HashMap<>();
+        for (int i = 0; i < NODES; i++) {
+            nodesMap_s.put(nc_s.getInfo(i), nodes_s.get(i));
+        }
+
         System.out.println("Emulated network created on the nodes: " + nodes_s);
         System.out.println("Emulated network base node is: " + node_s);
         Thread.sleep(100);
@@ -110,41 +131,299 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         System.out.println("Switch on network full mode");
         network_s.switchOnAllNodesTestMode();
         network_s.setTest_nodeBeingOffedChance(0);
-        init(node_s, nodes_s, network_s, ledger_s, config_s);
+        init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
     }
 
 
 
-    @Test(timeout = 20000)
-    public void registerGoodItem() throws Exception {
-        int N = 100;
-        for (int k = 0; k < 1; k++) {
-//            StopWatch.measure(true, () -> {
-            for (int i = 0; i < N; i++) {
-                TestItem ok = new TestItem(true);
-                System.out.println("\n--------------register item " + ok.getId() + " ------------\n");
-                node.registerItem(ok);
+
+
+    @Test(timeout = 5000)
+    public void resyncApproved() throws Exception {
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.APPROVED);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+        node.resync(c.getId());
+
+        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 5000).state);
+    }
+
+    @Test(timeout = 15000)
+    public void resyncRevoked() throws Exception {
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.REVOKED);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+        node.resync(c.getId());
+
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 3000).state);
+    }
+
+    @Test(timeout = 15000)
+    public void resyncDeclined() throws Exception {
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.DECLINED);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+        node.resync(c.getId());
+
+        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 2000).state);
+    }
+
+    @Test(timeout = 15000)
+    public void resyncOther() throws Exception {
+
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.PENDING_POSITIVE);
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+        node.resync(c.getId());
+        assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
+
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
+    }
+
+    @Test(timeout = 15000)
+    public void resyncWithTimeout() throws Exception {
+
+        Contract c = new Contract(TestKeys.privateKey(0));
+        c.seal();
+        addToAllLedgers(c, ItemState.APPROVED);
+
+        Duration wasDuration = config.getMaxResyncTime();
+        config.setMaxResyncTime(Duration.ofMillis(2000));
+
+        for (int i = 0; i < NODES/2; i++) {
+            ((TestEmulatedNetwork)network).switchOffNodeTestMode(nodes.get(NODES-i-1));
+        }
+
+        node.getLedger().getRecord(c.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
+
+        node.resync(c.getId());
+        assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
+
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 5000).state);
+
+        config.setMaxResyncTime(wasDuration);
+
+        ((TestEmulatedNetwork)network).switchOnAllNodesTestMode();
+    }
+
+    @Test(timeout = 15000)
+    public void resyncComplex() throws Exception {
+
+        int numSubContracts = 5;
+        List<Contract> subContracts = new ArrayList<>();
+        for (int i = 0; i < numSubContracts; i++) {
+            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+            assertTrue(c.check());
+            c.seal();
+
+            if(i < config.getKnownSubContractsToResync())
+                addToAllLedgers(c, ItemState.APPROVED);
+            else
+                addToAllLedgers(c, ItemState.APPROVED, node);
+
+            subContracts.add(c);
+        }
+
+        for (int i = 0; i < numSubContracts; i++) {
+            ItemResult r = node.checkItem(subContracts.get(i).getId());
+            System.out.println("Contract: " + i + " state: " + r.state);
+        }
+
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+
+        for (int i = 0; i < numSubContracts; i++) {
+            contract.addRevokingItems(subContracts.get(i));
+        }
+        addToAllLedgers(contract, ItemState.PENDING_POSITIVE);
+
+        node.getLedger().getRecord(contract.getId()).destroy();
+        assertEquals(ItemState.UNDEFINED, node.checkItem(contract.getId()).state);
+
+        node.resync(contract.getId());
+        assertEquals(ItemState.PENDING, node.checkItem(contract.getId()).state);
+
+        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 3000).state);
+    }
+
+
+    @Test
+    public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
+
+        ((TestEmulatedNetwork)network).setTest_nodeBeingOffedChance(75);
+
+        AsyncEvent ae = new AsyncEvent();
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        contract.seal();
+
+        addDetailsToAllLedgers(contract);
+
+        contract.check();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                boolean all_is_approved = true;
                 for (Node n : nodes) {
-                    try {
-                        ItemResult r = n.waitItem(ok.getId(), 2500);
-                        while( !r.state.isConsensusFound()) {
-                            System.out.println("wait for consensus receiving on the node " + n);
-                            Thread.sleep(200);
-                            r = n.waitItem(ok.getId(), 2500);
-                        }
-                        System.out.println("In node " + n + " item " + ok.getId() + " has state " +  r.state);
-                        assertEquals(ItemState.APPROVED, r.state);
-                    } catch (TimeoutException e) {
-                        fail("timeout");
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+                }
+
+                if(all_is_approved) ae.fire();
+            }
+        }, 0, 1000);
+
+        boolean time_is_up = false;
+        try {
+            ae.await(45000);
+        } catch (TimeoutException e) {
+            time_is_up = true;
+            System.out.println("time is up");
+        }
+
+        timer.cancel();
+
+        ((TestEmulatedNetwork)network).setTest_nodeBeingOffedChance(0);
+
+        assertFalse(time_is_up);
+    }
+
+    @Test
+    public void checkRegisterContractOnTemporaryOffedNetwork() throws Exception {
+
+        // switch off half network
+        for (int i = 0; i < NODES/2; i++) {
+            ((TestEmulatedNetwork)network).switchOffNodeTestMode(nodes.get(NODES-i-1));
+        }
+
+        AsyncEvent ae = new AsyncEvent();
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        contract.seal();
+
+        addDetailsToAllLedgers(contract);
+
+        contract.check();
+        contract.traceErrors();
+        assertTrue(contract.isOk());
+
+        node.registerItem(contract);
+
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                boolean all_is_approved = true;
+                for (Node n : nodes) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+                }
+                assertEquals(all_is_approved, false);
+            }
+        }, 0, 1000);
+
+        // wait and now switch on full network
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            timer.cancel();
+            System.out.println("switching on network");
+            ((TestEmulatedNetwork)network).switchOnAllNodesTestMode();
+        }
+
+        Timer timer2 = new Timer();
+        timer2.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+
+                System.out.println("-----------nodes state--------------");
+
+                boolean all_is_approved = true;
+                for (Node n : nodes) {
+                    ItemResult r = n.checkItem(contract.getId());
+                    System.out.println("Node: " + n.toString() + " state: " + r.state);
+
+                    if(r.state != ItemState.APPROVED) {
+                        all_is_approved = false;
+                    }
+
+                    if(all_is_approved) {
+                        ae.fire();
                     }
                 }
             }
-//            });
-            assertThat(node.countElections(), is(lessThan(10)));
+        }, 0, 1000);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
         }
+
+        timer2.cancel();
+
+        boolean all_is_approved = true;
+        for (Node n : nodes) {
+            ItemResult r = n.waitItem(contract.getId(), 2000);
+            if(r.state != ItemState.APPROVED) {
+                all_is_approved = false;
+            }
+        }
+
+        assertEquals(all_is_approved, true);
+
+
     }
 
+    private void addToAllLedgers(Contract c, ItemState state) {
+        addToAllLedgers(c, state, null);
+    }
 
+    private void addToAllLedgers(Contract c, ItemState state, Node exceptNode) {
+        for( Node n: nodes ) {
+            if(n != exceptNode) {
+                n.getLedger().findOrCreate(c.getId()).setState(state).save();
+            }
+        }
+    }
 
     //    @Test
     public void unexpectedStrangeCaseWithConcurrent() throws Exception {
@@ -218,186 +497,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
     }
 
-    private void destroyCurrentFromAllNodesIfExists(Contract finalC) {
-        for (Node nodeS : nodes) {
-            StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
-            if (r != null) {
-                r.destroy();
-            }
-        }
-    }
-
-    @Test
-    public void checkSimpleCase() throws Exception {
-//        String transactionName = "./src/test_contracts/transaction/93441e20-242a-4e91-b283-8d0fd5f624dd.transaction";
-
-        for (int i = 0; i < 5; i++) {
-            Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-            contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            contract.seal();
-
-            addDetailsToAllLedgers(contract);
-
-            contract.check();
-            contract.traceErrors();
-            assertTrue(contract.isOk());
-
-            node.registerItem(contract);
-            ItemResult itemResult = node.waitItem(contract.getId(), 1500);
-            if (ItemState.APPROVED != itemResult.state)
-                fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
-                        " \r\ncontract_errors: " + contract.getErrors());
-
-            assertEquals(ItemState.APPROVED, itemResult.state);
-        }
-    }
-
-    @Test(timeout = 3000)
-    public void resyncApproved() throws Exception {
-        Contract c = new Contract(TestKeys.privateKey(0));
-        c.seal();
-        addToAllLedgers(c, ItemState.APPROVED);
-
-        node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
-
-//        LogPrinter.showDebug(true);
-        node.resync(c.getId());
-
-        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 5000).state);
-    }
-
-    @Test
-    public void resyncRevoked() throws Exception {
-        Contract c = new Contract(TestKeys.privateKey(0));
-        c.seal();
-        addToAllLedgers(c, ItemState.REVOKED);
-
-        node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
-
-//        LogPrinter.showDebug(true);
-        node.resync(c.getId());
-
-        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 2000).state);
-    }
-
-    @Test
-    public void resyncDeclined() throws Exception {
-        Contract c = new Contract(TestKeys.privateKey(0));
-        c.seal();
-        addToAllLedgers(c, ItemState.DECLINED);
-
-        node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
-
-//        LogPrinter.showDebug(true);
-        node.resync(c.getId());
-
-        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 2000).state);
-    }
-
-    @Test
-    public void resyncOther() throws Exception {
-
-//        LogPrinter.showDebug(true);
-        Contract c = new Contract(TestKeys.privateKey(0));
-        c.seal();
-        addToAllLedgers(c, ItemState.PENDING_POSITIVE);
-
-        node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
-
-        node.resync(c.getId());
-        assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
-
-        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
-    }
-
-    @Test
-    public void resyncWithTimeout() throws Exception {
-
-//        LogPrinter.showDebug(true);
-
-        Contract c = new Contract(TestKeys.privateKey(0));
-        c.seal();
-        addToAllLedgers(c, ItemState.APPROVED);
-
-        Duration wasDuration = config.getMaxResyncTime();
-        config.setMaxResyncTime(Duration.ofMillis(2000));
-
-        for (int i = 0; i < NODES/2; i++) {
-            ((TestEmulatedNetwork)network).switchOffNodeTestMode(nodes.get(NODES-i-1));
-        }
-
-        node.getLedger().getRecord(c.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
-
-        node.resync(c.getId());
-        assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
-
-        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 5000).state);
-
-        config.setMaxResyncTime(wasDuration);
-
-        ((TestEmulatedNetwork)network).switchOnAllNodesTestMode();
-    }
-
-    @Test
-    public void resyncComplex() throws Exception {
-
-//        LogPrinter.showDebug(true);
-
-        int numSubContracts = 5;
-        List<Contract> subContracts = new ArrayList<>();
-        for (int i = 0; i < numSubContracts; i++) {
-            Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-            c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            assertTrue(c.check());
-            c.seal();
-
-            if(i < config.getKnownSubContractsToResync())
-                addToAllLedgers(c, ItemState.APPROVED);
-            else
-                addToAllLedgers(c, ItemState.APPROVED, node);
-
-            subContracts.add(c);
-        }
-
-        for (int i = 0; i < numSubContracts; i++) {
-            ItemResult r = node.checkItem(subContracts.get(i).getId());
-            System.out.println("Contract: " + i + " state: " + r.state);
-        }
-
-        Contract contract = new Contract(TestKeys.privateKey(0));
-        contract.seal();
-
-        for (int i = 0; i < numSubContracts; i++) {
-            contract.addRevokingItems(subContracts.get(i));
-        }
-        addToAllLedgers(contract, ItemState.PENDING_POSITIVE);
-
-        node.getLedger().getRecord(contract.getId()).destroy();
-        assertEquals(ItemState.UNDEFINED, node.checkItem(contract.getId()).state);
-
-        node.resync(contract.getId());
-        assertEquals(ItemState.PENDING, node.checkItem(contract.getId()).state);
-
-        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 2000).state);
-    }
-
-    private void addToAllLedgers(Contract c, ItemState state) {
-        addToAllLedgers(c, state, null);
-    }
-
-    private void addToAllLedgers(Contract c, ItemState state, Node exceptNode) {
-        for( Node n: nodes ) {
-            if(n != exceptNode) {
-                n.getLedger().findOrCreate(c.getId()).setState(state).save();
-            }
-        }
-    }
-
     //    @Test
 //    public void checkSergeychCase() throws Exception {
 //        String transactionName = "./src/test_contracts/transaction/b8f8a512-8c45-4744-be4e-d6788729b2a7.transaction";
@@ -421,66 +520,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 //            assertEquals(ItemState.APPROVED, itemResult.state);
 //        }
 //    }
-
-    private void addDetailsToAllLedgers(Contract contract) {
-        HashId id;
-        StateRecord orCreate;
-        for (Approvable c : contract.getRevokingItems()) {
-            id = c.getId();
-            for (Node nodeS : nodes) {
-                orCreate = nodeS.getLedger().findOrCreate(id);
-                orCreate.setState(ItemState.APPROVED).save();
-            }
-        }
-
-        destroyFromAllNodesExistingNew(contract);
-
-        destroyCurrentFromAllNodesIfExists(contract);
-    }
-
-    private void destroyFromAllNodesExistingNew(Contract c50_1) {
-        StateRecord orCreate;
-        for (Approvable c : c50_1.getNewItems()) {
-            for (Node nodeS : nodes) {
-                orCreate = nodeS.getLedger().getRecord(c.getId());
-                if (orCreate != null)
-                    orCreate.destroy();
-            }
-        }
-    }
-
-
-
-    @Test
-    public void badNewDocumentsPreventAccepting() throws Exception {
-        TestItem main = new TestItem(true);
-        TestItem new1 = new TestItem(true);
-        TestItem new2 = new TestItem(true);
-
-        // and now we run the day for teh output document:
-        node.registerItem(new2);
-
-        main.addNewItems(new1, new2);
-
-        assertEquals(2, main.getNewItems().size());
-
-        @NonNull ItemResult item = node.checkItem(main.getId());
-        assertEquals(ItemState.UNDEFINED, item.state);
-
-        node.registerItem(main);
-
-        ItemResult itemResult = node.waitItem(main.getId(), 2000);
-        assertEquals(ItemState.DECLINED, itemResult.state);
-
-        @NonNull ItemResult itemNew1 = node.waitItem(new1.getId(), 2000);
-        assertEquals(ItemState.UNDEFINED, itemNew1.state);
-
-        // and this one was created before
-        @NonNull ItemResult itemNew2 = node.waitItem(new2.getId(), 2000);
-        assertEquals(ItemState.APPROVED, itemNew2.state);
-
-        LogPrinter.showDebug(false);
-    }
 
 
 
@@ -541,49 +580,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
 
 
-    @Test
-    public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
-
-//        LogPrinter.showDebug(true);
-        // todo: check LOCKED situation
-
-        for (ItemState badState : Arrays.asList(
-                ItemState.PENDING, ItemState.PENDING_POSITIVE, ItemState.PENDING_NEGATIVE, ItemState.UNDEFINED,
-                ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
-                ) {
-
-            System.out.println("--------state " + badState + " ---------");
-
-            TestItem main = new TestItem(true);
-
-            StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
-            existing1.setState(ItemState.APPROVED).save();
-            // but second is not good
-            StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
-            existing2.setState(badState).save();
-
-            main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
-
-            node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 3000);
-            assertEquals(ItemState.DECLINED, itemResult.state);
-
-            // and the references are intact
-            while(ItemState.APPROVED != existing1.getState()) {
-                Thread.sleep(500);
-                System.out.println(existing1.reload().getState());
-            }
-            assertEquals(ItemState.APPROVED, existing1.getState());
-
-            while (badState != existing2.getState()) {
-                Thread.sleep(500);
-                System.out.println(existing2.reload().getState());
-            }
-            assertEquals(badState, existing2.getState());
-
-        }
-    }
-
 //    @Test
 //    public void itemsCachedThenPurged() throws Exception {
 //        config.setMaxElectionsTime(Duration.ofMillis(100));
@@ -600,173 +596,6 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 //        assertEquals(ItemState.UNDEFINED, node.checkItem(main.getId()).state);
 //    }
 
-
-
-    @Test
-    public void createRealContract() throws Exception {
-        Contract c = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
-        c.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c.check());
-        c.seal();
-
-        node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 2500);
-        assertEquals(ItemState.APPROVED, itemResult.state);
-    }
-
-
-
-    @Test
-    public void checkRegisterContractOnLostPacketsNetwork() throws Exception {
-
-        ((TestEmulatedNetwork)network).setTest_nodeBeingOffedChance(75);
-
-        AsyncEvent ae = new AsyncEvent();
-
-        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        contract.seal();
-
-        addDetailsToAllLedgers(contract);
-
-        contract.check();
-        contract.traceErrors();
-        assertTrue(contract.isOk());
-
-        node.registerItem(contract);
-
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-
-                System.out.println("-----------nodes state--------------");
-
-                boolean all_is_approved = true;
-                for (Node n : nodes) {
-                    ItemResult r = n.checkItem(contract.getId());
-                    System.out.println("Node: " + n.toString() + " state: " + r.state);
-                    if(r.state != ItemState.APPROVED) {
-                        all_is_approved = false;
-                    }
-                }
-
-                if(all_is_approved) ae.fire();
-            }
-        }, 0, 1000);
-
-        boolean time_is_up = false;
-        try {
-            ae.await(30000);
-        } catch (TimeoutException e) {
-            time_is_up = true;
-            System.out.println("time is up");
-        }
-
-        timer.cancel();
-
-        ((TestEmulatedNetwork)network).setTest_nodeBeingOffedChance(0);
-
-        assertFalse(time_is_up);
-    }
-
-    @Test
-    public void checkRegisterContractOnTemporaryOffedNetwork() throws Exception {
-
-        // switch off half network
-        for (int i = 0; i < NODES/2; i++) {
-            ((TestEmulatedNetwork)network).switchOffNodeTestMode(nodes.get(NODES-i-1));
-        }
-
-        AsyncEvent ae = new AsyncEvent();
-
-        Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-        contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        contract.seal();
-
-        addDetailsToAllLedgers(contract);
-
-        contract.check();
-        contract.traceErrors();
-        assertTrue(contract.isOk());
-
-//        LogPrinter.showDebug(true);
-
-        node.registerItem(contract);
-
-        Timer timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-
-                System.out.println("-----------nodes state--------------");
-
-                boolean all_is_approved = true;
-                for (Node n : nodes) {
-                    ItemResult r = n.checkItem(contract.getId());
-                    System.out.println("Node: " + n.toString() + " state: " + r.state);
-                    if(r.state != ItemState.APPROVED) {
-                        all_is_approved = false;
-                    }
-                }
-                assertEquals(all_is_approved, false);
-            }
-        }, 0, 1000);
-
-        // wait and now switch on full network
-        try {
-            ae.await(5000);
-        } catch (TimeoutException e) {
-            timer.cancel();
-            System.out.println("switching on network");
-            ((TestEmulatedNetwork)network).switchOnAllNodesTestMode();
-        }
-
-        Timer timer2 = new Timer();
-        timer2.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-
-                System.out.println("-----------nodes state--------------");
-
-                boolean all_is_approved = true;
-                for (Node n : nodes) {
-                    ItemResult r = n.checkItem(contract.getId());
-                    System.out.println("Node: " + n.toString() + " state: " + r.state);
-
-                    if(r.state != ItemState.APPROVED) {
-                        all_is_approved = false;
-                    }
-
-                    if(all_is_approved) {
-                        ae.fire();
-                    }
-                }
-            }
-        }, 0, 1000);
-
-        try {
-            ae.await(5000);
-        } catch (TimeoutException e) {
-            System.out.println("time is up");
-        }
-
-        timer2.cancel();
-
-        boolean all_is_approved = true;
-        for (Node n : nodes) {
-            ItemResult r = n.checkItem(contract.getId());
-            if(r.state != ItemState.APPROVED) {
-                all_is_approved = false;
-            }
-        }
-
-        LogPrinter.showDebug(false);
-
-        assertEquals(all_is_approved, true);
-
-
-    }
 
 
 }

@@ -16,7 +16,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class TransactionContractTest extends ContractTestBase {
+public class ContractsServiceTest extends ContractTestBase {
 
     @Test
     public void badRevoke() throws Exception {
@@ -62,7 +62,7 @@ public class TransactionContractTest extends ContractTestBase {
         delorean.traceErrors();
 
         Contract.Transactional transactional = delorean.createTransactionalSection();
-        ReferenceModel reference = new ReferenceModel();
+        Reference reference = new Reference();
 //        reference.setName("transactional_example");
         transactional.addReference(reference);
         Contract deloreanTransactional = delorean.createRevision(transactional);
