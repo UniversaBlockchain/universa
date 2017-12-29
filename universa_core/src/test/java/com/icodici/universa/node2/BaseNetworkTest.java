@@ -522,7 +522,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 15000)
+    @Test(timeout = 25000)
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -571,6 +571,10 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void registerDeepTree() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
 
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
@@ -601,6 +605,10 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void registerDeepTreeWithRevoke() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
 
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
@@ -613,10 +621,10 @@ public class BaseNetworkTest extends TestCase {
         TestItem revoke2 = new TestItem(true);
 
         node.registerItem(revoke1);
-        assertEquals(ItemState.APPROVED, node.waitItem(revoke1.getId(), 2000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(revoke1.getId(), 5000).state);
 
         node.registerItem(revoke2);
-        assertEquals(ItemState.APPROVED, node.waitItem(revoke2.getId(), 2000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(revoke2.getId(), 5000).state);
 
         new1_1.addRevokingItems(revoke1);
         new2_1.addRevokingItems(revoke2);
@@ -625,7 +633,7 @@ public class BaseNetworkTest extends TestCase {
         main.addNewItems(new1, new2);
 
         node.registerItem(main);
-        ItemResult result = node.waitItem(main.getId(), 2000);
+        ItemResult result = node.waitItem(main.getId(), 5000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.waitItem(new1.getId(), 2000);
@@ -646,6 +654,10 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void declineDeepTreeBadNew() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
 
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
@@ -676,6 +688,10 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void declineDeepTreeBadRevoke() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
 
         TestItem main = new TestItem(true);
         TestItem new1 = new TestItem(true);
