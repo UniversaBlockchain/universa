@@ -420,7 +420,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             boolean rm_check = false;
             for (int j = 0; j < neighbourContracts.size(); ++j) {
                 Contract neighbour = neighbourContracts.get(j);
-                if ((rm.transactional_id != null && rm.transactional_id.equals(neighbour.transactional.id)) || (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
+                if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
+                        (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
                     if (checkOneReference(rm, neighbour)) {
                         rm_check = true;
                     }

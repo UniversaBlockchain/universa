@@ -790,7 +790,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
 
         // 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, 30, "amount", key);
+        Contract c1 = ContractsService.createSplit(c, 30, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("70", c1.getStateData().get("amount").toString());
         assertEquals("30", c2.getStateData().get("amount").toString());
@@ -822,7 +822,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
 
         // 550
-        Contract c1 = ContractsService.createSplit(c, 550, "amount", key);
+        Contract c1 = ContractsService.createSplit(c, 550, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("-450", c1.getStateData().get("amount").toString());
         assertEquals("550", c2.getStateData().get("amount").toString());
@@ -855,7 +855,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(100, c.getStateData().get("amount"));
 
         // split 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, 30, "amount", key);
+        Contract c1 = ContractsService.createSplit(c, 30, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("70", c1.getStateData().get("amount").toString());
         assertEquals("30", c2.getStateData().get("amount").toString());
@@ -902,7 +902,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(100, c.getStateData().get("amount"));
 
         // split 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, 30, "amount", key);
+        Contract c1 = ContractsService.createSplit(c, 30, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         registerAndCheckApproved(c1);
         assertEquals("70", c1.getStateData().get("amount").toString());
@@ -1003,7 +1003,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract.setTestQuantaLimit(60);
         // 30
-        Contract c1 = ContractsService.createSplit(c, 30, "amount", key);
+        Contract c1 = ContractsService.createSplit(c, 30, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
 
         assertEquals("70", c1.getStateData().get("amount").toString());
@@ -2023,6 +2023,170 @@ public class BaseNetworkTest extends TestCase {
         newLamborghini.traceErrors();
         registerAndCheckDeclined(newLamborghini);
 
+    }
+
+
+    @Test
+    public void swapSplitJoinAllGood() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        for (PrivateKey pk : martyPrivateKeys) {
+            martyPublicKeys.add(pk.getPublicKey());
+        }
+
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract martyCoins = Contract.fromDslFile(ROOT_PATH + "martyCoins.yml");
+        martyCoins.addSignerKey(martyPrivateKeys.iterator().next());
+        martyCoins.seal();
+        martyCoins.check();
+        martyCoins.traceErrors();
+        registerAndCheckApproved(martyCoins);
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+        registerAndCheckApproved(stepaCoins);
+
+        System.out.println("--- coins created ---");
+
+
+        // 100 - 30 = 70
+        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, 30, "amount", martyPrivateKeys);
+        Contract martyCoinsSplitToStepa = martyCoinsSplit.getNew().get(0);
+        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, 30, "amount", stepaPrivateKeys);
+        Contract stepaCoinsSplitToMarty = stepaCoinsSplit.getNew().get(0);
+
+        martyCoinsSplitToStepa.check();
+        martyCoinsSplitToStepa.traceErrors();
+        stepaCoinsSplitToMarty.check();
+        stepaCoinsSplitToMarty.traceErrors();
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+        swapContract = ContractsService.startSwap(martyCoinsSplitToStepa, stepaCoinsSplitToMarty, martyPrivateKeys, stepaPublicKeys, false);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+//        swapContract.getNewItems().clear();
+        martyCoinsSplit.getNewItems().clear();
+        stepaCoinsSplit.getNewItems().clear();
+        swapContract.addNewItems(martyCoinsSplit, stepaCoinsSplit);
+        swapContract.seal();
+        swapContract.addSignatureToSeal(martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+        registerAndCheckApproved(swapContract);
+
+
+        assertEquals(ItemState.APPROVED, node.waitItem(martyCoinsSplit.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(stepaCoinsSplit.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(martyCoinsSplitToStepa.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(stepaCoinsSplitToMarty.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(martyCoins.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(stepaCoins.getId(), 5000).state);
+    }
+
+
+    @Test
+    public void swapSplitJoinMissingSign() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        for (PrivateKey pk : martyPrivateKeys) {
+            martyPublicKeys.add(pk.getPublicKey());
+        }
+
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract martyCoins = Contract.fromDslFile(ROOT_PATH + "martyCoins.yml");
+        martyCoins.addSignerKey(martyPrivateKeys.iterator().next());
+        martyCoins.seal();
+        martyCoins.check();
+        martyCoins.traceErrors();
+        registerAndCheckApproved(martyCoins);
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+        registerAndCheckApproved(stepaCoins);
+
+        System.out.println("--- coins created ---");
+
+
+        // 100 - 30 = 70
+        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, 30, "amount", martyPrivateKeys);
+        // remove sign!!
+        martyCoinsSplit.getKeysToSignWith().clear();
+        martyCoinsSplit.removeAllSignatures();
+        martyCoinsSplit.seal();
+        Contract martyCoinsSplitToStepa = martyCoinsSplit.getNew().get(0);
+        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, 30, "amount", stepaPrivateKeys);
+        Contract stepaCoinsSplitToMarty = stepaCoinsSplit.getNew().get(0);
+
+        martyCoinsSplit.check();
+        martyCoinsSplit.traceErrors();
+        martyCoinsSplitToStepa.check();
+        martyCoinsSplitToStepa.traceErrors();
+        stepaCoinsSplitToMarty.check();
+        stepaCoinsSplitToMarty.traceErrors();
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+        swapContract = ContractsService.startSwap(martyCoinsSplitToStepa, stepaCoinsSplitToMarty, martyPrivateKeys, stepaPublicKeys, false);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+//        swapContract.getNewItems().clear();
+        martyCoinsSplit.getNewItems().clear();
+        stepaCoinsSplit.getNewItems().clear();
+        swapContract.addNewItems(martyCoinsSplit, stepaCoinsSplit);
+        swapContract.seal();
+        swapContract.addSignatureToSeal(martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+        registerAndCheckDeclined(swapContract);
+
+
+        assertEquals(ItemState.UNDEFINED, node.waitItem(martyCoinsSplit.getId(), 5000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(stepaCoinsSplit.getId(), 5000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(martyCoinsSplitToStepa.getId(), 5000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(stepaCoinsSplitToMarty.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(martyCoins.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(stepaCoins.getId(), 5000).state);
     }
 
 

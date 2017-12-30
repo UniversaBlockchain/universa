@@ -69,11 +69,12 @@ public class ContractsService {
      * @param keys - keys from owner of c
      * @return
      */
-    public static Contract createSplit(Contract c, long amount, String fieldName, PrivateKey... keys) {
+    public static Contract createSplit(Contract c, long amount, String fieldName, Set<PrivateKey> keys) {
         Contract splitFrom = c.createRevision();
         Contract splitTo = splitFrom.splitValue(fieldName, new Decimal(amount));
-        for (int i = 0; i < keys.length; i++) {
-            splitTo.addSignerKey(keys[i]);
+
+        for (PrivateKey key : keys) {
+            splitTo.addSignerKey(key);
         }
         splitTo.seal();
         splitFrom.seal();
@@ -108,6 +109,11 @@ public class ContractsService {
         return joinTo;
     }
 
+
+    public static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
+        return startSwap(contract1, contract2, fromKeys, toKeys, true);
+    }
+
     /**
      * First step of swap procedure. Calls from swapper1 part.
      *
@@ -115,13 +121,14 @@ public class ContractsService {
      * added transactional sections with references to each other with asks two signs of swappers
      * and sign contract that was own for calling part.
      *
-     * @param contract1 - own for calling part (swapper1) existing contract
-     * @param contract2 - foreign for calling part (swapper2) existing contract
+     * @param contract1 - own for calling part (swapper1) existing or new revision of contract
+     * @param contract2 - foreign for calling part (swapper2) existing or new revision contract
      * @param fromKeys - own for calling part (swapper1) private keys
      * @param toKeys - foreign for calling part (swapper2) public keys
+     * @param createNewRevision - if true - create new revision of given contracts. If false - use them as new revisions.
      * @return swap contract including new revisions of old contracts swapping between
      */
-    public static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
+    public static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
         Set<PublicKey> fromPublicKeys = new HashSet<>();
         for (PrivateKey pk : fromKeys) {
@@ -150,11 +157,21 @@ public class ContractsService {
 
         // create new revisions of contracts and create transactional sections in it
 
-        Contract newContract1 = contract1.createRevision(fromKeys);
+        Contract newContract1;
+        if(createNewRevision) {
+            newContract1 = contract1.createRevision(fromKeys);
+        } else {
+            newContract1 = contract1;
+        }
         Contract.Transactional transactional1 = newContract1.createTransactionalSection();
         transactional1.setId(HashId.createRandom().toBase64String());
 
-        Contract newContract2 = contract2.createRevision();
+        Contract newContract2;
+        if(createNewRevision) {
+            newContract2 = contract2.createRevision();
+        } else {
+            newContract2 = contract2;
+        }
         Contract.Transactional transactional2 = newContract2.createTransactionalSection();
         transactional2.setId(HashId.createRandom().toBase64String());
 
