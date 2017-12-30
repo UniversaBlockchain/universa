@@ -34,19 +34,22 @@ public class Reference implements BiSerializable {
 
         this.transactional_id = data.getString("transactional_id", "");
 
-        String str_contract_id = data.getString("contract_id", null);
-        if (str_contract_id != null)
-            this.contract_id = HashId.withDigest(Bytes.fromHex(str_contract_id).getData());
-        else
-            this.contract_id = null;
+//        String str_contract_id = data.getString("contract_id", null);
+//        if (str_contract_id != null)
+//            this.contract_id = HashId.withDigest(Bytes.fromHex(str_contract_id).getData());
+//        else
+//            this.contract_id = null;
+//
+//        this.required = data.getBoolean("required", true);
+//
+//        String str_origin = data.getString("origin", null);
+//        if (str_origin != null)
+//            this.origin = HashId.withDigest(Bytes.fromHex(str_origin).getData());
+//        else
+//            this.origin = null;
 
-        this.required = data.getBoolean("required", true);
-
-        String str_origin = data.getString("origin", null);
-        if (str_origin != null)
-            this.origin = HashId.withDigest(Bytes.fromHex(str_origin).getData());
-        else
-            this.origin = null;
+        this.contract_id = deserializer.deserialize(data.get("contract_id"));
+        this.origin = deserializer.deserialize(data.get("origin"));
 
         this.signed_by = deserializer.deserializeCollection(data.getList("signed_by", new ArrayList<>()));
 
@@ -71,11 +74,16 @@ public class Reference implements BiSerializable {
         data.set("name", s.serialize(this.name));
         data.set("type", s.serialize(this.type));
         data.set("transactional_id", s.serialize(this.transactional_id));
+//        if (this.contract_id != null)
+//            data.set("contract_id", s.serialize(Bytes.toHex(this.contract_id.getDigest())));
+//        data.set("required", s.serialize(this.required));
+//        if (this.origin != null)
+//            data.set("origin", s.serialize(Bytes.toHex(this.origin.getDigest())));
         if (this.contract_id != null)
-            data.set("contract_id", s.serialize(Bytes.toHex(this.contract_id.getDigest())));
+            data.set("contract_id", s.serialize(this.contract_id));
         data.set("required", s.serialize(this.required));
         if (this.origin != null)
-            data.set("origin", s.serialize(Bytes.toHex(this.origin.getDigest())));
+            data.set("origin", s.serialize(this.origin));
         data.set("signed_by", s.serialize(signed_by));
 
         data.set("roles", s.serialize(this.roles));

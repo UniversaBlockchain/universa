@@ -2110,6 +2110,24 @@ public class CLIMainTest {
                 "-pretty");
     }
 
+    @Test
+    public void failedTransaction() throws Exception {
+        Contract c = CLIMain.loadContract(rootPath + "failed.transaction", true);
+
+        c.check();
+        c.traceErrors();
+
+        System.out.println("c " + " isok=" + c.isOk() + " " + c.getNew().size() + " " + c.getRevoking().size() + " " + c.getReferencedItems().size());
+        Contract cNew1 = c.getNew().get(0);
+        Contract cNew2 = c.getNew().get(1);
+        System.out.println("cNew1 " + cNew1.getNew().size() + " " + cNew1.getRevoking().size() + " " + cNew1.getReferencedItems().size());
+        System.out.println("cNew2 " + cNew2.getNew().size() + " " + cNew2.getRevoking().size() + " " + cNew2.getReferencedItems().size());
+
+        CLIMain.exportContract(cNew1, rootPath + "cNew1.json", "json", true);
+        CLIMain.exportContract(cNew2, rootPath + "cNew2.json", "json", true);
+
+    }
+
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
         List<Contract> contracts = new ArrayList<>();
 

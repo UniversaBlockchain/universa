@@ -1367,7 +1367,7 @@ public class CLIMain {
      * @param format     - format of file to export to. Can be xml, yaml or json.
      * @param jsonPretty - if true, json will be pretty formated.
      */
-    private static void exportContract(Contract contract, String fileName, String format, Boolean jsonPretty) throws IOException {
+    public static void exportContract(Contract contract, String fileName, String format, Boolean jsonPretty) throws IOException {
 
         format = format.toLowerCase();
         report("export format: " + format);
