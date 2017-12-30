@@ -20,6 +20,7 @@ import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.Duration;
@@ -36,6 +37,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 
+@Ignore("It is base test class for network tests, shouldn't be run")
 public class BaseNetworkTest extends TestCase {
 
     protected static final String ROOT_PATH = "./src/test_contracts/";

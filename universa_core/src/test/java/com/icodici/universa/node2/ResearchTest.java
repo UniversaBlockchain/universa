@@ -43,6 +43,7 @@ import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 
 
+@Ignore("test using with research purposes only, should be omitted")
 public class ResearchTest extends BaseNetworkTest {
 
     private static TestLocalNetwork network_s = null;
