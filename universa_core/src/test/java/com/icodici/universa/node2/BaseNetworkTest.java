@@ -2083,9 +2083,7 @@ public class BaseNetworkTest extends TestCase {
         ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
         ContractsService.finishSwap(swapContract, martyPrivateKeys);
 
-//        swapContract.getNewItems().clear();
-        martyCoinsSplit.getNewItems().clear();
-        stepaCoinsSplit.getNewItems().clear();
+        swapContract.getNewItems().clear();
         swapContract.addNewItems(martyCoinsSplit, stepaCoinsSplit);
         swapContract.seal();
         swapContract.addSignatureToSeal(martyPrivateKeys);
@@ -2168,9 +2166,7 @@ public class BaseNetworkTest extends TestCase {
         ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
         ContractsService.finishSwap(swapContract, martyPrivateKeys);
 
-//        swapContract.getNewItems().clear();
-        martyCoinsSplit.getNewItems().clear();
-        stepaCoinsSplit.getNewItems().clear();
+        swapContract.getNewItems().clear();
         swapContract.addNewItems(martyCoinsSplit, stepaCoinsSplit);
         swapContract.seal();
         swapContract.addSignatureToSeal(martyPrivateKeys);

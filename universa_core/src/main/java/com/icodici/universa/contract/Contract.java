@@ -334,18 +334,34 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return (Set) newItems;
     }
 
+    public List<Contract> getAllContractInTree() {
+
+        List<Contract> contracts = new ArrayList<>();
+        contracts.add(this);
+
+        for (Contract c : getNew()) {
+            contracts.addAll(c.getAllContractInTree());
+        }
+
+        for (Contract c : getRevoking()) {
+            contracts.addAll(c.getAllContractInTree());
+        }
+
+        return contracts;
+    }
+
     @Override
     public boolean check(String prefix) throws Quantiser.QuantiserException {
         return check(prefix, null);
     }
 
-    private boolean check(String prefix, ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+    private boolean check(String prefix, List<Contract> contractsTree) throws Quantiser.QuantiserException {
 
         // now we looking for references only in one level of tree - among neighbours
         // but for main contract (not from new items) we looking for
         // references among new items
-        if (neighbourContracts == null)
-            neighbourContracts = new ArrayList<>(newItems);
+        if (contractsTree == null)
+            contractsTree = getAllContractInTree();
 
         quantiser.reset(quantiser.getQuantaLimit());
         // Add key verify quanta again (we just reset quantiser)
@@ -389,7 +405,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         int index = 0;
         for (Contract c : newItems) {
             String p = prefix + "new[" + index + "].";
-            checkSubItemQuantized(c, p, new ArrayList<>(newItems));
+            checkSubItemQuantized(c, p, contractsTree);
             if (!c.isOk()) {
                 c.errors.forEach(e -> {
                     String name = e.getObjectName();
@@ -401,12 +417,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         checkDupesCreation();
 
-        checkReferencedItems(neighbourContracts);
+        checkReferencedItems(contractsTree);
 
         return errors.size() == 0;
     }
 
-    private boolean checkReferencedItems(ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+    private boolean checkReferencedItems(List<Contract> neighbourContracts) throws Quantiser.QuantiserException {
 
         if (getReferencedItems().size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
@@ -1580,7 +1596,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
 
-    protected void checkSubItemQuantized(Contract contract, String prefix, ArrayList<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+    protected void checkSubItemQuantized(Contract contract, String prefix, List<Contract> neighbourContracts) throws Quantiser.QuantiserException {
         // Add checks from subItem quanta
         contract.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
         contract.check(prefix, neighbourContracts);
