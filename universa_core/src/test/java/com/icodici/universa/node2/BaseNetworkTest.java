@@ -366,7 +366,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 35000)
     public void badReferencesDeclineListStates() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -379,7 +379,7 @@ public class BaseNetworkTest extends TestCase {
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
                 ) {
 
-            Thread.sleep(100);
+            Thread.sleep(300);
 
             System.out.println("-------------- check bad state " + badState + " isConsensusFind(" + badState.isConsensusFound() + ") --------");
 
@@ -394,6 +394,8 @@ public class BaseNetworkTest extends TestCase {
             existing2.setState(badState).save();
 
             main.addReferencedItems(existing1.getId(), existing2.getId());
+
+            Thread.sleep(300);
 
             // check that main is fully approved
             node.registerItem(main);
@@ -524,7 +526,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 25000)
+    @Test(timeout = 35000)
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -540,7 +542,7 @@ public class BaseNetworkTest extends TestCase {
 
             System.out.println("-------------- check bad state " + badState + " isConsensusFind(" + badState.isConsensusFound() + ") --------");
 
-            Thread.sleep(200);
+            Thread.sleep(300);
             TestItem main = new TestItem(true);
             StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
             existing1.setState(ItemState.APPROVED).save();
@@ -548,9 +550,9 @@ public class BaseNetworkTest extends TestCase {
             StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
             existing2.setState(badState).save();
 
-            Thread.sleep(200);
-
             main.addRevokingItems(new FakeItem(existing1), new FakeItem(existing2));
+
+            Thread.sleep(300);
 
             node.registerItem(main);
             ItemResult itemResult = node.waitItem(main.getId(), 5000);
