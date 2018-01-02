@@ -9,6 +9,7 @@ package com.icodici.universa.client;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
@@ -2108,6 +2109,97 @@ public class CLIMainTest {
                 rootPath + "newLamborghini.unicon",
                 rootPath + "swapContract.unicon",
                 "-pretty");
+    }
+
+
+
+//    @Test
+    public void swapManyContractsViaTransactionAllGood() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        Contract delorean1 = Contract.fromDslFile(rootPath + "DeLoreanOwnership.yml");
+        Contract delorean2 = Contract.fromDslFile(rootPath + "DeLoreanOwnership.yml");
+        Contract delorean3 = Contract.fromDslFile(rootPath + "DeLoreanOwnership.yml");
+        List<Contract> deloreans = new ArrayList<>();
+        deloreans.add(delorean1);
+        deloreans.add(delorean2);
+        deloreans.add(delorean3);
+        Contract lamborghini1 = Contract.fromDslFile(rootPath + "LamborghiniOwnership.yml");
+        Contract lamborghini2 = Contract.fromDslFile(rootPath + "LamborghiniOwnership.yml");
+        List<Contract> lamborghinis = new ArrayList<>();
+        lamborghinis.add(lamborghini1);
+        lamborghinis.add(lamborghini2);
+
+        // ----- prepare contracts -----------
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey")));
+        for (PrivateKey pk : martyPrivateKeys) {
+            martyPublicKeys.add(pk.getPublicKey());
+        }
+
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+
+        int i = 0;
+        for(Contract d : deloreans) {
+            i++;
+            d.addSignerKey(manufacturePrivateKey);
+            d.seal();
+            CLIMain.saveContract(d, rootPath + "delorean" + i + ".unicon");
+            callMain("--register",
+                    rootPath + "delorean" + i + ".unicon",
+                    "-wait", "5000");
+        }
+
+        i = 0;
+        for(Contract l : lamborghinis) {
+            i++;
+            l.addSignerKey(manufacturePrivateKey);
+            l.seal();
+            CLIMain.saveContract(l, rootPath + "lamborghini" + i + ".unicon");
+            callMain("--register",
+                    rootPath + "lamborghini" + i + ".unicon",
+                    "-wait", "5000");
+        }
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        swapContract = ContractsService.startSwap(deloreans, lamborghinis, martyPrivateKeys, stepaPublicKeys);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk() + " num new contracts: " + swapContract.getNewItems().size());
+
+        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true);
+        callMain("--register",
+                rootPath + "swapContract.unicon",
+                "-wait", "5000");
+
+
+        i = 0;
+        for (Contract c : swapContract.getNew()) {
+            i++;
+            CLIMain.saveContract(c, rootPath + "new" + i + ".unicon");
+
+            callMain("-e",
+                    rootPath + "new" + i + ".unicon",
+                    "-pretty");
+        }
+
+//        checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
     }
 
     @Test

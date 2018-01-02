@@ -142,8 +142,8 @@ public class TransactionPack implements BiSerializable {
      * @param contract
      */
     protected void putReference(Contract contract) {
-        if (!contract.isOk())
-            throw new IllegalArgumentException("referenced contract has errors");
+//        if (!contract.isOk())
+//            throw new IllegalArgumentException("referenced contract has errors");
         references.put(contract.getId(), contract);
     }
 

@@ -1265,6 +1265,97 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test
+    public void swapManyContractsViaTransactionAllGood() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        Contract delorean1 = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Contract delorean2 = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Contract delorean3 = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        List<Contract> deloreans = new ArrayList<>();
+        deloreans.add(delorean1);
+        deloreans.add(delorean2);
+        deloreans.add(delorean3);
+        Contract lamborghini1 = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        Contract lamborghini2 = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+        List<Contract> lamborghinis = new ArrayList<>();
+        lamborghinis.add(lamborghini1);
+        lamborghinis.add(lamborghini2);
+
+        // ----- prepare contracts -----------
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        for (PrivateKey pk : martyPrivateKeys) {
+            martyPublicKeys.add(pk.getPublicKey());
+        }
+
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        for(Contract d : deloreans) {
+            d.addSignerKey(manufacturePrivateKey);
+            d.seal();
+            registerAndCheckApproved(d);
+        }
+
+        for(Contract l : lamborghinis) {
+            l.addSignerKey(manufacturePrivateKey);
+            l.seal();
+            registerAndCheckApproved(l);
+        }
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        swapContract = ContractsService.startSwap(deloreans, lamborghinis, martyPrivateKeys, stepaPublicKeys);
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign Stepa's new contract and send to approving
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk() + " num new contracts: " + swapContract.getNewItems().size());
+        registerAndCheckApproved(swapContract);
+
+        for(Contract d : deloreans) {
+            assertEquals(ItemState.REVOKED, node.waitItem(d.getId(), 5000).state);
+            System.out.println("delorean is " + node.waitItem(d.getId(), 5000).state);
+        }
+        for(Contract l : lamborghinis) {
+            assertEquals(ItemState.REVOKED, node.waitItem(l.getId(), 5000).state);
+            System.out.println("lamborghini is " + node.waitItem(l.getId(), 5000).state);
+        }
+
+        for(Approvable a : swapContract.getNewItems()) {
+            assertEquals(ItemState.APPROVED, node.waitItem(a.getId(), 5000).state);
+            System.out.println("new is " + node.waitItem(a.getId(), 5000).state);
+        }
+
+//        checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
+    }
+
+
+    @Test
     public void swapContractsViaTransactionOneNotSign1() throws Exception {
         if(node == null) {
             System.out.println("network not inited");

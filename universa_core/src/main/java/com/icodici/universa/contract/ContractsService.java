@@ -114,6 +114,21 @@ public class ContractsService {
         return startSwap(contract1, contract2, fromKeys, toKeys, true);
     }
 
+
+    public static Contract startSwap(List<Contract> contracts1, List<Contract> contracts2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
+        return startSwap(contracts1, contracts2, fromKeys, toKeys, true);
+    }
+
+    public static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
+        List<Contract> contracts1 = new ArrayList<>();
+        contracts1.add(contract1);
+
+        List<Contract> contracts2 = new ArrayList<>();
+        contracts2.add(contract2);
+
+        return startSwap(contracts1, contracts2, fromKeys, toKeys, createNewRevision);
+    }
+
     /**
      * First step of swap procedure. Calls from swapper1 part.
      *
@@ -121,14 +136,14 @@ public class ContractsService {
      * added transactional sections with references to each other with asks two signs of swappers
      * and sign contract that was own for calling part.
      *
-     * @param contract1 - own for calling part (swapper1) existing or new revision of contract
-     * @param contract2 - foreign for calling part (swapper2) existing or new revision contract
+     * @param contracts1 - own for calling part (swapper1) existing or new revision of contract
+     * @param contracts2 - foreign for calling part (swapper2) existing or new revision contract
      * @param fromKeys - own for calling part (swapper1) private keys
      * @param toKeys - foreign for calling part (swapper2) public keys
      * @param createNewRevision - if true - create new revision of given contracts. If false - use them as new revisions.
      * @return swap contract including new revisions of old contracts swapping between
      */
-    public static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
+    public static Contract startSwap(List<Contract> contracts1, List<Contract> contracts2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
         Set<PublicKey> fromPublicKeys = new HashSet<>();
         for (PrivateKey pk : fromKeys) {
@@ -157,23 +172,31 @@ public class ContractsService {
 
         // create new revisions of contracts and create transactional sections in it
 
-        Contract newContract1;
-        if(createNewRevision) {
-            newContract1 = contract1.createRevision(fromKeys);
-        } else {
-            newContract1 = contract1;
+        List<Contract> newContracts1 = new ArrayList<>();
+        for(Contract c : contracts1) {
+            Contract nc;
+            if(createNewRevision) {
+                nc = c.createRevision(fromKeys);
+            } else {
+                nc = c;
+            }
+            nc.createTransactionalSection();
+            nc.getTransactional().setId(HashId.createRandom().toBase64String());
+            newContracts1.add(nc);
         }
-        Contract.Transactional transactional1 = newContract1.createTransactionalSection();
-        transactional1.setId(HashId.createRandom().toBase64String());
 
-        Contract newContract2;
-        if(createNewRevision) {
-            newContract2 = contract2.createRevision();
-        } else {
-            newContract2 = contract2;
+        List<Contract> newContracts2 = new ArrayList<>();
+        for(Contract c : contracts2) {
+            Contract nc;
+            if(createNewRevision) {
+                nc = c.createRevision(fromKeys);
+            } else {
+                nc = c;
+            }
+            nc.createTransactionalSection();
+            nc.getTransactional().setId(HashId.createRandom().toBase64String());
+            newContracts2.add(nc);
         }
-        Contract.Transactional transactional2 = newContract2.createTransactionalSection();
-        transactional2.setId(HashId.createRandom().toBase64String());
 
 
         // prepare roles for references
@@ -197,38 +220,52 @@ public class ContractsService {
 
 
         // create references for contracts that point to each other and asks correct signs
-
-        Reference reference1 = new Reference();
-        reference1.transactional_id = transactional2.getId();
-        reference1.type = Reference.TYPE_TRANSACTIONAL;
-        reference1.required = true;
-        reference1.signed_by = new ArrayList<>();
-        reference1.signed_by.add(ownerFrom);
-        reference1.signed_by.add(creatorTo);
-
-        Reference reference2 = new Reference();
-        reference2.transactional_id = transactional1.getId();
-        reference2.type = Reference.TYPE_TRANSACTIONAL;
-        reference2.required = true;
-        reference2.signed_by = new ArrayList<>();
-        reference2.signed_by.add(ownerTo);
-        reference2.signed_by.add(creatorFrom);
-
         // and add this references to existing transactional section
-        transactional1.addReference(reference1);
-        transactional2.addReference(reference2);
+
+        for(Contract nc1 : newContracts1) {
+            for(Contract nc2 : newContracts2) {
+                Reference reference = new Reference();
+                reference.transactional_id = nc2.getTransactional().getId();
+                reference.type = Reference.TYPE_TRANSACTIONAL;
+                reference.required = true;
+                reference.signed_by = new ArrayList<>();
+                reference.signed_by.add(ownerFrom);
+                reference.signed_by.add(creatorTo);
+                nc1.getTransactional().addReference(reference);
+            }
+        }
+
+        for(Contract nc2 : newContracts2) {
+            for (Contract nc1 : newContracts1) {
+                Reference reference = new Reference();
+                reference.transactional_id = nc1.getTransactional().getId();
+                reference.type = Reference.TYPE_TRANSACTIONAL;
+                reference.required = true;
+                reference.signed_by = new ArrayList<>();
+                reference.signed_by.add(ownerTo);
+                reference.signed_by.add(creatorFrom);
+                nc2.getTransactional().addReference(reference);
+            }
+        }
 
 
         // swap owners in this contracts
-        newContract1.setOwnerKeys(toKeys);
-        newContract2.setOwnerKeys(fromPublicKeys);
-
-        newContract1.seal();
-        newContract2.seal();
+        for(Contract nc : newContracts1) {
+            nc.setOwnerKeys(toKeys);
+            nc.seal();
+        }
+        for(Contract nc : newContracts2) {
+            nc.setOwnerKeys(fromPublicKeys);
+            nc.seal();
+        }
 
         // finally on this step add created new revisions to main swap contract
-        swapContract.addNewItems(newContract1);
-        swapContract.addNewItems(newContract2);
+        for(Contract nc : newContracts1) {
+            swapContract.addNewItems(nc);
+        }
+        for(Contract nc : newContracts2) {
+            swapContract.addNewItems(nc);
+        }
         swapContract.seal();
 
         return swapContract;
@@ -257,13 +294,13 @@ public class ContractsService {
         List<Contract> swappingContracts = (List<Contract>) swapContract.getNew();
 
         // looking for contract that will be own and sign it
-        HashId contractHashId = null;
+        HashMap<String, HashId> contractHashId = new HashMap<>();
         for (Contract c : swappingContracts) {
             boolean willBeMine = c.getOwner().isAllowedForKeys(publicKeys);
 
             if(willBeMine) {
                 c.addSignatureToSeal(keys);
-                contractHashId = c.getId();
+                contractHashId.put(c.getTransactional().getId(), c.getId());
             }
         }
 
@@ -281,7 +318,7 @@ public class ContractsService {
 
                 if(c.getTransactional() != null && c.getTransactional().getReferences() != null) {
                     for (Reference rm : c.getTransactional().getReferences()) {
-                        rm.contract_id = contractHashId;
+                        rm.contract_id = contractHashId.get(rm.transactional_id);
                     }
                 } else {
                     return swapContract;
