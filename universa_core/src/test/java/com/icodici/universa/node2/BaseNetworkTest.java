@@ -2533,7 +2533,7 @@ public class BaseNetworkTest extends TestCase {
         // looking for contract that will be own
         for (Contract c : swappingContracts) {
             boolean willBeMine = c.getOwner().isAllowedForKeys(keys);
-
+            System.out.println("willBeMine: " + willBeMine + " " + c.getSealedByKeys().size());
             if(willBeMine) {
                 c.addSignatureToSeal(wrongKey);
             }

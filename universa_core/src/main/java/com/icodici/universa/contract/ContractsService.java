@@ -189,7 +189,7 @@ public class ContractsService {
         for(Contract c : contracts2) {
             Contract nc;
             if(createNewRevision) {
-                nc = c.createRevision(fromKeys);
+                nc = c.createRevision();
             } else {
                 nc = c;
             }
