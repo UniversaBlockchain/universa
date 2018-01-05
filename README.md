@@ -4,10 +4,8 @@ This is the Universa network codebase (Java core), containing the node, the cons
 
 ## How to build
 
-```bash
-git clone git@github.com:UniversaBlockchain/universa.git ./
-git submodule init; git submodule update
-gradle build -x test
-```
+    git clone git@github.com:UniversaBlockchain/universa.git ./
+    git submodule init; git submodule update
+    gradle build -x test
 
 To compile it, you may need [GNU Multiple Precision Arithmetic Library](http://gmplib.org/) ("libgmp") installed. See the details specific to your operating system regarding how it can be installed.
