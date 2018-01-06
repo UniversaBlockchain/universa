@@ -192,11 +192,15 @@ public class TransactionPack implements BiSerializable {
                 // then add contract with already exist subitems in the references or will never find in the tree
                 removingContractDependencies = new ArrayList<>();
                 for (ContractDependencies ct : allContractsTrees.keySet()) {
+                    boolean allDependenciesSafe = true;
                     for (HashId hid : ct.dependencies) {
-                        if (references.containsKey(hid) || !allContractsHids.contains(hid)) {
-                            sortedReferenceBytesList.add(allContractsTrees.get(ct));
-                            removingContractDependencies.add(ct);
+                        if (!references.containsKey(hid) && allContractsHids.contains(hid)) {
+                            allDependenciesSafe = false;
                         }
+                    }
+                    if(allDependenciesSafe) {
+                        sortedReferenceBytesList.add(allContractsTrees.get(ct));
+                        removingContractDependencies.add(ct);
                     }
                 }
 
