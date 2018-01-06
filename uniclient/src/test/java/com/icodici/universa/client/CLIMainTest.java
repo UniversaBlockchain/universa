@@ -24,6 +24,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
+import net.sergeych.utils.LogPrinter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -2202,9 +2203,9 @@ public class CLIMainTest {
 //        checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
     }
 
-    @Test
+//    @Test
     public void failedTransaction() throws Exception {
-        Contract c = CLIMain.loadContract(rootPath + "failed.transaction", true);
+        Contract c = CLIMain.loadContract(rootPath + "a61.transaction", true);
 
         c.check();
         c.traceErrors();
@@ -2214,9 +2215,35 @@ public class CLIMainTest {
         Contract cNew2 = c.getNew().get(1);
         System.out.println("cNew1 " + cNew1.getNew().size() + " " + cNew1.getRevoking().size() + " " + cNew1.getReferencedItems().size());
         System.out.println("cNew2 " + cNew2.getNew().size() + " " + cNew2.getRevoking().size() + " " + cNew2.getReferencedItems().size());
+        Contract cRevoke1 = cNew1.getRevoking().get(0);
+        Contract cRevoke2 = cNew2.getRevoking().get(0);
+        System.out.println("cRevoke1 " + cRevoke1.getNew().size() + " " + cRevoke1.getRevoking().size() + " " + cRevoke1.getReferencedItems().size());
+        System.out.println("cRevoke2 " + cRevoke2.getNew().size() + " " + cRevoke2.getRevoking().size() + " " + cRevoke2.getReferencedItems().size());
 
         CLIMain.exportContract(cNew1, rootPath + "cNew1.json", "json", true);
         CLIMain.exportContract(cNew2, rootPath + "cNew2.json", "json", true);
+        CLIMain.exportContract(cRevoke1, rootPath + "cRevoke1.json", "json", true);
+        CLIMain.exportContract(cRevoke2, rootPath + "cRevoke2.json", "json", true);
+
+        System.out.println("cNew1 " + cNew1.getId() + " " + cNew1.isOk());
+        cNew1.traceErrors();
+        System.out.println("cNew2 " + cNew2.getId() + " " + cNew2.isOk());
+        cNew2.traceErrors();
+        System.out.println("cRevoke1 " + cRevoke1.getId() + " " + cRevoke1.isOk());
+        cRevoke1.traceErrors();
+        System.out.println("cRevoke2 " + cRevoke2.getId() + " " + cRevoke2.isOk());
+        cRevoke2.traceErrors();
+//        c.traceErrors();
+
+        System.out.println("------------via network-----------");
+//        LogPrinter.showDebug(true);
+//        callMain("--register",
+//                rootPath + "a61.transaction",
+//                "-wait", "5000", "-v");
+
+        callMain2("--check", rootPath + "a61.transaction", "-v");
+        callMain("--probe", "Ep6jLga8ALShUq/I2nO1dIshmw+7FkjHXs8JI2wQ6nZwXd66uC1c37w2asD9sR8O548qvU2sTfXlRMiNE24XkA", "-v");
+        System.out.println(output);
 
     }
 

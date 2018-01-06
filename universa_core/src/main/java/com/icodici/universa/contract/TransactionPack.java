@@ -160,6 +160,7 @@ public class TransactionPack implements BiSerializable {
         );
 
         HashMap<ContractDependencies, Bytes> allContractsTrees = new HashMap<>();
+        List<HashId> allContractsHids = new ArrayList<>();
         ArrayList<Bytes> sortedReferenceBytesList = new ArrayList<>();
 
         if (referenceBytesList != null) {
@@ -167,6 +168,7 @@ public class TransactionPack implements BiSerializable {
             for (Bytes b : referenceBytesList) {
                 ContractDependencies ct = new ContractDependencies(b.toArray());
                 allContractsTrees.put(ct, b);
+                allContractsHids.add(ct.id);
             }
 
             // then recursively from ends of dependencies tree to top go throw it level by level
@@ -187,11 +189,11 @@ public class TransactionPack implements BiSerializable {
                     allContractsTrees.remove(ct);
                 }
 
-                // then add contract with already exist subitems in the references
+                // then add contract with already exist subitems in the references or will never find in the tree
                 removingContractDependencies = new ArrayList<>();
                 for (ContractDependencies ct : allContractsTrees.keySet()) {
                     for (HashId hid : ct.dependencies) {
-                        if (references.containsKey(hid)) {
+                        if (references.containsKey(hid) || !allContractsHids.contains(hid)) {
                             sortedReferenceBytesList.add(allContractsTrees.get(ct));
                             removingContractDependencies.add(ct);
                         }
@@ -324,8 +326,10 @@ public class TransactionPack implements BiSerializable {
      */
     public class ContractDependencies {
         private final Set<HashId> dependencies = new HashSet<>();
+        private final HashId id;
 
         public ContractDependencies(byte[] sealed) throws IOException {
+            this.id = HashId.of(sealed);
             Binder data = Boss.unpack(sealed);
             byte[] contractBytes = data.getBinaryOrThrow("data");
 
