@@ -149,8 +149,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
 
+        // if exist siblings for contract (more then itself)
         getContext();
-        newItems.forEach(i -> i.context = context);
+        if(getSiblings().size() > 1) {
+            newItems.forEach(i -> i.context = context);
+        }
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -218,8 +221,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             pack.addReference(c);
         }
 
+        // if exist siblings for contract (more then itself)
         getContext();
-        newItems.forEach(i -> i.context = context);
+        if(getSiblings().size() > 1) {
+            newItems.forEach(i -> i.context = context);
+        }
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 

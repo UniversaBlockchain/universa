@@ -2203,25 +2203,25 @@ public class CLIMainTest {
 //        checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
     }
 
-//    @Test
+    @Test
     public void failedTransaction() throws Exception {
-        Contract c = CLIMain.loadContract(rootPath + "failed_token2.transaction", true);
+        Contract c = CLIMain.loadContract(rootPath + "failed3.transaction", true);
 
         c.check();
         c.traceErrors();
 
-        System.out.println("c " + " isok=" + c.isOk() + " " + c.getNew().size() + " " + c.getRevoking().size() + " " + c.getReferencedItems().size());
+        System.out.println("c " + " isok=" + c.isOk() + " new: " + c.getNew().size() + " rev: " + c.getRevoking().size() + " ref: " + c.getReferencedItems().size() + " signs:" + c.getSealedByKeys().size() + " data:" + c.getStateData() + " id:" + c.getId());
         Contract cNew1 = c.getNew().get(0);
         Contract cNew2 = c.getNew().get(1);
-        System.out.println("cNew1 new: " + cNew1.getNew().size() + " rev: " + cNew1.getRevoking().size() + " ref: " + cNew1.getReferencedItems().size() + " signs:" + cNew1.getSealedByKeys().size());
-        System.out.println("cNew2 new: " + cNew2.getNew().size() + " rev: " + cNew2.getRevoking().size() + " ref: " + cNew2.getReferencedItems().size() + " signs:" + cNew2.getSealedByKeys().size());
+        System.out.println("cNew1 new: " + cNew1.getNew().size() + " rev: " + cNew1.getRevoking().size() + " ref: " + cNew1.getReferencedItems().size() + " signs:" + cNew1.getSealedByKeys().size() + " data:" + cNew1.getStateData() + " id:" + cNew1.getId());
+        System.out.println("cNew2 new: " + cNew2.getNew().size() + " rev: " + cNew2.getRevoking().size() + " ref: " + cNew2.getReferencedItems().size() + " signs:" + cNew2.getSealedByKeys().size() + " data:" + cNew2.getStateData() + " id:" + cNew2.getId());
         Contract cRevoke1 = cNew1.getRevoking().get(0);
         Contract cRevoke2 = cNew2.getRevoking().get(0);
-        System.out.println("cRevoke1 new: " + cRevoke1.getNew().size() + " rev: " + cRevoke1.getRevoking().size() + " ref: " + cRevoke1.getReferencedItems().size() + " signs:" + cRevoke1.getSealedByKeys().size());
-        System.out.println("cRevoke2 new: " + cRevoke2.getNew().size() + " rev: " + cRevoke2.getRevoking().size() + " ref: " + cRevoke2.getReferencedItems().size() + " signs:" + cRevoke2.getSealedByKeys().size());
+        System.out.println("cRevoke1 new: " + cRevoke1.getNew().size() + " rev: " + cRevoke1.getRevoking().size() + " ref: " + cRevoke1.getReferencedItems().size() + " signs:" + cRevoke1.getSealedByKeys().size() + " data:" + cRevoke1.getStateData() + " id:" + cRevoke1.getId());
+        System.out.println("cRevoke2 new: " + cRevoke2.getNew().size() + " rev: " + cRevoke2.getRevoking().size() + " ref: " + cRevoke2.getReferencedItems().size() + " signs:" + cRevoke2.getSealedByKeys().size() + " data:" + cRevoke2.getStateData() + " id:" + cRevoke2.getId());
 
         Contract cNew1_1 = cNew1.getNew().get(0);
-        System.out.println("cNew1_1 new: " + cNew1_1.getNew().size() + " rev: " + cNew1_1.getRevoking().size() + " ref: " + cNew1_1.getReferencedItems().size() + " signs:" + cNew1_1.getSealedByKeys().size());
+        System.out.println("cNew1_1 new: " + cNew1_1.getNew().size() + " rev: " + cNew1_1.getRevoking().size() + " ref: " + cNew1_1.getReferencedItems().size() + " signs:" + cNew1_1.getSealedByKeys().size() + " data:" + cNew1_1.getStateData() + " id:" + cNew1_1.getId());
 
 
         CLIMain.exportContract(cNew1, rootPath + "cNew1.json", "json", true);
@@ -2246,8 +2246,8 @@ public class CLIMainTest {
 //                rootPath + "a61.transaction",
 //                "-wait", "5000", "-v");
 
-        callMain2("--check", rootPath + "failed_token2.transaction", "-v");
-        callMain("--probe", "Ep6jLga8ALShUq/I2nO1dIshmw+7FkjHXs8JI2wQ6nZwXd66uC1c37w2asD9sR8O548qvU2sTfXlRMiNE24XkA", "-v");
+//        callMain2("--check", rootPath + "failed3.transaction", "-v");
+//        callMain("--probe", "Ep6jLga8ALShUq/I2nO1dIshmw+7FkjHXs8JI2wQ6nZwXd66uC1c37w2asD9sR8O548qvU2sTfXlRMiNE24XkA", "-v");
         System.out.println(output);
 
     }
