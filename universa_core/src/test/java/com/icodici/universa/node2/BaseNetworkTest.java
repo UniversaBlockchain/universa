@@ -2556,6 +2556,8 @@ public class BaseNetworkTest extends TestCase {
         c1.seal();
         registerAndCheckApproved(c1);
 //        Contract c1copy = new Contract(c1.getLastSealedBinary());
+//        Contract c1copy = new Contract(c1.getLastSealedBinary());
+
         System.out.println("money before split (c1): " + c1.getStateData().getIntOrThrow("amount"));
         Contract c2 = c1.splitValue("amount", new Decimal(50));
         System.out.println("money after split (c1): " + c1.getStateData().getIntOrThrow("amount"));
