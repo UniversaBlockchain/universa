@@ -2569,4 +2569,38 @@ public class BaseNetworkTest extends TestCase {
 //        registerAndCheckDeclined(c2);
 //    }
 
+
+
+    @Test
+    public void joinSnatch() throws Exception {
+        PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(key);
+
+        Contract c1 = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c1.addSignerKey(key);
+        assertTrue(c1.check());
+        c1.seal();
+        registerAndCheckApproved(c1);
+
+        System.out.println("money before split (c1): " + c1.getStateData().getIntOrThrow("amount"));
+        Contract c2 = ContractsService.createSplit(c1, 99, "amount", keys);
+        Contract c3 = c2.getNew().get(0);
+
+        System.out.println("money after split (c2): " + c2.getStateData().getIntOrThrow("amount"));
+        System.out.println("money after split (c3): " + c3.getStateData().getIntOrThrow("amount"));
+
+        registerAndCheckApproved(c3);
+
+
+        Contract c4 = c3.createRevision(keys);
+        c4.addRevokingItems(c1);
+        c4.getStateData().set("amount", 199);//150);
+        c4.seal();
+        System.out.println("money after snatch (c4): " + c4.getStateData().getIntOrThrow("amount"));
+        System.out.println("check after snatch (c4): " + c4.check());
+        c4.traceErrors();
+        registerAndCheckDeclined(c4);
+    }
+
 }
