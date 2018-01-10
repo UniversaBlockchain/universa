@@ -70,6 +70,63 @@ public class ContractTest extends ContractTestBase {
         readContract(fileName);
     }
 
+
+    @Test
+    public void dupesTest() throws Exception {
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(key);
+        Contract c_1 = Contract.fromDslFile(rootPath + "coin100.yml");
+        c_1.addSignerKey(key);
+        assertTrue(c_1.check());
+        c_1.traceErrors();
+        c_1.seal();
+
+        Contract c_2_1 = ContractsService.createSplit(c_1, 20, "amount", keys);
+        Contract c_2_2 = c_2_1.getNew().get(0);
+
+        System.out.println("c_2_1 revision id: " + c_2_1.getRevisionId());
+        assertTrue(c_2_1.check());
+        c_2_1.traceErrors();
+        c_2_1.seal();
+        System.out.println("c_2_2 revision id: " + c_2_2.getRevisionId());
+        assertTrue(c_2_2.check());
+        c_2_2.traceErrors();
+        c_2_2.seal();
+
+        Contract c_3_1 = ContractsService.createSplit(c_2_1, 10, "amount", keys);
+        Contract c_3_2 = c_3_1.getNew().get(0);
+        Contract c_3_3 = ContractsService.createSplit(c_2_2, 10, "amount", keys);
+        Contract c_3_4 = c_3_3.getNew().get(0);
+
+        System.out.println("c_3_1 revision id: " + c_3_1.getRevisionId());
+        assertTrue(c_3_1.check());
+        c_3_1.traceErrors();
+        c_3_1.seal();
+        System.out.println("c_3_2 revision id: " + c_3_2.getRevisionId());
+        assertTrue(c_3_2.check());
+        c_3_2.traceErrors();
+        c_3_2.seal();
+        System.out.println("c_3_3 revision id: " + c_3_3.getRevisionId());
+        assertTrue(c_3_3.check());
+        c_3_3.traceErrors();
+        c_3_3.seal();
+        System.out.println("c_3_4 revision id: " + c_3_4.getRevisionId());
+        assertTrue(c_3_4.check());
+        c_3_4.traceErrors();
+        c_3_4.seal();
+
+        System.out.println("-------check in the container-------");
+        String fileName = "./src/test_contracts/simple_root_contract.yml";
+        Contract c = Contract.fromDslFile(fileName);
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        c.addNewItems(c_3_1, c_3_2, c_3_3, c_3_4);
+        c.seal();
+        c.check();
+        c.traceErrors();
+        assertTrue(c.isOk());
+    }
+
     @Test
     public void createFromSealedWithRealContract() throws Exception {
         String fileName = "./src/test_contracts/subscription.yml";

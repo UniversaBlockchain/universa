@@ -536,7 +536,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public String getRevisionId() {
-        StringBuilder sb = new StringBuilder(getOrigin().toBase64String() + "/" + state.revision);
+        String parentId = getParent() == null ? "" : (getParent().toBase64String() + "/");
+        StringBuilder sb = new StringBuilder(getOrigin().toBase64String() + "/" + parentId + state.revision);
         if (state.branchId != null)
             sb.append("/" + state.branchId.toString());
         return sb.toString();
