@@ -2556,6 +2556,29 @@ public class BaseNetworkTest extends TestCase {
         c1.seal();
         registerAndCheckApproved(c1);
 //        Contract c1copy = new Contract(c1.getLastSealedBinary());
+        System.out.println("money before split (c1): " + c1.getStateData().getIntOrThrow("amount"));
+        Contract c2 = c1.splitValue("amount", new Decimal(50));
+        System.out.println("money after split (c1): " + c1.getStateData().getIntOrThrow("amount"));
+        System.out.println("money after split (c2): " + c2.getStateData().getIntOrThrow("amount"));
+//        c2.addRevokingItems(c1copy);
+        c2.getStateData().set("amount", 9000);//150);
+        c2.seal();
+        System.out.println("money after snatch (c2): " + c2.getStateData().getIntOrThrow("amount"));
+        System.out.println("check after snatch (c2): " + c2.check());
+        registerAndCheckDeclined(c2);
+    }
+
+
+
+    @Test
+    public void splitSnatch2() throws Exception {
+        PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract c1 = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c1.addSignerKey(key);
+        assertTrue(c1.check());
+        c1.seal();
+        registerAndCheckApproved(c1);
+//        Contract c1copy = new Contract(c1.getLastSealedBinary());
 //        Contract c1copy = new Contract(c1.getLastSealedBinary());
         System.out.println("true money origin: " + c1.getOrigin().toBase64String());
         Contract c1copy = new Contract(c1.getLastSealedBinary());
