@@ -72,6 +72,34 @@ public class ContractTest extends ContractTestBase {
 
 
     @Test
+    public void dupesWrongTest() throws Exception {
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(key);
+        Contract c_1 = Contract.fromDslFile(rootPath + "coin100.yml");
+        c_1.addSignerKey(key);
+        assertTrue(c_1.check());
+        c_1.traceErrors();
+        c_1.seal();
+
+        Contract c_2_1 = ContractsService.createSplit(c_1, 20, "amount", keys);
+        Contract c_2_2 = c_2_1.getNew().get(0);
+        if(c_2_2 != null) {
+            Contract c_2_3 = c_2_2.copy();
+            c_2_3.addSignerKey(key);
+            c_2_3.seal();
+            c_2_1.addNewItems(c_2_3);
+        }
+        assertEquals(2, c_2_1.getNewItems().size());
+        c_2_1.check();
+        c_2_1.traceErrors();
+        assertFalse(c_2_1.isOk());
+        // should be BAD_VALUE duplicated revision id
+        assertEquals(2, c_2_1.getErrors().size());
+    }
+
+
+    @Test
     public void dupesTest() throws Exception {
         PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
         Set<PrivateKey> keys = new HashSet<>();
