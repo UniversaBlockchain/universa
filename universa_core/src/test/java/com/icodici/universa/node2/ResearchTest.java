@@ -741,7 +741,7 @@ public class ResearchTest extends BaseNetworkTest {
 
 
 
-//    protected static final String ROOT_PATH = "./src/test_contracts/";
+//    protected static final String ROOT_PATH = "./src/test_contracts/";;
 //    protected static final String CONFIG_2_PATH = "./src/test_config_2/";
 /////////////////////////////////////////////////
 }
