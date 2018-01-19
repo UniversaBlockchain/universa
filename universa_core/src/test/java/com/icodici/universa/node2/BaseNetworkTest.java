@@ -12,12 +12,10 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
-import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.Do;
-import net.sergeych.tools.StopWatch;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Ignore;
@@ -29,9 +27,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.Is.is;
-import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -2281,7 +2277,7 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test
-    public void createParcel() throws Exception {
+    public void registerParcel() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PublicKey> stepaPublicKeys = new HashSet<>();

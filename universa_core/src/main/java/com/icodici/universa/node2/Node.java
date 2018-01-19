@@ -91,21 +91,7 @@ public class Node {
     public @NonNull ItemResult registerItem(Parcel parcel) {
 
         try {
-            Object x = ItemLock.synchronize(parcel.getId(), (lock) -> {
-                ParcelProcessor processor = parcelProcessors.get(parcel.getId());
-                if (processor != null) {
-                    debug("existing parcel processor found for " + parcel.getId());
-                    return processor;
-                }
-
-                synchronized (parcelCache) {
-                    parcelCache.put(parcel);
-                }
-                processor = new ParcelProcessor(parcel, lock);
-                parcelProcessors.put(parcel.getId(), processor);
-
-                return processor;
-            });
+            Object x = checkParcelInternal(parcel.getId(), parcel, true);
             return (x instanceof ItemResult) ? (ItemResult) x : checkItem(parcel.getId());
         } catch (Exception e) {
             throw new RuntimeException("failed to process parcel", e);
@@ -169,25 +155,13 @@ public class Node {
 
         Object x = null;
 
-        try {
-            x = ItemLock.synchronize(itemId, (lock) -> {
-                ParcelProcessor processor = parcelProcessors.get(itemId);
-                if (processor != null) {
-                    debug("existing parcel processor found for " + itemId);
-                    return processor;
-                }
-
-                return ItemState.UNDEFINED;
-            });
-            if (x instanceof ParcelProcessor) {
-                ((ParcelProcessor) x).doneEvent.await(millisToWait);
-
-                return checkItem(itemId);
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("failed to process parcel", e);
+        // first check if item is processing as part of parcel
+        x = checkParcelInternal(itemId);
+        if (x instanceof ParcelProcessor) {
+            ((ParcelProcessor) x).doneEvent.await(millisToWait);
         }
 
+        // then check item as single approvable item
         x = checkItemInternal(itemId);
         if (x instanceof ItemProcessor) {
             ((ItemProcessor) x).doneEvent.await(millisToWait);
@@ -359,7 +333,7 @@ public class Node {
 
     /**
      * Optimized for various usages, check the item, start processing as need, return object depending on the current
-     * state. Note that actuall error codes are set to the item itself.
+     * state. Note that actual error codes are set to the item itself.
      *
      * @param itemId    item to check the state.
      * @param item      provide item if any, can be null. Default is null.
@@ -412,6 +386,47 @@ public class Node {
                     }
                     ItemProcessor processor = new ItemProcessor(itemId, item, lock);
                     processors.put(itemId, processor);
+                    return processor;
+                } else {
+                    return ItemResult.UNDEFINED;
+                }
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("failed to checkItem", e);
+        }
+    }
+
+    protected Object checkParcelInternal(@NonNull HashId itemId) {
+        return checkParcelInternal(itemId, null, false);
+    }
+
+    /**
+     * Optimized for various usages, check the parcel, start processing as need, return object depending on the current
+     * state. Note that actual error codes are set to the item itself.
+     *
+     * @param itemId    parcel's id.
+     * @param parcel      provide parcel if need, can be null. Default is null.
+     * @param autoStart - create new ParcelProcessor if not exist. Default is false.
+     *
+     * @return instance of {@link ParcelProcessor} if the parcel is being processed (also if it was started by the call),
+     *         {@link ItemResult} if it is already processed or can't be processed.
+     */
+    protected Object checkParcelInternal(@NonNull HashId itemId, Parcel parcel, boolean autoStart) {
+        try {
+            return ItemLock.synchronize(itemId, (lock) -> {
+                ParcelProcessor processor = parcelProcessors.get(itemId);
+                if (processor != null) {
+                    debug("existing parcel processor found for " + itemId);
+                    return processor;
+                }
+
+                if (autoStart) {
+                    synchronized (parcelCache) {
+                        parcelCache.put(parcel);
+                    }
+                    processor = new ParcelProcessor(parcel, lock);
+                    parcelProcessors.put(itemId, processor);
+
                     return processor;
                 } else {
                     return ItemResult.UNDEFINED;
