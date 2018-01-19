@@ -2280,6 +2280,43 @@ public class BaseNetworkTest extends TestCase {
 
 
 
+    @Test
+    public void createParcel() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
+        stepaTU.addSignerKey(manufacturePrivateKey);
+        stepaTU.seal();
+        stepaTU.check();
+        stepaTU.traceErrors();
+        registerAndCheckApproved(stepaTU);
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 50, stepaPrivateKeys);
+
+        parcel.getPayment().getContract().check();
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertTrue(parcel.getPayment().getContract().isOk());
+        assertTrue(parcel.getPayload().getContract().isOk());
+    }
+
+
     private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
         ItemResult itemResult = node.waitItem(c.getId(), 8000);

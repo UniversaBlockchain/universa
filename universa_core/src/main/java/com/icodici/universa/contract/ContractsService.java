@@ -368,8 +368,17 @@ public class ContractsService {
      * spend to process transaction.
      * @return
      */
-    public static Parcel createParcel(Contract contract) {
-        return new Parcel();
+    public static Parcel createParcel(Contract payload, Contract payment, int amount, Set<PrivateKey> keys) {
+        Parcel parcel = new Parcel();
+
+        Contract paymentDecreased = payment.createRevision(keys);
+        paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
+        paymentDecreased.seal();
+
+        parcel.setPayload(payload.getTransactionPack());
+        parcel.setPayment(paymentDecreased.getTransactionPack());
+
+        return parcel;
     }
 
     public static Decimal getDecimalField(Contract contract, String fieldName) {
