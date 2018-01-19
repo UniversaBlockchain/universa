@@ -76,6 +76,7 @@ public class ContractsService {
         for (PrivateKey key : keys) {
             splitTo.addSignerKey(key);
         }
+        splitTo.createRole("creator", splitTo.getRole("owner"));
         splitTo.seal();
         splitFrom.seal();
 
@@ -360,6 +361,15 @@ public class ContractsService {
         swapContract.addSignatureToSeal(keys);
 
         return swapContract;
+    }
+
+    /**
+     * Create paid transaction, which consist from contract you want to register and payment contract that will be
+     * spend to process transaction.
+     * @return
+     */
+    public static Parcel createParcel(Contract contract) {
+        return new Parcel();
     }
 
     public static Decimal getDecimalField(Contract contract, String fieldName) {
