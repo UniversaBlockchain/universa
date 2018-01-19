@@ -42,6 +42,39 @@ public class Parcel implements BiSerializable {
     }
 
 
+
+    public Contract getPayloadContract() {
+        if (payload != null)
+            return payload.getContract();
+        return null;
+    }
+
+
+
+    public void setPayloadContract(Contract c) {
+        if (payload == null)
+            payload = new TransactionPack();
+        payload.setContract(c);
+    }
+
+
+
+    public Contract getPaymentContract() {
+        if (payment != null)
+            return payment.getContract();
+        return null;
+    }
+
+
+
+    public void setPaymentContract(Contract c) {
+        if (payment == null)
+            payment = new TransactionPack();
+        payment.setContract(c);
+    }
+
+
+
     public HashId getId() {
         if(payload != null)
             return payload.getContract().getId();
