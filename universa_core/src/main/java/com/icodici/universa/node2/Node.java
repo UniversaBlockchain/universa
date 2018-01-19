@@ -471,10 +471,9 @@ public class Node {
         private Contract payload;
 
         private final Object mutex;
-        private ScheduledFuture<?> downloader;
+        private ScheduledFuture<?> processer;
 
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
-        private final long millisToWait = 10000;
 
         public ParcelProcessor(Parcel parcel, Object lock) {
             mutex = lock;
@@ -489,9 +488,9 @@ public class Node {
         private void pulseProcessing() {
 
             synchronized (mutex) {
-                if (downloader == null || downloader.isDone()) {
+                if (processer == null || processer.isDone()) {
                     debug("pulse parcel processing");
-                    downloader = (ScheduledFuture<?>) executorService.submit(() -> process());
+                    processer = (ScheduledFuture<?>) executorService.submit(() -> process());
                 }
             }
         }
@@ -501,23 +500,26 @@ public class Node {
             ItemResult paymentResult = null;
             ItemResult payloadResult = null;
             try {
-                checkItemInternal(payment.getId(), payment, true);
-                paymentResult = waitItem(payment.getId(), millisToWait);
+                Object x = checkItemInternal(payment.getId(), payment, true);
+                if (x instanceof ItemProcessor) {
+                    ((ItemProcessor) x).doneEvent.await();
+                    paymentResult = ((ItemProcessor) x).getResult();
+                } else {
+                    paymentResult = (ItemResult) x;
+                }
 
                 if(paymentResult.state.isApproved()) {
                     debug("payment has approved for " + payload.getId());
                     checkItemInternal(payload.getId(), payload, true);
                     debug("item processor created for " + payload.getId());
-                    Object x = checkItemInternal(payload.getId());
+                    x = checkItemInternal(payload.getId());
                     if (x instanceof ItemProcessor) {
-                        ((ItemProcessor) x).doneEvent.await(millisToWait);
+                        ((ItemProcessor) x).doneEvent.await();
                         debug("parcel processing finished for " + payload.getId() + " with state " + ((ItemProcessor) x).getState());
                     } else {
-                        debug("parcel processing finished for " + payload.getId() + " with state " + ItemState.UNDEFINED);
+                        debug("parcel processing finished for " + payload.getId() + " with state " + ((ItemResult) x).state);
                     }
                 }
-            } catch (TimeoutException e) {
-                e.printStackTrace();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
