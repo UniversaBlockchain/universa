@@ -2314,6 +2314,11 @@ public class BaseNetworkTest extends TestCase {
 
         assertTrue(parcel.getPayment().getContract().isOk());
         assertTrue(parcel.getPayload().getContract().isOk());
+
+//        LogPrinter.showDebug(true);
+        node.registerItem(parcel);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
     }
 
 

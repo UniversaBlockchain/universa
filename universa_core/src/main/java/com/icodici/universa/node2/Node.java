@@ -12,6 +12,7 @@ import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -47,9 +48,11 @@ public class Node {
     private final Object ledgerRollbackLock = new Object();
     private final Network network;
     private final ItemCache cache;
+    private final ParcelCache parcelCache;
     private final ItemInformer informer = new ItemInformer();
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
+    private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
 
     private static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
 
@@ -59,6 +62,7 @@ public class Node {
         this.ledger = ledger;
         this.network = network;
         cache = new ItemCache(config.getMaxCacheAge());
+        parcelCache = new ParcelCache(config.getMaxCacheAge());
         network.subscribe(myInfo, notification -> onNotification(notification));
     }
 
@@ -75,6 +79,37 @@ public class Node {
 
         Object x = checkItemInternal(item.getId(), item, true);
         return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+    }
+
+    /**
+     * Synchronous (blocking) parcel register.
+     *
+     * @param parcel to register/check state
+     *
+     * @return current (or last known) item state
+     */
+    public @NonNull ItemResult registerItem(Parcel parcel) {
+
+        try {
+            Object x = ItemLock.synchronize(parcel.getId(), (lock) -> {
+                ParcelProcessor processor = parcelProcessors.get(parcel.getId());
+                if (processor != null) {
+                    debug("existing parcel processor found for " + parcel.getId());
+                    return processor;
+                }
+
+                synchronized (parcelCache) {
+                    parcelCache.put(parcel);
+                }
+                processor = new ParcelProcessor(parcel, lock);
+                parcelProcessors.put(parcel.getId(), processor);
+
+                return processor;
+            });
+            return (x instanceof ItemResult) ? (ItemResult) x : checkItem(parcel.getId());
+        } catch (Exception e) {
+            throw new RuntimeException("failed to process parcel", e);
+        }
     }
 
     /**
@@ -131,7 +166,29 @@ public class Node {
      * @return item state
      */
     public ItemResult waitItem(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
-        Object x = checkItemInternal(itemId);
+
+        Object x = null;
+
+        try {
+            x = ItemLock.synchronize(itemId, (lock) -> {
+                ParcelProcessor processor = parcelProcessors.get(itemId);
+                if (processor != null) {
+                    debug("existing parcel processor found for " + itemId);
+                    return processor;
+                }
+
+                return ItemState.UNDEFINED;
+            });
+            if (x instanceof ParcelProcessor) {
+                ((ParcelProcessor) x).doneEvent.await(millisToWait);
+
+                return checkItem(itemId);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("failed to process parcel", e);
+        }
+
+        x = checkItemInternal(itemId);
         if (x instanceof ItemProcessor) {
             ((ItemProcessor) x).doneEvent.await(millisToWait);
 
@@ -403,6 +460,74 @@ public class Node {
     public Ledger getLedger() {
         return ledger;
     }
+
+
+    /// ParcelProcessor ///
+
+    private class ParcelProcessor {
+
+        private Parcel parcel;
+        private Contract payment;
+        private Contract payload;
+
+        private final Object mutex;
+        private ScheduledFuture<?> downloader;
+
+        private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
+        private final long millisToWait = 10000;
+
+        public ParcelProcessor(Parcel parcel, Object lock) {
+            mutex = lock;
+            this.parcel = parcel;
+
+            payment = parcel.getPayment().getContract();
+            payload = parcel.getPayload().getContract();
+
+            pulseProcessing();
+        }
+
+        private void pulseProcessing() {
+
+            synchronized (mutex) {
+                if (downloader == null || downloader.isDone()) {
+                    debug("pulse parcel processing");
+                    downloader = (ScheduledFuture<?>) executorService.submit(() -> process());
+                }
+            }
+        }
+
+        private void process() {
+
+            ItemResult paymentResult = null;
+            ItemResult payloadResult = null;
+            try {
+                checkItemInternal(payment.getId(), payment, true);
+                paymentResult = waitItem(payment.getId(), millisToWait);
+
+                if(paymentResult.state.isApproved()) {
+                    debug("payment has approved for " + payload.getId());
+                    checkItemInternal(payload.getId(), payload, true);
+                    debug("item processor created for " + payload.getId());
+                    Object x = checkItemInternal(payload.getId());
+                    if (x instanceof ItemProcessor) {
+                        ((ItemProcessor) x).doneEvent.await(millisToWait);
+                        debug("parcel processing finished for " + payload.getId() + " with state " + ((ItemProcessor) x).getState());
+                    } else {
+                        debug("parcel processing finished for " + payload.getId() + " with state " + ItemState.UNDEFINED);
+                    }
+                }
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            doneEvent.fire();
+        }
+    }
+
+
+    /// ItemProcessor ///
 
     private class ItemProcessor {
 

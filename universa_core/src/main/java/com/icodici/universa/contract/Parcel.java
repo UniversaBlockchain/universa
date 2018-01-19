@@ -6,6 +6,7 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.universa.HashId;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 
@@ -40,6 +41,13 @@ public class Parcel implements BiSerializable {
         this.payment = payment;
     }
 
+
+    public HashId getId() {
+        if(payload != null)
+            return payload.getContract().getId();
+
+        return null;
+    }
 
 
     @Override
