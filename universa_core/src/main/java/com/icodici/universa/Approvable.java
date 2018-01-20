@@ -89,4 +89,8 @@ public interface Approvable extends HashIdentifiable {
     }
 
     default ZonedDateTime getExpiresAt() { return ZonedDateTime.now().plusHours(5);}
+
+    default boolean isTU() {
+        return false;
+    }
 }

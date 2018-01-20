@@ -373,6 +373,10 @@ public class ContractsService {
 
         Contract paymentDecreased = payment.createRevision(keys);
         paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
+
+        // TODO: change to check with issuer
+        paymentDecreased.setIsTU(true);
+
         paymentDecreased.seal();
 
         parcel.setPayload(payload.getTransactionPack());
