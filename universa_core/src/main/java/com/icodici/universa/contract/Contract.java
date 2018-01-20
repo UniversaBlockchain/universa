@@ -1969,6 +1969,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return context;
     }
 
+    private boolean isTU = false;
+    public boolean isTU() {
+        return isTU;
+    }
+    public void setIsTU(boolean value) {
+        isTU = value;
+    }
+
     /**
      * Transaction context. Holds temporary information about a context transaction relevant to create sibling, e.g.
      * contract splitting. Allow new items being created to get the base contract (that is creating) and get the full

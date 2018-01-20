@@ -2308,8 +2308,11 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertTrue(parcel.getPayment().getContract().isOk());
-        assertTrue(parcel.getPayload().getContract().isOk());
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU());
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU());
 
 //        LogPrinter.showDebug(true);
         node.registerItem(parcel);
