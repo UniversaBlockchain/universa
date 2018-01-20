@@ -76,7 +76,7 @@ public class ContractsService {
         for (PrivateKey key : keys) {
             splitTo.addSignerKey(key);
         }
-        splitTo.createRole("creator", splitTo.getRole("owner"));
+//        splitTo.createRole("creator", splitTo.getRole("owner"));
         splitTo.seal();
         splitFrom.seal();
 
