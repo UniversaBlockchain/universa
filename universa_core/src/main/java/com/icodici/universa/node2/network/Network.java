@@ -9,6 +9,7 @@ package com.icodici.universa.node2.network;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
@@ -65,6 +66,9 @@ public abstract class Network {
      * @throws TimeoutException     if the item can;t be obtained whithin a given timeout
      */
     public abstract Approvable getItem(HashId itemId, NodeInfo node, Duration maxTimeout)
+            throws InterruptedException;
+
+    public abstract Parcel getParcel(HashId itemId, NodeInfo node, Duration maxTimeout)
             throws InterruptedException;
 
     /**

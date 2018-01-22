@@ -2291,6 +2291,7 @@ public class BaseNetworkTest extends TestCase {
         stepaTU.addSignerKey(manufacturePrivateKey);
         stepaTU.seal();
         stepaTU.check();
+        stepaTU.setIsTU(true);
         stepaTU.traceErrors();
         registerAndCheckApproved(stepaTU);
 
@@ -2314,7 +2315,7 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU());
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU());
 
-//        LogPrinter.showDebug(true);
+        LogPrinter.showDebug(true);
         node.registerItem(parcel);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);

@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.NetConfig;
@@ -154,6 +155,11 @@ public class NetworkV2 extends Network {
             e.printStackTrace();
             return null;
         }
+    }
+
+    @Override
+    public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        return new Parcel();
     }
 
     private final Map<NodeInfo,Client> cachedClients = new HashMap<>();
