@@ -9,6 +9,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.Network;
 
@@ -38,6 +39,11 @@ public class TestSingleNetwork extends Network {
 
     @Override
     public Approvable getItem(HashId itemId, NodeInfo node, Duration maxTimeout) throws InterruptedException {
+        return null;
+    }
+
+    @Override
+    public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         return null;
     }
 

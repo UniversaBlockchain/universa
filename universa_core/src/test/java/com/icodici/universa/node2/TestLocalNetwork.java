@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
@@ -165,6 +166,12 @@ public class TestLocalNetwork extends Network {
     public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         Node node = nodes.get(nodeInfo);
         return node.getItem(itemId);
+    }
+
+    @Override
+    public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        Node node = nodes.get(nodeInfo);
+        return node.getParcel(itemId);
     }
 
     private String exceptionCallback(String message) {

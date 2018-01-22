@@ -180,12 +180,12 @@ public class Node {
 
         if (notification instanceof ItemResyncNotification) {
             obtainResyncNotification((ItemResyncNotification) notification);
+        }
+        else if (notification instanceof ParcelNotification) {
+            obtainParcelCommonNotification((ParcelNotification) notification);
         } else if (notification instanceof ItemNotification) {
             obtainCommonNotification((ItemNotification) notification);
         }
-//        else if (notification instanceof ParcelNotification) {
-//            obtainParcelCommonNotification((ParcelNotification) notification);
-//        }
     }
 
 
@@ -352,6 +352,7 @@ public class Node {
             ItemResult result = notification.getItemResult();
             pp.lock(() -> {
                 debug("found ParcelProcessor for item " + notification.getItemId() + "  with state: " + pp.getState()
+                        + ", and result state: " + result.state
                         + ", it processing state is: " + pp.getItemProcessingState());
 
                 // we might still need to download and process it
@@ -364,15 +365,15 @@ public class Node {
                     log.e("pending vote on " + notification.getItemId() + " from " + from);
 
                 // We answer only if (1) answer is requested and (2) we have position on the subject:
-                if (notification.answerIsRequested() && pp.getState() != ItemState.PENDING) {
-                    network.deliver(
-                            from,
-                            new ParcelNotification(myInfo,
-                                    notification.getItemId(),
-                                    pp.getResult(),
-                                    pp.needsVoteFrom(from))
-                    );
-                }
+//                if (notification.answerIsRequested() && pp.getState() != ItemState.PENDING) {
+//                    network.deliver(
+//                            from,
+//                            new ParcelNotification(myInfo,
+//                                    notification.getItemId(),
+//                                    pp.getResult(),
+//                                    pp.needsVoteFrom(from))
+//                    );
+//                }
                 return null;
             });
         } else {
@@ -474,7 +475,7 @@ public class Node {
      */
     protected Object checkParcelInternal(@NonNull HashId itemId, Parcel parcel, boolean autoStart) {
         try {
-            return ItemLock.synchronize(itemId, (lock) -> {
+            return ParcelLock.synchronize(itemId, (lock) -> {
                 ParcelProcessor processor = parcelProcessors.get(itemId);
                 if (processor != null) {
                     debug("existing parcel processor found for " + itemId);
@@ -482,10 +483,12 @@ public class Node {
                 }
 
                 if (autoStart) {
-                    synchronized (parcelCache) {
-                        parcelCache.put(parcel);
+                    if (parcel != null) {
+                        synchronized (parcelCache) {
+                            parcelCache.put(parcel);
+                        }
                     }
-                    processor = new ParcelProcessor(parcel, lock);
+                    processor = new ParcelProcessor(itemId, parcel, lock);
                     parcelProcessors.put(itemId, processor);
 
                     return processor;
@@ -525,6 +528,24 @@ public class Node {
 //        return cache.get(itemId);
     }
 
+    /**
+     * Get the cached item.
+     *
+     * @param itemId
+     *
+     * @return cached item or null if it is missing
+     */
+    public Parcel getParcel(HashId itemId) {
+        synchronized (parcelCache) {
+            @Nullable Parcel i = parcelCache.get(itemId);
+            if (i == null) {
+                debug("parcelCache miss: ");
+            }
+            return i;
+        }
+//        return cache.get(itemId);
+    }
+
     public int countElections() {
         return processors.size();
     }
@@ -542,29 +563,49 @@ public class Node {
 
     private class ParcelProcessor {
 
+        private final HashId itemId;
         private Parcel parcel;
         private Contract payment;
         private Contract payload;
         private ItemProcessor paymentProcessor;
         private ItemProcessor payloadProcessor;
+        private Set<NodeInfo> sources = new HashSet<>();
+        private HashMap<NodeInfo, ItemState> delayedVotes = new HashMap<>();
+        private ItemState delayedState = ItemState.UNDEFINED;
+
+        private Set<NodeInfo> positiveNodes = new HashSet<>();
+        private Set<NodeInfo> negativeNodes = new HashSet<>();
 
         private final Object mutex;
+
+        private ScheduledFuture<?> downloader;
         private ScheduledFuture<?> processSchedule;
 
+        private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
+        private final AsyncEvent<Void> payloadProcessorReadyEvent = new AsyncEvent<>();
 
-        public ParcelProcessor(Parcel parcel, Object lock) {
+        public ParcelProcessor(HashId itemId, Parcel parcel, Object lock) {
             mutex = lock;
+            this.itemId = itemId;
             this.parcel = parcel;
+            if (parcel == null)
+                parcel = parcelCache.get(itemId);
+            this.parcel = parcel;
+            if(parcel != null) {
+                payment = parcel.getPaymentContract();
+                payload = parcel.getPayloadContract();
+            }
 
-            payment = parcel.getPaymentContract();
-            payload = parcel.getPayloadContract();
-
-            pulseProcessing();
+            if (this.parcel != null)
+                executorService.submit(() -> itemDownloaded());
         }
+
+        //////////// processing section /////////////
 
         private void pulseProcessing() {
 
+            debug("pulse parcel processing is " + processSchedule);
             synchronized (mutex) {
                 if (processSchedule == null || processSchedule.isDone()) {
                     debug("pulse parcel processing");
@@ -577,6 +618,8 @@ public class Node {
 
             ItemResult paymentResult = null;
             ItemResult payloadResult = null;
+            payment = parcel.getPaymentContract();
+            payload = parcel.getPayloadContract();
             try {
                 debug("Parcel: checking payment " + payment.getId() + " item is TU: " + payment.isTU());
                 Object x = checkItemInternal(payment.getId(), payment, true);
@@ -590,11 +633,17 @@ public class Node {
 
                 if(paymentResult.state.isApproved()) {
                     debug("payment has approved for " + payload.getId());
-                    checkItemInternal(payload.getId(), payload, true);
+                    x = checkItemInternal(payload.getId(), payload, true);
                     debug("Parcel: checking payload " + payload.getId() + " item is TU: " + payload.isTU());
-                    x = checkItemInternal(payload.getId());
+                    debug("Parcel: checkItemInternal finished");
                     if (x instanceof ItemProcessor) {
                         payloadProcessor = ((ItemProcessor) x);
+                        synchronized (delayedVotes) {
+                            for (NodeInfo ni : delayedVotes.keySet())
+                                payloadProcessor.vote(ni, delayedVotes.get(ni));
+                            delayedVotes.clear();
+                        }
+                        debug("parcel payload processor for " + payload.getId() + " is created, state is " + payloadProcessor.getState());
                         payloadProcessor.doneEvent.await();
                         debug("parcel processing finished for " + payload.getId() + " with state " + payloadProcessor.getState());
                     } else {
@@ -608,9 +657,108 @@ public class Node {
             doneEvent.fire();
         }
 
+        //////////// download section /////////////
+
+        private void pulseDownload() {
+
+            synchronized (mutex) {
+                if (parcel == null && (downloader == null || downloader.isDone())) {
+                    debug("submitting parcel download");
+                    downloader = (ScheduledFuture<?>) executorService.submit(() -> download());
+                }
+            }
+            debug("pulse parcel download mutex is free");
+        }
+
+        private void download() {
+
+            while (parcel == null) {
+                if (sources.isEmpty()) {
+                    log.e("empty sources for download tasks, stopping");
+                    return;
+                } else {
+                    try {
+                        // first we have to wait for sources
+                        NodeInfo source;
+                        // Important: it could be disturbed by notifications
+                        synchronized (sources) {
+                            source = Do.sample(sources);
+                        }
+                        parcel = network.getParcel(itemId, source, config.getMaxGetItemTime());
+                        if (parcel != null) {
+                            debug("parcel downloaded " + itemId + " from " + source);
+                            itemDownloaded();
+                            return;
+                        } else {
+                            debug("failed to download " + itemId + " from " + source);
+                            Thread.sleep(100);
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        private final void itemDownloaded() {
+            debug("parcel itemDownloaded");
+            synchronized (parcelCache) {
+                parcelCache.put(parcel);
+            }
+            debug("parcel itemDownloaded2");
+            pulseProcessing();
+            debug("parcel itemDownloaded3");
+            downloadedEvent.fire();
+        }
+
+        private void stopDownloader() {
+            if (downloader != null)
+                downloader.cancel(false);
+        }
+
+        //
+
         private final void vote(NodeInfo node, ItemState state) {
+            debug("parcel vote for " + itemId + " payloadProcessor is " + payloadProcessor);
+//            if(payloadProcessor == null) {
+//                try {
+//                    payloadProcessorReadyEvent.await();
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//            }
+
             if(payloadProcessor != null)
                 payloadProcessor.vote(node, state);
+            else {
+                synchronized (mutex) {
+                    delayedVotes.put(node, state);
+                    boolean positiveConsensus = false;
+                    boolean negativeConsensus = false;
+                    synchronized (mutex) {
+                        Set<NodeInfo> add, remove;
+                        if (state.isPositive()) {
+                            add = positiveNodes;
+                            remove = negativeNodes;
+                        } else {
+                            add = negativeNodes;
+                            remove = positiveNodes;
+                        }
+                        add.add(node);
+                        remove.remove(node);
+
+                        if (negativeNodes.size() >= config.getNegativeConsensus()) {
+                            negativeConsensus = true;
+                        } else if (positiveNodes.size() >= config.getPositiveConsensus()) {
+                            positiveConsensus = true;
+                        }
+                    }
+                    if(positiveConsensus)
+                        delayedState = ItemState.APPROVED;
+                    if(negativeConsensus)
+                        delayedState = ItemState.DECLINED;
+                }
+            }
         }
 
         public @NonNull ItemResult getResult() {
@@ -622,7 +770,7 @@ public class Node {
         private ItemState getState() {
             if(payloadProcessor != null)
                 return payloadProcessor.getState();
-            return ItemState.UNDEFINED;
+            return delayedState;
         }
 
         private ItemProcessingState getItemProcessingState() {
@@ -645,6 +793,16 @@ public class Node {
         }
 
         private final void addToSources(NodeInfo node) {
+            if (parcel != null)
+                return;
+
+            synchronized (sources) {
+                if (sources.add(node)) {
+                    debug("added source to parcel: " + sources);
+                    pulseDownload();
+                }
+            }
+
             if(payloadProcessor != null)
                 payloadProcessor.addToSources(node);
         }

@@ -17,6 +17,7 @@ import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -63,7 +64,7 @@ public class ItemResult {
      *
      * @param record   record to get data from
      * @param haveCopy true if the node has a copy of the {@link Approvable} item (e.g. one can try go call {@link
-     *                 Node#getItem(HashId)}  on it
+     *                 com.icodici.universa.node2.network.Network#getItem(HashId, NodeInfo, Duration)}  on it
      */
     public ItemResult(StateRecord record, boolean haveCopy) {
 //        if( record == null ) {
@@ -178,8 +179,14 @@ public class ItemResult {
 
     public void writeTo(Boss.Writer bw) throws IOException {
         bw.writeObject(state.ordinal());
-        bw.writeObject(createdAt.toEpochSecond());
-        bw.writeObject(expiresAt.toEpochSecond());
+        if(createdAt != null)
+            bw.writeObject(createdAt.toEpochSecond());
+        else
+            bw.writeObject(0);
+        if(expiresAt != null)
+            bw.writeObject(expiresAt.toEpochSecond());
+        else
+            bw.writeObject(0);
         bw.writeObject(haveCopy);
     }
 }
