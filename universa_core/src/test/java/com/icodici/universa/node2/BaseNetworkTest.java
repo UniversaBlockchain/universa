@@ -2315,8 +2315,11 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU());
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU());
 
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
         node.registerItem(parcel);
+        // check parcel
+        assertEquals(ItemState.APPROVED, node.waitParcel(parcel.getId(), 8000).state);
+        // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
     }
@@ -2341,9 +2344,6 @@ public class BaseNetworkTest extends TestCase {
      *
      * Method packs sending contracts with main swap contract (can be blank - doesn't matter) into TransactionPack.
      * Then restore from packed binary main swap contract, contracts sending with.
-     * And fill sent contract with oldContracts.
-     * It is hook because current implementation of uTransactionPack,unpack() missing them.
-     * Second hook is Contarct.clearContext() - if do not call, checking will fail. 
      *
      * @param mainContract
      * @return
