@@ -154,12 +154,12 @@ public class Node {
     public ItemResult waitItem(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
 
         Object x = null;
-
-        // first check if item is processing as part of parcel
-        x = checkParcelInternal(itemId);
-        if (x instanceof ParcelProcessor) {
-            ((ParcelProcessor) x).doneEvent.await(millisToWait);
-        }
+//
+//        // first check if item is processing as part of parcel
+//        x = checkParcelInternal(itemId);
+//        if (x instanceof ParcelProcessor) {
+//            ((ParcelProcessor) x).doneEvent.await(millisToWait);
+//        }
 
         // then check item as single approvable item
         x = checkItemInternal(itemId);
@@ -167,6 +167,28 @@ public class Node {
             ((ItemProcessor) x).doneEvent.await(millisToWait);
 
             return ((ItemProcessor) x).getResult();
+        }
+        debug("it is not processor: " + x);
+        return (ItemResult) x;
+    }
+
+    /**
+     * Test use only. It the item is being elected, block until the item is processed with the consenus. Otherwise
+     * returns state immediately.
+     *
+     * @param itemId parcel to check or wait for
+     *
+     * @return item state
+     */
+    public ItemResult waitParcel(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
+
+        Object x = null;
+
+        // first check if item is processing as part of parcel
+        x = checkParcelInternal(itemId);
+        if (x instanceof ParcelProcessor) {
+            ((ParcelProcessor) x).doneEvent.await(millisToWait);
+            return ((ParcelProcessor) x).getResult();
         }
         debug("it is not processor: " + x);
         return (ItemResult) x;
