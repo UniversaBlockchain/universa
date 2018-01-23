@@ -2315,7 +2315,7 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU());
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU());
 
-//        LogPrinter.showDebug(true);
+        LogPrinter.showDebug(true);
         node.registerItem(parcel);
         // check parcel
         assertEquals(ItemState.APPROVED, node.waitParcel(parcel.getId(), 8000).state);

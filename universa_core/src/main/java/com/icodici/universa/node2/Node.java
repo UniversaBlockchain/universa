@@ -995,7 +995,14 @@ public class Node {
 
                     try {
                         debug("Contract limit: " + Contract.getTestQuantaLimit());
-                        if (item.check()) {
+                        debug("item is TU: " + item.isTU());
+                        boolean checkPassed = false;
+                        if(item.isTU()) {
+                            checkPassed = item.paymentCheck();
+                        } else {
+                            checkPassed = item.check();
+                        }
+                        if (checkPassed) {
 
                             itemsToResync = isNeedToResync(true);
                             needToResync = !itemsToResync.isEmpty();

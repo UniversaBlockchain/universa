@@ -73,6 +73,10 @@ public interface Approvable extends HashIdentifiable {
         return check("");
     }
 
+    default boolean paymentCheck() throws Quantiser.QuantiserException {
+        return false;
+    }
+
     default void addError(ErrorRecord r) {
     }
 
