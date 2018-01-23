@@ -520,18 +520,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // .....
 
         // The TU is checked for its parent validness, it should be in the revoking items and it should be APPROVED
-        if (revokingItems.size() != 1) {
-            res = false;
-            addError(Errors.BAD_REVOKE, "revokingItems.size != 1");
-        } else {
-            Contract revoking = revokingItems.iterator().next();
-            if (!revoking.getOrigin().equals(getOrigin())) {
-                res = false;
-                addError(Errors.BAD_REVOKE, "origin mismatch");
-            }
-            // TODO: it should be APPROVED
-            // .....
-        }
+        // TODO: here is should be check if payment contract not origin itself, means has revision more then 1
+//        if (revokingItems.size() != 1) {
+//            res = false;
+//            addError(Errors.BAD_REVOKE, "revokingItems.size != 1");
+//        } else {
+//            Contract revoking = revokingItems.iterator().next();
+//            if (!revoking.getOrigin().equals(getOrigin())) {
+//                res = false;
+//                addError(Errors.BAD_REVOKE, "origin mismatch");
+//            }
+//            // TODO: it should be APPROVED
+//            // .....
+//        }
 
         if (!res)
             return res;
