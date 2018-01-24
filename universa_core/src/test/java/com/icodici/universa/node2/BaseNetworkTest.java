@@ -71,33 +71,89 @@ public class BaseNetworkTest extends TestCase {
         int N = 100;
         for (int k = 0; k < 1; k++) {
 //            StopWatch.measure(true, () -> {
-                for (int i = 0; i < N; i++) {
-                    TestItem ok = new TestItem(true);
-                    System.out.println("--------------register item " + ok.getId() + " ------------");
-                    node.registerItem(ok);
-                    for (Node n : nodesMap.values()) {
-                        try {
-                            ItemResult r = n.waitItem(ok.getId(), 8000);
-                            int numIterations = 0;
-                            while( !r.state.isConsensusFound()) {
-                                System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
-                                Thread.sleep(500);
-                                r = n.waitItem(ok.getId(), 8000);
-                                numIterations++;
-                                if(numIterations > 20)
-                                    break;
-                            }
-                            assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
-                        } catch (TimeoutException e) {
-                            fail("timeout");
+            for (int i = 0; i < N; i++) {
+                TestItem ok = new TestItem(true);
+                System.out.println("--------------register item " + ok.getId() + " ------------");
+                node.registerItem(ok);
+                for (Node n : nodesMap.values()) {
+                    try {
+                        ItemResult r = n.waitItem(ok.getId(), 8000);
+                        int numIterations = 0;
+                        while( !r.state.isConsensusFound()) {
+                            System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
+                            Thread.sleep(500);
+                            r = n.waitItem(ok.getId(), 8000);
+                            numIterations++;
+                            if(numIterations > 20)
+                                break;
                         }
+                        assertEquals("In node " + n + " item " + ok.getId(), ItemState.APPROVED, r.state);
+                    } catch (TimeoutException e) {
+                        fail("timeout");
                     }
-
-                    ItemResult r = node.waitItem(ok.getId(), 5500);
-                    assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
-
                 }
+
+                ItemResult r = node.waitItem(ok.getId(), 5500);
+                assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
+
+            }
 //            });
+        }
+    }
+
+
+
+    @Test(timeout = 120000)
+    public void registerGoodParcel() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Thread.sleep(500);
+        int N = 100;
+        for (int k = 0; k < 1; k++) {
+            for (int i = 0; i < N; i++) {
+
+                Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+                stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+                stepaCoins.seal();
+                stepaCoins.check();
+                stepaCoins.traceErrors();
+
+                Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+
+                System.out.println("-------------- register parcel " + parcel.getId() + " ------------");
+                node.registerItem(parcel);
+                for (Node n : nodesMap.values()) {
+                    try {
+                        ItemResult r = n.waitParcel(parcel.getId(), 15000);
+                        int numIterations = 0;
+                        while( !r.state.isConsensusFound()) {
+                            System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
+                            Thread.sleep(500);
+                            r = n.waitParcel(parcel.getId(), 15000);
+                            numIterations++;
+                            if(numIterations > 20)
+                                break;
+                        }
+                        assertEquals("In node " + n + " parcel " + parcel.getId(), ItemState.APPROVED, r.state);
+                    } catch (TimeoutException e) {
+                        fail("timeout");
+                    }
+                }
+
+                ItemResult r = node.waitParcel(parcel.getId(), 15000);
+                assertEquals("after: In node "+node+" item "+parcel.getId(), ItemState.APPROVED, r.state);
+
+            }
         }
     }
 
@@ -2287,14 +2343,6 @@ public class BaseNetworkTest extends TestCase {
             stepaPublicKeys.add(pk.getPublicKey());
         }
 
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-        stepaTU.addSignerKey(manufacturePrivateKey);
-        stepaTU.seal();
-        stepaTU.check();
-        stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        registerAndCheckApproved(stepaTU);
 
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
@@ -2302,7 +2350,7 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 50, stepaPrivateKeys);
+        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
 
         parcel.getPayment().getContract().check();
         parcel.getPayment().getContract().traceErrors();
@@ -2325,6 +2373,19 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
     }
 
+    public Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
+        stepaTU.addSignerKey(manufacturePrivateKey);
+        stepaTU.seal();
+        stepaTU.check();
+        stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        registerAndCheckApproved(stepaTU);
+
+        return ContractsService.createParcel(c, stepaTU, 50, keys);
+    }
 
     private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
