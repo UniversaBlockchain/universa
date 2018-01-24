@@ -159,7 +159,7 @@ public class NetworkV2 extends Network {
 
     @Override
     public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
-        return new Parcel();
+        return new Parcel(null, null);
     }
 
     private final Map<NodeInfo,Client> cachedClients = new HashMap<>();
