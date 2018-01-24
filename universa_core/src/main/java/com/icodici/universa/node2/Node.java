@@ -602,6 +602,7 @@ public class Node {
 
         private ScheduledFuture<?> downloader;
         private ScheduledFuture<?> processSchedule;
+        private ScheduledFuture<?> poller;
 
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
@@ -666,6 +667,10 @@ public class Node {
                             delayedVotes.clear();
                         }
                         debug("parcel payload processor for " + payload.getId() + " is created, state is " + payloadProcessor.getState());
+                        payloadProcessor.pollingReadyEvent.await();
+                        debug("parcel payload processor for " + payload.getId() + " is ready for polling, state is " + payloadProcessor.getState());
+                        broadcastMyState();
+                        pulseStartPolling();
                         payloadProcessor.doneEvent.await();
                         debug("parcel processing finished for " + payload.getId() + " with state " + payloadProcessor.getState());
                     } else {
@@ -739,6 +744,30 @@ public class Node {
         }
 
         //
+
+        private final void broadcastMyState() {
+            Notification notification;
+            notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+            network.broadcast(myInfo, notification);
+        }
+
+        private final void pulseStartPolling() {
+            // at this point the item is with us, so we can start
+            synchronized (mutex) {
+                long millis = config.getPollTime().toMillis();
+                poller = executorService.scheduleAtFixedRate(() -> sendStartPollingNotification(), millis, millis, TimeUnit.MILLISECONDS);
+            }
+        }
+
+        private final void sendStartPollingNotification() {
+            // at this point we should requery the nodes that did not yet answered us
+            Notification notification;
+            notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+            network.eachNode(node -> {
+                if (!positiveNodes.contains(node) && !negativeNodes.contains(node))
+                    network.deliver(node, notification);
+            });
+        }
 
         private final void vote(NodeInfo node, ItemState state) {
             debug("parcel vote for " + itemId + " payloadProcessor is " + payloadProcessor);
@@ -869,6 +898,9 @@ public class Node {
 
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
+//        private final AsyncEvent<Void> broadcastReadyEvent = new AsyncEvent<>();
+        private final AsyncEvent<Void> pollingReadyEvent = new AsyncEvent<>();
+        private final AsyncEvent<Void> sendNewConsensusReadyEvent = new AsyncEvent<>();
 
         private final Object mutex;
         private final Object resyncMutex;
@@ -1178,6 +1210,7 @@ public class Node {
                     vote(myInfo, record.getState());
                     broadcastMyState();
                     pulseStartPolling();
+                    pollingReadyEvent.fire();
                 }
             }
         }
@@ -1276,13 +1309,14 @@ public class Node {
                     debug("Send poll notifications for item " + itemId + ", item is TU: " + item.isTU());
                     if(item.isTU()) {
                         notification = new ItemNotification(myInfo, itemId, getResult(), true);
+                        network.eachNode(node -> {
+                            if (!positiveNodes.contains(node) && !negativeNodes.contains(node))
+                                network.deliver(node, notification);
+                        });
                     } else {
-                        notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+//                        pollingReadyEvent.fire();
+//                        notification = new ParcelNotification(myInfo, itemId, getResult(), true);
                     }
-                    network.eachNode(node -> {
-                        if (!positiveNodes.contains(node) && !negativeNodes.contains(node))
-                            network.deliver(node, notification);
-                    });
                 }
             }
         }
@@ -1476,15 +1510,16 @@ public class Node {
                 debug("Send new consensus notifications for item " + itemId + ", item is TU: " + item.isTU());
                 if(item.isTU()) {
                     notification = new ItemNotification(myInfo, itemId, getResult(), true);
+                    network.eachNode(node -> {
+                        if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
+                            debug("Item: " + itemId + " Unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
+                            network.deliver(node, notification);
+                        }
+                    });
                 } else {
-                    notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+                    sendNewConsensusReadyEvent.fire();
+//                    notification = new ParcelNotification(myInfo, itemId, getResult(), true);
                 }
-                network.eachNode(node -> {
-                    if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
-                        debug("Item: " + itemId + " Unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
-                        network.deliver(node, notification);
-                    }
-                });
             }
         }
 
@@ -1657,10 +1692,11 @@ public class Node {
                 debug("Send broadcast own state notifications for item " + itemId + ", item is TU: " + item.isTU());
                 if(item.isTU()) {
                     notification = new ItemNotification(myInfo, itemId, getResult(), true);
+                    network.broadcast(myInfo, notification);
                 } else {
-                    notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+//                    notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+//                    broadcastReadyEvent.fire();
                 }
-                network.broadcast(myInfo, notification);
             }
         }
 

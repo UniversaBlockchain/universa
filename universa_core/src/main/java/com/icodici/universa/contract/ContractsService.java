@@ -369,7 +369,6 @@ public class ContractsService {
      * @return
      */
     public static Parcel createParcel(Contract payload, Contract payment, int amount, Set<PrivateKey> keys) {
-        Parcel parcel = new Parcel();
 
         Contract paymentDecreased = payment.createRevision(keys);
         paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
@@ -379,8 +378,9 @@ public class ContractsService {
 
         paymentDecreased.seal();
 
-        parcel.setPayload(payload.getTransactionPack());
-        parcel.setPayment(paymentDecreased.getTransactionPack());
+        Parcel parcel = new Parcel(payload.getTransactionPack(), paymentDecreased.getTransactionPack());
+//        parcel.setPayload(payload.getTransactionPack());
+//        parcel.setPayment(paymentDecreased.getTransactionPack());
 
         return parcel;
     }

@@ -9,7 +9,10 @@ package com.icodici.universa.contract;
 import com.icodici.universa.HashId;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Bytes;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 
 @BiType(name = "Parcel")
@@ -17,6 +20,27 @@ public class Parcel implements BiSerializable {
 
     private TransactionPack payload = null;
     private TransactionPack payment = null;
+    private HashId hashId;
+
+
+    public Parcel(TransactionPack payload, TransactionPack payment) {
+
+        this.payload = payload;
+        this.payment = payment;
+
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+            outputStream.write( payload.getContract().getId().getDigest().clone() );
+            outputStream.write( payload.getContract().getId().getDigest().clone() );
+
+            byte[] bytes = outputStream.toByteArray( );
+
+            hashId = HashId.of(bytes);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 
     public TransactionPack getPayload() {
@@ -25,9 +49,9 @@ public class Parcel implements BiSerializable {
 
 
 
-    public void setPayload(TransactionPack payload) {
-        this.payload = payload;
-    }
+//    public void setPayload(TransactionPack payload) {
+//        this.payload = payload;
+//    }
 
 
 
@@ -37,9 +61,9 @@ public class Parcel implements BiSerializable {
 
 
 
-    public void setPayment(TransactionPack payment) {
-        this.payment = payment;
-    }
+//    public void setPayment(TransactionPack payment) {
+//        this.payment = payment;
+//    }
 
 
 
@@ -51,11 +75,11 @@ public class Parcel implements BiSerializable {
 
 
 
-    public void setPayloadContract(Contract c) {
-        if (payload == null)
-            payload = new TransactionPack();
-        payload.setContract(c);
-    }
+//    public void setPayloadContract(Contract c) {
+//        if (payload == null)
+//            payload = new TransactionPack();
+//        payload.setContract(c);
+//    }
 
 
 
@@ -67,19 +91,16 @@ public class Parcel implements BiSerializable {
 
 
 
-    public void setPaymentContract(Contract c) {
-        if (payment == null)
-            payment = new TransactionPack();
-        payment.setContract(c);
-    }
+//    public void setPaymentContract(Contract c) {
+//        if (payment == null)
+//            payment = new TransactionPack();
+//        payment.setContract(c);
+//    }
 
 
 
     public HashId getId() {
-        if(payload != null)
-            return payload.getContract().getId();
-
-        return null;
+        return hashId;
     }
 
 
