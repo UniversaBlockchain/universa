@@ -507,7 +507,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return res;
     }
 
-    public boolean paymentCheck() throws Quantiser.QuantiserException {
+    public boolean paymentCheck(Role issuerKeys) throws Quantiser.QuantiserException {
         boolean res = true;
         // Checks that there is a payment contract and the payment should be >= 1
         int transaction_units = getStateData().getInt("transaction_units", 0);
@@ -516,23 +516,50 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             addError(Errors.BAD_VALUE, "transaction_units <= 0");
         }
 
-        // TODO: The TU contract is checked to have valid issuer key (one of preset URS keys) and name/type fields combination
-        // .....
+        // check valid name/type fields combination - not needed
+        // if it mismatches, transaction_units at code above will be 0
 
-        // The TU is checked for its parent validness, it should be in the revoking items and it should be APPROVED
-        // TODO: here is should be check if payment contract not origin itself, means has revision more then 1
-//        if (revokingItems.size() != 1) {
-//            res = false;
-//            addError(Errors.BAD_REVOKE, "revokingItems.size != 1");
-//        } else {
-//            Contract revoking = revokingItems.iterator().next();
-//            if (!revoking.getOrigin().equals(getOrigin())) {
-//                res = false;
-//                addError(Errors.BAD_REVOKE, "origin mismatch");
-//            }
-//            // TODO: it should be APPROVED
-//            // .....
-//        }
+        // check valid decrement_permission
+        if (!isPermitted("decrement_permission", getCreator())) {
+            res = false;
+            addError(Errors.BAD_VALUE, "decrement_permission is missing");
+        }
+
+        // The TU contract is checked to have valid issuer key (one of preset URS keys)
+        if (!getIssuer().equalKeys(issuerKeys)) {
+            res = false;
+            addError(Errors.BAD_VALUE, "issuerKeys is not valid");
+        }
+
+        // If the check is failed, checking process is aborting
+        if (!res) {
+            return res;
+        }
+
+        // The TU is checked for its parent validness, it should be in the revoking items
+        if (revokingItems.size() != 1) {
+            res = false;
+            addError(Errors.BAD_REVOKE, "revokingItems.size != 1");
+        } else {
+            Contract revoking = revokingItems.iterator().next();
+            if (!revoking.getOrigin().equals(getOrigin())) {
+                res = false;
+                addError(Errors.BAD_REVOKE, "origin mismatch");
+            }
+        }
+
+        // check if payment contract not origin itself, means has revision more then 1
+        // don't make this check for initial transaction_units' contract
+        if ((getRevision() != 1) || (getParent()!=null)) {
+            if (getOrigin().equals(getId())) {
+                res = false;
+                addError(Errors.BAD_VALUE, "can't origin itself");
+            }
+            if (getRevision() <= 1) {
+                res = false;
+                addError(Errors.BAD_VALUE, "revision must be greater than 1");
+            }
+        }
 
         if (!res)
             return res;
