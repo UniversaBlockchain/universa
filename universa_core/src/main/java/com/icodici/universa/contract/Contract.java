@@ -507,7 +507,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return res;
     }
 
-    public boolean paymentCheck(Role issuerKeys) throws Quantiser.QuantiserException {
+    public boolean paymentCheck(PublicKey issuerKey) throws Quantiser.QuantiserException {
         boolean res = true;
         // Checks that there is a payment contract and the payment should be >= 1
         int transaction_units = getStateData().getInt("transaction_units", 0);
@@ -520,13 +520,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // if it mismatches, transaction_units at code above will be 0
 
         // check valid decrement_permission
-        if (!isPermitted("decrement_permission", getCreator())) {
+        if (!isPermitted("decrement_permission", getOwner())) {
             res = false;
             addError(Errors.BAD_VALUE, "decrement_permission is missing");
         }
 
         // The TU contract is checked to have valid issuer key (one of preset URS keys)
-        if (!getIssuer().equalKeys(issuerKeys)) {
+        if (!getIssuer().getKeys().equals(new HashSet<>(Arrays.asList(issuerKey)))) {
             res = false;
             addError(Errors.BAD_VALUE, "issuerKeys is not valid");
         }
@@ -534,18 +534,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // If the check is failed, checking process is aborting
         if (!res) {
             return res;
-        }
-
-        // The TU is checked for its parent validness, it should be in the revoking items
-        if (revokingItems.size() != 1) {
-            res = false;
-            addError(Errors.BAD_REVOKE, "revokingItems.size != 1");
-        } else {
-            Contract revoking = revokingItems.iterator().next();
-            if (!revoking.getOrigin().equals(getOrigin())) {
-                res = false;
-                addError(Errors.BAD_REVOKE, "origin mismatch");
-            }
         }
 
         // check if payment contract not origin itself, means has revision more then 1
@@ -558,6 +546,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (getRevision() <= 1) {
                 res = false;
                 addError(Errors.BAD_VALUE, "revision must be greater than 1");
+            }
+
+            // The TU is checked for its parent validness, it should be in the revoking items
+            if (revokingItems.size() != 1) {
+                res = false;
+                addError(Errors.BAD_REVOKE, "revokingItems.size != 1");
+            } else {
+                Contract revoking = revokingItems.iterator().next();
+                if (!revoking.getOrigin().equals(getOrigin())) {
+                    res = false;
+                    addError(Errors.BAD_REVOKE, "origin mismatch");
+                }
             }
         }
 

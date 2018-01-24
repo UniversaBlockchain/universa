@@ -1030,7 +1030,7 @@ public class Node {
                         debug("item is TU: " + item.isTU());
                         boolean checkPassed = false;
                         if(item.isTU()) {
-                            checkPassed = item.paymentCheck();
+                            checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKey());
                         } else {
                             checkPassed = item.check();
                         }
