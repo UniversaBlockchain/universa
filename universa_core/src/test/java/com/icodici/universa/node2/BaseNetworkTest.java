@@ -2405,6 +2405,49 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
     }
 
+
+
+    @Test
+    public void declineParcelWithNotRegisteredPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
+        stepaTU.addSignerKey(manufacturePrivateKey);
+        stepaTU.seal();
+        stepaTU.check();
+        stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+//        registerAndCheckApproved(stepaTU);
+
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 50, stepaPrivateKeys);
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+
+        node.registerItem(parcel);
+        // check parcel
+        assertEquals(ItemState.UNDEFINED, node.waitParcel(parcel.getId(), 8000).state);
+        // check payment and payload contracts
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+
     public Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
