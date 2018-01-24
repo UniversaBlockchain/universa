@@ -2373,6 +2373,38 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
     }
 
+
+
+    @Test
+    public void declineParcelWithBadPayload() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+//        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPayloadContract().isOk());
+
+        node.registerItem(parcel);
+        // check parcel
+        assertEquals(ItemState.DECLINED, node.waitParcel(parcel.getId(), 8000).state);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+    }
+
     public Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
