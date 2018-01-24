@@ -16,6 +16,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Ignore;
@@ -2294,7 +2295,6 @@ public class BaseNetworkTest extends TestCase {
         stepaTU.setIsTU(true);
         stepaTU.traceErrors();
         registerAndCheckApproved(stepaTU);
-
 
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());

@@ -7,7 +7,9 @@
 
 package com.icodici.universa;
 
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Reference;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node2.Quantiser;
 
 import java.time.ZonedDateTime;
@@ -73,7 +75,7 @@ public interface Approvable extends HashIdentifiable {
         return check("");
     }
 
-    default boolean paymentCheck() throws Quantiser.QuantiserException {
+    default boolean paymentCheck(PublicKey issuerKey) throws Quantiser.QuantiserException {
         return false;
     }
 
