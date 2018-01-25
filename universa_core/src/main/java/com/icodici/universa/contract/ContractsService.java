@@ -379,8 +379,6 @@ public class ContractsService {
         paymentDecreased.seal();
 
         Parcel parcel = new Parcel(payload.getTransactionPack(), paymentDecreased.getTransactionPack());
-//        parcel.setPayload(payload.getTransactionPack());
-//        parcel.setPayment(paymentDecreased.getTransactionPack());
 
         return parcel;
     }
