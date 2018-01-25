@@ -594,6 +594,7 @@ public class Node {
         private Set<NodeInfo> sources = new HashSet<>();
         private HashMap<NodeInfo, ItemState> delayedVotes = new HashMap<>();
         private ItemState delayedState = ItemState.UNDEFINED;
+        private ParcelProcessingState processingState;
 
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
@@ -620,6 +621,8 @@ public class Node {
                 payload = parcel.getPayloadContract();
             }
 
+            processingState = ParcelProcessingState.INIT;
+
             if (this.parcel != null)
                 executorService.submit(() -> itemDownloaded());
         }
@@ -627,115 +630,126 @@ public class Node {
         //////////// processing section /////////////
 
         private void pulseProcessing() {
+            if(processingState.canContinue()) {
 
-            debug("pulse parcel processing is " + processSchedule);
-            synchronized (mutex) {
-                if (processSchedule == null || processSchedule.isDone()) {
-                    debug("pulse parcel processing");
-                    processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process());
+                debug("pulse parcel processing is " + processSchedule);
+                synchronized (mutex) {
+                    if (processSchedule == null || processSchedule.isDone()) {
+                        debug("pulse parcel processing");
+                        processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process());
+                    }
                 }
             }
         }
 
         private void process() {
+            if(processingState.canContinue()) {
 
-            ItemResult paymentResult = null;
-            ItemResult payloadResult = null;
-            payment = parcel.getPaymentContract();
-            payload = parcel.getPayloadContract();
-            try {
-                debug("Parcel: checking payment " + payment.getId() + " item is TU: " + payment.isTU());
-                Object x = checkItemInternal(payment.getId(), payment, true);
-                if (x instanceof ItemProcessor) {
-                    paymentProcessor = ((ItemProcessor) x);
-                    paymentProcessor.doneEvent.await();
-                    paymentResult = paymentProcessor.getResult();
-                } else {
-                    paymentResult = (ItemResult) x;
-                }
-
-                if(paymentResult.state.isApproved()) {
-                    debug("payment has approved for " + payload.getId());
-                    x = checkItemInternal(payload.getId(), payload, true);
-                    debug("Parcel: checking payload " + payload.getId() + " item is TU: " + payload.isTU());
-                    debug("Parcel: checkItemInternal finished");
+                ItemResult paymentResult = null;
+                ItemResult payloadResult = null;
+                payment = parcel.getPaymentContract();
+                payload = parcel.getPayloadContract();
+                try {
+                    debug("Parcel: checking payment " + payment.getId() + " item is TU: " + payment.isTU());
+                    Object x = checkItemInternal(payment.getId(), payment, true);
                     if (x instanceof ItemProcessor) {
-                        payloadProcessor = ((ItemProcessor) x);
-                        synchronized (delayedVotes) {
-                            for (NodeInfo ni : delayedVotes.keySet())
-                                payloadProcessor.vote(ni, delayedVotes.get(ni));
-                            delayedVotes.clear();
-                        }
-                        debug("parcel payload processor for " + payload.getId() + " is created, state is " + payloadProcessor.getState());
-                        payloadProcessor.pollingReadyEvent.await();
-                        debug("parcel payload processor for " + payload.getId() + " is ready for polling, state is " + payloadProcessor.getState());
-                        broadcastMyState();
-                        pulseStartPolling();
-                        payloadProcessor.doneEvent.await();
-                        debug("parcel processing finished for " + payload.getId() + " with state " + payloadProcessor.getState());
+                        paymentProcessor = ((ItemProcessor) x);
+                        paymentProcessor.doneEvent.await();
+                        paymentResult = paymentProcessor.getResult();
                     } else {
-                        debug("parcel processing finished for " + payload.getId() + " with state " + ((ItemResult) x).state);
+                        paymentResult = (ItemResult) x;
                     }
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
 
-            doneEvent.fire();
+                    if (paymentResult.state.isApproved()) {
+                        debug("payment has approved for " + payload.getId());
+                        x = checkItemInternal(payload.getId(), payload, true);
+                        debug("Parcel: checking payload " + payload.getId() + " item is TU: " + payload.isTU());
+                        debug("Parcel: checkItemInternal finished");
+                        if (x instanceof ItemProcessor) {
+                            payloadProcessor = ((ItemProcessor) x);
+                            synchronized (delayedVotes) {
+                                for (NodeInfo ni : delayedVotes.keySet())
+                                    payloadProcessor.vote(ni, delayedVotes.get(ni));
+                                delayedVotes.clear();
+                            }
+                            debug("parcel payload processor for " + payload.getId() + " is created, state is " + payloadProcessor.getState());
+                            payloadProcessor.pollingReadyEvent.await();
+                            debug("parcel payload processor for " + payload.getId() + " is ready for polling, state is " + payloadProcessor.getState());
+                            broadcastMyState();
+                            pulseStartPolling();
+                            payloadProcessor.doneEvent.await();
+                            debug("parcel processing finished for " + payload.getId() + " with state " + payloadProcessor.getState());
+                        } else {
+                            debug("parcel processing finished for " + payload.getId() + " with state " + ((ItemResult) x).state);
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                doneEvent.fire();
+            }
         }
 
         //////////// download section /////////////
 
         private void pulseDownload() {
+            if(processingState.canContinue()) {
 
-            synchronized (mutex) {
-                if (parcel == null && (downloader == null || downloader.isDone())) {
-                    debug("submitting parcel download");
-                    downloader = (ScheduledFuture<?>) executorService.submit(() -> download());
+                if (!processingState.isProcessedToConsensus()) {
+                    processingState = ParcelProcessingState.DOWNLOADING;
+
+                    synchronized (mutex) {
+                        if (parcel == null && (downloader == null || downloader.isDone())) {
+                            debug("submitting parcel download");
+                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download());
+                        }
+                    }
+                    debug("pulse parcel download mutex is free");
                 }
             }
-            debug("pulse parcel download mutex is free");
         }
 
         private void download() {
+            if(processingState.canContinue()) {
 
-            while (parcel == null) {
-                if (sources.isEmpty()) {
-                    log.e("empty sources for download tasks, stopping");
-                    return;
-                } else {
-                    try {
-                        // first we have to wait for sources
-                        NodeInfo source;
-                        // Important: it could be disturbed by notifications
-                        synchronized (sources) {
-                            source = Do.sample(sources);
+                while (!isPollingExpired() && parcel == null) {
+                    if (sources.isEmpty()) {
+                        log.e("empty sources for download tasks, stopping");
+                        return;
+                    } else {
+                        try {
+                            // first we have to wait for sources
+                            NodeInfo source;
+                            // Important: it could be disturbed by notifications
+                            synchronized (sources) {
+                                source = Do.sample(sources);
+                            }
+                            parcel = network.getParcel(itemId, source, config.getMaxGetItemTime());
+                            if (parcel != null) {
+                                debug("parcel downloaded " + itemId + " from " + source);
+                                itemDownloaded();
+                                return;
+                            } else {
+                                debug("failed to download " + itemId + " from " + source);
+                                Thread.sleep(100);
+                            }
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
                         }
-                        parcel = network.getParcel(itemId, source, config.getMaxGetItemTime());
-                        if (parcel != null) {
-                            debug("parcel downloaded " + itemId + " from " + source);
-                            itemDownloaded();
-                            return;
-                        } else {
-                            debug("failed to download " + itemId + " from " + source);
-                            Thread.sleep(100);
-                        }
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
                     }
                 }
             }
         }
 
         private final void itemDownloaded() {
-            debug("parcel itemDownloaded");
-            synchronized (parcelCache) {
-                parcelCache.put(parcel);
+            if(processingState.canContinue()) {
+                synchronized (parcelCache) {
+                    parcelCache.put(parcel);
+                }
+                pulseProcessing();
+                downloadedEvent.fire();
             }
-            debug("parcel itemDownloaded2");
-            pulseProcessing();
-            debug("parcel itemDownloaded3");
-            downloadedEvent.fire();
         }
 
         private void stopDownloader() {
@@ -743,71 +757,78 @@ public class Node {
                 downloader.cancel(false);
         }
 
-        //
+
+        //////////// polling section /////////////
 
         private final void broadcastMyState() {
-            Notification notification;
-            notification = new ParcelNotification(myInfo, itemId, getResult(), true);
-            network.broadcast(myInfo, notification);
+            if(processingState.canContinue()) {
+                Notification notification;
+                notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+                network.broadcast(myInfo, notification);
+            }
         }
 
         private final void pulseStartPolling() {
-            // at this point the item is with us, so we can start
-            synchronized (mutex) {
-                long millis = config.getPollTime().toMillis();
-                poller = executorService.scheduleAtFixedRate(() -> sendStartPollingNotification(), millis, millis, TimeUnit.MILLISECONDS);
+            if(processingState.canContinue()) {
+                if (!processingState.isProcessedToConsensus()) {
+                    processingState = ParcelProcessingState.POLLING;
+                    // at this point the item is with us, so we can start
+                    synchronized (mutex) {
+                        long millis = config.getPollTime().toMillis();
+                        poller = executorService.scheduleAtFixedRate(() -> sendStartPollingNotification(), millis, millis, TimeUnit.MILLISECONDS);
+                    }
+                }
             }
         }
 
         private final void sendStartPollingNotification() {
-            // at this point we should requery the nodes that did not yet answered us
-            Notification notification;
-            notification = new ParcelNotification(myInfo, itemId, getResult(), true);
-            network.eachNode(node -> {
-                if (!positiveNodes.contains(node) && !negativeNodes.contains(node))
-                    network.deliver(node, notification);
-            });
+            if(processingState.canContinue()) {
+                if (!processingState.isProcessedToConsensus()) {
+                    // at this point we should requery the nodes that did not yet answered us
+                    Notification notification;
+                    notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+                    network.eachNode(node -> {
+                        if (!positiveNodes.contains(node) && !negativeNodes.contains(node))
+                            network.deliver(node, notification);
+                    });
+                }
+            }
         }
 
         private final void vote(NodeInfo node, ItemState state) {
-            debug("parcel vote for " + itemId + " payloadProcessor is " + payloadProcessor);
-//            if(payloadProcessor == null) {
-//                try {
-//                    payloadProcessorReadyEvent.await();
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }
+            if(processingState.canContinue()) {
+                debug("parcel vote for " + itemId + " payloadProcessor is " + payloadProcessor);
 
-            if(payloadProcessor != null)
-                payloadProcessor.vote(node, state);
-            else {
-                synchronized (mutex) {
-                    delayedVotes.put(node, state);
-                    boolean positiveConsensus = false;
-                    boolean negativeConsensus = false;
+                if (payloadProcessor != null)
+                    payloadProcessor.vote(node, state);
+                else {
                     synchronized (mutex) {
-                        Set<NodeInfo> add, remove;
-                        if (state.isPositive()) {
-                            add = positiveNodes;
-                            remove = negativeNodes;
-                        } else {
-                            add = negativeNodes;
-                            remove = positiveNodes;
-                        }
-                        add.add(node);
-                        remove.remove(node);
+                        delayedVotes.put(node, state);
+                        boolean positiveConsensus = false;
+                        boolean negativeConsensus = false;
+                        synchronized (mutex) {
+                            Set<NodeInfo> add, remove;
+                            if (state.isPositive()) {
+                                add = positiveNodes;
+                                remove = negativeNodes;
+                            } else {
+                                add = negativeNodes;
+                                remove = positiveNodes;
+                            }
+                            add.add(node);
+                            remove.remove(node);
 
-                        if (negativeNodes.size() >= config.getNegativeConsensus()) {
-                            negativeConsensus = true;
-                        } else if (positiveNodes.size() >= config.getPositiveConsensus()) {
-                            positiveConsensus = true;
+                            if (negativeNodes.size() >= config.getNegativeConsensus()) {
+                                negativeConsensus = true;
+                            } else if (positiveNodes.size() >= config.getPositiveConsensus()) {
+                                positiveConsensus = true;
+                            }
                         }
+                        if (positiveConsensus)
+                            delayedState = ItemState.APPROVED;
+                        if (negativeConsensus)
+                            delayedState = ItemState.DECLINED;
                     }
-                    if(positiveConsensus)
-                        delayedState = ItemState.APPROVED;
-                    if(negativeConsensus)
-                        delayedState = ItemState.DECLINED;
                 }
             }
         }
@@ -856,6 +877,12 @@ public class Node {
 
             if(payloadProcessor != null)
                 payloadProcessor.addToSources(node);
+        }
+
+        private boolean isPollingExpired() {
+            if(payloadProcessor != null)
+                return payloadProcessor.isPollingExpired();
+            return false;
         }
 
         public <T> T lock(Supplier<T> c) {
@@ -1797,6 +1824,66 @@ public class Node {
             synchronized (mutex) {
                 return (T) c.get();
             }
+        }
+    }
+
+
+    public enum ParcelProcessingState {
+        INIT,
+        DOWNLOADING,
+        PREPARING,
+        CHECKING,
+        RESYNCING,
+        GOT_RESYNCED_STATE,
+        POLLING,
+        GOT_CONSENSUS,
+        SENDING_CONSENSUS,
+        FINISHED,
+        EMERGENCY_BREAK;
+
+
+        /**
+         * Status should break other processes and possibility to launch processes.
+         *
+         * @return
+         */
+        public boolean isProcessedToConsensus() {
+            switch (this) {
+                case GOT_CONSENSUS:
+                case SENDING_CONSENSUS:
+                case FINISHED:
+                    return true;
+            }
+            return false;
+        }
+
+        public boolean isConsensusSentAndReceived() {
+            return this == FINISHED;
+        }
+
+        public boolean isGotConsensus() {
+            return this == GOT_CONSENSUS;
+        }
+
+        public boolean isGotResyncedState() {
+            return this == GOT_RESYNCED_STATE;
+        }
+
+        public boolean isResyncing() {
+            return this == RESYNCING;
+        }
+
+        public boolean canContinue() {
+            return this != EMERGENCY_BREAK;
+        }
+
+        public boolean canRemoveSelf() {
+            switch (this) {
+                case EMERGENCY_BREAK:
+                case FINISHED:
+                    return true;
+            }
+            return false;
         }
     }
 
