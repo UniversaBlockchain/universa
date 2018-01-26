@@ -103,7 +103,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 120000)
+    @Test
     public void registerGoodParcel() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -118,6 +118,7 @@ public class BaseNetworkTest extends TestCase {
             stepaPublicKeys.add(pk.getPublicKey());
         }
         Thread.sleep(500);
+        LogPrinter.showDebug(true);
         int N = 100;
         for (int k = 0; k < 1; k++) {
             for (int i = 0; i < N; i++) {
@@ -130,28 +131,32 @@ public class BaseNetworkTest extends TestCase {
 
                 Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
 
-                System.out.println("-------------- register parcel " + parcel.getId() + " ------------");
+                System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
                 node.registerItem(parcel);
                 for (Node n : nodesMap.values()) {
                     try {
-                        ItemResult r = n.waitParcel(parcel.getId(), 15000);
+                        System.out.println("-------------- wait parcel " + parcel.getId() + " on the node " + n + " (iteration " + i + ") ------------");
+                        ItemResult r = n.waitParcel(parcel.getId(), 80000);
                         int numIterations = 0;
                         while( !r.state.isConsensusFound()) {
                             System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
                             Thread.sleep(500);
-                            r = n.waitParcel(parcel.getId(), 15000);
+                            r = n.waitParcel(parcel.getId(), 80000);
                             numIterations++;
                             if(numIterations > 20)
                                 break;
                         }
                         assertEquals("In node " + n + " parcel " + parcel.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
-                        fail("timeout");
+                        fail("timeout, node " + n + " parcel " + parcel.getId() + " (iteration " + i + ")");
                     }
                 }
 
-                ItemResult r = node.waitParcel(parcel.getId(), 15000);
+                ItemResult r = node.waitParcel(parcel.getId(), 80000);
                 assertEquals("after: In node "+node+" item "+parcel.getId(), ItemState.APPROVED, r.state);
+                System.out.println("-------------- parcel " + parcel.getId() + " registered (iteration " + i + ")------------");
+                Thread.sleep(5000);
+                System.out.println("-------------- parcel " + parcel.getId() + " wait finished (iteration " + i + ")------------");
 
             }
         }
@@ -2514,7 +2519,7 @@ public class BaseNetworkTest extends TestCase {
 
     private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
         node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 8000);
+        ItemResult itemResult = node.waitItem(c.getId(), 80000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 

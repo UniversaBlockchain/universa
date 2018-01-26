@@ -386,16 +386,16 @@ public class Node {
                 else
                     log.e("pending vote on " + notification.getItemId() + " from " + from);
 
-                // We answer only if (1) answer is requested and (2) we have position on the subject:
-//                if (notification.answerIsRequested() && pp.getState() != ItemState.PENDING) {
-//                    network.deliver(
-//                            from,
-//                            new ParcelNotification(myInfo,
-//                                    notification.getItemId(),
-//                                    pp.getResult(),
-//                                    pp.needsVoteFrom(from))
-//                    );
-//                }
+//                 We answer only if (1) answer is requested and (2) we have position on the subject:
+                if (notification.answerIsRequested() && pp.getState() != ItemState.PENDING) {
+                    network.deliver(
+                            from,
+                            new ParcelNotification(myInfo,
+                                    notification.getItemId(),
+                                    pp.getResult(),
+                                    pp.needsVoteFrom(from))
+                    );
+                }
                 return null;
             });
         } else {
@@ -500,7 +500,10 @@ public class Node {
             return ParcelLock.synchronize(itemId, (lock) -> {
                 ParcelProcessor processor = parcelProcessors.get(itemId);
                 if (processor != null) {
-                    debug("existing parcel processor found for " + itemId);
+                    debug("existing parcel processor found for " + itemId + ", state is " + processor.getState()
+                            + ", result is " + processor.getResult() + ", processingState is " + processor.processingState
+                            + ", payment is " + (processor.payment == null ? null : processor.payment.getId())
+                            + ", payload is " + (processor.payload == null ? null : processor.payload.getId()));
                     return processor;
                 }
 
@@ -603,6 +606,7 @@ public class Node {
 
         private ScheduledFuture<?> downloader;
         private ScheduledFuture<?> processSchedule;
+        private ScheduledFuture<?> consensusReceivedChecker;
         private ScheduledFuture<?> poller;
 
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
@@ -611,6 +615,7 @@ public class Node {
 
         public ParcelProcessor(HashId itemId, Parcel parcel, Object lock) {
             mutex = lock;
+            delayedState = ItemState.PENDING;
             this.itemId = itemId;
             this.parcel = parcel;
             if (parcel == null)
@@ -645,6 +650,8 @@ public class Node {
         private void process() {
             if(processingState.canContinue()) {
 
+                processingState = ParcelProcessingState.PREPARING;
+
                 ItemResult paymentResult = null;
                 ItemResult payloadResult = null;
                 payment = parcel.getPaymentContract();
@@ -672,15 +679,20 @@ public class Node {
                                     payloadProcessor.vote(ni, delayedVotes.get(ni));
                                 delayedVotes.clear();
                             }
-                            debug("parcel payload processor for " + payload.getId() + " is created, state is " + payloadProcessor.getState());
-                            payloadProcessor.pollingReadyEvent.await();
+                            debug("parcel payload processor for " + payload.getId() + " is got, state is " + payloadProcessor.getState() + ", processingState is " + payloadProcessor.processingState);
+                            if(payloadProcessor.processingState == ItemProcessingState.CHECKING ||
+                                    payloadProcessor.processingState == ItemProcessingState.RESYNCING) {
+                                payloadProcessor.pollingReadyEvent.await();
+                            }
                             debug("parcel payload processor for " + payload.getId() + " is ready for polling, state is " + payloadProcessor.getState());
                             broadcastMyState();
                             pulseStartPolling();
+                            processingState = ParcelProcessingState.POLLING;
                             payloadProcessor.doneEvent.await();
-                            debug("parcel processing finished for " + payload.getId() + " with state " + payloadProcessor.getState());
+                            debug("parcel consensus got for " + payload.getId() + " with state " + payloadProcessor.getState());
+
                         } else {
-                            debug("parcel processing finished for " + payload.getId() + " with state " + ((ItemResult) x).state);
+                            debug("parcel consensus got for " + payload.getId() + " with state " + ((ItemResult) x).state);
                         }
                     }
                 } catch (InterruptedException e) {
@@ -688,6 +700,17 @@ public class Node {
                 }
 
                 doneEvent.fire();
+                if(processingState.canContinue()) {
+                    checkIfAllReceivedConsensus();
+                    debug("after check if all received consensus for parcel " + itemId + " processing state: " + processingState);
+                    if (processingState.isGotConsensus()) {
+                        pulseSendNewConsensus();
+                    } else {
+                        processingState = ParcelProcessingState.FINISHED;
+                    }
+                } else {
+                    processingState = ParcelProcessingState.FINISHED;
+                }
             }
         }
 
@@ -831,6 +854,66 @@ public class Node {
                     }
                 }
             }
+        }
+
+        //////////// sending new state section /////////////
+
+        private final void pulseSendNewConsensus() {
+            if(processingState.canContinue()) {
+
+                processingState = ParcelProcessingState.SENDING_CONSENSUS;
+
+                synchronized (mutex) {
+                    long millis = config.getConsensusReceivedCheckTime().toMillis();
+                    consensusReceivedChecker = executorService.scheduleAtFixedRate(() -> sendNewConsensusNotification(),
+                            millis, millis, TimeUnit.MILLISECONDS);
+                }
+            }
+        }
+
+        private final void sendNewConsensusNotification() {
+            if(processingState.canContinue()) {
+                synchronized (mutex) {
+                    if (processingState.isConsensusSentAndReceived())
+                        return;
+                    if (isConsensusReceivedExpired()) {
+                        // cancel by timeout expired
+                        debug("WARNING: Checking if all nodes got consensus is timed up, cancelling " + itemId);
+                        processingState = ParcelProcessingState.FINISHED;
+                        stopConsensusReceivedChecker();
+                        return;
+                    }
+                }
+                // at this point we should requery the nodes that did not yet answered us
+                Notification notification;
+                debug("Send new consensus notifications for parcel " + itemId);
+                notification = new ParcelNotification(myInfo, itemId, getResult(), true);
+                network.eachNode(node -> {
+                    if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
+                        debug("Parcel: " + itemId + " Unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
+                        network.deliver(node, notification);
+                    }
+                });
+            }
+        }
+
+        private final Boolean checkIfAllReceivedConsensus() {
+            if(payloadProcessor != null)
+                return payloadProcessor.checkIfAllReceivedConsensus();
+
+            return false;
+        }
+
+        private boolean isConsensusReceivedExpired() {
+
+            if(payloadProcessor != null)
+                return payloadProcessor.isConsensusReceivedExpired();
+            return false;
+        }
+
+        private void stopConsensusReceivedChecker() {
+            if(consensusReceivedChecker != null)
+                consensusReceivedChecker.cancel(false);
         }
 
         public @NonNull ItemResult getResult() {
@@ -1740,7 +1823,9 @@ public class Node {
                     checkIfAllReceivedConsensus();
                     debug("after check if all received consensus for item " + itemId + " processing state: " + processingState);
                     if (processingState.isGotConsensus()) {
-                        pulseSendNewConsensus();
+                        if(item.isTU()) {
+                            pulseSendNewConsensus();
+                        }
                     } else {
                         removeSelf();
                     }
