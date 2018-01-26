@@ -516,8 +516,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             addError(Errors.BAD_VALUE, "transaction_units <= 0");
         }
 
-        // check valid name/type fields combination - not needed
-        // if it mismatches, transaction_units at code above will be 0
+        // check valid name/type fields combination
+        Object o = getStateData().get("transaction_units");
+        if (o == null || o.getClass() != Integer.class) {
+            res = false;
+            addError(Errors.BAD_VALUE, "transaction_units name/type mismatch");
+        }
 
         // check valid decrement_permission
         if (!isPermitted("decrement_permission", getOwner())) {
