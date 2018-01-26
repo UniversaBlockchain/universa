@@ -15,6 +15,7 @@ import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
+import jdk.internal.util.xml.impl.Pair;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
@@ -22,6 +23,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
@@ -2908,6 +2910,139 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("check after snatch (c4): " + c4.check());
         c4.traceErrors();
         registerAndCheckDeclined(c4);
+    }
+
+
+
+    protected Contract checkPayment_preparePaymentContract(Set<PrivateKey> privateKeys) throws Exception {
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(privateKeys.iterator().next());
+        stepaCoins.seal();
+        registerAndCheckApproved(stepaCoins);
+        Parcel parcel = createParcelWithFreshTU(stepaCoins, privateKeys);
+        return parcel.getPaymentContract();
+    }
+
+
+
+    protected Set<PrivateKey> checkPayment_preparePrivateKeys() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        return stepaPrivateKeys;
+    }
+
+
+
+    @Test
+    public void checkPayment_good() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertTrue(res);
+    }
+
+
+
+    @Test
+    public void checkPayment_zeroTU() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+        payment.getStateData().set("transaction_units", 0);
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertFalse(res);
+    }
+
+
+
+    @Test
+    public void checkPayment_wrongTUtype() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+        payment.getStateData().set("transaction_units", "33");
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertFalse(res);
+    }
+
+
+
+    @Test
+    public void checkPayment_wrongTUname() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+        payment.getStateData().set("transacti0n_units", payment.getStateData().get("transaction_units"));
+        payment.getStateData().remove("transaction_units");
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertFalse(res);
+    }
+
+
+
+    @Test
+    public void checkPayment_missingDecrementPermission() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+        payment.getPermissions().remove("decrement_permission");
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertFalse(res);
+    }
+
+
+
+    @Test
+    public void checkPayment_wrongIssuer() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+
+        PrivateKey manufactureFakePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        KeyRecord kr = new KeyRecord(manufactureFakePrivateKey.getPublicKey());
+        issuerRole.addKeyRecord(kr);
+        payment.registerRole(issuerRole);
+
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertFalse(res);
+    }
+
+
+
+    @Test
+    public void checkPayment_revision1() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+        final Field field = payment.getState().getClass().getDeclaredField("revision");
+        field.setAccessible(true);
+        field.set(payment.getState(), 1);
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertFalse(res);
+    }
+
+
+
+    @Test
+    public void checkPayment_originItself() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+        final Field field = payment.getState().getClass().getDeclaredField("origin");
+        field.setAccessible(true);
+        field.set(payment.getState(), payment.getId());
+        final Field field2 = payment.getRevoking().get(0).getState().getClass().getDeclaredField("origin");
+        field2.setAccessible(true);
+        field2.set(payment.getRevoking().get(0).getState(), payment.getId());
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertFalse(res);
+    }
+
+
+
+    @Test
+    public void checkPayment_originMismatch() throws Exception {
+        Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
+        final Field field2 = payment.getRevoking().get(0).getState().getClass().getDeclaredField("origin");
+        field2.setAccessible(true);
+        field2.set(payment.getRevoking().get(0).getState(), payment.getId());
+        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
+        payment.traceErrors();
+        assertFalse(res);
     }
 
 }
