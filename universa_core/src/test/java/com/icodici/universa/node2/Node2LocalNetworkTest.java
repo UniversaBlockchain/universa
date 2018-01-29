@@ -12,6 +12,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
@@ -290,9 +291,9 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertTrue(contract.check());
 
-        node.registerItem(contract);
+        Parcel parcel = registerWithNewParcel(contract);
 
-        ItemResult r = node.waitItem(contract.getId(), 5000);
+        ItemResult r = node.waitParcel(parcel.getId(), 5000);
         System.out.println("Complex contract state: " + r.state);
         assertEquals(ItemState.DECLINED, r.state);
 
@@ -363,9 +364,9 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertTrue(contract.check());
 
-        node.registerItem(contract);
+        Parcel parcel = registerWithNewParcel(contract);
 
-        ItemResult r = node.waitItem(contract.getId(), 5000);
+        ItemResult r = node.waitParcel(parcel.getId(), 5000);
         System.out.println("Complex contract state: " + r.state);
         ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
         assertEquals(expectedState, r.state);
@@ -447,7 +448,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertFalse(contract.check());
 
-        node.registerItem(contract);
+        Parcel parcel = registerWithNewParcel(contract);
 
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -474,7 +475,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.waitItem(contract.getId(), 3000);
+        ItemResult r = node.waitParcel(parcel.getId(), 3000);
         assertEquals(ItemState.DECLINED, r.state);
     }
 
@@ -519,7 +520,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         contract.check();
         contract.traceErrors();
 
-        node.registerItem(contract);
+        Parcel parcel = registerWithNewParcel(contract);
 
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -546,7 +547,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.waitItem(contract.getId(), 3000);
+        ItemResult r = node.waitParcel(parcel.getId(), 3000);
         assertEquals(ItemState.APPROVED, r.state);
     }
 
@@ -826,7 +827,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         contract.traceErrors();
         assertTrue(contract.isOk());
 
-        node.registerItem(contract);
+        Parcel parcel = registerWithNewParcel(contract);
 
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -883,7 +884,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap_s.values()) {
-            ItemResult r = n.waitItem(contract.getId(), 3000);
+            ItemResult r = n.waitParcel(parcel.getId(), 3000);
             System.out.println("Node: " + n.toString() + " state: " + r.state);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
