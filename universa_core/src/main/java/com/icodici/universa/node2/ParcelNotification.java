@@ -13,21 +13,37 @@ import net.sergeych.boss.Boss;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 
 public class ParcelNotification extends ItemNotification {
 
 
     private static final int CODE_PARCEL_NOTIFICATION = 2;
 
-    public ParcelNotification(NodeInfo from, HashId itemId, ItemResult itemResult, boolean requestResult) {
-        super(from, itemId, itemResult, requestResult);
+
+    private ParcelNotificationType type = ParcelNotificationType.PAYLOAD;
+    public ParcelNotificationType getType() {
+        return type;
     }
 
-    protected ParcelNotification(NodeInfo from) throws IOException {
-        super(from);
+    public ParcelNotification(NodeInfo from, HashId itemId, ItemResult itemResult, boolean requestResult, ParcelNotificationType type) {
+        super(from, itemId, itemResult, requestResult);
+        this.type = type;
     }
 
     protected ParcelNotification() {
+    }
+
+    @Override
+    protected void writeTo(Boss.Writer bw) throws IOException {
+        super.writeTo(bw);
+        bw.writeObject(type.ordinal());
+    }
+
+    @Override
+    protected void readFrom(Boss.Reader br) throws IOException {
+        super.readFrom(br);
+        type = ParcelNotificationType.values()[br.readInt()];
     }
 
     @Override
@@ -38,12 +54,22 @@ public class ParcelNotification extends ItemNotification {
     @Override
     public String toString() {
         return "[ParcelNotification from: " + getFrom()
-                + " for item: " + getItemId()
+                + " for parcel: " + getItemId()
+                + ", type is: " + type
                 + ", is answer requested: " + answerIsRequested()
                 + "]";
     }
 
     static {
         registerClass(CODE_PARCEL_NOTIFICATION, ParcelNotification.class);
+    }
+
+    public enum ParcelNotificationType {
+        PAYMENT,
+        PAYLOAD;
+
+        public boolean isTU() {
+            return this == PAYMENT;
+        }
     }
 }
