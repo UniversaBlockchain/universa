@@ -117,4 +117,9 @@ public class TestItem implements Approvable {
     public void setExpiresAtPlusFive(boolean expiresAtPlusFive) {
         this.expiresAtPlusFive = expiresAtPlusFive;
     }
+
+    @Override
+    public boolean isTU() {
+        return true;
+    }
 }

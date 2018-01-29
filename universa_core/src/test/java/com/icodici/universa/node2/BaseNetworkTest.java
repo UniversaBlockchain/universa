@@ -192,8 +192,8 @@ public class BaseNetworkTest extends TestCase {
         TestItem bad = new TestItem(false);
         node.registerItem(ok);
         node.registerItem(bad);
-        node.waitItem(ok.getId(), 2000);
-        node.waitItem(bad.getId(), 2000);
+        node.waitItem(ok.getId(), 6000);
+        node.waitItem(bad.getId(), 6000);
         assertEquals(ItemState.APPROVED, node.checkItem(ok.getId()).state);
         assertEquals(ItemState.DECLINED, node.checkItem(bad.getId()).state);
     }
@@ -210,12 +210,12 @@ public class BaseNetworkTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 2000);
+        ItemResult result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(item.getId(), 2000);
+        result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(item.getId(), 2000);
+        result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.checkItem(item.getId());
@@ -234,12 +234,12 @@ public class BaseNetworkTest extends TestCase {
         TestItem item = new TestItem(false);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 1000);
+        ItemResult result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.DECLINED, result.state);
 
-        result = node.waitItem(item.getId(), 1000);
+        result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.DECLINED, result.state);
-        result = node.waitItem(item.getId(), 1000);
+        result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.DECLINED, result.state);
 
         result = node.checkItem(item.getId());
@@ -258,12 +258,12 @@ public class BaseNetworkTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 2000);
+        ItemResult result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(item.getId(), 2000);
+        result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(item.getId(), 2000);
+        result = node.waitItem(item.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.checkItem(item.getId());
@@ -367,7 +367,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(2, main.getNewItems().size());
 
         node.registerItem(main);
-        ItemResult itemResult = node.waitItem(main.getId(), 2000);
+        ItemResult itemResult = node.waitItem(main.getId(), 5000);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -497,11 +497,11 @@ public class BaseNetworkTest extends TestCase {
 
         System.out.println("--------resister (bad) item " + existing1.getId() + " ---------");
         node.registerItem(existing1);
-        node.waitItem(existing1.getId(), 2000);
+        node.waitItem(existing1.getId(), 6000);
 
         System.out.println("--------resister (good) item " + existing2.getId() + " ---------");
         node.registerItem(existing2);
-        node.waitItem(existing2.getId(), 2000);
+        node.waitItem(existing2.getId(), 6000);
 
         main.addReferencedItems(existing1.getId(), existing2.getId());
         main.addNewItems(new1, new2);
@@ -536,7 +536,7 @@ public class BaseNetworkTest extends TestCase {
 
         TestItem existing = new TestItem(true);
         node.registerItem(existing);
-        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 2000);
+        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 6000);
 
         // but second is missing
         HashId missingId = HashId.createRandom();
@@ -653,17 +653,17 @@ public class BaseNetworkTest extends TestCase {
         main.addNewItems(new1, new2);
 
         node.registerItem(main);
-        ItemResult result = node.waitItem(main.getId(), 2000);
+        ItemResult result = node.waitItem(main.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(new1.getId(), 2000);
+        result = node.waitItem(new1.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(new2.getId(), 2000);
+        result = node.waitItem(new2.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
 
-        result = node.waitItem(new1_1.getId(), 2000);
+        result = node.waitItem(new1_1.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
-        result = node.waitItem(new2_1.getId(), 2000);
+        result = node.waitItem(new2_1.getId(), 6000);
         assertEquals(ItemState.APPROVED, result.state);
     }
 
@@ -736,17 +736,17 @@ public class BaseNetworkTest extends TestCase {
         main.addNewItems(new1, new2);
 
         node.registerItem(main);
-        ItemResult result = node.waitItem(main.getId(), 2000);
+        ItemResult result = node.waitItem(main.getId(), 6000);
         assertEquals(ItemState.DECLINED, result.state);
 
-        result = node.waitItem(new1.getId(), 2000);
+        result = node.waitItem(new1.getId(), 6000);
         assertEquals(ItemState.UNDEFINED, result.state);
-        result = node.waitItem(new2.getId(), 2000);
+        result = node.waitItem(new2.getId(), 6000);
         assertEquals(ItemState.UNDEFINED, result.state);
 
-        result = node.waitItem(new1_1.getId(), 2000);
+        result = node.waitItem(new1_1.getId(), 6000);
         assertEquals(ItemState.UNDEFINED, result.state);
-        result = node.waitItem(new2_1.getId(), 2000);
+        result = node.waitItem(new2_1.getId(), 6000);
         assertEquals(ItemState.UNDEFINED, result.state);
     }
 
@@ -771,17 +771,17 @@ public class BaseNetworkTest extends TestCase {
         main.addNewItems(new1);
 
         node.registerItem(main);
-        ItemResult result = node.waitItem(main.getId(), 2000);
+        ItemResult result = node.waitItem(main.getId(), 6000);
         assertEquals(ItemState.DECLINED, result.state);
 
-        result = node.waitItem(new1.getId(), 2000);
+        result = node.waitItem(new1.getId(), 6000);
         assertEquals(ItemState.UNDEFINED, result.state);
-        result = node.waitItem(revoke1.getId(), 2000);
+        result = node.waitItem(revoke1.getId(), 6000);
         assertEquals(ItemState.UNDEFINED, result.state);
 
-        result = node.waitItem(new1_1.getId(), 2000);
+        result = node.waitItem(new1_1.getId(), 6000);
         assertEquals(ItemState.UNDEFINED, result.state);
-        result = node.waitItem(revoke1_1.getId(), 2000);
+        result = node.waitItem(revoke1_1.getId(), 6000);
         assertEquals(ItemState.UNDEFINED, result.state);
     }
 
@@ -821,8 +821,8 @@ public class BaseNetworkTest extends TestCase {
             contract.traceErrors();
             assertTrue(contract.isOk());
 
-            node.registerItem(contract);
-            ItemResult itemResult = node.waitItem(contract.getId(), 3000);
+            Parcel parcel = registerWithNewParcel(contract);
+            ItemResult itemResult = node.waitParcel(parcel.getId(), 3000);
             if (ItemState.APPROVED != itemResult.state)
                 fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
                         " \r\ncontract_errors: " + contract.getErrors());
@@ -2514,22 +2514,30 @@ public class BaseNetworkTest extends TestCase {
         stepaTU.check();
         stepaTU.setIsTU(true);
         stepaTU.traceErrors();
-        registerAndCheckApproved(stepaTU);
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 80000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
 
         return ContractsService.createParcel(c, stepaTU, 50, keys);
     }
 
-    private void registerAndCheckApproved(Contract c) throws TimeoutException, InterruptedException {
-        node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 80000);
+    protected Parcel registerWithNewParcel(Contract c) throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel parcel = createParcelWithFreshTU(c, stepaPrivateKeys);
+        node.registerItem(parcel);
+        return parcel;
+    }
+
+    private void registerAndCheckApproved(Contract c) throws Exception {
+        Parcel parcel = registerWithNewParcel(c);
+        ItemResult itemResult = node.waitParcel(parcel.getId(), 80000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
-
-
-    private void registerAndCheckDeclined(Contract c) throws TimeoutException, InterruptedException {
-        node.registerItem(c);
-        ItemResult itemResult = node.waitItem(c.getId(), 8000);
+    private void registerAndCheckDeclined(Contract c) throws Exception {
+        Parcel parcel = registerWithNewParcel(c);
+        ItemResult itemResult = node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.DECLINED, itemResult.state);
     }
 
