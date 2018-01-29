@@ -19,13 +19,6 @@ import java.io.IOException;
  */
 public class ItemNotification extends Notification {
 
-    public HashId getItemId() {
-        return itemId;
-    }
-
-    public ItemResult getItemResult() {
-        return itemResult;
-    }
 
     /**
      * If true, sending node asks receiving node to sent its status of this item back to sender. This overrides default
@@ -33,14 +26,23 @@ public class ItemNotification extends Notification {
      *
      * @return
      */
+
+    private static final int CODE_ITEM_NOTIFICATION = 0;
+
+    private HashId itemId;
+    public HashId getItemId() {
+        return itemId;
+    }
+
+    private ItemResult itemResult;
+    public ItemResult getItemResult() {
+        return itemResult;
+    }
+
+    private boolean requestResult;
     public boolean answerIsRequested() {
         return requestResult;
     }
-
-    private static final int CODE_ITEM_NOTIFICATION = 0;
-    private HashId itemId;
-    private ItemResult itemResult;
-    private boolean requestResult;
 
     public ItemNotification(NodeInfo from, HashId itemId, ItemResult itemResult, boolean requestResult) {
         super(from);

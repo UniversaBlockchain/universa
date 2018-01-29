@@ -21,13 +21,19 @@ public class ParcelNotification extends ItemNotification {
     private static final int CODE_PARCEL_NOTIFICATION = 2;
 
 
+    private HashId parcelId;
+    public HashId getParcelId() {
+        return parcelId;
+    }
+
     private ParcelNotificationType type = ParcelNotificationType.PAYLOAD;
     public ParcelNotificationType getType() {
         return type;
     }
 
-    public ParcelNotification(NodeInfo from, HashId itemId, ItemResult itemResult, boolean requestResult, ParcelNotificationType type) {
+    public ParcelNotification(NodeInfo from, HashId itemId, HashId parcelId, ItemResult itemResult, boolean requestResult, ParcelNotificationType type) {
         super(from, itemId, itemResult, requestResult);
+        this.parcelId = parcelId;
         this.type = type;
     }
 
@@ -38,12 +44,21 @@ public class ParcelNotification extends ItemNotification {
     protected void writeTo(Boss.Writer bw) throws IOException {
         super.writeTo(bw);
         bw.writeObject(type.ordinal());
+        if(parcelId != null)
+            bw.writeObject(parcelId.getDigest());
     }
 
     @Override
     protected void readFrom(Boss.Reader br) throws IOException {
         super.readFrom(br);
         type = ParcelNotificationType.values()[br.readInt()];
+        try {
+            byte[] parcelBytes = br.readBinary();
+            if (parcelBytes != null)
+                parcelId = HashId.withDigest(parcelBytes);
+        } catch (IOException e) {
+            parcelId = null;
+        }
     }
 
     @Override
@@ -54,7 +69,8 @@ public class ParcelNotification extends ItemNotification {
     @Override
     public String toString() {
         return "[ParcelNotification from: " + getFrom()
-                + " for parcel: " + getItemId()
+                + " for parcel: " + parcelId
+                + " and item: " + getItemId()
                 + ", type is: " + type
                 + ", is answer requested: " + answerIsRequested()
                 + "]";
