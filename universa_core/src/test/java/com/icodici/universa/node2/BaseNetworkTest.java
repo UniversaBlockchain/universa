@@ -120,7 +120,7 @@ public class BaseNetworkTest extends TestCase {
             stepaPublicKeys.add(pk.getPublicKey());
         }
         Thread.sleep(500);
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
         int N = 100;
         for (int k = 0; k < 1; k++) {
             for (int i = 0; i < N; i++) {
@@ -138,26 +138,26 @@ public class BaseNetworkTest extends TestCase {
                 for (Node n : nodesMap.values()) {
                     try {
                         System.out.println("-------------- wait parcel " + parcel.getId() + " on the node " + n + " (iteration " + i + ") ------------");
-                        ItemResult r = n.waitParcel(parcel.getId(), 80000);
+                        ItemResult r = n.waitParcel(parcel.getId(), 8000);
                         int numIterations = 0;
                         while( !r.state.isConsensusFound()) {
                             System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
                             Thread.sleep(500);
-                            r = n.waitParcel(parcel.getId(), 80000);
+                            r = n.waitParcel(parcel.getId(), 8000);
                             numIterations++;
                             if(numIterations > 20)
                                 break;
                         }
                         assertEquals("In node " + n + " parcel " + parcel.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
-                        fail("timeout, node " + n + " parcel " + parcel.getId() + " (iteration " + i + ")");
+                        fail("timeout, node " + n + " parcel " + parcel.getId() + " parcel " + parcel.getId() + " (iteration " + i + ")");
                     }
                 }
 
-                ItemResult r = node.waitParcel(parcel.getId(), 80000);
+                ItemResult r = node.waitParcel(parcel.getId(), 8000);
                 assertEquals("after: In node "+node+" item "+parcel.getId(), ItemState.APPROVED, r.state);
                 System.out.println("-------------- parcel " + parcel.getId() + " registered (iteration " + i + ")------------");
-                Thread.sleep(5000);
+//                Thread.sleep(5000);
                 System.out.println("-------------- parcel " + parcel.getId() + " wait finished (iteration " + i + ")------------");
 
             }
@@ -2371,7 +2371,7 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU());
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU());
 
-//        LogPrinter.showDebug(true);
+        LogPrinter.showDebug(true);
         node.registerItem(parcel);
         // check parcel
         assertEquals(ItemState.APPROVED, node.waitParcel(parcel.getId(), 8000).state);
