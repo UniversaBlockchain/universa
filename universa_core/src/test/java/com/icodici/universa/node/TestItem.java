@@ -7,11 +7,13 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Reference;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -57,6 +59,9 @@ public class TestItem implements Approvable {
         if( !isGood)
             addError(new ErrorRecord(Errors.BAD_VALUE,"me", "I'm bad"));
         return isGood;
+    }
+    public boolean paymentCheck(PublicKey issuerKey) throws Quantiser.QuantiserException {
+        return check("");
     }
 
     @Override
