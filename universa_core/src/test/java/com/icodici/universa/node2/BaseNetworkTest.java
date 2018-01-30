@@ -15,9 +15,7 @@ import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
-import jdk.internal.util.xml.impl.Pair;
 import net.sergeych.tools.Do;
-import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Ignore;
@@ -134,7 +132,7 @@ public class BaseNetworkTest extends TestCase {
                 Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
 
                 System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
-                node.registerItem(parcel);
+                node.registerParcel(parcel);
                 for (Node n : nodesMap.values()) {
                     try {
                         System.out.println("-------------- wait parcel " + parcel.getId() + " on the node " + n + " (iteration " + i + ") ------------");
@@ -2372,7 +2370,7 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU());
 
 //        LogPrinter.showDebug(true);
-        node.registerItem(parcel);
+        node.registerParcel(parcel);
         // check parcel
         assertEquals(ItemState.APPROVED, node.waitParcel(parcel.getId(), 8000).state);
         // check payment and payload contracts
@@ -2404,7 +2402,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPaymentContract().isOk());
         assertFalse(parcel.getPayloadContract().isOk());
 
-        node.registerItem(parcel);
+        node.registerParcel(parcel);
         // check parcel
         assertEquals(ItemState.DECLINED, node.waitParcel(parcel.getId(), 8000).state);
         // check payment and payload contracts
@@ -2446,7 +2444,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
 
-        node.registerItem(parcel);
+        node.registerParcel(parcel);
         // check parcel
         assertEquals(ItemState.UNDEFINED, node.waitParcel(parcel.getId(), 8000).state);
         // check payment and payload contracts
@@ -2496,7 +2494,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
 
-        node.registerItem(parcel);
+        node.registerParcel(parcel);
         // check parcel
         assertEquals(ItemState.UNDEFINED, node.waitParcel(parcel.getId(), 8000).state);
         // check payment and payload contracts
@@ -2525,7 +2523,7 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         Parcel parcel = createParcelWithFreshTU(c, stepaPrivateKeys);
-        node.registerItem(parcel);
+        node.registerParcel(parcel);
         return parcel;
     }
 
@@ -2792,6 +2790,7 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test
+    @Ignore("it is snatch test")
     public void splitSnatch() throws Exception {
         PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         Contract c1 = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
@@ -2815,6 +2814,7 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test
+    @Ignore("it is snatch test")
     public void splitSnatch2() throws Exception {
         PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         Contract c1 = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
@@ -2851,6 +2851,7 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test
+    @Ignore("it is snatch test")
     public void joinSnatch() throws Exception {
         PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
         Set<PrivateKey> keys = new HashSet<>();
