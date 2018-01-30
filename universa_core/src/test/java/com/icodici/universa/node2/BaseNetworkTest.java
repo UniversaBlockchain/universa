@@ -136,12 +136,14 @@ public class BaseNetworkTest extends TestCase {
                 for (Node n : nodesMap.values()) {
                     try {
                         System.out.println("-------------- wait parcel " + parcel.getId() + " on the node " + n + " (iteration " + i + ") ------------");
-                        ItemResult r = n.waitParcel(parcel.getId(), 8000);
+                        n.waitParcel(parcel.getId(), 8000);
+                        ItemResult r = n.waitItem(parcel.getPayloadContract().getId(), 8000);
                         int numIterations = 0;
                         while( !r.state.isConsensusFound()) {
                             System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
                             Thread.sleep(500);
-                            r = n.waitParcel(parcel.getId(), 8000);
+                            n.waitParcel(parcel.getId(), 8000);
+                            r = n.waitItem(parcel.getPayloadContract().getId(), 8000);
                             numIterations++;
                             if(numIterations > 20)
                                 break;
@@ -152,7 +154,8 @@ public class BaseNetworkTest extends TestCase {
                     }
                 }
 
-                ItemResult r = node.waitParcel(parcel.getId(), 8000);
+                node.waitParcel(parcel.getId(), 8000);
+                ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 8000);
                 assertEquals("after: In node "+node+" item "+parcel.getId(), ItemState.APPROVED, r.state);
                 System.out.println("-------------- parcel " + parcel.getId() + " registered (iteration " + i + ")------------");
 //                Thread.sleep(5000);
@@ -820,7 +823,8 @@ public class BaseNetworkTest extends TestCase {
             assertTrue(contract.isOk());
 
             Parcel parcel = registerWithNewParcel(contract);
-            ItemResult itemResult = node.waitParcel(parcel.getId(), 3000);
+            node.waitParcel(parcel.getId(), 3000);
+            ItemResult itemResult = node.waitItem(parcel.getPayloadContract().getId(), 3000);
             if (ItemState.APPROVED != itemResult.state)
                 fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
                         " \r\ncontract_errors: " + contract.getErrors());
@@ -2371,8 +2375,8 @@ public class BaseNetworkTest extends TestCase {
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
-        // check parcel
-        assertEquals(ItemState.APPROVED, node.waitParcel(parcel.getId(), 8000).state);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
@@ -2403,8 +2407,8 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(parcel.getPayloadContract().isOk());
 
         node.registerParcel(parcel);
-        // check parcel
-        assertEquals(ItemState.DECLINED, node.waitParcel(parcel.getId(), 8000).state);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
@@ -2445,8 +2449,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
 
         node.registerParcel(parcel);
-        // check parcel
-        assertEquals(ItemState.UNDEFINED, node.waitParcel(parcel.getId(), 8000).state);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
         // check payment and payload contracts
         assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
@@ -2496,10 +2500,10 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(parcel);
         // check parcel
-        assertEquals(ItemState.UNDEFINED, node.waitParcel(parcel.getId(), 8000).state);
+        node.waitParcel(parcel.getId(), 8000);
         // check payment and payload contracts
-        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPaymentContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayloadContract().getId(), 8000).state);
     }
 
 
@@ -2530,13 +2534,15 @@ public class BaseNetworkTest extends TestCase {
 
     private void registerAndCheckApproved(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
-        ItemResult itemResult = node.waitParcel(parcel.getId(), 8000);
+        node.waitParcel(parcel.getId(), 8000);
+        ItemResult itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
     private void registerAndCheckDeclined(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
-        ItemResult itemResult = node.waitParcel(parcel.getId(), 8000);
+        node.waitParcel(parcel.getId(), 8000);
+        ItemResult itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         assertEquals(ItemState.DECLINED, itemResult.state);
     }
 
