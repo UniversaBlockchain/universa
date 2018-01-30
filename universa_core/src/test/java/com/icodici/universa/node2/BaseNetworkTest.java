@@ -2513,7 +2513,7 @@ public class BaseNetworkTest extends TestCase {
         stepaTU.setIsTU(true);
         stepaTU.traceErrors();
         node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 80000);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         return ContractsService.createParcel(c, stepaTU, 50, keys);
@@ -2523,13 +2523,14 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         Parcel parcel = createParcelWithFreshTU(c, stepaPrivateKeys);
+//        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
         return parcel;
     }
 
     private void registerAndCheckApproved(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
-        ItemResult itemResult = node.waitParcel(parcel.getId(), 80000);
+        ItemResult itemResult = node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
