@@ -738,6 +738,8 @@ public class Node {
                 }
                 doneEvent.fire();
                 processingState = ParcelProcessingState.FINISHED;
+
+                removeSelf();
             }
         }
 
@@ -882,6 +884,17 @@ public class Node {
 
             if(payloadProcessor != null)
                 payloadProcessor.addToSources(node);
+        }
+
+        private final void removeSelf() {
+            debug("removing parcel " + parcelId + ", processing state: " + processingState);
+            if(processingState.canRemoveSelf()) {
+                parcelProcessors.remove(parcelId);
+
+                stopDownloader();
+
+                debug("parcel " + parcelId.toBase64String() + " removed, processing state: " + processingState);
+            }
         }
 
         private boolean isPollingExpired() {
