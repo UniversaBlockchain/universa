@@ -293,7 +293,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Parcel parcel = registerWithNewParcel(contract);
 
-        ItemResult r = node.waitParcel(parcel.getId(), 5000);
+        node.waitParcel(parcel.getId(), 5000);
+        ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 5000);
         System.out.println("Complex contract state: " + r.state);
         assertEquals(ItemState.DECLINED, r.state);
 
@@ -366,7 +367,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Parcel parcel = registerWithNewParcel(contract);
 
-        ItemResult r = node.waitParcel(parcel.getId(), 5000);
+        node.waitParcel(parcel.getId(), 5000);
+        ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 5000);
         System.out.println("Complex contract state: " + r.state);
         ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
         assertEquals(expectedState, r.state);
@@ -475,7 +477,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.waitParcel(parcel.getId(), 3000);
+        node.waitParcel(parcel.getId(), 3000);
+        ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 3000);
         assertEquals(ItemState.DECLINED, r.state);
     }
 
@@ -547,7 +550,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        ItemResult r = node.waitParcel(parcel.getId(), 3000);
+        node.waitParcel(parcel.getId(), 3000);
+        ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 3000);
         assertEquals(ItemState.APPROVED, r.state);
     }
 
@@ -884,7 +888,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap_s.values()) {
-            ItemResult r = n.waitParcel(parcel.getId(), 3000);
+            n.waitParcel(parcel.getId(), 3000);
+            ItemResult r = n.waitItem(parcel.getPayloadContract().getId(), 3000);
             System.out.println("Node: " + n.toString() + " state: " + r.state);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;

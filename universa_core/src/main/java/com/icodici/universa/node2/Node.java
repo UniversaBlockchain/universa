@@ -180,7 +180,7 @@ public class Node {
      *
      * @return item state
      */
-    public ItemResult waitParcel(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
+    public void waitParcel(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
 
         Object x = null;
 
@@ -189,10 +189,8 @@ public class Node {
         if (x instanceof ParcelProcessor) {
             ((ParcelProcessor) x).doneEvent.await(millisToWait);
             System.out.println("parcel processor state: " + ((ParcelProcessor) x).getState());
-            return ((ParcelProcessor) x).getResult();
         }
         debug("it is not processor: " + x);
-        return (ItemResult) x;
     }
 
     /**
