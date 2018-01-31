@@ -187,6 +187,7 @@ public class Node {
         // first check if item is processing as part of parcel
         x = checkParcelInternal(itemId);
         if (x instanceof ParcelProcessor) {
+            System.out.println("wait parcel " + itemId + " processor state: " + ((ParcelProcessor) x).getState() + " processingState: " + ((ParcelProcessor) x).processingState);
             ((ParcelProcessor) x).doneEvent.await(millisToWait);
             System.out.println("parcel processor state: " + ((ParcelProcessor) x).getState());
         }
@@ -689,10 +690,10 @@ public class Node {
         private void pulseProcessing() {
             if(processingState.canContinue()) {
 
-                debug("pulse parcel processing is " + processSchedule);
+                debug("pulse parcel " + parcelId + " processing is " + processSchedule);
                 synchronized (mutex) {
                     if (processSchedule == null || processSchedule.isDone()) {
-                        debug("pulse parcel processing");
+                        debug("pulse parcel " + parcelId + " processing");
                         processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process());
                     }
                 }
@@ -709,12 +710,14 @@ public class Node {
                 payment = parcel.getPaymentContract();
                 payload = parcel.getPayloadContract();
 
+                debug("Parcel: get payment " + payment.getId() + " for parcel " + parcelId);
                 Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
                 if (x instanceof ItemProcessor) {
                     paymentProcessor = ((ItemProcessor) x);
                 } else {
                     paymentResult = (ItemResult) x;
                 }
+                debug("Parcel: get payload " + payload.getId() + " for parcel " + parcelId);
                 x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
                 if (x instanceof ItemProcessor) {
                     payloadProcessor = ((ItemProcessor) x);
@@ -776,18 +779,26 @@ public class Node {
                         payloadProcessor.emergencyBreak();
                         payloadProcessor.doneEvent.await();
                     }
+
+                    if(payloadProcessor != null) {
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor " + payloadProcessor.itemId + " state: " + payloadProcessor.getState() + " and result is " + payloadProcessor.getResult());
+                    } else {
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor null state: null and result is null, payloadResult: " + payloadResult);
+                    }
+                    doneEvent.fire();
+                    processingState = ParcelProcessingState.FINISHED;
+
+                    if(paymentProcessor != null && paymentProcessor.processingState != ItemProcessingState.FINISHED) {
+                        paymentProcessor.removedEvent.await();
+                    }
+                    if(payloadProcessor != null && payloadProcessor.processingState != ItemProcessingState.FINISHED) {
+                        payloadProcessor.removedEvent.await();
+                    }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                if(payloadProcessor != null) {
-                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor " + payloadProcessor.itemId + " state: " + payloadProcessor.getState() + " and result is " + payloadProcessor.getResult());
-                } else {
-                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor null state: null and result is null");
-                }
-                doneEvent.fire();
-                processingState = ParcelProcessingState.FINISHED;
 
-                removeSelf();
+//                removeSelf();
             }
         }
 
@@ -994,6 +1005,7 @@ public class Node {
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> pollingReadyEvent = new AsyncEvent<>();
+        private final AsyncEvent<Void> removedEvent = new AsyncEvent<>();
 
         private final Object mutex;
         private final Object resyncMutex;
@@ -1879,6 +1891,8 @@ public class Node {
                 stopResync();
 
                 debug("closed " + itemId.toBase64String() + " processing state: " + processingState);
+
+                removedEvent.fire();
             }
         }
 
