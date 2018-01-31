@@ -2560,14 +2560,14 @@ public class BaseNetworkTest extends TestCase {
 
     private void registerAndCheckApproved(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
-        node.waitParcel(parcel.getId(), 8000);
+        node.waitParcel(parcel.getId(), 15000);
         ItemResult itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
     private void registerAndCheckDeclined(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
-        node.waitParcel(parcel.getId(), 8000);
+        node.waitParcel(parcel.getId(), 15000);
         ItemResult itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         assertEquals(ItemState.DECLINED, itemResult.state);
     }

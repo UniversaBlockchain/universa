@@ -183,6 +183,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         n1.subscribe(null, n -> {
             System.out.println("received n: " + n);
             ae.fire();
+            System.out.println("fired");
         });
         n0.deliver(i1, new ItemNotification(i0,
                 HashId.createRandom(),
@@ -192,13 +193,23 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
                         ZonedDateTime.now()),
                 false)
         );
-        ae.await(500);
-        n1.removeAllSubscribes();
+        boolean endWithFail = false;
+        try {
+            ae.await(500);
+        } catch (TimeoutException e) {
+            endWithFail = true;
+        } finally {
 
-        // fully recreate network - we broke subscribers
-        afterClass();
-        beforeClass();
-        setUp();
+            n1.removeAllSubscribes();
+
+            // fully recreate network - we broke subscribers
+            afterClass();
+            beforeClass();
+            setUp();
+            if(endWithFail) {
+                fail("timeout");
+            }
+        }
     }
 
 
@@ -550,7 +561,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        node.waitParcel(parcel.getId(), 3000);
+        node.waitParcel(parcel.getId(), 8000);
         ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 3000);
         assertEquals(ItemState.APPROVED, r.state);
     }
@@ -813,11 +824,6 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     @Test
     public void checkRegisterContractOnTemporaryOffedAndHalfOnedNetwork() throws Exception {
 
-        // switch off half network
-        for (int i = 0; i < NODES/2; i++) {
-            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
-            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
-        }
 
         AsyncEvent ae = new AsyncEvent();
 
@@ -832,6 +838,13 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         assertTrue(contract.isOk());
 
         Parcel parcel = registerWithNewParcel(contract);
+
+
+        // switch off half network
+        for (int i = 0; i < NODES/2; i++) {
+            networks_s.get(NODES-i-1).setUDPAdapterTestMode(DatagramAdapter.TestModes.LOST_PACKETS);
+            networks_s.get(NODES-i-1).setUDPAdapterLostPacketsPercentInTestMode(100);
+        }
 
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
