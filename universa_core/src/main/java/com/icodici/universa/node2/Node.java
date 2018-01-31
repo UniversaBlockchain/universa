@@ -738,24 +738,39 @@ public class Node {
                         debug("Parcel: checking payload " + payload.getId() + " item is TU: " + payload.isTU());
                         if (payloadResult == null) {
                             debug("parcel payload processor for " + payload.getId() + " is got, state is " + payloadProcessor.getState() + ", processingState is " + payloadProcessor.processingState);
-                            payloadProcessor.forceChecking(true);
-                            if(payloadProcessor.processingState.notCheckedYet()) {
-                                payloadProcessor.pollingReadyEvent.await();
+
+                            Contract parent = null;
+                            for(Contract c : payment.getRevoking()) {
+                                if(c.getId().equals(payment.getParent())) {
+                                    parent = c;
+                                    break;
+                                }
                             }
-                            debug("parcel payload processor for " + payload.getId()
-                                    + " is ready for polling, state is " + payloadProcessor.getState()
-                                    + " processingState is " + payloadProcessor.processingState);
+                            if(parent != null) {
+                                int limit = parent.getStateData().getIntOrThrow("transaction_units") - payment.getStateData().getIntOrThrow("transaction_units");
+                                payload.getQuantiser().reset(limit);
+                                debug("payload processing cost is " + payload.getQuantiser().getQuantaLimit());
+                                payloadProcessor.forceChecking(true);
+                                if (payloadProcessor.processingState.notCheckedYet()) {
+                                    payloadProcessor.pollingReadyEvent.await();
+                                }
+                                debug("parcel payload processor for " + payload.getId()
+                                        + " is ready for polling, state is " + payloadProcessor.getState()
+                                        + " processingState is " + payloadProcessor.processingState);
 
-                            synchronized (payloadDelayedVotes) {
-                                for (NodeInfo ni : payloadDelayedVotes.keySet())
-                                    payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
-                                payloadDelayedVotes.clear();
+                                synchronized (payloadDelayedVotes) {
+                                    for (NodeInfo ni : payloadDelayedVotes.keySet())
+                                        payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
+                                    payloadDelayedVotes.clear();
+                                }
+
+                                processingState = ParcelProcessingState.PAYLOAD_POLLING;
+                                payloadProcessor.doneEvent.await();
+                                debug("parcel consensus got for " + payload.getId() + " with state " + payloadProcessor.getState());
+                            } else {
+                                payloadProcessor.emergencyBreak();
+                                payloadProcessor.doneEvent.await();
                             }
-
-                            processingState = ParcelProcessingState.PAYLOAD_POLLING;
-                            payloadProcessor.doneEvent.await();
-                            debug("parcel consensus got for " + payload.getId() + " with state " + payloadProcessor.getState());
-
                         } else {
                             debug("parcel consensus got for " + payload.getId());
                         }
@@ -1151,7 +1166,7 @@ public class Node {
                     boolean needToResync = false;
 
                     try {
-                        debug("Contract limit: " + Contract.getTestQuantaLimit());
+                        debug("Contract test limit: " + Contract.getTestQuantaLimit());
                         debug("item is TU: " + item.isTU());
                         boolean checkPassed = false;
                         if(item.isTU()) {
@@ -1175,6 +1190,7 @@ public class Node {
                             errors.forEach(e -> debug("Found error: " + e));
                         }
                     } catch (Quantiser.QuantiserException e) {
+                        debug("Quantiser limit for item " + itemId);
                         emergencyBreak();
                         return;
                     }
