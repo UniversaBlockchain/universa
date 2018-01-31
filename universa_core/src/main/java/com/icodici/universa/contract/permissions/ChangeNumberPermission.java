@@ -1,7 +1,9 @@
 package com.icodici.universa.contract.permissions;
 
+import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
+import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
@@ -9,6 +11,8 @@ import net.sergeych.diff.MapDelta;
 import net.sergeych.tools.Binder;
 
 import java.util.Map;
+
+import static java.util.Arrays.asList;
 
 /**
  * Permission allows to change some numeric (as for now, integer) field, controlling it's range
@@ -27,6 +31,14 @@ public class ChangeNumberPermission extends Permission {
 
     public ChangeNumberPermission(Role role, Binder params) {
         super("decrement_permission", role, params);
+        initFromParams();
+    }
+
+    private ChangeNumberPermission() {
+        super();
+    }
+
+    protected void initFromParams() {
         fieldName = params.getStringOrThrow("field_name");
         minValue = params.getInt("min_value", 0);
         minStep = params.getInt("min_step", Integer.MIN_VALUE);
@@ -34,8 +46,10 @@ public class ChangeNumberPermission extends Permission {
         maxValue = params.getInt("max_value", Integer.MAX_VALUE);
     }
 
-    private ChangeNumberPermission() {
-        super();
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        super.deserialize(data, deserializer);
+        initFromParams();
     }
 
     /**

@@ -2552,7 +2552,7 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         Parcel parcel = createParcelWithClassTU(c, stepaPrivateKeys);
-        LogPrinter.showDebug(true);
+//        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
         tuContract = parcel.getPaymentContract();
         return parcel;
