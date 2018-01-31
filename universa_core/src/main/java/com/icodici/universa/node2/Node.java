@@ -190,6 +190,7 @@ public class Node {
             ((ParcelProcessor) x).doneEvent.await(millisToWait);
             System.out.println("parcel processor state: " + ((ParcelProcessor) x).getState());
         }
+        System.out.println("it is not processor: " + x);
         debug("it is not processor: " + x);
     }
 
@@ -235,9 +236,11 @@ public class Node {
             if (notification.answerIsRequested()) {
                 // iterate on subItems of parent item that need to resync (stored at ItemResyncNotification.getItemsToResync())
                 for (HashId hid : itemsToResync.keySet()) {
+                    debug("checking subitem : " + hid);
                     Object subitemObject = checkItemInternal(hid);
                     ItemResult subItemResult;
                     ItemState subItemState;
+                    debug("checking subitem : " + hid + " object is: " + subitemObject);
 
                     if (subitemObject instanceof ItemResult) {
                         // we have solution for resyncing subitem:
@@ -279,6 +282,44 @@ public class Node {
 
                     return null;
                 });
+            } else {
+                if (notification.answerIsRequested()) {
+                    // iterate on subItems of parent item that need to resync (stored at ItemResyncNotification.getItemsToResync())
+                    for (HashId hid : itemsToResync.keySet()) {
+                        debug("checking subitem : " + hid);
+                        Object subitemObject = checkItemInternal(hid);
+                        ItemResult subItemResult;
+                        ItemState subItemState;
+                        debug("checking subitem : " + hid + " object is: " + subitemObject);
+
+                        if (subitemObject instanceof ItemResult) {
+                            // we have solution for resyncing subitem:
+                            subItemResult = (ItemResult) subitemObject;
+                        } else if (subitemObject instanceof ItemProcessor) {
+                            // resyncing subitem is still processing, but may be has solution:
+                            subItemResult = ((ItemProcessor) subitemObject).getResult();
+                        } else {
+                            // we has not solution:
+                            subItemResult = null;
+                        }
+
+                        debug("for subitem " + hid + " found state: " + (subItemResult == null ? null : subItemResult.state));
+                        // we answer only states with consensus, in other cases we answer ItemState.UNDEFINED
+                        if (subItemResult != null) {
+                            subItemState = subItemResult.state.isConsensusFound() ? subItemResult.state : ItemState.UNDEFINED;
+                        } else {
+                            subItemState = ItemState.UNDEFINED;
+                        }
+
+                        debug("answer for subitem: " + hid + " will be : " + subItemState);
+                        answersForItems.put(hid, subItemState);
+                    }
+
+                    network.deliver(
+                            from,
+                            new ItemResyncNotification(myInfo, notification.getItemId(), answersForItems, false)
+                    );
+                }
             }
 
         }
@@ -306,7 +347,12 @@ public class Node {
             if (notification.answerIsRequested()) {
                 network.deliver(
                         from,
-                        new ItemNotification(myInfo, notification.getItemId(), r, false)
+                        new ParcelNotification(myInfo,
+                                notification.getItemId(),
+                                null,
+                                r,
+                                false,
+                                ParcelNotification.ParcelNotificationType.PAYMENT)
                 );
             }
         } else if (x instanceof ItemProcessor) {
@@ -330,10 +376,12 @@ public class Node {
                 if (notification.answerIsRequested() && ip.record.getState() != ItemState.PENDING) {
                     network.deliver(
                             from,
-                            new ItemNotification(myInfo,
+                            new ParcelNotification(myInfo,
                                     notification.getItemId(),
+                                    null,
                                     ip.getResult(),
-                                    ip.needsVoteFrom(from))
+                                    ip.needsVoteFrom(from),
+                                    ParcelNotification.ParcelNotificationType.PAYMENT)
                     );
                 }
                 return null;
@@ -695,7 +743,7 @@ public class Node {
                         }
                         paymentResult = paymentProcessor.getResult();
                     }
-                    System.out.println("parcel " + parcelId + " paymentResult is " + paymentResult);
+                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " paymentResult is " + paymentResult);
 
                     if (paymentResult.state.isApproved()) {
                         debug("payment has approved for " + payload.getId());
@@ -724,7 +772,7 @@ public class Node {
                             debug("parcel consensus got for " + payload.getId() + " with state " + ((ItemResult) x).state);
                         }
                     } else {
-                        System.out.println("parcel " + parcelId + " emergencyBreak");
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " emergencyBreak");
                         payloadProcessor.emergencyBreak();
                         payloadProcessor.doneEvent.await();
                     }
@@ -732,9 +780,9 @@ public class Node {
                     e.printStackTrace();
                 }
                 if(payloadProcessor != null) {
-                    System.out.println("parcel " + parcelId + " payloadProcessor " + payloadProcessor.itemId + " state: " + payloadProcessor.getState() + " and result is " + payloadProcessor.getResult());
+                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor " + payloadProcessor.itemId + " state: " + payloadProcessor.getState() + " and result is " + payloadProcessor.getResult());
                 } else {
-                    System.out.println("parcel " + parcelId + " payloadProcessor null state: null and result is null");
+                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor null state: null and result is null");
                 }
                 doneEvent.fire();
                 processingState = ParcelProcessingState.FINISHED;
@@ -1361,13 +1409,13 @@ public class Node {
                     // at this point we should requery the nodes that did not yet answered us
                     Notification notification;
                     debug("Send poll notifications for item " + itemId + ", item is TU: " + item.isTU());
+                    ParcelNotification.ParcelNotificationType notificationType;
                     if(item.isTU()) {
-                        notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true,
-                                ParcelNotification.ParcelNotificationType.PAYMENT);
+                        notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                     } else {
-                        notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true,
-                                ParcelNotification.ParcelNotificationType.PAYLOAD);
+                        notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                     }
+                    notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
                     network.eachNode(node -> {
                         if (!positiveNodes.contains(node) && !negativeNodes.contains(node))
                             network.deliver(node, notification);
@@ -1564,13 +1612,13 @@ public class Node {
                 // at this point we should requery the nodes that did not yet answered us
                 Notification notification;
                 debug("Send new consensus notifications for item " + itemId + ", item is TU: " + item.isTU());
+                ParcelNotification.ParcelNotificationType notificationType;
                 if(item.isTU()) {
-                    notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true,
-                            ParcelNotification.ParcelNotificationType.PAYLOAD);
+                    notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                 } else {
-                    notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true,
-                            ParcelNotification.ParcelNotificationType.PAYLOAD);
+                    notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                 }
+                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
                 network.eachNode(node -> {
                     if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
                         debug("Item: " + itemId + " Unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
@@ -1747,13 +1795,14 @@ public class Node {
             if(processingState.canContinue()) {
                 Notification notification;
                 debug("Send broadcast own state notifications for item " + itemId + ", item is TU: " + item.isTU());
+
+                ParcelNotification.ParcelNotificationType notificationType;
                 if(item.isTU()) {
-                    notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true,
-                            ParcelNotification.ParcelNotificationType.PAYMENT);
+                    notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                 } else {
-                    notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true,
-                            ParcelNotification.ParcelNotificationType.PAYLOAD);
+                    notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                 }
+                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
                 network.broadcast(myInfo, notification);
             }
         }
