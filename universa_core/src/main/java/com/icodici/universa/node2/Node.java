@@ -188,7 +188,10 @@ public class Node {
         x = checkParcelInternal(itemId);
         if (x instanceof ParcelProcessor) {
             System.out.println("wait parcel " + itemId + " processor state: " + ((ParcelProcessor) x).getState() + " processingState: " + ((ParcelProcessor) x).processingState);
-            ((ParcelProcessor) x).doneEvent.await(millisToWait);
+            if(!((ParcelProcessor) x).isDone())
+            {
+                ((ParcelProcessor) x).doneEvent.await(millisToWait);
+            }
             System.out.println("parcel processor state: " + ((ParcelProcessor) x).getState());
         }
         System.out.println("it is not processor: " + x);
@@ -653,6 +656,8 @@ public class Node {
         private Contract payload;
         private ItemProcessor paymentProcessor;
         private ItemProcessor payloadProcessor;
+        private ItemResult paymentResult = null;
+        private ItemResult payloadResult = null;
         private Set<NodeInfo> sources = new HashSet<>();
         private HashMap<NodeInfo, ItemState> paymentDelayedVotes = new HashMap<>();
         private HashMap<NodeInfo, ItemState> payloadDelayedVotes = new HashMap<>();
@@ -682,7 +687,7 @@ public class Node {
             processingState = ParcelProcessingState.INIT;
 
             if (this.parcel != null)
-                executorService.submit(() -> parcelDownloaded());
+                parcelDownloaded();
         }
 
         //////////// processing section /////////////
@@ -704,26 +709,6 @@ public class Node {
             if(processingState.canContinue()) {
 
                 processingState = ParcelProcessingState.PREPARING;
-
-                ItemResult paymentResult = null;
-                ItemResult payloadResult = null;
-                payment = parcel.getPaymentContract();
-                payload = parcel.getPayloadContract();
-
-                debug("Parcel: get payment " + payment.getId() + " for parcel " + parcelId);
-                Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
-                if (x instanceof ItemProcessor) {
-                    paymentProcessor = ((ItemProcessor) x);
-                } else {
-                    paymentResult = (ItemResult) x;
-                }
-                debug("Parcel: get payload " + payload.getId() + " for parcel " + parcelId);
-                x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
-                if (x instanceof ItemProcessor) {
-                    payloadProcessor = ((ItemProcessor) x);
-                } else {
-                    payloadResult = (ItemResult) x;
-                }
                 try {
                     debug("Parcel: checking payment " + payment.getId() + " item is TU: " + payment.isTU());
                     if (paymentResult == null) {
@@ -772,12 +757,14 @@ public class Node {
                             debug("parcel consensus got for " + payload.getId() + " with state " + payloadProcessor.getState());
 
                         } else {
-                            debug("parcel consensus got for " + payload.getId() + " with state " + ((ItemResult) x).state);
+                            debug("parcel consensus got for " + payload.getId());
                         }
                     } else {
                         System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " emergencyBreak");
-                        payloadProcessor.emergencyBreak();
-                        payloadProcessor.doneEvent.await();
+                        if(payloadProcessor != null) {
+                            payloadProcessor.emergencyBreak();
+                            payloadProcessor.doneEvent.await();
+                        }
                     }
 
                     if(payloadProcessor != null) {
@@ -796,9 +783,12 @@ public class Node {
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    doneEvent.fire();
+                    processingState = ParcelProcessingState.FINISHED;
                 }
 
-//                removeSelf();
+                removeSelf();
+                System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " removed, payloadResult: " + payloadResult);
             }
         }
 
@@ -856,6 +846,25 @@ public class Node {
                 synchronized (parcelCache) {
                     parcelCache.put(parcel);
                 }
+
+                payment = parcel.getPaymentContract();
+                payload = parcel.getPayloadContract();
+
+                debug("Parcel: get payment " + payment.getId() + " for parcel " + parcelId);
+                Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
+                if (x instanceof ItemProcessor) {
+                    paymentProcessor = ((ItemProcessor) x);
+                } else {
+                    paymentResult = (ItemResult) x;
+                }
+                debug("Parcel: get payload " + payload.getId() + " for parcel " + parcelId);
+                x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
+                if (x instanceof ItemProcessor) {
+                    payloadProcessor = ((ItemProcessor) x);
+                } else {
+                    payloadResult = (ItemResult) x;
+                }
+
                 pulseProcessing();
                 downloadedEvent.fire();
             }
@@ -894,6 +903,8 @@ public class Node {
         //////////// common section /////////////
 
         public @NonNull ItemResult getResult() {
+            if(payloadResult != null)
+                return payloadResult;
             if(payloadProcessor != null)
                 return payloadProcessor.getResult();
             return ItemResult.UNDEFINED;
@@ -960,6 +971,10 @@ public class Node {
             if(payloadProcessor != null)
                 return payloadProcessor.isPollingExpired();
             return false;
+        }
+
+        private boolean isDone() {
+            return processingState == ParcelProcessingState.FINISHED;
         }
 
         public <T> T lock(Supplier<T> c) {

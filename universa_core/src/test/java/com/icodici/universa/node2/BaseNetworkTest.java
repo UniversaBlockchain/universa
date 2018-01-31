@@ -2567,6 +2567,7 @@ public class BaseNetworkTest extends TestCase {
 
     private void registerAndCheckDeclined(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
+//        LogPrinter.showDebug(true);
         node.waitParcel(parcel.getId(), 15000);
         ItemResult itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         assertEquals(ItemState.DECLINED, itemResult.state);
