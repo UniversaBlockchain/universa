@@ -47,6 +47,8 @@ public class BaseNetworkTest extends TestCase {
     protected Ledger ledger = null;
     protected Config config = null;
 
+    protected Contract tuContract = null;
+
 
 
     public void init(Node node, List<Node> nodes, Map<NodeInfo,Node> nodesMap, Network network, Ledger ledger, Config config) throws Exception {
@@ -2523,12 +2525,36 @@ public class BaseNetworkTest extends TestCase {
         return ContractsService.createParcel(c, stepaTU, 50, keys);
     }
 
+    protected Contract getApprovedTUContract() throws Exception {
+        if (tuContract == null) {
+            PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+            Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
+            stepaTU.addSignerKey(manufacturePrivateKey);
+            stepaTU.seal();
+            stepaTU.check();
+            stepaTU.setIsTU(true);
+            stepaTU.traceErrors();
+            node.registerItem(stepaTU);
+            tuContract = stepaTU;
+        }
+        for (Node n : nodes) {
+            ItemResult itemResult = n.waitItem(tuContract.getId(), 8000);
+            assertEquals(ItemState.APPROVED, itemResult.state);
+        }
+        return tuContract;
+    }
+
+    public Parcel createParcelWithClassTU(Contract c, Set<PrivateKey> keys) throws Exception {
+        return ContractsService.createParcel(c, getApprovedTUContract(), 1, keys);
+    }
+
     protected Parcel registerWithNewParcel(Contract c) throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        Parcel parcel = createParcelWithFreshTU(c, stepaPrivateKeys);
-//        LogPrinter.showDebug(true);
+        Parcel parcel = createParcelWithClassTU(c, stepaPrivateKeys);
+        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
+        tuContract = parcel.getPaymentContract();
         return parcel;
     }
 
