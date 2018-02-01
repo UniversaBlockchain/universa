@@ -164,7 +164,9 @@ public class Node {
         // then check item as single approvable item
         x = checkItemInternal(itemId);
         if (x instanceof ItemProcessor) {
-            ((ItemProcessor) x).doneEvent.await(millisToWait);
+            if(!((ItemProcessor) x).isDone()) {
+                ((ItemProcessor) x).doneEvent.await(millisToWait);
+            }
 
             return ((ItemProcessor) x).getResult();
         }
@@ -711,11 +713,15 @@ public class Node {
                 processingState = ParcelProcessingState.PREPARING;
                 try {
                     debug("Parcel: checking payment " + payment.getId() + " item is TU: " + payment.isTU());
+                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " paymentResult before is " + paymentResult);
+
                     if (paymentResult == null) {
                         debug("parcel payment processor for " + payment.getId() + ", state is " + paymentProcessor.getState() + ", processingState is " + paymentProcessor.processingState);
                         if(paymentProcessor.processingState.notCheckedYet()) {
                             paymentProcessor.pollingReadyEvent.await();
                         }
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payment polled ");
+
                         debug("parcel payment processor for " + payment.getId()
                                 + " is ready for polling, state is " + paymentProcessor.getState()
                                 + " processingState is " + paymentProcessor.processingState);
@@ -726,6 +732,7 @@ public class Node {
                             paymentDelayedVotes.clear();
                         }
                         processingState = ParcelProcessingState.PAYMENT_POLLING;
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payment wait done ");
                         if(!paymentProcessor.processingState.isDone()) {
                             paymentProcessor.doneEvent.await();
                         }
@@ -736,6 +743,8 @@ public class Node {
                     if (paymentResult.state.isApproved()) {
                         debug("payment has approved for " + payload.getId());
                         debug("Parcel: checking payload " + payload.getId() + " item is TU: " + payload.isTU());
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadResult is " + payloadResult);
+
                         if (payloadResult == null) {
                             debug("parcel payload processor for " + payload.getId() + " is got, state is " + payloadProcessor.getState() + ", processingState is " + payloadProcessor.processingState);
 
@@ -746,12 +755,17 @@ public class Node {
                                     break;
                                 }
                             }
+                            System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " parent is " + parent);
                             if(parent != null) {
                                 int limit = parent.getStateData().getIntOrThrow("transaction_units") - payment.getStateData().getIntOrThrow("transaction_units");
                                 payload.getQuantiser().reset(limit);
                                 debug("payload processing cost is " + payload.getQuantiser().getQuantaLimit());
                                 payloadProcessor.forceChecking(true);
+                                System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payload forceChecking, state is " + payloadProcessor.processingState);
+
                                 if (payloadProcessor.processingState.notCheckedYet()) {
+                                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payload wait polling ready, state is " + payloadProcessor.processingState);
+
                                     payloadProcessor.pollingReadyEvent.await();
                                 }
                                 debug("parcel payload processor for " + payload.getId()
@@ -765,8 +779,11 @@ public class Node {
                                 }
 
                                 processingState = ParcelProcessingState.PAYLOAD_POLLING;
-                                payloadProcessor.doneEvent.await();
+                                if(!payloadProcessor.processingState.isDone()) {
+                                    payloadProcessor.doneEvent.await();
+                                }
                                 debug("parcel consensus got for " + payload.getId() + " with state " + payloadProcessor.getState());
+                                payloadResult = payloadProcessor.getResult();
                             } else {
                                 payloadProcessor.emergencyBreak();
                                 payloadProcessor.doneEvent.await();
@@ -783,7 +800,7 @@ public class Node {
                     }
 
                     if(payloadProcessor != null) {
-                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor " + payloadProcessor.itemId + " state: " + payloadProcessor.getState() + " and result is " + payloadProcessor.getResult());
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor " + payloadProcessor.itemId + " state: " + payloadProcessor.getState() + " and result is " + payloadProcessor.getResult() + " and processingState is " + payloadProcessor.processingState);
                     } else {
                         System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "parcel " + parcelId + " payloadProcessor null state: null and result is null, payloadResult: " + payloadResult);
                     }
@@ -1159,6 +1176,7 @@ public class Node {
                     processingState = ItemProcessingState.CHECKING;
 
                     debug("Checking " + itemId + " state is " + record.getState());
+                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "Checking " + itemId + " state is " + record.getState());
 
                     // Check the internal state
                     // Too bad if basic check isn't passed, we will not process it further
@@ -1191,6 +1209,8 @@ public class Node {
                         }
                     } catch (Quantiser.QuantiserException e) {
                         debug("Quantiser limit for item " + itemId);
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": Quantiser limit for item " + itemId + " cost: " + ((Contract) item).getQuantiser().getQuantaSum() + " limit: " + ((Contract) item).getQuantiser().getQuantaLimit());
+
                         emergencyBreak();
                         return;
                     }
@@ -1250,6 +1270,8 @@ public class Node {
                                     return;
                                 }
                             }
+                            System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "onResyncItemFinished FINISHED parcel " + parcelId + " item " + itemId + " state: " + getState() + " and result is " + getResult() + " and processingState is " + processingState);
+
                             processingState = ItemProcessingState.FINISHED;
                             close();
                         } else {
@@ -1647,6 +1669,8 @@ public class Node {
                     if (isConsensusReceivedExpired()) {
                         // cancel by timeout expired
                         debug("WARNING: Checking if all nodes got consensus is timed up, cancelling " + itemId);
+                        System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "sendNewConsensusNotification FINISHED parcel " + parcelId + " item " + itemId + " state: " + getState() + " and result is " + getResult() + " and processingState is " + processingState);
+
                         processingState = ItemProcessingState.FINISHED;
                         stopConsensusReceivedChecker();
                         return;
@@ -1677,6 +1701,8 @@ public class Node {
 
                 debug("is for item " + itemId + " all got consensus: " + allReceived + " : " + network.allNodes().size() + "/" + positiveNodes.size() + "+" + negativeNodes.size());
                 if (allReceived) {
+                    System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "checkIfAllReceivedConsensus FINISHED parcel " + parcelId + " item " + itemId + " state: " + getState() + " and result is " + getResult() + " and processingState is " + processingState);
+
                     processingState = ItemProcessingState.FINISHED;
                     stopConsensusReceivedChecker();
                 }
@@ -1853,8 +1879,11 @@ public class Node {
         private void forceChecking(boolean isCheckingForce) {
             this.isCheckingForce = isCheckingForce;
             if(processingState.canContinue()) {
+
+                System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "item forceChecking " + itemId + " state is " + record.getState());
+
                 if(processingState == ItemProcessingState.DOWNLOADED) {
-                    checkItem();
+                    executorService.submit(() -> checkItem());
                 }
             }
         }
@@ -1899,6 +1928,9 @@ public class Node {
             stopConsensusReceivedChecker();
             stopResync();
             rollbackChanges(stateWas);
+            System.out.println("Node(" + myInfo.getNumber() + ")" + ": " + "emergencyBreak FINISHED parcel " + parcelId + " item " + itemId + " state: " + getState() + " and result is " + getResult() + " and processingState is " + processingState);
+
+            processingState = ItemProcessingState.FINISHED;
         }
 
         private ItemState getState() {
@@ -1952,6 +1984,10 @@ public class Node {
                     pulseDownload();
                 }
             }
+        }
+
+        private boolean isDone() {
+            return processingState.isDone();
         }
 
         public <T> T lock(Supplier<T> c) {
