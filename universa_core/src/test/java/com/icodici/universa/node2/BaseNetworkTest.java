@@ -801,6 +801,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(c.check());
         c.seal();
 
+//        LogPrinter.showDebug(true);
         registerAndCheckApproved(c);
     }
 
@@ -2485,7 +2486,10 @@ public class BaseNetworkTest extends TestCase {
         stepaTU.check();
         stepaTU.setIsTU(true);
         stepaTU.traceErrors();
-        registerAndCheckApproved(stepaTU);
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+//        registerAndCheckApproved(stepaTU);
 
         Contract paymentDecreased = stepaTU.createRevision();
         paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 50);
@@ -2522,7 +2526,7 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(stepaTU.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        return ContractsService.createParcel(c, stepaTU, 300, keys);
+        return ContractsService.createParcel(c, stepaTU, 1000, keys);
     }
 
     protected Contract getApprovedTUContract() throws Exception {
@@ -2539,13 +2543,22 @@ public class BaseNetworkTest extends TestCase {
         }
         for (Node n : nodes) {
             ItemResult itemResult = n.waitItem(tuContract.getId(), 8000);
+            int numIterations = 0;
+            while( !itemResult.state.isConsensusFound()) {
+                System.out.println("wait for consensus receiving on the node " + n + " state is " + itemResult.state);
+                Thread.sleep(500);
+                itemResult = n.waitItem(tuContract.getId(), 8000);
+                numIterations++;
+                if(numIterations > 20)
+                    break;
+            }
             assertEquals(ItemState.APPROVED, itemResult.state);
         }
         return tuContract;
     }
 
     public Parcel createParcelWithClassTU(Contract c, Set<PrivateKey> keys) throws Exception {
-        return ContractsService.createParcel(c, getApprovedTUContract(), 300, keys);
+        return ContractsService.createParcel(c, getApprovedTUContract(), 1000, keys);
     }
 
     protected Parcel registerWithNewParcel(Contract c) throws Exception {
