@@ -826,7 +826,7 @@ public class BaseNetworkTest extends TestCase {
             assertTrue(contract.isOk());
 
             Parcel parcel = registerWithNewParcel(contract);
-            node.waitParcel(parcel.getId(), 3000);
+            node.waitParcel(parcel.getId(), 8000);
             ItemResult itemResult = node.waitItem(parcel.getPayloadContract().getId(), 3000);
             if (ItemState.APPROVED != itemResult.state)
                 fail("Wrong state on repetition " + i + ": " + itemResult + ", " + itemResult.errors +
