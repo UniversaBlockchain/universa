@@ -42,6 +42,11 @@ public class Parcel implements BiSerializable {
         }
     }
 
+    //New constructor for initializing an object from a binder when deserializing
+    public Parcel(Binder data, BiDeserializer ds)
+    {
+        deserialize(data, ds);
+    }
 
     public TransactionPack getPayload() {
         return payload;
