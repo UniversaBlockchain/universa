@@ -471,7 +471,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             @Override
             public void run() {
 
-                ItemResult r = node.checkItem(contract.getId());
+                ItemResult r = node.checkItem(parcel.getPayloadContract().getId());
                 System.out.println("Complex contract state: " + r.state);
 
                 if(r.state == ItemState.DECLINED) ae.fire();
