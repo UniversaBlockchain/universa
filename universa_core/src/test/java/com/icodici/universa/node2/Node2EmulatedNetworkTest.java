@@ -57,7 +57,10 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
     @AfterClass
     public static void afterClass() throws Exception {
         network_s.shutdown();
-        nodes_s.forEach((n)->n.getLedger().close());
+        nodes_s.forEach((n)-> {
+            n.getLedger().close();
+            n.shutdown();
+        });
 
         network_s = null;
         node_s = null;

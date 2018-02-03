@@ -42,7 +42,7 @@ public class Node2SingleTest extends BaseNetworkTest {
     @AfterClass
     public static void afterClass() throws Exception {
         node_s.getLedger().close();
-        network_s.shutdown();
+        node_s.shutdown();
 
         network_s = null;
         node_s = null;
@@ -104,9 +104,11 @@ public class Node2SingleTest extends BaseNetworkTest {
 
         TestItem item = new TestItem(true);
 
+        System.out.println("noQuorumError " + item.getId());
         node.registerItem(item);
         try {
-            node.waitItem(item.getId(), 500);
+            System.out.println("noQuorumError wait " + item.getId());
+            node.waitItem(item.getId(), 5000);
             fail("Expected exception to be thrown.");
         } catch (TimeoutException te) {
             assertNotNull(te);
@@ -121,7 +123,7 @@ public class Node2SingleTest extends BaseNetworkTest {
 
         node.registerItem(item2);
         try {
-            node.waitItem(item2.getId(), 500);
+            node.waitItem(item2.getId(), 5000);
             fail("Expected exception to be thrown.");
         } catch (TimeoutException te) {
             assertNotNull(te);
