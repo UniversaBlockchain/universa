@@ -542,7 +542,7 @@ public class BaseNetworkTest extends TestCase {
 
         TestItem existing = new TestItem(true);
         node.registerItem(existing);
-        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 6000);
+        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 15000);
 
         // but second is missing
         HashId missingId = HashId.createRandom();
@@ -2585,7 +2585,7 @@ public class BaseNetworkTest extends TestCase {
 
     private synchronized void registerAndCheckApproved(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
-//        LogPrinter.showDebug(true);
+        LogPrinter.showDebug(true);
         node.waitParcel(parcel.getId(), 25000);
         ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
