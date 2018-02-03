@@ -62,7 +62,10 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     @AfterClass
     public static void afterClass() throws Exception {
         networks_s.forEach(n->n.shutDown());
-        nodesMap_s.forEach((i,n)->n.getLedger().close());
+        nodesMap_s.forEach((i,n)-> {
+            n.getLedger().close();
+            n.shutdown();
+        });
 
         network_s = null;
         networks_s = null;
@@ -195,7 +198,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         );
         boolean endWithFail = false;
         try {
-            ae.await(500);
+            ae.await(1000);
         } catch (TimeoutException e) {
             endWithFail = true;
         } finally {
@@ -304,7 +307,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Parcel parcel = registerWithNewParcel(contract);
 
-        node.waitParcel(parcel.getId(), 5000);
+        node.waitParcel(parcel.getId(), 15000);
         ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 5000);
         System.out.println("Complex contract state: " + r.state);
         assertEquals(ItemState.DECLINED, r.state);
@@ -488,7 +491,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        node.waitParcel(parcel.getId(), 3000);
+        node.waitParcel(parcel.getId(), 8000);
         ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 3000);
         assertEquals(ItemState.DECLINED, r.state);
     }

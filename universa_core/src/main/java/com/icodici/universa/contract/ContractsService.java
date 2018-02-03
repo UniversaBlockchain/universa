@@ -368,7 +368,7 @@ public class ContractsService {
      * spend to process transaction.
      * @return
      */
-    public static Parcel createParcel(Contract payload, Contract payment, int amount, Set<PrivateKey> keys) {
+    public synchronized static Parcel createParcel(Contract payload, Contract payment, int amount, Set<PrivateKey> keys) {
 
         Contract paymentDecreased = payment.createRevision(keys);
         paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);

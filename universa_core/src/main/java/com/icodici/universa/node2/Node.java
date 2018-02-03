@@ -54,7 +54,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
 
-    private static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
+    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
         this.config = config;
@@ -170,7 +170,7 @@ public class Node {
 
             return ((ItemProcessor) x).getResult();
         }
-        debug("it is not processor: " + x);
+        nodeDebug("it is not processor: " + x);
         return (ItemResult) x;
     }
 
@@ -221,7 +221,7 @@ public class Node {
      */
     private final void obtainResyncNotification(ItemResyncNotification notification) {
 
-        debug("got " + notification);
+        nodeDebug("got " + notification);
 
         HashMap<HashId, ItemState> itemsToResync = notification.getItemsToResync();
         HashMap<HashId, ItemState> answersForItems = new HashMap<>();
@@ -233,16 +233,16 @@ public class Node {
         Object itemObject = checkItemInternal(notification.getItemId());
 
         if (itemObject instanceof ItemResult) {
-            debug("found ItemResult for parent item with state: " + ((ItemResult) itemObject).state);
+            nodeDebug("found ItemResult for parent item with state: " + ((ItemResult) itemObject).state);
 
             if (notification.answerIsRequested()) {
                 // iterate on subItems of parent item that need to resync (stored at ItemResyncNotification.getItemsToResync())
                 for (HashId hid : itemsToResync.keySet()) {
-                    debug("checking subitem : " + hid);
+                    nodeDebug("checking subitem : " + hid);
                     Object subitemObject = checkItemInternal(hid);
                     ItemResult subItemResult;
                     ItemState subItemState;
-                    debug("checking subitem : " + hid + " object is: " + subitemObject);
+                    nodeDebug("checking subitem : " + hid + " object is: " + subitemObject);
 
                     if (subitemObject instanceof ItemResult) {
                         // we have solution for resyncing subitem:
@@ -255,7 +255,7 @@ public class Node {
                         subItemResult = null;
                     }
 
-                    debug("for subitem " + hid + " found state: " + (subItemResult == null ? null : subItemResult.state));
+                    nodeDebug("for subitem " + hid + " found state: " + (subItemResult == null ? null : subItemResult.state));
                     // we answer only states with consensus, in other cases we answer ItemState.UNDEFINED
                     if (subItemResult != null) {
                         subItemState = subItemResult.state.isConsensusFound() ? subItemResult.state : ItemState.UNDEFINED;
@@ -263,7 +263,7 @@ public class Node {
                         subItemState = ItemState.UNDEFINED;
                     }
 
-                    debug("answer for subitem: " + hid + " will be : " + subItemState);
+                    nodeDebug("answer for subitem: " + hid + " will be : " + subItemState);
                     answersForItems.put(hid, subItemState);
                 }
 
@@ -275,7 +275,7 @@ public class Node {
 
         } else if (itemObject instanceof ItemProcessor) {
             ItemProcessor ip = (ItemProcessor) itemObject;
-            debug("found ItemProcessor for parent item with state: " + ip.getState() + ", and it processing state is: " + ip.processingState);
+            nodeDebug("found ItemProcessor for parent item with state: " + ip.getState() + ", and it processing state is: " + ip.processingState);
             if(ip.processingState.isResyncing()) {
                 ip.lock(() -> {
                     for (HashId hid : itemsToResync.keySet()) {
@@ -288,11 +288,11 @@ public class Node {
                 if (notification.answerIsRequested()) {
                     // iterate on subItems of parent item that need to resync (stored at ItemResyncNotification.getItemsToResync())
                     for (HashId hid : itemsToResync.keySet()) {
-                        debug("checking subitem : " + hid);
+                        nodeDebug("checking subitem : " + hid);
                         Object subitemObject = checkItemInternal(hid);
                         ItemResult subItemResult;
                         ItemState subItemState;
-                        debug("checking subitem : " + hid + " object is: " + subitemObject);
+                        nodeDebug("checking subitem : " + hid + " object is: " + subitemObject);
 
                         if (subitemObject instanceof ItemResult) {
                             // we have solution for resyncing subitem:
@@ -305,7 +305,7 @@ public class Node {
                             subItemResult = null;
                         }
 
-                        debug("for subitem " + hid + " found state: " + (subItemResult == null ? null : subItemResult.state));
+                        nodeDebug("for subitem " + hid + " found state: " + (subItemResult == null ? null : subItemResult.state));
                         // we answer only states with consensus, in other cases we answer ItemState.UNDEFINED
                         if (subItemResult != null) {
                             subItemState = subItemResult.state.isConsensusFound() ? subItemResult.state : ItemState.UNDEFINED;
@@ -313,7 +313,7 @@ public class Node {
                             subItemState = ItemState.UNDEFINED;
                         }
 
-                        debug("answer for subitem: " + hid + " will be : " + subItemState);
+                        nodeDebug("answer for subitem: " + hid + " will be : " + subItemState);
                         answersForItems.put(hid, subItemState);
                     }
 
@@ -336,7 +336,7 @@ public class Node {
      */
     private final void obtainCommonNotification(ItemNotification notification) {
 
-        debug("got " + notification);
+        nodeDebug("got " + notification);
 
         // get processor, create if need
         // register my vote
@@ -361,7 +361,7 @@ public class Node {
             ItemProcessor ip = (ItemProcessor) x;
             ItemResult result = notification.getItemResult();
             ip.lock(() -> {
-                debug("found ItemProcessor for item " + notification.getItemId() + "  with state: " + ip.getState()
+                nodeDebug("found ItemProcessor for item " + notification.getItemId() + "  with state: " + ip.getState()
                         + ", it processing state is: " + ip.processingState
                         + ", have a copy: " + (ip.item != null));
 
@@ -389,7 +389,7 @@ public class Node {
                 return null;
             });
         } else {
-            debug("impossible state: onNotification can't have invalid state from local check\n" + x);
+            nodeDebug("impossible state: onNotification can't have invalid state from local check\n" + x);
         }
     }
 
@@ -402,7 +402,7 @@ public class Node {
      */
     private final void obtainParcelCommonNotification(ParcelNotification notification) {
 
-        debug("got " + notification);
+        nodeDebug("got " + notification);
 
         // get processor, create if need
         // register my vote
@@ -430,7 +430,7 @@ public class Node {
                 ParcelProcessor pp = (ParcelProcessor) x;
                 ItemResult resultVote = notification.getItemResult();
                 pp.lock(() -> {
-                    debug("found ParcelProcessor for parcel " + notification.getParcelId()
+                    nodeDebug("found ParcelProcessor for parcel " + notification.getParcelId()
                             + " and item " + notification.getItemId()
                             + "  with payment state: " + pp.getPaymentState()
                             + "  with payload state: " + pp.getPayloadState()
@@ -460,7 +460,7 @@ public class Node {
                                                 notification.getItemId(),
                                                 notification.getParcelId(),
                                                 pp.getPaymentResult(),
-                                                pp.needsVoteFrom(from),
+                                                pp.needsPaymentVoteFrom(from),
                                                 notification.getType())
                                 );
                             }
@@ -473,7 +473,7 @@ public class Node {
                                                 notification.getItemId(),
                                                 notification.getParcelId(),
                                                 pp.getPayloadResult(),
-                                                pp.needsVoteFrom(from),
+                                                pp.needsPayloadVoteFrom(from),
                                                 notification.getType())
                                 );
                             }
@@ -482,7 +482,7 @@ public class Node {
                     return null;
                 });
             } else {
-                debug("impossible state: onNotification can't have invalid state from local check\n" + x);
+                nodeDebug("impossible state: onNotification can't have invalid state from local check\n" + x);
             }
         }
     }
@@ -492,6 +492,7 @@ public class Node {
     }
 
     protected Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item, boolean autoStart, boolean forceChecking) {
+
         return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, false);
     }
 
@@ -513,10 +514,11 @@ public class Node {
                                        boolean autoStart, boolean forceChecking, boolean ommitItemResult) {
         try {
             // first, let's lock to the item id:
+            nodeDebug("checkItemInternal parcel  " + parcelId + " parcel  " + itemId);
             return ItemLock.synchronize(itemId, (lock) -> {
                 ItemProcessor ip = processors.get(itemId);
                 if (ip != null) {
-                    debug("existing IP found for " + itemId);
+                    nodeDebug("existing IP found for " + itemId);
                     return ip;
                 }
 
@@ -525,12 +527,12 @@ public class Node {
                     StateRecord r = ledger.getRecord(itemId);
                     // if it is not pending, it means it is already processed:
                     if (r != null && !r.isPending()) {
-                        debug("record for " + itemId + " is already processed: " + r.getState());
+                        nodeDebug("record for " + itemId + " is already processed: " + r.getState());
                         // it is, and we may still have it cached - we do not put it again:
                         return new ItemResult(r, cache.get(itemId) != null);
                     }
 
-                    debug("no record in ledger found for " + itemId.toBase64String());
+                    nodeDebug("no record in ledger found for " + itemId.toBase64String());
 
                     // we have no consensus on it. We might need to find one, after some precheck.
                     // The contract should not be too old to process:
@@ -581,7 +583,7 @@ public class Node {
             return ParcelLock.synchronize(parcelId, (lock) -> {
                 ParcelProcessor processor = parcelProcessors.get(parcelId);
                 if (processor != null) {
-                    debug("existing parcel processor found for " + parcelId
+                    nodeDebug("existing parcel processor found for " + parcelId
                             + ", payment state is " + processor.getPaymentState()
                             + ", payment result is " + processor.getPaymentResult()
                             + ", payload state is " + processor.getPayloadState()
@@ -611,7 +613,7 @@ public class Node {
         }
     }
 
-    protected void debug(String str) {
+    protected void nodeDebug(String str) {
         log.d(toString() + ": " + str);
     }
 
@@ -631,7 +633,7 @@ public class Node {
         synchronized (cache) {
             @Nullable Approvable i = cache.get(itemId);
             if (i == null) {
-                debug("cache miss: ");
+                nodeDebug("cache miss: ");
             }
             return i;
         }
@@ -639,7 +641,7 @@ public class Node {
     }
 
     /**
-     * Get the cached item.
+     * Get the cached parcel.
      *
      * @param itemId
      *
@@ -649,7 +651,7 @@ public class Node {
         synchronized (parcelCache) {
             @Nullable Parcel i = parcelCache.get(itemId);
             if (i == null) {
-                debug("parcelCache miss: ");
+                nodeDebug("parcelCache miss: ");
             }
             return i;
         }
@@ -666,6 +668,12 @@ public class Node {
 
     public Ledger getLedger() {
         return ledger;
+    }
+
+    public void shutdown() {
+        for (ItemProcessor ip : processors.values()) {
+            ip.emergencyBreak();
+        }
     }
 
 
@@ -751,11 +759,13 @@ public class Node {
                             paymentDelayedVotes.clear();
                         }
                         processingState = ParcelProcessingState.PAYMENT_POLLING;
-                        if(!paymentProcessor.processingState.isDone()) {
+                        if(!paymentProcessor.isDone()) {
                             paymentProcessor.doneEvent.await();
                         }
                         paymentResult = paymentProcessor.getResult();
                     }
+
+
 
                     if (paymentResult.state.isApproved()) {
                         debug("payment has approved for " + payload.getId());
@@ -774,9 +784,10 @@ public class Node {
                             if(parent != null) {
                                 int limit = parent.getStateData().getIntOrThrow("transaction_units") - payment.getStateData().getIntOrThrow("transaction_units");
                                 payload.getQuantiser().reset(limit);
-                                debug("payload processing cost is " + payload.getQuantiser().getQuantaLimit());
+                                debug( "parcel " + parcelId + " payload " + payload.getId() + " processing cost is " + payload.getQuantiser().getQuantaLimit());
                                 payloadProcessor.forceChecking(true);
 
+                                debug(" parcel " + parcelId + " payloadProcessor state: " + payloadProcessor.processingState);
                                 if (payloadProcessor.processingState.notCheckedYet()) {
 
                                     payloadProcessor.pollingReadyEvent.await();
@@ -792,12 +803,13 @@ public class Node {
                                 }
 
                                 processingState = ParcelProcessingState.PAYLOAD_POLLING;
-                                if(!payloadProcessor.processingState.isDone()) {
+                                if(!payloadProcessor.isDone()) {
                                     payloadProcessor.doneEvent.await();
                                 }
                                 debug("parcel consensus got for " + payload.getId() + " with state " + payloadProcessor.getState());
                                 payloadResult = payloadProcessor.getResult();
                             } else {
+                                debug(" parcel " + parcelId + " item " + payloadProcessor.itemId + " payload parent == null");
                                 payloadProcessor.emergencyBreak();
                                 payloadProcessor.doneEvent.await();
                             }
@@ -806,6 +818,7 @@ public class Node {
                         }
                     } else {
                         if(payloadProcessor != null) {
+                            debug(" parcel " + parcelId + " item " + payloadProcessor.itemId + " payment result not approved");
                             payloadProcessor.emergencyBreak();
                             payloadProcessor.doneEvent.await();
                         }
@@ -850,7 +863,7 @@ public class Node {
         private void download() {
             if(processingState.canContinue()) {
 
-                while (!isPollingExpired() && parcel == null) {
+                while (!isPayloadPollingExpired() && parcel == null) {
                     if (sources.isEmpty()) {
                         log.e("empty sources for download tasks, stopping");
                         return;
@@ -972,15 +985,15 @@ public class Node {
             return ItemState.PENDING;
         }
 
-        private ItemProcessingState getPayloadProcessingState() {
-            if(payloadProcessor != null)
-                return payloadProcessor.processingState;
-            return ItemProcessingState.NOT_EXIST;
-        }
-
         private ItemProcessingState getPaymentProcessingState() {
             if(paymentProcessor != null)
                 return paymentProcessor.processingState;
+            return ItemProcessingState.NOT_EXIST;
+        }
+
+        private ItemProcessingState getPayloadProcessingState() {
+            if(payloadProcessor != null)
+                return payloadProcessor.processingState;
             return ItemProcessingState.NOT_EXIST;
         }
 
@@ -991,9 +1004,22 @@ public class Node {
          *
          * @return
          */
-        private final boolean needsVoteFrom(NodeInfo node) {
+        private final boolean needsPayloadVoteFrom(NodeInfo node) {
             if(payloadProcessor != null)
                 return payloadProcessor.needsVoteFrom(node);
+            return false;
+        }
+
+        /**
+         * true if we need to get vote from a node
+         *
+         * @param node we might need vote from
+         *
+         * @return
+         */
+        private final boolean needsPaymentVoteFrom(NodeInfo node) {
+            if(paymentProcessor != null)
+                return paymentProcessor.needsVoteFrom(node);
             return false;
         }
 
@@ -1007,6 +1033,9 @@ public class Node {
                     pulseDownload();
                 }
             }
+
+            if(paymentProcessor != null)
+                paymentProcessor.addToSources(node);
 
             if(payloadProcessor != null)
                 payloadProcessor.addToSources(node);
@@ -1023,7 +1052,7 @@ public class Node {
             }
         }
 
-        private boolean isPollingExpired() {
+        private boolean isPayloadPollingExpired() {
             if(payloadProcessor != null)
                 return payloadProcessor.isPollingExpired();
             return false;
@@ -1037,6 +1066,10 @@ public class Node {
             synchronized (mutex) {
                 return (T) c.get();
             }
+        }
+
+        protected void debug(String str) {
+            nodeDebug(" -> parcel: " + parcelId + ", processing state: " + processingState + ": " + str);
         }
     }
 
@@ -1126,7 +1159,9 @@ public class Node {
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()) {
-                    processingState = ItemProcessingState.DOWNLOADING;
+                    if(!processingState.isProcessedToConsensus()) {
+                        processingState = ItemProcessingState.DOWNLOADING;
+                    }
 
                     synchronized (mutex) {
                         if (item == null && (downloader == null || downloader.isDone())) {
@@ -1170,12 +1205,16 @@ public class Node {
         }
 
         private final void itemDownloaded() {
+            debug("itemDownloaded " + parcelId + " item " + itemId + " processingState is " + processingState);
             if(processingState.canContinue()) {
                 synchronized (cache) {
                     cache.put(item);
                 }
-                processingState = ItemProcessingState.DOWNLOADED;
+                if(!processingState.isProcessedToConsensus()) {
+                    processingState = ItemProcessingState.DOWNLOADED;
+                }
                 if(isCheckingForce) {
+                    debug("isCheckingForce->checkItem " + parcelId + " item " + itemId + " processingState is " + processingState);
                     checkItem();
                 }
                 downloadedEvent.fire();
@@ -1190,6 +1229,7 @@ public class Node {
         //////////// check state section /////////////
 
         private final synchronized void checkItem() {
+            debug("checkItem parcel " + parcelId + " item " + itemId + " processingState is " + processingState);
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus() && processingState != ItemProcessingState.CHECKING) {
@@ -1197,9 +1237,11 @@ public class Node {
                         throw new RuntimeException("Check already processed");
                     }
 
-                    processingState = ItemProcessingState.CHECKING;
+                    if(!processingState.isProcessedToConsensus()) {
+                        processingState = ItemProcessingState.CHECKING;
+                    }
 
-                    debug("Checking " + itemId + " state is " + record.getState());
+                    debug("Checking parcel " + parcelId + " item " + itemId + " state is " + record.getState());
 
                     // Check the internal state
                     // Too bad if basic check isn't passed, we will not process it further
@@ -1210,10 +1252,14 @@ public class Node {
                         debug("Contract test limit: " + Contract.getTestQuantaLimit());
                         debug("item is TU: " + item.isTU());
                         boolean checkPassed = false;
+
                         if(item.isTU()) {
                             checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKey());
                         } else {
                             checkPassed = item.check();
+                        }
+                        if(item instanceof Contract) {
+                            debug(" parcel " + parcelId + " item " + itemId + " check passed: " + checkPassed + " cost: " + ((Contract) item).getQuantiser().getQuantaSum() + "/" + ((Contract) item).getQuantiser().getQuantaLimit());
                         }
                         debug("check of: " + itemId + " is passed: " + checkPassed);
                         if (checkPassed) {
@@ -1223,6 +1269,7 @@ public class Node {
 
                             // If no need to resync subItems, check them
                             if (!needToResync) {
+                                debug(" parcel " + parcelId + " item " + itemId + " checkItem->checkSubItems");
                                 checkSubItems();
                             }
                         } else {
@@ -1233,6 +1280,7 @@ public class Node {
                     } catch (Quantiser.QuantiserException e) {
                         debug("Quantiser limit for item " + itemId);
 
+                        debug(" parcel " + parcelId + " item " + itemId + " Quantiser limit " + ((Contract) item).getQuantiser().getQuantaSum() + "/" + ((Contract) item).getQuantiser().getQuantaLimit());
                         emergencyBreak();
                         return;
                     }
@@ -1282,7 +1330,10 @@ public class Node {
                     if (resyncingItems.size() == numFinished && processingState.isGotResyncedState()) {
                         debug("All subItems resynced and states committed");
 
-                        processingState = ItemProcessingState.CHECKING;
+
+                        if(!processingState.isProcessedToConsensus()) {
+                            processingState = ItemProcessingState.CHECKING;
+                        }
 
                         // if we was resyncing itself (not own subitems) and state from network was undefined - rollback state
                         if (resyncItselfOnly) {
@@ -1297,6 +1348,7 @@ public class Node {
                             close();
                         } else {
                             try {
+                                debug(" parcel " + parcelId + " item " + itemId + " onResyncItemFinished->checkSubItems");
                                 checkSubItems();
                             } catch (Exception e) {
                                 debug("resync finishing error: " + e.getMessage());
@@ -1367,6 +1419,7 @@ public class Node {
         }
 
         private final void commitCheckedAndStartPolling() {
+            debug("commitCheckedAndStartPolling " + parcelId + " item " + itemId + " processingState is " + processingState);
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()) {
@@ -1393,6 +1446,9 @@ public class Node {
                     record.setExpiresAt(item.getExpiresAt());
                     record.save();
 
+                    if(!processingState.isProcessedToConsensus()) {
+                        processingState = ItemProcessingState.POLLING;
+                    }
                     vote(myInfo, record.getState());
                     broadcastMyState();
                     pulseStartPolling();
@@ -1461,7 +1517,6 @@ public class Node {
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()) {
-                    processingState = ItemProcessingState.POLLING;
 
                     // at this point the item is with us, so we can start
                     synchronized (mutex) {
@@ -1494,7 +1549,7 @@ public class Node {
                     }
                     // at this point we should requery the nodes that did not yet answered us
                     Notification notification;
-                    debug("Send poll notifications for item " + itemId + ", item is TU: " + item.isTU());
+                    debug("Send poll notifications for parcel " + parcelId + " item " + itemId + ", item is TU: " + item.isTU() + " processingState " + processingState);
                     ParcelNotification.ParcelNotificationType notificationType;
                     if(item.isTU()) {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
@@ -1511,9 +1566,11 @@ public class Node {
         }
 
         private final void vote(NodeInfo node, ItemState state) {
+            debug("vote " + parcelId + " item " + itemId + " processingState is " + processingState);
             if(processingState.canContinue()) {
                 boolean positiveConsensus = false;
                 boolean negativeConsensus = false;
+                ItemProcessingState stateWas;
                 synchronized (mutex) {
                     Set<NodeInfo> add, remove;
                     if (state.isPositive()) {
@@ -1526,11 +1583,15 @@ public class Node {
                     add.add(node);
                     remove.remove(node);
 
+                    stateWas = processingState;
+
                     if (processingState.isProcessedToConsensus()) {
                         debug("consensus already found, but vote for " + itemId + " from " + node + ": " + state + " > "
                                 + positiveNodes.size() + "/" + negativeNodes.size());
-                        checkIfAllReceivedConsensus();
-                        removeSelf();
+                        if(isDone()) {
+                            checkIfAllReceivedConsensus();
+                            removeSelf();
+                        }
                         return;
                     }
 
@@ -1548,6 +1609,13 @@ public class Node {
                     if (!processingState.isProcessedToConsensus())
                         return;
                 }
+                debug(" parcel " + parcelId + " item " + itemId + " vote > "+ positiveNodes.size() + "/" + negativeNodes.size() +
+                        ", consFound=" + processingState.isProcessedToConsensus()
+                        + ": positive=" + positiveConsensus
+                        + ": negative=" + negativeConsensus +
+                        ", processingState=" + processingState +
+                        ", stateWas=" + stateWas);
+
                 if (positiveConsensus) {
                     approveAndCommit();
                 } else if (negativeConsensus) {
@@ -1561,7 +1629,13 @@ public class Node {
             if(processingState.canContinue()) {
                 // todo: fix logic to surely copy approving item dependency. e.g. download original or at least dependencies
                 // first we need to flag our state as approved
+                debug("parcel " + parcelId + " item " + itemId
+                        + ", approveAndCommit"
+                        + ", processingState=" + processingState);
                 setState(ItemState.APPROVED);
+                debug("parcel " + parcelId + " item " + itemId
+                        + ", approveAndCommit, states is set"
+                        + ", processingState=" + processingState);
                 executorService.submit(() -> downloadAndCommit());
             }
         }
@@ -1589,11 +1663,16 @@ public class Node {
         }
 
         private void downloadAndCommit() {
+            debug("downloadAndCommit " + parcelId + " item " + itemId + " processingState is " + processingState);
             if(processingState.canContinue()) {
                 // it may happen that consensus is found earlier than item is download
                 // we still need item to fix all its relations:
                 try {
                     debug("download and commit item " + itemId + " state: " + getState());
+                    debug(" parcel " + parcelId + " item " + itemId
+                            + " downloadAndCommit "
+                            + " item " + item
+                            + ", processingState=" + processingState);
                     if (item == null) {
                         // If positive consensus os found, we can spend more time for final download, and can try
                         // all the network as the source:
@@ -1613,6 +1692,7 @@ public class Node {
                         log.e("record is not approved " + record.getState());
                     }
                     debug("approval done for " + itemId + " : " + getState() + " have a copy " + (item == null));
+                    debug(" parcel " + parcelId + " item " + itemId + " downloadAndCommit->unlock");
                 } catch (TimeoutException | InterruptedException e) {
                     debug("commit: failed to load item " + itemId + " ledger will not be altered, the record will be destroyed");
                     setState(ItemState.UNDEFINED);
@@ -1651,6 +1731,7 @@ public class Node {
                     debug("saving ");
                     record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
                     debug("saved ");
+                    debug(" parcel " + parcelId + " item " + itemId + " rollbackChanges->unlock");
                     return null;
                 });
                 close();
@@ -1761,7 +1842,9 @@ public class Node {
                         addItemToResync(itemId, record);
                     }
 
-                    processingState = ItemProcessingState.RESYNCING;
+                    if(!processingState.isProcessedToConsensus()) {
+                        processingState = ItemProcessingState.RESYNCING;
+                    }
 
                     pulseCheckIfItemsResynced();
 
@@ -1898,9 +1981,14 @@ public class Node {
         private void forceChecking(boolean isCheckingForce) {
             this.isCheckingForce = isCheckingForce;
             if(processingState.canContinue()) {
+                debug("forceChecking " + parcelId + " item " + itemId + " processingState is " + processingState);
 
-                if(processingState == ItemProcessingState.DOWNLOADED) {
-                    executorService.submit(() -> checkItem());
+                if (processingState == ItemProcessingState.DOWNLOADED) {
+                    debug("forceChecking2 " + parcelId + " item " + itemId + " processingState is " + processingState);
+                    executorService.submit(() -> {
+                        debug("forceChecking3 " + parcelId + " item " + itemId + " processingState is " + processingState);
+                        checkItem();
+                    });
                 }
             }
         }
@@ -1910,7 +1998,12 @@ public class Node {
 
             stopPoller();
 
+            // fire all event to release possible listeners
+            processingState = ItemProcessingState.DONE;
+            downloadedEvent.fire();
+            pollingReadyEvent.fire();
             doneEvent.fire();
+            debug(" parcel " + parcelId + " item " + itemId + " doneEvent.fire");
 
             if(processingState.canContinue()) {
                 // If we not just resynced itslef
@@ -1971,6 +2064,10 @@ public class Node {
 
                 debug("closed " + itemId.toBase64String() + " processing state: " + processingState);
 
+                // fire all event to release possible listeners
+                downloadedEvent.fire();
+                pollingReadyEvent.fire();
+                doneEvent.fire();
                 removedEvent.fire();
             }
         }
@@ -2010,6 +2107,10 @@ public class Node {
             synchronized (mutex) {
                 return (T) c.get();
             }
+        }
+
+        protected void debug(String str) {
+            nodeDebug(" -> parcel: " + parcelId + ", item: " + itemId + ", processing state: " + processingState + ": " + str);
         }
     }
 
@@ -2085,6 +2186,7 @@ public class Node {
         GOT_RESYNCED_STATE,
         POLLING,
         GOT_CONSENSUS,
+        DONE,
         SENDING_CONSENSUS,
         FINISHED,
         EMERGENCY_BREAK;
@@ -2099,6 +2201,7 @@ public class Node {
             switch (this) {
                 case GOT_CONSENSUS:
                 case SENDING_CONSENSUS:
+                case DONE:
                 case FINISHED:
                     return true;
             }
@@ -2108,6 +2211,7 @@ public class Node {
         public boolean isDone() {
             switch (this) {
                 case SENDING_CONSENSUS:
+                case DONE:
                 case FINISHED:
                     return true;
             }
@@ -2367,6 +2471,10 @@ public class Node {
                 return record.getState();
 
             return ItemState.UNDEFINED;
+        }
+
+        protected void debug(String str) {
+            nodeDebug(" -> resyncing item: " + hashId + ", resyncing state: " + resyncingState + ": " + str);
         }
     }
 
