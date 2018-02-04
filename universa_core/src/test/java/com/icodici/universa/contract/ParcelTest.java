@@ -11,29 +11,23 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+
 import java.time.ZonedDateTime;
+
 import static org.junit.Assert.assertEquals;
 
 public class ParcelTest {
-    public Binder serialize(Parcel parcel) throws Exception {
-        BiSerializer biS = new BiSerializer();
-        return parcel.serialize(biS);
-    }
 
-    public Parcel deserialize(Binder binder) throws Exception {
-        BiDeserializer biD = new BiDeserializer();
-        return new Parcel(binder, biD);
-    }
+    Parcel parcel;
+    Parcel des_parcel;
 
     @Before
     public void setUp() throws Exception {
-    }
-
-    @Test
-    public void SerializeDeserialize() throws Exception {
         TransactionPack payload_tp = new TransactionPack();
         TransactionPack payment_tp = new TransactionPack();
 
@@ -58,14 +52,20 @@ public class ParcelTest {
         payment_tp.setContract(payment);
 
         //create parcel
-        Parcel parcel = new Parcel(payload_tp, payment_tp);
+        parcel = new Parcel(payload_tp, payment_tp);
+    }
 
-        //serialize
-        Binder b = serialize(parcel);
+    public Binder serialize(Parcel parcel) throws Exception {
+        BiSerializer biS = new BiSerializer();
+        return parcel.serialize(biS);
+    }
 
-        //deserialize
-        Parcel des_parcel = deserialize(b);
+    public Parcel deserialize(Binder binder) throws Exception {
+        BiDeserializer biD = new BiDeserializer();
+        return new Parcel(binder, biD);
+    }
 
+    public void parcelAssertions() throws Exception {
         //few assertions
         assertEquals(parcel.getPayload().getContract().getId(), des_parcel.getPayload().getContract().getId());
         assertEquals(parcel.getPayment().getContract().getId(), des_parcel.getPayment().getContract().getId());
@@ -81,5 +81,31 @@ public class ParcelTest {
 
         assertEquals(parcel.getPayload().getReferences(), des_parcel.getPayload().getReferences());
         assertEquals(parcel.getPayment().getReferences(), des_parcel.getPayment().getReferences());
+    }
+
+    @Test
+    public void SerializeDeserialize() throws Exception {
+        //serialize
+        Binder b = serialize(parcel);
+
+        //deserialize
+        des_parcel = deserialize(b);
+
+        parcelAssertions();
+    }
+
+    @Ignore
+    @Test
+    public void SerializeDeserializeWithPacking() throws Exception {
+        //serialize
+        Binder b = serialize(parcel);
+
+        byte[] array = Boss.pack(b);
+        Binder ub = Boss.unpack(array);
+
+        //deserialize
+        des_parcel = deserialize(ub);
+
+        parcelAssertions();
     }
 }
