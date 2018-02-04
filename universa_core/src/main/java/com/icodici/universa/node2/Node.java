@@ -77,6 +77,7 @@ public class Node {
      */
     public @NonNull ItemResult registerItem(Approvable item) {
 
+        nodeDebug("register item: " + item.getId());
         Object x = checkItemInternal(item.getId(), null, item, true, true);
         return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
     }
@@ -92,7 +93,7 @@ public class Node {
 
         try {
             Object x = checkParcelInternal(parcel.getId(), parcel, true);
-            return (x instanceof ItemResult) ? (ItemResult) x : checkItem(parcel.getId());
+            return (x instanceof ItemResult) ? (ItemResult) x : checkParcel(parcel.getId());
         } catch (Exception e) {
             throw new RuntimeException("failed to process parcel", e);
         }
@@ -107,11 +108,20 @@ public class Node {
      */
     public @NonNull ItemResult checkItem(HashId itemId) {
 
+        nodeDebug("check item: " + itemId);
         Object x = checkItemInternal(itemId);
         ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
         ItemInformer.Record record = informer.takeFor(itemId);
         if (record != null)
             ir.errors = record.errorRecords;
+        return ir;
+    }
+
+    public @NonNull ItemResult checkParcel(HashId parcelId) {
+
+        nodeDebug("check parcel: " + parcelId);
+        Object x = checkParcelInternal(parcelId);
+        ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ParcelProcessor) x).getPayloadResult();
         return ir;
     }
 
@@ -155,6 +165,7 @@ public class Node {
 
         Object x = null;
 
+        nodeDebug("wait item: " + itemId);
         x = checkItemInternal(itemId);
         if (x instanceof ItemProcessor) {
             if(!((ItemProcessor) x).isDone()) {
@@ -1058,7 +1069,7 @@ public class Node {
         }
 
         protected void debug(String str) {
-            nodeDebug("-> parcel: " + parcelId + ", processing state: " + processingState + ": " + str);
+            nodeDebug("pp -> parcel: " + parcelId + ", processing state: " + processingState + ": " + str);
         }
     }
 
@@ -1257,9 +1268,9 @@ public class Node {
                                 checkSubItems();
                             }
                         } else {
-                            debug("found " + item.getErrors() + " errors:");
-                            Collection<ErrorRecord> errors = item.getErrors();
-                            errors.forEach(e -> debug("Found error: " + e));
+                            debug("found " + item.getErrors());
+//                            Collection<ErrorRecord> errors = item.getErrors();
+//                            errors.forEach(e -> debug("Found error: " + e));
                         }
                     } catch (Quantiser.QuantiserException e) {
                         debug("Quantiser limit");
@@ -1357,6 +1368,7 @@ public class Node {
 
         // check subitems of given item recursively (down for newItems line)
         private final void checkSubItemsOf(Approvable checkingItem) {
+            debug("checking subitems of : " + checkingItem.getId());
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
                     for (Reference refModel : checkingItem.getReferencedItems()) {
@@ -1369,7 +1381,9 @@ public class Node {
                     }
                     // check revoking items
                     for (Approvable a : checkingItem.getRevokingItems()) {
+                        debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId());
                         StateRecord r = record.lockToRevoke(a.getId());
+                        debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId() + " record is " + r);
                         if (r == null) {
                             checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
                         } else {
@@ -1410,6 +1424,10 @@ public class Node {
                     debug("item checked, checkPassed: " + checkPassed
                             + ", state: " + record.getState() +
                             ", errors: " + item.getErrors().size());
+
+                    debug("found " + item.getErrors().size() + " errors");
+//                    Collection<ErrorRecord> errors = item.getErrors();
+//                    errors.forEach(e -> debug("found error: " + e));
 
                     if (!checkPassed) {
                         informer.inform(item);
@@ -1458,9 +1476,37 @@ public class Node {
                             }
                         }
                     }
+                    debug("checking revoking subitems");
                     // check revoking items
                     for (Approvable a : item.getRevokingItems()) {
                         StateRecord r = ledger.getRecord(a.getId());
+                        debug("checking revoking subitem " + a.getId());
+
+                        int numIterations = 0;
+                        while(r == null) {
+                            debug("revoking subitem " + a.getId() + " is null, iteration " + numIterations);
+                            try {
+                                wait(100);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            debug(">revoking subitem " + a.getId() + " is null, iteration " + numIterations);
+                            r = ledger.getRecord(a.getId());
+                            debug(">>revoking subitem " + a.getId() + " is null, iteration " + numIterations);
+                            numIterations ++;
+                            if(numIterations > 10) {
+                                break;
+                            }
+                        }
+
+                        if (r != null && !r.getState().isConsensusFound()) {
+                            try {
+                                r.reload();
+                            } catch (StateRecord.NotFoundException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
                         debug("revoking subitem " + a.getId() + " is " + (r != null ? r.getState() : null));
 
                         if (r == null || !r.getState().isConsensusFound()) {
@@ -1569,7 +1615,7 @@ public class Node {
                     if (processingState.isProcessedToConsensus()) {
                         debug("consensus already found, but vote for " + itemId + " from " + node + ": " + state + " > "
                                 + positiveNodes.size() + "/" + negativeNodes.size());
-                        if(isDone()) {
+                        if(processingState.isDone()) {
                             checkIfAllReceivedConsensus();
                             removeSelf();
                         }
@@ -1624,6 +1670,7 @@ public class Node {
                     r.setState(ItemState.REVOKED);
                     r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
                     r.save();
+                    debug("revoking subitem " + revokingItem.getId() + " saved");
                 }
                 for (Approvable newItem : commitingItem.getNewItems()) {
                     // The record may not exist due to ledger desync too, so we create it if need
@@ -1631,6 +1678,7 @@ public class Node {
                     r.setState(ItemState.APPROVED);
                     r.setExpiresAt(newItem.getExpiresAt());
                     r.save();
+                    debug("new subitem " + newItem.getId() + " saved");
 
                     downloadAndCommitSubItemsOf(newItem);
                 }
@@ -1642,7 +1690,7 @@ public class Node {
                 // it may happen that consensus is found earlier than item is download
                 // we still need item to fix all its relations:
                 try {
-                    debug("download and commit item, state: " + getState());
+                    debug("download and commit item, state: " + getState() + ", item is " + item);
                     if (item == null) {
                         // If positive consensus os found, we can spend more time for final download, and can try
                         // all the network as the source:
@@ -1653,6 +1701,7 @@ public class Node {
                     // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
                     // yields. We just clean them up afterwards:
 
+                    debug("download and commit subitems, state: " + getState());
                     downloadAndCommitSubItemsOf(item);
 
                     lockedToCreate.clear();
@@ -1968,7 +2017,7 @@ public class Node {
                 if (!resyncItselfOnly) {
                     checkIfAllReceivedConsensus();
                     debug("check if all received consensus finished");
-                    if (processingState.isGotConsensus()) {
+                    if (processingState == ItemProcessingState.DONE) {
                         pulseSendNewConsensus();
                     } else {
                         removeSelf();
@@ -2068,7 +2117,7 @@ public class Node {
         }
 
         protected void debug(String str) {
-            nodeDebug(" -> parcel: " + parcelId + ", item: " + itemId + ", processing state: " + processingState + ": " + str);
+            nodeDebug("ip -> parcel: " + parcelId + ", item: " + itemId + ", processing state: " + processingState + ": " + str);
         }
     }
 

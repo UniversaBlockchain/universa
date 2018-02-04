@@ -597,7 +597,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         for (int i = 0; i < numSubContracts; i++) {
             ItemResult r = node.checkItem(subContracts.get(i).getId());
-            System.out.println("Contract: " + i + " state: " + r.state);
+            System.out.println("Contract: " + i + " > " + subContracts.get(i).getId() + " state: " + r.state);
         }
 
         Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
@@ -636,7 +636,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         }, 0, 500);
 
         try {
-            ae.await(5000);
+            ae.await(15000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
