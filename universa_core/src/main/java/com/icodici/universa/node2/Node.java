@@ -771,7 +771,7 @@ public class Node {
                                 }
                             }
                             if(parent != null) {
-                                int limit = parent.getStateData().getIntOrThrow("transaction_units") - payment.getStateData().getIntOrThrow("transaction_units");
+                                int limit = Quantiser.quantaPerUTN * (parent.getStateData().getIntOrThrow("transaction_units") - payment.getStateData().getIntOrThrow("transaction_units"));
                                 payload.getQuantiser().reset(limit);
                                 debug( "payload " + payload.getId() + " processing limit is " + payload.getQuantiser().getQuantaLimit());
                                 payloadProcessor.forceChecking(true);

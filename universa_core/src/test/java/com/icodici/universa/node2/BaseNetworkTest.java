@@ -2529,7 +2529,7 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(stepaTU.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        return ContractsService.createParcel(c, stepaTU, 50000, keys);
+        return ContractsService.createParcel(c, stepaTU, 150, keys);
     }
 
     protected synchronized Contract getApprovedTUContract() throws Exception {
@@ -2571,7 +2571,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
     public synchronized Parcel createParcelWithClassTU(Contract c, Set<PrivateKey> keys) throws Exception {
-        return ContractsService.createParcel(c, getApprovedTUContract(), 50000, keys);
+        return ContractsService.createParcel(c, getApprovedTUContract(), 150, keys);
     }
 
     protected synchronized Parcel registerWithNewParcel(Contract c) throws Exception {
