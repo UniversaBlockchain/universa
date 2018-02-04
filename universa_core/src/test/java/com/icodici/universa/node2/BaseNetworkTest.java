@@ -2568,10 +2568,7 @@ public class BaseNetworkTest extends TestCase {
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         Parcel parcel = createParcelWithClassTU(c, stepaPrivateKeys);
         node.registerParcel(parcel);
-        node.waitParcel(parcel.getId(), 25000);
-        ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
-        if (itemResult.state == ItemState.APPROVED)
-            tuContract = parcel.getPaymentContract();
+        tuContract = parcel.getPaymentContract();
         return parcel;
     }
 
@@ -2589,7 +2586,9 @@ public class BaseNetworkTest extends TestCase {
         Parcel parcel = registerWithNewParcel(c);
 //        LogPrinter.showDebug(true);
         node.waitParcel(parcel.getId(), 25000);
-        ItemResult itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
+        ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         assertEquals(ItemState.DECLINED, itemResult.state);
     }
 
