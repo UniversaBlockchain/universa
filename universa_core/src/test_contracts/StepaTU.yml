@@ -13,16 +13,12 @@ definition:
    # all issuers.
 
      key: >
-          HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
-          a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
-          z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
-          BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
-          vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
-          Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
-          hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
-          LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
-          MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=
-     # _xer0yfe2nn1xthc.unikey
+          HggcAQABxAABucfLG7o8MIDQiylUlWFBOZ7GuxVWeLhy3JdYn4OOoLeYnrupHUWhbycvYeAm
+          eNSdqcIvKcu295+XYPMD7VxYJydjO9MytYJq+1TqJhTpF7ZMXWD3SfvjLyZSFgSmXm540XiF
+          Tc17cesr/jE56eAkT1g6Ha4b2kHKjEIrGTVLES5FAq2qolVFMzmp/dHzH/r+VEwu7vF1ybQa
+          J1zpwEJNCK0+ooiZo6KfcJ6To98cdeAZqx/ggk3/JNpdtCKgPKd5YUH9twJc+XRvLP6a3TZE
+          mKI3ZxUo6YGsQM7vBaqeNo9W2pcQ5BBqMkYW0Dtv74BB88zaFHTRv2OsKODxBGlj9w==
+     # tu_key.public.unikey
 
      # to show to the user
      description: >

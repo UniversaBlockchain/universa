@@ -2482,7 +2482,7 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.traceErrors();
 
 
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
         Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
         stepaTU.addSignerKey(manufacturePrivateKey);
         stepaTU.seal();
@@ -2518,7 +2518,7 @@ public class BaseNetworkTest extends TestCase {
 
     public Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
 
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
         Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
         stepaTU.addSignerKey(manufacturePrivateKey);
         stepaTU.seal();
@@ -2534,7 +2534,7 @@ public class BaseNetworkTest extends TestCase {
 
     protected synchronized Contract getApprovedTUContract() throws Exception {
 //        if (tuContract == null) {
-            PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+            PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
             Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
             stepaTU.addSignerKey(manufacturePrivateKey);
             stepaTU.seal();
