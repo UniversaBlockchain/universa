@@ -592,7 +592,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 35000)
+    @Test(timeout = 60000)
     public void badRevokingItemsDeclineAndRemoveLock() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -621,7 +621,7 @@ public class BaseNetworkTest extends TestCase {
             Thread.sleep(300);
 
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 5000);
+            ItemResult itemResult = node.waitItem(main.getId(), 15000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
@@ -2187,7 +2187,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 60000)
     public void swapSplitJoinAllGood() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
