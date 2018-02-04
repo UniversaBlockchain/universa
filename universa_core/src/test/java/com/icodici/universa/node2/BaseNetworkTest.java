@@ -2533,7 +2533,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
     protected synchronized Contract getApprovedTUContract() throws Exception {
-//        if (tuContract == null) {
+        if (tuContract == null) {
             PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
             Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
             stepaTU.addSignerKey(manufacturePrivateKey);
@@ -2543,31 +2543,20 @@ public class BaseNetworkTest extends TestCase {
             stepaTU.traceErrors();
             System.out.println("register new TU ");
             node.registerItem(stepaTU);
-//            tuContract = stepaTU;
-//        }
-        for (Node n : nodes) {
-            ItemResult itemResult = n.waitItem(stepaTU.getId(), 15000);
-            int numIterations = 0;
-            while (!itemResult.state.isConsensusFound()) {
-                System.out.println("wait for consensus receiving on the node " + n + " state is " + itemResult.state);
-                Thread.sleep(500);
-                itemResult = n.waitItem(stepaTU.getId(), 15000);
-                numIterations++;
-                if (numIterations == 20) {
-                    node.registerItem(stepaTU);
-                }
-                if (numIterations > 40) {
-                    break;
-                }
-            }
-            if (itemResult.state == ItemState.APPROVED) {
-                assertEquals(ItemState.APPROVED, itemResult.state);
-            } else {
-//                tuContract = null;
-                return getApprovedTUContract();
-            }
+            tuContract = stepaTU;
         }
-        return stepaTU;
+        boolean needRecreateTuContract = false;
+        for (Node n : nodes) {
+            ItemResult itemResult = n.waitItem(tuContract.getId(), 15000);
+            //assertEquals(ItemState.APPROVED, itemResult.state);
+            if (itemResult.state != ItemState.APPROVED)
+                needRecreateTuContract = true;
+        }
+        if (needRecreateTuContract) {
+            tuContract = null;
+            return getApprovedTUContract();
+        }
+        return tuContract;
     }
 
     public synchronized Parcel createParcelWithClassTU(Contract c, Set<PrivateKey> keys) throws Exception {
@@ -2579,7 +2568,10 @@ public class BaseNetworkTest extends TestCase {
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         Parcel parcel = createParcelWithClassTU(c, stepaPrivateKeys);
         node.registerParcel(parcel);
-//        tuContract = parcel.getPaymentContract();
+        node.waitParcel(parcel.getId(), 25000);
+        ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
+        if (itemResult.state == ItemState.APPROVED)
+            tuContract = parcel.getPaymentContract();
         return parcel;
     }
 
