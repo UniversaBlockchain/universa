@@ -1,0 +1,106 @@
+api_level: 3
+definition:
+  data:
+    template_name: NOTARY_CONTRACT
+    holder_identifier: '4507061257'
+    files:
+      output_json:
+        file_name: output.json
+        __type: file
+        sha512:
+          __type: binary
+          base64: |-
+            iUF0wgvLayCFBCR1O3bWPcSlV149AqMvnvHLTwZ3BLd36oH73DwG5xYsob5B+TqFckLLZaMp
+            KyG2mH1Z3JZFjA==
+  permissions:
+    BfDOcN:
+      name: change_owner
+      role:
+        target_name: owner
+        __type: RoleLink
+        name: '@change_owner'
+      __type: ChangeOwnerPermission
+    EsLHeW:
+      name: revoke
+      role:
+        target_name: owner
+        __type: RoleLink
+        name: '@revoke'
+      __type: RevokePermission
+  created_at:
+    seconds: 1517583389
+    __type: unixtime
+  issuer:
+    keys:
+    - key:
+        __type: RSAPublicKey
+        packed:
+          __type: binary
+          base64: |-
+            HggcAQABxAACt4poObiyVC1psCJ7q3wCSU7VDZktOrms/YHtDQyYA0djYGqz6X/YqMhh8o7a
+            CwjXorGXy7pzgt8VOKgJax5zgTknrB4Ic23vzgPoSBCgqhBnqemRp7GphEPsfq2JKdtHVXRY
+            6ANzSiI68kTeCOtqAz/ME9u2uMtGQUq351Ql+r/X4JIOVC7t3kjnKmXI+RZ0uX2bSC10ECWJ
+            eM6eWrWkuev8p4Qsc5WGJjxCfdZ30l7xC6r2gq7MNKvXeiX7ApeF/tzu524GZbrghLELE+mK
+            Ch1lohTCwQ6Zwsi717sNse6dv2DbAGQdxgd66MamVQ+URZo4NrqFQoXii2lQNMfmYUAFeiyj
+            ReFidijuJuOn9qUTOGgykbEgwDBHJRqnA7wQGFjLTFMLwI4+pAmb5julXX5pW0CjXGWXUpca
+            YIELqhL6UGpJia3dvBFZaIRsu16inwMEfDWdJ3iyGTnSAW+TrHCWkRQDPFH37JsWaOr+HhA9
+            Q3PWplnmrtjTUk1y2KUT2nbNjkNa9O56Pm7K1Wb9QtjCKW5w/zTeFzZajhhHh8Gb+8TszHFh
+            4iRJN4XyzCUxQB9jLO+7A8EnYZ047yZgGIQJcMe/psxUBRw5NLhEAFQScXYycrwQrGnWNPGM
+            n0U0WGz7LtRAHw6sm6rD53/4298hIzTyQLUQmeNAJXCW2YU=
+      __type: KeyRecord
+    __type: SimpleRole
+    name: issuer
+state:
+  owner:
+    keys:
+    - key:
+        __type: RSAPublicKey
+        packed:
+          __type: binary
+          base64: |-
+            HggcAQABxAACt4poObiyVC1psCJ7q3wCSU7VDZktOrms/YHtDQyYA0djYGqz6X/YqMhh8o7a
+            CwjXorGXy7pzgt8VOKgJax5zgTknrB4Ic23vzgPoSBCgqhBnqemRp7GphEPsfq2JKdtHVXRY
+            6ANzSiI68kTeCOtqAz/ME9u2uMtGQUq351Ql+r/X4JIOVC7t3kjnKmXI+RZ0uX2bSC10ECWJ
+            eM6eWrWkuev8p4Qsc5WGJjxCfdZ30l7xC6r2gq7MNKvXeiX7ApeF/tzu524GZbrghLELE+mK
+            Ch1lohTCwQ6Zwsi717sNse6dv2DbAGQdxgd66MamVQ+URZo4NrqFQoXii2lQNMfmYUAFeiyj
+            ReFidijuJuOn9qUTOGgykbEgwDBHJRqnA7wQGFjLTFMLwI4+pAmb5julXX5pW0CjXGWXUpca
+            YIELqhL6UGpJia3dvBFZaIRsu16inwMEfDWdJ3iyGTnSAW+TrHCWkRQDPFH37JsWaOr+HhA9
+            Q3PWplnmrtjTUk1y2KUT2nbNjkNa9O56Pm7K1Wb9QtjCKW5w/zTeFzZajhhHh8Gb+8TszHFh
+            4iRJN4XyzCUxQB9jLO+7A8EnYZ047yZgGIQJcMe/psxUBRw5NLhEAFQScXYycrwQrGnWNPGM
+            n0U0WGz7LtRAHw6sm6rD53/4298hIzTyQLUQmeNAJXCW2YU=
+      __type: KeyRecord
+    __type: SimpleRole
+    name: owner
+  parent: null
+  expires_at:
+    seconds: 1675349789
+    __type: unixtime
+  data: {}
+  branch_id: null
+  origin: null
+  created_at:
+    seconds: 1517583389
+    __type: unixtime
+  created_by:
+    keys:
+    - key:
+        __type: RSAPublicKey
+        packed:
+          __type: binary
+          base64: |-
+            HggcAQABxAACt4poObiyVC1psCJ7q3wCSU7VDZktOrms/YHtDQyYA0djYGqz6X/YqMhh8o7a
+            CwjXorGXy7pzgt8VOKgJax5zgTknrB4Ic23vzgPoSBCgqhBnqemRp7GphEPsfq2JKdtHVXRY
+            6ANzSiI68kTeCOtqAz/ME9u2uMtGQUq351Ql+r/X4JIOVC7t3kjnKmXI+RZ0uX2bSC10ECWJ
+            eM6eWrWkuev8p4Qsc5WGJjxCfdZ30l7xC6r2gq7MNKvXeiX7ApeF/tzu524GZbrghLELE+mK
+            Ch1lohTCwQ6Zwsi717sNse6dv2DbAGQdxgd66MamVQ+URZo4NrqFQoXii2lQNMfmYUAFeiyj
+            ReFidijuJuOn9qUTOGgykbEgwDBHJRqnA7wQGFjLTFMLwI4+pAmb5julXX5pW0CjXGWXUpca
+            YIELqhL6UGpJia3dvBFZaIRsu16inwMEfDWdJ3iyGTnSAW+TrHCWkRQDPFH37JsWaOr+HhA9
+            Q3PWplnmrtjTUk1y2KUT2nbNjkNa9O56Pm7K1Wb9QtjCKW5w/zTeFzZajhhHh8Gb+8TszHFh
+            4iRJN4XyzCUxQB9jLO+7A8EnYZ047yZgGIQJcMe/psxUBRw5NLhEAFQScXYycrwQrGnWNPGM
+            n0U0WGz7LtRAHw6sm6rD53/4298hIzTyQLUQmeNAJXCW2YU=
+      __type: KeyRecord
+    __type: SimpleRole
+    name: creator
+  revision: 1
+transactional:
+  id: null

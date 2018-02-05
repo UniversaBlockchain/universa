@@ -132,7 +132,7 @@ public class SimpleRole extends Role {
         super.deserialize(data, deserializer);
         // role can have keys - this should actually be refactored to let role
         // hold other roles and so on.
-        List<Binder> keyList = data.getList("keys", null);
+        List keyList = data.getList("keys", null);
         if (keyList != null) {
             keyRecords.clear();
             keyList.forEach(kr -> {

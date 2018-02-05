@@ -796,7 +796,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return registerRole(new RoleLink(roleName, roleObject.toString()));
         }
         if (roleObject instanceof Role)
-            return registerRole(((Role) roleObject).linkAs(roleName));
+            if(((Role)roleObject).getName() != null && ((Role)roleObject).getName().equals(roleName))
+                return registerRole(((Role) roleObject));
+            else
+                return registerRole(((Role) roleObject).linkAs(roleName));
         if (roleObject instanceof Map) {
             Role r = Role.fromDslBinder(roleName, Binder.from(roleObject));
             return registerRole(r);
@@ -1846,6 +1849,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 else if (params instanceof List)
                     for (Object x : (List) params)
                         loadDslPermission(name, x);
+                else if (params instanceof Permission)
+                    addPermission((Permission) params);
                 else
                     loadDslPermission(name, params);
             });
