@@ -9,6 +9,7 @@ package net.sergeych.biserializer;
 
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Bytes;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
@@ -156,7 +157,7 @@ public class BiMapperTest {
     public void processBytes() throws Exception {
         byte x[] = Do.randomBytes(10);
         Binder s = DefaultBiMapper.serialize(x);
-        byte[] result = DefaultBiMapper.deserialize(s);
+        byte[] result = ((Bytes)DefaultBiMapper.deserialize(s)).getData();
         assertArrayEquals(x, result);
     }
 }
