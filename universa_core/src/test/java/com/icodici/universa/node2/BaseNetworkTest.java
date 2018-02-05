@@ -2628,29 +2628,39 @@ public class BaseNetworkTest extends TestCase {
     }
 
     private synchronized void registerAndCheckApproved(Contract c) throws Exception {
-        Parcel parcel = registerWithNewParcel(c);
-        LogPrinter.showDebug(true);
-        System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-        node.waitParcel(parcel.getId(), 25000);
-        System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-        ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
-        assertEquals(ItemState.APPROVED, itemResult.state);
-        System.out.println("registerAndCheckApproved, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-        itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
-        assertEquals(ItemState.APPROVED, itemResult.state);
+        Parcel parcel = null;
+        try {
+            parcel = registerWithNewParcel(c);
+//            LogPrinter.showDebug(true);
+            System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            node.waitParcel(parcel.getId(), 25000);
+            System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
+            assertEquals(ItemState.APPROVED, itemResult.state);
+            System.out.println("registerAndCheckApproved, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
+            assertEquals(ItemState.APPROVED, itemResult.state);
+        } catch (TimeoutException e) {
+            fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+        }
     }
 
     private synchronized void registerAndCheckDeclined(Contract c) throws Exception {
-        Parcel parcel = registerWithNewParcel(c);
-//        LogPrinter.showDebug(true);
-        System.out.println("registerAndCheckDeclined, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-        node.waitParcel(parcel.getId(), 25000);
-        System.out.println("registerAndCheckDeclined, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-        ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
-        assertEquals(ItemState.APPROVED, itemResult.state);
-        System.out.println("registerAndCheckDeclined, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-        itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
-        assertEquals(ItemState.DECLINED, itemResult.state);
+        Parcel parcel = null;
+        try {
+            parcel = registerWithNewParcel(c);
+    //        LogPrinter.showDebug(true);
+            System.out.println("registerAndCheckDeclined, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            node.waitParcel(parcel.getId(), 25000);
+            System.out.println("registerAndCheckDeclined, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
+            assertEquals(ItemState.APPROVED, itemResult.state);
+            System.out.println("registerAndCheckDeclined, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
+            assertEquals(ItemState.DECLINED, itemResult.state);
+        } catch (TimeoutException e) {
+            fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+        }
     }
 
     /**
