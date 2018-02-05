@@ -9,6 +9,7 @@ package net.sergeych.biserializer;
 
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.ZonedDateTime;
@@ -43,6 +44,7 @@ public class BossBiMapper {
             lastRevision = full.getRevision();
             mapper.unregister(ZonedDateTime.class);
             mapper.unregister((new byte[0]).getClass());
+            mapper.unregister(Bytes.class);
         }
         return mapper;
     }

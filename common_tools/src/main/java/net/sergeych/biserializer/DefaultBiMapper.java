@@ -9,6 +9,7 @@ package net.sergeych.biserializer;
 
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.Base64;
+import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.Instant;
@@ -105,6 +106,24 @@ public class DefaultBiMapper {
             @Override
             public Object deserialize(Binder binder, BiDeserializer deserializer) {
                 return Base64.decodeLines(binder.getStringOrThrow("base64"));
+            }
+
+            @Override
+            public String typeName() {
+                return "binary";
+            }
+        });
+
+
+        DefaultBiMapper.registerAdapter(Bytes.class, new BiAdapter() {
+            @Override
+            public Binder serialize(Object object, BiSerializer serializer) {
+                return Binder.of("base64", Base64.encodeLines(((Bytes) object).getData()));
+            }
+
+            @Override
+            public Object deserialize(Binder binder, BiDeserializer deserializer) {
+                return new Bytes(Base64.decodeLines(binder.getStringOrThrow("base64")));
             }
 
             @Override
