@@ -34,7 +34,7 @@ public class Parcel implements BiSerializable {
 
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
-            outputStream.write( payload.getContract().getId().getDigest().clone() );
+            outputStream.write( payment.getContract().getId().getDigest().clone() );
             outputStream.write( payload.getContract().getId().getDigest().clone() );
 
             byte[] bytes = outputStream.toByteArray( );

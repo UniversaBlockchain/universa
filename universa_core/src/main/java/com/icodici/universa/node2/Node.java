@@ -25,6 +25,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -89,11 +90,12 @@ public class Node {
      *
      * @return current (or last known) item state
      */
-    public ItemResult registerParcel(Parcel parcel) {
+    public boolean registerParcel(Parcel parcel) {
 
         try {
-            Object x = checkParcelInternal(parcel.getId(), parcel, true);
-            return (x instanceof ItemResult) ? (ItemResult) x : checkParcel(parcel.getId());
+            checkParcelInternal(parcel.getId(), parcel, true);
+            return true;
+
         } catch (Exception e) {
             throw new RuntimeException("failed to process parcel", e);
         }
@@ -625,7 +627,7 @@ public class Node {
 
     @Override
     public String toString() {
-        return "Node(" + myInfo.getNumber() + ")";
+        return "[" + new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date()) + "] Node(" + myInfo.getNumber() + ")";
     }
 
     /**
@@ -746,7 +748,15 @@ public class Node {
                 try {
                     debug("checking payment");
 
+//                    Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
+//                    if (x instanceof ItemProcessor) {
+//                        paymentProcessor = ((ItemProcessor) x);
+//                    } else {
+//                        paymentResult = (ItemResult) x;
+//                    }
+
                     if (paymentResult == null) {
+                        processingState = ParcelProcessingState.PAYMENT_CHECKING;
                         debug("parcel's payment processor for " + payment.getId() + ", state is " + paymentProcessor.getState() + ", processingState is " + paymentProcessor.processingState);
                         if(paymentProcessor.processingState.notCheckedYet()) {
                             paymentProcessor.pollingReadyEvent.await();
@@ -756,7 +766,7 @@ public class Node {
                                 + " is ready for polling, state is " + paymentProcessor.getState()
                                 + " processingState is " + paymentProcessor.processingState);
 
-                        synchronized (paymentDelayedVotes) {
+                        synchronized (mutex) {
                             for (NodeInfo ni : paymentDelayedVotes.keySet())
                                 paymentProcessor.vote(ni, paymentDelayedVotes.get(ni));
                             paymentDelayedVotes.clear();
@@ -772,8 +782,16 @@ public class Node {
                     if (paymentResult.state.isApproved()) {
                         debug("payment has approved for payload " + payload.getId());
 
+//                        x = checkItemInternal(payload.getId(), parcelId, payload, true, true);
+//                        if (x instanceof ItemProcessor) {
+//                            payloadProcessor = ((ItemProcessor) x);
+//                        } else {
+//                            payloadResult = (ItemResult) x;
+//                        }
+
                         if (payloadResult == null) {
 
+                            processingState = ParcelProcessingState.PAYLOAD_CHECKING;
                             Contract parent = null;
                             for(Contract c : payment.getRevoking()) {
                                 if(c.getId().equals(payment.getParent())) {
@@ -795,7 +813,7 @@ public class Node {
                                         + " is ready for polling, state is " + payloadProcessor.getState()
                                         + " processingState is " + payloadProcessor.processingState);
 
-                                synchronized (payloadDelayedVotes) {
+                                synchronized (mutex) {
                                     for (NodeInfo ni : payloadDelayedVotes.keySet())
                                         payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
                                     payloadDelayedVotes.clear();
@@ -899,17 +917,19 @@ public class Node {
                 payment = parcel.getPaymentContract();
                 payload = parcel.getPayloadContract();
 
-                Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
-                if (x instanceof ItemProcessor) {
-                    paymentProcessor = ((ItemProcessor) x);
-                } else {
-                    paymentResult = (ItemResult) x;
-                }
-                x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
-                if (x instanceof ItemProcessor) {
-                    payloadProcessor = ((ItemProcessor) x);
-                } else {
-                    payloadResult = (ItemResult) x;
+                synchronized (mutex) {
+                    Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
+                    if (x instanceof ItemProcessor) {
+                        paymentProcessor = ((ItemProcessor) x);
+                    } else {
+                        paymentResult = (ItemResult) x;
+                    }
+                    x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
+                    if (x instanceof ItemProcessor) {
+                        payloadProcessor = ((ItemProcessor) x);
+                    } else {
+                        payloadResult = (ItemResult) x;
+                    }
                 }
 
                 pulseProcessing();
@@ -930,19 +950,26 @@ public class Node {
                 debug("vote is TU: " + isTU
                         + " vote for: " + state
                         + " and from: " + node
-                        + " paymentProcessor is " + paymentProcessor + " payloadProcessor is " + payloadProcessor);
+                        + " paymentProcessor is " + paymentProcessor
+                        + " paymentProcessor state is " + (paymentProcessor == null ? null : paymentProcessor.processingState)
+                        + " payloadProcessor is " + payloadProcessor
+                        + " payloadProcessor state is " + (payloadProcessor == null ? null : payloadProcessor.processingState));
 
                 if(isTU){
-                    if (paymentProcessor != null && !paymentProcessor.processingState.notCheckedYet())
-                        paymentProcessor.vote(node, state);
-                    else {
-                        paymentDelayedVotes.put(node, state);
+                    synchronized (mutex) {
+                        if (paymentProcessor != null && !paymentProcessor.processingState.notCheckedYet())
+                            paymentProcessor.vote(node, state);
+                        else {
+                            paymentDelayedVotes.put(node, state);
+                        }
                     }
                 } else {
-                    if (payloadProcessor != null && !payloadProcessor.processingState.notCheckedYet())
-                        payloadProcessor.vote(node, state);
-                    else {
-                        payloadDelayedVotes.put(node, state);
+                    synchronized (mutex) {
+                        if (payloadProcessor != null && !payloadProcessor.processingState.notCheckedYet())
+                            payloadProcessor.vote(node, state);
+                        else {
+                            payloadDelayedVotes.put(node, state);
+                        }
                     }
                 }
             }
@@ -1448,8 +1475,8 @@ public class Node {
 
                     if(!processingState.isProcessedToConsensus()) {
                         processingState = ItemProcessingState.POLLING;
+                        vote(myInfo, record.getState());
                     }
-                    vote(myInfo, record.getState());
                     broadcastMyState();
                     pulseStartPolling();
                     pollingReadyEvent.fire();
@@ -1482,30 +1509,30 @@ public class Node {
                         StateRecord r = ledger.getRecord(a.getId());
                         debug("checking revoking subitem " + a.getId());
 
-                        int numIterations = 0;
-                        while(r == null) {
-                            debug("revoking subitem " + a.getId() + " is null, iteration " + numIterations);
-                            try {
-                                wait(100);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            debug(">revoking subitem " + a.getId() + " is null, iteration " + numIterations);
-                            r = ledger.getRecord(a.getId());
-                            debug(">>revoking subitem " + a.getId() + " is null, iteration " + numIterations);
-                            numIterations ++;
-                            if(numIterations > 10) {
-                                break;
-                            }
-                        }
+//                        int numIterations = 0;
+//                        while(r == null) {
+//                            debug("revoking subitem " + a.getId() + " is null, iteration " + numIterations);
+//                            try {
+//                                wait(100);
+//                            } catch (InterruptedException e) {
+//                                e.printStackTrace();
+//                            }
+//                            debug(">revoking subitem " + a.getId() + " is null, iteration " + numIterations);
+//                            r = ledger.getRecord(a.getId());
+//                            debug(">>revoking subitem " + a.getId() + " is null, iteration " + numIterations);
+//                            numIterations ++;
+//                            if(numIterations > 10) {
+//                                break;
+//                            }
+//                        }
 
-                        if (r != null && !r.getState().isConsensusFound()) {
-                            try {
-                                r.reload();
-                            } catch (StateRecord.NotFoundException e) {
-                                e.printStackTrace();
-                            }
-                        }
+//                        if (r != null && !r.getState().isConsensusFound()) {
+//                            try {
+//                                r.reload();
+//                            } catch (StateRecord.NotFoundException e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
 
                         debug("revoking subitem " + a.getId() + " is " + (r != null ? r.getState() : null));
 
@@ -1516,9 +1543,9 @@ public class Node {
                         }
                     }
                 } else {
-                    debug("found " + item.getErrors().size() + " errors:");
-                    Collection<ErrorRecord> errors = item.getErrors();
-                    errors.forEach(e -> debug("found error: " + e));
+                    debug("found " + item.getErrors().size() + " errors");
+//                    Collection<ErrorRecord> errors = item.getErrors();
+//                    errors.forEach(e -> debug("found error: " + e));
                 }
                 boolean needToResync = false;
                 // contract is complex and consist from parts
@@ -1559,6 +1586,7 @@ public class Node {
         }
 
         private final void sendStartPollingNotification() {
+            debug("start send poll notifications");
 
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
@@ -1594,11 +1622,13 @@ public class Node {
         }
 
         private final void vote(NodeInfo node, ItemState state) {
+            debug("vote from " + node + ": " + state);
             if(processingState.canContinue()) {
                 boolean positiveConsensus = false;
                 boolean negativeConsensus = false;
                 ItemProcessingState stateWas;
                 synchronized (mutex) {
+                    debug("inside mutex -> vote from " + node + ": " + state);
                     Set<NodeInfo> add, remove;
                     if (state.isPositive()) {
                         add = positiveNodes;
@@ -1631,8 +1661,7 @@ public class Node {
                     }
                     debug("vote from " + node + ": " + state + " > "
                             + positiveNodes.size() + "/" + negativeNodes.size() +
-                            ", consFound=" + processingState.isProcessedToConsensus() + ": positive=" + positiveConsensus +
-                            ", processingState=" + processingState);
+                            ", consFound=" + processingState.isProcessedToConsensus() + ": positive=" + positiveConsensus);
                     if (!processingState.isProcessedToConsensus())
                         return;
                 }
@@ -1801,7 +1830,13 @@ public class Node {
                 network.eachNode(node -> {
                     if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
                         debug("unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
-                        network.deliver(node, notification);
+                        if(!myInfo.equals(node)) {
+                            network.deliver(node, notification);
+                        } else {
+                            if(processingState.isProcessedToConsensus()) {
+                                vote(myInfo, record.getState());
+                            }
+                        }
                     }
                 });
             }
@@ -2126,7 +2161,8 @@ public class Node {
         INIT,
         DOWNLOADING,
         PREPARING,
-        CHECKING,
+        PAYMENT_CHECKING,
+        PAYLOAD_CHECKING,
         RESYNCING,
         GOT_RESYNCED_STATE,
         PAYMENT_POLLING,

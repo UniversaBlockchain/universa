@@ -48,6 +48,7 @@ public class BaseNetworkTest extends TestCase {
     protected Config config = null;
 
     protected static Contract tuContract = null;
+    protected Object tuContractLock = new Object();
 
 
 
@@ -178,7 +179,7 @@ public class BaseNetworkTest extends TestCase {
 
         TestItem bad = new TestItem(false);
         node.registerItem(bad);
-        ItemResult r = node.waitItem(bad.getId(), 3000);
+        ItemResult r = node.waitItem(bad.getId(), 5000);
         assertEquals(ItemState.DECLINED, r.state);
     }
 
@@ -2007,7 +2008,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 60000)
     public void swapContractsViaTransactionWrongCID() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -2515,8 +2516,51 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayloadContract().getId(), 8000).state);
     }
 
+    @Ignore("Stress test")
+    @Test(timeout = 900000)
+    public void testLedgerLocks() throws Exception {
 
-    public Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
+        int N = 1000;
+        for (int i = 0; i < N; i++) {
+
+            Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+            stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+            stepaCoins.seal();
+
+            Parcel parcel = createParcelWithClassTU(stepaCoins, stepaPrivateKeys);
+            synchronized (tuContractLock) {
+                tuContract = parcel.getPaymentContract();
+            }
+
+            System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
+            node.registerParcel(parcel);
+
+            for (Node n : nodes) {
+                n.waitParcel(parcel.getId(), 15000);
+                ItemResult itemResult = n.waitItem(stepaCoins.getId(), 15000);
+            }
+
+            ItemState itemState1 = node.waitItem(parcel.getPaymentContract().getRevoking().get(0).getId(), 15000).state;
+            ItemState itemState2 = node.getLedger().getRecord(parcel.getPaymentContract().getRevoking().get(0).getId()).getState();
+
+            System.out.println("--- check item " + parcel.getPaymentContract().getRevoking().get(0).getId() + " --- iteration " + i);
+            System.out.println("state from node: " + itemState1);
+            System.out.println("state from ledger: " + itemState2);
+            assertEquals(itemState1, itemState2);
+            assertEquals(ItemState.REVOKED, itemState1);
+            assertEquals(ItemState.REVOKED, itemState2);
+        }
+    }
+
+
+    public synchronized Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
         Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
@@ -2533,51 +2577,65 @@ public class BaseNetworkTest extends TestCase {
     }
 
     protected synchronized Contract getApprovedTUContract() throws Exception {
-        if (tuContract == null) {
-            PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
-            Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-            stepaTU.addSignerKey(manufacturePrivateKey);
-            stepaTU.seal();
-            stepaTU.check();
-            stepaTU.setIsTU(true);
-            stepaTU.traceErrors();
-            System.out.println("register new TU ");
-            node.registerItem(stepaTU);
-            tuContract = stepaTU;
+        synchronized (tuContractLock) {
+            if (tuContract == null) {
+                PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
+                Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
+                stepaTU.addSignerKey(manufacturePrivateKey);
+                stepaTU.seal();
+                stepaTU.check();
+                stepaTU.setIsTU(true);
+                stepaTU.traceErrors();
+                System.out.println("register new TU ");
+                node.registerItem(stepaTU);
+                tuContract = stepaTU;
+            }
+            boolean needRecreateTuContract = false;
+            for (Node n : nodes) {
+                ItemResult itemResult = n.waitItem(tuContract.getId(), 15000);
+                //assertEquals(ItemState.APPROVED, itemResult.state);
+                if (itemResult.state != ItemState.APPROVED) {
+                    System.out.println("TU: node " + n + " result: " + itemResult);
+                    needRecreateTuContract = true;
+                }
+            }
+            if (needRecreateTuContract) {
+                tuContract = null;
+                return getApprovedTUContract();
+            }
+            return tuContract;
         }
-        boolean needRecreateTuContract = false;
-        for (Node n : nodes) {
-            ItemResult itemResult = n.waitItem(tuContract.getId(), 15000);
-            //assertEquals(ItemState.APPROVED, itemResult.state);
-            if (itemResult.state != ItemState.APPROVED)
-                needRecreateTuContract = true;
-        }
-        if (needRecreateTuContract) {
-            tuContract = null;
-            return getApprovedTUContract();
-        }
-        return tuContract;
     }
 
     public synchronized Parcel createParcelWithClassTU(Contract c, Set<PrivateKey> keys) throws Exception {
-        return ContractsService.createParcel(c, getApprovedTUContract(), 150, keys);
+        Contract tu = getApprovedTUContract();
+        Parcel parcel =  ContractsService.createParcel(c, tu, 150, keys);
+        System.out.println("create  parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+        return parcel;
     }
 
     protected synchronized Parcel registerWithNewParcel(Contract c) throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         Parcel parcel = createParcelWithClassTU(c, stepaPrivateKeys);
+        System.out.println("register  parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+
         node.registerParcel(parcel);
-        tuContract = parcel.getPaymentContract();
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
         return parcel;
     }
 
     private synchronized void registerAndCheckApproved(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
         LogPrinter.showDebug(true);
+        System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
         node.waitParcel(parcel.getId(), 25000);
+        System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
         ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
+        System.out.println("registerAndCheckApproved, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
         itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
@@ -2585,9 +2643,12 @@ public class BaseNetworkTest extends TestCase {
     private synchronized void registerAndCheckDeclined(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
 //        LogPrinter.showDebug(true);
+        System.out.println("registerAndCheckDeclined, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
         node.waitParcel(parcel.getId(), 25000);
+        System.out.println("registerAndCheckDeclined, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
         ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
+        System.out.println("registerAndCheckDeclined, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
         itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         assertEquals(ItemState.DECLINED, itemResult.state);
     }
@@ -2602,7 +2663,7 @@ public class BaseNetworkTest extends TestCase {
      * @return
      * @throws Exception
      */
-    public Contract imitateSendingTransactionToPartner(Contract mainContract) throws Exception {
+    public synchronized Contract imitateSendingTransactionToPartner(Contract mainContract) throws Exception {
 
         TransactionPack tp_before = mainContract.getTransactionPack();
         byte[] data = tp_before.pack();
@@ -2617,7 +2678,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    protected void addDetailsToAllLedgers(Contract contract) {
+    protected synchronized void addDetailsToAllLedgers(Contract contract) {
         HashId id;
         StateRecord orCreate;
         for (Approvable c : contract.getRevokingItems()) {
@@ -2633,7 +2694,7 @@ public class BaseNetworkTest extends TestCase {
         destroyCurrentFromAllNodesIfExists(contract);
     }
 
-    protected void destroyFromAllNodesExistingNew(Contract c50_1) {
+    protected synchronized void destroyFromAllNodesExistingNew(Contract c50_1) {
         StateRecord orCreate;
         for (Approvable c : c50_1.getNewItems()) {
             for (Node nodeS : nodesMap.values()) {
@@ -2644,7 +2705,7 @@ public class BaseNetworkTest extends TestCase {
         }
     }
 
-    protected void destroyCurrentFromAllNodesIfExists(Contract finalC) {
+    protected synchronized void destroyCurrentFromAllNodesIfExists(Contract finalC) {
         for (Node nodeS : nodesMap.values()) {
             StateRecord r = nodeS.getLedger().getRecord(finalC.getId());
             if (r != null) {
@@ -2676,7 +2737,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    public Contract startSwap_wrongKey(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, PrivateKey wrongKey) {
+    public synchronized Contract startSwap_wrongKey(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, PrivateKey wrongKey) {
 
         Set<PublicKey> fromPublicKeys = new HashSet<>();
         for (PrivateKey pk : fromKeys) {
@@ -2772,7 +2833,7 @@ public class BaseNetworkTest extends TestCase {
         return swapContract;
     }
 
-    public Contract signPresentedSwap_wrongKey(Contract swapContract, Set<PrivateKey> keys, PrivateKey wrongKey) {
+    public synchronized Contract signPresentedSwap_wrongKey(Contract swapContract, Set<PrivateKey> keys, PrivateKey wrongKey) {
 
         Set<PublicKey> publicKeys = new HashSet<>();
         for (PrivateKey pk : keys) {
@@ -2821,7 +2882,7 @@ public class BaseNetworkTest extends TestCase {
         return swapContract;
     }
 
-    public Contract finishSwap_wrongKey(Contract swapContract, Set<PrivateKey> keys, PrivateKey wrongKey) {
+    public synchronized Contract finishSwap_wrongKey(Contract swapContract, Set<PrivateKey> keys, PrivateKey wrongKey) {
 
         List<Contract> swappingContracts = (List<Contract>) swapContract.getNew();
 
@@ -2938,7 +2999,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    protected Contract checkPayment_preparePaymentContract(Set<PrivateKey> privateKeys) throws Exception {
+    protected synchronized Contract checkPayment_preparePaymentContract(Set<PrivateKey> privateKeys) throws Exception {
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.addSignerKey(privateKeys.iterator().next());
         stepaCoins.seal();
@@ -2949,7 +3010,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    protected Set<PrivateKey> checkPayment_preparePrivateKeys() throws Exception {
+    protected synchronized Set<PrivateKey> checkPayment_preparePrivateKeys() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         return stepaPrivateKeys;

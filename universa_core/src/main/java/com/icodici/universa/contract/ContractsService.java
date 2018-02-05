@@ -30,7 +30,7 @@ public class ContractsService {
      * @param keys - keys from owner of c
      * @return
      */
-    public static Contract createRevocation(Contract c, PrivateKey... keys) {
+    public synchronized static Contract createRevocation(Contract c, PrivateKey... keys) {
 
         Contract tc = new Contract();
 
@@ -69,7 +69,7 @@ public class ContractsService {
      * @param keys - keys from owner of c
      * @return
      */
-    public static Contract createSplit(Contract c, long amount, String fieldName, Set<PrivateKey> keys) {
+    public synchronized static Contract createSplit(Contract c, long amount, String fieldName, Set<PrivateKey> keys) {
         Contract splitFrom = c.createRevision();
         Contract splitTo = splitFrom.splitValue(fieldName, new Decimal(amount));
 
@@ -93,7 +93,7 @@ public class ContractsService {
      * @param keys - keys from owner of both contracts
      * @return
      */
-    public static Contract createJoin(Contract contract1, Contract contract2, String fieldName, Set<PrivateKey> keys) {
+    public synchronized static Contract createJoin(Contract contract1, Contract contract2, String fieldName, Set<PrivateKey> keys) {
         Contract joinTo = contract1.createRevision();
 
         joinTo.getStateData().set(
@@ -111,16 +111,16 @@ public class ContractsService {
     }
 
 
-    public static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
+    public synchronized static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
         return startSwap(contract1, contract2, fromKeys, toKeys, true);
     }
 
 
-    public static Contract startSwap(List<Contract> contracts1, List<Contract> contracts2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
+    public synchronized static Contract startSwap(List<Contract> contracts1, List<Contract> contracts2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
         return startSwap(contracts1, contracts2, fromKeys, toKeys, true);
     }
 
-    public static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
+    public synchronized static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
         List<Contract> contracts1 = new ArrayList<>();
         contracts1.add(contract1);
 
@@ -144,7 +144,7 @@ public class ContractsService {
      * @param createNewRevision - if true - create new revision of given contracts. If false - use them as new revisions.
      * @return swap contract including new revisions of old contracts swapping between
      */
-    public static Contract startSwap(List<Contract> contracts1, List<Contract> contracts2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
+    public synchronized static Contract startSwap(List<Contract> contracts1, List<Contract> contracts2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
         Set<PublicKey> fromPublicKeys = new HashSet<>();
         for (PrivateKey pk : fromKeys) {
@@ -285,7 +285,7 @@ public class ContractsService {
      * @param keys - own (swapper2) private keys
      * @return modified swapContract
      */
-    public static Contract signPresentedSwap(Contract swapContract, Set<PrivateKey> keys) {
+    public synchronized static Contract signPresentedSwap(Contract swapContract, Set<PrivateKey> keys) {
 
         Set<PublicKey> publicKeys = new HashSet<>();
         for (PrivateKey pk : keys) {
@@ -344,7 +344,7 @@ public class ContractsService {
      * @param keys - own (swapper1) private keys
      * @return modified swapContract
      */
-    public static Contract finishSwap(Contract swapContract, Set<PrivateKey> keys) {
+    public synchronized static Contract finishSwap(Contract swapContract, Set<PrivateKey> keys) {
 
         List<Contract> swappingContracts = (List<Contract>) swapContract.getNew();
 
