@@ -758,9 +758,9 @@ public class Node {
                     if (paymentResult == null) {
                         processingState = ParcelProcessingState.PAYMENT_CHECKING;
                         debug("parcel's payment processor for " + payment.getId() + ", state is " + paymentProcessor.getState() + ", processingState is " + paymentProcessor.processingState);
-                        if(paymentProcessor.processingState.notCheckedYet()) {
-                            paymentProcessor.pollingReadyEvent.await();
-                        }
+//                        if(paymentProcessor.processingState.notCheckedYet()) {
+//                            paymentProcessor.pollingReadyEvent.await();
+//                        }
 
                         debug("parcel payment processor for " + payment.getId()
                                 + " is ready for polling, state is " + paymentProcessor.getState()
@@ -805,10 +805,10 @@ public class Node {
                                 debug( "payload " + payload.getId() + " processing limit is " + payload.getQuantiser().getQuantaLimit());
                                 payloadProcessor.forceChecking(true);
 
-                                if (payloadProcessor.processingState.notCheckedYet()) {
-
-                                    payloadProcessor.pollingReadyEvent.await();
-                                }
+//                                if (payloadProcessor.processingState.notCheckedYet()) {
+//
+//                                    payloadProcessor.pollingReadyEvent.await();
+//                                }
                                 debug("parcel payload processor for " + payload.getId()
                                         + " is ready for polling, state is " + payloadProcessor.getState()
                                         + " processingState is " + payloadProcessor.processingState);
@@ -957,7 +957,9 @@ public class Node {
 
                 if(isTU){
                     synchronized (mutex) {
-                        if (paymentProcessor != null && !paymentProcessor.processingState.notCheckedYet())
+                        if (paymentProcessor != null
+//                                && !paymentProcessor.processingState.notCheckedYet()
+                                )
                             paymentProcessor.vote(node, state);
                         else {
                             paymentDelayedVotes.put(node, state);
@@ -965,7 +967,9 @@ public class Node {
                     }
                 } else {
                     synchronized (mutex) {
-                        if (payloadProcessor != null && !payloadProcessor.processingState.notCheckedYet())
+                        if (payloadProcessor != null
+//                                && !payloadProcessor.processingState.notCheckedYet()
+                                )
                             payloadProcessor.vote(node, state);
                         else {
                             payloadDelayedVotes.put(node, state);

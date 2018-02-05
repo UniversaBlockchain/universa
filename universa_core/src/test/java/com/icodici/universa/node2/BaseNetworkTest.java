@@ -136,6 +136,9 @@ public class BaseNetworkTest extends TestCase {
 
                 System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
                 node.registerParcel(parcel);
+                synchronized (tuContractLock) {
+                    tuContract = parcel.getPaymentContract();
+                }
                 for (Node n : nodesMap.values()) {
                     try {
                         System.out.println("-------------- wait parcel " + parcel.getId() + " on the node " + n + " (iteration " + i + ") ------------");
