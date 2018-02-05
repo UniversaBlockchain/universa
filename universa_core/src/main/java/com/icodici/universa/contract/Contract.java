@@ -1127,7 +1127,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return new revision of this contract, identical to this one, to be modified.
      */
-    public Contract createRevision(Transactional transactional) {
+    public synchronized Contract createRevision(Transactional transactional) {
         try {
             // We need deep copy, so, simple while not that fast.
             // note that revisions are create on clients where speed it not of big importance!
@@ -1171,11 +1171,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return createRevision(Do.list(keys), transactional);
     }
 
-    public Contract createRevision(Collection<PrivateKey> keys) {
+    public synchronized Contract createRevision(Collection<PrivateKey> keys) {
         return createRevision(keys, null);
     }
 
-    public Contract createRevision(Collection<PrivateKey> keys, Transactional transactional) {
+    public synchronized Contract createRevision(Collection<PrivateKey> keys, Transactional transactional) {
         Contract newRevision = createRevision(transactional);
         Set<KeyRecord> krs = new HashSet<>();
         keys.forEach(k -> {
@@ -1569,7 +1569,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         this.transactionPack = transactionPack;
     }
 
-    public TransactionPack getTransactionPack() {
+    public synchronized TransactionPack getTransactionPack() {
         if (transactionPack == null)
             transactionPack = new TransactionPack(this);
         return transactionPack;
@@ -2018,7 +2018,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return
      */
-    public Contract copy() {
+    public synchronized Contract copy() {
         return Boss.load(Boss.dump(this));
     }
 
