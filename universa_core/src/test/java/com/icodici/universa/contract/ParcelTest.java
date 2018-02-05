@@ -11,10 +11,8 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
@@ -61,8 +59,7 @@ public class ParcelTest {
     }
 
     public Parcel deserialize(Binder binder) throws Exception {
-        BiDeserializer biD = new BiDeserializer();
-        return new Parcel(binder, biD);
+        return new Parcel(binder);
     }
 
     public void parcelAssertions() throws Exception {
@@ -84,7 +81,7 @@ public class ParcelTest {
     }
 
     @Test
-    public void SerializeDeserialize() throws Exception {
+    public void serializeDeserialize() throws Exception {
         //serialize
         Binder b = serialize(parcel);
 
@@ -94,17 +91,13 @@ public class ParcelTest {
         parcelAssertions();
     }
 
-    @Ignore
     @Test
-    public void SerializeDeserializeWithPacking() throws Exception {
-        //serialize
-        Binder b = serialize(parcel);
+    public void packUnpack() throws Exception {
+        //pack
+        byte[] array = parcel.pack();
 
-        byte[] array = Boss.pack(b);
-        Binder ub = Boss.unpack(array);
-
-        //deserialize
-        des_parcel = deserialize(ub);
+        //unpack
+        des_parcel = Parcel.unpack(array);
 
         parcelAssertions();
     }
