@@ -24,6 +24,7 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -2522,44 +2523,49 @@ public class BaseNetworkTest extends TestCase {
     @Ignore("Stress test")
     @Test(timeout = 900000)
     public void testLedgerLocks() throws Exception {
+        ExtendedSignatureTest.parallelize(Executors.newCachedThreadPool(), 4, () -> {
+            try {
+                Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+                Set<PublicKey> stepaPublicKeys = new HashSet<>();
+                stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+                for (PrivateKey pk : stepaPrivateKeys) {
+                    stepaPublicKeys.add(pk.getPublicKey());
+                }
+                PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
+                int N = 1000;
+                for (int i = 0; i < N; i++) {
 
-        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
-        Set<PublicKey> stepaPublicKeys = new HashSet<>();
-        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        for (PrivateKey pk : stepaPrivateKeys) {
-            stepaPublicKeys.add(pk.getPublicKey());
-        }
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
-        int N = 1000;
-        for (int i = 0; i < N; i++) {
+                    Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+                    stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+                    stepaCoins.seal();
 
-            Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
-            stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
-            stepaCoins.seal();
+                    Parcel parcel = createParcelWithClassTU(stepaCoins, stepaPrivateKeys);
+                    synchronized (tuContractLock) {
+                        tuContract = parcel.getPaymentContract();
+                    }
 
-            Parcel parcel = createParcelWithClassTU(stepaCoins, stepaPrivateKeys);
-            synchronized (tuContractLock) {
-                tuContract = parcel.getPaymentContract();
+                    System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
+                    node.registerParcel(parcel);
+
+                    for (Node n : nodes) {
+                        n.waitParcel(parcel.getId(), 15000);
+                        ItemResult itemResult = n.waitItem(stepaCoins.getId(), 15000);
+                    }
+
+                    ItemState itemState1 = node.waitItem(parcel.getPaymentContract().getRevoking().get(0).getId(), 15000).state;
+                    ItemState itemState2 = node.getLedger().getRecord(parcel.getPaymentContract().getRevoking().get(0).getId()).getState();
+
+                    System.out.println("--- check item " + parcel.getPaymentContract().getRevoking().get(0).getId() + " --- iteration " + i);
+                    System.out.println("state from node: " + itemState1);
+                    System.out.println("state from ledger: " + itemState2);
+                    assertEquals(itemState1, itemState2);
+                    assertEquals(ItemState.REVOKED, itemState1);
+                    assertEquals(ItemState.REVOKED, itemState2);
+                }
+            } catch (Exception e) {
+                System.out.println("exception: " + e.toString());
             }
-
-            System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
-            node.registerParcel(parcel);
-
-            for (Node n : nodes) {
-                n.waitParcel(parcel.getId(), 15000);
-                ItemResult itemResult = n.waitItem(stepaCoins.getId(), 15000);
-            }
-
-            ItemState itemState1 = node.waitItem(parcel.getPaymentContract().getRevoking().get(0).getId(), 15000).state;
-            ItemState itemState2 = node.getLedger().getRecord(parcel.getPaymentContract().getRevoking().get(0).getId()).getState();
-
-            System.out.println("--- check item " + parcel.getPaymentContract().getRevoking().get(0).getId() + " --- iteration " + i);
-            System.out.println("state from node: " + itemState1);
-            System.out.println("state from ledger: " + itemState2);
-            assertEquals(itemState1, itemState2);
-            assertEquals(ItemState.REVOKED, itemState1);
-            assertEquals(ItemState.REVOKED, itemState2);
-        }
+        });
     }
 
 

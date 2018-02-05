@@ -93,7 +93,7 @@ public class ExtendedSignatureTest extends TestCase{
         assertThat(Math.abs(t1-t2), is(lessThan(0.15)));
     }
 
-    double parallelize(ExecutorService es,int nThreads,Runnable r) throws ExecutionException, InterruptedException {
+    public static double parallelize(ExecutorService es,int nThreads,Runnable r) throws ExecutionException, InterruptedException {
         long t = System.nanoTime();
         ArrayList<Future<?>> all = new ArrayList<>();
         for( int i=0; i < nThreads; i++ ) {
