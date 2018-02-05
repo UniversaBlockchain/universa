@@ -8,6 +8,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.universa.HashId;
 import net.sergeych.biserializer.*;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.Bytes;
 
@@ -18,10 +19,13 @@ import java.io.IOException;
 @BiType(name = "Parcel")
 public class Parcel implements BiSerializable {
 
+    private static byte[] packedBinary;
     private TransactionPack payload = null;
     private TransactionPack payment = null;
     private HashId hashId;
 
+    public Parcel() {
+    }
 
     public Parcel(TransactionPack payload, TransactionPack payment) {
 
@@ -43,10 +47,12 @@ public class Parcel implements BiSerializable {
     }
 
     //New constructor for initializing an object from a binder when deserializing
-    public Parcel(Binder data, BiDeserializer ds)
+    public Parcel(Binder data)
     {
-        deserialize(data, ds);
+        BiDeserializer biD = new BiDeserializer();
+        deserialize(data, biD);
     }
+
 
     public TransactionPack getPayload() {
         return payload;
@@ -117,15 +123,55 @@ public class Parcel implements BiSerializable {
         );
     }
 
-
-
     @Override
     public void deserialize(Binder data, BiDeserializer ds) {
         payload = ds.deserialize(data.get("payload"));
         payment = ds.deserialize(data.get("payment"));
     }
 
+    /**
+     * Unpack parcel
+     * @param packOrContractBytes
+     * @param allowNonTransactions
+     *
+     * @return transaction
+     */
+    public static Parcel unpack(byte[] packOrContractBytes, boolean allowNonTransactions) throws IOException {
+        packedBinary = packOrContractBytes;
 
+        Object x = Boss.load(packOrContractBytes);
+
+        if (x instanceof Parcel)
+            return (Parcel) x;
+
+        if (!allowNonTransactions)
+            throw new IOException("expected parcel");
+
+        return null;
+    }
+
+    /**
+     * Unpack parcel
+     *
+     * @param packOrContractBytes
+     *
+     * @return parcel
+     */
+    public static Parcel unpack(byte[] packOrContractBytes) throws IOException {
+        return unpack(packOrContractBytes, true);
+    }
+
+
+    /**
+     * Shortcut to {@link Boss#pack(Object)} for this.
+     *
+     * @return
+     */
+    public byte[] pack() {
+        if (packedBinary == null)
+            packedBinary = Boss.pack(this);
+        return packedBinary;
+    }
 
     static {
         DefaultBiMapper.registerClass(Parcel.class);
