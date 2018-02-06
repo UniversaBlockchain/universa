@@ -76,7 +76,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         nc_s = null;
         config_s = null;
 
-        Thread.sleep(5000);
+//        Thread.sleep(5000);
     }
 
     private static void initTestSet() throws Exception {
@@ -166,7 +166,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         }
         init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
 
-        Thread.sleep(5000);
+//        Thread.sleep(5000);
     }
 
 

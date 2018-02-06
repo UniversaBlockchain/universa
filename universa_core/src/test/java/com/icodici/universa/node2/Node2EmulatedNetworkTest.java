@@ -310,7 +310,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         boolean time_is_up = false;
         try {
-            ae.await(45000);
+            ae.await(60000);
         } catch (TimeoutException e) {
             time_is_up = true;
             System.out.println("time is up");
