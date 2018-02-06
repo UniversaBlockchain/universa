@@ -2610,6 +2610,7 @@ public class BaseNetworkTest extends TestCase {
             }
             if (needRecreateTuContract) {
                 tuContract = null;
+                Thread.sleep(1000);
                 return getApprovedTUContract();
             }
             return tuContract;
