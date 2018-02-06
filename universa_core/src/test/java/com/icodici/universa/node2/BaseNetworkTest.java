@@ -2650,7 +2650,11 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
         } catch (TimeoutException e) {
-            fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            if (parcel != null) {
+                fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            } else {
+                fail("timeout,  " + node);
+            }
         }
     }
 
@@ -2668,7 +2672,11 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.DECLINED, itemResult.state);
         } catch (TimeoutException e) {
-            fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            if (parcel != null) {
+                fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            } else {
+                fail("timeout,  " + node);
+            }
         }
     }
 
