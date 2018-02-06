@@ -2599,16 +2599,16 @@ public class BaseNetworkTest extends TestCase {
                 node.registerItem(stepaTU);
                 tuContract = stepaTU;
             }
-            boolean needRecreateTuContract = false;
+            int needRecreateTuContractNum = 0;
             for (Node n : nodes) {
                 ItemResult itemResult = n.waitItem(tuContract.getId(), 15000);
                 //assertEquals(ItemState.APPROVED, itemResult.state);
                 if (itemResult.state != ItemState.APPROVED) {
                     System.out.println("TU: node " + n + " result: " + itemResult);
-                    needRecreateTuContract = true;
+                    needRecreateTuContractNum ++;
                 }
             }
-            if (needRecreateTuContract) {
+            if (needRecreateTuContractNum > 3) {
                 tuContract = null;
                 Thread.sleep(1000);
                 return getApprovedTUContract();
