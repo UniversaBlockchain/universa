@@ -1777,6 +1777,7 @@ public class Node {
 
                     debug("setting state: " + newState.name());
                     setState(newState);
+                    debug("rollback state is set ");
                     ZonedDateTime expiration = ZonedDateTime.now()
                             .plus(newState == ItemState.REVOKED ?
                                     config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());

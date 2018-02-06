@@ -141,7 +141,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
 
 
-    @Test(timeout = 5000)
+    @Test(timeout = 15000)
     public void resyncApproved() throws Exception {
         Contract c = new Contract(TestKeys.privateKey(0));
         c.seal();
@@ -152,7 +152,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         node.resync(c.getId());
 
-        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 15000).state);
     }
 
     @Test(timeout = 15000)
@@ -166,7 +166,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         node.resync(c.getId());
 
-        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 3000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 13000).state);
     }
 
     @Test(timeout = 15000)
@@ -180,7 +180,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         node.resync(c.getId());
 
-        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 12000).state);
     }
 
     @Test(timeout = 15000)
@@ -196,7 +196,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         node.resync(c.getId());
         assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 2000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 12000).state);
     }
 
     @Test(timeout = 15000)
@@ -216,10 +216,11 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         node.getLedger().getRecord(c.getId()).destroy();
         assertEquals(ItemState.UNDEFINED, node.checkItem(c.getId()).state);
 
+
         node.resync(c.getId());
         assertEquals(ItemState.PENDING, node.checkItem(c.getId()).state);
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 5000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 15000).state);
 
         config.setMaxResyncTime(wasDuration);
 
@@ -264,7 +265,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         node.resync(contract.getId());
         assertEquals(ItemState.PENDING, node.checkItem(contract.getId()).state);
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 3000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 13000).state);
     }
 
 
