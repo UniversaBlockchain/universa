@@ -119,24 +119,24 @@ public class Parcel implements BiSerializable {
     public Binder serialize(BiSerializer s) {
         return Binder.of(
                 "payload", s.serialize(payload),
-                "payment", s.serialize(payment)
-        );
+                new Object[]{"payment", s.serialize(payment), "hashId", s.serialize(hashId)});
     }
 
     @Override
     public void deserialize(Binder data, BiDeserializer ds) {
         payload = ds.deserialize(data.get("payload"));
         payment = ds.deserialize(data.get("payment"));
+        hashId = ds.deserialize(data.get("hashId"));
     }
 
     /**
-     * Unpack parcel
-     * @param packOrContractBytes
-     * @param allowNonTransactions
+     * Unpack parcel.
      *
-     * @return transaction
+     * @param packOrContractBytes
+     *
+     * @return parcel
      */
-    public static Parcel unpack(byte[] packOrContractBytes, boolean allowNonTransactions) throws IOException {
+    public static Parcel unpack(byte[] packOrContractBytes) throws IOException {
         packedBinary = packOrContractBytes;
 
         Object x = Boss.load(packOrContractBytes);
@@ -144,21 +144,7 @@ public class Parcel implements BiSerializable {
         if (x instanceof Parcel)
             return (Parcel) x;
 
-        if (!allowNonTransactions)
-            throw new IOException("expected parcel");
-
         return null;
-    }
-
-    /**
-     * Unpack parcel
-     *
-     * @param packOrContractBytes
-     *
-     * @return parcel
-     */
-    public static Parcel unpack(byte[] packOrContractBytes) throws IOException {
-        return unpack(packOrContractBytes, true);
     }
 
 
