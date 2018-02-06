@@ -55,7 +55,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
 
-    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
+    private static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
         this.config = config;
