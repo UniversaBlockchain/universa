@@ -91,6 +91,9 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config_s.setPositiveConsensus(7);
         config_s.setNegativeConsensus(4);
         config_s.setResyncBreakConsensus(2);
+        config_s.setPollTime(Duration.ofMillis(2500));
+        config_s.setConsensusReceivedCheckTime(Duration.ofMillis(2500));
+        config_s.setResyncTime(Duration.ofMillis(2500));
 
         Properties properties = new Properties();
         File file = new File(CONFIG_2_PATH + "config/config.yaml");
@@ -165,10 +168,13 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         }
         init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
-
-//        Thread.sleep(5000);
     }
 
+
+    @After
+    public void coolDown() throws Exception {
+        Thread.sleep(5000);
+    }
 
 
     private interface RunnableWithException<T> {
