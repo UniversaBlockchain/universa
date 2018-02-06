@@ -2585,7 +2585,7 @@ public class BaseNetworkTest extends TestCase {
         return ContractsService.createParcel(c, stepaTU, 150, keys);
     }
 
-    protected synchronized Contract getApprovedTUContract() throws Exception {
+    protected Contract getApprovedTUContract() throws Exception {
         synchronized (tuContractLock) {
             if (tuContract == null) {
                 PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
@@ -2608,7 +2608,7 @@ public class BaseNetworkTest extends TestCase {
                     needRecreateTuContractNum ++;
                 }
             }
-            if (needRecreateTuContractNum > 3) {
+            if (needRecreateTuContractNum > nodes.size() - config.getPositiveConsensus()) {
                 tuContract = null;
                 Thread.sleep(1000);
                 return getApprovedTUContract();
