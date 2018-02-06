@@ -165,6 +165,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         }
         init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
+
+        Thread.sleep(5000);
     }
 
 
@@ -381,8 +383,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Parcel parcel = registerWithNewParcel(contract);
 
-        node.waitParcel(parcel.getId(), 5000);
-        ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 5000);
+        node.waitParcel(parcel.getId(), 15000);
+        ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         System.out.println("Complex contract state: " + r.state);
         ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
         assertEquals(expectedState, r.state);
@@ -1008,7 +1010,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 3000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 8000).state);
     }
 
 
