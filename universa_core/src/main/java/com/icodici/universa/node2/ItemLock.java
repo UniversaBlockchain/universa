@@ -18,7 +18,7 @@ import java.util.function.Function;
  */
 public final class ItemLock {
 
-    private ItemLock() {
+    public ItemLock() {
     }
 
     /**
@@ -33,7 +33,7 @@ public final class ItemLock {
      *
      * @throws Exception whatever callable throws
      */
-    static public <T> T synchronize(HashId id, Function<Object, T> callable) throws Exception {
+    public <T> T synchronize(HashId id, Function<Object, T> callable) throws Exception {
         ItemLock lock = null;
 
         // short exclusive mutex: obtaning a lock
@@ -50,7 +50,7 @@ public final class ItemLock {
         }
     }
 
-    static private WeakHashMap<HashId, ItemLock> monitors = new WeakHashMap<>();
+    private WeakHashMap<HashId, ItemLock> monitors = new WeakHashMap<>();
 
     /**
      * Niber of cached locks. Not all of them are acquired. Locks are cached as long as corresponding {@link HashId} is
@@ -59,7 +59,7 @@ public final class ItemLock {
      *
      * @return number of cached locks
      */
-    public static int size() {
+    public int size() {
         return monitors.size();
     }
 }
