@@ -168,6 +168,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 //            ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         }
         init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
+
+        System.out.println(node.traceTasksPool());
     }
 
 
