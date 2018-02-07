@@ -2610,7 +2610,8 @@ public class BaseNetworkTest extends TestCase {
                     }
                 } catch (TimeoutException e) {
                     System.out.println("ping ");
-                    System.out.println("ping: " + n.ping());
+                    System.out.println(n.ping());
+                    System.out.println(n.traceTasksPool());
                     System.out.println("TU: node " + n + " timeout: ");
                     needRecreateTuContractNum ++;
                 }
@@ -2660,7 +2661,8 @@ public class BaseNetworkTest extends TestCase {
         } catch (TimeoutException e) {
 
             System.out.println("ping ");
-            System.out.println("ping: " + node.ping());
+            System.out.println(node.ping());
+            System.out.println(node.traceTasksPool());
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {
@@ -2684,7 +2686,8 @@ public class BaseNetworkTest extends TestCase {
             assertEquals(ItemState.DECLINED, itemResult.state);
         } catch (TimeoutException e) {
             System.out.println("ping ");
-            System.out.println("ping: " + node.ping());
+            System.out.println(node.ping());
+            System.out.println(node.traceTasksPool());
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {

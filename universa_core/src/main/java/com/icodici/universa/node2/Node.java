@@ -7,10 +7,7 @@
 
 package com.icodici.universa.node2;
 
-import com.icodici.universa.Approvable;
-import com.icodici.universa.ErrorRecord;
-import com.icodici.universa.Errors;
-import com.icodici.universa.HashId;
+import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.Reference;
@@ -59,7 +56,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
 //    private ConcurrentHashMap<HashId, ItemResult> finishedParcels = new ConcurrentHashMap();
 
-    private static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
+    private static NodeExecutorService executorService = new NodeExecutorService(64);
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
         this.config = config;
@@ -671,6 +668,11 @@ public class Node {
                 + " item processors: " + processors.size() + ", parcel processors: " + parcelProcessors.size();
     }
 
+    public String traceTasksPool() {
+
+        return "pool ::> " + executorService.tracePools();
+    }
+
     /**
      * Get the cached item.
      *
@@ -776,7 +778,7 @@ public class Node {
             if(processingState.canContinue()) {
                 synchronized (mutex) {
                     if (processSchedule == null || processSchedule.isDone()) {
-                        processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process());
+                        processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process(), Node.this.toString() + " :: pulseProcessing -> process");
                     }
                 }
             }
@@ -910,7 +912,7 @@ public class Node {
 
                     synchronized (mutex) {
                         if (parcel == null && (downloader == null || downloader.isDone())) {
-                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download());
+                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download(), Node.this.toString() + " :: parcel pulseDownload -> download");
                         }
                     }
                 }
@@ -1223,7 +1225,7 @@ public class Node {
             alreadyChecked = false;
 
             if (this.item != null)
-                executorService.submit(() -> itemDownloaded());
+                executorService.submit(() -> itemDownloaded(), Node.this.toString() + " :: ItemProcessor -> itemDownloaded");
         }
 
         //////////// download section /////////////
@@ -1240,7 +1242,7 @@ public class Node {
                     synchronized (mutex) {
                         debug("insude mutex: pulseDownload");
                         if (item == null && (downloader == null || downloader.isDone())) {
-                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download());
+                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download(), Node.this.toString() + " :: item pulseDownload -> download");
                         }
                     }
                 }
@@ -1631,7 +1633,11 @@ public class Node {
                         if (!processingState.isProcessedToConsensus()) {
                             if (poller == null) {
                                 long millis = config.getPollTime().toMillis();
-                                poller = executorService.scheduleAtFixedRate(() -> sendStartPollingNotification(), millis, millis, TimeUnit.MILLISECONDS);
+                                poller = executorService.scheduleAtFixedRate(() -> sendStartPollingNotification(),
+                                        millis,
+                                        millis,
+                                        TimeUnit.MILLISECONDS,
+                                        Node.this.toString() + " :: pulseStartPolling -> sendStartPollingNotification");
                             }
                         }
                     }
@@ -1755,7 +1761,7 @@ public class Node {
                 // first we need to flag our state as approved
                 setState(ItemState.APPROVED);
                 debug("approveAndCommit -> wait executorService " + executorService.toString());
-                executorService.submit(() -> downloadAndCommit());
+                executorService.submit(() -> downloadAndCommit(), Node.this.toString() + " :: approveAndCommit -> downloadAndCommit");
             }
         }
 
@@ -1880,7 +1886,10 @@ public class Node {
                     if(consensusReceivedChecker == null) {
                         long millis = config.getConsensusReceivedCheckTime().toMillis();
                         consensusReceivedChecker = executorService.scheduleAtFixedRate(() -> sendNewConsensusNotification(),
-                                millis, millis, TimeUnit.MILLISECONDS);
+                                millis,
+                                millis,
+                                TimeUnit.MILLISECONDS,
+                                Node.this.toString() + " :: pulseSendNewConsensus -> sendNewConsensusNotification");
                     }
                 }
             }
@@ -1997,7 +2006,10 @@ public class Node {
                         long millis = config.getResyncTime().toMillis();
                         if(resyncer == null) {
                             resyncer = executorService.scheduleAtFixedRate(() -> sendResyncNotification(),
-                                    millis, millis, TimeUnit.MILLISECONDS);
+                                    millis,
+                                    millis,
+                                    TimeUnit.MILLISECONDS,
+                                    Node.this.toString() + " :: pulseResync -> sendResyncNotification");
                         }
                     }
                 }
@@ -2123,7 +2135,7 @@ public class Node {
                 if (processingState == ItemProcessingState.DOWNLOADED) {
                     executorService.submit(() -> {
                         checkItem();
-                    });
+                    }, Node.this.toString() + " :: forceChecking -> checkItem");
                 }
             }
         }
@@ -2484,13 +2496,13 @@ public class Node {
                     return;
             }
             if (revokedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.REVOKED));
+                executorService.submit(() -> resyncAndCommit(ItemState.REVOKED), Node.this.toString() + " :: resyncVote -> resyncAndCommit");
             } else if (declinedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.DECLINED));
+                executorService.submit(() -> resyncAndCommit(ItemState.DECLINED), Node.this.toString() + " :: resyncVote -> resyncAndCommit");
             } else if (approvedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.APPROVED));
+                executorService.submit(() -> resyncAndCommit(ItemState.APPROVED), Node.this.toString() + " :: resyncVote -> resyncAndCommit");
             } else if (undefinedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.UNDEFINED));
+                executorService.submit(() -> resyncAndCommit(ItemState.UNDEFINED), Node.this.toString() + " :: resyncVote -> resyncAndCommit");
             } else
                 throw new RuntimeException("error: resync consensus reported without consensus");
         }
@@ -2563,7 +2575,7 @@ public class Node {
                     }
                 }
                 finishEvent.fire(this);
-            });
+            }, Node.this.toString() + " :: resyncAndCommit -> body");
         }
 
         public void closeByTimeout() {
