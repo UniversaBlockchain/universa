@@ -55,7 +55,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
 
-    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
+    private static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
         this.config = config;
@@ -780,7 +780,7 @@ public class Node {
 
 
                     if (paymentResult.state.isApproved()) {
-                        debug("payment has approved for payload " + payload.getId());
+                        debug("payment " + payment.getId() + " has approved for payload " + payload.getId());
 
 //                        x = checkItemInternal(payload.getId(), parcelId, payload, true, true);
 //                        if (x instanceof ItemProcessor) {
@@ -1479,8 +1479,8 @@ public class Node {
 
                     if(!processingState.isProcessedToConsensus()) {
                         processingState = ItemProcessingState.POLLING;
-                        vote(myInfo, record.getState());
                     }
+                    vote(myInfo, record.getState());
                     broadcastMyState();
                     pulseStartPolling();
                     pollingReadyEvent.fire();
@@ -1650,8 +1650,9 @@ public class Node {
                         debug("consensus already found, but vote for " + itemId + " from " + node + ": " + state + " > "
                                 + positiveNodes.size() + "/" + negativeNodes.size());
                         if(processingState.isDone()) {
-                            checkIfAllReceivedConsensus();
-                            removeSelf();
+//                            checkIfAllReceivedConsensus();
+//                            removeSelf();
+                            close();
                         }
                         return;
                     }
@@ -1722,32 +1723,37 @@ public class Node {
             if(processingState.canContinue()) {
                 // it may happen that consensus is found earlier than item is download
                 // we still need item to fix all its relations:
-                try {
-                    debug("download and commit item, state: " + getState() + ", item is " + item);
-                    if (item == null) {
-                        // If positive consensus os found, we can spend more time for final download, and can try
-                        // all the network as the source:
-                        pollingExpiresAt = Instant.now().plus(config.getMaxDownloadOnApproveTime());
-                        downloadedEvent.await(getMillisLeft());
-                    }
-                    // We use the caching capability of ledger so we do not get records from
-                    // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
-                    // yields. We just clean them up afterwards:
+                synchronized (mutex) {
+                    try {
+                        debug("download and commit item, state: " + getState() + ", item is " + item);
+                        if (item == null) {
+                            // If positive consensus os found, we can spend more time for final download, and can try
+                            // all the network as the source:
+                            pollingExpiresAt = Instant.now().plus(config.getMaxDownloadOnApproveTime());
+                            downloadedEvent.await(getMillisLeft());
+                        }
+                        // We use the caching capability of ledger so we do not get records from
+                        // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
+                        // yields. We just clean them up afterwards:
 
-                    debug("download and commit subitems, state: " + getState());
-                    downloadAndCommitSubItemsOf(item);
+                        debug("download and commit subitems, state: " + getState());
+                        downloadAndCommitSubItemsOf(item);
 
-                    lockedToCreate.clear();
-                    lockedToRevoke.clear();
-                    record.save();
-                    if (record.getState() != ItemState.APPROVED) {
-                        log.e("record is not approved " + record.getState());
+                        debug("clearing ledger locks");
+                        lockedToCreate.clear();
+                        lockedToRevoke.clear();
+                        debug("saving record");
+                        record.save();
+                        debug("record saved");
+                        if (record.getState() != ItemState.APPROVED) {
+                            log.e("record is not approved " + record.getState());
+                        }
+                        debug("approval done, state: " + getState() + ", have a copy " + (item == null));
+                    } catch (TimeoutException | InterruptedException e) {
+                        debug("commit: failed to load item, ledger will not be altered, the record will be destroyed");
+                        setState(ItemState.UNDEFINED);
+                        record.destroy();
                     }
-                    debug("approval done, state: " + getState() + ", have a copy " + (item == null));
-                } catch (TimeoutException | InterruptedException e) {
-                    debug("commit: failed to load item, ledger will not be altered, the record will be destroyed");
-                    setState(ItemState.UNDEFINED);
-                    record.destroy();
                 }
                 close();
             }
@@ -1771,6 +1777,7 @@ public class Node {
 
                     debug("setting state: " + newState.name());
                     setState(newState);
+                    debug("rollback state is set ");
                     ZonedDateTime expiration = ZonedDateTime.now()
                             .plus(newState == ItemState.REVOKED ?
                                     config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
@@ -1823,7 +1830,7 @@ public class Node {
                 }
                 // at this point we should requery the nodes that did not yet answered us
                 Notification notification;
-                debug("send new consensus notifications");
+//                debug("send new consensus notifications");
                 ParcelNotification.ParcelNotificationType notificationType;
                 if(item.isTU()) {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
@@ -1833,7 +1840,7 @@ public class Node {
                 notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
                 network.eachNode(node -> {
                     if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
-                        debug("unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
+//                        debug("unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
                         if(!myInfo.equals(node)) {
                             network.deliver(node, notification);
                         } else {
@@ -2094,13 +2101,15 @@ public class Node {
 
         private final void setState(ItemState newState) {
             synchronized (mutex) {
+                debug("set state: " + newState);
                 record.setState(newState);
+                debug("state is set");
             }
         }
 
         private final void removeSelf() {
             if(processingState.canRemoveSelf()) {
-                debug("removing item");
+                debug("removing item, is ip exist: " + processors.containsKey(itemId));
                 processors.remove(itemId);
 
                 stopDownloader();
@@ -2115,6 +2124,8 @@ public class Node {
                 pollingReadyEvent.fire();
                 doneEvent.fire();
                 removedEvent.fire();
+
+                debug("doneEvent.fire");
             }
         }
 

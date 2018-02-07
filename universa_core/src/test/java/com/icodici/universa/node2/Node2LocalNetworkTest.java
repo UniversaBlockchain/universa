@@ -76,7 +76,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         nc_s = null;
         config_s = null;
 
-        Thread.sleep(5000);
+//        Thread.sleep(5000);
     }
 
     private static void initTestSet() throws Exception {
@@ -91,6 +91,9 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config_s.setPositiveConsensus(7);
         config_s.setNegativeConsensus(4);
         config_s.setResyncBreakConsensus(2);
+        config_s.setPollTime(Duration.ofMillis(2500));
+        config_s.setConsensusReceivedCheckTime(Duration.ofMillis(2500));
+        config_s.setResyncTime(Duration.ofMillis(2500));
 
         Properties properties = new Properties();
         File file = new File(CONFIG_2_PATH + "config/config.yaml");
@@ -167,6 +170,11 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
     }
 
+
+    @After
+    public void coolDown() throws Exception {
+        Thread.sleep(5000);
+    }
 
 
     private interface RunnableWithException<T> {
@@ -381,8 +389,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Parcel parcel = registerWithNewParcel(contract);
 
-        node.waitParcel(parcel.getId(), 5000);
-        ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 5000);
+        node.waitParcel(parcel.getId(), 15000);
+        ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         System.out.println("Complex contract state: " + r.state);
         ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
         assertEquals(expectedState, r.state);
@@ -1008,7 +1016,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 3000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 8000).state);
     }
 
 

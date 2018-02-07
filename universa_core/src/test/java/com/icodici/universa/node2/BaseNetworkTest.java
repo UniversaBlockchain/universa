@@ -143,13 +143,13 @@ public class BaseNetworkTest extends TestCase {
                 for (Node n : nodesMap.values()) {
                     try {
                         System.out.println("-------------- wait parcel " + parcel.getId() + " on the node " + n + " (iteration " + i + ") ------------");
-                        n.waitParcel(parcel.getId(), 15000);
+                        n.waitParcel(parcel.getId(), 25000);
                         ItemResult r = n.waitItem(parcel.getPayloadContract().getId(), 8000);
                         int numIterations = 0;
                         while( !r.state.isConsensusFound()) {
                             System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
                             Thread.sleep(500);
-                            n.waitParcel(parcel.getId(), 15000);
+                            n.waitParcel(parcel.getId(), 25000);
                             r = n.waitItem(parcel.getPayloadContract().getId(), 8000);
                             numIterations++;
                             if(numIterations > 20)
@@ -161,7 +161,7 @@ public class BaseNetworkTest extends TestCase {
                     }
                 }
 
-                node.waitParcel(parcel.getId(), 15000);
+                node.waitParcel(parcel.getId(), 25000);
                 ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 8000);
                 assertEquals("after: In node "+node+" item "+parcel.getId(), ItemState.APPROVED, r.state);
                 System.out.println("-------------- parcel " + parcel.getId() + " registered (iteration " + i + ")------------");
@@ -174,7 +174,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void registerBadItem() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -189,7 +189,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkItem() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -208,7 +208,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldCreateItems() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -232,7 +232,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldDeclineItems() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -256,7 +256,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void singleNodeMixApprovedAndDeclined() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -282,12 +282,12 @@ public class BaseNetworkTest extends TestCase {
         TestItem item2 = new TestItem(false);
 
         node.registerItem(item2);
-        ItemResult result2 = node.waitItem(item2.getId(), 2000);
+        ItemResult result2 = node.waitItem(item2.getId(), 12000);
         assertEquals(ItemState.DECLINED, result2.state);
 
-        result2 = node.waitItem(item2.getId(), 2000);
+        result2 = node.waitItem(item2.getId(), 12000);
         assertEquals(ItemState.DECLINED, result2.state);
-        result2 = node.waitItem(item2.getId(), 2000);
+        result2 = node.waitItem(item2.getId(), 12000);
         assertEquals(ItemState.DECLINED, result2.state);
 
         result2 = node.checkItem(item2.getId());
@@ -296,7 +296,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void timeoutError() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -329,7 +329,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void testNotCreatingOnReject() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -359,7 +359,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void rejectBadNewItem() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -391,7 +391,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void badNewDocumentsPreventAccepting() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -430,7 +430,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void acceptWithReferences() throws Exception {
         return;
     }
@@ -470,7 +470,7 @@ public class BaseNetworkTest extends TestCase {
 
             // check that main is fully approved
             node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 5000);
+            ItemResult itemResult = node.waitItem(main.getId(), 10000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
             // and the references are intact
@@ -490,7 +490,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void badReferencesDecline() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -535,7 +535,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void missingReferencesDecline() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -559,7 +559,7 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("--------- existing id: " + existing.getId());
         node.registerItem(main);
         // need some time to resync missingId
-        ItemResult itemResult = node.waitItem(main.getId(), 5000);
+        ItemResult itemResult = node.waitItem(main.getId(), 15000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // and the references are intact
@@ -644,7 +644,7 @@ public class BaseNetworkTest extends TestCase {
         }
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void registerDeepTree() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -678,7 +678,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, result.state);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void registerDeepTreeWithRevoke() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -727,7 +727,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, result.state);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void declineDeepTreeBadNew() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -761,7 +761,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, result.state);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void declineDeepTreeBadRevoke() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -797,7 +797,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void createRealContract() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -813,7 +813,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkSimpleCase() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -847,7 +847,7 @@ public class BaseNetworkTest extends TestCase {
 
     // split and join section
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldApproveSplit() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -879,7 +879,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(c2.getId(), 5000).state);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldDeclineSplit() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -909,7 +909,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, node.waitItem(c2.getId(), 5000).state);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldApproveSplitAndJoinWithNewSend() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -959,7 +959,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(c3.getId(), 5000).state);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldDeclineSplitAndJoinWithWrongAmount() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1039,7 +1039,7 @@ public class BaseNetworkTest extends TestCase {
 
     // quantizer section
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldBreakByQuantizer() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1060,7 +1060,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, itemResult.state);
     }
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldBreakByQuantizerSplit() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1093,7 +1093,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void shouldBreakByQuantizerDeepTree() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1294,7 +1294,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionAllGood() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1337,7 +1337,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapManyContractsViaTransactionAllGood() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1428,7 +1428,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionOneNotSign1() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1480,7 +1480,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionOneNotSign2() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1532,7 +1532,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionOneNotSign3() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1585,7 +1585,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionOneNotSign4() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1638,7 +1638,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionOneWrongSign1() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1686,7 +1686,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionOneWrongSign2() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1732,7 +1732,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionOneWrongSign3() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1779,7 +1779,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionWrongTID1() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1832,7 +1832,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionWrongTID2() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1884,7 +1884,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionMissingTransactional1() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1948,7 +1948,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionMissingTransactional2() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -2084,7 +2084,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionSnatch1() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -2136,7 +2136,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionSnatch2() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -2269,7 +2269,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void swapSplitJoinMissingSign() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -2353,7 +2353,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void registerParcel() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -2395,7 +2395,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void declineParcelWithBadPayload() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -2427,7 +2427,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void declineParcelWithNotRegisteredPayment() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -2469,7 +2469,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void declineParcelWithNotSignedPayment() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -2532,7 +2532,7 @@ public class BaseNetworkTest extends TestCase {
                     stepaPublicKeys.add(pk.getPublicKey());
                 }
                 PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
-                int N = 1000;
+                int N = 100;
                 for (int i = 0; i < N; i++) {
 
                     Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
@@ -2585,7 +2585,7 @@ public class BaseNetworkTest extends TestCase {
         return ContractsService.createParcel(c, stepaTU, 150, keys);
     }
 
-    protected synchronized Contract getApprovedTUContract() throws Exception {
+    protected Contract getApprovedTUContract() throws Exception {
         synchronized (tuContractLock) {
             if (tuContract == null) {
                 PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
@@ -2599,17 +2599,18 @@ public class BaseNetworkTest extends TestCase {
                 node.registerItem(stepaTU);
                 tuContract = stepaTU;
             }
-            boolean needRecreateTuContract = false;
+            int needRecreateTuContractNum = 0;
             for (Node n : nodes) {
                 ItemResult itemResult = n.waitItem(tuContract.getId(), 15000);
                 //assertEquals(ItemState.APPROVED, itemResult.state);
                 if (itemResult.state != ItemState.APPROVED) {
                     System.out.println("TU: node " + n + " result: " + itemResult);
-                    needRecreateTuContract = true;
+                    needRecreateTuContractNum ++;
                 }
             }
-            if (needRecreateTuContract) {
+            if (needRecreateTuContractNum > nodes.size() - config.getPositiveConsensus()) {
                 tuContract = null;
+                Thread.sleep(1000);
                 return getApprovedTUContract();
             }
             return tuContract;
@@ -2642,7 +2643,7 @@ public class BaseNetworkTest extends TestCase {
             parcel = registerWithNewParcel(c);
 //            LogPrinter.showDebug(true);
             System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-            node.waitParcel(parcel.getId(), 25000);
+            node.waitParcel(parcel.getId(), 15000);
             System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
@@ -2650,7 +2651,11 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
         } catch (TimeoutException e) {
-            fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            if (parcel != null) {
+                fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            } else {
+                fail("timeout,  " + node);
+            }
         }
     }
 
@@ -2660,7 +2665,7 @@ public class BaseNetworkTest extends TestCase {
             parcel = registerWithNewParcel(c);
     //        LogPrinter.showDebug(true);
             System.out.println("registerAndCheckDeclined, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-            node.waitParcel(parcel.getId(), 25000);
+            node.waitParcel(parcel.getId(), 15000);
             System.out.println("registerAndCheckDeclined, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
@@ -2668,7 +2673,11 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.DECLINED, itemResult.state);
         } catch (TimeoutException e) {
-            fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            if (parcel != null) {
+                fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            } else {
+                fail("timeout,  " + node);
+            }
         }
     }
 
@@ -3037,7 +3046,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkPayment_good() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
         boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
@@ -3047,7 +3056,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkPayment_zeroTU() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
         payment.getStateData().set("transaction_units", 0);
@@ -3058,7 +3067,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkPayment_wrongTUtype() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
         payment.getStateData().set("transaction_units", "33");
@@ -3069,7 +3078,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkPayment_wrongTUname() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
         payment.getStateData().set("transacti0n_units", payment.getStateData().get("transaction_units"));
@@ -3081,7 +3090,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkPayment_missingDecrementPermission() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
         payment.getPermissions().remove("decrement_permission");
@@ -3092,7 +3101,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkPayment_wrongIssuer() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
 
@@ -3122,7 +3131,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkPayment_originItself() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
         final Field field = payment.getState().getClass().getDeclaredField("origin");
@@ -3138,7 +3147,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 30000)
+    @Test(timeout = 90000)
     public void checkPayment_originMismatch() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
         final Field field2 = payment.getRevoking().get(0).getState().getClass().getDeclaredField("origin");
