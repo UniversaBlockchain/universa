@@ -979,7 +979,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         )
                 )
         );
-        newItems.forEach(c -> c.seal());
+        //redundand code. already executed here newItems.stream().map(i -> i.seal())
+        //newItems.forEach(c -> c.seal());
         Binder result = Binder.of(
                 "type", "unicapsule",
                 "version", 2,
@@ -1479,8 +1480,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 List<String> roles = references.getRoles();
                 Map<String, Role> contractRoles = contract.getRoles();
                 result = roles.stream()
-                        .filter(role -> contractRoles.containsKey(role))
-                        .collect(Collectors.toList()).size() > 0;
+                        .anyMatch(role -> contractRoles.containsKey(role));
             }
 
             //check origin
@@ -1495,8 +1495,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 List<String> fields = references.getFields();
                 Binder stateData = contract.getStateData();
                 result = fields.stream()
-                        .filter(field -> stateData.get(field) != null)
-                        .collect(Collectors.toList()).size() > 0;
+                        .anyMatch(field -> stateData.get(field) != null);
             }
 
             if (!result)
