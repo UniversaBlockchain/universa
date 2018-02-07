@@ -146,6 +146,8 @@ public class TestLocalNetwork extends Network {
                     System.exit(75);
                 }
                 adapter.send(toNode, data);
+            } catch (InterruptedException e) {
+                System.err.println("expected interrupt exception " + e.toString());
             } catch (Exception e) {
                 System.out.println("--------------> " + shutdown + " " + myInfo + " " + adapter + " " + consumer);
                 e.printStackTrace();

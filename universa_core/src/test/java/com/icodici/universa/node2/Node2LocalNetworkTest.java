@@ -91,9 +91,9 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config_s.setPositiveConsensus(7);
         config_s.setNegativeConsensus(4);
         config_s.setResyncBreakConsensus(2);
-        config_s.setPollTime(Duration.ofMillis(2500));
-        config_s.setConsensusReceivedCheckTime(Duration.ofMillis(2500));
-        config_s.setResyncTime(Duration.ofMillis(2500));
+//        config_s.setPollTime(Duration.ofMillis(2500));
+//        config_s.setConsensusReceivedCheckTime(Duration.ofMillis(2500));
+//        config_s.setResyncTime(Duration.ofMillis(2500));
 
         Properties properties = new Properties();
         File file = new File(CONFIG_2_PATH + "config/config.yaml");
@@ -173,7 +173,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
     @After
     public void coolDown() throws Exception {
-        Thread.sleep(5000);
+//        Thread.sleep(5000);
     }
 
 
@@ -389,7 +389,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Parcel parcel = registerWithNewParcel(contract);
 
-        node.waitParcel(parcel.getId(), 15000);
+        node.waitParcel(parcel.getId(), 30000);
         ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         System.out.println("Complex contract state: " + r.state);
         ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
@@ -420,6 +420,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
     @Test
     public void shouldNotResyncWithFalseComplexState() throws Exception {
+
+//        LogPrinter.showDebug(true);
 
         // Test should broke condition to resync:
         // complex contract should has no errors itself
@@ -572,7 +574,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        node.waitParcel(parcel.getId(), 8000);
+        node.waitParcel(parcel.getId(), 30000);
         ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 3000);
         assertEquals(ItemState.APPROVED, r.state);
     }
@@ -819,7 +821,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap_s.values()) {
-            ItemResult r = n.waitItem(contract.getId(), 3000);
+            ItemResult r = n.waitItem(contract.getId(), 13000);
             if(r.state != ItemState.APPROVED) {
                 all_is_approved = false;
             }
@@ -912,7 +914,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         boolean all_is_approved = true;
         for (Node n : nodesMap_s.values()) {
-            n.waitParcel(parcel.getId(), 3000);
+            n.waitParcel(parcel.getId(), 13000);
             ItemResult r = n.waitItem(parcel.getPayloadContract().getId(), 3000);
             System.out.println("Node: " + n.toString() + " state: " + r.state);
             if(r.state != ItemState.APPROVED) {
@@ -971,7 +973,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 3000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(c.getId(), 13000).state);
     }
 
 
@@ -1062,7 +1064,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 3000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(c.getId(), 13000).state);
     }
 
 
@@ -1107,7 +1109,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 3000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(c.getId(), 13000).state);
     }
 
 
@@ -1226,7 +1228,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 3000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(contract.getId(), 13000).state);
     }
 //
 //    @Test
