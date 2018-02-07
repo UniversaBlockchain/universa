@@ -64,7 +64,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 120000)
+    @Test(timeout = 900000)
     public void registerGoodItem() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -81,7 +81,7 @@ public class BaseNetworkTest extends TestCase {
                 node.registerItem(ok);
                 for (Node n : nodesMap.values()) {
                     try {
-                        ItemResult r = n.waitItem(ok.getId(), 8000);
+                        ItemResult r = n.waitItem(ok.getId(), 18000);
                         int numIterations = 0;
                         while( !r.state.isConsensusFound()) {
                             System.out.println("wait for consensus receiving on the node " + n + " state is " + r.state);
@@ -97,7 +97,7 @@ public class BaseNetworkTest extends TestCase {
                     }
                 }
 
-                ItemResult r = node.waitItem(ok.getId(), 5500);
+                ItemResult r = node.waitItem(ok.getId(), 15000);
                 assertEquals("after: In node "+node+" item "+ok.getId(), ItemState.APPROVED, r.state);
 
             }
@@ -107,7 +107,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
-    @Test(timeout = 300000)
+    @Test(timeout = 900000)
     public void registerGoodParcel() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -522,7 +522,7 @@ public class BaseNetworkTest extends TestCase {
         // check that main is fully approved
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 5000);
+        ItemResult itemResult = node.waitItem(main.getId(), 15000);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         assertEquals(ItemState.UNDEFINED, node.waitItem(new1.getId(), 3000).state);
@@ -708,7 +708,7 @@ public class BaseNetworkTest extends TestCase {
         main.addNewItems(new1, new2);
 
         node.registerItem(main);
-        ItemResult result = node.waitItem(main.getId(), 5000);
+        ItemResult result = node.waitItem(main.getId(), 15000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.waitItem(new1.getId(), 2000);
@@ -2601,10 +2601,17 @@ public class BaseNetworkTest extends TestCase {
             }
             int needRecreateTuContractNum = 0;
             for (Node n : nodes) {
-                ItemResult itemResult = n.waitItem(tuContract.getId(), 15000);
-                //assertEquals(ItemState.APPROVED, itemResult.state);
-                if (itemResult.state != ItemState.APPROVED) {
-                    System.out.println("TU: node " + n + " result: " + itemResult);
+                try {
+                    ItemResult itemResult = n.waitItem(tuContract.getId(), 15000);
+                    //assertEquals(ItemState.APPROVED, itemResult.state);
+                    if (itemResult.state != ItemState.APPROVED) {
+                        System.out.println("TU: node " + n + " result: " + itemResult);
+                        needRecreateTuContractNum ++;
+                    }
+                } catch (TimeoutException e) {
+                    System.out.println("ping ");
+                    System.out.println("ping: " + n.ping());
+                    System.out.println("TU: node " + n + " timeout: ");
                     needRecreateTuContractNum ++;
                 }
             }
@@ -2643,7 +2650,7 @@ public class BaseNetworkTest extends TestCase {
             parcel = registerWithNewParcel(c);
 //            LogPrinter.showDebug(true);
             System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-            node.waitParcel(parcel.getId(), 15000);
+            node.waitParcel(parcel.getId(), 30000);
             System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
@@ -2651,6 +2658,9 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
         } catch (TimeoutException e) {
+
+            System.out.println("ping ");
+            System.out.println("ping: " + node.ping());
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {
@@ -2665,7 +2675,7 @@ public class BaseNetworkTest extends TestCase {
             parcel = registerWithNewParcel(c);
     //        LogPrinter.showDebug(true);
             System.out.println("registerAndCheckDeclined, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-            node.waitParcel(parcel.getId(), 15000);
+            node.waitParcel(parcel.getId(), 30000);
             System.out.println("registerAndCheckDeclined, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
@@ -2673,6 +2683,8 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.DECLINED, itemResult.state);
         } catch (TimeoutException e) {
+            System.out.println("ping ");
+            System.out.println("ping: " + node.ping());
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {
