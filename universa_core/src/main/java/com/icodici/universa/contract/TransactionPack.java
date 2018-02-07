@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
 @BiType(name = "TransactionPack")
 public class TransactionPack implements BiSerializable {
 
-    private static byte[] packedBinary;
+    private byte[] packedBinary;
     private boolean reconstructed = false;
     private Map<HashId, Contract> references = new HashMap<>();
     private Contract contract;
@@ -261,7 +261,6 @@ public class TransactionPack implements BiSerializable {
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
     public synchronized static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransactions) throws IOException {
-        packedBinary = packOrContractBytes;
 
         Object x = Boss.load(packOrContractBytes);
 
@@ -275,6 +274,7 @@ public class TransactionPack implements BiSerializable {
         // This is an old v2 self-contained contract or a root v3 contract, no revokes, no siblings.
         TransactionPack tp = new TransactionPack();
         tp.reconstructed = true;
+        tp.packedBinary = packOrContractBytes;
         tp.contract = new Contract(packOrContractBytes, tp);
         return tp;
     }

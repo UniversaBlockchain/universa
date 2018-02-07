@@ -52,8 +52,8 @@ public class Node {
     private final ParcelCache parcelCache;
     private final ItemInformer informer = new ItemInformer();
 
-//    private final ItemLock itemLock = new ItemLock();
-//    private final ParcelLock parcelLock = new ParcelLock();
+    private final ItemLock itemLock = new ItemLock();
+    private final ParcelLock parcelLock = new ParcelLock();
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
@@ -547,7 +547,7 @@ public class Node {
                                        boolean autoStart, boolean forceChecking, boolean ommitItemResult) {
         try {
             // first, let's lock to the item id:
-            return ItemLock.synchronize(itemId, (lock) -> {
+            return itemLock.synchronize(itemId, (lock) -> {
                 ItemProcessor ip = processors.get(itemId);
                 if (ip != null) {
                     nodeDebug("existing IP found for " + itemId);
@@ -612,7 +612,7 @@ public class Node {
      */
     protected Object checkParcelInternal(@NonNull HashId parcelId, Parcel parcel, boolean autoStart) {
         try {
-            return ParcelLock.synchronize(parcelId, (lock) -> {
+            return parcelLock.synchronize(parcelId, (lock) -> {
                 ParcelProcessor processor = parcelProcessors.get(parcelId);
                 if (processor != null) {
                     nodeDebug("existing parcel processor found for " + parcelId
@@ -667,7 +667,7 @@ public class Node {
 
     public String ping() {
 
-        return "ping ::> " + toString() + " executorService: " + executorService.toString() + " ItemLock: " + ItemLock.size()
+        return "ping ::> " + toString() + " executorService: " + executorService.toString() + " ItemLock: " + itemLock.size()
                 + " item processors: " + processors.size() + ", parcel processors: " + parcelProcessors.size();
     }
 
