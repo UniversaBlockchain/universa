@@ -769,7 +769,9 @@ public class Node {
             processingState = ParcelProcessingState.INIT;
 
             if (this.parcel != null)
-                parcelDownloaded();
+//                parcelDownloaded();
+                 executorService.submit(() -> parcelDownloaded(),
+                         Node.this.toString() + " > parcel " + parcelId + " :: ParcelProcessor -> parcelDownloaded");
         }
 
         //////////// processing section /////////////
@@ -778,7 +780,8 @@ public class Node {
             if(processingState.canContinue()) {
                 synchronized (mutex) {
                     if (processSchedule == null || processSchedule.isDone()) {
-                        processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process(), Node.this.toString() + " :: pulseProcessing -> process");
+                        processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process(),
+                                Node.this.toString() + " > parcel " + parcelId + " :: pulseProcessing -> process");
                     }
                 }
             }
@@ -912,7 +915,8 @@ public class Node {
 
                     synchronized (mutex) {
                         if (parcel == null && (downloader == null || downloader.isDone())) {
-                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download(), Node.this.toString() + " :: parcel pulseDownload -> download");
+                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download(),
+                                    Node.this.toString() + " > parcel " + parcelId + " :: parcel pulseDownload -> download");
                         }
                     }
                 }
@@ -1106,11 +1110,11 @@ public class Node {
                 }
             }
 
-            if(paymentProcessor != null)
-                paymentProcessor.addToSources(node);
-
-            if(payloadProcessor != null)
-                payloadProcessor.addToSources(node);
+//            if(paymentProcessor != null)
+//                paymentProcessor.addToSources(node);
+//
+//            if(payloadProcessor != null)
+//                payloadProcessor.addToSources(node);
         }
 
         private final void removeSelf() {
@@ -1225,7 +1229,8 @@ public class Node {
             alreadyChecked = false;
 
             if (this.item != null)
-                executorService.submit(() -> itemDownloaded(), Node.this.toString() + " :: ItemProcessor -> itemDownloaded");
+                executorService.submit(() -> itemDownloaded(),
+                        Node.this.toString() + " > parcel " + parcelId + " > item " + itemId + " :: ItemProcessor -> itemDownloaded");
         }
 
         //////////// download section /////////////
@@ -1242,7 +1247,8 @@ public class Node {
                     synchronized (mutex) {
                         debug("insude mutex: pulseDownload");
                         if (item == null && (downloader == null || downloader.isDone())) {
-                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download(), Node.this.toString() + " :: item pulseDownload -> download");
+                            downloader = (ScheduledFuture<?>) executorService.submit(() -> download(),
+                                    Node.this.toString() + " > parcel " + parcelId + " > item " + itemId + " :: item pulseDownload -> download");
                         }
                     }
                 }
@@ -1637,7 +1643,7 @@ public class Node {
                                         millis,
                                         millis,
                                         TimeUnit.MILLISECONDS,
-                                        Node.this.toString() + " :: pulseStartPolling -> sendStartPollingNotification");
+                                        Node.this.toString() + " > parcel " + parcelId + " > item " + itemId + " :: pulseStartPolling -> sendStartPollingNotification");
                             }
                         }
                     }
@@ -1761,7 +1767,8 @@ public class Node {
                 // first we need to flag our state as approved
                 setState(ItemState.APPROVED);
                 debug("approveAndCommit -> wait executorService " + executorService.toString());
-                executorService.submit(() -> downloadAndCommit(), Node.this.toString() + " :: approveAndCommit -> downloadAndCommit");
+                executorService.submit(() -> downloadAndCommit(),
+                        Node.this.toString() + " > parcel " + parcelId + " > item " + itemId + " :: approveAndCommit -> downloadAndCommit");
             }
         }
 
@@ -1889,7 +1896,7 @@ public class Node {
                                 millis,
                                 millis,
                                 TimeUnit.MILLISECONDS,
-                                Node.this.toString() + " :: pulseSendNewConsensus -> sendNewConsensusNotification");
+                                Node.this.toString() + " > parcel " + parcelId + " > item " + itemId + " :: pulseSendNewConsensus -> sendNewConsensusNotification");
                     }
                 }
             }
@@ -2009,7 +2016,7 @@ public class Node {
                                     millis,
                                     millis,
                                     TimeUnit.MILLISECONDS,
-                                    Node.this.toString() + " :: pulseResync -> sendResyncNotification");
+                                    Node.this.toString() + " > parcel " + parcelId + " > item " + itemId + " :: pulseResync -> sendResyncNotification");
                         }
                     }
                 }
@@ -2135,7 +2142,7 @@ public class Node {
                 if (processingState == ItemProcessingState.DOWNLOADED) {
                     executorService.submit(() -> {
                         checkItem();
-                    }, Node.this.toString() + " :: forceChecking -> checkItem");
+                    }, Node.this.toString() + " > parcel " + parcelId + " > item " + itemId + " :: forceChecking -> checkItem");
                 }
             }
         }
@@ -2496,13 +2503,17 @@ public class Node {
                     return;
             }
             if (revokedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.REVOKED), Node.this.toString() + " :: resyncVote -> resyncAndCommit");
+                executorService.submit(() -> resyncAndCommit(ItemState.REVOKED),
+                        Node.this.toString() + " > item " + hashId + " :: resyncVote -> resyncAndCommit");
             } else if (declinedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.DECLINED), Node.this.toString() + " :: resyncVote -> resyncAndCommit");
+                executorService.submit(() -> resyncAndCommit(ItemState.DECLINED),
+                        Node.this.toString() + " > item " + hashId + " :: resyncVote -> resyncAndCommit");
             } else if (approvedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.APPROVED), Node.this.toString() + " :: resyncVote -> resyncAndCommit");
+                executorService.submit(() -> resyncAndCommit(ItemState.APPROVED),
+                        Node.this.toString() + " > item " + hashId + " :: resyncVote -> resyncAndCommit");
             } else if (undefinedConsenus) {
-                executorService.submit(() -> resyncAndCommit(ItemState.UNDEFINED), Node.this.toString() + " :: resyncVote -> resyncAndCommit");
+                executorService.submit(() -> resyncAndCommit(ItemState.UNDEFINED),
+                        Node.this.toString() + " > item " + hashId + " :: resyncVote -> resyncAndCommit");
             } else
                 throw new RuntimeException("error: resync consensus reported without consensus");
         }
@@ -2575,7 +2586,7 @@ public class Node {
                     }
                 }
                 finishEvent.fire(this);
-            }, Node.this.toString() + " :: resyncAndCommit -> body");
+            }, Node.this.toString() + " > item " + hashId + " :: resyncAndCommit -> body");
         }
 
         public void closeByTimeout() {

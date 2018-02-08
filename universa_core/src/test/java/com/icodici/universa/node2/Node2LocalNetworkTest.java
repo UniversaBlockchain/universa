@@ -476,6 +476,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertFalse(contract.check());
 
+//        LogPrinter.showDebug(true);
         Parcel parcel = registerWithNewParcel(contract);
 
         Timer timer = new Timer();
@@ -491,7 +492,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         }, 0, 500);
 
         try {
-            ae.await(5000);
+            ae.await(25000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
@@ -503,7 +504,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             ln.setUDPAdapterVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         }
 
-        node.waitParcel(parcel.getId(), 8000);
+        node.waitParcel(parcel.getId(), 18000);
         ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 3000);
         assertEquals(ItemState.DECLINED, r.state);
     }
