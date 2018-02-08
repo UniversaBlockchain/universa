@@ -78,23 +78,23 @@ public class TestEmulatedNetwork extends Network {
 
         Approvable item = node.getItem(itemId);
 
-        if(item instanceof Contract) {
-            TransactionPack tp_before = ((Contract) item).getTransactionPack();
-            byte[] data = tp_before.pack();
-
-            // here we "send" data and "got" it
-
-            TransactionPack tp_after = null;
-            try {
-                tp_after = TransactionPack.unpack(data);
-                Contract gotMainContract = tp_after.getContract();
-
-                return gotMainContract;
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+//        if(item instanceof Contract) {
+//            TransactionPack tp_before = ((Contract) item).getTransactionPack();
+//            byte[] data = tp_before.pack();
+//
+//            // here we "send" data and "got" it
+//
+//            TransactionPack tp_after = null;
+//            try {
+//                tp_after = TransactionPack.unpack(data);
+//                Contract gotMainContract = tp_after.getContract();
+//
+//                return gotMainContract;
+//
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
 
         return item;
     }

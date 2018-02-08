@@ -1527,13 +1527,16 @@ public class Node {
                     for (Approvable a : checkingItem.getRevokingItems()) {
                         debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId() + " " + record);
                         debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId() + " ledger " + ledger.getRecord(a.getId()));
-                        StateRecord r = record.lockToRevoke(a.getId());
-                        debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId() + " record is " + r);
-                        if (r == null) {
-                            checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
-                        } else {
-                            if (!lockedToRevoke.contains(r))
-                                lockedToRevoke.add(r);
+
+                        synchronized (mutex) {
+                            StateRecord r = record.lockToRevoke(a.getId());
+                            debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId() + " record is " + r);
+                            if (r == null) {
+                                checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
+                            } else {
+                                if (!lockedToRevoke.contains(r))
+                                    lockedToRevoke.add(r);
+                            }
                         }
                     }
                     // check new items
@@ -1544,12 +1547,14 @@ public class Node {
                         if (!newItem.getErrors().isEmpty()) {
                             checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
                         } else {
-                            StateRecord r = record.createOutputLockRecord(newItem.getId());
-                            if (r == null) {
-                                checkingItem.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
-                            } else {
-                                if (!lockedToCreate.contains(r))
-                                    lockedToCreate.add(r);
+                            synchronized (mutex) {
+                                StateRecord r = record.createOutputLockRecord(newItem.getId());
+                                if (r == null) {
+                                    checkingItem.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
+                                } else {
+                                    if (!lockedToCreate.contains(r))
+                                        lockedToCreate.add(r);
+                                }
                             }
                         }
                     }
@@ -1838,20 +1843,24 @@ public class Node {
             if(processingState.canContinue()) {
                 for (Approvable revokingItem : commitingItem.getRevokingItems()) {
                     // The record may not exist due to ledger desync, so we create it if need
-                    debug("save revoking subitem " + revokingItem.getId() + " saved, from [" + commitingItem.getId() + "]");
-                    StateRecord r = ledger.findOrCreate(revokingItem.getId());
-                    r.setState(ItemState.REVOKED);
-                    r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
-                    r.save();
+                    debug("save revoking subitem " + revokingItem.getId() + ", from [" + commitingItem.getId() + "]");
+                    synchronized (mutex) {
+                        StateRecord r = ledger.findOrCreate(revokingItem.getId());
+                        r.setState(ItemState.REVOKED);
+                        r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
+                        r.save();
+                    }
                     debug("revoking subitem " + revokingItem.getId() + " saved, from [" + commitingItem.getId() + "]");
                 }
                 for (Approvable newItem : commitingItem.getNewItems()) {
                     // The record may not exist due to ledger desync too, so we create it if need
                     debug("save new subitem " + newItem.getId() + " saved, from [" + commitingItem.getId() + "]");
-                    StateRecord r = ledger.findOrCreate(newItem.getId());
-                    r.setState(ItemState.APPROVED);
-                    r.setExpiresAt(newItem.getExpiresAt());
-                    r.save();
+                    synchronized (mutex) {
+                        StateRecord r = ledger.findOrCreate(newItem.getId());
+                        r.setState(ItemState.APPROVED);
+                        r.setExpiresAt(newItem.getExpiresAt());
+                        r.save();
+                    }
                     debug("new subitem " + newItem.getId() + " saved, from [" + commitingItem.getId() + "]");
 
                     downloadAndCommitSubItemsOf(newItem);
@@ -1863,25 +1872,25 @@ public class Node {
             if(processingState.canContinue()) {
                 // it may happen that consensus is found earlier than item is download
                 // we still need item to fix all its relations:
-                debug("wait mutex: downloadAndCommit");
-                synchronized (mutex) {
-                    debug("inside mutex: downloadAndCommit");
-                    try {
-                        debug("download and commit item, state: " + getState() + ", item is " + item);
-                        if (item == null) {
-                            // If positive consensus os found, we can spend more time for final download, and can try
-                            // all the network as the source:
-                            pollingExpiresAt = Instant.now().plus(config.getMaxDownloadOnApproveTime());
-                            downloadedEvent.await(getMillisLeft());
-                        }
-                        // We use the caching capability of ledger so we do not get records from
-                        // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
-                        // yields. We just clean them up afterwards:
+                try {
+                    debug("download and commit item, state: " + getState() + ", item is " + item);
+                    if (item == null) {
+                        // If positive consensus os found, we can spend more time for final download, and can try
+                        // all the network as the source:
+                        pollingExpiresAt = Instant.now().plus(config.getMaxDownloadOnApproveTime());
+                        downloadedEvent.await(getMillisLeft());
+                    }
+                    // We use the caching capability of ledger so we do not get records from
+                    // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
+                    // yields. We just clean them up afterwards:
 
-                        debug("download and commit subitems, state: " + getState());
-                        downloadAndCommitSubItemsOf(item);
+                    debug("download and commit subitems, state: " + getState());
+                    downloadAndCommitSubItemsOf(item);
 
-                        debug("clearing ledger locks");
+                    debug("clearing ledger locks");
+                    debug("wait mutex: downloadAndCommit");
+                    synchronized (mutex) {
+                        debug("inside mutex: downloadAndCommit");
                         lockedToCreate.clear();
                         lockedToRevoke.clear();
                         debug("saving record");
@@ -1890,12 +1899,12 @@ public class Node {
                         if (record.getState() != ItemState.APPROVED) {
                             log.e("record is not approved " + record.getState());
                         }
-                        debug("approval done, state: " + getState() + ", have a copy " + (item == null));
-                    } catch (TimeoutException | InterruptedException e) {
-                        debug("commit: failed to load item, ledger will not be altered, the record will be destroyed");
-                        setState(ItemState.UNDEFINED);
-                        record.destroy();
                     }
+                    debug("approval done, state: " + getState() + ", have a copy " + (item == null));
+                } catch (TimeoutException | InterruptedException e) {
+                    debug("commit: failed to load item, ledger will not be altered, the record will be destroyed");
+                    setState(ItemState.UNDEFINED);
+                    record.destroy();
                 }
                 close();
             }
@@ -1905,17 +1914,19 @@ public class Node {
             synchronized (ledgerRollbackLock) {
                 debug("rollbacks to: " + newState + " consensus: " + positiveNodes.size() + "/" + negativeNodes.size());
                 ledger.transaction(() -> {
-                    for (StateRecord r : lockedToRevoke)
-                        r.unlock().save();
-                    lockedToRevoke.clear();
+                    synchronized (mutex) {
+                        for (StateRecord r : lockedToRevoke)
+                            r.unlock().save();
+                        lockedToRevoke.clear();
 
-                    // form created records, we touch only these that we have actually created
-                    for (StateRecord r : lockedToCreate) {
-                        debug("unlocking to create, item: " + r.getId() + " state: " + r.getState());
-                        r.unlock().save();
+                        // form created records, we touch only these that we have actually created
+                        for (StateRecord r : lockedToCreate) {
+                            debug("unlocking to create, item: " + r.getId() + " state: " + r.getState());
+                            r.unlock().save();
+                        }
+                        // todo: concurrent modification can happen here!
+                        lockedToCreate.clear();
                     }
-                    // todo: concurrent modification can happen here!
-                    lockedToCreate.clear();
 
                     debug("setting state: " + newState.name());
                     setState(newState);
