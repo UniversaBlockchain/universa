@@ -157,6 +157,8 @@ public class BaseNetworkTest extends TestCase {
                         }
                         assertEquals("In node " + n + " parcel " + parcel.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
+                        System.out.println(n.ping());
+                        System.out.println(n.traceTasksPool());
                         fail("timeout, node " + n + " parcel " + parcel.getId() + " parcel " + parcel.getId() + " (iteration " + i + ")");
                     }
                 }
@@ -2616,7 +2618,7 @@ public class BaseNetworkTest extends TestCase {
                     needRecreateTuContractNum ++;
                 }
             }
-            if (needRecreateTuContractNum > nodes.size() - config.getPositiveConsensus()) {
+            if (needRecreateTuContractNum > nodes.size() - config.getPositiveConsensus() - 1) {
                 tuContract = null;
                 Thread.sleep(1000);
                 return getApprovedTUContract();
