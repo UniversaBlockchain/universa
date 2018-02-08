@@ -358,6 +358,13 @@ public class Node {
         Object x = checkItemInternal(notification.getItemId(), null, null, true, true);
         NodeInfo from = notification.getFrom();
 
+        ParcelNotification.ParcelNotificationType notType;
+        if(notification instanceof ParcelNotification) {
+            notType = ((ParcelNotification)notification).getType();
+        } else {
+            notType = ParcelNotification.ParcelNotificationType.PAYMENT;
+        }
+
         if (x instanceof ItemResult) {
             ItemResult r = (ItemResult) x;
             // we have solution and need not answer, we answer if requested:
@@ -369,7 +376,7 @@ public class Node {
                                 null,
                                 r,
                                 false,
-                                ParcelNotification.ParcelNotificationType.PAYMENT)
+                                notType)
                 );
             }
         } else if (x instanceof ItemProcessor) {
@@ -398,7 +405,7 @@ public class Node {
                                     null,
                                     ip.getResult(),
                                     ip.needsVoteFrom(from),
-                                    ParcelNotification.ParcelNotificationType.PAYMENT)
+                                    notType)
                     );
                 }
                 return null;
@@ -422,15 +429,30 @@ public class Node {
         if(notification.getParcelId() == null) {
             obtainCommonNotification(notification);
         } else {
+            nodeDebug("got " + notification);
 
-            StateRecord itemRecord = ledger.getRecord(notification.getItemId());
-            // if it is not pending, it means item is already processed:
-            if (itemRecord != null && !itemRecord.isPending()) {
-                nodeDebug("item " + notification.getItemId() + " is already processed: " + itemRecord.getState());
-                obtainCommonNotification(notification);
+//            StateRecord itemRecord = ledger.getRecord(notification.getItemId());
+
+            Object item_x = checkItemInternal(notification.getItemId());
+
+            if (item_x instanceof ItemResult && ((ItemResult) item_x).state.isConsensusFound()) {
+                NodeInfo from = notification.getFrom();
+                ItemResult r = (ItemResult) item_x;
+                nodeDebug("item " + notification.getItemId() + " is already processed: " + r.state);
+                // we have solution and need not answer, we answer if requested:
+                if (notification.answerIsRequested()) {
+                    network.deliver(
+                            from,
+                            new ParcelNotification(myInfo,
+                                    notification.getItemId(),
+                                    null,
+                                    r,
+                                    false,
+                                    notification.getType())
+                    );
+                }
             } else {
 
-                nodeDebug("got " + notification);
 
                 Object x = checkParcelInternal(notification.getParcelId(), null, true);
                 NodeInfo from = notification.getFrom();

@@ -19,7 +19,7 @@ import java.time.ZoneId;
  * instance. Use ledger to create instances of this class.
  * <p>
  * This class incapsulates part of the business-logic of the universa which is tied to the saved state. This class is
- * primarily used by the {@link Elections}, and {@link LocalNode} where most of the business-logic is placed. Direct usage
+ * primarily used by the Elections, and LocalNode where most of the business-logic is placed. Direct usage
  * of this class should be avoided.
  * <p>
  * See {@link ItemState} for states and state graph description.
@@ -121,9 +121,12 @@ public class StateRecord implements HashIdentifiable {
     }
 
     public void save() {
+        log.d("save: " + this.getId() + " dirty: " + dirty);
+
         if (dirty && ledger != null) {
             dirty = false;
             ledger.save(this);
+            log.d("saved: " + this.getId());
         }
     }
 
