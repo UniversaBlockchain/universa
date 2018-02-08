@@ -19,7 +19,7 @@ import java.io.IOException;
 @BiType(name = "Parcel")
 public class Parcel implements BiSerializable {
 
-    private static byte[] packedBinary;
+    private byte[] packedBinary;
     private TransactionPack payload = null;
     private TransactionPack payment = null;
     private HashId hashId;
@@ -116,17 +116,22 @@ public class Parcel implements BiSerializable {
 
 
     @Override
-    public Binder serialize(BiSerializer s) {
+    public synchronized Binder serialize(BiSerializer s) {
+        System.out.println("Parcel serialize ");
         return Binder.of(
                 "payload", s.serialize(payload),
-                new Object[]{"payment", s.serialize(payment), "hashId", s.serialize(hashId)});
+                "payment", s.serialize(payment),
+                "hashId", s.serialize(hashId));
     }
 
     @Override
-    public void deserialize(Binder data, BiDeserializer ds) {
+    public synchronized void deserialize(Binder data, BiDeserializer ds) {
+        System.out.println("Parcel deserialize ");
         payload = ds.deserialize(data.get("payload"));
         payment = ds.deserialize(data.get("payment"));
         hashId = ds.deserialize(data.get("hashId"));
+
+        payment.getContract().setIsTU(true);
     }
 
     /**
@@ -136,13 +141,17 @@ public class Parcel implements BiSerializable {
      *
      * @return parcel
      */
-    public static Parcel unpack(byte[] packOrContractBytes) throws IOException {
-        packedBinary = packOrContractBytes;
+    public synchronized static Parcel unpack(byte[] packOrContractBytes) throws IOException {
+//        packedBinary = packOrContractBytes;
 
+        System.out.println("Parcel unpack parcel ");
         Object x = Boss.load(packOrContractBytes);
+        System.out.println("Parcel boss load ");
 
-        if (x instanceof Parcel)
+        if (x instanceof Parcel) {
+            ((Parcel) x).packedBinary = packOrContractBytes;
             return (Parcel) x;
+        }
 
         return null;
     }
@@ -153,7 +162,7 @@ public class Parcel implements BiSerializable {
      *
      * @return
      */
-    public byte[] pack() {
+    public synchronized byte[] pack() {
         if (packedBinary == null)
             packedBinary = Boss.pack(this);
         return packedBinary;

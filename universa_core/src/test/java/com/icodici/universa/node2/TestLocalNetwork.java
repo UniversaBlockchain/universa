@@ -172,23 +172,23 @@ public class TestLocalNetwork extends Network {
 
         Approvable item = node.getItem(itemId);
 
-        if(item instanceof Contract) {
-            TransactionPack tp_before = ((Contract) item).getTransactionPack();
-            byte[] data = tp_before.pack();
-
-            // here we "send" data and "got" it
-
-            TransactionPack tp_after = null;
-            try {
-                tp_after = TransactionPack.unpack(data);
-                Contract gotMainContract = tp_after.getContract();
-
-                return gotMainContract;
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+//        if(item instanceof Contract) {
+//            TransactionPack tp_before = ((Contract) item).getTransactionPack();
+//            byte[] data = tp_before.pack();
+//
+//            // here we "send" data and "got" it
+//
+//            TransactionPack tp_after = null;
+//            try {
+//                tp_after = TransactionPack.unpack(data);
+//                Contract gotMainContract = tp_after.getContract();
+//
+//                return gotMainContract;
+//
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
 
         return item;
     }
@@ -196,7 +196,23 @@ public class TestLocalNetwork extends Network {
     @Override
     public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         Node node = nodes.get(nodeInfo);
-        return node.getParcel(itemId);
+
+        Parcel parcel = node.getParcel(itemId);
+//        System.out.println("got parcel " + parcel.getId() + " from " + node);
+//        byte[] array = parcel.pack();
+//        System.out.println("pack parcel " + parcel.getId() + " from " + node);
+//
+//        //unpack
+//        Parcel des_parcel = null;
+//        try {
+//            des_parcel = Parcel.unpack(array);
+//            System.out.println("unpack parcel " + parcel.getId() + " from " + node);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//
+//        return des_parcel;
+        return parcel;
     }
 
     private String exceptionCallback(String message) {

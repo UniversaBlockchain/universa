@@ -33,7 +33,7 @@ public final class ItemLock {
      *
      * @throws Exception whatever callable throws
      */
-    public <T> T synchronize(HashId id, Function<Object, T> callable) throws Exception {
+    public static <T> T synchronize(HashId id, Function<Object, T> callable) throws Exception {
         ItemLock lock = null;
 
         // short exclusive mutex: obtaning a lock
@@ -50,7 +50,7 @@ public final class ItemLock {
         }
     }
 
-    private WeakHashMap<HashId, ItemLock> monitors = new WeakHashMap<>();
+    private static WeakHashMap<HashId, ItemLock> monitors = new WeakHashMap<>();
 
     /**
      * Niber of cached locks. Not all of them are acquired. Locks are cached as long as corresponding {@link HashId} is
@@ -59,7 +59,7 @@ public final class ItemLock {
      *
      * @return number of cached locks
      */
-    public int size() {
+    public static int size() {
         return monitors.size();
     }
 }
