@@ -13,10 +13,7 @@ import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.node2.Quantiser;
 
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Interface to anything that could be approved by the Universa network. Any entity, not limiting to the SmartContract,
@@ -96,7 +93,7 @@ public interface Approvable extends HashIdentifiable {
 
     default ZonedDateTime getExpiresAt() { return ZonedDateTime.now().plusHours(5);}
 
-    default boolean isTU() {
+    default boolean isTU(PublicKey issuerKey) {
         return false;
     }
 }
