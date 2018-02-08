@@ -60,21 +60,11 @@ public class Parcel implements BiSerializable {
 
 
 
-//    public void setPayload(TransactionPack payload) {
-//        this.payload = payload;
-//    }
-
-
 
     public TransactionPack getPayment() {
         return payment;
     }
 
-
-
-//    public void setPayment(TransactionPack payment) {
-//        this.payment = payment;
-//    }
 
 
 
@@ -86,27 +76,12 @@ public class Parcel implements BiSerializable {
 
 
 
-//    public void setPayloadContract(Contract c) {
-//        if (payload == null)
-//            payload = new TransactionPack();
-//        payload.setContract(c);
-//    }
-
-
 
     public Contract getPaymentContract() {
         if (payment != null)
             return payment.getContract();
         return null;
     }
-
-
-
-//    public void setPaymentContract(Contract c) {
-//        if (payment == null)
-//            payment = new TransactionPack();
-//        payment.setContract(c);
-//    }
 
 
 
@@ -142,7 +117,6 @@ public class Parcel implements BiSerializable {
      * @return parcel
      */
     public synchronized static Parcel unpack(byte[] packOrContractBytes) throws IOException {
-//        packedBinary = packOrContractBytes;
 
         Object x = Boss.load(packOrContractBytes);
 
