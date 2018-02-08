@@ -2614,6 +2614,8 @@ public class BaseNetworkTest extends TestCase {
                     System.out.println("ping ");
                     System.out.println(n.ping());
                     System.out.println(n.traceTasksPool());
+                    System.out.println(n.traceParcelProcessors());
+                    System.out.println(n.traceItemProcessors());
                     System.out.println("TU: node " + n + " timeout: ");
                     needRecreateTuContractNum ++;
                 }
@@ -2665,6 +2667,11 @@ public class BaseNetworkTest extends TestCase {
             System.out.println("ping ");
             System.out.println(node.ping());
             System.out.println(node.traceTasksPool());
+
+            for (Node n : nodes) {
+                System.out.println(n + " " + n.traceParcelProcessors());
+                System.out.println(n + " " + n.traceItemProcessors());
+            }
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {
@@ -2690,6 +2697,10 @@ public class BaseNetworkTest extends TestCase {
             System.out.println("ping ");
             System.out.println(node.ping());
             System.out.println(node.traceTasksPool());
+            for (Node n : nodes) {
+                System.out.println(n + " " + n.traceParcelProcessors());
+                System.out.println(n + " " + n.traceItemProcessors());
+            }
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {
