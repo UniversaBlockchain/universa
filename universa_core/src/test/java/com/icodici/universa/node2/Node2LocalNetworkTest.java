@@ -170,8 +170,10 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         init(node_s, nodes_s, nodesMap_s, network_s, ledger_s, config_s);
 
         System.out.println(node.traceTasksPool());
-        System.out.println(node.traceParcelProcessors());
-        System.out.println(node.traceItemProcessors());
+        for (Node n : nodes) {
+            System.out.println(n + " " + n.traceParcelProcessors());
+            System.out.println(n + " " + n.traceItemProcessors());
+        }
 
         while(node.freeThreadsNum() < 20) {
             System.out.println("num free pools: " + node.freeThreadsNum() + " wait");

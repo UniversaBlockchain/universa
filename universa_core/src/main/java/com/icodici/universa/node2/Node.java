@@ -879,6 +879,7 @@ public class Node {
                                 int limit = Quantiser.quantaPerUTN * (parent.getStateData().getIntOrThrow("transaction_units") - payment.getStateData().getIntOrThrow("transaction_units"));
                                 payload.getQuantiser().reset(limit);
                                 debug( "payload " + payload.getId() + " processing limit is " + payload.getQuantiser().getQuantaLimit());
+
                                 payloadProcessor.forceChecking(true);
 
 //                                if (payloadProcessor.processingState.notCheckedYet()) {
@@ -1343,7 +1344,10 @@ public class Node {
         private final synchronized void checkItem() {
             if(processingState.canContinue()) {
 
-                if (!processingState.isProcessedToConsensus() && processingState != ItemProcessingState.CHECKING) {
+                if (!processingState.isProcessedToConsensus()
+                        && processingState != ItemProcessingState.POLLING
+                        && processingState != ItemProcessingState.CHECKING
+                        && processingState != ItemProcessingState.RESYNCING) {
                     if (alreadyChecked) {
                         throw new RuntimeException("Check already processed");
                     }
@@ -1481,7 +1485,7 @@ public class Node {
         }
 
         // check subitems of given item recursively (down for newItems line)
-        private final void checkSubItemsOf(Approvable checkingItem) {
+        private final synchronized void checkSubItemsOf(Approvable checkingItem) {
             debug("checking subitems of : " + checkingItem.getId());
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
@@ -1495,7 +1499,8 @@ public class Node {
                     }
                     // check revoking items
                     for (Approvable a : checkingItem.getRevokingItems()) {
-                        debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId());
+                        debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId() + " " + record);
+                        debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId() + " ledger " + ledger.getRecord(a.getId()));
                         StateRecord r = record.lockToRevoke(a.getId());
                         debug("checking revoke of item of : " + checkingItem.getId() + " -> " + a.getId() + " record is " + r);
                         if (r == null) {
@@ -2170,6 +2175,7 @@ public class Node {
             this.isCheckingForce = isCheckingForce;
             if(processingState.canContinue()) {
                 if (processingState == ItemProcessingState.DOWNLOADED) {
+//                    checkItem();
                     executorService.submit(() -> {
                         checkItem();
                     }, Node.this.toString() + " > parcel " + parcelId + " > item " + itemId + " :: forceChecking -> checkItem");
@@ -2180,10 +2186,11 @@ public class Node {
         private void close() {
             debug("closing, state: " + getState() + ", it was self-resync: " + resyncItselfOnly);
 
-            stopPoller();
-
             // fire all event to release possible listeners
             processingState = ItemProcessingState.DONE;
+
+            stopPoller();
+
             downloadedEvent.fire();
             pollingReadyEvent.fire();
             doneEvent.fire();
