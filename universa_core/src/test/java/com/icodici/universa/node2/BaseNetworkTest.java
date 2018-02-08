@@ -348,7 +348,7 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerItem(main);
 
-        ItemResult itemResult = node.waitItem(main.getId(), 2500);
+        ItemResult itemResult = node.waitItem(main.getId(), 12500);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
@@ -2653,7 +2653,7 @@ public class BaseNetworkTest extends TestCase {
         Parcel parcel = null;
         try {
             parcel = registerWithNewParcel(c);
-//            LogPrinter.showDebug(true);
+            LogPrinter.showDebug(true);
             System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             node.waitParcel(parcel.getId(), 30000);
             System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
