@@ -1287,7 +1287,7 @@ public class Node {
                     try {
                         boolean checkPassed = false;
 
-                        if(item.isTU()) {
+                        if(item.isTU(config.getTransactionUnitsIssuerKey())) {
                             checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKey());
                         } else {
                             checkPassed = item.check();
@@ -1594,7 +1594,7 @@ public class Node {
                     Notification notification;
                     debug("send poll notifications");
                     ParcelNotification.ParcelNotificationType notificationType;
-                    if(item.isTU()) {
+                    if(item.isTU(config.getTransactionUnitsIssuerKey())) {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                     } else {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
@@ -1833,7 +1833,7 @@ public class Node {
                 Notification notification;
                 debug("send new consensus notifications");
                 ParcelNotification.ParcelNotificationType notificationType;
-                if(item.isTU()) {
+                if(item.isTU(config.getTransactionUnitsIssuerKey())) {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
@@ -2031,7 +2031,7 @@ public class Node {
                 debug("broadcast own state notifications");
 
                 ParcelNotification.ParcelNotificationType notificationType;
-                if(item.isTU()) {
+                if(item.isTU(config.getTransactionUnitsIssuerKey())) {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
