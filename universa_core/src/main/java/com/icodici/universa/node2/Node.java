@@ -673,6 +673,31 @@ public class Node {
         return "pool ::> " + executorService.tracePools();
     }
 
+    public String traceItemProcessors() {
+
+        String s = "";
+
+        for(ItemProcessor ip : processors.values()) {
+            s += "\nip: p " + ip.parcelId + ", i " + ip.itemId + " " + ip.processingState;
+        }
+
+        return "ips ::> " + s;
+    }
+
+    public String traceParcelProcessors() {
+
+        String s = "";
+
+        for(ParcelProcessor pp : parcelProcessors.values()) {
+            s += "\npp: p " + pp.parcelId
+                    + ", ipmt " + (pp.paymentProcessor == null ? null : pp.paymentProcessor.itemId)
+                    + ", ipld " + (pp.payloadProcessor == null ? null : pp.payloadProcessor.itemId)
+                    + " " + pp.processingState;
+        }
+
+        return "pps ::> " + s;
+    }
+
     public int freeThreadsNum() {
 
         return executorService.getCorePoolSize() - executorService.getActiveCount();
