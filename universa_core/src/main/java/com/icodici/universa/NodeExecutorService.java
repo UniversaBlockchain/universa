@@ -25,18 +25,6 @@ public class NodeExecutorService extends ScheduledThreadPoolExecutor {
 
 
 
-//    /**
-//     * @throws RejectedExecutionException {@inheritDoc}
-//     * @throws NullPointerException       {@inheritDoc}
-//     */
-//    public ScheduledFuture<?> schedule(Runnable command,
-//                                       long delay,
-//                                       TimeUnit unit) {
-//        ScheduledFuture<?> ret = super.schedule(command, delay, unit);
-//        commands.put(ret, command);
-//        return ret;
-//    }
-
     /**
      * @throws RejectedExecutionException {@inheritDoc}
      * @throws NullPointerException       {@inheritDoc}

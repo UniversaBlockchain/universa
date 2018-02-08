@@ -698,10 +698,10 @@ public class BaseNetworkTest extends TestCase {
         TestItem revoke2 = new TestItem(true);
 
         node.registerItem(revoke1);
-        assertEquals(ItemState.APPROVED, node.waitItem(revoke1.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(revoke1.getId(), 15000).state);
 
         node.registerItem(revoke2);
-        assertEquals(ItemState.APPROVED, node.waitItem(revoke2.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(revoke2.getId(), 15000).state);
 
         new1_1.addRevokingItems(revoke1);
         new2_1.addRevokingItems(revoke2);
@@ -2581,7 +2581,7 @@ public class BaseNetworkTest extends TestCase {
         stepaTU.setIsTU(true);
         stepaTU.traceErrors();
         node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 8000);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         return ContractsService.createParcel(c, stepaTU, 150, keys);
