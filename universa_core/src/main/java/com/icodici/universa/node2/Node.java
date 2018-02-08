@@ -673,6 +673,11 @@ public class Node {
         return "pool ::> " + executorService.tracePools();
     }
 
+    public int freeThreadsNum() {
+
+        return executorService.getCorePoolSize() - executorService.getActiveCount();
+    }
+
     /**
      * Get the cached item.
      *

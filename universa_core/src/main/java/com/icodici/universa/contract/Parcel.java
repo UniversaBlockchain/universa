@@ -144,9 +144,7 @@ public class Parcel implements BiSerializable {
     public synchronized static Parcel unpack(byte[] packOrContractBytes) throws IOException {
 //        packedBinary = packOrContractBytes;
 
-        System.out.println("Parcel unpack parcel ");
         Object x = Boss.load(packOrContractBytes);
-        System.out.println("Parcel boss load ");
 
         if (x instanceof Parcel) {
             ((Parcel) x).packedBinary = packOrContractBytes;
