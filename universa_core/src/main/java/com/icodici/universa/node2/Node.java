@@ -49,8 +49,8 @@ public class Node {
     private final ParcelCache parcelCache;
     private final ItemInformer informer = new ItemInformer();
 
-    private final ItemLock itemLock = new ItemLock();
-    private final ParcelLock parcelLock = new ParcelLock();
+//    private final ItemLock itemLock = new ItemLock();
+//    private final ParcelLock parcelLock = new ParcelLock();
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
@@ -544,7 +544,9 @@ public class Node {
                                        boolean autoStart, boolean forceChecking, boolean ommitItemResult) {
         try {
             // first, let's lock to the item id:
-            return itemLock.synchronize(itemId, (lock) -> {
+            nodeDebug("checkItemInternal wait lock for " + itemId);
+            return ItemLock.synchronize(itemId, (lock) -> {
+                nodeDebug("checkItemInternal inside lock for " + itemId);
                 ItemProcessor ip = processors.get(itemId);
                 if (ip != null) {
                     nodeDebug("existing IP found for " + itemId);
@@ -609,7 +611,9 @@ public class Node {
      */
     protected Object checkParcelInternal(@NonNull HashId parcelId, Parcel parcel, boolean autoStart) {
         try {
-            return parcelLock.synchronize(parcelId, (lock) -> {
+            nodeDebug("checkParcelInternal wait lock for " + parcelId);
+            return ParcelLock.synchronize(parcelId, (lock) -> {
+                nodeDebug("checkParcelInternal inside lock for " + parcelId);
                 ParcelProcessor processor = parcelProcessors.get(parcelId);
                 if (processor != null) {
                     nodeDebug("existing parcel processor found for " + parcelId
@@ -664,7 +668,7 @@ public class Node {
 
     public String ping() {
 
-        return "ping ::> " + toString() + " executorService: " + executorService.toString() + " ItemLock: " + itemLock.size()
+        return "ping ::> " + toString() + " executorService: " + executorService.toString() + " ItemLock: " + ItemLock.size()
                 + " item processors: " + processors.size() + ", parcel processors: " + parcelProcessors.size();
     }
 
@@ -842,11 +846,11 @@ public class Node {
                                 + " is ready for polling, state is " + paymentProcessor.getState()
                                 + " processingState is " + paymentProcessor.processingState);
 
-                        synchronized (mutex) {
+//                        synchronized (mutex) {
                             for (NodeInfo ni : paymentDelayedVotes.keySet())
                                 paymentProcessor.vote(ni, paymentDelayedVotes.get(ni));
                             paymentDelayedVotes.clear();
-                        }
+//                        }
                         processingState = ParcelProcessingState.PAYMENT_POLLING;
                         if(!paymentProcessor.isDone()) {
                             paymentProcessor.doneEvent.await();
@@ -890,11 +894,11 @@ public class Node {
                                         + " is ready for polling, state is " + payloadProcessor.getState()
                                         + " processingState is " + payloadProcessor.processingState);
 
-                                synchronized (mutex) {
+//                                synchronized (mutex) {
                                     for (NodeInfo ni : payloadDelayedVotes.keySet())
                                         payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
                                     payloadDelayedVotes.clear();
-                                }
+//                                }
 
                                 processingState = ParcelProcessingState.PAYLOAD_POLLING;
                                 if(!payloadProcessor.isDone()) {
@@ -1034,7 +1038,7 @@ public class Node {
                         + " payloadProcessor state is " + (payloadProcessor == null ? null : payloadProcessor.processingState));
 
                 if(isTU){
-                    synchronized (mutex) {
+//                    synchronized (mutex) {
                         if (paymentProcessor != null
 //                                && !paymentProcessor.processingState.notCheckedYet()
                                 )
@@ -1042,9 +1046,9 @@ public class Node {
                         else {
                             paymentDelayedVotes.put(node, state);
                         }
-                    }
+//                    }
                 } else {
-                    synchronized (mutex) {
+//                    synchronized (mutex) {
                         if (payloadProcessor != null
 //                                && !payloadProcessor.processingState.notCheckedYet()
                                 )
@@ -1052,7 +1056,7 @@ public class Node {
                         else {
                             payloadDelayedVotes.put(node, state);
                         }
-                    }
+//                    }
                 }
             }
         }
