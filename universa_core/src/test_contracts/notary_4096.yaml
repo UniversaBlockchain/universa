@@ -27,9 +27,7 @@ definition:
         __type: RoleLink
         name: '@revoke'
       __type: RevokePermission
-  created_at:
-    seconds: 1517583389
-    __type: unixtime
+  created_at: now()
   issuer:
     keys:
     - key:
@@ -78,9 +76,7 @@ state:
   data: {}
   branch_id: null
   origin: null
-  created_at:
-    seconds: 1517583389
-    __type: unixtime
+  created_at: now()
   created_by:
     keys:
     - key:

@@ -85,7 +85,6 @@ public class BossBiMapper {
      * information.
      *
      * @param klass
-     * @param adapter
      */
     public static void registerClass(Class<? extends BiSerializable> klass) {
         getInstance().registerClass(klass);

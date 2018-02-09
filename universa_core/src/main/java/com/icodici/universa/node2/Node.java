@@ -543,6 +543,7 @@ public class Node {
                             item.getCreatedAt().isBefore(ZonedDateTime.now().minus(config.getMaxItemCreationAge()))) {
                         // it is too old - client must manually check other nodes. For us it's unknown
                         item.addError(Errors.EXPIRED, "created_at", "too old");
+                        nodeDebug("too old " + itemId + " " + item.getCreatedAt());
                         return ItemResult.DISCARDED;
                     }
                 }
@@ -878,7 +879,7 @@ public class Node {
                                 payloadProcessor.doneEvent.await();
                             }
                         } else {
-                            debug("payload consensus already got for " + payload.getId());
+                            debug("payload consensus already got for " + payload.getId() + " result: " + payloadResult);
                         }
                     } else {
                         if(payloadProcessor != null) {

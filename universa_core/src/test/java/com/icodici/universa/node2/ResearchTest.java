@@ -741,42 +741,6 @@ public class ResearchTest extends BaseNetworkTest {
 
 
 
-//    protected static final String ROOT_PATH = "./src/test_contracts/";;
-    @Test
-    public void splitSnatch() throws Exception {
-        PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract c1 = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
-        c1.addSignerKey(key);
-        assertTrue(c1.check());
-        c1.seal();
-        registerAndCheckApproved(c1);
-        System.out.println("true money origin: " + c1.getOrigin().toBase64String());
-        Contract c1copy = new Contract(c1.getLastSealedBinary());
-
-        System.out.println("money before split (c1): " + c1.getStateData().getIntOrThrow("amount"));
-        c1 = c1.createRevision();
-        Contract c2 = c1.splitValue("amount", new Decimal(60));
-        System.out.println("money after split (c1): " + c1.getStateData().getIntOrThrow("amount"));
-        System.out.println("money after split (c2): " + c2.getStateData().getIntOrThrow("amount"));
-        System.out.println("check after split (c1.origin): " + c1.getOrigin().toBase64String());
-        System.out.println("check after split (c2.origin): " + c2.getOrigin().toBase64String());
-        ((Contract)c1.getRevokingItems().iterator().next()).getStateData().set("amount", 2000);
-        c1.addSignerKey(key);
-        c1.seal();
-        c2.getStateData().set("amount", 1960);
-        c2.addSignerKey(key);
-        c2.seal();
-        System.out.println("money after snatch (c2): " + c2.getStateData().getIntOrThrow("amount"));
-        System.out.println("check after snatch (c2): " + c2.check());
-//        registerAndCheckApproved(c1);
-//        registerAndCheckApproved(c2);
-        System.out.println("check after snatch (c1.origin): " + c1.getOrigin().toBase64String());
-        System.out.println("check after snatch (c2.origin): " + c2.getOrigin().toBase64String());
-        System.out.println("check after snatch (c1copy.origin): " + c1copy.getOrigin().toBase64String());
-        registerAndCheckDeclined(c2);
-    }
-
-
 
 //    protected static final String ROOT_PATH = "./src/test_contracts/";
 //    protected static final String CONFIG_2_PATH = "./src/test_config_2/";
