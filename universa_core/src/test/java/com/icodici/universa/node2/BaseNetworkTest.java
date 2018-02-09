@@ -222,7 +222,7 @@ public class BaseNetworkTest extends TestCase {
         TestItem item = new TestItem(true);
 
         node.registerItem(item);
-        ItemResult result = node.waitItem(item.getId(), 6000);
+        ItemResult result = node.waitItem(item.getId(), 16000);
         assertEquals(ItemState.APPROVED, result.state);
 
         result = node.waitItem(item.getId(), 6000);
