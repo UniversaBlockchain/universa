@@ -70,7 +70,7 @@ public class ChangeNumberPermission extends Permission {
             if( !(delta instanceof ChangedItem) )
                 return;
             try {
-                int valueDelta = Math.abs((int)delta.newValue() - (int)delta.oldValue());
+                int valueDelta = (int)delta.newValue() - (int)delta.oldValue();
                 if( valueDelta < minStep || valueDelta > maxStep )
                     return;
                 else {
