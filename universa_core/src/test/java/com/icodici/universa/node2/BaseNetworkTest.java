@@ -159,6 +159,8 @@ public class BaseNetworkTest extends TestCase {
                     } catch (TimeoutException e) {
                         System.out.println(n.ping());
                         System.out.println(n.traceTasksPool());
+                        System.out.println(n.traceParcelProcessors());
+                        System.out.println(n.traceItemProcessors());
                         fail("timeout, node " + n + " parcel " + parcel.getId() + " parcel " + parcel.getId() + " (iteration " + i + ")");
                     }
                 }
@@ -380,7 +382,7 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerItem(main);
         System.out.println("-------------- wait item " + main.getId() + " --------");
-        ItemResult itemResult = node.waitItem(main.getId(), 5000);
+        ItemResult itemResult = node.waitItem(main.getId(), 15000);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
 
