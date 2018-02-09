@@ -817,6 +817,21 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
     }
 
+    @Test
+    public void createNotaryContract() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Contract c = Contract.fromDslFile(ROOT_PATH + "notary_4096.yaml");
+        c.addSignerKeyFromFile(ROOT_PATH + "keys/romanuskov_4096.private.unikey");
+        assertTrue(c.check());
+        c.seal();
+
+        registerAndCheckApproved(c);
+    }
+
     @Test(timeout = 90000)
     public void checkSimpleCase() throws Exception {
         if(node == null) {

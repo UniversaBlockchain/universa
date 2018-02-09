@@ -121,7 +121,11 @@ public class Binder extends HashMap<String, Object> implements Serializable {
         if (x instanceof byte[])
             return (byte[]) x;
         if (x instanceof Map) {
-            return (byte[]) DefaultBiMapper.deserialize((Map) x);
+            x =  DefaultBiMapper.deserialize((Map) x);
+            if (x instanceof Bytes)
+                return ((Bytes) x).toArray();
+            if (x instanceof byte[])
+                return (byte[]) x;
         }
         if(x instanceof String) {
             char[] cc = ((String) x).toCharArray();
