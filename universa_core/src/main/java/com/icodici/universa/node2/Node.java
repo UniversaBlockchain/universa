@@ -49,12 +49,8 @@ public class Node {
     private final ParcelCache parcelCache;
     private final ItemInformer informer = new ItemInformer();
 
-//    private final ItemLock itemLock = new ItemLock();
-//    private final ParcelLock parcelLock = new ParcelLock();
-
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
-//    private ConcurrentHashMap<HashId, ItemResult> finishedParcels = new ConcurrentHashMap();
 
     private static NodeExecutorService executorService = new NodeExecutorService(64);
 
@@ -69,7 +65,7 @@ public class Node {
     }
 
     /**
-     * Asynchronous (non blocking) check/register item state. IF the item is new and eligible to process with the
+     * Asynchronous (non blocking) check/register item state. If the item is new and eligible to process with the
      * consensus, the processing will be started immediately. If it is already processing, the current state will be
      * returned.
      *
@@ -84,11 +80,14 @@ public class Node {
     }
 
     /**
-     * Synchronous (blocking) parcel register.
+     * Asynchronous (non blocking) parcel (contract with payment) register.
+     * Use {@link Node->waitParcel} for waiting parcel being processed.
+     * For checking parcel parts use {@link Node->waitItem} or {@link Node->checkItem} after {@link Node->waitParcel}
+     * with parcel.getPayloadContract().getId() or parcel.getPaymentContract().getId() as params.
      *
      * @param parcel to register/check state
      *
-     * @return current (or last known) item state
+     * @return true if Parcel launch to processing. Otherwise exception will be thrown.
      */
     public boolean registerParcel(Parcel parcel) {
 
@@ -118,12 +117,6 @@ public class Node {
         return ir;
     }
 
-    public @NonNull ItemResult checkParcel(HashId parcelId) {
-
-        Object x = checkParcelInternal(parcelId);
-        ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ParcelProcessor) x).getPayloadResult();
-        return ir;
-    }
 
     public @NonNull Binder extendedCheckItem(HashId itemId) {
 
@@ -154,7 +147,7 @@ public class Node {
     }
 
     /**
-     * Test use only. It the item is being elected, block until the item is processed with the consenus. Otherwise
+     * If the item is being electing, block until the item been processed with the consensus. Otherwise
      * returns state immediately.
      *
      * @param itemId item ti check or wait for
@@ -177,21 +170,19 @@ public class Node {
     }
 
     /**
-     * Test use only. It the item is being elected, block until the item is processed with the consenus. Otherwise
-     * returns state immediately.
+     * If the parcel is being electing, block until the parcel been processed (been processed payment and payload contracts).
      *
-     * @param itemId parcel to check or wait for
+     * @param parcelId parcel to wait for
      *
      * @return item state
      */
-    public void waitParcel(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
+    public void waitParcel(HashId parcelId, long millisToWait) throws TimeoutException, InterruptedException {
 
         Object x = null;
 
         // first check if item is processing as part of parcel
-        x = checkParcelInternal(itemId);
+        x = checkParcelInternal(parcelId);
         if (x instanceof ParcelProcessor) {
-            nodeDebug("wait parcel " + itemId + " processingState: " + ((ParcelProcessor) x).processingState);
             if(!((ParcelProcessor) x).isDone())
             {
                 ((ParcelProcessor) x).doneEvent.await(millisToWait);
@@ -340,6 +331,7 @@ public class Node {
         Object x = checkItemInternal(notification.getItemId(), null, null, true, true);
         NodeInfo from = notification.getFrom();
 
+        // If it is not ParcelNotification we think t is payment type of notification
         ParcelNotification.ParcelNotificationType notType;
         if(notification instanceof ParcelNotification) {
             notType = ((ParcelNotification)notification).getType();
@@ -399,22 +391,22 @@ public class Node {
 
 
     /**
-     * Obtain got common item notification: looking for result or item processor and register vote
+     * Obtain got common parcel notification: looking for result or parcel processor and register vote
      *
      * @param notification common item notification
      *
      */
     private final void obtainParcelCommonNotification(ParcelNotification notification) {
 
-        // get processor, create if need
-        // register my vote
+        // if notification hasn't parcelId we think this is simple item notification and obtain it as it
         if(notification.getParcelId() == null) {
             obtainCommonNotification(notification);
         } else {
             nodeDebug("got " + notification);
 
+            // check if item for notification is already processed
             Object item_x = checkItemInternal(notification.getItemId());
-
+            // if already processed and result has consensus - answer immediately
             if (item_x instanceof ItemResult && ((ItemResult) item_x).state.isConsensusFound()) {
                 NodeInfo from = notification.getFrom();
                 ItemResult r = (ItemResult) item_x;
@@ -424,14 +416,14 @@ public class Node {
                             from,
                             new ParcelNotification(myInfo,
                                     notification.getItemId(),
-                                    null,
+                                    notification.getParcelId(),
                                     r,
                                     false,
                                     notification.getType())
                     );
                 }
             } else {
-
+                // if we haven't results for item, we looking for or create parcel processor
                 Object x = checkParcelInternal(notification.getParcelId(), null, true);
                 NodeInfo from = notification.getFrom();
 
@@ -457,9 +449,9 @@ public class Node {
                             log.e("pending vote on parcel " + notification.getParcelId()
                                     + " and item " + notification.getItemId() + " from " + from);
 
-//                 We answer only if (1) answer is requested and (2) we have position on the subject:
+                        // We answer only if (1) answer is requested and (2) we have position on the subject:
                         if (notification.answerIsRequested()) {
-
+                            // if notification type is payment, we use payment data from parcel, otherwise we use payload data
                             if (notification.getType().isTU()) {
                                 // parcel for payment
                                 if (pp.getPaymentState() != ItemState.PENDING) {
@@ -513,6 +505,8 @@ public class Node {
      * @param itemId    item to check the state.
      * @param item      provide item if any, can be null. Default is null.
      * @param autoStart - create new ItemProcessor if not exist. Default is false.
+     * @param forceChecking - point item processor to wait (if false) with item checking or start without waiting (if true).
+     *                      Default is false. Use ItemProcessor.forceChecking() to start waiting item checking.
      * @param ommitItemResult - do not return ItemResult for processed item,
      *                        create new ItemProcessor instead (if autoStart is true). Default is false.
      *
@@ -578,18 +572,19 @@ public class Node {
 
     /**
      * Optimized for various usages, check the parcel, start processing as need, return object depending on the current
-     * state. Note that actual error codes are set to the item itself.
+     * state. Note that actual error codes are set to the item itself. Use in pair with checkItemInternal() to check parts of parcel.
      *
      * @param parcelId    parcel's id.
      * @param parcel      provide parcel if need, can be null. Default is null.
      * @param autoStart - create new ParcelProcessor if not exist. Default is false.
      *
      * @return instance of {@link ParcelProcessor} if the parcel is being processed (also if it was started by the call),
-     *         {@link ItemResult} if it is already processed or can't be processed.
+     *         {@link ItemResult} if it is can't be processed.
      */
     protected Object checkParcelInternal(@NonNull HashId parcelId, Parcel parcel, boolean autoStart) {
         try {
             return ParcelLock.synchronize(parcelId, (lock) -> {
+                // let's look exisiting parcel processor
                 ParcelProcessor processor = parcelProcessors.get(parcelId);
                 if (processor != null) {
                     nodeDebug("existing parcel processor found for " + parcelId
@@ -605,6 +600,7 @@ public class Node {
 
                 nodeDebug("no parcel processor found for " + parcelId + ", will be created: " + autoStart);
 
+                // if nothing found and need to create new - create it
                 if (autoStart) {
                     if (parcel != null) {
                         synchronized (parcelCache) {
@@ -624,9 +620,11 @@ public class Node {
         }
     }
 
+
     protected void nodeDebug(String str) {
         log.d(toString() + ": " + str);
     }
+
 
     private SimpleDateFormat dataFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 
@@ -635,15 +633,30 @@ public class Node {
         return "[" + dataFormat.format(new Date()) + "] Node(" + myInfo.getNumber() + ") ";
     }
 
+
+    /**
+     * For debug. Return some info about executorService, item and parcel processors.
+     * @return
+     */
     public String ping() {
         return "ping ::> " + toString() + " executorService: " + executorService.toString() + " ItemLock: " + ItemLock.size()
                 + " item processors: " + processors.size() + ", parcel processors: " + parcelProcessors.size();
     }
 
+
+    /**
+     * For debug. Return active processes in the executorService.
+     * @return
+     */
     public String traceTasksPool() {
         return "pool ::> " + executorService.tracePools();
     }
 
+
+    /**
+     * For debug. Return existing (being processing) item processors with it states.
+     * @return
+     */
     public String traceItemProcessors() {
 
         String s = "";
@@ -655,6 +668,11 @@ public class Node {
         return "ips ::> " + s;
     }
 
+
+    /**
+     * For debug. Return existing (being processing) parcel processors with it states.
+     * @return
+     */
     public String traceParcelProcessors() {
 
         String s = "";
@@ -669,9 +687,15 @@ public class Node {
         return "pps ::> " + s;
     }
 
+
+    /**
+     * For debug. Return num of free pools in the executorService.
+     * @return
+     */
     public int freeThreadsNum() {
         return executorService.getCorePoolSize() - executorService.getActiveCount();
     }
+
 
     /**
      * Get the cached item.
@@ -695,7 +719,7 @@ public class Node {
      *
      * @param itemId
      *
-     * @return cached item or null if it is missing
+     * @return cached parcel or null if it is missing
      */
     public Parcel getParcel(HashId itemId) {
         synchronized (parcelCache) {
@@ -768,7 +792,7 @@ public class Node {
 
             if (this.parcel != null)
                  executorService.submit(() -> parcelDownloaded(),
-                         Node.this.toString() + " > parcel " + parcelId + " :: ParcelProcessor -> parcelDownloaded");
+                         Node.this.toString() + " pp > parcel " + parcelId + " :: ParcelProcessor -> parcelDownloaded");
         }
 
         //////////// processing section /////////////
@@ -778,17 +802,22 @@ public class Node {
                 synchronized (mutex) {
                     if (processSchedule == null || processSchedule.isDone()) {
                         processSchedule = (ScheduledFuture<?>) executorService.submit(() -> process(),
-                                Node.this.toString() + " > parcel " + parcelId + " :: pulseProcessing -> process");
+                                Node.this.toString() + " pp > parcel " + parcelId + " :: pulseProcessing -> process");
                     }
                 }
             }
         }
 
+        /**
+         * Main process of processor. Here processor wait until payment will checked and approved.
+         * Then wait decision about payload contract.
+         */
         private void process() {
             if(processingState.canContinue()) {
 
                 processingState = ParcelProcessingState.PREPARING;
                 try {
+                    // wait payment
                     if (paymentResult == null) {
                         processingState = ParcelProcessingState.PAYMENT_CHECKING;
                         debug("parcel's payment processor for " + payment.getId()
@@ -806,13 +835,14 @@ public class Node {
                         paymentResult = paymentProcessor.getResult();
                     }
 
-
+                    // if payment is ok, wait payload
                     if (paymentResult.state.isApproved()) {
                         debug("payment " + payment.getId() + " has approved for payload " + payload.getId());
 
                         if (payloadResult == null) {
 
                             processingState = ParcelProcessingState.PAYLOAD_CHECKING;
+                            // check payment parent
                             Contract parent = null;
                             for(Contract c : payment.getRevoking()) {
                                 if(c.getId().equals(payment.getParent())) {
@@ -821,9 +851,11 @@ public class Node {
                                 }
                             }
                             if(parent != null) {
+                                // set pay limit for payload processing
                                 int limit = Quantiser.quantaPerUTN * (parent.getStateData().getIntOrThrow("transaction_units") - payment.getStateData().getIntOrThrow("transaction_units"));
                                 payload.getQuantiser().reset(limit);
 
+                                // force payload checking (we've freeze it at processor start)
                                 payloadProcessor.forceChecking(true);
 
                                 debug("parcel payload processor for " + payload.getId()
@@ -856,9 +888,11 @@ public class Node {
                         }
                     }
 
+                    // we got payment and payload result, can fire done event for waiters
                     processingState = ParcelProcessingState.FINISHED;
                     doneEvent.fire();
 
+                    // but we want to wait until paymentProcessor and payloadProcessor will be removed
                     if(paymentProcessor != null && paymentProcessor.processingState != ItemProcessingState.FINISHED) {
                         paymentProcessor.removedEvent.await();
                     }
@@ -873,6 +907,11 @@ public class Node {
 
                 removeSelf();
             }
+        }
+
+        private void stopProcesser() {
+            if (processSchedule != null)
+                processSchedule.cancel(true);
         }
 
         //////////// download section /////////////
@@ -934,6 +973,7 @@ public class Node {
                 payment = parcel.getPaymentContract();
                 payload = parcel.getPayloadContract();
 
+                // create item processors or get results for payment and payload
                 synchronized (mutex) {
                     Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
                     if (x instanceof ItemProcessor) {
@@ -941,6 +981,7 @@ public class Node {
                     } else {
                         paymentResult = (ItemResult) x;
                     }
+                    // we freeze payload checking until payment will be approved
                     x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
                     if (x instanceof ItemProcessor) {
                         payloadProcessor = ((ItemProcessor) x);
@@ -972,6 +1013,8 @@ public class Node {
                         + " payloadProcessor is " + payloadProcessor
                         + " payloadProcessor state is " + (payloadProcessor == null ? null : payloadProcessor.processingState));
 
+                // if we got vote but item processor not exist yet - we store that vote.
+                // Otherwise we give vote to item processor
                 if(isTU){
                     if (paymentProcessor != null) {
                         paymentProcessor.vote(node, state);
@@ -1036,7 +1079,7 @@ public class Node {
         }
 
         /**
-         * true if we need to get vote from a node
+         * true if we need to get payload vote from a node
          *
          * @param node we might need vote from
          *
@@ -1049,7 +1092,7 @@ public class Node {
         }
 
         /**
-         * true if we need to get vote from a node
+         * true if we need to get payment vote from a node
          *
          * @param node we might need vote from
          *
@@ -1073,12 +1116,16 @@ public class Node {
             }
         }
 
+        /**
+         * Remove parcel processor from the Node and stop all processes.
+         */
         private final void removeSelf() {
             debug("removing parcel");
             if(processingState.canRemoveSelf()) {
                 parcelProcessors.remove(parcelId);
 
                 stopDownloader();
+                stopProcesser();
 
                 doneEvent.fire();
 
@@ -1153,6 +1200,15 @@ public class Node {
         private ScheduledFuture<?> consensusReceivedChecker;
         private ScheduledFuture<?> resyncer;
 
+        /**
+         *
+         * @param itemId item id to be process
+         * @param parcelId parcel id that item belongs to.
+         * @param item item object if exist
+         * @param lock lock for synchronization
+         * @param isCheckingForce if true checking item processing without delays.
+         *                        If false checking item wait until forceChecking() will be called.
+         */
         public ItemProcessor(HashId itemId, HashId parcelId, Approvable item, Object lock, boolean isCheckingForce) {
 
             mutex = lock;
@@ -1260,7 +1316,7 @@ public class Node {
                 downloader.cancel(true);
         }
 
-        //////////// check state section /////////////
+        //////////// check item section /////////////
 
         private final synchronized void checkItem() {
             if(processingState.canContinue()) {
@@ -1480,10 +1536,10 @@ public class Node {
                                 setState(ItemState.PENDING_NEGATIVE);
                             }
                         }
-                    }
 
-                    record.setExpiresAt(item.getExpiresAt());
-                    record.save();
+                        record.setExpiresAt(item.getExpiresAt());
+                        record.save();
+                    }
 
                     if(!processingState.isProcessedToConsensus()) {
                         processingState = ItemProcessingState.POLLING;
@@ -1613,6 +1669,7 @@ public class Node {
                 boolean positiveConsensus = false;
                 boolean negativeConsensus = false;
                 ItemProcessingState stateWas;
+                // check if vote already count
                 if((state.isPositive() && positiveNodes.contains(node)) ||
                         (!state.isPositive() && negativeNodes.contains(node))) {
                     debug("vote already count, from " + node + ": " + state);
@@ -1685,7 +1742,7 @@ public class Node {
             }
         }
 
-        // commit subitems of given item to the ledger
+        // commit subitems of given item to the ledger (recursively)
         private void downloadAndCommitSubItemsOf(Approvable commitingItem) {
             if(processingState.canContinue()) {
                 for (Approvable revokingItem : commitingItem.getRevokingItems()) {
@@ -1731,6 +1788,7 @@ public class Node {
                     // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
                     // yields. We just clean them up afterwards:
 
+                    // first, commit all subitems of our item
                     downloadAndCommitSubItemsOf(item);
 
                     synchronized (mutex) {
@@ -1767,17 +1825,17 @@ public class Node {
                         }
                         // todo: concurrent modification can happen here!
                         lockedToCreate.clear();
-                    }
 
-                    debug("setting state: " + newState.name());
-                    setState(newState);
-                    debug("rollback state is set ");
-                    ZonedDateTime expiration = ZonedDateTime.now()
-                            .plus(newState == ItemState.REVOKED ?
-                                    config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
-                    record.setExpiresAt(expiration);
-                    record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
-                    debug("changes rolled back and saved ");
+                        debug("setting state: " + newState.name());
+                        setState(newState);
+                        debug("rollback state is set ");
+                        ZonedDateTime expiration = ZonedDateTime.now()
+                                .plus(newState == ItemState.REVOKED ?
+                                        config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
+                        record.setExpiresAt(expiration);
+                        record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+                        debug("changes rolled back and saved ");
+                    }
                     return null;
                 });
                 close();
@@ -1842,6 +1900,7 @@ public class Node {
                 network.eachNode(node -> {
                     if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
                         debug("unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
+                        // if node do not know own vote we do not send notification, just looking for own state
                         if(!myInfo.equals(node)) {
                             network.deliver(node, notification);
                         } else {
@@ -2041,6 +2100,11 @@ public class Node {
             }
         }
 
+        /**
+         * Start checking if item was downloaded and wait for isCheckingForce flag.
+         * If item hasn't downloaded just set isCheckingForce for true.
+         * @param isCheckingForce
+         */
         private void forceChecking(boolean isCheckingForce) {
             this.isCheckingForce = isCheckingForce;
             if(processingState.canContinue()) {

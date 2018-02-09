@@ -121,12 +121,10 @@ public class StateRecord implements HashIdentifiable {
     }
 
     public void save() {
-        log.d("save: " + this.getId() + " dirty: " + dirty);
 
         if (dirty && ledger != null) {
             dirty = false;
             ledger.save(this);
-            log.d("saved: " + this.getId());
         }
     }
 
@@ -222,11 +220,11 @@ public class StateRecord implements HashIdentifiable {
         checkLedgerExists();
         if (state != ItemState.PENDING)
             throw new IllegalStateException("only pending records are allowed to lock others");
-        log.d("lockToRevoke: " + idToRevoke);
+
         StateRecord lockedRecord = ledger.getRecord(idToRevoke);
         if (lockedRecord == null)
             return null;
-        log.d("lockToRevoke: " + idToRevoke + " state: " + lockedRecord.getState());
+
         switch (lockedRecord.getState()) {
             case LOCKED:
                 // if it is locked by us, it's ok
@@ -240,13 +238,11 @@ public class StateRecord implements HashIdentifiable {
                 // wrong state, can't lock it
                 return null;
         }
-        log.d("lockToRevoke: " + idToRevoke + " prepare");
+
         lockedRecord.setLockedByRecordId(recordId);
-        log.d("lockToRevoke: " + idToRevoke + " locked");
         lockedRecord.setState(ItemState.LOCKED);
-        log.d("lockToRevoke: " + idToRevoke + " state is set");
         lockedRecord.save();
-        log.d("lockToRevoke: " + idToRevoke + " saved");
+
         return lockedRecord;
     }
 

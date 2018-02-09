@@ -254,11 +254,11 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
 
 
-    private void addToAllLedgers(Contract c, ItemState state) {
+    private synchronized void addToAllLedgers(Contract c, ItemState state) {
         addToAllLedgers(c, state, null);
     }
 
-    private void addToAllLedgers(Contract c, ItemState state, Node exceptNode) {
+    private synchronized void addToAllLedgers(Contract c, ItemState state, Node exceptNode) {
         for( Node n: nodesMap_s.values() ) {
             if(n != exceptNode) {
                 n.getLedger().findOrCreate(c.getId()).setState(state).save();
@@ -1175,7 +1175,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
 
 
-    @Test(timeout = 15000)
+    @Test(timeout = 30000)
     public void resyncComplex() throws Exception {
 
         int numSubContracts = 5;
