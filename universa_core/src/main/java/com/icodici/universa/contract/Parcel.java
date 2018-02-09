@@ -105,8 +105,6 @@ public class Parcel implements BiSerializable {
         payload = ds.deserialize(data.get("payload"));
         payment = ds.deserialize(data.get("payment"));
         hashId = ds.deserialize(data.get("hashId"));
-
-        payment.getContract().setIsTU(true);
     }
 
     /**

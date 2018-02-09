@@ -2034,12 +2034,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return context;
     }
 
-    private boolean isTU = false;
-    public boolean isTU() {
-        return isTU;
-    }
-    public void setIsTU(boolean value) {
-        isTU = value;
+    @Override
+    public boolean isTU(PublicKey issuerKey) {
+        if (!getIssuer().getKeys().equals(new HashSet<>(Arrays.asList(issuerKey))))
+            return false;
+        return true;
     }
 
     /**
