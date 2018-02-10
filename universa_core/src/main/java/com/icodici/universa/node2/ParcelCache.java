@@ -1,12 +1,11 @@
 /*
- * Copyright (c) 2018, All Rights Reserved
+ * Copyright (c) 2018, iCodici S.n.C, All Rights Reserved
  *
  * Written by Stepan Mamontov <micromillioner@yahoo.com>
  */
 
 package com.icodici.universa.node2;
 
-import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Parcel;
 import net.sergeych.utils.Base64;
