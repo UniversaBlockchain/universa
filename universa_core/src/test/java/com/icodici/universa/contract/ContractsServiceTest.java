@@ -8,11 +8,18 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.tools.Do;
+import org.junit.Ignore;
 import org.junit.Test;
+
+import java.time.ZonedDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -70,5 +77,44 @@ public class ContractsServiceTest extends ContractTestBase {
         deloreanTransactional.seal();
         deloreanTransactional.traceErrors();
 
+    }
+
+    private void checkCreateParcel(String contract_file_payload, String contract_file_payment) throws Exception
+    {
+        final String ROOT_PATH = "./src/test_contracts/contractService/";
+        PrivateKey privateKey = TestKeys.privateKey(3);
+
+        Contract payload = Contract.fromDslFile(ROOT_PATH + contract_file_payload);
+        payload.addSignerKey(privateKey);
+        payload.seal();
+
+        Contract payment = Contract.fromDslFile(ROOT_PATH + contract_file_payment);
+        payment.addSignerKey(privateKey);
+        payment.seal();
+
+        Set<PrivateKey> PrivateKeys = new HashSet<>();
+        PrivateKeys.add(privateKey);
+
+        Parcel parcel = ContractsService.createParcel(payload, payment, 20, PrivateKeys);
+    }
+
+    @Test
+    public void checkCreateGoodParcel() throws Exception
+    {
+        checkCreateParcel("simple_root_contract.yml", "simple_root_contract.yml");
+    }
+
+    @Ignore
+    @Test
+    public void checkCreateParcelBadPayload() throws Exception
+    {
+        checkCreateParcel("bad_contract_payload.yml", "simple_root_contract.yml");
+    }
+
+    @Ignore
+    @Test
+    public void checkCreateParcelBadPayment() throws Exception
+    {
+        checkCreateParcel("simple_root_contract.yml","bad_contract_payment.yml");
     }
 }
