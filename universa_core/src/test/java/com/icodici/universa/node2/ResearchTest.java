@@ -46,6 +46,8 @@ public class ResearchTest extends TestCase {
     @BeforeClass
     public static void beforeClass() throws Exception {
         System.out.println("curdir: " + System.getProperty("user.dir"));
+        String killCmd = "kill -9 `ps aux | grep java | grep universa_core_test.jar | awk '{print $2}'`";
+        Runtime.getRuntime().exec(new String[] {"/bin/sh", "-c", killCmd});
         startLocalNetwork();
         createNodeClient();
     }
@@ -203,6 +205,26 @@ public class ResearchTest extends TestCase {
         reCreateNodeClient();
 
         itemResult = nodeClient.getState(stepaCoins.getId());
+        System.out.println("nodeClient.getState(stepaCoins): " + itemResult.state);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+
+
+    @Test
+    public void registerSimpleContract_getStateOnly() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+
+        ItemResult itemResult = nodeClient.getState(stepaCoins.getId());
         System.out.println("nodeClient.getState(stepaCoins): " + itemResult.state);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
