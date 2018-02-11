@@ -17,6 +17,7 @@ import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Quantiser;
+import javafx.util.Pair;
 import net.sergeych.biserializer.BiSerializationException;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -811,6 +812,91 @@ public class ContractTest extends ContractTestBase {
         assertEquals(costShouldBeAfterProcessing, processingContract.getProcessedCost());
     }
 
+
+    public static class IntHolder {
+        public int counter;
+    }
+
+    @Test
+    public void checkParrallelCreation() throws Exception {
+        final PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        int N = 100;
+        int M = 3;
+        float threshold = 1.2f;
+        float ratio = 0;
+
+
+        for(int i = 0; i < N; i++) {
+            final IntHolder holder = new IntHolder();
+            long ts1;
+            long ts2;
+
+
+            holder.counter = 0;
+
+            ts1 = new Date().getTime();
+
+            for(int j = 0; j < M; j++) {
+                new Thread(() -> {
+                    new Contract(key).seal();
+                    new Contract(key).seal();
+                    new Contract(key).seal();
+                    new Contract(key).seal();
+                    new Contract(key).seal();
+                    new Contract(key).seal();
+                    new Contract(key).seal();
+                    new Contract(key).seal();
+                    synchronized (holder) {
+                        holder.counter++;
+                        if (holder.counter == M) holder.notify();
+                    }
+                }).start();
+            }
+
+            synchronized (holder) {
+                holder.wait();
+            }
+
+            ts2 = new Date().getTime();
+
+            long time2 = ts2 - ts1;
+
+
+            holder.counter = 0;
+
+            ts1 = new Date().getTime();
+
+            new Thread(() -> {
+                new Contract(key).seal();
+                new Contract(key).seal();
+                new Contract(key).seal();
+                new Contract(key).seal();
+                new Contract(key).seal();
+                new Contract(key).seal();
+                new Contract(key).seal();
+                new Contract(key).seal();
+
+                synchronized (holder) {
+                    holder.counter++;
+                    if (holder.counter == 1) holder.notify();
+                }
+            }).start();
+            synchronized (holder) {
+                holder.wait();
+            }
+
+            ts2 = new Date().getTime();
+
+            long time3 = ts2 - ts1;
+
+            System.out.println(time2 * 1.0f / time3);
+            ratio += time2 * 1.0f / time3;
+        }
+
+        ratio /= N;
+        System.out.println("average " + ratio);
+        assertFalse(ratio > threshold);
+    }
 
     @Test
     public void checkSealedBytes() throws Exception {
