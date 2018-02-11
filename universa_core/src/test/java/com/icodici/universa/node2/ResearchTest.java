@@ -47,7 +47,8 @@ public class ResearchTest extends TestCase {
     public static void beforeClass() throws Exception {
         System.out.println("curdir: " + System.getProperty("user.dir"));
         String killCmd = "kill -9 `ps aux | grep java | grep universa_core_test.jar | awk '{print $2}'`";
-        Runtime.getRuntime().exec(new String[] {"/bin/sh", "-c", killCmd});
+        Process p = Runtime.getRuntime().exec(new String[] {"/bin/sh", "-c", killCmd});
+        p.waitFor();
         startLocalNetwork();
         createNodeClient();
     }
