@@ -49,9 +49,11 @@ public class Node {
     private final ItemCache cache;
     private final ItemInformer informer = new ItemInformer();
 
+    private final ItemLock itemLock = new ItemLock();
+
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
 
-    private static ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64);
+    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(16);
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
         this.config = config;
@@ -317,7 +319,7 @@ public class Node {
     protected Object checkItemInternal(@NonNull HashId itemId, Approvable item, boolean autoStart, boolean ommitItemResult) {
         try {
             // first, let's lock to the item id:
-            return ItemLock.synchronize(itemId, (lock) -> {
+            return itemLock.synchronize(itemId, (lock) -> {
                 ItemProcessor ip = processors.get(itemId);
                 if (ip != null) {
                     debug("existing IP found for " + itemId);

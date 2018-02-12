@@ -118,7 +118,7 @@ public class MainTest {
 
         List<Main> mm = new ArrayList<>();
 
-        new Thread(() -> {
+        Thread thread = new Thread(() -> {
             try {
                 Main m = new Main(args);
                 m.waitReady();
@@ -126,7 +126,9 @@ public class MainTest {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }).start();
+        });
+        thread.setName("Node Server: " + name);
+        thread.start();
 
         while(mm.size() == 0) {
             Thread.sleep(100);
@@ -200,7 +202,7 @@ public class MainTest {
             ts1 = new Date().getTime();
 
             for(Contract c : contractsForThreads) {
-                new Thread(() -> {
+                Thread thread = new Thread(() -> {
                     long t = System.nanoTime();
                     ItemResult rr = null;
                     try {
@@ -210,7 +212,9 @@ public class MainTest {
                         clientError.printStackTrace();
                     }
                     semaphore.release();
-                }).start();
+                });
+                thread.setName("Multi-thread register: " + c.getId().toString());
+                thread.start();
             }
 
             semaphore.acquire();
@@ -223,7 +227,7 @@ public class MainTest {
 
             ts1 = new Date().getTime();
 
-            new Thread(() -> {
+            Thread thread = new Thread(() -> {
                 long t = System.nanoTime();
                 ItemResult rr = null;
                 try {
@@ -233,7 +237,9 @@ public class MainTest {
                     clientError.printStackTrace();
                 }
                 semaphore.release();
-            }).start();
+            });
+            thread.setName("single-thread register: " + singleContract.getId().toString());
+            thread.start();
 
             semaphore.acquire();
 
