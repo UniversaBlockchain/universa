@@ -98,7 +98,7 @@ public class NetworkV2 extends Network {
         }
     }
 
-    private synchronized final byte[] packNotifications(NodeInfo from, Collection<Notification> notifications) {
+    private final byte[] packNotifications(NodeInfo from, Collection<Notification> notifications) {
         Boss.Writer w = new Boss.Writer();
         try {
             w.write(1)                                      // packet type code
