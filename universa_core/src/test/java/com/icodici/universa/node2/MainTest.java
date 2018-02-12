@@ -9,12 +9,14 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.ContractTest;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.Client;
+import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
@@ -30,6 +32,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -116,6 +119,10 @@ public class MainTest {
         return main;
     }
 
+    public static class IntHolder {
+        public int counter;
+    }
+
     @Test
     public void localNetwork() throws Exception {
         List<Main> mm = new ArrayList<>();
@@ -130,31 +137,118 @@ public class MainTest {
         ItemCache c1 = main.cache;
         ItemCache c2 = main.node.getCache();
 
-        Contract c = new Contract(myKey);
-        c.seal();
-        assertTrue(c.isOk());
-
         Client client = new Client(myKey, main.myInfo, null);
 
-        ItemResult r = client.getState(c.getId());
-        assertEquals(ItemState.UNDEFINED, r.state);
-        System.out.println(":: "+r);
 
-//        LogPrinter.showDebug(true);
-        r = client.register(c.getPackedTransaction());
+        List<Contract> contractsForThreads = new ArrayList<>();
+        int N = 100;
+        int M = 2;
+        float threshold = 1.2f;
+        float ratio = 0;
+
+        for(int j = 0; j < M; j++) {
+            Contract contract = new Contract(myKey);
+
+            for (int i = 0; i < 10; i++) {
+                Contract nc = new Contract(myKey);
+                nc.seal();
+                contract.addNewItems(nc);
+            }
+            contract.seal();
+            assertTrue(contract.isOk());
+            contractsForThreads.add(contract);
+
+            ItemResult r = client.getState(contract.getId());
+            assertEquals(ItemState.UNDEFINED, r.state);
+            System.out.println(r);
+        }
+
+        Contract singleContract = new Contract(myKey);
+
+        for (int i = 0; i < 10; i++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            singleContract.addNewItems(nc);
+        }
+        singleContract.seal();
+        assertTrue(singleContract.isOk());
+
+        ItemResult r = client.getState(singleContract.getId());
+        assertEquals(ItemState.UNDEFINED, r.state);
         System.out.println(r);
 
-        while(true) {
-            r = client.getState(c.getId());
-            System.out.println("-->? " + r);
-            Thread.sleep(3000);
-            if( !r.state.isPending() )
-                break;
-        }
-        mm.forEach(x->x.shutdown());
-//        System.out.println("-->! " + r);
+        // register
 
-//        assertEquals(ItemState.UNDEFINED, s);
+        for(int i = 0; i < N; i++) {
+            final IntHolder holder = new IntHolder();
+            long ts1;
+            long ts2;
+
+            holder.counter = 0;
+
+            ts1 = new Date().getTime();
+
+            for(Contract c : contractsForThreads) {
+                new Thread(() -> {
+                    long t = System.nanoTime();
+                    ItemResult rr = null;
+                    try {
+                        rr = client.register(c.getPackedTransaction(), 15000);
+                        System.out.println("multi thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
+                    } catch (ClientError clientError) {
+                        clientError.printStackTrace();
+                    }
+                    synchronized (holder) {
+                        holder.counter++;
+                        if (holder.counter == M) holder.notify();
+                    }
+                }).start();
+            }
+
+            synchronized (holder) {
+                holder.wait();
+            }
+
+            ts2 = new Date().getTime();
+
+            long threadTime = ts2 - ts1;
+
+            //
+
+            holder.counter = 0;
+
+            ts1 = new Date().getTime();
+
+            new Thread(() -> {
+                long t = System.nanoTime();
+                ItemResult rr = null;
+                try {
+                    rr = client.register(singleContract.getPackedTransaction(), 15000);
+                    System.out.println("single thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
+                } catch (ClientError clientError) {
+                    clientError.printStackTrace();
+                }
+                synchronized (holder) {
+                    holder.counter++;
+                    if (holder.counter == 1) holder.notify();
+                }
+            }).start();
+            synchronized (holder) {
+                holder.wait();
+            }
+
+            ts2 = new Date().getTime();
+
+            long singleTime = ts2 - ts1;
+
+            System.out.println(threadTime * 1.0f / singleTime);
+            ratio += threadTime * 1.0f / singleTime;
+        }
+
+        ratio /= N;
+        System.out.println("average " + ratio);
+
+        mm.forEach(x->x.shutdown());
     }
 
     @Test
