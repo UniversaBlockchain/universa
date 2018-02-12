@@ -349,18 +349,20 @@ public class MainTest {
         assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
         PrivateKey myKey = TestKeys.privateKey(3);
 
-        Client client = new Client(myKey, main.myInfo, null);
+        //Client client = new Client(myKey, main.myInfo, null);
 
         final long CONTRACTS_PER_THREAD = 100;
-        final long THREADS_COUNT = 2;
+        final long THREADS_COUNT = 4;
 
         class TestRunnable implements Runnable {
 
             public int threadNum = 0;
             List<Contract> contractList = new ArrayList<>();
             Map<HashId, Contract> contractHashesMap = new HashMap();
+            Client client = null;
 
-            public void prepareContracts() {
+            public void prepareContracts() throws Exception {
+                client = new Client(myKey, main.myInfo, null);
                 contractList = new ArrayList<>();
                 for (int iContract = 0; iContract < CONTRACTS_PER_THREAD; ++iContract) {
                     Contract testContract = new Contract(myKey);
