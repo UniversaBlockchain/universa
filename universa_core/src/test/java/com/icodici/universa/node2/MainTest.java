@@ -239,7 +239,9 @@ public class MainTest {
 
                     Client client = null;
                     try {
-                        client = new Client(myKey, main.myInfo, null);
+                        synchronized (this) {
+                            client = new Client(myKey, main.myInfo, null);
+                        }
                         long t = System.nanoTime();
                         ItemResult rr = null;
                         rr = client.register(c.getPackedTransaction(), 15000);
