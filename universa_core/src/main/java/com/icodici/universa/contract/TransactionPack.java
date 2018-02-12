@@ -155,77 +155,89 @@ public class TransactionPack implements BiSerializable {
         Quantiser quantiser = new Quantiser();
         quantiser.reset(Contract.getTestQuantaLimit());
 
-        List<Bytes> referenceBytesList = deserializer.deserializeCollection(
+//        List<Bytes> referenceBytesList = deserializer.deserializeCollection(
+//                data.getListOrThrow("references")
+//        );
+//
+//        HashMap<ContractDependencies, Bytes> allContractsTrees = new HashMap<>();
+//        List<HashId> allContractsHids = new ArrayList<>();
+//        ArrayList<Bytes> sortedReferenceBytesList = new ArrayList<>();
+//
+//        if (referenceBytesList != null) {
+//            // First of all extract contracts dependencies from references
+//            for (Bytes b : referenceBytesList) {
+//                ContractDependencies ct = new ContractDependencies(b.toArray());
+//                allContractsTrees.put(ct, b);
+//                allContractsHids.add(ct.id);
+//            }
+//
+//            // then recursively from ends of dependencies tree to top go throw it level by level
+//            // and add items to references on the each level of tree's hierarchy
+//            do {
+//                // first add contract from ends of trees, means without own subitems
+//                sortedReferenceBytesList = new ArrayList<>();
+//                List<ContractDependencies> removingContractDependencies = new ArrayList<>();
+//                for (ContractDependencies ct : allContractsTrees.keySet()) {
+//                    if (ct.dependencies.size() == 0) {
+//                        sortedReferenceBytesList.add(allContractsTrees.get(ct));
+//                        removingContractDependencies.add(ct);
+//                    }
+//                }
+//
+//                // remove found items from tree's list
+//                for (ContractDependencies ct : removingContractDependencies) {
+//                    allContractsTrees.remove(ct);
+//                }
+//
+//                // then add contract with already exist subitems in the references or will never find in the tree
+//                removingContractDependencies = new ArrayList<>();
+//                for (ContractDependencies ct : allContractsTrees.keySet()) {
+//                    boolean allDependenciesSafe = true;
+//                    for (HashId hid : ct.dependencies) {
+//                        if (!references.containsKey(hid) && allContractsHids.contains(hid)) {
+//                            allDependenciesSafe = false;
+//                        }
+//                    }
+//                    if(allDependenciesSafe) {
+//                        sortedReferenceBytesList.add(allContractsTrees.get(ct));
+//                        removingContractDependencies.add(ct);
+//                    }
+//                }
+//
+//                // remove found items from tree's list
+//                for (ContractDependencies ct : removingContractDependencies) {
+//                    allContractsTrees.remove(ct);
+//                }
+//
+//                // add found binaries on the hierarchy level to references
+//                for (int i = 0; i < sortedReferenceBytesList.size(); i++) {
+//                    Contract c = new Contract(sortedReferenceBytesList.get(i).toArray(), this);
+//                    quantiser.addWorkCostFrom(c.getQuantiser());
+//                    references.put(c.getId(), c);
+//                }
+//
+//                // then repeat until we can find hierarchy
+//            } while (sortedReferenceBytesList.size() != 0);
+//
+//            // finally add not found binaries on the hierarchy levels to references
+//            for (Bytes b : allContractsTrees.values()) {
+//                Contract c = new Contract(b.toArray(), this);
+//                quantiser.addWorkCostFrom(c.getQuantiser());
+//                references.put(c.getId(), c);
+//            }
+//        }
+
+        List<Bytes> ll = deserializer.deserializeCollection(
                 data.getListOrThrow("references")
         );
-
-        HashMap<ContractDependencies, Bytes> allContractsTrees = new HashMap<>();
-        List<HashId> allContractsHids = new ArrayList<>();
-        ArrayList<Bytes> sortedReferenceBytesList = new ArrayList<>();
-
-        if (referenceBytesList != null) {
-            // First of all extract contracts dependencies from references
-            for (Bytes b : referenceBytesList) {
-                ContractDependencies ct = new ContractDependencies(b.toArray());
-                allContractsTrees.put(ct, b);
-                allContractsHids.add(ct.id);
-            }
-
-            // then recursively from ends of dependencies tree to top go throw it level by level
-            // and add items to references on the each level of tree's hierarchy
-            do {
-                // first add contract from ends of trees, means without own subitems
-                sortedReferenceBytesList = new ArrayList<>();
-                List<ContractDependencies> removingContractDependencies = new ArrayList<>();
-                for (ContractDependencies ct : allContractsTrees.keySet()) {
-                    if (ct.dependencies.size() == 0) {
-                        sortedReferenceBytesList.add(allContractsTrees.get(ct));
-                        removingContractDependencies.add(ct);
-                    }
-                }
-
-                // remove found items from tree's list
-                for (ContractDependencies ct : removingContractDependencies) {
-                    allContractsTrees.remove(ct);
-                }
-
-                // then add contract with already exist subitems in the references or will never find in the tree
-                removingContractDependencies = new ArrayList<>();
-                for (ContractDependencies ct : allContractsTrees.keySet()) {
-                    boolean allDependenciesSafe = true;
-                    for (HashId hid : ct.dependencies) {
-                        if (!references.containsKey(hid) && allContractsHids.contains(hid)) {
-                            allDependenciesSafe = false;
-                        }
-                    }
-                    if(allDependenciesSafe) {
-                        sortedReferenceBytesList.add(allContractsTrees.get(ct));
-                        removingContractDependencies.add(ct);
-                    }
-                }
-
-                // remove found items from tree's list
-                for (ContractDependencies ct : removingContractDependencies) {
-                    allContractsTrees.remove(ct);
-                }
-
-                // add found binaries on the hierarchy level to references
-                for (int i = 0; i < sortedReferenceBytesList.size(); i++) {
-                    Contract c = new Contract(sortedReferenceBytesList.get(i).toArray(), this);
-                    quantiser.addWorkCostFrom(c.getQuantiser());
-                    references.put(c.getId(), c);
-                }
-
-                // then repeat until we can find hierarchy
-            } while (sortedReferenceBytesList.size() != 0);
-
-            // finally add not found binaries on the hierarchy levels to references
-            for (Bytes b : allContractsTrees.values()) {
+        if (ll != null) {
+            for (Bytes b : ll) {
                 Contract c = new Contract(b.toArray(), this);
                 quantiser.addWorkCostFrom(c.getQuantiser());
                 references.put(c.getId(), c);
             }
         }
+
         byte[] bb = data.getBinaryOrThrow("contract");
         contract = new Contract(bb, this);
         quantiser.addWorkCostFrom(contract.getQuantiser());
