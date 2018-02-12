@@ -160,41 +160,43 @@ public class MainTest {
         int M = 2;
         float threshold = 1.2f;
         float ratio = 0;
+//        assertTrue(singleContract.isOk());
 
-        for(int j = 0; j < M; j++) {
-            Contract contract = new Contract(myKey);
-
-            for (int i = 0; i < 10; i++) {
-                Contract nc = new Contract(myKey);
-                nc.seal();
-                contract.addNewItems(nc);
-            }
-            contract.seal();
-            assertTrue(contract.isOk());
-            contractsForThreads.add(contract);
-
-            ItemResult r = client.getState(contract.getId());
-            assertEquals(ItemState.UNDEFINED, r.state);
-            System.out.println(r);
-        }
-
-        Contract singleContract = new Contract(myKey);
-
-        for (int i = 0; i < 10; i++) {
-            Contract nc = new Contract(myKey);
-            nc.seal();
-            singleContract.addNewItems(nc);
-        }
-        singleContract.seal();
-        assertTrue(singleContract.isOk());
-
-        ItemResult r = client.getState(singleContract.getId());
-        assertEquals(ItemState.UNDEFINED, r.state);
-        System.out.println(r);
+//        ItemResult r = client.getState(singleContract.getId());
+//        assertEquals(ItemState.UNDEFINED, r.state);
+//        System.out.println(r);
 
         // register
 
         for(int i = 0; i < N; i++) {
+
+            contractsForThreads = new ArrayList<>();
+            for(int j = 0; j < M; j++) {
+                Contract contract = new Contract(myKey);
+
+                for (int k = 0; k < 10; k++) {
+                    Contract nc = new Contract(myKey);
+                    nc.seal();
+                    contract.addNewItems(nc);
+                }
+                contract.seal();
+                assertTrue(contract.isOk());
+                contractsForThreads.add(contract);
+
+                ItemResult r = client.getState(contract.getId());
+                assertEquals(ItemState.UNDEFINED, r.state);
+                System.out.println(r);
+            }
+
+            Contract singleContract = new Contract(myKey);
+
+            for (int k = 0; k < 10; k++) {
+                Contract nc = new Contract(myKey);
+                nc.seal();
+                singleContract.addNewItems(nc);
+            }
+            singleContract.seal();
+
             long ts1;
             long ts2;
             Semaphore semaphore = new Semaphore(-(M-1));
