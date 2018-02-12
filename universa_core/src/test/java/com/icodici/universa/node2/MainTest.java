@@ -27,6 +27,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Path;
@@ -152,7 +153,7 @@ public class MainTest {
 //        ItemCache c1 = main.cache;
 //        ItemCache c2 = main.node.getCache();
 
-        Client client = new Client(myKey, main.myInfo, null);
+//        Client client = new Client(myKey, main.myInfo, null);
 
 
         List<Contract> contractsForThreads = new ArrayList<>();
@@ -181,9 +182,9 @@ public class MainTest {
             assertTrue(contract.isOk());
             contractsForThreads.add(contract);
 
-            ItemResult r = client.getState(contract.getId());
-            assertEquals(ItemState.UNDEFINED, r.state);
-            System.out.println(r);
+//            ItemResult r = client.getState(contract.getId());
+//            assertEquals(ItemState.UNDEFINED, r.state);
+//            System.out.println(r);
         }
 
         Contract singleContract = new Contract(myKey);
@@ -205,19 +206,17 @@ public class MainTest {
                 for(int j = 0; j < M; j++) {
                     Contract contract = new Contract(myKey);
 
-                    for (int k = 0; k < 10; k++) {
-                        Contract nc = new Contract(myKey);
-                        nc.seal();
-                        contract.addNewItems(nc);
-                    }
-                    contract.seal();
-                    assertTrue(contract.isOk());
-                    contractsForThreads.add(contract);
-
-                    ItemResult r = client.getState(contract.getId());
-                    assertEquals(ItemState.UNDEFINED, r.state);
-                    System.out.println(r);
+                for (int k = 0; k < 10; k++) {
+                    Contract nc = new Contract(myKey);
+                    nc.seal();
+                    contract.addNewItems(nc);
                 }
+                contract.seal();
+                assertTrue(contract.isOk());
+                contractsForThreads.add(contract);
+
+
+            }
 
                 singleContract = new Contract(myKey);
 
@@ -237,13 +236,19 @@ public class MainTest {
 
             for(Contract c : contractsForThreads) {
                 Thread thread = new Thread(() -> {
-                    long t = System.nanoTime();
-                    ItemResult rr = null;
+
+                    Client client = null;
                     try {
+                        client = new Client(myKey, main.myInfo, null);
+                        long t = System.nanoTime();
+                        ItemResult rr = null;
                         rr = client.register(c.getPackedTransaction(), 15000);
                         System.out.println("multi thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
+
                     } catch (ClientError clientError) {
                         clientError.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                     semaphore.release();
                 });
@@ -266,10 +271,14 @@ public class MainTest {
                 long t = System.nanoTime();
                 ItemResult rr = null;
                 try {
+                    Client client = null;
+                    client = new Client(myKey, main.myInfo, null);
                     rr = client.register(finalSingleContract.getPackedTransaction(), 15000);
                     System.out.println("single thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
                 } catch (ClientError clientError) {
                     clientError.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
                 semaphore.release();
             });
