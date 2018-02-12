@@ -824,6 +824,7 @@ public class ContractTest extends ContractTestBase {
         float ratio = 0;
 
 
+        System.out.println("available processors: " + M);
 
         for(int i = 0; i < N; i++) {
             long ts1;
@@ -836,7 +837,13 @@ public class ContractTest extends ContractTestBase {
             for(int j = 0; j < M; j++) {
                 new Thread(() -> {
                     for(int x = 0; x < K; x++) {
-                        new Contract(key).seal();
+                        try {
+                            Contract c = new Contract(key);
+                            c.seal();
+                            c.check();
+                        } catch (Quantiser.QuantiserException e) {
+                            e.printStackTrace();
+                        }
                     }
                     semaphore.release();
                 }).start();
@@ -854,7 +861,13 @@ public class ContractTest extends ContractTestBase {
 
             new Thread(() -> {
                 for(int x = 0; x < K; x++) {
-                    new Contract(key).seal();
+                    try {
+                        Contract c = new Contract(key);
+                        c.seal();
+                        c.check();
+                    } catch (Quantiser.QuantiserException e) {
+                        e.printStackTrace();
+                    }
                 }
                 semaphore.release();
             }).start();
