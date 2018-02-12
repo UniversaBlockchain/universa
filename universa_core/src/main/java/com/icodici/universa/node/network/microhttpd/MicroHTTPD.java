@@ -29,7 +29,7 @@ public class MicroHTTPD extends NanoHTTPD {
         setTempFileManagerFactory(new InMemoryTempFileManager.InMemoryTempFileManagerFactory());
 
         // Use an ExecutorService-based strategy of thread creation.
-        setAsyncRunner(new PooledAsyncRunner(threadLimit));
+        setAsyncRunner(new PooledAsyncRunner(threadLimit, "[port:" + portToListen + "]"));
     }
 
     @Override

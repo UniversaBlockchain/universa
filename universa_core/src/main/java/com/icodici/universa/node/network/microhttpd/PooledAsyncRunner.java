@@ -31,22 +31,34 @@ public class PooledAsyncRunner implements IAsyncRunner {
      * Constructor.
      */
     PooledAsyncRunner(@Nullable Integer threadLimit) {
-        System.out.println("====================> " + threadLimit);
         if (threadLimit == null) {
             executor = Executors.newCachedThreadPool();
         } else {
-            executor =  new ThreadPoolExecutor(threadLimit, threadLimit,
+            executor = Executors.newFixedThreadPool(threadLimit.intValue());
+        }
+    }
+
+    /**
+     * Constructor.
+     */
+    PooledAsyncRunner(@Nullable Integer threadLimit, String poolName) {
+        if (threadLimit == null) {
+            executor = Executors.newCachedThreadPool();
+        } else {
+//            executor = Executors.newFixedThreadPool(threadLimit.intValue());
+            executor = new ThreadPoolExecutor(threadLimit, threadLimit,
                     0L, TimeUnit.MILLISECONDS,
                     new LinkedBlockingQueue<Runnable>(),
                     new ThreadFactory() {
                         @Override
                         public Thread newThread(Runnable r) {
                             Thread th = new Thread(r);
-                            th.setName("microhttpd-worker");
+                            th.setName("microhttpd-"+poolName+"-worker");
                             return th;
                         }
                     });
         }
+
     }
 
     @Override
