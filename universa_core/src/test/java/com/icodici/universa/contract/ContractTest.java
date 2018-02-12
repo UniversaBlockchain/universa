@@ -818,7 +818,7 @@ public class ContractTest extends ContractTestBase {
     public void checkParallelCreation() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
         int N = 100;
-        int M = 8;
+        int M = Runtime.getRuntime().availableProcessors();
         int K = 10;
         float threshold = 1.2f;
         float ratio = 0;
