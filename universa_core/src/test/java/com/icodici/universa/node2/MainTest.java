@@ -351,8 +351,8 @@ public class MainTest {
 
         //Client client = new Client(myKey, main.myInfo, null);
 
-        final long CONTRACTS_PER_THREAD = 100;
-        final long THREADS_COUNT = 2;
+        final long CONTRACTS_PER_THREAD = 10;
+        final long THREADS_COUNT = 4;
 
         class TestRunnable implements Runnable {
 
@@ -366,11 +366,11 @@ public class MainTest {
                 contractList = new ArrayList<>();
                 for (int iContract = 0; iContract < CONTRACTS_PER_THREAD; ++iContract) {
                     Contract testContract = new Contract(myKey);
-//                    for (int i = 0; i < 10; i++) {
-//                        Contract nc = new Contract(myKey);
-//                        nc.seal();
-//                        testContract.addNewItems(nc);
-//                    }
+                    for (int i = 0; i < 10; i++) {
+                        Contract nc = new Contract(myKey);
+                        nc.seal();
+                        testContract.addNewItems(nc);
+                    }
                     testContract.seal();
                     assertTrue(testContract.isOk());
                     contractList.add(testContract);
