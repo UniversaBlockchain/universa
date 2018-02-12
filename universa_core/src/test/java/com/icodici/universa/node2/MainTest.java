@@ -466,16 +466,17 @@ public class MainTest {
 
 
 
-    @Test
-    public void testBossPack() throws Exception {
-        final long THREADS_COUNT_MAX = Runtime.getRuntime().availableProcessors();
+    public static long idealConcurrentWork() {
+        long s = 0l;
+        for (int i = 0; i < 100000000; ++i)
+            s += i;
+        return s;
+    }
 
-        Runnable someWork = () ->  {
-            byte[] br = new byte[200000];
-            new Random().nextBytes(br);
-            for (int i = 0; i < 10000; ++i)
-                Boss.pack(br);
-        };
+
+
+    public void testSomeWork(Runnable someWork) throws Exception {
+        final long THREADS_COUNT_MAX = Runtime.getRuntime().availableProcessors();
 
         System.out.println("warm up...");
         Thread thread0 = new Thread(someWork);
@@ -505,6 +506,47 @@ public class MainTest {
             double boostRate = (double) THREADS_COUNT / (double) multiTime * (double) singleTime;
             System.out.println("multi(N=" + THREADS_COUNT + "): " + multiTime + "ms,   boostRate: x" + String.format("%.2f", boostRate));
         }
+    }
+
+
+
+    @Test
+    public void testBossPack() throws Exception {
+        testSomeWork(() ->  {
+            byte[] br = new byte[200000];
+            new Random().nextBytes(br);
+            for (int i = 0; i < 10000; ++i)
+                Boss.pack(br);
+        });
+    }
+
+
+
+    @Test
+    public void testIdealConcurrentWork() throws Exception {
+        testSomeWork(() ->  {
+            for (int i = 0; i < 100; ++i)
+                idealConcurrentWork();
+        });
+    }
+
+
+
+    @Test
+    public void testNewContractSeal() throws Exception {
+        testSomeWork(() ->  {
+            for (int i = 0; i < 10; ++i) {
+                PrivateKey myKey = null;
+                try {myKey = TestKeys.privateKey(3);} catch (Exception e){}
+                Contract testContract = new Contract(myKey);
+                for (int iContract = 0; iContract < 10; ++iContract) {
+                    Contract nc = new Contract(myKey);
+                    nc.seal();
+                    testContract.addNewItems(nc);
+                }
+                testContract.seal();
+            }
+        });
     }
 
 }
