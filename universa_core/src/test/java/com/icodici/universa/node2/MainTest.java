@@ -332,9 +332,9 @@ public class MainTest {
                         testContract.seal();
                         assertTrue(testContract.isOk());
                         long t1 = new Date().getTime();
-                        //ItemResult itemResult = client.register(testContract.getPackedTransaction(), 1000);
-                        ItemResult itemResult = client.register(testContract.getPackedTransaction());
-                        //assertEquals(ItemState.APPROVED, itemResult.state);
+                        ItemResult itemResult = client.register(testContract.getPackedTransaction(), 1000);
+                        //ItemResult itemResult = client.register(testContract.getPackedTransaction());
+                        assertEquals(ItemState.APPROVED, itemResult.state);
                         long t2 = new Date().getTime();
                         long dt = t2 - t1;
                         tsum += dt;
