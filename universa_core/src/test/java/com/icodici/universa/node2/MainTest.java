@@ -34,6 +34,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
@@ -119,10 +120,6 @@ public class MainTest {
         return main;
     }
 
-    public static class IntHolder {
-        public int counter;
-    }
-
     @Test
     public void localNetwork() throws Exception {
         List<Main> mm = new ArrayList<>();
@@ -180,11 +177,9 @@ public class MainTest {
         // register
 
         for(int i = 0; i < N; i++) {
-            final IntHolder holder = new IntHolder();
             long ts1;
             long ts2;
-
-            holder.counter = 0;
+            Semaphore semaphore = new Semaphore(-(M-1));
 
             ts1 = new Date().getTime();
 
@@ -198,24 +193,17 @@ public class MainTest {
                     } catch (ClientError clientError) {
                         clientError.printStackTrace();
                     }
-                    synchronized (holder) {
-                        holder.counter++;
-                        if (holder.counter == M) holder.notify();
-                    }
+                    semaphore.release();
                 }).start();
             }
 
-            synchronized (holder) {
-                holder.wait();
-            }
+            semaphore.acquire();
 
             ts2 = new Date().getTime();
 
             long threadTime = ts2 - ts1;
 
             //
-
-            holder.counter = 0;
 
             ts1 = new Date().getTime();
 
@@ -228,14 +216,10 @@ public class MainTest {
                 } catch (ClientError clientError) {
                     clientError.printStackTrace();
                 }
-                synchronized (holder) {
-                    holder.counter++;
-                    if (holder.counter == 1) holder.notify();
-                }
+                semaphore.release();
             }).start();
-            synchronized (holder) {
-                holder.wait();
-            }
+
+            semaphore.acquire();
 
             ts2 = new Date().getTime();
 
