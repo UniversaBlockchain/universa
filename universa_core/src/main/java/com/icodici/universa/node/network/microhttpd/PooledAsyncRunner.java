@@ -38,6 +38,26 @@ public class PooledAsyncRunner implements IAsyncRunner {
         }
     }
 
+    public static class CustomThreadFactory implements ThreadFactory{
+        private static int factoriesCount = 0;
+        private int factoryNumber;
+        private int threadNumber = 1;
+
+        public CustomThreadFactory() {
+            factoriesCount++;
+            factoryNumber = factoriesCount;
+
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread thread = new Thread(r);
+            thread.setName("microhttpd-worker-"+factoryNumber+"-"+threadNumber);
+            threadNumber++;
+            return thread;
+        }
+    }
+
     /**
      * Constructor.
      */
@@ -45,18 +65,10 @@ public class PooledAsyncRunner implements IAsyncRunner {
         if (threadLimit == null) {
             executor = Executors.newCachedThreadPool();
         } else {
-//            executor = Executors.newFixedThreadPool(threadLimit.intValue());
             executor = new ThreadPoolExecutor(threadLimit, threadLimit,
                     0L, TimeUnit.MILLISECONDS,
-                    new LinkedBlockingQueue<Runnable>(),
-                    new ThreadFactory() {
-                        @Override
-                        public Thread newThread(Runnable r) {
-                            Thread th = new Thread(r);
-                            th.setName("microhttpd-"+poolName+"-worker");
-                            return th;
-                        }
-                    });
+                    new LinkedBlockingQueue<Runnable>(),new CustomThreadFactory()
+                    );
         }
 
     }
