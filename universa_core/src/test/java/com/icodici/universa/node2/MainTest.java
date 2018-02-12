@@ -261,11 +261,12 @@ public class MainTest {
 
             ts1 = new Date().getTime();
 
+            Contract finalSingleContract = singleContract;
             Thread thread = new Thread(() -> {
                 long t = System.nanoTime();
                 ItemResult rr = null;
                 try {
-                    rr = client.register(singleContract.getPackedTransaction(), 15000);
+                    rr = client.register(finalSingleContract.getPackedTransaction(), 15000);
                     System.out.println("single thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
                 } catch (ClientError clientError) {
                     clientError.printStackTrace();
