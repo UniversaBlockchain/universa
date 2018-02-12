@@ -37,62 +37,62 @@ public class BasicHttpClientSession {
     }
 
     public String getConnectMessage() {
-        synchronized (this) {
+//        synchronized (this) {
             return connectMessage;
-        }
+//        }
     }
 
     public void setConnectMessage(String connectMessage) {
-        synchronized (this) {
+//        synchronized (this) {
             this.connectMessage = connectMessage;
-        }
+//        }
     }
 
     public PrivateKey getPrivateKey() {
-        synchronized (this) {
+//        synchronized (this) {
             return privateKey;
-        }
+//        }
     }
 
     public void setPrivateKey(PrivateKey privateKey) {
-        synchronized (this) {
+//        synchronized (this) {
             this.privateKey = privateKey;
-        }
+//        }
     }
 
     public SymmetricKey getSessionKey() {
-        synchronized (this) {
+//        synchronized (this) {
             return sessionKey;
-        }
+//        }
     }
 
     public void setSessionKey(SymmetricKey sessionKey) {
-        synchronized (this) {
+//        synchronized (this) {
             this.sessionKey = sessionKey;
-        }
+//        }
     }
 
     public long getSessionId() {
-        synchronized (this) {
+//        synchronized (this) {
             return sessionId;
-        }
+//        }
     }
 
     public void setSessionId(long sessionId) {
-        synchronized (this) {
+//        synchronized (this) {
             this.sessionId = sessionId;
-        }
+//        }
     }
 
     public PublicKey getNodePublicKey() {
-        synchronized (this) {
+//        synchronized (this) {
             return nodePublicKey;
-        }
+//        }
     }
 
     public void setNodePublicKey(PublicKey nodePublicKey) {
-        synchronized (this) {
+//        synchronized (this) {
             this.nodePublicKey = nodePublicKey;
-        }
+//        }
     }
 }

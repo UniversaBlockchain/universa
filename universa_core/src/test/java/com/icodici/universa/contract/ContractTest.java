@@ -839,6 +839,11 @@ public class ContractTest extends ContractTestBase {
                     for(int x = 0; x < K; x++) {
                         try {
                             Contract c = new Contract(key);
+                            for (int k = 0; k < 10; k++) {
+                                Contract nc = new Contract(key);
+                                nc.seal();
+                                c.addNewItems(nc);
+                            }
                             c.seal();
                             c.check();
                         } catch (Quantiser.QuantiserException e) {
@@ -863,6 +868,11 @@ public class ContractTest extends ContractTestBase {
                 for(int x = 0; x < K; x++) {
                     try {
                         Contract c = new Contract(key);
+                        for (int k = 0; k < 10; k++) {
+                            Contract nc = new Contract(key);
+                            nc.seal();
+                            c.addNewItems(nc);
+                        }
                         c.seal();
                         c.check();
                     } catch (Quantiser.QuantiserException e) {
