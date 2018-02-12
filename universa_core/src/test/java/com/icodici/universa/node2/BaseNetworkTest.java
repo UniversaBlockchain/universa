@@ -25,6 +25,7 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -2545,6 +2546,159 @@ public class BaseNetworkTest extends TestCase {
         return swapContract;
     }
 
+
+    @Test
+    public void parallelTest() throws Exception {
+//        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
+//        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
+        PrivateKey myKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+//        assertEquals(main.cache, main.node.getCache());
+//        ItemCache c1 = main.cache;
+//        ItemCache c2 = main.node.getCache();
+
+//        Client client = new Client(myKey, main.myInfo, null);
+
+
+        List<Contract> contractsForThreads = new ArrayList<>();
+        int N = 100;
+        int M = 2;
+        float threshold = 1.2f;
+        float ratio = 0;
+        boolean createNewContracts = true;
+//        assertTrue(singleContract.isOk());
+
+//        ItemResult r = client.getState(singleContract.getId());
+//        assertEquals(ItemState.UNDEFINED, r.state);
+//        System.out.println(r);
+
+
+        contractsForThreads = new ArrayList<>();
+        for(int j = 0; j < M; j++) {
+            Contract contract = new Contract(myKey);
+
+            for (int k = 0; k < 10; k++) {
+                Contract nc = new Contract(myKey);
+                nc.seal();
+                contract.addNewItems(nc);
+            }
+            contract.seal();
+            assertTrue(contract.isOk());
+            contractsForThreads.add(contract);
+
+//            ItemResult r = client.getState(contract.getId());
+//            assertEquals(ItemState.UNDEFINED, r.state);
+//            System.out.println(r);
+        }
+
+        Contract singleContract = new Contract(myKey);
+
+        for (int k = 0; k < 10; k++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            singleContract.addNewItems(nc);
+        }
+        singleContract.seal();
+
+        // register
+
+
+        for(int i = 0; i < N; i++) {
+
+            if(createNewContracts) {
+                contractsForThreads = new ArrayList<>();
+                for(int j = 0; j < M; j++) {
+                    Contract contract = new Contract(myKey);
+
+                    for (int k = 0; k < 10; k++) {
+                        Contract nc = new Contract(myKey);
+                        nc.seal();
+                        contract.addNewItems(nc);
+                    }
+                    contract.seal();
+                    assertTrue(contract.isOk());
+                    contractsForThreads.add(contract);
+
+
+                }
+
+                singleContract = new Contract(myKey);
+
+                for (int k = 0; k < 10; k++) {
+                    Contract nc = new Contract(myKey);
+                    nc.seal();
+                    singleContract.addNewItems(nc);
+                }
+                singleContract.seal();
+            }
+
+            long ts1;
+            long ts2;
+            Semaphore semaphore = new Semaphore(-(M-1));
+
+            ts1 = new Date().getTime();
+
+            for(Contract c : contractsForThreads) {
+                Thread thread = new Thread(() -> {
+
+                    long t = System.nanoTime();
+                    ItemResult rr = null;
+                    rr = node.registerItem(c);
+                    try {
+                        rr = node.waitItem(c.getId(), 15000);
+                    } catch (TimeoutException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println("multi thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
+                    semaphore.release();
+                });
+                thread.setName("Multi-thread register: " + c.getId().toString());
+                thread.start();
+            }
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long threadTime = ts2 - ts1;
+
+            //
+
+            ts1 = new Date().getTime();
+
+            Contract finalSingleContract = singleContract;
+            Thread thread = new Thread(() -> {
+                long t = System.nanoTime();
+                ItemResult rr = null;
+                rr = node.registerItem(finalSingleContract);
+                try {
+                    rr = node.waitItem(finalSingleContract.getId(), 15000);
+                } catch (TimeoutException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("multi thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
+                semaphore.release();
+            });
+            thread.setName("single-thread register: " + singleContract.getId().toString());
+            thread.start();
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long singleTime = ts2 - ts1;
+
+            System.out.println(threadTime * 1.0f / singleTime);
+            ratio += threadTime * 1.0f / singleTime;
+        }
+
+        ratio /= N;
+        System.out.println("average " + ratio);
+    }
 
 
 //    @Test
