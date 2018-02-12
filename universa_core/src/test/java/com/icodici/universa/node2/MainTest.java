@@ -381,10 +381,12 @@ public class MainTest {
 
         Double tpsSingleThread = (double)CONTRACTS_PER_THREAD/(double)singleThreadTime*1000.0;
         Double tpsMultiThread = (double)CONTRACTS_PER_THREAD*(double)THREADS_COUNT/(double)multiThreadTime*1000.0;
+        Double boostRate = tpsMultiThread / tpsSingleThread;
 
         System.out.println("\n === total ===");
         System.out.println("singleThread: " + (CONTRACTS_PER_THREAD) + " for " + singleThreadTime + "ms, tps=" + String.format("%.2f", tpsSingleThread));
         System.out.println("multiThread(N="+THREADS_COUNT+"): " + (CONTRACTS_PER_THREAD*THREADS_COUNT) + " for " + multiThreadTime + "ms, tps=" + String.format("%.2f", tpsMultiThread));
+        System.out.println("boostRate: " + String.format("%.2f", boostRate));
 
         mm.forEach(x->x.shutdown());
     }
