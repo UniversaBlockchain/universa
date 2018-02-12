@@ -835,7 +835,7 @@ public class ContractTest extends ContractTestBase {
 
             for(int j = 0; j < M; j++) {
                 new Thread(() -> {
-                    for(int _ = 0; _ < K; _++) {
+                    for(int x = 0; x < K; x++) {
                         new Contract(key).seal();
                     }
                     semaphore.release();
@@ -853,7 +853,7 @@ public class ContractTest extends ContractTestBase {
             ts1 = new Date().getTime();
 
             new Thread(() -> {
-                for(int _ = 0; _ < K; _++) {
+                for(int x = 0; x < K; x++) {
                     new Contract(key).seal();
                 }
                 semaphore.release();
