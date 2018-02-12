@@ -8,6 +8,7 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTest;
 import com.icodici.universa.contract.roles.RoleLink;
@@ -32,9 +33,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
@@ -358,49 +357,70 @@ public class MainTest {
         class TestRunnable implements Runnable {
 
             public int threadNum = 0;
-            public long avgTime = 0;
+            List<Contract> contractList = new ArrayList<>();
+            Map<HashId, Contract> contractHashesMap = new HashMap();
+
+            public void prepareContracts() {
+                contractList = new ArrayList<>();
+                for (int iContract = 0; iContract < CONTRACTS_PER_THREAD; ++iContract) {
+                    Contract testContract = new Contract(myKey);
+//                    for (int i = 0; i < 10; i++) {
+//                        Contract nc = new Contract(myKey);
+//                        nc.seal();
+//                        testContract.addNewItems(nc);
+//                    }
+                    testContract.seal();
+                    assertTrue(testContract.isOk());
+                    contractList.add(testContract);
+                }
+            }
+
+            private void sendContractsToRegister() throws Exception {
+                for (int i = 0; i < contractList.size(); ++i) {
+                    Contract contract = contractList.get(i);
+                    client.register(contract.getPackedTransaction());
+                }
+            }
+
+            private void waitForContracts() throws Exception {
+                while (contractHashesMap.size() > 0) {
+                    Thread.currentThread().sleep(300);
+                    for (HashId id : contractHashesMap.keySet()) {
+                        ItemResult itemResult = client.getState(id);
+                        if (itemResult.state == ItemState.APPROVED)
+                            contractHashesMap.remove(id);
+                    }
+                }
+            }
 
             @Override
             public void run() {
                 try {
-                    long tsum = 0;
-                    for (int iContract = 0; iContract < CONTRACTS_PER_THREAD; ++iContract) {
-                        Contract testContract = new Contract(myKey);
-//                        for (int i = 0; i < 10; i++) {
-//                            Contract nc = new Contract(myKey);
-//                            nc.seal();
-//                            testContract.addNewItems(nc);
-//                        }
-                        testContract.seal();
-                        assertTrue(testContract.isOk());
-                        long t1 = new Date().getTime();
-                        ItemResult itemResult = client.register(testContract.getPackedTransaction(), 1000);
-                        //ItemResult itemResult = client.register(testContract.getPackedTransaction());
-                        assertEquals(ItemState.APPROVED, itemResult.state);
-                        long t2 = new Date().getTime();
-                        long dt = t2 - t1;
-                        tsum += dt;
-                    }
-                    avgTime = tsum / CONTRACTS_PER_THREAD;
-                    System.out.println("avgTime(thread="+threadNum+"): " + tsum / CONTRACTS_PER_THREAD);
+                    sendContractsToRegister();
+                    waitForContracts();
                 } catch (Exception e) {
                     System.out.println("runnable exception: " + e.toString());
                 }
             }
         }
 
+        System.out.println("singlethread test prepare...");
         TestRunnable runnableSingle = new TestRunnable();
         Thread threadSingle = new Thread(() -> {
             runnableSingle.threadNum = 0;
             runnableSingle.run();
         });
         long t1 = new Date().getTime();
+        runnableSingle.prepareContracts();
+        System.out.println("singlethread test start...");
         threadSingle.start();
         threadSingle.join();
         long t2 = new Date().getTime();
         long dt = t2 - t1;
         long singleThreadTime = dt;
+        System.out.println("singlethread test done!");
 
+        System.out.println("multithread test prepare...");
         List<Thread> threadsList = new ArrayList<>();
         List<TestRunnable> runnableList = new ArrayList<>();
         t1 = new Date().getTime();
@@ -411,15 +431,19 @@ public class MainTest {
                 runnableMultithread.threadNum = threadNum;
                 runnableMultithread.run();
             });
-            threadMultiThread.start();
+            runnableMultithread.prepareContracts();
             threadsList.add(threadMultiThread);
             runnableList.add(runnableMultithread);
         }
+        System.out.println("multithread test start...");
+        for (Thread thread : threadsList)
+            thread.start();
         for (Thread thread : threadsList)
             thread.join();
         t2 = new Date().getTime();
         dt = t2 - t1;
         long multiThreadTime = dt;
+        System.out.println("multithread test done!");
 
         Double tpsSingleThread = (double)CONTRACTS_PER_THREAD/(double)singleThreadTime*1000.0;
         Double tpsMultiThread = (double)CONTRACTS_PER_THREAD*(double)THREADS_COUNT/(double)multiThreadTime*1000.0;
@@ -429,6 +453,7 @@ public class MainTest {
         System.out.println("singleThread: " + (CONTRACTS_PER_THREAD) + " for " + singleThreadTime + "ms, tps=" + String.format("%.2f", tpsSingleThread));
         System.out.println("multiThread(N="+THREADS_COUNT+"): " + (CONTRACTS_PER_THREAD*THREADS_COUNT) + " for " + multiThreadTime + "ms, tps=" + String.format("%.2f", tpsMultiThread));
         System.out.println("boostRate: " + String.format("%.2f", boostRate));
+        System.out.println("\n");
 
         mm.forEach(x->x.shutdown());
     }
