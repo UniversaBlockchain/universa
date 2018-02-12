@@ -352,7 +352,7 @@ public class MainTest {
         //Client client = new Client(myKey, main.myInfo, null);
 
         final long CONTRACTS_PER_THREAD = 100;
-        final long THREADS_COUNT = 4;
+        final long THREADS_COUNT = 2;
 
         class TestRunnable implements Runnable {
 

@@ -66,7 +66,7 @@ public class BasicHttpClient {
      */
     public BasicHttpClientSession start(PrivateKey privateKey, PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
 
-//        synchronized (this) {
+        synchronized (this) {
             if (session != null) {
                 this.session = session;
                 this.session.setNodePublicKey(nodePublicKey);
@@ -173,18 +173,18 @@ public class BasicHttpClient {
             }
 
             return this.session;
-//        }
+        }
 
     }
 
     public void restart() throws IOException {
-//        synchronized (this) {
+        synchronized (this) {
             System.err.println("RESTART");
             PrivateKey privateKey = session.getPrivateKey();
             PublicKey nodePublicKey = session.getNodePublicKey();
             session = null;
             start(privateKey, nodePublicKey,  null);
-//        }
+        }
     }
 
     /**
@@ -214,7 +214,7 @@ public class BasicHttpClient {
      */
     public Binder command(String name, Binder params) throws IOException {
 
-//        synchronized (this) {
+        synchronized (this) {
             if (session == null || session.getSessionKey() == null)
                 throw new IllegalStateException("Session does not created or session key is not got yet.");
 
@@ -271,7 +271,7 @@ public class BasicHttpClient {
                 restart();
             }
             throw new IOException("Failed to execute command " + name);
-//        }
+        }
     }
 
     /**
@@ -305,7 +305,7 @@ public class BasicHttpClient {
     }
 
     public Answer request(String path, Binder params) throws IOException {
-//        synchronized (this) {
+        synchronized (this) {
             String charset = "UTF-8";
 
             byte[] data = Boss.pack(params);
@@ -348,7 +348,7 @@ public class BasicHttpClient {
             int responseCode = httpConnection.getResponseCode();
             byte[] answer = Do.read(httpConnection.getInputStream());
             return new Answer(responseCode, Binder.from(Boss.load(answer)));
-//        }
+        }
     }
 
     @Override
