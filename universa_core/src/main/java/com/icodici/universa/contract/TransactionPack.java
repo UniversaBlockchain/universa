@@ -112,11 +112,11 @@ public class TransactionPack implements BiSerializable {
     protected void putAllSubitemsToReferencesRecursively(Contract c) {
         c.getRevokingItems().forEach(i -> {
             putReference((Contract) i);
-            putAllSubitemsToReferencesRecursively((Contract) i);
+//            putAllSubitemsToReferencesRecursively((Contract) i);
         });
         c.getNewItems().forEach(i -> {
             putReference((Contract) i);
-            putAllSubitemsToReferencesRecursively((Contract) i);
+//            putAllSubitemsToReferencesRecursively((Contract) i);
         });
 
     }
