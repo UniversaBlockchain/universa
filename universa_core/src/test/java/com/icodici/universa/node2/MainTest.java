@@ -34,6 +34,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
@@ -358,7 +359,7 @@ public class MainTest {
 
             public int threadNum = 0;
             List<Contract> contractList = new ArrayList<>();
-            Map<HashId, Contract> contractHashesMap = new HashMap();
+            Map<HashId, Contract> contractHashesMap = new ConcurrentHashMap<>();
             Client client = null;
 
             public void prepareContracts() throws Exception {
@@ -374,6 +375,7 @@ public class MainTest {
                     testContract.seal();
                     assertTrue(testContract.isOk());
                     contractList.add(testContract);
+                    contractHashesMap.put(testContract.getId(), testContract);
                 }
             }
 
@@ -389,7 +391,7 @@ public class MainTest {
                     Thread.currentThread().sleep(300);
                     for (HashId id : contractHashesMap.keySet()) {
                         ItemResult itemResult = client.getState(id);
-                        if (itemResult.state == ItemState.APPROVED)
+                        if (!itemResult.state.isPending())
                             contractHashesMap.remove(id);
                     }
                 }
