@@ -295,4 +295,98 @@ public class MainTest {
 //
 //        Client client = new Client(myKey, );
     }
+
+
+
+    @Test
+    public void localNetwork2() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for( int i=0; i<3; i++ )
+            mm.add(createMain("node"+(i+1), false));
+        Main main = mm.get(0);
+        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
+        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        Client client = new Client(myKey, main.myInfo, null);
+
+        final long CONTRACTS_PER_THREAD = 100;
+        final long THREADS_COUNT = 4;
+
+        class TestRunnable implements Runnable {
+
+            public int threadNum = 0;
+            public long avgTime = 0;
+
+            @Override
+            public void run() {
+                try {
+                    long tsum = 0;
+                    for (int iContract = 0; iContract < CONTRACTS_PER_THREAD; ++iContract) {
+                        Contract testContract = new Contract(myKey);
+//                        for (int i = 0; i < 10; i++) {
+//                            Contract nc = new Contract(myKey);
+//                            nc.seal();
+//                            testContract.addNewItems(nc);
+//                        }
+                        testContract.seal();
+                        assertTrue(testContract.isOk());
+                        long t1 = new Date().getTime();
+                        //ItemResult itemResult = client.register(testContract.getPackedTransaction(), 1000);
+                        ItemResult itemResult = client.register(testContract.getPackedTransaction());
+                        //assertEquals(ItemState.APPROVED, itemResult.state);
+                        long t2 = new Date().getTime();
+                        long dt = t2 - t1;
+                        tsum += dt;
+                    }
+                    avgTime = tsum / CONTRACTS_PER_THREAD;
+                    System.out.println("avgTime(thread="+threadNum+"): " + tsum / CONTRACTS_PER_THREAD);
+                } catch (Exception e) {
+                    System.out.println("runnable exception: " + e.toString());
+                }
+            }
+        }
+
+        TestRunnable runnableSingle = new TestRunnable();
+        Thread threadSingle = new Thread(() -> {
+            runnableSingle.threadNum = 0;
+            runnableSingle.run();
+        });
+        long t1 = new Date().getTime();
+        threadSingle.start();
+        threadSingle.join();
+        long t2 = new Date().getTime();
+        long dt = t2 - t1;
+        long singleThreadTime = dt;
+
+        List<Thread> threadsList = new ArrayList<>();
+        List<TestRunnable> runnableList = new ArrayList<>();
+        t1 = new Date().getTime();
+        for (int iThread = 0; iThread < THREADS_COUNT; ++iThread) {
+            TestRunnable runnableMultithread = new TestRunnable();
+            final int threadNum = iThread + 1;
+            Thread threadMultiThread = new Thread(() -> {
+                runnableMultithread.threadNum = threadNum;
+                runnableMultithread.run();
+            });
+            threadMultiThread.start();
+            threadsList.add(threadMultiThread);
+            runnableList.add(runnableMultithread);
+        }
+        for (Thread thread : threadsList)
+            thread.join();
+        t2 = new Date().getTime();
+        dt = t2 - t1;
+        long multiThreadTime = dt;
+
+        Double tpsSingleThread = (double)CONTRACTS_PER_THREAD/(double)singleThreadTime*1000.0;
+        Double tpsMultiThread = (double)CONTRACTS_PER_THREAD*(double)THREADS_COUNT/(double)multiThreadTime*1000.0;
+
+        System.out.println("\n === total ===");
+        System.out.println("singleThread: " + (CONTRACTS_PER_THREAD) + " for " + singleThreadTime + "ms, tps=" + String.format("%.2f", tpsSingleThread));
+        System.out.println("multiThread(N="+THREADS_COUNT+"): " + (CONTRACTS_PER_THREAD*THREADS_COUNT) + " for " + multiThreadTime + "ms, tps=" + String.format("%.2f", tpsMultiThread));
+
+        mm.forEach(x->x.shutdown());
+    }
+
 }
