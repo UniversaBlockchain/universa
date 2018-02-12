@@ -160,42 +160,74 @@ public class MainTest {
         int M = 2;
         float threshold = 1.2f;
         float ratio = 0;
+        boolean createNewContracts = false;
 //        assertTrue(singleContract.isOk());
 
 //        ItemResult r = client.getState(singleContract.getId());
 //        assertEquals(ItemState.UNDEFINED, r.state);
 //        System.out.println(r);
 
-        // register
 
-        for(int i = 0; i < N; i++) {
-
-            contractsForThreads = new ArrayList<>();
-            for(int j = 0; j < M; j++) {
-                Contract contract = new Contract(myKey);
-
-                for (int k = 0; k < 10; k++) {
-                    Contract nc = new Contract(myKey);
-                    nc.seal();
-                    contract.addNewItems(nc);
-                }
-                contract.seal();
-                assertTrue(contract.isOk());
-                contractsForThreads.add(contract);
-
-                ItemResult r = client.getState(contract.getId());
-                assertEquals(ItemState.UNDEFINED, r.state);
-                System.out.println(r);
-            }
-
-            Contract singleContract = new Contract(myKey);
+        contractsForThreads = new ArrayList<>();
+        for(int j = 0; j < M; j++) {
+            Contract contract = new Contract(myKey);
 
             for (int k = 0; k < 10; k++) {
                 Contract nc = new Contract(myKey);
                 nc.seal();
-                singleContract.addNewItems(nc);
+                contract.addNewItems(nc);
             }
-            singleContract.seal();
+            contract.seal();
+            assertTrue(contract.isOk());
+            contractsForThreads.add(contract);
+
+            ItemResult r = client.getState(contract.getId());
+            assertEquals(ItemState.UNDEFINED, r.state);
+            System.out.println(r);
+        }
+
+        Contract singleContract = new Contract(myKey);
+
+        for (int k = 0; k < 10; k++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            singleContract.addNewItems(nc);
+        }
+        singleContract.seal();
+
+        // register
+
+
+        for(int i = 0; i < N; i++) {
+
+            if(createNewContracts) {
+                contractsForThreads = new ArrayList<>();
+                for(int j = 0; j < M; j++) {
+                    Contract contract = new Contract(myKey);
+
+                    for (int k = 0; k < 10; k++) {
+                        Contract nc = new Contract(myKey);
+                        nc.seal();
+                        contract.addNewItems(nc);
+                    }
+                    contract.seal();
+                    assertTrue(contract.isOk());
+                    contractsForThreads.add(contract);
+
+                    ItemResult r = client.getState(contract.getId());
+                    assertEquals(ItemState.UNDEFINED, r.state);
+                    System.out.println(r);
+                }
+
+                singleContract = new Contract(myKey);
+
+                for (int k = 0; k < 10; k++) {
+                    Contract nc = new Contract(myKey);
+                    nc.seal();
+                    singleContract.addNewItems(nc);
+                }
+                singleContract.seal();
+            }
 
             long ts1;
             long ts2;
@@ -229,11 +261,12 @@ public class MainTest {
 
             ts1 = new Date().getTime();
 
+            Contract finalSingleContract = singleContract;
             Thread thread = new Thread(() -> {
                 long t = System.nanoTime();
                 ItemResult rr = null;
                 try {
-                    rr = client.register(singleContract.getPackedTransaction(), 15000);
+                    rr = client.register(finalSingleContract.getPackedTransaction(), 15000);
                     System.out.println("single thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
                 } catch (ClientError clientError) {
                     clientError.printStackTrace();

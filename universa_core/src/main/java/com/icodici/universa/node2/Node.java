@@ -53,7 +53,14 @@ public class Node {
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
 
-    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(16);
+    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(16, new ThreadFactory() {
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread thread = new Thread(r);
+            thread.setName("node-"+myInfo.getNumber()+"-worker");
+            return thread;
+        }
+    });
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
         this.config = config;
