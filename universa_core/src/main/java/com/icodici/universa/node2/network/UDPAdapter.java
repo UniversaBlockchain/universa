@@ -481,7 +481,7 @@ public class UDPAdapter extends DatagramAdapter {
         @Override
         public void run()
         {
-            setName(Integer.toString(new Random().nextInt(100)));
+            setName("UDP-socket-listener-" + Integer.toString(new Random().nextInt(100)));
             report(getLabel(), " UDPAdapter listen socket at " + myNodeInfo.getNodeAddress().getAddress() + ":" + myNodeInfo.getNodeAddress().getPort());
             active = true;
             while(active) {
