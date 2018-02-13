@@ -523,6 +523,27 @@ public class MainTest {
 
 
     @Test
+    public void testContractCheck() throws Exception {
+        PrivateKey key = TestKeys.privateKey(3);
+        testSomeWork(() ->  {
+            try {
+                Contract c = new Contract(key);
+                for (int k = 0; k < 500; k++) {
+                    Contract nc = new Contract(key);
+                    nc.seal();
+                    c.addNewItems(nc);
+                }
+                c.seal();
+                c.check();
+            } catch (Quantiser.QuantiserException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+
+
+    @Test
     public void testIdealConcurrentWork() throws Exception {
         testSomeWork(() ->  {
             for (int i = 0; i < 100; ++i)
