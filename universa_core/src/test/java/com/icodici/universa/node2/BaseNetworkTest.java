@@ -2680,7 +2680,7 @@ public class BaseNetworkTest extends TestCase {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                System.out.println("multi thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
+                System.out.println("single thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
                 semaphore.release();
             });
             thread.setName("single-thread register: " + singleContract.getId().toString());

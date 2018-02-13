@@ -50,7 +50,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     private static Config config_s = null;
 
 
-    private static final int NODES = 10;
+    private static final int NODES = 3;
 
 
     @BeforeClass
@@ -84,9 +84,9 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         networks_s = new ArrayList<>();
 
         config_s = new Config();
-        config_s.setPositiveConsensus(7);
-        config_s.setNegativeConsensus(4);
-        config_s.setResyncBreakConsensus(2);
+        config_s.setPositiveConsensus(2);
+        config_s.setNegativeConsensus(2);
+        config_s.setResyncBreakConsensus(1);
 
         Properties properties = new Properties();
         File file = new File(CONFIG_2_PATH + "config/config.yaml");
