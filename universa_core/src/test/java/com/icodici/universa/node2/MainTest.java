@@ -108,12 +108,13 @@ public class MainTest {
         assertEquals("[http://localhost:8080, http://localhost:6002, http://localhost:6004]", pubUrls);
 
         main.shutdown();
-        main.logger.stopInterceptingStdOut();;
-        main.logger.getCopy().forEach(x-> System.out.println(x));
+        main.logger.stopInterceptingStdOut();
+        ;
+        main.logger.getCopy().forEach(x -> System.out.println(x));
     }
 
-    Main createMain(String name,boolean nolog) throws InterruptedException {
-        String path = new File("src/test_node_config_v2/"+name).getAbsolutePath();
+    Main createMain(String name, boolean nolog) throws InterruptedException {
+        String path = new File("src/test_node_config_v2/" + name).getAbsolutePath();
         System.out.println(path);
         String[] args = new String[]{"--test", "--config", path, nolog ? "--nolog" : ""};
 
@@ -131,7 +132,7 @@ public class MainTest {
         thread.setName("Node Server: " + name);
         thread.start();
 
-        while(mm.size() == 0) {
+        while (mm.size() == 0) {
             Thread.sleep(100);
         }
         return mm.get(0);
@@ -140,7 +141,7 @@ public class MainTest {
     @Test
     public void localNetwork() throws Exception {
         List<Main> mm = new ArrayList<>();
-        for( int i=0; i<3; i++ ) {
+        for (int i = 0; i < 3; i++) {
             mm.add(createMain("node" + (i + 1), false));
         }
 
@@ -170,7 +171,7 @@ public class MainTest {
 
 
         contractsForThreads = new ArrayList<>();
-        for(int j = 0; j < M; j++) {
+        for (int j = 0; j < M; j++) {
             Contract contract = new Contract(myKey);
 
             for (int k = 0; k < 10; k++) {
@@ -199,24 +200,24 @@ public class MainTest {
         // register
 
 
-        for(int i = 0; i < N; i++) {
+        for (int i = 0; i < N; i++) {
 
-            if(createNewContracts) {
+            if (createNewContracts) {
                 contractsForThreads = new ArrayList<>();
-                for(int j = 0; j < M; j++) {
+                for (int j = 0; j < M; j++) {
                     Contract contract = new Contract(myKey);
 
-                for (int k = 0; k < 10; k++) {
-                    Contract nc = new Contract(myKey);
-                    nc.seal();
-                    contract.addNewItems(nc);
+                    for (int k = 0; k < 10; k++) {
+                        Contract nc = new Contract(myKey);
+                        nc.seal();
+                        contract.addNewItems(nc);
+                    }
+                    contract.seal();
+                    assertTrue(contract.isOk());
+                    contractsForThreads.add(contract);
+
+
                 }
-                contract.seal();
-                assertTrue(contract.isOk());
-                contractsForThreads.add(contract);
-
-
-            }
 
                 singleContract = new Contract(myKey);
 
@@ -230,11 +231,11 @@ public class MainTest {
 
             long ts1;
             long ts2;
-            Semaphore semaphore = new Semaphore(-(M-1));
+            Semaphore semaphore = new Semaphore(-(M - 1));
 
             ts1 = new Date().getTime();
 
-            for(Contract c : contractsForThreads) {
+            for (Contract c : contractsForThreads) {
                 Thread thread = new Thread(() -> {
 
                     Client client = null;
@@ -300,7 +301,7 @@ public class MainTest {
         ratio /= N;
         System.out.println("average " + ratio);
 
-        mm.forEach(x->x.shutdown());
+        mm.forEach(x -> x.shutdown());
     }
 
     @Test
@@ -317,23 +318,23 @@ public class MainTest {
 
         ItemResult r = client.getState(c.getId());
         assertEquals(ItemState.UNDEFINED, r.state);
-        System.out.println(":: "+r);
+        System.out.println(":: " + r);
 
 
         r = client.getState(c.getId());
         assertEquals(ItemState.UNDEFINED, r.state);
-        System.out.println(":: "+r);
+        System.out.println(":: " + r);
 
         LogPrinter.showDebug(true);
 //        r = client.register(c.getLastSealedBinary());
         r = client.register(c.getPackedTransaction());
         System.out.println(r);
 
-        while(true) {
+        while (true) {
             r = client.getState(c.getId());
             System.out.println("-->? " + r);
             Thread.sleep(50);
-            if( !r.state.isPending() )
+            if (!r.state.isPending())
                 break;
         }
 //
@@ -341,12 +342,11 @@ public class MainTest {
     }
 
 
-
     @Test
     public void localNetwork2() throws Exception {
         List<Main> mm = new ArrayList<>();
-        for( int i=0; i<3; i++ )
-            mm.add(createMain("node"+(i+1), false));
+        for (int i = 0; i < 3; i++)
+            mm.add(createMain("node" + (i + 1), false));
         Main main = mm.get(0);
         assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
         assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
@@ -451,19 +451,18 @@ public class MainTest {
         long multiThreadTime = dt;
         System.out.println("multithread test done!");
 
-        Double tpsSingleThread = (double)CONTRACTS_PER_THREAD/(double)singleThreadTime*1000.0;
-        Double tpsMultiThread = (double)CONTRACTS_PER_THREAD*(double)THREADS_COUNT/(double)multiThreadTime*1000.0;
+        Double tpsSingleThread = (double) CONTRACTS_PER_THREAD / (double) singleThreadTime * 1000.0;
+        Double tpsMultiThread = (double) CONTRACTS_PER_THREAD * (double) THREADS_COUNT / (double) multiThreadTime * 1000.0;
         Double boostRate = tpsMultiThread / tpsSingleThread;
 
         System.out.println("\n === total ===");
         System.out.println("singleThread: " + (CONTRACTS_PER_THREAD) + " for " + singleThreadTime + "ms, tps=" + String.format("%.2f", tpsSingleThread));
-        System.out.println("multiThread(N="+THREADS_COUNT+"): " + (CONTRACTS_PER_THREAD*THREADS_COUNT) + " for " + multiThreadTime + "ms, tps=" + String.format("%.2f", tpsMultiThread));
+        System.out.println("multiThread(N=" + THREADS_COUNT + "): " + (CONTRACTS_PER_THREAD * THREADS_COUNT) + " for " + multiThreadTime + "ms, tps=" + String.format("%.2f", tpsMultiThread));
         System.out.println("boostRate: " + String.format("%.2f", boostRate));
         System.out.println("\n");
 
-        mm.forEach(x->x.shutdown());
+        mm.forEach(x -> x.shutdown());
     }
-
 
 
     public static long idealConcurrentWork() {
@@ -472,7 +471,6 @@ public class MainTest {
             s += i;
         return s;
     }
-
 
 
     public void testSomeWork(Runnable someWork) throws Exception {
@@ -509,17 +507,30 @@ public class MainTest {
     }
 
 
-
     @Test
     public void testBossPack() throws Exception {
-        testSomeWork(() ->  {
-            byte[] br = new byte[200000];
-            new Random().nextBytes(br);
-            for (int i = 0; i < 10000; ++i)
-                Boss.pack(br);
+        byte[] br = new byte[200];
+        new Random().nextBytes(br);
+        Runnable r = () -> {
+            try {
+                Boss.Writer w = new Boss.Writer();
+                for (int i = 0; i < 1000000; ++i) {
+                    w.writeObject(br);
+                    br[0]++;
+                }
+                w.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        };
+        testSomeWork(() -> {
+            r.run();
+        });
+        Thread.sleep(1500);
+        testSomeWork(() -> {
+            r.run();
         });
     }
-
 
 
     @Test
@@ -578,20 +589,22 @@ public class MainTest {
 
     @Test
     public void testIdealConcurrentWork() throws Exception {
-        testSomeWork(() ->  {
+        testSomeWork(() -> {
             for (int i = 0; i < 100; ++i)
                 idealConcurrentWork();
         });
     }
 
 
-
     @Test
     public void testNewContractSeal() throws Exception {
-        testSomeWork(() ->  {
+        testSomeWork(() -> {
             for (int i = 0; i < 10; ++i) {
                 PrivateKey myKey = null;
-                try {myKey = TestKeys.privateKey(3);} catch (Exception e){}
+                try {
+                    myKey = TestKeys.privateKey(3);
+                } catch (Exception e) {
+                }
                 Contract testContract = new Contract(myKey);
                 for (int iContract = 0; iContract < 10; ++iContract) {
                     Contract nc = new Contract(myKey);

@@ -30,7 +30,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    public static final String NODE_VERSION = "2.4.1";
+    public static final String NODE_VERSION = "2.4.6-a3-1";
     private OptionParser parser;
     private OptionSet options;
     public final Reporter reporter = new Reporter();

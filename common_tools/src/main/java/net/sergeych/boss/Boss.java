@@ -778,7 +778,7 @@ public class Boss {
                 } else if (obj instanceof byte[]) {
                     len = ((byte[]) obj).length;
                 } else {
-                    trace("Can't cache it in treemode! : " + obj);
+//                    trace("Can't cache it in treemode! : " + obj);
                     return;
                 }
                 if (len <= maxStringSize) {
@@ -792,10 +792,10 @@ public class Boss {
         private Object parseExtra(int code) throws IOException {
             switch (code) {
                 case XT_DZERO:
-                    trace("extra 0");
+//                    trace("extra 0");
                     return 0.0;
                 case XT_DONE:
-                    trace("extra 1");
+//                    trace("extra 1");
                     return 1.0;
                 case XT_DMINUSONE:
                     return -1.0;
