@@ -416,9 +416,9 @@ public class MainTest {
             runnableSingle.threadNum = 0;
             runnableSingle.run();
         });
-        long t1 = new Date().getTime();
         runnableSingle.prepareContracts();
         System.out.println("singlethread test start...");
+        long t1 = new Date().getTime();
         threadSingle.start();
         threadSingle.join();
         long t2 = new Date().getTime();
@@ -429,7 +429,6 @@ public class MainTest {
         System.out.println("multithread test prepare...");
         List<Thread> threadsList = new ArrayList<>();
         List<TestRunnable> runnableList = new ArrayList<>();
-        t1 = new Date().getTime();
         for (int iThread = 0; iThread < THREADS_COUNT; ++iThread) {
             TestRunnable runnableMultithread = new TestRunnable();
             final int threadNum = iThread + 1;
@@ -442,6 +441,7 @@ public class MainTest {
             runnableList.add(runnableMultithread);
         }
         System.out.println("multithread test start...");
+        t1 = new Date().getTime();
         for (Thread thread : threadsList)
             thread.start();
         for (Thread thread : threadsList)
