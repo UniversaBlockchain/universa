@@ -69,7 +69,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     @Override
-    public synchronized void send(NodeInfo destination, byte[] payload) throws EncryptionError, InterruptedException {
+    public void send(NodeInfo destination, byte[] payload) throws EncryptionError, InterruptedException {
         report(getLabel(), "send to " + destination.getNumber(), VerboseLevel.BASE);
 
         Session session = sessionsById.get(destination.getNumber());
@@ -164,7 +164,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendBlock(Block block, Session session) throws InterruptedException {
+    protected void sendBlock(Block block, Session session) throws InterruptedException {
 
         if(!block.isValidToSend()) {
             block.prepareToSend(MAX_PACKET_SIZE);
@@ -200,7 +200,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendAsDataBlock(Block rawDataBlock, Session session) throws EncryptionError, InterruptedException {
+    protected void sendAsDataBlock(Block rawDataBlock, Session session) throws EncryptionError, InterruptedException {
         report(getLabel(), "send data to " + session.remoteNodeId, VerboseLevel.BASE);
         report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
 
@@ -223,7 +223,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendHello(Session session) throws EncryptionError, InterruptedException {
+    protected void sendHello(Session session) throws EncryptionError, InterruptedException {
         report(getLabel(), "send hello to " + session.remoteNodeId, VerboseLevel.BASE);
 
         session.state = Session.HELLO;
@@ -235,7 +235,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendWelcome(Session session) throws InterruptedException {
+    protected void sendWelcome(Session session) throws InterruptedException {
         report(getLabel(), "send welcome to " + session.remoteNodeId, VerboseLevel.BASE);
 
         session.state = Session.WELCOME;
@@ -247,7 +247,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendKeyRequest(Session session) throws InterruptedException {
+    protected void sendKeyRequest(Session session) throws InterruptedException {
         report(getLabel(), "send key request to " + session.remoteNodeId, VerboseLevel.BASE);
 
         session.state = Session.KEY_REQ;
@@ -272,7 +272,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendSessionKey(Session session) throws InterruptedException {
+    protected void sendSessionKey(Session session) throws InterruptedException {
         report(getLabel(), "send session key to " + session.remoteNodeId, VerboseLevel.BASE);
         report(getLabel(), "sessionKey is " + session.sessionKey.hashCode() + " for " + session.remoteNodeId);
 
@@ -299,7 +299,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendPacketAck(Session session, int blockId, int packetId) throws InterruptedException {
+    protected void sendPacketAck(Session session, int blockId, int packetId) throws InterruptedException {
         report(getLabel(), "send packet_ack to " + session.remoteNodeId);
 
         List data = asList(blockId, packetId);
@@ -311,7 +311,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendAck(Session session, int blockId) throws InterruptedException {
+    protected void sendAck(Session session, int blockId) throws InterruptedException {
         report(getLabel(), "send ack to " + session.remoteNodeId, VerboseLevel.BASE);
 
         Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
@@ -322,7 +322,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendNack(Session session, int blockId) throws InterruptedException {
+    protected void sendNack(Session session, int blockId) throws InterruptedException {
         report(getLabel(), "send nack to " + session.remoteNodeId, VerboseLevel.BASE);
 
         Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
@@ -333,7 +333,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized Session getOrCreateSession(int remoteId, InetAddress address, int port) throws EncryptionError {
+    protected Session getOrCreateSession(int remoteId, InetAddress address, int port) throws EncryptionError {
 
         if(sessionsById.containsKey(remoteId)) {
             Session s = sessionsById.get(remoteId);
@@ -361,7 +361,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void checkUnsent() {
+    protected void checkUnsent() {
         List<Block> blocksToRemove;
         for(Session session : sessionsById.values()) {
             blocksToRemove = new ArrayList();
@@ -397,7 +397,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void checkUnsentPackets(Session session) {
+    protected void checkUnsentPackets(Session session) {
         List<Block> blocksToResend = new ArrayList();
         List<Packet> packetsToResend = new ArrayList();
         List<DatagramPacket> datagramsToResend = new ArrayList();
@@ -432,7 +432,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected synchronized void sendWaitingBlocks(Session session) throws EncryptionError {
+    protected void sendWaitingBlocks(Session session) throws EncryptionError {
         if (session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
             report(getLabel(), " waiting blocks num " + session.waitingBlocksQueue.size());
             try {
@@ -453,7 +453,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
 
-    protected synchronized void callErrorCallbacks(String message) {
+    protected void callErrorCallbacks(String message) {
         for(Function<String, String> fn : errorCallbacks) {
             fn.apply(message);
         }
@@ -481,7 +481,7 @@ public class UDPAdapter extends DatagramAdapter {
         @Override
         public void run()
         {
-            setName(Integer.toString(new Random().nextInt(100)));
+            setName("UDP-socket-listener-" + Integer.toString(new Random().nextInt(100)));
             report(getLabel(), " UDPAdapter listen socket at " + myNodeInfo.getNodeAddress().getAddress() + ":" + myNodeInfo.getNodeAddress().getPort());
             active = true;
             while(active) {
@@ -602,7 +602,7 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
-        public synchronized void shutdownThread()
+        public void shutdownThread()
         {
             active = false;
             interrupt();
@@ -610,13 +610,13 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
-        public synchronized String getLabel()
+        public String getLabel()
         {
             return myNodeInfo.getNumber() + "-" + getName() + ": ";
         }
 
 
-        protected synchronized void obtainSolidBlock(Block block) throws SymmetricKey.AuthenticationFailed, EncryptionError, InterruptedException {
+        protected void obtainSolidBlock(Block block) throws SymmetricKey.AuthenticationFailed, EncryptionError, InterruptedException {
             Session session = null;
             Binder unbossedPayload;
             byte[] signedUnbossed;
@@ -852,13 +852,13 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
-        public synchronized void moveWaitingBlockToObtained(Block block) {
+        public void moveWaitingBlockToObtained(Block block) {
             waitingBlocks.remove(block.blockId);
             obtainedBlocks.put(block.blockId, block);
         }
 
 
-        public synchronized void answerAckOrNack(Session session, Block block, InetAddress address, int port) throws InterruptedException, EncryptionError {
+        public void answerAckOrNack(Session session, Block block, InetAddress address, int port) throws InterruptedException, EncryptionError {
             if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                 sendAck(session, block.blockId);
             } else {
@@ -923,13 +923,13 @@ public class UDPAdapter extends DatagramAdapter {
             this.payload = payload;
         }
 
-        public synchronized byte[] makeByteArray() {
+        public byte[] makeByteArray() {
             List data = asList(brotherPacketsNum, packetId, senderNodeId, receiverNodeId, blockId, type, new Bytes(payload));
             Bytes byteArray = Boss.dump(data);
             return byteArray.toArray();
         }
 
-        public synchronized void parseFromByteArray(byte[] byteArray) throws IOException {
+        public void parseFromByteArray(byte[] byteArray) throws IOException {
 
             List data = Boss.load(byteArray);
             brotherPacketsNum = (int) data.get(0);
@@ -993,7 +993,7 @@ public class UDPAdapter extends DatagramAdapter {
             datagrams = new ConcurrentHashMap<>();
         }
 
-        public synchronized void prepareToSend(int packetSize) {
+        public void prepareToSend(int packetSize) {
             packets = new ConcurrentHashMap<>();
             datagrams = new ConcurrentHashMap<>();
 
@@ -1029,7 +1029,7 @@ public class UDPAdapter extends DatagramAdapter {
             validToSend = true;
         }
 
-        public synchronized void reconstruct() throws IOException {
+        public void reconstruct() throws IOException {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
             for (Packet packet : packets.values()) {
                 outputStream.write(packet.payload);
@@ -1037,21 +1037,21 @@ public class UDPAdapter extends DatagramAdapter {
             payload = outputStream.toByteArray();
         }
 
-        public synchronized void addToPackets(Packet packet) {
+        public void addToPackets(Packet packet) {
             if(!packets.containsKey(packet.packetId)) {
                 packets.put(packet.packetId, packet);
             }
             report(getLabel(), " addToPackets: " + packets.size() + " from " + packet.brotherPacketsNum + ", blockId: " + packet.blockId + " packetId: " + packet.packetId + " type: " + packet.type);
         }
 
-        public synchronized void markPacketAsDelivered(Packet packet) throws InterruptedException {
+        public void markPacketAsDelivered(Packet packet) throws InterruptedException {
             packet.delivered = true;
             if(datagrams.containsKey(packet.packetId)) {
                 datagrams.remove(packet.packetId);
             }
         }
 
-        public synchronized Boolean isSolid() {
+        public Boolean isSolid() {
             if(packets.size() > 0) {
                 // packets.get(0) may be null because packets can received in random order
                 if(packets.get(0) != null && packets.get(0).brotherPacketsNum == packets.size()) {
@@ -1062,7 +1062,7 @@ public class UDPAdapter extends DatagramAdapter {
             return false;
         }
 
-        public synchronized Boolean isValidToSend() {
+        public Boolean isValidToSend() {
             if(packets.size() == 0) {
                 return false;
             }
@@ -1073,7 +1073,7 @@ public class UDPAdapter extends DatagramAdapter {
             return validToSend;
         }
 
-        public synchronized Boolean isDelivered() {
+        public Boolean isDelivered() {
             return delivered;
         }
     }
@@ -1122,7 +1122,7 @@ public class UDPAdapter extends DatagramAdapter {
             state = HANDSHAKE;
         }
 
-        public synchronized Boolean isValid() {
+        public Boolean isValid() {
             if (localNonce == null) {
                 report(getLabel(), "session validness check: localNonce is null");
                 return false;
@@ -1149,24 +1149,24 @@ public class UDPAdapter extends DatagramAdapter {
             return true;
         }
 
-        public synchronized void createSessionKey() throws EncryptionError {
+        public void createSessionKey() throws EncryptionError {
             if (sessionKey == null) {
                 sessionKey = new SymmetricKey();
             }
 //            state = EXCHANGING;
         }
 
-        public synchronized void reconstructSessionKey(byte[] key) throws EncryptionError {
+        public void reconstructSessionKey(byte[] key) throws EncryptionError {
             sessionKey = new SymmetricKey(key);
             state = EXCHANGING;
         }
 
-        public synchronized void addBlockToWaitingQueue(Block block) throws InterruptedException {
+        public void addBlockToWaitingQueue(Block block) throws InterruptedException {
             if(!waitingBlocksQueue.contains(block))
                 waitingBlocksQueue.put(block);
         }
 
-        public synchronized void addBlockToSendingQueue(Block block) throws InterruptedException {
+        public void addBlockToSendingQueue(Block block) throws InterruptedException {
             if(!sendingBlocksQueue.contains(block))
                 sendingBlocksQueue.put(block);
 
@@ -1175,17 +1175,17 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized void addPacketToSendingQueue(Packet packet) throws InterruptedException {
+        public void addPacketToSendingQueue(Packet packet) throws InterruptedException {
             if(!sendingPacketsQueue.contains(packet))
                 sendingPacketsQueue.put(packet);
         }
 
-        public synchronized void removeBlockFromWaitingQueue(Block block) throws InterruptedException {
+        public void removeBlockFromWaitingQueue(Block block) throws InterruptedException {
             if(waitingBlocksQueue.contains(block))
                 waitingBlocksQueue.remove(block);
         }
 
-        public synchronized void removeBlockFromWaitingQueue(int blockId) throws InterruptedException {
+        public void removeBlockFromWaitingQueue(int blockId) throws InterruptedException {
             for (Block block : waitingBlocksQueue) {
                 if (block.blockId == blockId) {
                     removeBlockFromWaitingQueue(block);
@@ -1193,7 +1193,7 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized void removeBlockFromSendingQueue(Block block) throws InterruptedException {
+        public void removeBlockFromSendingQueue(Block block) throws InterruptedException {
             if(sendingBlocksQueue.contains(block))
                 sendingBlocksQueue.remove(block);
 
@@ -1202,7 +1202,7 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized void removePacketFromSendingQueue(Packet packet) throws InterruptedException {
+        public void removePacketFromSendingQueue(Packet packet) throws InterruptedException {
             if(sendingPacketsQueue.contains(packet))
                 sendingPacketsQueue.remove(packet);
 
@@ -1216,7 +1216,7 @@ public class UDPAdapter extends DatagramAdapter {
 
         }
 
-        public synchronized void incremetWaitIndexForPacketsFromSendingQueue() throws InterruptedException {
+        public void incremetWaitIndexForPacketsFromSendingQueue() throws InterruptedException {
 //            if(sendingPacketsQueue.peek() != null)
 //                sendingPacketsQueue.peek().sendWaitIndex++;
 //            Object[] sp = sendingPacketsQueue.toArray();
@@ -1235,7 +1235,7 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized void removePacketFromSendingQueue(int blockId, int packetId) throws InterruptedException {
+        public void removePacketFromSendingQueue(int blockId, int packetId) throws InterruptedException {
             for (Block sendingBlock : sendingBlocksQueue) {
                 if (sendingBlock.blockId == blockId) {
                     for (Packet p : sendingBlock.packets.values()) {
@@ -1247,7 +1247,7 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized void makeBlockDelivered(int blockId) throws InterruptedException {
+        public void makeBlockDelivered(int blockId) throws InterruptedException {
             for (Block sendingBlock : sendingBlocksQueue) {
                 if (sendingBlock.blockId == blockId) {
                     removeBlockFromSendingQueue(sendingBlock);
@@ -1257,7 +1257,7 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized void moveBlocksFromSendingToWaiting() throws InterruptedException {
+        public void moveBlocksFromSendingToWaiting() throws InterruptedException {
             for (Block sendingBlock : sendingBlocksQueue) {
                 sendingBlock.validToSend = false;
                 removeBlockFromSendingQueue(sendingBlock);
@@ -1265,7 +1265,7 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized void removeDataBlocksFromWaiting() throws InterruptedException {
+        public void removeDataBlocksFromWaiting() throws InterruptedException {
             for (Block block : waitingBlocksQueue) {
                 if(block.type == PacketTypes.DATA) {
                     removeBlockFromWaitingQueue(block);
@@ -1273,7 +1273,7 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized void makeBlockDeliveredByType(int type) throws InterruptedException {
+        public void makeBlockDeliveredByType(int type) throws InterruptedException {
             for (Block sendingBlock : sendingBlocksQueue) {
                 if (sendingBlock.type == type) {
                     removeBlockFromSendingQueue(sendingBlock);
@@ -1282,7 +1282,7 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public synchronized Block getRawDataBlockFromWaitingQueue(int blockId) throws InterruptedException {
+        public Block getRawDataBlockFromWaitingQueue(int blockId) throws InterruptedException {
             for (Block block : waitingBlocksQueue) {
                 if (block.blockId == blockId && block.type == PacketTypes.RAW_DATA) {
                     return block;
