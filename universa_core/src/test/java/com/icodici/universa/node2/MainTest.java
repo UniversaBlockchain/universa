@@ -12,8 +12,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTest;
 import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.Client;
@@ -28,6 +27,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -538,6 +538,39 @@ public class MainTest {
             } catch (Quantiser.QuantiserException e) {
                 e.printStackTrace();
             }
+        });
+    }
+
+
+
+    @Test
+    public void testLedger() throws Exception {
+
+        Properties properties = new Properties();
+
+        File file = new File("./src/test_config_2/" + "config/config.yaml");
+        if (file.exists())
+            properties.load(new FileReader(file));
+
+        final PostgresLedger ledger_s = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING, properties);
+        StateRecord record = ledger_s.findOrCreate(HashId.createRandom());
+
+        System.out.println("--- find or create ---");
+        testSomeWork(() ->  {
+            for (int i = 0; i < 10000; ++i)
+                ledger_s.findOrCreate(HashId.createRandom());
+        });
+
+        System.out.println("--- lock to create ---");
+        testSomeWork(() ->  {
+            for (int i = 0; i < 10000; ++i)
+                record.createOutputLockRecord(HashId.createRandom());
+        });
+
+        System.out.println("--- lock to revoke ---");
+        testSomeWork(() ->  {
+            for (int i = 0; i < 10000; ++i)
+                record.lockToRevoke(HashId.createRandom());
         });
     }
 
