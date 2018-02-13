@@ -703,10 +703,10 @@ public class Boss {
         @SuppressWarnings("unchecked")
         private <T> T get() throws IOException {
             Header h = readHeader();
-            trace("Header " + h);
+//            trace("Header " + h);
             switch (h.code) {
                 case TYPE_INT:
-                    trace("Int: " + h.smallestNumber(false));
+//                    trace("Int: " + h.smallestNumber(false));
                     return (T) h.smallestNumber(false);
                 case TYPE_NINT:
                     return (T) h.smallestNumber(true);
@@ -716,8 +716,8 @@ public class Boss {
                     if (h.code == TYPE_TEXT) {
                         String s = bb.toString();
                         cacheObject(s);
-                        trace("t: " + s);
-                        traceCache();
+//                        trace("t: " + s);
+//                        traceCache();
                         return (T) s;
                     }
                     cacheObject(bb);
@@ -735,10 +735,10 @@ public class Boss {
                 }
                 case TYPE_CREF:
                     int i = (int) h.value;
-                    trace(String.format("Get from cache %d -> %s", h.value,
-                                        i == 0 ? null : cache.get(i - 1)
-                    ));
-                    traceCache();
+//                    trace(String.format("Get from cache %d -> %s", h.value,
+//                                        i == 0 ? null : cache.get(i - 1)
+//                    ));
+//                    traceCache();
                     return i == 0 ? null : (T) cache.get(i - 1);
                 case TYPE_EXTRA:
                     return (T) parseExtra((int) h.value);
