@@ -53,7 +53,7 @@ public class Node {
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
 
-    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(16, new ThreadFactory() {
+    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(64, new ThreadFactory() {
         @Override
         public Thread newThread(Runnable r) {
             Thread thread = new Thread(r);
