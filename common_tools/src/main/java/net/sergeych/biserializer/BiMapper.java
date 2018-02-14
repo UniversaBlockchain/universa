@@ -210,6 +210,7 @@ public class BiMapper {
         if (typeName != null)
             adapters.put(typeName, adapter);
         revision++;
+        BossBiMapper.recalculateMapper();
     }
 
     int getRevision() {

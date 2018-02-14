@@ -35,7 +35,7 @@ public class DefaultBiMapper {
 
     final static BiMapper defaultInstance = new BiMapper();
 
-    public static BiMapper getInstance() {
+    public static final BiMapper getInstance() {
         return defaultInstance;
     }
 

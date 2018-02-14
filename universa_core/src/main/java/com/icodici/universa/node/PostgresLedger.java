@@ -30,13 +30,13 @@ import java.util.concurrent.Callable;
  */
 public class PostgresLedger implements Ledger {
 
-    private final static int MAX_CONNECTIONS = 32;
+    private final static int MAX_CONNECTIONS = 64;
 
     private final DbPool dbPool;
 
     private boolean sqlite = false;
 
-    private Object writeLock = new Object();
+//    private Object writeLock = new Object();
     //    private Object transactionLock = new Object();
     private Map<HashId, WeakReference<StateRecord>> cachedRecords = new WeakHashMap<>();
     private boolean useCache = true;

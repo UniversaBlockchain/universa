@@ -36,15 +36,23 @@ public class BossBiMapper {
     private static BiMapper mapper = null;
     private static int lastRevision = 0;
 
-    public static synchronized BiMapper getInstance() {
+    static {
+        recalculateMapper();
+    }
+
+    public static BiMapper getInstance() {
+        return mapper;
+    }
+
+    public static void recalculateMapper() {
         BiMapper full = DefaultBiMapper.getInstance();
         if (mapper == null || lastRevision < full.getRevision()) {
-            mapper = new BiMapper(full);
+            BiMapper m = new BiMapper(full);
             lastRevision = full.getRevision();
-            mapper.unregister(ZonedDateTime.class);
-            mapper.unregister((new byte[0]).getClass());
+            m.unregister(ZonedDateTime.class);
+            m.unregister((new byte[0]).getClass());
+            mapper = m;
         }
-        return mapper;
     }
 
     public static <T> T deserialize(Map map) {
