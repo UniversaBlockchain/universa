@@ -308,26 +308,41 @@ public class MainTest {
     @Ignore("This test nust be started manually")
     public void checkRealNetwork() throws Exception {
 
+        int numThraeds = 8;
+        List<PrivateKey> keys = new ArrayList<>();
+        for (int j = 0; j < numThraeds; j++) {
+            PrivateKey key = new PrivateKey(Do.read("./src/test_contracts/keys/" + j + ".private.unikey"));
+            keys.add(key);
+        }
+
+
+        List<Contract> contractsForThreads = new ArrayList<>();
+        for (int j = 0; j < numThraeds; j++) {
+            PrivateKey key = keys.get(0);
+            Contract contract = new Contract(key);
+
+            for (int k = 0; k < 500; k++) {
+                Contract nc = new Contract(key);
+                nc.seal();
+                contract.addNewItems(nc);
+            }
+            contract.seal();
+            contractsForThreads.add(contract);
+        }
 
         List<Thread> threadList = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            PrivateKey clientKey = new PrivateKey(Do.read("./src/test_contracts/keys/" + i + ".private.unikey"));
+        long t1 = new Date().getTime();
+        for (int i = 0; i < numThraeds; i++) {
+            final int ii = i;
             Thread thread = new Thread(() -> {
 
+                PrivateKey clientKey = keys.get(ii);
                 Client client = null;
                 try {
                     client = new Client("http://node-1-sel1.universa.io:8080", clientKey, null);
 
-                    Contract c = new Contract(clientKey);
-                    c.setExpiresAt(ZonedDateTime.now().plusSeconds(300));
-                    for (int k = 0; k < 10; k++) {
-                        Contract nc = new Contract(clientKey);
-                        nc.seal();
-                        c.addNewItems(nc);
-                    }
-                    c.seal();
-                    ItemResult r = null;
-                    r = client.register(c.getPackedTransaction());
+                    Contract c = contractsForThreads.get(ii);
+                    ItemResult r = client.register(c.getPackedTransaction());
 
                     while (true) {
                         r = client.getState(c.getId());
@@ -352,6 +367,10 @@ public class MainTest {
 
         for (Thread thread : threadList)
             thread.join();
+
+        long t2 = new Date().getTime();
+        long multiTime = t2 - t1;
+        System.out.println("time: " + multiTime + "ms");
 
 
 //        r = client.getState(c.getId());
