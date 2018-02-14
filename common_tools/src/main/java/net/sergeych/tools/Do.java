@@ -34,9 +34,10 @@ public class Do {
 
     public static byte[] read(InputStream inputStream) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        int b;
-        while ((b = inputStream.read()) >= 0)
-            bos.write(b);
+        byte[] block = new byte[8192];
+        int l;
+        while ((l = inputStream.read(block)) >= 0)
+            bos.write(block, 0, l);
         return bos.toByteArray();
     }
 

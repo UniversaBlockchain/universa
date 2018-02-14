@@ -54,9 +54,12 @@ public class Node {
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
 
     private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(512, new ThreadFactory() {
+
+        private final ThreadGroup threadGroup = new ThreadGroup("node-workers");
+
         @Override
         public Thread newThread(Runnable r) {
-            Thread thread = new Thread(r);
+            Thread thread = new Thread(threadGroup,r);
             thread.setName("node-"+myInfo.getNumber()+"-worker");
             return thread;
         }
@@ -81,7 +84,6 @@ public class Node {
      * @return current (or last known) item state
      */
     public @NonNull ItemResult registerItem(Approvable item) {
-
         Object x = checkItemInternal(item.getId(), item, true);
         return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
     }
