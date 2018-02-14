@@ -308,35 +308,59 @@ public class MainTest {
     @Ignore("This test nust be started manually")
     public void checkRealNetwork() throws Exception {
 
-        PrivateKey clientKey = TestKeys.privateKey(3);
-        Client client = new Client("http://node-17-com.universa.io:8080", clientKey, null);
 
-        Contract c = new Contract(clientKey);
-        c.setExpiresAt(ZonedDateTime.now().plusSeconds(300));
-        c.seal();
-        assertTrue(c.isOk());
+        List<Thread> threadList = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            PrivateKey clientKey = new PrivateKey(Do.read("./src/test_contracts/keys/" + i + ".private.unikey"));
+            Thread thread = new Thread(() -> {
 
-        ItemResult r = client.getState(c.getId());
-        assertEquals(ItemState.UNDEFINED, r.state);
-        System.out.println(":: " + r);
+                Client client = null;
+                try {
+                    client = new Client("http://node-1-sel1.universa.io:8080", clientKey, null);
 
+                    Contract c = new Contract(clientKey);
+                    c.setExpiresAt(ZonedDateTime.now().plusSeconds(300));
+                    for (int k = 0; k < 10; k++) {
+                        Contract nc = new Contract(clientKey);
+                        nc.seal();
+                        c.addNewItems(nc);
+                    }
+                    c.seal();
+                    ItemResult r = null;
+                    r = client.register(c.getPackedTransaction());
 
-        r = client.getState(c.getId());
-        assertEquals(ItemState.UNDEFINED, r.state);
-        System.out.println(":: " + r);
+                    while (true) {
+                        r = client.getState(c.getId());
+                        System.out.println("-->? " + r);
+                        Thread.currentThread().sleep(50);
+                        if (!r.state.isPending())
+                            break;
+                    }
+                } catch (ClientError clientError) {
+                    clientError.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
 
-        LogPrinter.showDebug(true);
-//        r = client.register(c.getLastSealedBinary());
-        r = client.register(c.getPackedTransaction());
-        System.out.println(r);
-
-        while (true) {
-            r = client.getState(c.getId());
-            System.out.println("-->? " + r);
-            Thread.sleep(50);
-            if (!r.state.isPending())
-                break;
+            });
+            thread.setName("thread register: " + i);
+            threadList.add(thread);
+            thread.start();
         }
+
+        for (Thread thread : threadList)
+            thread.join();
+
+
+//        r = client.getState(c.getId());
+//        assertEquals(ItemState.UNDEFINED, r.state);
+//        System.out.println(":: " + r);
+//
+//        LogPrinter.showDebug(true);
+////        r = client.register(c.getLastSealedBinary());
+//        System.out.println(r);
 //
 //        Client client = new Client(myKey, );
     }
@@ -551,6 +575,7 @@ public class MainTest {
             }
         });
     }
+
 
 
 

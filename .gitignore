@@ -85,3 +85,4 @@ fabric.properties
 /.idea/workspace.xml
 !/.idea/artifacts/uniclient_main_jar.xml
 !/.idea/artifacts/uninode_jar.xml
+/universa_core/META-INF/MANIFEST.MF
