@@ -7,9 +7,9 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.network.TestKeys;
-import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.tools.Binder;
 import org.junit.Before;
@@ -19,13 +19,20 @@ import java.time.ZonedDateTime;
 
 import static org.junit.Assert.assertEquals;
 
-public class ParcelTest {
+public class ParcelTest  {
+    protected String rootPath = "./src/test_contracts/";
+    protected final String ROOT_CONTRACT = rootPath + "simple_root_contract.yml";
 
     Parcel parcel;
     Parcel des_parcel;
+    Parcel parcelFromFile;
+    Parcel des_parcelFromFile;
 
     @Before
     public void setUp() throws Exception {
+
+        TransactionPack payloadTpFromFile = new TransactionPack();
+        TransactionPack paymentTpFromFile = new TransactionPack();
         TransactionPack payload_tp = new TransactionPack();
         TransactionPack payment_tp = new TransactionPack();
 
@@ -49,8 +56,22 @@ public class ParcelTest {
         payload_tp.setContract(payload);
         payment_tp.setContract(payment);
 
-        //create parcel
         parcel = new Parcel(payload_tp, payment_tp);
+
+        PrivateKey privateKey = TestKeys.privateKey(3);
+
+        Contract payloadFromFile = Contract.fromDslFile(ROOT_CONTRACT);
+        payloadFromFile.addSignerKey(privateKey);
+        payloadFromFile.seal();
+
+        Contract paymentFromFile = Contract.fromDslFile(ROOT_CONTRACT);
+        paymentFromFile.addSignerKey(privateKey);
+        paymentFromFile.seal();
+
+        payloadTpFromFile.setContract(payloadFromFile);
+        paymentTpFromFile.setContract(paymentFromFile);
+
+        parcelFromFile = new Parcel(payloadTpFromFile, paymentTpFromFile);
     }
 
     public Binder serialize(Parcel parcel) throws Exception {
@@ -62,43 +83,50 @@ public class ParcelTest {
         return new Parcel(binder);
     }
 
-    public void parcelAssertions() throws Exception {
+    public void parcelAssertions(Parcel equal1, Parcel equal2 ) throws Exception {
         //few assertions
-        assertEquals(parcel.getPayload().getContract().getId(), des_parcel.getPayload().getContract().getId());
-        assertEquals(parcel.getPayment().getContract().getId(), des_parcel.getPayment().getContract().getId());
+        assertEquals(equal1.getPayload().getContract().getId(), equal2.getPayload().getContract().getId());
+        assertEquals(equal1.getPayment().getContract().getId(), equal2.getPayment().getContract().getId());
 
-        assertEquals(parcel.getPayload().getContract().getState().getBranchId(), des_parcel.getPayload().getContract().getState().getBranchId());
-        assertEquals(parcel.getPayment().getContract().getState().getBranchId(), des_parcel.getPayment().getContract().getState().getBranchId());
+        assertEquals(equal1.getPayload().getContract().getState().getBranchId(), equal2.getPayload().getContract().getState().getBranchId());
+        assertEquals(equal1.getPayment().getContract().getState().getBranchId(), equal2.getPayment().getContract().getState().getBranchId());
 
-        assertEquals(parcel.getPayload().getContract().getState().getCreatedAt().getSecond(), des_parcel.getPayload().getContract().getState().getCreatedAt().getSecond());
-        assertEquals(parcel.getPayment().getContract().getState().getCreatedAt().getSecond(), des_parcel.getPayment().getContract().getState().getCreatedAt().getSecond());
+        assertEquals(equal1.getPayload().getContract().getState().getCreatedAt().getSecond(), equal2.getPayload().getContract().getState().getCreatedAt().getSecond());
+        assertEquals(equal1.getPayment().getContract().getState().getCreatedAt().getSecond(), equal2.getPayment().getContract().getState().getCreatedAt().getSecond());
 
-        assertEquals(parcel.getPayload().getContract().getExpiresAt().getDayOfYear(), des_parcel.getPayload().getContract().getExpiresAt().getDayOfYear());
-        assertEquals(parcel.getPayment().getContract().getExpiresAt().getDayOfYear(), des_parcel.getPayment().getContract().getExpiresAt().getDayOfYear());
+        assertEquals(equal1.getPayload().getContract().getExpiresAt().getDayOfYear(), equal2.getPayload().getContract().getExpiresAt().getDayOfYear());
+        assertEquals(equal1.getPayment().getContract().getExpiresAt().getDayOfYear(), equal2.getPayment().getContract().getExpiresAt().getDayOfYear());
 
-        assertEquals(parcel.getPayload().getReferences(), des_parcel.getPayload().getReferences());
-        assertEquals(parcel.getPayment().getReferences(), des_parcel.getPayment().getReferences());
+        assertEquals(equal1.getPayload().getReferences(), equal2.getPayload().getReferences());
+        assertEquals(equal1.getPayment().getReferences(), equal2.getPayment().getReferences());
     }
+
 
     @Test
     public void serializeDeserialize() throws Exception {
         //serialize
-        Binder b = serialize(parcel);
+        Binder b1 = serialize(parcel);
+        Binder b2 = serialize(parcelFromFile);
 
         //deserialize
-        des_parcel = deserialize(b);
+        des_parcel = deserialize(b1);
+        des_parcelFromFile = deserialize(b2);
 
-        parcelAssertions();
+        parcelAssertions(parcel, des_parcel);
+        parcelAssertions(des_parcelFromFile, des_parcelFromFile);
     }
 
     @Test
     public void packUnpack() throws Exception {
         //pack
         byte[] array = parcel.pack();
+        byte[] array1 = parcelFromFile.pack();
 
         //unpack
         des_parcel = Parcel.unpack(array);
+        des_parcelFromFile = Parcel.unpack(array1);
 
-        parcelAssertions();
+        parcelAssertions(parcel, des_parcel);
+        parcelAssertions(parcelFromFile, des_parcelFromFile);
     }
 }
