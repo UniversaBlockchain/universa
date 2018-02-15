@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 
 import static org.junit.Assert.*;
 
@@ -811,6 +812,90 @@ public class ContractTest extends ContractTestBase {
         assertEquals(costShouldBeAfterProcessing, processingContract.getProcessedCost());
     }
 
+
+
+    @Test
+    public void checkParallelCreation() throws Exception {
+        final PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        int N = 100;
+        int M = Runtime.getRuntime().availableProcessors();
+        int K = 10;
+        float threshold = 1.2f;
+        float ratio = 0;
+
+
+        System.out.println("available processors: " + M);
+
+        for(int i = 0; i < N; i++) {
+            long ts1;
+            long ts2;
+            Semaphore semaphore = new Semaphore(-(M-1));
+
+
+            ts1 = new Date().getTime();
+
+            for(int j = 0; j < M; j++) {
+                new Thread(() -> {
+                    for(int x = 0; x < K; x++) {
+                        try {
+                            Contract c = new Contract(key);
+                            for (int k = 0; k < 10; k++) {
+                                Contract nc = new Contract(key);
+                                nc.seal();
+                                c.addNewItems(nc);
+                            }
+                            c.seal();
+                            c.check();
+                        } catch (Quantiser.QuantiserException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    semaphore.release();
+                }).start();
+            }
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long time2 = ts2 - ts1;
+
+
+
+            ts1 = new Date().getTime();
+
+            new Thread(() -> {
+                for(int x = 0; x < K; x++) {
+                    try {
+                        Contract c = new Contract(key);
+                        for (int k = 0; k < 10; k++) {
+                            Contract nc = new Contract(key);
+                            nc.seal();
+                            c.addNewItems(nc);
+                        }
+                        c.seal();
+                        c.check();
+                    } catch (Quantiser.QuantiserException e) {
+                        e.printStackTrace();
+                    }
+                }
+                semaphore.release();
+            }).start();
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long time3 = ts2 - ts1;
+
+            System.out.println(time2 * 1.0f / time3);
+            ratio += time2 * 1.0f / time3;
+        }
+
+        ratio /= N;
+        System.out.println("average " + ratio);
+        assertFalse(ratio > threshold);
+    }
 
     @Test
     public void checkSealedBytes() throws Exception {

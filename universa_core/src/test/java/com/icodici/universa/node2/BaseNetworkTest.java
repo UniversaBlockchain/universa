@@ -8,9 +8,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.Approvable;
-import com.icodici.universa.Decimal;
-import com.icodici.universa.HashId;
+import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
@@ -24,6 +22,7 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 
@@ -2980,6 +2979,397 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
+    @Test
+    public void parallelTest() throws Exception {
+//        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
+//        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
+        PrivateKey myKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+//        assertEquals(main.cache, main.node.getCache());
+//        ItemCache c1 = main.cache;
+//        ItemCache c2 = main.node.getCache();
+
+//        Client client = new Client(myKey, main.myInfo, null);
+
+
+        List<Contract> contractsForThreads = new ArrayList<>();
+        int N = 100;
+        int M = 2;
+        float threshold = 1.2f;
+        float ratio = 0;
+        boolean createNewContracts = true;
+//        assertTrue(singleContract.isOk());
+
+//        ItemResult r = client.getState(singleContract.getId());
+//        assertEquals(ItemState.UNDEFINED, r.state);
+//        System.out.println(r);
+
+
+        contractsForThreads = new ArrayList<>();
+        for(int j = 0; j < M; j++) {
+            Contract contract = new Contract(myKey);
+
+            for (int k = 0; k < 10; k++) {
+                Contract nc = new Contract(myKey);
+                nc.seal();
+                contract.addNewItems(nc);
+            }
+            contract.seal();
+            assertTrue(contract.isOk());
+            contractsForThreads.add(contract);
+
+//            ItemResult r = client.getState(contract.getId());
+//            assertEquals(ItemState.UNDEFINED, r.state);
+//            System.out.println(r);
+        }
+
+        Contract singleContract = new Contract(myKey);
+
+        for (int k = 0; k < 10; k++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            singleContract.addNewItems(nc);
+        }
+        singleContract.seal();
+
+        // register
+
+
+        for(int i = 0; i < N; i++) {
+
+            if(createNewContracts) {
+                contractsForThreads = new ArrayList<>();
+                for(int j = 0; j < M; j++) {
+                    Contract contract = new Contract(myKey);
+
+                    for (int k = 0; k < 10; k++) {
+                        Contract nc = new Contract(myKey);
+                        nc.seal();
+                        contract.addNewItems(nc);
+                    }
+                    contract.seal();
+                    assertTrue(contract.isOk());
+                    contractsForThreads.add(contract);
+
+
+                }
+
+                singleContract = new Contract(myKey);
+
+                for (int k = 0; k < 10; k++) {
+                    Contract nc = new Contract(myKey);
+                    nc.seal();
+                    singleContract.addNewItems(nc);
+                }
+                singleContract.seal();
+            }
+
+            long ts1;
+            long ts2;
+            Semaphore semaphore = new Semaphore(-(M-1));
+
+            ts1 = new Date().getTime();
+
+            for(Contract c : contractsForThreads) {
+                Thread thread = new Thread(() -> {
+
+                    long t = System.nanoTime();
+                    ItemResult rr = null;
+                    rr = node.registerItem(c);
+                    try {
+                        rr = node.waitItem(c.getId(), 15000);
+                    } catch (TimeoutException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.println("multi thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
+                    semaphore.release();
+                });
+                thread.setName("Multi-thread register: " + c.getId().toString());
+                thread.start();
+            }
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long threadTime = ts2 - ts1;
+
+            //
+
+            ts1 = new Date().getTime();
+
+            Contract finalSingleContract = singleContract;
+            Thread thread = new Thread(() -> {
+                long t = System.nanoTime();
+                ItemResult rr = null;
+                rr = node.registerItem(finalSingleContract);
+                try {
+                    rr = node.waitItem(finalSingleContract.getId(), 15000);
+                } catch (TimeoutException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("single thread: " + rr + " time: " + ((System.nanoTime() - t) * 1e-9));
+                semaphore.release();
+            });
+            thread.setName("single-thread register: " + singleContract.getId().toString());
+            thread.start();
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long singleTime = ts2 - ts1;
+
+            System.out.println(threadTime * 1.0f / singleTime);
+            ratio += threadTime * 1.0f / singleTime;
+        }
+
+        ratio /= N;
+        System.out.println("average " + ratio);
+    }
+
+
+    @Test
+    public void parallelContractNodeCheck() throws Exception {
+//        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
+//        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
+        PrivateKey myKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+//        assertEquals(main.cache, main.node.getCache());
+//        ItemCache c1 = main.cache;
+//        ItemCache c2 = main.node.getCache();
+
+//        Client client = new Client(myKey, main.myInfo, null);
+
+
+        List<Contract> contractsForThreads = new ArrayList<>();
+        int N = 100;
+        int M = 2;
+        float threshold = 1.2f;
+        float ratio = 0;
+        boolean createNewContracts = true;
+//        assertTrue(singleContract.isOk());
+
+//        ItemResult r = client.getState(singleContract.getId());
+//        assertEquals(ItemState.UNDEFINED, r.state);
+//        System.out.println(r);
+
+
+        contractsForThreads = new ArrayList<>();
+        for(int j = 0; j < M; j++) {
+            Contract contract = new Contract(myKey);
+
+            for (int k = 0; k < 10; k++) {
+                Contract nc = new Contract(myKey);
+                nc.seal();
+                contract.addNewItems(nc);
+            }
+            contract.seal();
+            assertTrue(contract.isOk());
+            contractsForThreads.add(contract);
+
+//            ItemResult r = client.getState(contract.getId());
+//            assertEquals(ItemState.UNDEFINED, r.state);
+//            System.out.println(r);
+        }
+
+        Contract singleContract = new Contract(myKey);
+
+        for (int k = 0; k < 10; k++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            singleContract.addNewItems(nc);
+        }
+        singleContract.seal();
+
+        // register
+
+
+        for(int i = 0; i < N; i++) {
+
+            if(createNewContracts) {
+                contractsForThreads = new ArrayList<>();
+                for(int j = 0; j < M; j++) {
+                    Contract contract = new Contract(myKey);
+
+                    for (int k = 0; k < 10; k++) {
+                        Contract nc = new Contract(myKey);
+                        nc.seal();
+                        contract.addNewItems(nc);
+                    }
+                    contract.seal();
+                    assertTrue(contract.isOk());
+                    contractsForThreads.add(contract);
+
+
+                }
+
+                singleContract = new Contract(myKey);
+
+                for (int k = 0; k < 10; k++) {
+                    Contract nc = new Contract(myKey);
+                    nc.seal();
+                    singleContract.addNewItems(nc);
+                }
+                singleContract.seal();
+            }
+
+            long ts1;
+            long ts2;
+            Semaphore semaphore = new Semaphore(-(M-1));
+
+            ts1 = new Date().getTime();
+
+            for(Contract c : contractsForThreads) {
+                Thread thread = new Thread(() -> {
+
+                    long t = System.nanoTime();
+                    try {
+                        List<StateRecord> lockedToCreate = new ArrayList<>();
+                        List<StateRecord> lockedToRevoke = new ArrayList<>();
+                        StateRecord record = node.getLedger().findOrCreate(c.getId());
+                        c.check();
+                        isNeedToResync(true, c);
+                        checkSubItemsOf(c, record, lockedToCreate, lockedToRevoke);
+                    } catch (Quantiser.QuantiserException e) {
+                        e.printStackTrace();
+                    }
+
+                    System.out.println("multi thread: time: " + ((System.nanoTime() - t) * 1e-9));
+                    semaphore.release();
+                });
+                thread.setName("Multi-thread register: " + c.getId().toString());
+                thread.start();
+            }
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long threadTime = ts2 - ts1;
+
+            //
+
+            ts1 = new Date().getTime();
+
+            Contract finalSingleContract = singleContract;
+            Thread thread = new Thread(() -> {
+                long t = System.nanoTime();
+                try {
+                    List<StateRecord> lockedToCreate = new ArrayList<>();
+                    List<StateRecord> lockedToRevoke = new ArrayList<>();
+                    StateRecord record = node.getLedger().findOrCreate(finalSingleContract.getId());
+                    finalSingleContract.check();
+                    isNeedToResync(true, finalSingleContract);
+                    checkSubItemsOf(finalSingleContract, record, lockedToCreate, lockedToRevoke);
+                } catch (Quantiser.QuantiserException e) {
+                    e.printStackTrace();
+                }
+
+                System.out.println("single thread: time: " + ((System.nanoTime() - t) * 1e-9));
+                semaphore.release();
+            });
+            thread.setName("single-thread register: " + singleContract.getId().toString());
+            thread.start();
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long singleTime = ts2 - ts1;
+
+            System.out.println(threadTime * 1.0f / singleTime);
+            ratio += threadTime * 1.0f / singleTime;
+        }
+
+        ratio /= N;
+        System.out.println("average " + ratio);
+    }
+
+    public HashMap<HashId, StateRecord> isNeedToResync(boolean baseCheckPassed, Approvable item) {
+        HashMap<HashId, StateRecord> unknownParts = new HashMap<>();
+        HashMap<HashId, StateRecord> knownParts = new HashMap<>();
+        if (baseCheckPassed) {
+            // check the referenced items
+            for (Reference refModel : item.getReferencedItems()) {
+                HashId id = refModel.contract_id;
+                if(refModel.type == Reference.TYPE_EXISTING && id != null) {
+                    StateRecord r = node.getLedger().getRecord(id);
+
+                    if (r == null || !r.getState().isConsensusFound()) {
+                        unknownParts.put(id, r);
+                    } else {
+                        knownParts.put(id, r);
+                    }
+                }
+            }
+            // check revoking items
+            for (Approvable a : item.getRevokingItems()) {
+                StateRecord r = node.getLedger().getRecord(a.getId());
+
+                if (r == null || !r.getState().isConsensusFound()) {
+                    unknownParts.put(a.getId(), r);
+                } else {
+                    knownParts.put(a.getId(), r);
+                }
+            }
+        } else {
+        }
+        boolean needToResync = false;
+        // contract is complex and consist from parts
+        if (unknownParts.size() + knownParts.size() > 0) {
+            needToResync = baseCheckPassed &&
+                    unknownParts.size() > 0 &&
+                    knownParts.size() >= config.getKnownSubContractsToResync();
+        }
+
+        if (needToResync)
+            return unknownParts;
+        return new HashMap<>();
+    }
+
+    // check subitems of given item recursively (down for newItems line)
+    private final void checkSubItemsOf(Approvable checkingItem, StateRecord record, List<StateRecord> lockedToCreate, List<StateRecord> lockedToRevoke) {
+        for (Reference refModel : checkingItem.getReferencedItems()) {
+            HashId id = refModel.contract_id;
+            if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
+                if (!node.getLedger().isApproved(id)) {
+                    checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
+                }
+            }
+        }
+        // check revoking items
+        for (Approvable a : checkingItem.getRevokingItems()) {
+            StateRecord r = record.lockToRevoke(a.getId());
+            if (r == null) {
+                checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
+            } else {
+                if (!lockedToRevoke.contains(r))
+                    lockedToRevoke.add(r);
+            }
+        }
+        // check new items
+        for (Approvable newItem : checkingItem.getNewItems()) {
+
+            checkSubItemsOf(newItem, record, lockedToCreate, lockedToRevoke);
+
+            if (!newItem.getErrors().isEmpty()) {
+                checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
+            } else {
+                StateRecord r = record.createOutputLockRecord(newItem.getId());
+                if (r == null) {
+                    checkingItem.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
+                } else {
+                    if (!lockedToCreate.contains(r))
+                        lockedToCreate.add(r);
+                }
+            }
+        }
+    }
 
     @Test
     @Ignore("it is snatch test")

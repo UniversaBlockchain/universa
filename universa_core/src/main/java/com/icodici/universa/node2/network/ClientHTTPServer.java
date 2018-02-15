@@ -15,10 +15,14 @@ import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
+import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClientHTTPServer extends BasicHttpServer {
 
@@ -28,8 +32,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private boolean localCors = false;
 
+    private ExecutorService es = Executors.newFixedThreadPool(40);
+
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
-        super(privateKey, port, 128, logger);
+        super(privateKey, port, 32, logger);
         log = logger;
 
         addSecureEndpoint("status", (params, session) -> Binder.of(
@@ -72,11 +78,11 @@ public class ClientHTTPServer extends BasicHttpServer {
                         "version", Main.NODE_VERSION,
                         "nodes", nodes
                 );
-                if( netConfig != null ) {
-                    netConfig.forEachNode(node->{
+                if (netConfig != null) {
+                    netConfig.forEachNode(node -> {
                         nodes.add(Binder.of(
-                           "url", node.publicUrlString(),
-                           "key", node.getPublicKey().pack()
+                                "url", node.publicUrlString(),
+                                "key", node.getPublicKey().pack()
                         ));
                     });
                 }
@@ -86,6 +92,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("approve", this::approve);
+        addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
     }
 
@@ -95,20 +102,40 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode();
+        System.out.println("Request to approve, package size: " + params.getBinaryOrThrow("packedItem").length);
         return Binder.of(
                 "itemResult",
                 node.registerItem(Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem")))
         );
     }
 
+    static AtomicInteger asyncStarts = new AtomicInteger();
+
+    private Binder startApproval(final Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+        int n = asyncStarts.incrementAndGet();
+        AtomicInteger k = new AtomicInteger();
+        params.getListOrThrow("packedItems").forEach((item) ->
+                es.execute(() -> {
+                    try {
+                        checkNode();
+                        System.out.println("Request to start registration #"+n+":"+k.incrementAndGet());
+                        node.registerItem(Contract.fromPackedTransaction(((Bytes)item).toArray()));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                })
+        );
+        return new Binder();
+    }
+
     private Binder getState(Binder params, Session session) throws CommandFailedException {
         checkNode();
         return Binder.of("itemResult",
-                         node.checkItem((HashId)params.get("itemId")));
+                node.checkItem((HashId) params.get("itemId")));
     }
 
     private void checkNode() throws CommandFailedException {
-        if( node == null ) {
+        if (node == null) {
             throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
         }
     }
@@ -118,7 +145,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     @Override
     public void on(String path, BasicHTTPService.Handler handler) {
         super.on(path, (request, response) -> {
-            if( localCors ) {
+            if (localCors) {
                 Binder hh = response.getHeaders();
                 hh.put("Access-Control-Allow-Origin", "*");
                 hh.put("Access-Control-Allow-Methods", "GET, POST, OPTIONS");

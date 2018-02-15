@@ -703,10 +703,10 @@ public class Boss {
         @SuppressWarnings("unchecked")
         private <T> T get() throws IOException {
             Header h = readHeader();
-            trace("Header " + h);
+//            trace("Header " + h);
             switch (h.code) {
                 case TYPE_INT:
-                    trace("Int: " + h.smallestNumber(false));
+//                    trace("Int: " + h.smallestNumber(false));
                     return (T) h.smallestNumber(false);
                 case TYPE_NINT:
                     return (T) h.smallestNumber(true);
@@ -716,8 +716,8 @@ public class Boss {
                     if (h.code == TYPE_TEXT) {
                         String s = bb.toString();
                         cacheObject(s);
-                        trace("t: " + s);
-                        traceCache();
+//                        trace("t: " + s);
+//                        traceCache();
                         return (T) s;
                     }
                     cacheObject(bb);
@@ -735,10 +735,10 @@ public class Boss {
                 }
                 case TYPE_CREF:
                     int i = (int) h.value;
-                    trace(String.format("Get from cache %d -> %s", h.value,
-                                        i == 0 ? null : cache.get(i - 1)
-                    ));
-                    traceCache();
+//                    trace(String.format("Get from cache %d -> %s", h.value,
+//                                        i == 0 ? null : cache.get(i - 1)
+//                    ));
+//                    traceCache();
                     return i == 0 ? null : (T) cache.get(i - 1);
                 case TYPE_EXTRA:
                     return (T) parseExtra((int) h.value);
@@ -778,7 +778,7 @@ public class Boss {
                 } else if (obj instanceof byte[]) {
                     len = ((byte[]) obj).length;
                 } else {
-                    trace("Can't cache it in treemode! : " + obj);
+//                    trace("Can't cache it in treemode! : " + obj);
                     return;
                 }
                 if (len <= maxStringSize) {
@@ -792,10 +792,10 @@ public class Boss {
         private Object parseExtra(int code) throws IOException {
             switch (code) {
                 case XT_DZERO:
-                    trace("extra 0");
+//                    trace("extra 0");
                     return 0.0;
                 case XT_DONE:
-                    trace("extra 1");
+//                    trace("extra 1");
                     return 1.0;
                 case XT_DMINUSONE:
                     return -1.0;

@@ -168,7 +168,7 @@ public class BasicHttpServer {
     }
 
     private Binder inSession(Session s, Implementor processor) {
-        synchronized (s) {
+//        synchronized (s) {
             try {
                 s.errors.clear();
                 return s.answer(processor.apply(s));
@@ -178,7 +178,7 @@ public class BasicHttpServer {
                 s.errors.add(new ErrorRecord(Errors.FAILURE, "", e.getMessage()));
             }
             return s.answer(null);
-        }
+//        }
     }
 
     //
@@ -242,7 +242,7 @@ public class BasicHttpServer {
 
     @NonNull
     private Session getSession(PublicKey key) throws EncryptionError {
-        synchronized (sessionsByKey) {
+//        synchronized (sessionsByKey) {
             Session r = sessionsByKey.get(key);
             if (r == null) {
                 r = new Session(key);
@@ -250,7 +250,7 @@ public class BasicHttpServer {
                 sessionsById.put(r.sessionId, r);
             }
             return r;
-        }
+//        }
     }
 
     private AtomicLong sessionIds = new AtomicLong(

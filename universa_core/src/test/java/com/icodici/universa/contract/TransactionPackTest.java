@@ -8,17 +8,25 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.EncryptionError;
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.Main;
 import com.icodici.universa.node2.Quantiser;
+import com.icodici.universa.node2.network.Client;
+import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.utils.Base64;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
@@ -110,6 +118,146 @@ public class TransactionPackTest {
         assertTrue(rids.contains(r0.getId()));
         assertTrue(nids.contains(n0.getId()));
         assertTrue(nids.contains(n1.getId()));
+    }
+
+
+    @Test
+    public void parallelTest() throws Exception {
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        List<Contract> contractsForThreads = new ArrayList<>();
+        int N = 100;
+        int M = 2;
+        float threshold = 1.2f;
+        float ratio = 0;
+        boolean createNewContracts = false;
+
+        contractsForThreads = new ArrayList<>();
+        for(int j = 0; j < M; j++) {
+            Contract contract = new Contract(myKey);
+
+            for (int k = 0; k < 10; k++) {
+                Contract nc = new Contract(myKey);
+                nc.seal();
+                contract.addNewItems(nc);
+            }
+            contract.seal();
+            assertTrue(contract.isOk());
+            contractsForThreads.add(contract);
+        }
+
+        Contract singleContract = new Contract(myKey);
+
+        for (int k = 0; k < 10; k++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            singleContract.addNewItems(nc);
+        }
+        singleContract.seal();
+
+        // register
+
+        for(int i = 0; i < N; i++) {
+
+            if(createNewContracts) {
+                contractsForThreads = new ArrayList<>();
+                for(int j = 0; j < M; j++) {
+                    Contract contract = new Contract(myKey);
+
+                    for (int k = 0; k < 10; k++) {
+                        Contract nc = new Contract(myKey);
+                        nc.seal();
+                        contract.addNewItems(nc);
+                    }
+                    contract.seal();
+                    assertTrue(contract.isOk());
+                    contractsForThreads.add(contract);
+
+
+                }
+
+                singleContract = new Contract(myKey);
+
+                for (int k = 0; k < 10; k++) {
+                    Contract nc = new Contract(myKey);
+                    nc.seal();
+                    singleContract.addNewItems(nc);
+                }
+                singleContract.seal();
+            }
+
+            long ts1;
+            long ts2;
+            Semaphore semaphore = new Semaphore(-(M-1));
+
+            ts1 = new Date().getTime();
+
+            for(Contract c : contractsForThreads) {
+                Thread thread = new Thread(() -> {
+
+                    long t = System.nanoTime();
+                    TransactionPack tp_before = c.getTransactionPack();
+                    byte[] data = tp_before.pack();
+
+                    // here we "send" data and "got" it
+
+                    TransactionPack tp_after = null;
+                    try {
+                        tp_after = TransactionPack.unpack(data);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Contract gotMainContract = tp_after.getContract();
+                    System.out.println("multi thread: " + gotMainContract.getId() + " time: " + ((System.nanoTime() - t) * 1e-9));
+                    semaphore.release();
+                });
+                thread.setName("Multi-thread register: " + c.getId().toString());
+                thread.start();
+            }
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long threadTime = ts2 - ts1;
+
+            //
+
+            ts1 = new Date().getTime();
+
+            Contract finalSingleContract = singleContract;
+            Thread thread = new Thread(() -> {
+                long t = System.nanoTime();
+                TransactionPack tp_before = finalSingleContract.getTransactionPack();
+                byte[] data = tp_before.pack();
+
+                // here we "send" data and "got" it
+
+                TransactionPack tp_after = null;
+                try {
+                    tp_after = TransactionPack.unpack(data);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                Contract gotMainContract = tp_after.getContract();
+                System.out.println("multi thread: " + gotMainContract.getId() + " time: " + ((System.nanoTime() - t) * 1e-9));
+                semaphore.release();
+            });
+            thread.setName("single-thread register: " + singleContract.getId().toString());
+            thread.start();
+
+            semaphore.acquire();
+
+            ts2 = new Date().getTime();
+
+            long singleTime = ts2 - ts1;
+
+            System.out.println(threadTime * 1.0f / singleTime);
+            ratio += threadTime * 1.0f / singleTime;
+        }
+
+        ratio /= N;
+        System.out.println("average " + ratio);
     }
 
     private class TestContracts {
