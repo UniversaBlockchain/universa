@@ -23,3 +23,24 @@ dependencies {
     compile project(':contrib:nanohttpd')
     compile project(':crypto')
 }
+
+jar {
+    manifest {
+        attributes('Main-Class': 'com.icodici.universa.node2.Main')
+    }
+}
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Gradle Jar with all dependencies',
+                'Implementation-Version': version,
+                'Main-Class': 'com.icodici.universa.node2.Main'
+    }
+    baseName = project.name + '-all'
+    doFirst {
+        from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    }
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
