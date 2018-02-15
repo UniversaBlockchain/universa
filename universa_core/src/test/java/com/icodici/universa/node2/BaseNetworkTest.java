@@ -157,7 +157,7 @@ public class BaseNetworkTest extends TestCase {
                         assertEquals("In node " + n + " parcel " + parcel.getId(), ItemState.APPROVED, r.state);
                     } catch (TimeoutException e) {
                         System.out.println(n.ping());
-                        System.out.println(n.traceTasksPool());
+//                        System.out.println(n.traceTasksPool());
                         System.out.println(n.traceParcelProcessors());
                         System.out.println(n.traceItemProcessors());
                         fail("timeout, node " + n + " parcel " + parcel.getId() + " parcel " + parcel.getId() + " (iteration " + i + ")");
@@ -2631,7 +2631,7 @@ public class BaseNetworkTest extends TestCase {
                 } catch (TimeoutException e) {
                     System.out.println("ping ");
                     System.out.println(n.ping());
-                    System.out.println(n.traceTasksPool());
+//                    System.out.println(n.traceTasksPool());
                     System.out.println(n.traceParcelProcessors());
                     System.out.println(n.traceItemProcessors());
                     System.out.println("TU: node " + n + " timeout: ");
@@ -2674,7 +2674,7 @@ public class BaseNetworkTest extends TestCase {
         Parcel parcel = null;
         try {
             parcel = registerWithNewParcel(c);
-            LogPrinter.showDebug(true);
+//            LogPrinter.showDebug(true);
             System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             node.waitParcel(parcel.getId(), 30000);
             System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
@@ -2687,7 +2687,7 @@ public class BaseNetworkTest extends TestCase {
 
             System.out.println("ping ");
             System.out.println(node.ping());
-            System.out.println(node.traceTasksPool());
+//            System.out.println(node.traceTasksPool());
 
             for (Node n : nodes) {
                 System.out.println(n + " " + n.traceParcelProcessors());
@@ -2717,7 +2717,7 @@ public class BaseNetworkTest extends TestCase {
         } catch (TimeoutException e) {
             System.out.println("ping ");
             System.out.println(node.ping());
-            System.out.println(node.traceTasksPool());
+//            System.out.println(node.traceTasksPool());
             for (Node n : nodes) {
                 System.out.println(n + " " + n.traceParcelProcessors());
                 System.out.println(n + " " + n.traceItemProcessors());

@@ -654,18 +654,18 @@ public class Node {
      * @return
      */
     public String ping() {
-        return "ping ::> " + toString() + " executorService: " + executorService.toString() + " ItemLock: " + ItemLock.size()
+        return "ping ::> " + toString() + " executorService: " + executorService.toString()
                 + " item processors: " + processors.size() + ", parcel processors: " + parcelProcessors.size();
     }
 
 
-    /**
-     * For debug. Return active processes in the executorService.
-     * @return
-     */
-    public String traceTasksPool() {
-        return "pool ::> " + executorService.tracePools();
-    }
+//    /**
+//     * For debug. Return active processes in the executorService.
+//     * @return
+//     */
+//    public String traceTasksPool() {
+//        return "pool ::> " + executorService.tracePools();
+//    }
 
 
     /**
@@ -703,13 +703,13 @@ public class Node {
     }
 
 
-    /**
-     * For debug. Return num of free pools in the executorService.
-     * @return
-     */
-    public int freeThreadsNum() {
-        return executorService.getCorePoolSize() - executorService.getActiveCount();
-    }
+//    /**
+//     * For debug. Return num of free pools in the executorService.
+//     * @return
+//     */
+//    public int freeThreadsNum() {
+//        return executorService.getCorePoolSize() - executorService.getActiveCount();
+//    }
 
 
     /**
@@ -1638,8 +1638,9 @@ public class Node {
                                 poller = executorService.scheduleAtFixedRate(() -> sendStartPollingNotification(),
                                         millis,
                                         millis,
-                                        TimeUnit.MILLISECONDS,
-                                        Node.this.toString() + toString() + " :: pulseStartPolling -> sendStartPollingNotification");
+                                        TimeUnit.MILLISECONDS//,
+//                                        Node.this.toString() + toString() + " :: pulseStartPolling -> sendStartPollingNotification"
+                                );
                             }
                         }
                     }
@@ -1883,8 +1884,9 @@ public class Node {
                         consensusReceivedChecker = executorService.scheduleAtFixedRate(() -> sendNewConsensusNotification(),
                                 millis,
                                 millis,
-                                TimeUnit.MILLISECONDS,
-                                Node.this.toString() + toString() + " :: pulseSendNewConsensus -> sendNewConsensusNotification");
+                                TimeUnit.MILLISECONDS//,
+//                                Node.this.toString() + toString() + " :: pulseSendNewConsensus -> sendNewConsensusNotification"
+                        );
                     }
                 }
             }
@@ -1999,8 +2001,9 @@ public class Node {
                             resyncer = executorService.scheduleAtFixedRate(() -> sendResyncNotification(),
                                     millis,
                                     millis,
-                                    TimeUnit.MILLISECONDS,
-                                    Node.this.toString() + toString() + " :: pulseResync -> sendResyncNotification");
+                                    TimeUnit.MILLISECONDS//,
+//                                    Node.this.toString() + toString() + " :: pulseResync -> sendResyncNotification"
+                            );
                         }
                     }
                 }
