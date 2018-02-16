@@ -144,22 +144,21 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public StateRecord getLockOwnerOf(StateRecord rc) {
-        StateRecord sr = protect(() -> {
-            return dbPool.execute(db -> {
+        StateRecord cached = getFromCache(rc.getId());
+        if (cached != null) {
+            return cached;
+        }
+        StateRecord sr = protect(() ->
+            dbPool.execute(db -> {
                 try (ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE id = ? limit 1", rc.getLockedByRecordId())) {
                     if (rs == null)
                         return null;
                     StateRecord r = new StateRecord(this, rs);
-                    StateRecord cached = cachedRecords.get(r.getId()).get();
-                    if (cached != null) {
-                        r = cached;
-                    } else {
-                        cachedRecords.put(r.getId(), new WeakReference<>(r));
-                    }
+                    putToCache(r);
                     return r;
                 }
-            });
-        });
+            })
+        );
         if (sr != null && sr.isExpired()) {
             sr.destroy();
             return null;
