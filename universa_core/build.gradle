@@ -15,7 +15,7 @@ dependencies {
     compile group: 'org.yaml', name: 'snakeyaml', version: '1.18'
     compile group: 'net.sf.jopt-simple', name: 'jopt-simple', version: '4.9'
     //    compile group:'org.mapdb', name:'mapdb', version:'3.0.5'
-    compile group: 'org.postgresql', name: 'postgresql', version: '42.1.4.jre7'
+    compile group: 'org.postgresql', name: 'postgresql', version: '42.1.4'
     compile group: 'org.xerial', name: 'sqlite-jdbc', version: '3.8.9.1'
     compile project(':common_tools')
     processResources
