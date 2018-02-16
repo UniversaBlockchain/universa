@@ -2978,7 +2978,7 @@ public class BaseNetworkTest extends TestCase {
         return swapContract;
     }
 
-
+    @Ignore("parallel test")
     @Test
     public void parallelTest() throws Exception {
 //        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
@@ -3133,6 +3133,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
+    @Ignore("parallel test")
     @Test
     public void parallelContractNodeCheck() throws Exception {
 //        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());

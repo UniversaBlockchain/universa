@@ -36,8 +36,11 @@ public class Do {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] block = new byte[8192];
         int l;
-        while ((l = inputStream.read(block)) >= 0)
+        while ((l = inputStream.read(block)) >= 0) {
             bos.write(block, 0, l);
+            if(l < block.length)
+                break;
+        }
         return bos.toByteArray();
     }
 

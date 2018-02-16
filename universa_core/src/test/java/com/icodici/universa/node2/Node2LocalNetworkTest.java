@@ -51,7 +51,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     private static Config config_s = null;
 
 
-    private static final int NODES = 3;
+    private static final int NODES = 10;
 
 
     @BeforeClass
@@ -80,7 +80,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     }
 
     private static void initTestSet() throws Exception {
-        initTestSet(1, 1);
+        initTestSet(7, 4);
     }
 
     private static void initTestSet(int posCons, int negCons) throws Exception {
@@ -88,9 +88,9 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         networks_s = new ArrayList<>();
 
         config_s = new Config();
-        config_s.setPositiveConsensus(2);
-        config_s.setNegativeConsensus(2);
-        config_s.setResyncBreakConsensus(1);
+        config_s.setPositiveConsensus(posCons);
+        config_s.setNegativeConsensus(negCons);
+        config_s.setResyncBreakConsensus(2);
 //        config_s.setPollTime(Duration.ofMillis(2500));
 //        config_s.setConsensusReceivedCheckTime(Duration.ofMillis(2500));
 //        config_s.setResyncTime(Duration.ofMillis(2500));
