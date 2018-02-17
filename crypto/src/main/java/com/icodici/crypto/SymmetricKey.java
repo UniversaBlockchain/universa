@@ -58,6 +58,7 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
         private final CTRTransformer transformer;
         private final ByteRingBuffer ring;
         private final HMAC hmac;
+        private boolean readingFinished = false;
 
         EtaDecryptingStream(InputStream inputStream) throws IOException, EncryptionError {
             this.inputStream = inputStream;
@@ -74,9 +75,46 @@ public class SymmetricKey extends AbstractKey implements Serializable, Hashable 
         }
 
         @Override
+        public int read(byte b[], int off, int len) throws IOException {
+            if (b == null) {
+                throw new NullPointerException();
+            } else if (off < 0 || len < 0 || len > b.length - off) {
+                throw new IndexOutOfBoundsException();
+            } else if (len == 0) {
+                return 0;
+            }
+            // here we protect with double end read: we wan't do this, because we call end() when read last byte
+            if(!readingFinished) {
+//                int c = read();
+//                if (c == -1) {
+//                    return -1;
+//                }
+//                b[off] = (byte) c;
+
+                int c;
+                int i = 0;
+                // and here we need to throw custom exceptions
+//            try {
+                for (; i < len; i++) {
+                    c = read();
+                    if (c == -1) {
+                        break;
+                    }
+                    b[off + i] = (byte) c;
+                }
+//            } catch (IOException ee) {
+//            }
+                return i;
+            }
+            // and here we return -1 code as expected by callers if read has ends
+            return -1;
+        }
+
+        @Override
         public int read() throws IOException {
             int nextByte = inputStream.read();
             if (nextByte < 0) {
+                readingFinished = true;
                 end();
                 return -1;
             } else {

@@ -38,8 +38,6 @@ public class Do {
         int l;
         while ((l = inputStream.read(block)) >= 0) {
             bos.write(block, 0, l);
-            if(l < block.length)
-                break;
         }
         return bos.toByteArray();
     }
