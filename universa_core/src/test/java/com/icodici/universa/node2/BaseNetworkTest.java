@@ -134,14 +134,14 @@ public class BaseNetworkTest extends TestCase {
 
                 Parcel parcel = createParcelWithClassTU(stepaCoins, stepaPrivateKeys);
 
-                System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
+//                System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
                 node.registerParcel(parcel);
                 synchronized (tuContractLock) {
                     tuContract = parcel.getPaymentContract();
                 }
                 for (Node n : nodesMap.values()) {
                     try {
-                        System.out.println("-------------- wait parcel " + parcel.getId() + " on the node " + n + " (iteration " + i + ") ------------");
+//                        System.out.println("-------------- wait parcel " + parcel.getId() + " on the node " + n + " (iteration " + i + ") ------------");
                         n.waitParcel(parcel.getId(), 25000);
                         ItemResult r = n.waitItem(parcel.getPayloadContract().getId(), 8000);
                         int numIterations = 0;
@@ -169,7 +169,7 @@ public class BaseNetworkTest extends TestCase {
                 assertEquals("after: In node "+node+" item "+parcel.getId(), ItemState.APPROVED, r.state);
                 System.out.println("-------------- parcel " + parcel.getId() + " registered (iteration " + i + ")------------");
 //                Thread.sleep(5000);
-                System.out.println("-------------- parcel " + parcel.getId() + " wait finished (iteration " + i + ")------------");
+//                System.out.println("-------------- parcel " + parcel.getId() + " wait finished (iteration " + i + ")------------");
 
             }
         }
@@ -2653,7 +2653,7 @@ public class BaseNetworkTest extends TestCase {
     public synchronized Parcel createParcelWithClassTU(Contract c, Set<PrivateKey> keys) throws Exception {
         Contract tu = getApprovedTUContract();
         Parcel parcel =  ContractsService.createParcel(c, tu, 150, keys);
-        System.out.println("create  parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+//        System.out.println("create  parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
         return parcel;
     }
 

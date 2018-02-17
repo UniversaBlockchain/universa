@@ -51,7 +51,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     private static Config config_s = null;
 
 
-    private static final int NODES = 10;
+    private static final int NODES = 4;
 
 
     @BeforeClass
@@ -80,7 +80,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     }
 
     private static void initTestSet() throws Exception {
-        initTestSet(7, 4);
+        initTestSet(3, 2);
     }
 
     private static void initTestSet(int posCons, int negCons) throws Exception {
