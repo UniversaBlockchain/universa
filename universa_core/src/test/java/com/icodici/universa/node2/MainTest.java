@@ -660,4 +660,14 @@ public class MainTest {
         });
     }
 
+
+    @Test
+    public void testHashId() throws Exception {
+        testSomeWork(() -> {
+            byte[] randBytes = Do.randomBytes(1*1024*1024);
+            for (int i = 0; i < 100; ++i)
+                HashId.of(randBytes);
+        });
+    }
+
 }
