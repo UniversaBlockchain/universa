@@ -30,11 +30,12 @@ task fatJar(type: Jar) {
                 'Implementation-Version': version,
                 'Main-Class': 'com.icodici.universa.client.CLIMain'
     }
-    baseName = project.name + '-all'
+//    baseName = project.name + '-all'
+    archiveName = 'uniclient.jar'
     doFirst {
         from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     }
-    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }

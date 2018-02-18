@@ -42,7 +42,8 @@ Create a directory where the project will be placed, and, inside it, run the fol
 
     git clone git@github.com:UniversaBlockchain/universa.git ./
     git submodule init; git submodule update
-    gradle fatJar
+    gradle :universa_core:fatJar
+    gradle :uniclient:fatJar
 
 To successfully compile it, you may need [GNU Multiple Precision Arithmetic Library](http://gmplib.org/) (“`libgmp`”) installed. See the details specific to your operating system regarding how it can be installed.
 
@@ -54,4 +55,16 @@ Launching the node:
 
 Launching uniclient (CLI interface):
 
-    java -jar uniclient/build/libs/uniclient-all-1.0-SNAPSHOT.jar
+    java -jar uniclient/build/libs/uniclient.jar
+
+### Windows-specific
+
+To build Universa under Windows, you need to install the Oracle JDK and Gradle from the binary distributions, and use them similarly. You will need to pass an extra `-Dfile.encoding=utf-8` option to `gradle`; so the build commands
+
+    gradle :universa_core:fatJar
+    gradle :uniclient:fatJar
+
+become
+
+    gradle -Dfile.encoding=utf-8 :universa_core:fatJar
+    gradle -Dfile.encoding=utf-8 :uniclient:fatJar
