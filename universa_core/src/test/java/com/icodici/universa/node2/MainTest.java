@@ -397,7 +397,7 @@ public class MainTest {
 
         //Client client = new Client(myKey, main.myInfo, null);
 
-        final long CONTRACTS_PER_THREAD = 10;
+        final long CONTRACTS_PER_THREAD = 100;
         final long THREADS_COUNT = 4;
 
         class TestRunnable implements Runnable {
@@ -407,8 +407,15 @@ public class MainTest {
             Map<HashId, Contract> contractHashesMap = new ConcurrentHashMap<>();
             Client client = null;
 
+            public void prepareClient() {
+                try {
+                    client = new Client(myKey, main.myInfo, null);
+                } catch (Exception e) {
+                    System.out.println("prepareClient exception: " + e.toString());
+                }
+            }
+
             public void prepareContracts() throws Exception {
-                client = new Client(myKey, main.myInfo, null);
                 contractList = new ArrayList<>();
                 for (int iContract = 0; iContract < CONTRACTS_PER_THREAD; ++iContract) {
                     Contract testContract = new Contract(myKey);
@@ -459,6 +466,7 @@ public class MainTest {
             runnableSingle.threadNum = 0;
             runnableSingle.run();
         });
+        runnableSingle.prepareClient();
         runnableSingle.prepareContracts();
         System.out.println("singlethread test start...");
         long t1 = new Date().getTime();
@@ -471,6 +479,7 @@ public class MainTest {
 
         System.out.println("multithread test prepare...");
         List<Thread> threadsList = new ArrayList<>();
+        List<Thread> threadsPrepareList = new ArrayList<>();
         List<TestRunnable> runnableList = new ArrayList<>();
         for (int iThread = 0; iThread < THREADS_COUNT; ++iThread) {
             TestRunnable runnableMultithread = new TestRunnable();
@@ -479,10 +488,23 @@ public class MainTest {
                 runnableMultithread.threadNum = threadNum;
                 runnableMultithread.run();
             });
-            runnableMultithread.prepareContracts();
+            Thread threadPrepareMultiThread = new Thread(() -> {
+                try {
+                    runnableMultithread.prepareContracts();
+                } catch (Exception e) {
+                    System.out.println("prepare exception: " + e.toString());
+                }
+            });
+            runnableMultithread.prepareClient();
             threadsList.add(threadMultiThread);
+            threadsPrepareList.add(threadPrepareMultiThread);
             runnableList.add(runnableMultithread);
         }
+        for (Thread thread : threadsPrepareList)
+            thread.start();
+        for (Thread thread : threadsPrepareList)
+            thread.join();
+        Thread.sleep(500);
         System.out.println("multithread test start...");
         t1 = new Date().getTime();
         for (Thread thread : threadsList)

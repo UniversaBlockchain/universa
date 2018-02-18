@@ -347,6 +347,7 @@ public class BasicHttpClient {
             HttpURLConnection httpConnection = (HttpURLConnection) connection;
             int responseCode = httpConnection.getResponseCode();
             byte[] answer = Do.read(httpConnection.getInputStream());
+            httpConnection.disconnect();
             return new Answer(responseCode, Binder.from(Boss.load(answer)));
         }
     }
