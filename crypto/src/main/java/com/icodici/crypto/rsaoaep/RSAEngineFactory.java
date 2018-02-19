@@ -14,7 +14,7 @@ import org.spongycastle.crypto.params.ParametersWithRandom;
 /**
  * One-stop shop to create an new RSA engine (which implementation may vary).
  */
-public class RSAOAEPEngine {
+public class RSAEngineFactory {
 
     protected final static boolean shouldUseNative = whetherShouldUseNative();
 
@@ -39,7 +39,7 @@ public class RSAOAEPEngine {
             final NativeRSAEngine nativeRSAEngine = new NativeRSAEngine();
             nativeRSAEngine.init(true, param);
             errorOccured = false;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             errorOccured = true;
         }
         return !errorOccured;

@@ -12,7 +12,6 @@ import com.icodici.crypto.AbstractPublicKey;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.HashType;
 import net.sergeych.boss.Boss;
-import net.sergeych.tools.Hashable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongycastle.crypto.*;
@@ -144,7 +143,7 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
     private AsymmetricBlockCipher makeDecryptor(HashType mgf1HashType) {
         final Digest dummyDigest = new SHA1Digest(); // Only to satisfy interface.
 
-        return new OAEPEncoding(RSAOAEPEngine.make(), dummyDigest, mgf1HashType.makeDigest(), new byte[0]);
+        return new OAEPEncoding(RSAEngineFactory.make(), dummyDigest, mgf1HashType.makeDigest(), new byte[0]);
     }
 
     /**
@@ -263,13 +262,13 @@ public class RSAOAEPPrivateKey extends AbstractPrivateKey {
             if (salt == null) {
                 // Use maximum possible salt
                 signer = new PSSSigner(
-                        RSAOAEPEngine.make(),
+                        RSAEngineFactory.make(),
                         primaryDigest, state.mgf1HashType.makeDigest(),
                         getMaxSaltLength(getBitStrength(), primaryDigest.getDigestSize()));
             } else {
                 // Use some specific salt
                 signer = new PSSSigner(
-                        RSAOAEPEngine.make(),
+                        RSAEngineFactory.make(),
                         primaryDigest, state.mgf1HashType.makeDigest(),
                         salt);
             }

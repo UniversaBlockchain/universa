@@ -67,7 +67,7 @@ public class OAEPEncodingTest {
      */
     @Test
     public void encodeBlock() throws Exception {
-        AsymmetricBlockCipher encoder = new OAEPEncoding(RSAOAEPEngine.make());
+        AsymmetricBlockCipher encoder = new OAEPEncoding(RSAEngineFactory.make());
         encoder.init(true, new ParametersWithRandom(oaepSpec.pubParameters, oaepSpec.getRandSeed()));
         byte[] encoded = encoder.processBlock(oaepSpec.M, 0, oaepSpec.M.length);
         assertArrayEquals(encoded, oaepSpec.C);
@@ -81,7 +81,7 @@ public class OAEPEncodingTest {
      */
     @Test
     public void decodeBlock() throws Exception {
-        AsymmetricBlockCipher decoder = new OAEPEncoding(RSAOAEPEngine.make());
+        AsymmetricBlockCipher decoder = new OAEPEncoding(RSAEngineFactory.make());
         decoder.init(false, oaepSpec.privParameters);
         byte[] decoded = decoder.processBlock(oaepSpec.C, 0, oaepSpec.C.length);
         assertArrayEquals(decoded, oaepSpec.M);
@@ -121,7 +121,7 @@ public class OAEPEncodingTest {
      */
     @Test
     public void maskGeneratorFunction1() throws Exception {
-        OAEPEncoding oaepEncoder = new OAEPEncoding(RSAOAEPEngine.make(), new SHA1Digest());
+        OAEPEncoding oaepEncoder = new OAEPEncoding(RSAEngineFactory.make(), new SHA1Digest());
 
         byte[] dbMask_test = MGF(oaepEncoder, oaepSpec.seed, 107);
         assertArrayEquals(dbMask_test, oaepSpec.dbMask);
@@ -200,8 +200,8 @@ public class OAEPEncodingTest {
                         rng.nextBytes(message);
 
                         AsymmetricBlockCipher
-                                encoder = new OAEPEncoding(RSAOAEPEngine.make(), digest),
-                                decoder = new OAEPEncoding(RSAOAEPEngine.make(), digest);
+                                encoder = new OAEPEncoding(RSAEngineFactory.make(), digest),
+                                decoder = new OAEPEncoding(RSAEngineFactory.make(), digest);
                         encoder.init(true, publicKey);
                         decoder.init(false, privateKey);
 
