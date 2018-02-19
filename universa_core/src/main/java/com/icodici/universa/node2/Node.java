@@ -103,7 +103,6 @@ public class Node {
      */
     public boolean registerParcel(Parcel parcel) {
 
-        System.out.println("Register parcel " + parcel.getId());
         try {
             checkParcelInternal(parcel.getId(), parcel, true);
             return true;

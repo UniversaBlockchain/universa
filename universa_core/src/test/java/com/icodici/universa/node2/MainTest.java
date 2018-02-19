@@ -548,7 +548,7 @@ public class MainTest {
         //Client client = new Client(myKey, main.myInfo, null);
 
         final long CONTRACTS_PER_THREAD = 10;
-        final long THREADS_COUNT = 2;
+        final long THREADS_COUNT = 4;
 
         LogPrinter.showDebug(true);
 

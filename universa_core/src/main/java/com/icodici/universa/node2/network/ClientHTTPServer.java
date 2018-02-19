@@ -142,7 +142,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder approveParcel(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode();
-        System.out.println("Request to approve parcel, package size: " + params.getBinaryOrThrow("packedItem").length);
+//        System.out.println("Request to approve parcel, package size: " + params.getBinaryOrThrow("packedItem").length);
         return Binder.of(
                 "result",
                 node.registerParcel(Parcel.unpack(params.getBinaryOrThrow("packedItem")))
