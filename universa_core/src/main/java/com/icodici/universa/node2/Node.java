@@ -103,6 +103,7 @@ public class Node {
      */
     public boolean registerParcel(Parcel parcel) {
 
+        System.out.println("Register parcel " + parcel.getId());
         try {
             checkParcelInternal(parcel.getId(), parcel, true);
             return true;
@@ -754,6 +755,10 @@ public class Node {
         return cache;
     }
 
+    public ParcelCache getParcelCache() {
+        return parcelCache;
+    }
+
     public Ledger getLedger() {
         return ledger;
     }
@@ -952,7 +957,7 @@ public class Node {
 
                 while (!isPayloadPollingExpired() && parcel == null) {
                     if (sources.isEmpty()) {
-                        log.e("empty sources for download tasks, stopping");
+//                        log.e("empty sources for download tasks, stopping");
                         return;
                     } else {
                         try {

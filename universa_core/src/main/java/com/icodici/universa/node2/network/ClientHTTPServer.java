@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.*;
 import net.sergeych.tools.Binder;
@@ -28,6 +29,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private final BufferedLogger log;
     private ItemCache cache;
+    private ParcelCache parcelCache;
     private NetConfig netConfig;
 
     private boolean localCors = false;
@@ -71,6 +73,34 @@ public class ClientHTTPServer extends BasicHttpServer {
                 response.setResponseCode(404);
         });
 
+        on("/parcels", (request, response) -> {
+            String encodedString = request.getPath().substring(9);
+
+            // this is a bug - path has '+' decoded as ' '
+            encodedString = encodedString.replace(' ', '+');
+
+            byte[] data = null;
+            if (encodedString.equals("cache_test")) {
+                data = "the cache test data".getBytes();
+            } else {
+                HashId id = HashId.withDigest(encodedString);
+                if (parcelCache != null) {
+                    Parcel p = (Parcel) parcelCache.get(id);
+                    if (p != null) {
+                        data = p.pack();
+                    }
+                }
+            }
+            if (data != null) {
+                // contracts are immutable: cache forever
+                Binder hh = response.getHeaders();
+                hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
+                hh.put("Cache-Control", "max-age=315360000");
+                response.setBody(data);
+            } else
+                response.setResponseCode(404);
+        });
+
         addEndpoint("/network", (Binder params, Result result) -> {
             if (networkData == null) {
                 List<Binder> nodes = new ArrayList<Binder>();
@@ -92,6 +122,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("approve", this::approve);
+        addSecureEndpoint("approveParcel", this::approveParcel);
         addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
     }
@@ -106,6 +137,15 @@ public class ClientHTTPServer extends BasicHttpServer {
         return Binder.of(
                 "itemResult",
                 node.registerItem(Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem")))
+        );
+    }
+
+    private Binder approveParcel(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+        checkNode();
+        System.out.println("Request to approve parcel, package size: " + params.getBinaryOrThrow("packedItem").length);
+        return Binder.of(
+                "result",
+                node.registerParcel(Parcel.unpack(params.getBinaryOrThrow("packedItem")))
         );
     }
 
@@ -164,6 +204,14 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setCache(ItemCache cache) {
         this.cache = cache;
+    }
+
+    public ParcelCache getParcelCache() {
+        return parcelCache;
+    }
+
+    public void setParcelCache(ParcelCache cache) {
+        this.parcelCache = cache;
     }
 
     public void setNetConfig(NetConfig netConfig) {

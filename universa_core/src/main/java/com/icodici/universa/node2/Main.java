@@ -139,6 +139,7 @@ public class Main {
         network = new NetworkV2(netConfig, myInfo, nodeKey);
         node = new Node(config, myInfo, ledger, network);
         cache = node.getCache();
+        parcelCache = node.getParcelCache();
 
         StateRecord r = ledger.getRecord(HashId.withDigest("bS/c4YMidaVuzTBhHLkGPFAvPbZQHybzQnXAoBwaZYM8eLYb7mAkVYEpuqKRXYc7anqX47BeNdvFN1n7KluH9A=="));
         if( r != null )
@@ -146,6 +147,7 @@ public class Main {
 
         clientHTTPServer.setNode(node);
         clientHTTPServer.setCache(cache);
+        clientHTTPServer.setParcelCache(parcelCache);
         clientHTTPServer.setLocalCors(myInfo.getPublicHost().equals("localhost"));
     }
 
@@ -232,12 +234,14 @@ public class Main {
 
     public Node node;
     public ItemCache cache = new ItemCache(Duration.ofMinutes(30));
+    public ParcelCache parcelCache = new ParcelCache(Duration.ofMinutes(30));
 
 
     private void startClientHttpServer() throws Exception {
         log("prepare to start client HTTP server on " + settings.getIntOrThrow("http_client_port"));
         clientHTTPServer = new ClientHTTPServer(nodeKey, settings.getIntOrThrow("http_client_port"), logger);
         clientHTTPServer.setCache(cache);
+        clientHTTPServer.setParcelCache(parcelCache);
         clientHTTPServer.setNetConfig(netConfig);
 //        node = new Node()
     }

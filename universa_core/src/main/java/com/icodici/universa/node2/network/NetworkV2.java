@@ -123,6 +123,8 @@ public class NetworkV2 extends Network {
         try {
             byte[] data = packNotifications(myInfo, Do.listOf(notification));
             adapter.send(toNode, data);
+        } catch (InterruptedException e) {
+            System.err.println("Expected interrupted exception");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -159,12 +161,24 @@ public class NetworkV2 extends Network {
 
     @Override
     public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
-
-        TransactionPack payload = null;
-        TransactionPack payment = null;
-
-        //return new Parcel(null, null);
-        return new Parcel(payload, payment);
+        try {
+//            URL url = new URL("http://localhost:8080/contracts/" + itemId.toBase64String());
+            URL url = new URL(nodeInfo.publicUrlString() + "/parcels/" + itemId.toBase64String());
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestMethod("GET");
+            if (200 != connection.getResponseCode())
+                return null;
+            byte[] data = Do.read(connection.getInputStream());
+            Parcel parcel = Parcel.unpack(data);
+//            tp.trace();
+//            Contract c = Contract.fromPackedTransaction(data);
+            return parcel;
+        } catch (Exception e) {
+            System.out.println("download failure: "+e);
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private final Map<NodeInfo,Client> cachedClients = new HashMap<>();

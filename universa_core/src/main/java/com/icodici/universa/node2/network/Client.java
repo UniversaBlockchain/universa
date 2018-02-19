@@ -14,6 +14,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Config;
@@ -208,6 +209,34 @@ public class Client {
             }
         }
         return lastResult;
+    }
+
+    public boolean registerParcel(byte[] packed) throws ClientError {
+        return registerParcel(packed, 0);
+    }
+
+    public boolean registerParcel(byte[] packed, long millisToWait) throws ClientError {
+        boolean result = protect(() -> (boolean) httpClient.command("approveParcel", "packedItem", packed)
+                .get("result"));
+        if (millisToWait > 0) {
+            Instant end = Instant.now().plusMillis(millisToWait);
+            try {
+                Parcel parcel = Parcel.unpack(packed);
+                ItemResult lastResult = getState(parcel.getPayloadContract().getId());
+                while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
+                    Thread.currentThread().sleep(100);
+                    lastResult = getState(parcel.getPayloadContract().getId());
+                    System.out.println("test: " + lastResult);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (Quantiser.QuantiserException e) {
+                throw new ClientError(e);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
     }
 
     public final ItemResult getState(@NonNull Approvable item) throws ClientError {

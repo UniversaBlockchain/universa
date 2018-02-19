@@ -11,6 +11,8 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTest;
+import com.icodici.universa.contract.ContractsService;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
@@ -527,6 +529,175 @@ public class MainTest {
         System.out.println("\n");
 
         mm.forEach(x -> x.shutdown());
+    }
+
+
+    @Test
+    public void localNetwork3() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
+        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        Set<PrivateKey> fromPrivateKeys = new HashSet<>();
+        fromPrivateKeys.add(myKey);
+
+        //Client client = new Client(myKey, main.myInfo, null);
+
+        final long CONTRACTS_PER_THREAD = 10;
+        final long THREADS_COUNT = 2;
+
+        LogPrinter.showDebug(true);
+
+        class TestRunnable implements Runnable {
+
+            public int threadNum = 0;
+            List<Parcel> contractList = new ArrayList<>();
+            Map<HashId, Parcel> contractHashesMap = new ConcurrentHashMap<>();
+            Client client = null;
+
+            public void prepareClient() {
+                try {
+                    client = new Client(myKey, main.myInfo, null);
+                } catch (Exception e) {
+                    System.out.println("prepareClient exception: " + e.toString());
+                }
+            }
+
+            public void prepareContracts() throws Exception {
+                contractList = new ArrayList<>();
+                for (int iContract = 0; iContract < CONTRACTS_PER_THREAD; ++iContract) {
+                    Contract testContract = new Contract(myKey);
+                    for (int i = 0; i < 10; i++) {
+                        Contract nc = new Contract(myKey);
+//                        nc.seal();
+                        testContract.addNewItems(nc);
+                    }
+                    testContract.seal();
+                    assertTrue(testContract.isOk());
+                    Parcel parcel = createParcelWithFreshTU(client, testContract);
+                    contractList.add(parcel);
+                    contractHashesMap.put(parcel.getId(), parcel);
+                }
+            }
+
+            private void sendContractsToRegister() throws Exception {
+                for (int i = 0; i < contractList.size(); ++i) {
+                    Parcel parcel = contractList.get(i);
+                    client.registerParcel(parcel.pack());
+                }
+            }
+
+            private void waitForContracts() throws Exception {
+                while (contractHashesMap.size() > 0) {
+                    Thread.currentThread().sleep(100);
+                    for (Parcel p : contractHashesMap.values()) {
+                        ItemResult itemResult = client.getState(p.getPayloadContract().getId());
+                        if (!itemResult.state.isPending())
+                            contractHashesMap.remove(p.getId());
+                    }
+                }
+            }
+
+            @Override
+            public void run() {
+                try {
+                    sendContractsToRegister();
+                    waitForContracts();
+                } catch (Exception e) {
+                    System.out.println("runnable exception: " + e.toString());
+                }
+            }
+        }
+
+        System.out.println("singlethread test prepare...");
+        TestRunnable runnableSingle = new TestRunnable();
+        Thread threadSingle = new Thread(() -> {
+            runnableSingle.threadNum = 0;
+            runnableSingle.run();
+        });
+        runnableSingle.prepareClient();
+        runnableSingle.prepareContracts();
+        System.out.println("singlethread test start...");
+        long t1 = new Date().getTime();
+        threadSingle.start();
+        threadSingle.join();
+        long t2 = new Date().getTime();
+        long dt = t2 - t1;
+        long singleThreadTime = dt;
+        System.out.println("singlethread test done!");
+
+        System.out.println("multithread test prepare...");
+        List<Thread> threadsList = new ArrayList<>();
+        List<Thread> threadsPrepareList = new ArrayList<>();
+        List<TestRunnable> runnableList = new ArrayList<>();
+        for (int iThread = 0; iThread < THREADS_COUNT; ++iThread) {
+            TestRunnable runnableMultithread = new TestRunnable();
+            final int threadNum = iThread + 1;
+            Thread threadMultiThread = new Thread(() -> {
+                runnableMultithread.threadNum = threadNum;
+                runnableMultithread.run();
+            });
+            Thread threadPrepareMultiThread = new Thread(() -> {
+                try {
+                    runnableMultithread.prepareContracts();
+                } catch (Exception e) {
+                    System.out.println("prepare exception: " + e.toString());
+                }
+            });
+            runnableMultithread.prepareClient();
+            threadsList.add(threadMultiThread);
+            threadsPrepareList.add(threadPrepareMultiThread);
+            runnableList.add(runnableMultithread);
+        }
+        for (Thread thread : threadsPrepareList)
+            thread.start();
+        for (Thread thread : threadsPrepareList)
+            thread.join();
+        Thread.sleep(500);
+        System.out.println("multithread test start...");
+        t1 = new Date().getTime();
+        for (Thread thread : threadsList)
+            thread.start();
+        for (Thread thread : threadsList)
+            thread.join();
+        t2 = new Date().getTime();
+        dt = t2 - t1;
+        long multiThreadTime = dt;
+        System.out.println("multithread test done!");
+
+        Double tpsSingleThread = (double) CONTRACTS_PER_THREAD / (double) singleThreadTime * 1000.0;
+        Double tpsMultiThread = (double) CONTRACTS_PER_THREAD * (double) THREADS_COUNT / (double) multiThreadTime * 1000.0;
+        Double boostRate = tpsMultiThread / tpsSingleThread;
+
+        System.out.println("\n === total ===");
+        System.out.println("singleThread: " + (CONTRACTS_PER_THREAD) + " for " + singleThreadTime + "ms, tps=" + String.format("%.2f", tpsSingleThread));
+        System.out.println("multiThread(N=" + THREADS_COUNT + "): " + (CONTRACTS_PER_THREAD * THREADS_COUNT) + " for " + multiThreadTime + "ms, tps=" + String.format("%.2f", tpsMultiThread));
+        System.out.println("boostRate: " + String.format("%.2f", boostRate));
+        System.out.println("\n");
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+
+    public synchronized Parcel createParcelWithFreshTU(Client client, Contract c) throws Exception {
+
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/stepan_mamontov.private.unikey"));
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(stepaPrivateKey);
+        Contract stepaTU = Contract.fromDslFile("./src/test_contracts/StepaTU.yml");
+        stepaTU.addSignerKey(manufacturePrivateKey);
+        stepaTU.seal();
+        ItemResult itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
+//        node.registerItem(stepaTU);
+//        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        return ContractsService.createParcel(c, stepaTU, 150, keys);
     }
 
 

@@ -92,7 +92,7 @@ public class Parcel implements BiSerializable {
 
     @Override
     public synchronized Binder serialize(BiSerializer s) {
-        System.out.println("Parcel serialize ");
+//        System.out.println("Parcel serialize ");
         return Binder.of(
                 "payload", s.serialize(payload),
                 "payment", s.serialize(payment),
@@ -101,7 +101,7 @@ public class Parcel implements BiSerializable {
 
     @Override
     public synchronized void deserialize(Binder data, BiDeserializer ds) {
-        System.out.println("Parcel deserialize ");
+//        System.out.println("Parcel deserialize ");
         payload = ds.deserialize(data.get("payload"));
         payment = ds.deserialize(data.get("payment"));
         hashId = ds.deserialize(data.get("hashId"));
