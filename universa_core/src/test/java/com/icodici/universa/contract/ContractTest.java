@@ -25,6 +25,7 @@ import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -813,7 +814,7 @@ public class ContractTest extends ContractTestBase {
     }
 
 
-
+    @Ignore("parallel test")
     @Test
     public void checkParallelCreation() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));

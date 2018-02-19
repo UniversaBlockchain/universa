@@ -226,6 +226,26 @@ public class PostgresLedgerTest extends TestCase {
     }
 
     @Test
+    public void checkLockOwner() throws Exception {
+        ledger.enableCache(true);
+        StateRecord existing = ledger.findOrCreate(HashId.createRandom());
+        existing.approve();
+
+        StateRecord r = ledger.findOrCreate(HashId.createRandom());
+        StateRecord r1 = r.lockToRevoke(existing.getId());
+
+        existing.reload();
+        r.reload();
+
+        assertSameRecords(existing, r1);
+        assertEquals(ItemState.LOCKED, existing.getState());
+        assertEquals(r.getRecordId(), existing.getLockedByRecordId());
+
+        StateRecord currentOwner = ledger.getLockOwnerOf(existing);
+        assertSameRecords(r, currentOwner);
+    }
+
+    @Test
     public void revoke() throws Exception {
         StateRecord r1 = ledger.findOrCreate(HashId.createRandom());
         assertFalse(r1.isApproved());

@@ -137,7 +137,7 @@ public class PostgresLedger implements Ledger {
     public StateRecord getLockOwnerOf(StateRecord rc) {
         StateRecord sr = protect(() -> {
             return dbPool.execute(db -> {
-                try (ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE id = ? limit 1", rc.getRecordId())) {
+                try (ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE id = ? limit 1", rc.getLockedByRecordId())) {
                     if (rs == null)
                         return null;
                     StateRecord r = new StateRecord(this, rs);

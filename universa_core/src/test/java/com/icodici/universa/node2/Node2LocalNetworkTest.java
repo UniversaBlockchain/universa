@@ -398,12 +398,14 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertTrue(contract.check());
 
+        LogPrinter.showDebug(true);
+
         Parcel parcel = registerWithNewParcel(contract);
 
         node.waitParcel(parcel.getId(), 30000);
         ItemResult r = node.waitItem(parcel.getPayloadContract().getId(), 8000);
         System.out.println("Complex contract state: " + r.state);
-        ItemState expectedState = definedState == ItemState.APPROVED ? ItemState.APPROVED : ItemState.DECLINED;
+        ItemState expectedState = (definedState == ItemState.APPROVED || definedState == ItemState.LOCKED) ? ItemState.APPROVED : ItemState.DECLINED;
         assertEquals(expectedState, r.state);
     }
 
