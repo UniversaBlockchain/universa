@@ -17,6 +17,7 @@ import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractsService;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
@@ -114,6 +115,11 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
                         describedAs("contract.unicon");
+                accepts("tu", "Use with -register. Point to file with your transaction units. " +
+                        "Use it to pay for contract's register.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("tu.unicon");
                 accepts("probe", "query the state of the document in the Universa network")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
@@ -587,6 +593,7 @@ public class CLIMain {
 
     private static void doRegister() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("register"));
+        String tuSource = (String) options.valueOf("tu");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -598,9 +605,21 @@ public class CLIMain {
             String source = sources.get(s);
             Contract contract = loadContract(source);
 
+            Contract tu = null;
+            if(tuSource != null)
+                tu = loadContract(tuSource);
+
+            Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
+            for(PrivateKey k : tuKeys) {
+                report("key " + k.getPublicKey().toString());
+            }
             if(contract != null) {
                 report("registering the contract " + contract.getId().toBase64String() + " from " + source);
-                registerContract(contract, (int) options.valueOf("wait"));
+                if(tu != null && tuKeys != null && tuKeys.size() > 0) {
+                    registerContract(contract, tu, 1, tuKeys, (int) options.valueOf("wait"));
+                } else {
+                    registerContract(contract, (int) options.valueOf("wait"));
+                }
             }
         }
 
@@ -1748,6 +1767,7 @@ public class CLIMain {
      * @param waitTime - wait time for responce.
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
      */
+    @Deprecated
     public static void registerContract(Contract contract, int waitTime, Boolean fromPackedTransaction) throws IOException {
 //        checkContract(contract);
         List<ErrorRecord> errors = contract.getErrors();
@@ -1764,6 +1784,28 @@ public class CLIMain {
             } else {
                 r = getClientNetwork().register(contract.getLastSealedBinary(), waitTime);
             }
+            report("submitted with result:");
+            report(r.toString());
+        }
+    }
+
+    /**
+     * Register a specified contract.
+     *
+     * @param contract              must be a sealed binary.
+     * @param waitTime - wait time for responce.
+     */
+    public static void registerContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, int waitTime) throws IOException {
+
+        List<ErrorRecord> errors = contract.getErrors();
+        if (errors.size() > 0) {
+            report("contract has errors and can't be submitted for registration");
+            report("contract id: " + contract.getId().toBase64String());
+            addErrors(errors);
+        } else {
+            Parcel parcel = ContractsService.createParcel(contract, tu, amount,  tuKeys);
+            getClientNetwork().registerParcel(parcel.pack(), waitTime);
+            ItemResult r = getClientNetwork().check(contract.getId());
             report("submitted with result:");
             report(r.toString());
         }

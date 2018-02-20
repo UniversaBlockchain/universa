@@ -19,6 +19,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Main;
+import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
@@ -40,6 +41,7 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 import static com.icodici.universa.client.RegexMatcher.matches;
 import static org.junit.Assert.*;
@@ -62,6 +64,9 @@ public class CLIMainTest {
     protected static final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
 
     protected static List<Main> localNodes = new ArrayList<>();
+
+    protected static Contract tuContract = null;
+    protected Object tuContractLock = new Object();
 
     @BeforeClass
     public static void prepareRoot() throws Exception {
@@ -1944,15 +1949,41 @@ public class CLIMainTest {
 
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
+        System.out.println("--- get tu ---");
+
+        String tuContract = getApprovedTUContract();
+
         System.out.println("--- registering contract (with processing cost print) ---");
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
         int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerUTN) + 1;
-        callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
+        LogPrinter.showDebug(true);
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "--cost");
         System.out.println(output);
 
         assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
+    }
+
+    protected String getApprovedTUContract() throws Exception {
+        synchronized (tuContractLock) {
+            if (tuContract == null) {
+                PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
+                Contract stepaTU = Contract.fromDslFile(rootPath + "StepaTU.yml");
+                stepaTU.addSignerKey(manufacturePrivateKey);
+                stepaTU.seal();
+                stepaTU.check();
+                //stepaTU.setIsTU(true);
+                stepaTU.traceErrors();
+                CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
+                callMain2("--register", basePath + "stepaTU.unicon", "--cost");
+                tuContract = stepaTU;
+            }
+            return basePath + "stepaTU.unicon";
+        }
     }
 
     @Test

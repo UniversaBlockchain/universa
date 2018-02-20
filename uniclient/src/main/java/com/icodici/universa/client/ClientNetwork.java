@@ -90,6 +90,19 @@ public class ClientNetwork {
         return client.register(packedContract, millisToWait);
     }
 
+    /**
+     * Register packed binary contract and wait for the consensus.
+     *
+     * @param packedParcel
+     * @param millisToWait wait for the consensus as long as specified time, <= 0 means no wait (returns some pending
+     *                     state from registering).
+     * @return last item status returned by the network
+     * @throws ClientError
+     */
+    public boolean registerParcel(byte[] packedParcel, long millisToWait) throws ClientError {
+        return client.registerParcel(packedParcel, millisToWait);
+    }
+
     public ItemResult check(String base64Id) throws ClientError {
         return client.getState(HashId.withDigest(base64Id),reporter);
     }

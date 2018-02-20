@@ -574,7 +574,8 @@ public class UDPAdapter extends DatagramAdapter {
                     } catch (IllegalArgumentException e) {
                         e.printStackTrace();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        report(getLabel(), "expected interrupted exception");
+//                        e.printStackTrace();
                     } catch (SymmetricKey.AuthenticationFailed e) {
                         callErrorCallbacks("SymmetricKey.AuthenticationFailed in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
                         e.printStackTrace();
