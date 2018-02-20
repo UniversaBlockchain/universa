@@ -138,6 +138,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 Contract r = pack.getReference(hid);
                 if (r != null) {
                     revokingItems.add(r);
+                } else {
+                    addError(Errors.BAD_REVOKE, "Revoking item was not found in the transaction pack");
                 }
             }
             for (Binder b : (List<Binder>) payload.getList("new", Collections.EMPTY_LIST)) {
@@ -145,6 +147,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 Contract n = pack.getReference(hid);
                 if (n != null) {
                     newItems.add(n);
+                }else {
+                    addError(Errors.BAD_NEW_ITEM, "New item was not found in the transaction pack");
                 }
             }
         }
