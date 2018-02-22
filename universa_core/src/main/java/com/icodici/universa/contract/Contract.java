@@ -581,7 +581,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return quantiser.getQuantaSum();
     }
 
-    public int getProcessedCostUTN() {
+    public int getProcessedCostTU() {
         return (int) Math.floor(quantiser.getQuantaSum() / Quantiser.quantaPerUTN) + 1;
     }
 

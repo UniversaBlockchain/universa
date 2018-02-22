@@ -1949,23 +1949,76 @@ public class CLIMainTest {
 
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
+        System.out.println("--- registering contract (with processing cost print) ---");
+
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerUTN) + 1;
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon",
+                "--cost");
+        System.out.println(output);
+
+        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
+    }
+
+    @Test
+    public void registerContractWithDefaultPayment() throws Exception {
+
+        // Should register contracts and use -cost as key to print cost of processing it.
+
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+        CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
+
         System.out.println("--- get tu ---");
 
         String tuContract = getApprovedTUContract();
 
         System.out.println("--- registering contract (with processing cost print) ---");
 
-        // Check 4096 bits signature (8) +
-        // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerUTN) + 1;
-        LogPrinter.showDebug(true);
         callMain("--register", basePath + "contract_for_register_and_cost.unicon",
                 "--tu", tuContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
-                "--cost");
+                "-wait", "5000");
+
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
+        assert (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+    }
+
+    @Test
+    public void registerContractWithPayment() throws Exception {
+
+        // Should register contracts and use -cost as key to print cost of processing it.
+
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+        CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
+
+        System.out.println("--- get tu ---");
+
+        String tuContract = getApprovedTUContract();
+
+        System.out.println("--- registering contract (with processing cost print) ---");
+
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-amount", "2",
+                "-wait", "5000");
+
+        System.out.println(output);
+
+        assert (output.indexOf("registering the paid contract " + contract.getId()
+                + " from " + basePath + "contract_for_register_and_cost.unicon"
+                + " for 2 TU") >= 0);
+        assert (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
     }
 
     protected String getApprovedTUContract() throws Exception {

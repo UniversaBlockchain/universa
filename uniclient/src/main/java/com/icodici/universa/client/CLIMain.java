@@ -9,7 +9,6 @@ package com.icodici.universa.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.icodici.crypto.Error;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -120,6 +119,12 @@ public class CLIMain {
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("tu.unicon");
+                accepts("amount", "Use with -register and -tu. " +
+                        "Command is set amount of transaction units will be pay for contract's register.")
+                        .withRequiredArg()
+                        .ofType(Integer.class)
+                        .defaultsTo(1)
+                        .describedAs("tu amount");
                 accepts("probe", "query the state of the document in the Universa network")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
@@ -594,6 +599,7 @@ public class CLIMain {
     private static void doRegister() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("register"));
         String tuSource = (String) options.valueOf("tu");
+        int tuAmount = (int) options.valueOf("amount");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -610,14 +616,13 @@ public class CLIMain {
                 tu = loadContract(tuSource);
 
             Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
-            for(PrivateKey k : tuKeys) {
-                report("key " + k.getPublicKey().toString());
-            }
             if(contract != null) {
-                report("registering the contract " + contract.getId().toBase64String() + " from " + source);
                 if(tu != null && tuKeys != null && tuKeys.size() > 0) {
-                    registerContract(contract, tu, 1, tuKeys, (int) options.valueOf("wait"));
+                    report("registering the paid contract " + contract.getId() + " from " + source
+                            + " for " + tuAmount + " TU");
+                    registerContract(contract, tu, tuAmount, tuKeys, (int) options.valueOf("wait"));
                 } else {
+                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
                     registerContract(contract, (int) options.valueOf("wait"));
                 }
             }
@@ -1806,8 +1811,7 @@ public class CLIMain {
             Parcel parcel = ContractsService.createParcel(contract, tu, amount,  tuKeys);
             getClientNetwork().registerParcel(parcel.pack(), waitTime);
             ItemResult r = getClientNetwork().check(contract.getId());
-            report("submitted with result:");
-            report(r.toString());
+            report("paid contract " + contract.getId() +  " submitted with result: " + r.toString());
         }
     }
 
@@ -1935,7 +1939,7 @@ public class CLIMain {
      * @param contract
      */
     private static void printProcessingCost(Contract contract) {
-        report("Contract processing cost is " + contract.getProcessedCostUTN() + " TU");
+        report("Contract processing cost is " + contract.getProcessedCostTU() + " TU");
     }
 
 

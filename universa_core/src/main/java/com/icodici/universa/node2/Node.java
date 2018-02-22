@@ -16,6 +16,10 @@ import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.biserializer.BiAdapter;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.*;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -127,6 +131,24 @@ public class Node {
         if (record != null)
             ir.errors = record.errorRecords;
         return ir;
+    }
+
+    /**
+     * Check the parcel's processing state. If parcel is not under processing (not start or already finished)
+     * return ParcelProcessingState.NOT_EXIST
+     *
+     * @param parcelId parcel to check
+     *
+     * @return processing state
+     */
+    public @NonNull ParcelProcessingState checkParcelProcessingState(HashId parcelId) {
+
+        Object x = checkParcelInternal(parcelId);
+        if (x instanceof ParcelProcessor) {
+            return ((ParcelProcessor) x).processingState;
+        }
+
+        return ParcelProcessingState.NOT_EXIST;
     }
 
 
@@ -2266,6 +2288,7 @@ public class Node {
 
 
     public enum ParcelProcessingState {
+        NOT_EXIST,
         INIT,
         DOWNLOADING,
         PREPARING,
@@ -2323,6 +2346,35 @@ public class Node {
                     return true;
             }
             return false;
+        }
+
+        public boolean isProcessing() {
+            return canContinue() && this != FINISHED;
+        }
+
+        public Binder toBinder() {
+            return Binder.fromKeysValues(
+                    "state", name()
+            );
+        }
+
+        static {
+            DefaultBiMapper.registerAdapter(ParcelProcessingState.class, new BiAdapter() {
+                @Override
+                public Binder serialize(Object object, BiSerializer serializer) {
+                    return ((ParcelProcessingState) object).toBinder();
+                }
+
+                @Override
+                public ParcelProcessingState deserialize(Binder binder, BiDeserializer deserializer) {
+                    return ParcelProcessingState.valueOf(binder.getStringOrThrow("state"));
+                }
+
+                @Override
+                public String typeName() {
+                    return "ParcelProcessingState";
+                }
+            });
         }
     }
 
