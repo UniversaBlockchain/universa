@@ -15,7 +15,9 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.tools.Do;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.time.ZonedDateTime;
 import java.util.HashSet;
@@ -79,9 +81,13 @@ public class ContractsServiceTest extends ContractTestBase {
 
     }
 
+    @Rule
+    public final ExpectedException exception = ExpectedException.none();
+
     private void checkCreateParcel(String contract_file_payload, String contract_file_payment) throws Exception
     {
         final String ROOT_PATH = "./src/test_contracts/contractService/";
+
         PrivateKey privateKey = TestKeys.privateKey(3);
 
         Contract payload = Contract.fromDslFile(ROOT_PATH + contract_file_payload);
@@ -96,6 +102,15 @@ public class ContractsServiceTest extends ContractTestBase {
         PrivateKeys.add(privateKey);
 
         Parcel parcel = ContractsService.createParcel(payload, payment, 20, PrivateKeys);
+
+        assertEquals(parcel.getPayloadContract().getState().getBranchId(), payload.getState().getBranchId());
+        assertEquals(parcel.getPaymentContract().getState().getBranchId(), payment.getState().getBranchId());
+
+        assertEquals(parcel.getPayloadContract().getStateData(), payload.getStateData());
+        assertEquals(parcel.getPaymentContract().getDefinition().getData(), payment.getDefinition().getData());
+
+        System.out.println("OK");
+
     }
 
     @Test
@@ -104,17 +119,17 @@ public class ContractsServiceTest extends ContractTestBase {
         checkCreateParcel("simple_root_contract.yml", "simple_root_contract.yml");
     }
 
-    @Ignore
     @Test
     public void checkCreateParcelBadPayload() throws Exception
     {
+        exception.expect(IllegalArgumentException.class);
         checkCreateParcel("bad_contract_payload.yml", "simple_root_contract.yml");
     }
 
-    @Ignore
     @Test
     public void checkCreateParcelBadPayment() throws Exception
     {
+        exception.expect(NumberFormatException.class);
         checkCreateParcel("simple_root_contract.yml","bad_contract_payment.yml");
     }
 }
