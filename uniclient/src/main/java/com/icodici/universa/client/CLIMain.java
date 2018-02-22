@@ -612,15 +612,21 @@ public class CLIMain {
             Contract contract = loadContract(source);
 
             Contract tu = null;
-            if(tuSource != null)
+            if(tuSource != null) {
                 tu = loadContract(tuSource);
+                report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
+            }
 
             Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
             if(contract != null) {
                 if(tu != null && tuKeys != null && tuKeys.size() > 0) {
                     report("registering the paid contract " + contract.getId() + " from " + source
                             + " for " + tuAmount + " TU");
-                    registerContract(contract, tu, tuAmount, tuKeys, (int) options.valueOf("wait"));
+                    Parcel parcel = registerContract(contract, tu, tuAmount, tuKeys, (int) options.valueOf("wait"));
+                    if(parcel != null) {
+                        report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
+                        saveContract(parcel.getPaymentContract(), tuSource);
+                    }
                 } else {
                     report("registering the contract " + contract.getId().toBase64String() + " from " + source);
                     registerContract(contract, (int) options.valueOf("wait"));
@@ -1800,7 +1806,7 @@ public class CLIMain {
      * @param contract              must be a sealed binary.
      * @param waitTime - wait time for responce.
      */
-    public static void registerContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, int waitTime) throws IOException {
+    public static Parcel registerContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, int waitTime) throws IOException {
 
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
@@ -1812,7 +1818,11 @@ public class CLIMain {
             getClientNetwork().registerParcel(parcel.pack(), waitTime);
             ItemResult r = getClientNetwork().check(contract.getId());
             report("paid contract " + contract.getId() +  " submitted with result: " + r.toString());
+
+            return parcel;
         }
+
+        return null;
     }
 
     /**

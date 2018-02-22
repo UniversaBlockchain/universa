@@ -1976,6 +1976,7 @@ public class CLIMainTest {
         System.out.println("--- get tu ---");
 
         String tuContract = getApprovedTUContract();
+        LogPrinter.showDebug(true);
 
         System.out.println("--- registering contract (with processing cost print) ---");
 
@@ -2022,9 +2023,32 @@ public class CLIMainTest {
         assert (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
     }
 
+    @Test
+    public void saveAndLoad() throws Exception {
+
+        // Should register contracts and use -cost as key to print cost of processing it.
+
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+        System.out.println("--- save --- " + contract.getId());
+
+        CLIMain.saveContract(contract, basePath + "save_and_load.unicon", true);
+
+        Contract loaded = CLIMain.loadContract(basePath + "save_and_load.unicon", true);
+
+        System.out.println("--- load --- " + loaded.getId());
+
+        assert(loaded.getId().equals(contract.getId()));
+
+    }
+
     protected String getApprovedTUContract() throws Exception {
         synchronized (tuContractLock) {
             if (tuContract == null) {
+                System.out.println("--- register new tu ---");
                 PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
                 Contract stepaTU = Contract.fromDslFile(rootPath + "StepaTU.yml");
                 stepaTU.addSignerKey(manufacturePrivateKey);
