@@ -1314,43 +1314,8 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test(timeout = 90000)
-    public void swapOneContractViaTransaction() throws Exception {
-
-        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
-        Set<PublicKey> martyPublicKeys = new HashSet<>();
-        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
-        Set<PublicKey> stepaPublicKeys = new HashSet<>();
-        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
-
-        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
-        for (PrivateKey pk : martyPrivateKeys) {
-            martyPublicKeys.add(pk.getPublicKey());
-        }
-
-        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        for (PrivateKey pk : stepaPrivateKeys) {
-            stepaPublicKeys.add(pk.getPublicKey());
-        }
-
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-
-        delorean.addSignerKey(manufacturePrivateKey);
-        delorean.seal();
-
-        Contract swapContract = ContractsService.createSimpleSwapContract(delorean, martyPrivateKeys, stepaPublicKeys );
-
-        swapContract = imitateSendingTransactionToPartner(swapContract);
-        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
-
-        swapContract = imitateSendingTransactionToPartner(swapContract);
-        ContractsService.finishSwap(swapContract, martyPrivateKeys);
-
-        swapContract.check();
-        swapContract.traceErrors();
-        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
-        registerAndCheckDeclined(swapContract);
+    public void createTwoSignedContractAllGood() throws Exception {
     }
-
 
     @Test(timeout = 90000)
     public void swapContractsViaTransactionAllGood() throws Exception {

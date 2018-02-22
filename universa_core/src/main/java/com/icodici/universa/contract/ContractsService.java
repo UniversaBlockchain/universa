@@ -365,19 +365,19 @@ public class ContractsService {
     }
 
     /**
-     * Create a simple swap contract.
-     * The service creates a simple exchange contract, which must send something with the recipient's approval before the transfer.
-     * @param contract - the basic contract for which an exchange contract is created
+     * Сreate a contract with two signatures
+     * The service creates a contract with two signatures, which must send something with the recipient's approval before the transfer.
+     * @param contract - the main contract, on the basis of which a contract is created with two signatures
      * @param fromKeys - own private keys
      * @param toKeys - foreign public keys
-     * @return simple swap contract
+     * @return contract with two signatures
      */
-    public synchronized static Contract createSimpleSwapContract(Contract contract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys){
+    public synchronized static Contract createTwoSignedContract(Contract contract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys){
 
-        Contract swapContract = new Contract();
+        Contract twoSignContract = new Contract();
 
-        Contract.Definition cd = swapContract.getDefinition();
-        cd.setExpiresAt(swapContract.getCreatedAt().plusDays(30));
+        Contract.Definition cd = twoSignContract.getDefinition();
+        cd.setExpiresAt(twoSignContract.getCreatedAt().plusDays(30));
 
         SimpleRole issuerRole = new SimpleRole("issuer");
         for (PrivateKey k : fromKeys) {
@@ -385,9 +385,9 @@ public class ContractsService {
             issuerRole.addKeyRecord(kr);
         }
 
-        swapContract.registerRole(issuerRole);
-        swapContract.createRole("owner", issuerRole);
-        swapContract.createRole("creator", issuerRole);
+        twoSignContract.registerRole(issuerRole);
+        twoSignContract.createRole("owner", issuerRole);
+        twoSignContract.createRole("creator", issuerRole);
 
         Contract contractNew = contract.createRevision(fromKeys);
         contractNew.createTransactionalSection();
@@ -419,13 +419,12 @@ public class ContractsService {
         contractNew.getTransactional().addReference(reference);
 
         contractNew.setOwnerKeys(fromKeys);
-        contractNew.setOwnerKeys(toKeys);
         contractNew.seal();
 
-        swapContract.addNewItems(contractNew);
-        swapContract.seal();
+        twoSignContract.addNewItems(contractNew);
+        twoSignContract.seal();
 
-        return swapContract;
+        return twoSignContract;
     }
 
     /**
