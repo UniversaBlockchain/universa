@@ -225,8 +225,11 @@ public class Client {
                 Parcel parcel = Parcel.unpack(packed);
                 Node.ParcelProcessingState pState = getParcelProcessingState(parcel.getId());
                 while(Instant.now().isBefore(end) && pState.isProcessing()) {
+                    System.out.println("parcel state is: " + pState);
                     Thread.currentThread().sleep(100);
+                    pState = getParcelProcessingState(parcel.getId());
                 }
+                System.out.println("parcel state is: " + pState);
                 ItemResult lastResult = getState(parcel.getPayloadContract().getId());
                 while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
                     Thread.currentThread().sleep(100);

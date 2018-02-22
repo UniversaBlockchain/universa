@@ -2349,7 +2349,7 @@ public class Node {
         }
 
         public boolean isProcessing() {
-            return canContinue() && this != FINISHED;
+            return canContinue() && this != FINISHED && this != NOT_EXIST;
         }
 
         public Binder toBinder() {

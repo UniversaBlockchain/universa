@@ -2006,6 +2006,7 @@ public class CLIMainTest {
         String tuContract = getApprovedTUContract();
 
         System.out.println("--- registering contract (with processing cost print) ---");
+        LogPrinter.showDebug(true);
 
         callMain("--register", basePath + "contract_for_register_and_cost.unicon",
                 "--tu", tuContract,
@@ -2287,7 +2288,7 @@ public class CLIMainTest {
 //        checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
     }
 
-    @Test
+//    @Test
     public void failedTransaction() throws Exception {
         Contract c = CLIMain.loadContract(rootPath + "failed3.transaction", true);
 
