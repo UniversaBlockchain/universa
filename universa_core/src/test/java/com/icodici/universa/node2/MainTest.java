@@ -8,6 +8,7 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTest;
@@ -861,6 +862,75 @@ public class MainTest {
             for (int i = 0; i < 100; ++i)
                 HashId.of(randBytes);
         });
+    }
+
+
+
+    @Test
+    public void registerContract500_seal() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Contract contract = createContract500(ts.myKey);
+        ItemResult itemResult = ts.client.register(contract.getLastSealedBinary(), 10000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+        int i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            ItemResult subItemResult = ts.client.getState(sub);
+            System.out.println("" + (i++) + " - " + subItemResult.state);
+            assertEquals(ItemState.UNDEFINED, subItemResult.state);
+        }
+    }
+
+
+
+    @Test
+    public void registerContract500_pack() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Contract contract = createContract500(ts.myKey);
+        ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 10000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        int i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            ItemResult subItemResult = ts.client.getState(sub);
+            System.out.println("" + (i++) + " - " + subItemResult.state);
+            assertEquals(ItemState.APPROVED, subItemResult.state);
+        }
+    }
+
+
+
+    private TestSpace prepareTestSpace() throws Exception {
+        TestSpace testSpace = new TestSpace();
+        testSpace.nodes = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            testSpace.nodes.add(createMain("node" + (i + 1), false));
+        testSpace.node = testSpace.nodes.get(0);
+        assertEquals("http://localhost:8080", testSpace.node.myInfo.internalUrlString());
+        assertEquals("http://localhost:8080", testSpace.node.myInfo.publicUrlString());
+        testSpace.myKey = TestKeys.privateKey(3);
+        testSpace.client = new Client(testSpace.myKey, testSpace.node.myInfo, null);
+        return testSpace;
+    }
+
+
+
+    private Contract createContract500(PrivateKey key) {
+        Contract contract = new Contract(key);
+        for (int i = 0; i < 500; ++i) {
+            Contract sub = new Contract(key);
+            sub.seal();
+            contract.addNewItems(sub);
+        }
+        contract.seal();
+        return contract;
+    }
+
+
+
+    private class TestSpace {
+        public List<Main> nodes = null;
+        public Main node = null;
+        PrivateKey myKey = null;
+        Client client = null;
     }
 
 }
