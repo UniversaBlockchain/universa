@@ -613,7 +613,7 @@ public class CLIMain {
 
             Contract tu = null;
             if(tuSource != null) {
-                tu = loadContract(tuSource);
+                tu = loadContract(tuSource, true);
                 report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
             }
 
@@ -625,7 +625,7 @@ public class CLIMain {
                     Parcel parcel = registerContract(contract, tu, tuAmount, tuKeys, (int) options.valueOf("wait"));
                     if(parcel != null) {
                         report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
-                        saveContract(parcel.getPaymentContract(), tuSource);
+                        saveContract(parcel.getPaymentContract(), tuSource, true, false);
                     }
                 } else {
                     report("registering the contract " + contract.getId().toBase64String() + " from " + source);
@@ -747,7 +747,7 @@ public class CLIMain {
                         }
                         if (siblingItems != null || revokeItems != null) {
                             contract.seal();
-                            saveContract(contract, name, true);
+                            saveContract(contract, name, true, true);
                         }
                     } else {
                         addErrors(contract.getErrors());
@@ -1621,15 +1621,18 @@ public class CLIMain {
      * @param contract              - contract for update.
      * @param fileName              - name of file to save to.
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
+     * @param addSigners - do adding signs to contract from keysMap() or not.
      */
-    public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction) throws IOException {
+    public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction, Boolean addSigners) throws IOException {
         if (fileName == null) {
             fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:ss").format(contract.getCreatedAt()) + ".unicon";
         }
 
-        keysMap().values().forEach(k -> contract.addSignerKey(k));
-        if (keysMap().values().size() > 0) {
-            contract.seal();
+        if(addSigners) {
+            keysMap().values().forEach(k -> contract.addSignerKey(k));
+            if (keysMap().values().size() > 0) {
+                contract.seal();
+            }
         }
 
         byte[] data;
@@ -1665,7 +1668,7 @@ public class CLIMain {
      * @param fileName - name of file to save to.
      */
     public static void saveContract(Contract contract, String fileName) throws IOException {
-        saveContract(contract, fileName, false);
+        saveContract(contract, fileName, false, true);
     }
 
     /**
@@ -1818,6 +1821,9 @@ public class CLIMain {
             getClientNetwork().registerParcel(parcel.pack(), waitTime);
             ItemResult r = getClientNetwork().check(contract.getId());
             report("paid contract " + contract.getId() +  " submitted with result: " + r.toString());
+            report("payment was " + tu.getId());
+            report("payment became " + parcel.getPaymentContract().getId());
+            report("payment rev " + parcel.getPaymentContract().getRevoking().get(0).getId());
 
             return parcel;
         }

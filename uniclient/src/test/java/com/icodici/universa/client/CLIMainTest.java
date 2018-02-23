@@ -213,7 +213,7 @@ public class CLIMainTest {
         String path = rootPath + "/testtranspack.unicon";
 //        path = "/Users/sergeych/dev/!/e7810197-d148-4936-866b-44daae182e83.transaction";
         c.seal();
-        CLIMain.saveContract(c, path, true);
+        CLIMain.saveContract(c, path, true, true);
 //        try (FileOutputStream fs = new FileOutputStream(path)) {
 //            fs.write(c.getPackedTransaction());
 //            fs.close();
@@ -1988,6 +1988,10 @@ public class CLIMainTest {
         System.out.println(output);
 
         assert (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+
+        Contract loaded2 = CLIMain.loadContract(tuContract, true);
+
+        System.out.println("--- load 2 --- " + loaded2.getId() + " from " + tuContract);
     }
 
     @Test
@@ -2028,27 +2032,47 @@ public class CLIMainTest {
 
         // Should register contracts and use -cost as key to print cost of processing it.
 
-        Contract contract = createCoin();
-        contract.getStateData().set(FIELD_NAME, new Decimal(100));
-        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        contract.seal();
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+        Contract stepaTU = Contract.fromDslFile(rootPath + "StepaTU.yml");
+        stepaTU.addSignerKey(manufacturePrivateKey);
+        stepaTU.seal();
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        CLIMain.saveContract(stepaTU, basePath + "save_and_load.unicon");
+        callMain2("--register", basePath + "save_and_load.unicon", "--cost");
 
-        System.out.println("--- save --- " + contract.getId());
-
-        CLIMain.saveContract(contract, basePath + "save_and_load.unicon", true);
+        System.out.println("--- save --- " + stepaTU.getId());
 
         Contract loaded = CLIMain.loadContract(basePath + "save_and_load.unicon", true);
 
         System.out.println("--- load --- " + loaded.getId());
 
-        assert(loaded.getId().equals(contract.getId()));
+        assert(loaded.getId().equals(stepaTU.getId()));
+
+
+        Contract paymentDecreased = loaded.createRevision(stepaPrivateKey);
+        paymentDecreased.getStateData().set("transaction_units", 99);
+
+        paymentDecreased.seal();
+        CLIMain.saveContract(paymentDecreased, basePath + "save_and_load.unicon");
+
+        System.out.println("--- save 2 --- " + paymentDecreased.getId());
+
+        callMain("--register", basePath + "save_and_load.unicon", "--cost");
+
+        Contract loaded2 = CLIMain.loadContract(basePath + "save_and_load.unicon", true);
+
+        System.out.println("--- load 2 --- " + loaded2.getId());
+
+        assert(loaded2.getId().equals(paymentDecreased.getId()));
 
     }
 
     protected String getApprovedTUContract() throws Exception {
         synchronized (tuContractLock) {
             if (tuContract == null) {
-                System.out.println("--- register new tu ---");
                 PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
                 Contract stepaTU = Contract.fromDslFile(rootPath + "StepaTU.yml");
                 stepaTU.addSignerKey(manufacturePrivateKey);
@@ -2057,6 +2081,7 @@ public class CLIMainTest {
                 //stepaTU.setIsTU(true);
                 stepaTU.traceErrors();
                 CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
+                System.out.println("--- register new tu --- " + stepaTU.getId());
                 callMain2("--register", basePath + "stepaTU.unicon", "--cost");
                 tuContract = stepaTU;
             }
@@ -2198,7 +2223,7 @@ public class CLIMainTest {
             }
         }
 
-        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true);
+        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true, true);
         CLIMain.saveContract(newDelorean, rootPath + "newDelorean.unicon");
         CLIMain.saveContract(newLamborghini, rootPath + "newLamborghini.unicon");
 
@@ -2293,7 +2318,7 @@ public class CLIMainTest {
         swapContract.traceErrors();
         System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk() + " num new contracts: " + swapContract.getNewItems().size());
 
-        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true);
+        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true, true);
         callMain("--register",
                 rootPath + "swapContract.unicon",
                 "-wait", "5000");
