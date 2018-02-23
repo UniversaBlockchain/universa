@@ -73,6 +73,10 @@ public class CLIMainTest {
 
         createLocalNetwork();
 
+        ownerKey1 = TestKeys.privateKey(3);
+        ownerKey2 = TestKeys.privateKey(1);
+        ownerKey3 = TestKeys.privateKey(2);
+
 //        new File(rootPath + "/simple_root_contract.unicon").delete();
         assert (new File(rootPath + "/simple_root_contract.yml").exists());
         assert (new File(rootPath + "/simple_root_contract_v2.yml").exists());
@@ -138,10 +142,23 @@ public class CLIMainTest {
 
         Path path = Paths.get(rootPath + "packedContract.unicon");
         byte[] data = Files.readAllBytes(path);
-        try (FileOutputStream fs = new FileOutputStream(basePath + "packedContract.unicon")) {
-            fs.write(data);
-            fs.close();
-        }
+
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(new PrivateKey(Do.read(PRIVATE_KEY_PATH)));
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKey(keys.iterator().next());
+        contract.seal();
+        CLIMain.saveContract(contract, basePath + "packedContract.unicon");
+        callMain("--register", basePath + "packedContract.unicon", "--wait", "5000");
+        Contract packedContract = ContractsService.createSplit(contract, 1, FIELD_NAME, keys);
+        packedContract.addSignerKey(keys.iterator().next());
+        packedContract.seal();
+
+        CLIMain.saveContract(packedContract, basePath + "packedContract.unicon", true, true);
+//        try (FileOutputStream fs = new FileOutputStream(basePath + "packedContract.unicon")) {
+//            fs.write(data);
+//            fs.close();
+//        }
 
         path = Paths.get(rootPath + "packedContract.unicon");
         data = Files.readAllBytes(path);
@@ -163,10 +180,6 @@ public class CLIMainTest {
             fs.write(data);
             fs.close();
         }
-
-        ownerKey1 = TestKeys.privateKey(3);
-        ownerKey2 = TestKeys.privateKey(1);
-        ownerKey3 = TestKeys.privateKey(2);
     }
 
 
@@ -1868,10 +1881,10 @@ public class CLIMainTest {
         String fileName = basePath + "packedContract.unicon";
         callMain2("--check", fileName, "-v");
         callMain2("-unpack", fileName, "-v");
-        System.out.println(" ");
-        callMain2("--check", basePath + "packedContract_new_item_1.unicon", "-v");
-        System.out.println(" ");
-        callMain("--check", basePath + "packedContract_revoke_1.unicon", "-v");
+//        System.out.println(" ");
+//        callMain2("--check", basePath + "packedContract_new_item_1.unicon", "-v");
+//        System.out.println(" ");
+//        callMain("--check", basePath + "packedContract_revoke_1.unicon", "-v");
 
         System.out.println(output);
         assertEquals(0, errors.size());
@@ -2445,17 +2458,17 @@ public class CLIMainTest {
             assertFalse(c.isOk());
     }
 
-    protected Contract createCoin() throws IOException {
+    protected static Contract createCoin() throws IOException {
         return createCoin(rootPath + "coin.yml");
     }
 
-    protected Contract createCoin(String yamlFilePath) throws IOException {
+    protected static Contract createCoin(String yamlFilePath) throws IOException {
         Contract c = Contract.fromDslFile(yamlFilePath);
         c.setOwnerKey(ownerKey2);
         return c;
     }
 
-    protected Contract createCoin100apiv3() throws IOException {
+    protected static Contract createCoin100apiv3() throws IOException {
         Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
         return c;
     }
