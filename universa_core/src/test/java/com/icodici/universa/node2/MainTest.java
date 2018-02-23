@@ -886,8 +886,9 @@ public class MainTest {
     public void registerContract500_pack() throws Exception {
         TestSpace ts = prepareTestSpace();
         Contract contract = createContract500(ts.myKey);
-        ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 10000);
+        ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 30000);
         assertEquals(ItemState.APPROVED, itemResult.state);
+        Thread.sleep(5000);
         int i = 0;
         for (Approvable sub : contract.getNewItems()) {
             ItemResult subItemResult = ts.client.getState(sub);

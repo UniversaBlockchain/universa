@@ -139,6 +139,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 if (r != null) {
                     revokingItems.add(r);
                 } else {
+//                    System.out.println("Revoking item was not found in the transaction pack");
                     addError(Errors.BAD_REVOKE, "Revoking item was not found in the transaction pack");
                 }
             }
@@ -148,6 +149,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 if (n != null) {
                     newItems.add(n);
                 }else {
+//                    System.out.println("New item was not found in the transaction pack");
                     addError(Errors.BAD_NEW_ITEM, "New item was not found in the transaction pack");
                 }
             }
@@ -400,7 +402,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         try {
             // common check for all cases
-            errors.clear();
+//            errors.clear();
             basicCheck();
             if (state.origin == null)
                 checkRootContract();

@@ -391,6 +391,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         assertEquals(a - 500, c1.getStateData().getIntOrThrow(FIELD_NAME));
         assertEquals(500, c2.getStateData().getIntOrThrow(FIELD_NAME));
 
+        c1.getErrors().clear();
         sealCheckTrace(c1, true);
 
         // and it should be the same after seriazling to the transaction pack
@@ -436,6 +437,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         assertEquals(a - 500, c1.getStateData().getIntOrThrow(FIELD_NAME));
         assertEquals(500, c2.getStateData().getIntOrThrow(FIELD_NAME));
 
+        c1.getErrors().clear();
         sealCheckTrace(c1, true);
 
         Contract c3 = c1.createRevision(ownerKey2);

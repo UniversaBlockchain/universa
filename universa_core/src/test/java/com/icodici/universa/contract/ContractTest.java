@@ -227,6 +227,7 @@ public class ContractTest extends ContractTestBase {
         assertEquals(errors.get(0).getError(), Errors.NOT_SIGNED);
 
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        c.getErrors().clear();
         ok = c.check();
 
         if (errors.isEmpty()) {
