@@ -11,6 +11,7 @@ package com.icodici.universa.wallet;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTestBase;
+import com.icodici.universa.contract.TransactionPack;
 import org.junit.Test;
 
 import java.io.File;
@@ -81,7 +82,8 @@ public class WalletTest extends ContractTestBase {
         assertEquals(1, wallet.getContracts().size());
         sealCheckTrace(contract, true);
 
-        Contract contractToSend = new Contract(contract.seal());
+        TransactionPack tp = contract.getTransactionPack();
+        Contract contractToSend = new Contract(contract.seal(), tp);
         contractToSend.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(contractToSend, true);
@@ -111,7 +113,8 @@ public class WalletTest extends ContractTestBase {
         assertEquals(4, restContract.getStateData().getIntOrThrow(FIELD_NAME));
         sealCheckTrace(restContract, true);
 
-        Contract contractToSend = new Contract(contract.seal());
+        TransactionPack tp = contract.getTransactionPack();
+        Contract contractToSend = new Contract(contract.seal(), tp);
         contractToSend.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(contractToSend, true);
@@ -137,7 +140,8 @@ public class WalletTest extends ContractTestBase {
 
         assertEquals(0, wallet.getContracts().size());
 
-        Contract contractToSend = new Contract(contract.seal());
+        TransactionPack tp = contract.getTransactionPack();
+        Contract contractToSend = new Contract(contract.seal(), tp);
         contractToSend.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(contractToSend, true);
@@ -163,7 +167,8 @@ public class WalletTest extends ContractTestBase {
 
         assertEquals(6, wallet.getContracts().size());
 
-        Contract contractToSend = new Contract(contract.seal());
+        TransactionPack tp = contract.getTransactionPack();
+        Contract contractToSend = new Contract(contract.seal(), tp);
         contractToSend.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         sealCheckTrace(contractToSend, true);

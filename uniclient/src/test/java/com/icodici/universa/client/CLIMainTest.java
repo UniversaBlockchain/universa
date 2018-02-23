@@ -19,6 +19,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Main;
+import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
@@ -40,6 +41,7 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 import static com.icodici.universa.client.RegexMatcher.matches;
 import static org.junit.Assert.*;
@@ -62,6 +64,9 @@ public class CLIMainTest {
     protected static final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
 
     protected static List<Main> localNodes = new ArrayList<>();
+
+    protected static Contract tuContract = null;
+    protected Object tuContractLock = new Object();
 
     @BeforeClass
     public static void prepareRoot() throws Exception {
@@ -208,7 +213,7 @@ public class CLIMainTest {
         String path = rootPath + "/testtranspack.unicon";
 //        path = "/Users/sergeych/dev/!/e7810197-d148-4936-866b-44daae182e83.transaction";
         c.seal();
-        CLIMain.saveContract(c, path, true);
+        CLIMain.saveContract(c, path, true, true);
 //        try (FileOutputStream fs = new FileOutputStream(path)) {
 //            fs.write(c.getPackedTransaction());
 //            fs.close();
@@ -1949,10 +1954,139 @@ public class CLIMainTest {
         // Check 4096 bits signature (8) +
         // Register a version (20)
         int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerUTN) + 1;
-        callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon",
+                "--cost");
         System.out.println(output);
 
         assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
+    }
+
+    @Test
+    public void registerContractWithDefaultPayment() throws Exception {
+
+        // Should register contracts and use -cost as key to print cost of processing it.
+
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+        CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
+
+        System.out.println("--- get tu ---");
+
+        String tuContract = getApprovedTUContract();
+        LogPrinter.showDebug(true);
+
+        System.out.println("--- registering contract (with processing cost print) ---");
+
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "5000");
+
+        System.out.println(output);
+
+        assert (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+
+        Contract loaded2 = CLIMain.loadContract(tuContract, true);
+
+        System.out.println("--- load 2 --- " + loaded2.getId() + " from " + tuContract);
+    }
+
+    @Test
+    public void registerContractWithPayment() throws Exception {
+
+        // Should register contracts and use -cost as key to print cost of processing it.
+
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+        CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
+
+        System.out.println("--- get tu ---");
+
+        String tuContract = getApprovedTUContract();
+
+        System.out.println("--- registering contract (with processing cost print) ---");
+        LogPrinter.showDebug(true);
+
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-amount", "2",
+                "-wait", "5000");
+
+        System.out.println(output);
+
+        assert (output.indexOf("registering the paid contract " + contract.getId()
+                + " from " + basePath + "contract_for_register_and_cost.unicon"
+                + " for 2 TU") >= 0);
+        assert (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+    }
+
+    @Test
+    public void saveAndLoad() throws Exception {
+
+        // Should register contracts and use -cost as key to print cost of processing it.
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
+        PrivateKey stepaPrivateKey = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+        Contract stepaTU = Contract.fromDslFile(rootPath + "StepaTU.yml");
+        stepaTU.addSignerKey(manufacturePrivateKey);
+        stepaTU.seal();
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        CLIMain.saveContract(stepaTU, basePath + "save_and_load.unicon");
+        callMain2("--register", basePath + "save_and_load.unicon", "--cost");
+
+        System.out.println("--- save --- " + stepaTU.getId());
+
+        Contract loaded = CLIMain.loadContract(basePath + "save_and_load.unicon", true);
+
+        System.out.println("--- load --- " + loaded.getId());
+
+        assert(loaded.getId().equals(stepaTU.getId()));
+
+
+        Contract paymentDecreased = loaded.createRevision(stepaPrivateKey);
+        paymentDecreased.getStateData().set("transaction_units", 99);
+
+        paymentDecreased.seal();
+        CLIMain.saveContract(paymentDecreased, basePath + "save_and_load.unicon");
+
+        System.out.println("--- save 2 --- " + paymentDecreased.getId());
+
+        callMain("--register", basePath + "save_and_load.unicon", "--cost");
+
+        Contract loaded2 = CLIMain.loadContract(basePath + "save_and_load.unicon", true);
+
+        System.out.println("--- load 2 --- " + loaded2.getId());
+
+        assert(loaded2.getId().equals(paymentDecreased.getId()));
+
+    }
+
+    protected String getApprovedTUContract() throws Exception {
+        synchronized (tuContractLock) {
+            if (tuContract == null) {
+                PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
+                Contract stepaTU = Contract.fromDslFile(rootPath + "StepaTU.yml");
+                stepaTU.addSignerKey(manufacturePrivateKey);
+                stepaTU.seal();
+                stepaTU.check();
+                //stepaTU.setIsTU(true);
+                stepaTU.traceErrors();
+                CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
+                System.out.println("--- register new tu --- " + stepaTU.getId());
+                callMain2("--register", basePath + "stepaTU.unicon", "--cost");
+                tuContract = stepaTU;
+            }
+            return basePath + "stepaTU.unicon";
+        }
     }
 
     @Test
@@ -2089,7 +2223,7 @@ public class CLIMainTest {
             }
         }
 
-        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true);
+        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true, true);
         CLIMain.saveContract(newDelorean, rootPath + "newDelorean.unicon");
         CLIMain.saveContract(newLamborghini, rootPath + "newLamborghini.unicon");
 
@@ -2184,7 +2318,7 @@ public class CLIMainTest {
         swapContract.traceErrors();
         System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk() + " num new contracts: " + swapContract.getNewItems().size());
 
-        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true);
+        CLIMain.saveContract(swapContract, rootPath + "swapContract.unicon", true, true);
         callMain("--register",
                 rootPath + "swapContract.unicon",
                 "-wait", "5000");
@@ -2203,7 +2337,7 @@ public class CLIMainTest {
 //        checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
     }
 
-    @Test
+//    @Test
     public void failedTransaction() throws Exception {
         Contract c = CLIMain.loadContract(rootPath + "failed3.transaction", true);
 

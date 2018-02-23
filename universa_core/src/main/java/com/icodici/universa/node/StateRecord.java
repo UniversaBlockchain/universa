@@ -255,6 +255,7 @@ public class StateRecord implements HashIdentifiable {
      */
     private boolean checkLockedRecord(StateRecord lockedRecord) {
         // It is locked bu us
+
         if(lockedRecord.getLockedByRecordId() == recordId )
             return true;
 

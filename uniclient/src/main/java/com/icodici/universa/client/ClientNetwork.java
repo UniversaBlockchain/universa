@@ -4,6 +4,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
 import com.icodici.universa.node2.network.Client;
@@ -90,12 +91,29 @@ public class ClientNetwork {
         return client.register(packedContract, millisToWait);
     }
 
+    /**
+     * Register packed binary contract and wait for the consensus.
+     *
+     * @param packedParcel
+     * @param millisToWait wait for the consensus as long as specified time, <= 0 means no wait (returns some pending
+     *                     state from registering).
+     * @return last item status returned by the network
+     * @throws ClientError
+     */
+    public boolean registerParcel(byte[] packedParcel, long millisToWait) throws ClientError {
+        return client.registerParcel(packedParcel, millisToWait);
+    }
+
     public ItemResult check(String base64Id) throws ClientError {
         return client.getState(HashId.withDigest(base64Id),reporter);
     }
 
     public ItemResult check(HashId id) throws ClientError {
         return client.getState(id, reporter);
+    }
+
+    public Node.ParcelProcessingState getParcelProcessingState(HashId id) throws ClientError {
+        return client.getParcelProcessingState(id);
     }
 
     public int size() {

@@ -111,6 +111,7 @@ public class ContractsService {
     }
 
 
+
     public synchronized static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
         return startSwap(contract1, contract2, fromKeys, toKeys, true);
     }
@@ -361,6 +362,69 @@ public class ContractsService {
         swapContract.addSignatureToSeal(keys);
 
         return swapContract;
+    }
+
+    /**
+     * Сreate a contract with two signatures
+     * The service creates a contract with two signatures, which must send something with the recipient's approval before the transfer.
+     * @param contract - the main contract, on the basis of which a contract is created with two signatures
+     * @param fromKeys - own private keys
+     * @param toKeys - foreign public keys
+     * @return contract with two signatures
+     */
+    public synchronized static Contract createTwoSignedContract(Contract contract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys){
+
+        Contract twoSignContract = new Contract();
+
+        Contract.Definition cd = twoSignContract.getDefinition();
+        cd.setExpiresAt(twoSignContract.getCreatedAt().plusDays(30));
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : fromKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        twoSignContract.registerRole(issuerRole);
+        twoSignContract.createRole("owner", issuerRole);
+        twoSignContract.createRole("creator", issuerRole);
+
+        Contract contractNew = contract.createRevision(fromKeys);
+        contractNew.createTransactionalSection();
+        contractNew.getTransactional().setId(HashId.createRandom().toBase64String());
+
+        SimpleRole ownerFrom = new SimpleRole("owner");
+        SimpleRole creatorFrom = new SimpleRole("creator");
+        for (PrivateKey k : fromKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            ownerFrom.addKeyRecord(kr);
+            creatorFrom.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerTo = new SimpleRole("owner");
+        SimpleRole creatorTo = new SimpleRole("creator");
+        for (PublicKey k : toKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerTo.addKeyRecord(kr);
+            creatorTo.addKeyRecord(kr);
+        }
+
+        Reference reference = new Reference();
+        reference.transactional_id = contractNew.getTransactional().getId();
+        reference.type = Reference.TYPE_TRANSACTIONAL;
+        reference.required = true;
+        reference.signed_by = new ArrayList<>();
+        reference.signed_by.add(ownerFrom);
+        reference.signed_by.add(creatorTo);
+        contractNew.getTransactional().addReference(reference);
+
+        contractNew.setOwnerKeys(fromKeys);
+        contractNew.seal();
+
+        twoSignContract.addNewItems(contractNew);
+        twoSignContract.seal();
+
+        return twoSignContract;
     }
 
     /**

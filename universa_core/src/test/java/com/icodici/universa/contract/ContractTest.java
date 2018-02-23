@@ -25,6 +25,7 @@ import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -226,6 +227,7 @@ public class ContractTest extends ContractTestBase {
         assertEquals(errors.get(0).getError(), Errors.NOT_SIGNED);
 
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        c.getErrors().clear();
         ok = c.check();
 
         if (errors.isEmpty()) {
@@ -813,7 +815,7 @@ public class ContractTest extends ContractTestBase {
     }
 
 
-
+    @Ignore("parallel test")
     @Test
     public void checkParallelCreation() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));

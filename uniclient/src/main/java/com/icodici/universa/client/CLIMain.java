@@ -9,7 +9,6 @@ package com.icodici.universa.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.icodici.crypto.Error;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -17,6 +16,7 @@ import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractsService;
+import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
@@ -114,6 +114,17 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
                         describedAs("contract.unicon");
+                accepts("tu", "Use with -register. Point to file with your transaction units. " +
+                        "Use it to pay for contract's register.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("tu.unicon");
+                accepts("amount", "Use with -register and -tu. " +
+                        "Command is set amount of transaction units will be pay for contract's register.")
+                        .withRequiredArg()
+                        .ofType(Integer.class)
+                        .defaultsTo(1)
+                        .describedAs("tu amount");
                 accepts("probe", "query the state of the document in the Universa network")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
@@ -587,6 +598,8 @@ public class CLIMain {
 
     private static void doRegister() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("register"));
+        String tuSource = (String) options.valueOf("tu");
+        int tuAmount = (int) options.valueOf("amount");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -598,9 +611,26 @@ public class CLIMain {
             String source = sources.get(s);
             Contract contract = loadContract(source);
 
+            Contract tu = null;
+            if(tuSource != null) {
+                tu = loadContract(tuSource, true);
+                report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
+            }
+
+            Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
             if(contract != null) {
-                report("registering the contract " + contract.getId().toBase64String() + " from " + source);
-                registerContract(contract, (int) options.valueOf("wait"));
+                if(tu != null && tuKeys != null && tuKeys.size() > 0) {
+                    report("registering the paid contract " + contract.getId() + " from " + source
+                            + " for " + tuAmount + " TU");
+                    Parcel parcel = registerContract(contract, tu, tuAmount, tuKeys, (int) options.valueOf("wait"));
+                    if(parcel != null) {
+                        report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
+                        saveContract(parcel.getPaymentContract(), tuSource, true, false);
+                    }
+                } else {
+                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
+                    registerContract(contract, (int) options.valueOf("wait"));
+                }
             }
         }
 
@@ -717,7 +747,7 @@ public class CLIMain {
                         }
                         if (siblingItems != null || revokeItems != null) {
                             contract.seal();
-                            saveContract(contract, name, true);
+                            saveContract(contract, name, true, true);
                         }
                     } else {
                         addErrors(contract.getErrors());
@@ -1591,15 +1621,18 @@ public class CLIMain {
      * @param contract              - contract for update.
      * @param fileName              - name of file to save to.
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
+     * @param addSigners - do adding signs to contract from keysMap() or not.
      */
-    public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction) throws IOException {
+    public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction, Boolean addSigners) throws IOException {
         if (fileName == null) {
             fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:ss").format(contract.getCreatedAt()) + ".unicon";
         }
 
-        keysMap().values().forEach(k -> contract.addSignerKey(k));
-        if (keysMap().values().size() > 0) {
-            contract.seal();
+        if(addSigners) {
+            keysMap().values().forEach(k -> contract.addSignerKey(k));
+            if (keysMap().values().size() > 0) {
+                contract.seal();
+            }
         }
 
         byte[] data;
@@ -1635,7 +1668,7 @@ public class CLIMain {
      * @param fileName - name of file to save to.
      */
     public static void saveContract(Contract contract, String fileName) throws IOException {
-        saveContract(contract, fileName, false);
+        saveContract(contract, fileName, false, true);
     }
 
     /**
@@ -1748,6 +1781,7 @@ public class CLIMain {
      * @param waitTime - wait time for responce.
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
      */
+    @Deprecated
     public static void registerContract(Contract contract, int waitTime, Boolean fromPackedTransaction) throws IOException {
 //        checkContract(contract);
         List<ErrorRecord> errors = contract.getErrors();
@@ -1767,6 +1801,34 @@ public class CLIMain {
             report("submitted with result:");
             report(r.toString());
         }
+    }
+
+    /**
+     * Register a specified contract.
+     *
+     * @param contract              must be a sealed binary.
+     * @param waitTime - wait time for responce.
+     */
+    public static Parcel registerContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, int waitTime) throws IOException {
+
+        List<ErrorRecord> errors = contract.getErrors();
+        if (errors.size() > 0) {
+            report("contract has errors and can't be submitted for registration");
+            report("contract id: " + contract.getId().toBase64String());
+            addErrors(errors);
+        } else {
+            Parcel parcel = ContractsService.createParcel(contract, tu, amount,  tuKeys);
+            getClientNetwork().registerParcel(parcel.pack(), waitTime);
+            ItemResult r = getClientNetwork().check(contract.getId());
+            report("paid contract " + contract.getId() +  " submitted with result: " + r.toString());
+            report("payment was " + tu.getId());
+            report("payment became " + parcel.getPaymentContract().getId());
+            report("payment rev " + parcel.getPaymentContract().getRevoking().get(0).getId());
+
+            return parcel;
+        }
+
+        return null;
     }
 
     /**
@@ -1893,7 +1955,7 @@ public class CLIMain {
      * @param contract
      */
     private static void printProcessingCost(Contract contract) {
-        report("Contract processing cost is " + contract.getProcessedCostUTN() + " TU");
+        report("Contract processing cost is " + contract.getProcessedCostTU() + " TU");
     }
 
 

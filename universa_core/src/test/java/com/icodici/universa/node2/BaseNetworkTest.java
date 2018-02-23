@@ -1313,6 +1313,9 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(newLamborghini.getOwner().isAllowedForKeys(martyPublicKeys));
     }
 
+    @Test(timeout = 90000)
+    public void createTwoSignedContractAllGood() throws Exception {
+    }
 
     @Test(timeout = 90000)
     public void swapContractsViaTransactionAllGood() throws Exception {

@@ -121,6 +121,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         });
 
         addSecureEndpoint("getState", this::getState);
+        addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
         addSecureEndpoint("approve", this::approve);
         addSecureEndpoint("approveParcel", this::approveParcel);
         addSecureEndpoint("startApproval", this::startApproval);
@@ -172,6 +173,12 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode();
         return Binder.of("itemResult",
                 node.checkItem((HashId) params.get("itemId")));
+    }
+
+    private Binder getParcelProcessingState(Binder params, Session session) throws CommandFailedException {
+        checkNode();
+        return Binder.of("processingState",
+                node.checkParcelProcessingState((HashId) params.get("parcelId")));
     }
 
     private void checkNode() throws CommandFailedException {
