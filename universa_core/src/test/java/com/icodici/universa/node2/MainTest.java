@@ -335,7 +335,7 @@ public class MainTest {
             assertTrue(contract.isOk());
             contracts.add(contract);
 
-            Client client = new Client(myKey, mm.get(rand.nextInt(3)).myInfo, null);
+            Client client = new Client(new PrivateKey(2048), mm.get(rand.nextInt(3)).myInfo, null);
             clients.add(client);
         }
         Semaphore semaphore = new Semaphore(-39);
