@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PublicKey;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
@@ -20,6 +21,8 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.FileInputStream;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 /**
  * The complete data about Universa node. This class should provide enough information to connect to a remote node and
@@ -69,6 +72,10 @@ public class NodeInfo implements BiSerializable {
 
     public InetSocketAddress getClientAddress() {
         return clientAddress;
+    }
+
+    public InetSocketAddress getServerAddress() {
+        return serverAddress;
     }
 
     /**
@@ -176,5 +183,10 @@ public class NodeInfo implements BiSerializable {
 
     public String internalUrlString() {
         return "http://" + clientAddress.getHostName() + ":" + clientAddress.getPort();
+    }
+    public static NodeInfo initFrom(ResultSet rs) throws SQLException, EncryptionError {
+        return new NodeInfo(new PublicKey(rs.getBytes("public_key")), rs.getInt("node_number"), rs.getString("node_name"), rs.getString("host"),rs.getString("public_host"),
+                rs.getInt("udp_server_port"), rs.getInt("http_client_port"), rs.getInt("http_server_port"));
+
     }
 }

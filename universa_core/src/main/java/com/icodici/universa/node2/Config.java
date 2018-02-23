@@ -20,6 +20,17 @@ import java.util.List;
 
 public class Config {
 
+
+    private ConsensusConfigUpdater consensusConfigUpdater;
+
+    public void setConsensusConfigUpdater(ConsensusConfigUpdater consensusConfigUpdater) {
+        this.consensusConfigUpdater = consensusConfigUpdater;
+    }
+
+    public interface ConsensusConfigUpdater {
+        void updateConsensusConfig(Config config, int nodesCount);
+    }
+
     private Duration maxItemCreationAge = Duration.ofDays(5);
     private Duration revokedItemExpiration = maxItemCreationAge.plusDays(10);
     private TemporalAmount maxDownloadOnApproveTime = Duration.ofMinutes(5);
@@ -186,5 +197,13 @@ public class Config {
         } catch (EncryptionError e) {
             return null;
         }
+    }
+
+    public boolean updateConsensusConfig(int nodesCount) {
+        if(consensusConfigUpdater != null) {
+            consensusConfigUpdater.updateConsensusConfig(this, nodesCount);
+            return true;
+        }
+        return false;
     }
 }

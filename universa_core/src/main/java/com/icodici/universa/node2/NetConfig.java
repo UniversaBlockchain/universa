@@ -59,4 +59,9 @@ public class NetConfig {
     public List<NodeInfo> toList() {
         return new ArrayList<>(byName.values());
     }
+
+    public void removeNode(NodeInfo nodeInfo) {
+        byNumber.remove(nodeInfo.getNumber());
+        byName.remove(nodeInfo.getName());
+    }
 }

@@ -31,6 +31,7 @@ import static java.util.Arrays.asList;
 
 public class Main {
     public static final String NODE_VERSION = "2.4.6-a7";
+    private PostgresLedger ledger;
     private OptionParser parser;
     private OptionSet options;
     public final Reporter reporter = new Reporter();
@@ -57,10 +58,13 @@ public class Main {
         parser = new OptionParser() {
             {
                 acceptsAll(asList("?", "h", "help"), "show help").forHelp();
+                acceptsAll(asList("config-to-db"), "converts file config to db").forHelp();
                 acceptsAll(asList("c", "config"), "configuration file for the network")
-                        .withRequiredArg().ofType(String.class).defaultsTo(".")
-                        .required()
+                        .withRequiredArg().ofType(String.class)
                         .describedAs("config_file");
+                acceptsAll(asList("d", "database"), "database connection url")
+                        .withRequiredArg().ofType(String.class)
+                        .describedAs("db_url");
                 accepts("test", "intended to be used in integration tests");
                 accepts("nolog", "do not buffer log messages (good fot testing)");
             }
@@ -77,12 +81,29 @@ public class Main {
                 usage(null);
             }
             log(NAME_STRING);
-            log("Starting client interface");
-            loadNodeConfig();
 
-            log("--------------- step 2 --------------------");
-            log("loading network configuration...");
-            loadNetConfig();
+
+            if(options.has("config")) {
+                loadNodeConfig();
+                loadNetConfig();
+
+                ledger.saveConfig(myInfo,netConfig,nodeKey);
+            } else if(options.has("database")) {
+                ledger = new PostgresLedger((String) options.valueOf("database"));
+                log("ledger constructed");
+                Object[] result = ledger.loadConfig();
+                myInfo = (NodeInfo) result[0];
+                netConfig = (NetConfig) result[1];
+                nodeKey = (PrivateKey) result[2];
+
+                log("key loaded: " + nodeKey.info());
+                log("node local URL: " + myInfo.publicUrlString());
+                log("node info: " + myInfo.toBinder());
+
+            } else {
+                System.err.println("Neither config no database option passed, leaving");
+                return;
+            }
 
             log("--------------- step 3 --------------------");
             log("Starting the client HTTP server...");
@@ -111,31 +132,30 @@ public class Main {
     public NetConfig netConfig;
     public NetworkV2 network;
     public final Config config = new Config();
-
     private void loadNetConfig() throws IOException {
         netConfig = new NetConfig(configRoot + "/config/nodes");
         log("Network configuration is loaded from " + configRoot + ", " + netConfig.size() + " nodes.");
     }
 
     private void startNode() throws SQLException, IOException {
-        PostgresLedger ledger = new PostgresLedger(settings.getStringOrThrow("database"));
-        log("ledger constructed");
 
-        int n = netConfig.size();
-        // Until we fix the announcer
-        int negative = (int) Math.ceil(n * 0.11);
-        if (negative < 1)
-            negative = 1;
-        int positive = (int) Math.floor(n * 0.90);
-        if( negative+positive == n)
-            negative += 1;
-        int resyncBreak = (int) Math.ceil(n * 0.2);
-        if (resyncBreak < 1)
-            resyncBreak = 1;
-        log("Network consensus is set to (negative/positive/resyncBreak): " + negative + " / " + positive + " / " + resyncBreak);
-        config.setPositiveConsensus(positive);
-        config.setNegativeConsensus(negative);
-        config.setResyncBreakConsensus(resyncBreak);
+        config.setConsensusConfigUpdater((config, n) -> {
+            // Until we fix the announcer
+            int negative = (int) Math.ceil(n * 0.11);
+            if (negative < 1)
+                negative = 1;
+            int positive = (int) Math.floor(n * 0.90);
+            if( negative+positive == n)
+                negative += 1;
+            int resyncBreak = (int) Math.ceil(n * 0.2);
+            if (resyncBreak < 1)
+                resyncBreak = 1;
+            log("Network consensus is set to (negative/positive/resyncBreak): " + negative + " / " + positive + " / " + resyncBreak);
+            config.setPositiveConsensus(positive);
+            config.setNegativeConsensus(negative);
+            config.setResyncBreakConsensus(resyncBreak);
+        });
+
         network = new NetworkV2(netConfig, myInfo, nodeKey);
         node = new Node(config, myInfo, ledger, network);
         cache = node.getCache();
@@ -196,7 +216,7 @@ public class Main {
     }
 
     private PrivateKey nodeKey;
-    private Binder settings;
+    //private Binder settings;
 
     public PublicKey getNodePublicKey() {
         return nodeKey.getPublicKey();
@@ -204,12 +224,12 @@ public class Main {
 
     public NodeInfo myInfo;
 
-    private void loadNodeConfig() throws IOException {
+    private void loadNodeConfig() throws IOException, SQLException {
         Yaml yaml = new Yaml();
         configRoot = (String) options.valueOf("config");
 
         nodeKey = null;
-        settings = Binder.of(yaml.load(new FileInputStream(configRoot + "/config/config.yaml")));
+        Binder settings = Binder.of(yaml.load(new FileInputStream(configRoot + "/config/config.yaml")));
         log("node settings: " + settings);
         String nodeKeyFileName = configRoot + "/tmp/" + settings.getStringOrThrow("node_name") + ".private.unikey";
         log(nodeKeyFileName);
@@ -225,6 +245,9 @@ public class Main {
                               settings.getIntOrThrow("http_server_port")
         );
 
+        ledger = new PostgresLedger(settings.getStringOrThrow("database"));
+        log("ledger constructed");
+
         log("key loaded: " + nodeKey.info());
         log("node local URL: " + myInfo.publicUrlString());
         log("node info: " + myInfo.toBinder());
@@ -238,8 +261,9 @@ public class Main {
 
 
     private void startClientHttpServer() throws Exception {
-        log("prepare to start client HTTP server on " + settings.getIntOrThrow("http_client_port"));
-        clientHTTPServer = new ClientHTTPServer(nodeKey, settings.getIntOrThrow("http_client_port"), logger);
+        log("prepare to start client HTTP server on " + myInfo.getClientAddress().getPort());
+
+        clientHTTPServer = new ClientHTTPServer(nodeKey, myInfo.getClientAddress().getPort(), logger);
         clientHTTPServer.setCache(cache);
         clientHTTPServer.setParcelCache(parcelCache);
         clientHTTPServer.setNetConfig(netConfig);

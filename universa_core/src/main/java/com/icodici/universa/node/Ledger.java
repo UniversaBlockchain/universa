@@ -7,8 +7,11 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.NodeInfo;
 
 import java.util.concurrent.Callable;
 
@@ -145,4 +148,11 @@ public interface Ledger {
             super(message, cause);
         }
     }
+
+
+    void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey);
+    Object[] loadConfig();
+    void addNode(NodeInfo nodeInfo);
+    void removeNode(NodeInfo nodeInfo);
+
 }

@@ -7,15 +7,22 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.NodeInfo;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.tools.Binder;
 
 import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
@@ -323,5 +330,135 @@ public class PostgresLedger implements Ledger {
 
     public Db getDb() throws SQLException {
         return dbPool.db();
+    }
+
+    @Override
+    public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
+        try (PooledDb db = dbPool.db()) {
+
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "delete from config;"
+                            )
+            ) {
+                statement.executeUpdate();
+            }
+
+
+            for(NodeInfo nodeInfo : netConfig.toList()) {
+                String sqlText;
+                if(nodeInfo.getNumber() == myInfo.getNumber()) {
+                    sqlText = "insert into config(http_client_port,http_server_port,udp_server_port, node_number, node_name, public_host,host,public_key,private_key) values(?,?,?,?,?,?,?,?,?);";
+                } else {
+                    sqlText = "insert into config(http_client_port,http_server_port,udp_server_port, node_number, node_name, public_host,host,public_key) values(?,?,?,?,?,?,?,?);";
+                }
+
+                try (
+                        PreparedStatement statement = db.statementReturningKeys(sqlText)
+                ) {
+                    statement.setInt(1, nodeInfo.getClientAddress().getPort());
+                    statement.setInt(2, nodeInfo.getServerAddress().getPort());
+                    statement.setInt(3, nodeInfo.getNodeAddress().getPort());
+                    statement.setInt(4, nodeInfo.getNumber());
+                    statement.setString(5, nodeInfo.getName());
+                    statement.setString(6, nodeInfo.getPublicHost());
+                    statement.setString(7, nodeInfo.getClientAddress().getHostName());
+                    statement.setBytes(8, nodeInfo.getPublicKey().pack());
+
+                    if(statement.getParameterMetaData().getParameterCount() > 8) {
+                        statement.setBytes(9, nodeKey.pack());
+                    }
+
+                    statement.executeUpdate();
+                }
+            }
+
+
+
+        } catch (SQLException se) {
+//            se.printStackTrace();
+            throw new Failure("config save failed:" + se);
+        }
+    }
+
+    @Override
+    public Object[] loadConfig() {
+
+        try {
+            Object[] result = new Object[3];
+            result[0] = null;
+            result[2] = null;
+            ArrayList<NodeInfo> nodeInfos = new ArrayList<>();
+            try (
+                    PooledDb db = dbPool.db();
+                    ResultSet rs = db.queryRow("SELECT * FROM config;")
+            ) {
+                if (rs == null)
+                    throw new Exception("config not found");
+
+                do {
+                    NodeInfo nodeInfo = NodeInfo.initFrom(rs);
+                    nodeInfos.add(nodeInfo);
+                    byte[] packedKey = rs.getBytes("private_key");
+                    if(packedKey != null) {
+                        result[0] = nodeInfo;
+                        result[2] = new PrivateKey(packedKey);
+                    }
+                } while (rs.next());
+
+                if (nodeInfos.isEmpty())
+                    throw new Exception("config not found");
+
+
+                result[1] = new NetConfig(nodeInfos);
+                return result;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load config", e);
+        }
+    }
+
+    @Override
+    public void addNode(NodeInfo nodeInfo) {
+        try (PooledDb db = dbPool.db()) {
+
+            String sqlText = "insert into config(http_client_port,http_server_port,udp_server_port, node_number, node_name, public_host,host,public_key) values(?,?,?,?,?,?,?,?);";
+
+            try (
+                    PreparedStatement statement = db.statementReturningKeys(sqlText)
+            ) {
+                statement.setInt(1, nodeInfo.getClientAddress().getPort());
+                statement.setInt(2, nodeInfo.getServerAddress().getPort());
+                statement.setInt(3, nodeInfo.getNodeAddress().getPort());
+                statement.setInt(4, nodeInfo.getNumber());
+                statement.setString(5, nodeInfo.getName());
+                statement.setString(6, nodeInfo.getPublicHost());
+                statement.setString(7, nodeInfo.getClientAddress().getHostName());
+                statement.setBytes(8, nodeInfo.getPublicKey().pack());
+
+                statement.executeUpdate();
+            }
+
+        } catch (SQLException se) {
+            throw new Failure("add node failed:" + se);
+        }
+    }
+
+    @Override
+    public void removeNode(NodeInfo nodeInfo) {
+        try (PooledDb db = dbPool.db()) {
+
+            String sqlText = "delete from config where node_number = ?;";
+
+            try (
+                    PreparedStatement statement = db.statementReturningKeys(sqlText, nodeInfo.getNumber())
+            ) {
+                statement.executeUpdate();
+            }
+
+        } catch (SQLException se) {
+            throw new Failure("remove node failed:" + se);
+        }
     }
 }

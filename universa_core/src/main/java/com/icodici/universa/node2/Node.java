@@ -7,14 +7,13 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.db.Db;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.Reference;
-import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.Ledger;
-import com.icodici.universa.node.StateRecord;
+import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.*;
 import net.sergeych.utils.LogPrinter;
@@ -22,6 +21,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -73,6 +73,8 @@ public class Node {
         this.network = network;
         cache = new ItemCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());
+        config.updateConsensusConfig(network.getNodesCount());
+
         network.subscribe(myInfo, notification -> onNotification(notification));
     }
 
@@ -766,6 +768,31 @@ public class Node {
         for (ItemProcessor ip : processors.values()) {
             ip.emergencyBreak();
         }
+    }
+
+
+    public void addNode(NodeInfo nodeToAdd) {
+        ledger.transaction(() -> {
+            ledger.addNode(nodeToAdd);
+            network.addNode(nodeToAdd);
+            if(!config.updateConsensusConfig(network.getNodesCount())) {
+                throw new RuntimeException("Dynamic consensus reconfigurator isn't set");
+            }
+            return null;
+        });
+
+    }
+
+    public void removeNode(NodeInfo nodeToRemove) {
+        ledger.transaction(() -> {
+            ledger.removeNode(nodeToRemove);
+            network.removeNode(nodeToRemove);
+            if(!config.updateConsensusConfig(network.getNodesCount())) {
+                throw new RuntimeException("Dynamic consensus reconfigurator isn't set");
+            }
+            return null;
+        });
+
     }
 
 

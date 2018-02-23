@@ -7,8 +7,11 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node2.NetConfig;
+import com.icodici.universa.node2.NodeInfo;
 import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteOpenMode;
 
@@ -151,6 +154,27 @@ public class SqliteLedger implements Ledger {
             e.printStackTrace();
         }
     }
+
+    @Override
+    public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
+
+    }
+
+    @Override
+    public Object[] loadConfig() {
+        return new Object[0];
+    }
+
+    @Override
+    public void addNode(NodeInfo nodeInfo) {
+
+    }
+
+    @Override
+    public void removeNode(NodeInfo nodeInfo) {
+
+    }
+
 
     @Override
     public <T> T transaction(Callable<T> callable) {

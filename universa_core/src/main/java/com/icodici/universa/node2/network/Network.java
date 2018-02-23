@@ -93,6 +93,11 @@ public abstract class Network {
         netConfig.forEachNode(n -> consumer.accept(n));
     }
 
+
+    public int getNodesCount() {
+        return netConfig.size();
+    }
+
     public List<NodeInfo> allNodes() {
         return netConfig.toList();
     }
@@ -101,5 +106,14 @@ public abstract class Network {
 
     public ItemResult getItemState(NodeInfo nodeInfo, HashId id) throws IOException {
         return null;
+    }
+
+
+    public void addNode(NodeInfo nodeInfo) {
+        netConfig.addNode(nodeInfo);
+    }
+
+    public void removeNode(NodeInfo nodeInfo) {
+        netConfig.removeNode(nodeInfo);
     }
 }

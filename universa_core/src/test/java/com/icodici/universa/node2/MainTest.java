@@ -38,6 +38,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
@@ -116,7 +117,11 @@ public class MainTest {
     }
 
     Main createMain(String name, boolean nolog) throws InterruptedException {
-        String path = new File("src/test_node_config_v2/" + name).getAbsolutePath();
+        return createMain(name,"",nolog);
+    }
+
+    Main createMain(String name, String postfix, boolean nolog) throws InterruptedException {
+        String path = new File("src/test_node_config_v2" + postfix + "/" + name).getAbsolutePath();
         System.out.println(path);
         String[] args = new String[]{"--test", "--config", path, nolog ? "--nolog" : ""};
 
@@ -138,6 +143,258 @@ public class MainTest {
             Thread.sleep(100);
         }
         return mm.get(0);
+    }
+
+    Main createMainFromDb(String dbUrl, boolean nolog) throws InterruptedException {
+        String[] args = new String[]{"--test", "--database", dbUrl, nolog ? "--nolog" : ""};
+
+        List<Main> mm = new ArrayList<>();
+
+        Thread thread = new Thread(() -> {
+            try {
+                Main m = new Main(args);
+                m.waitReady();
+                mm.add(m);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        thread.setName("Node Server: " + dbUrl);
+        thread.start();
+
+        while (mm.size() == 0) {
+            Thread.sleep(100);
+        }
+        return mm.get(0);
+    }
+
+    @Test
+    public void networkReconfigurationTestSerial() throws Exception {
+
+        //create 4 nodes from config file. 3 know each other. 4th knows everyone. nobody knows 4th
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            mm.add(createMain("node" + (i + 1),"_dynamic_test", false));
+        }
+        //shutdown nodes
+        for(Main m : mm) {
+            m.shutdown();
+        }
+        mm.clear();
+
+        //initialize same nodes from db
+        List<String> dbUrls = new ArrayList<>();
+        Thread.sleep(1000);
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+
+
+        for (int i = 0; i < 4; i++) {
+            mm.add(createMainFromDb(dbUrls.get(i), false));
+        }
+
+
+        PrivateKey myKey = TestKeys.privateKey(3);
+        Main main = mm.get(3);
+
+        Contract contract = new Contract(myKey);
+        contract.seal();
+        assertTrue(contract.isOk());
+
+
+        //registering with UNKNOWN node. Shouldn't succeed
+        int attempts = 3;
+        Client client = new Client(myKey, main.myInfo, null);
+        ItemResult rr = client.register(contract.getPackedTransaction(), 15000);
+        while (attempts-- > 0) {
+            rr = client.getState(contract.getId());
+            Thread.currentThread().sleep(1000);
+            if (!rr.state.isPending())
+                break;
+        }
+        assertEquals(rr.state,ItemState.PENDING_POSITIVE);
+
+        contract = new Contract(myKey);
+        contract.seal();
+        assertTrue(contract.isOk());
+
+        //registering with KNOWN node. Should succeed
+        Client clientKnown = new Client(myKey, mm.get(0).myInfo, null);
+        clientKnown.register(contract.getPackedTransaction(), 15000);
+        while (true) {
+            rr = clientKnown.getState(contract.getId());
+            Thread.currentThread().sleep(50);
+            if (!rr.state.isPending())
+                break;
+        }
+        assertEquals(rr.state,ItemState.APPROVED);
+
+
+        //Make 4th node KNOWN to other nodes
+        for(int i = 0; i < 3; i++) {
+            mm.get(i).node.addNode(main.myInfo);
+        }
+
+        contract = new Contract(myKey);
+        contract.seal();
+        assertTrue(contract.isOk());
+
+        client.register(contract.getPackedTransaction(), 15000);
+        while (true) {
+            rr = client.getState(contract.getId());
+            Thread.currentThread().sleep(50);
+            if (!rr.state.isPending())
+                break;
+        }
+        assertEquals(rr.state,ItemState.APPROVED);
+
+
+
+        //Make 4th node UNKNOWN to other nodes
+        for(int i = 0; i < 3; i++) {
+            mm.get(i).node.removeNode(main.myInfo);
+        }
+
+        contract = new Contract(myKey);
+        contract.seal();
+        assertTrue(contract.isOk());
+
+        //registering with UNKNOWN node. Shouldn't succeed
+        attempts = 3;
+        rr = client.register(contract.getPackedTransaction(), 15000);
+        while (attempts-- > 0) {
+            rr = client.getState(contract.getId());
+            Thread.currentThread().sleep(1000);
+            if (!rr.state.isPending())
+                break;
+        }
+        assertEquals(rr.state,ItemState.PENDING_POSITIVE);
+
+        contract = new Contract(myKey);
+        contract.seal();
+        assertTrue(contract.isOk());
+
+        //registering with KNOWN node. Should succeed
+        clientKnown.register(contract.getPackedTransaction(), 15000);
+        while (true) {
+            rr = clientKnown.getState(contract.getId());
+            Thread.currentThread().sleep(50);
+            if (!rr.state.isPending())
+                break;
+        }
+        assertEquals(rr.state,ItemState.APPROVED);
+
+
+        for(Main m : mm) {
+            m.shutdown();
+        }
+
+    }
+
+    @Test
+    public void networkReconfigurationTestParallel() throws Exception {
+
+        //create 4 nodes from config file. 3 know each other. 4th knows everyone. nobody knows 4th
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            mm.add(createMain("node" + (i + 1),"_dynamic_test", false));
+        }
+        //shutdown nodes
+        for(Main m : mm) {
+            m.shutdown();
+        }
+        mm.clear();
+
+        //initialize same nodes from db
+        List<String> dbUrls = new ArrayList<>();
+        Thread.sleep(1000);
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+
+
+        for (int i = 0; i < 4; i++) {
+            mm.add(createMainFromDb(dbUrls.get(i), false));
+        }
+
+
+        PrivateKey myKey = TestKeys.privateKey(3);
+        Random rand = new Random();
+        rand.setSeed(new Date().getTime());
+
+
+        final ArrayList<Client> clients = new ArrayList<>();
+        final ArrayList<Contract> contracts = new ArrayList<>();
+        for(int i = 0; i < 40;i++) {
+            Contract contract = new Contract(myKey);
+            contract.seal();
+            assertTrue(contract.isOk());
+            contracts.add(contract);
+
+            Client client = new Client(myKey, mm.get(rand.nextInt(3)).myInfo, null);
+            clients.add(client);
+        }
+        Semaphore semaphore = new Semaphore(-39);
+        final ArrayList<Thread> threads = new ArrayList<>();
+        for(int i = 0; i < 40;i++) {
+            int finalI = i;
+            Thread th = new Thread(() -> {
+                try {
+                    Thread.sleep(rand.nextInt(500));
+                    Contract contract= contracts.get(finalI);
+                    Client client = clients.get(finalI);
+                    client.register(contract.getPackedTransaction(), 15000);
+                    ItemResult rr;
+                    while (true) {
+                        rr = client.getState(contract.getId());
+                        Thread.currentThread().sleep(50);
+                        if (!rr.state.isPending())
+                            break;
+                    }
+                    assertEquals(rr.state,ItemState.APPROVED);
+                    semaphore.release();
+                } catch (ClientError clientError) {
+                    clientError.printStackTrace();
+                    fail(clientError.getMessage());
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    fail(e.getMessage());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    fail(e.getMessage());
+                }
+
+            });
+            threads.add(th);
+            th.start();
+        }
+
+        for(int i = 0; i < 3;i++) {
+            int finalI = i;
+            Thread th = new Thread(() -> {
+                try {
+                    Thread.sleep(rand.nextInt(500));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    fail(e.getMessage());
+                }
+                mm.get(finalI).node.addNode(mm.get(3).myInfo);
+
+            });
+            threads.add(th);
+            th.start();
+        }
+
+
+        assertTrue(semaphore.tryAcquire(15, TimeUnit.SECONDS));
+
+        for(Main m : mm) {
+            m.shutdown();
+        }
+
     }
 
     @Test
@@ -400,7 +657,7 @@ public class MainTest {
         //Client client = new Client(myKey, main.myInfo, null);
 
         final long CONTRACTS_PER_THREAD = 100;
-        final long THREADS_COUNT = 4;
+        final long THREADS_COUNT = 2;
 
         class TestRunnable implements Runnable {
 
