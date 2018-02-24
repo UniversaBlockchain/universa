@@ -10,10 +10,7 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ContractTest;
-import com.icodici.universa.contract.ContractsService;
-import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
@@ -1042,6 +1039,24 @@ public class MainTest {
                 c.check();
             } catch (Quantiser.QuantiserException e) {
                 e.printStackTrace();
+            }
+        });
+    }
+
+
+
+    @Test
+    public void testTransactionUnpack() throws Exception {
+        testSomeWork(() ->  {
+            try {
+                PrivateKey key = TestKeys.privateKey(3);
+                Contract contract = createContract500(key);
+                contract.seal();
+                byte[] bytes = contract.getPackedTransaction();
+                for (int i = 0; i < 20; ++i)
+                    TransactionPack.unpack(bytes);
+            } catch (Exception e) {
+                System.out.println("exception: " + e.toString());
             }
         });
     }
