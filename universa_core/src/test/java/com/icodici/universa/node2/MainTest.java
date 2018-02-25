@@ -10,10 +10,7 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ContractTest;
-import com.icodici.universa.contract.ContractsService;
-import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
@@ -1096,6 +1093,24 @@ public class MainTest {
 
 
 
+    @Test
+    public void testTransactionUnpack() throws Exception {
+        testSomeWork(() ->  {
+            try {
+                PrivateKey key = TestKeys.privateKey(3);
+                Contract contract = createContract500(key);
+                contract.seal();
+                byte[] bytes = contract.getPackedTransaction();
+                for (int i = 0; i < 20; ++i)
+                    TransactionPack.unpack(bytes);
+            } catch (Exception e) {
+                System.out.println("exception: " + e.toString());
+            }
+        });
+    }
+
+
+
 
     @Test
     public void testLedger() throws Exception {
@@ -1188,6 +1203,65 @@ public class MainTest {
 
 
     @Test
+    public void registerContract500approved_seal() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Contract contract = createContract500(ts.myKey);
+        int i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            Contract subContract = (Contract) sub;
+            ItemResult subItemResult = ts.client.register(subContract.getLastSealedBinary(), 1000);
+            assertEquals(ItemState.APPROVED, subItemResult.state);
+            ++i;
+            if (i % 10 == 0)
+                System.out.println("register subContract: " + i);
+        }
+        ItemResult itemResult = ts.client.register(contract.getLastSealedBinary(), 10000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+        i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            ItemResult subItemResult = ts.client.getState(sub);
+            System.out.println("" + (i++) + " - " + subItemResult.state);
+            assertEquals(ItemState.APPROVED, subItemResult.state);
+        }
+    }
+
+
+
+    @Test
+    public void registerContract500approvedHalf_seal() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Contract contract = createContract500(ts.myKey);
+        int i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            ++i;
+            Contract subContract = (Contract) sub;
+            if (i % 2 == 0) {
+                ItemResult subItemResult = ts.client.register(subContract.getLastSealedBinary(), 1000);
+                assertEquals(ItemState.APPROVED, subItemResult.state);
+            } else {
+                ItemResult subItemResult = ts.client.getState(subContract.getId());
+                assertEquals(ItemState.UNDEFINED, subItemResult.state);
+            }
+            if (i % 10 == 0)
+                System.out.println("register subContract: " + i);
+        }
+        ItemResult itemResult = ts.client.register(contract.getLastSealedBinary(), 10000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+        i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            ++i;
+            ItemResult subItemResult = ts.client.getState(sub);
+            System.out.println("" + i + " - " + subItemResult.state);
+            if (i % 2 == 0)
+                assertEquals(ItemState.APPROVED, subItemResult.state);
+            else
+                assertEquals(ItemState.UNDEFINED, subItemResult.state);
+        }
+    }
+
+
+
+    @Test
     public void registerContract500_pack() throws Exception {
         TestSpace ts = prepareTestSpace();
         Contract contract = createContract500(ts.myKey);
@@ -1199,6 +1273,69 @@ public class MainTest {
             ItemResult subItemResult = ts.client.getState(sub);
             System.out.println("" + (i++) + " - " + subItemResult.state);
             assertEquals(ItemState.APPROVED, subItemResult.state);
+        }
+    }
+
+
+
+    @Test
+    public void registerContract500approved_pack() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Contract contract = createContract500(ts.myKey);
+        int i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            Contract subContract = (Contract) sub;
+            ItemResult subItemResult = ts.client.register(subContract.getLastSealedBinary(), 1000);
+            assertEquals(ItemState.APPROVED, subItemResult.state);
+            ++i;
+            if (i % 10 == 0)
+                System.out.println("register subContract: " + i);
+        }
+        System.out.println("register parent contract...");
+        ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 30000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+        Thread.sleep(5000);
+        i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            ItemResult subItemResult = ts.client.getState(sub);
+            System.out.println("" + (i++) + " - " + subItemResult.state);
+            assertEquals(ItemState.APPROVED, subItemResult.state);
+        }
+    }
+
+
+
+    @Test
+    public void registerContract500approvedHalf_pack() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        Contract contract = createContract500(ts.myKey);
+        int i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            ++i;
+            Contract subContract = (Contract) sub;
+            if (i % 2 == 0) {
+                ItemResult subItemResult = ts.client.register(subContract.getLastSealedBinary(), 1000);
+                assertEquals(ItemState.APPROVED, subItemResult.state);
+            } else {
+                ItemResult subItemResult = ts.client.getState(subContract.getId());
+                assertEquals(ItemState.UNDEFINED, subItemResult.state);
+            }
+            if (i % 10 == 0)
+                System.out.println("register subContract: " + i);
+        }
+        System.out.println("register parent contract...");
+        ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 30000);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+        Thread.sleep(5000);
+        i = 0;
+        for (Approvable sub : contract.getNewItems()) {
+            ++i;
+            ItemResult subItemResult = ts.client.getState(sub);
+            System.out.println("" + i + " - " + subItemResult.state);
+            if (i % 2 == 0)
+                assertEquals(ItemState.APPROVED, subItemResult.state);
+            else
+                assertEquals(ItemState.UNDEFINED, subItemResult.state);
         }
     }
 

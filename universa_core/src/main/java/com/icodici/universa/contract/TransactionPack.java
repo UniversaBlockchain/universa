@@ -260,7 +260,7 @@ public class TransactionPack implements BiSerializable {
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
-    public synchronized static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransactions) throws IOException {
+    public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransactions) throws IOException {
 
         Object x = Boss.load(packOrContractBytes);
 
@@ -287,7 +287,7 @@ public class TransactionPack implements BiSerializable {
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      */
-    public synchronized static TransactionPack unpack(byte[] packOrContractBytes) throws IOException {
+    public static TransactionPack unpack(byte[] packOrContractBytes) throws IOException {
         return unpack(packOrContractBytes, true);
     }
 
