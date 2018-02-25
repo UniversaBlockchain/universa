@@ -81,7 +81,7 @@ public class NetworkV2 extends Network {
             int number = r.readInt();
             NodeInfo from = getInfo(number);
             if (from == null)
-                throw new IOException("unknown node number: " + number);
+                throw new IOException(myInfo.getNumber()+": unknown node number: " + number);
 
             // number of notifications in the packet
             int count = r.readInt();
@@ -153,7 +153,7 @@ public class NetworkV2 extends Network {
 //            Contract c = Contract.fromPackedTransaction(data);
             return tp.getContract();
         } catch (Exception e) {
-            System.out.println("download failure: "+e);
+            System.out.println("download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e);
             e.printStackTrace();
             return null;
         }
@@ -175,8 +175,7 @@ public class NetworkV2 extends Network {
 //            Contract c = Contract.fromPackedTransaction(data);
             return parcel;
         } catch (Exception e) {
-            System.out.println("download failure: "+e);
-            e.printStackTrace();
+            System.out.println("download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e);
             return null;
         }
     }

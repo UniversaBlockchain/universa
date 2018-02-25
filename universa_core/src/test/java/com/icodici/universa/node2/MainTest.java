@@ -317,19 +317,24 @@ public class MainTest {
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
 
-
-        for (int i = 0; i < 4; i++) {
-            mm.add(createMainFromDb(dbUrls.get(i), false));
-        }
-
-
-        PrivateKey myKey = TestKeys.privateKey(3);
         Random rand = new Random();
         rand.setSeed(new Date().getTime());
 
 
+        final ArrayList<Integer> nodeSleeps = new ArrayList<>();
+
+        for (int i = 0; i < 4; i++) {
+            mm.add(createMainFromDb(dbUrls.get(i), false));
+            nodeSleeps.add(rand.nextInt(500));
+        }
+
+
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+
         final ArrayList<Client> clients = new ArrayList<>();
         final ArrayList<Integer> clientNodes = new ArrayList<>();
+        final ArrayList<Integer> clientSleeps = new ArrayList<>();
         final ArrayList<Contract> contracts = new ArrayList<>();
         final ArrayList<Boolean> contractsApproved = new ArrayList<>();
         for(int i = 0; i < 40;i++) {
@@ -342,6 +347,7 @@ public class MainTest {
             clientNodes.add(info.getNumber());
             Client client = new Client(TestKeys.privateKey(i), info, null);
             clients.add(client);
+            clientSleeps.add(rand.nextInt(500));
         }
         Semaphore semaphore = new Semaphore(-39);
         final AtomicInteger atomicInteger = new AtomicInteger(40);
@@ -350,7 +356,7 @@ public class MainTest {
             int finalI = i;
             Thread th = new Thread(() -> {
                 try {
-                    Thread.sleep(rand.nextInt(500));
+                    Thread.sleep(clientSleeps.get(finalI));
                     Contract contract= contracts.get(finalI);
                     Client client = clients.get(finalI);
                     System.out.println("Register item " + contract.getId().toBase64String() +" @ node #" +clientNodes.get(finalI));
@@ -385,7 +391,7 @@ public class MainTest {
             int finalI = i;
             Thread th = new Thread(() -> {
                 try {
-                    Thread.sleep(rand.nextInt(500));
+                    Thread.sleep(nodeSleeps.get(finalI));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     fail(e.getMessage());
@@ -405,6 +411,19 @@ public class MainTest {
                     System.out.println("Stuck item:" + contracts.get(i).getId().toBase64String());
                 }
             }
+
+            System.out.print("Client sleeps: ");
+            for(Integer s : clientSleeps) {
+                System.out.print(s+", ");
+            }
+            System.out.println();
+
+
+            System.out.print("Node sleeps: ");
+            for(Integer s : nodeSleeps) {
+                System.out.print(s+", ");
+            }
+            System.out.println();
 
             fail("Items stuck: " + atomicInteger.get());
         }

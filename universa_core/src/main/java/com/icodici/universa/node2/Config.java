@@ -21,6 +21,32 @@ import java.util.List;
 public class Config {
 
 
+
+    public Config copy() {
+        Config config = new Config();
+        config.consensusConfigUpdater = consensusConfigUpdater;
+        config.maxItemCreationAge = maxItemCreationAge;
+        config.revokedItemExpiration = revokedItemExpiration;
+        config.maxDownloadOnApproveTime = maxDownloadOnApproveTime;
+        config.declinedItemExpiration = declinedItemExpiration;
+        config.maxCacheAge = maxCacheAge;
+        config.maxGetItemTime = maxGetItemTime;
+        synchronized (this) {
+            config.negativeConsensus = negativeConsensus;
+            config.positiveConsensus = positiveConsensus;
+            config.resyncBreakConsensus = resyncBreakConsensus;
+        }
+        config.maxElectionsTime = maxElectionsTime;
+        config.pollTime = pollTime;
+        config.consensusReceivedCheckTime = consensusReceivedCheckTime;
+        config.maxConsensusReceivedCheckTime = maxConsensusReceivedCheckTime;
+        config.resyncTime = resyncTime;
+        config.checkItemTime = checkItemTime;
+        config.maxResyncTime = maxResyncTime;
+        config.transactionUnitsIssuerKeyData = transactionUnitsIssuerKeyData;
+        return config;
+    }
+
     private ConsensusConfigUpdater consensusConfigUpdater;
 
     public void setConsensusConfigUpdater(ConsensusConfigUpdater consensusConfigUpdater) {
@@ -200,10 +226,12 @@ public class Config {
     }
 
     public boolean updateConsensusConfig(int nodesCount) {
-        if(consensusConfigUpdater != null) {
-            consensusConfigUpdater.updateConsensusConfig(this, nodesCount);
-            return true;
+        synchronized (this) {
+            if (consensusConfigUpdater != null) {
+                consensusConfigUpdater.updateConsensusConfig(this, nodesCount);
+                return true;
+            }
+            return false;
         }
-        return false;
     }
 }

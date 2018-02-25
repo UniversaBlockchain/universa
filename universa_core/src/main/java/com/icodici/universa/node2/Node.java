@@ -71,6 +71,7 @@ public class Node {
     });
 
     public Node(Config config, NodeInfo myInfo, Ledger ledger, Network network) {
+
         this.config = config;
         this.myInfo = myInfo;
         this.ledger = ledger;
@@ -794,27 +795,20 @@ public class Node {
 
 
     public void addNode(NodeInfo nodeToAdd) {
-        ledger.transaction(() -> {
-            ledger.addNode(nodeToAdd);
-            network.addNode(nodeToAdd);
-            if(!config.updateConsensusConfig(network.getNodesCount())) {
-                throw new RuntimeException("Dynamic consensus reconfigurator isn't set");
-            }
-            return null;
-        });
+        ledger.addNode(nodeToAdd);
+        network.addNode(nodeToAdd);
+        if(!config.updateConsensusConfig(network.getNodesCount())) {
+            throw new RuntimeException("Dynamic consensus reconfigurator isn't set");
+        }
 
     }
 
     public void removeNode(NodeInfo nodeToRemove) {
-        ledger.transaction(() -> {
-            ledger.removeNode(nodeToRemove);
-            network.removeNode(nodeToRemove);
-            if(!config.updateConsensusConfig(network.getNodesCount())) {
-                throw new RuntimeException("Dynamic consensus reconfigurator isn't set");
-            }
-            return null;
-        });
-
+        ledger.removeNode(nodeToRemove);
+        network.removeNode(nodeToRemove);
+        if(!config.updateConsensusConfig(network.getNodesCount())) {
+            throw new RuntimeException("Dynamic consensus reconfigurator isn't set");
+        }
     }
 
 
@@ -1229,6 +1223,7 @@ public class Node {
 
         private final HashId itemId;
         private final HashId parcelId;
+        private final Config config;
         private Approvable item;
         private final StateRecord record;
         private final ItemState stateWas;
@@ -1278,6 +1273,11 @@ public class Node {
          *                        If false checking item wait until forceChecking() will be called.
          */
         public ItemProcessor(HashId itemId, HashId parcelId, Approvable item, Object lock, boolean isCheckingForce) {
+
+            synchronized (Node.this.config) {
+                config = Node.this.config.copy();
+            }
+
 
             mutex = lock;
             resyncMutex = new Object();
@@ -2141,7 +2141,7 @@ public class Node {
                     synchronized (resyncMutex) {
                         if (!resyncingItems.containsKey(hid)) {
 //                            debug("item " + hid + " will be resynced, state: " + (record != null ? record.getState() : null));
-                            resyncingItems.put(hid, new ResyncingItem(hid, record));
+                            resyncingItems.put(hid, new ResyncingItem(hid, record,config));
                         } else {
 //                            debug("item " + hid + " already resyncing");
                         }
@@ -2497,6 +2497,7 @@ public class Node {
      */
     private class ResyncingItem {
 
+        private final Config config;
         private HashId hashId;
         private StateRecord record;
         private final ItemState stateWas;
@@ -2508,9 +2509,9 @@ public class Node {
 
         private final Object mutex = new Object();
 
-        public ResyncingItem(HashId hid, StateRecord record) {
+        public ResyncingItem(HashId hid, StateRecord record,Config config) {
             resyncingState = ResyncingItemProcessingState.WAIT_FOR_VOTES;
-
+            this.config = config;
             this.hashId = hid;
             this.record = record;
 
