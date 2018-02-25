@@ -24,6 +24,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Base64;
 import net.sergeych.utils.LogPrinter;
 import org.junit.After;
 import org.junit.Ignore;
@@ -40,6 +41,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
@@ -147,7 +149,7 @@ public class MainTest {
     }
 
     Main createMainFromDb(String dbUrl, boolean nolog) throws InterruptedException {
-        String[] args = new String[]{"--test", "--database", dbUrl, nolog ? "--nolog" : ""};
+        String[] args = new String[]{"--test","--database", dbUrl, nolog ? "--nolog" : ""};
 
         List<Main> mm = new ArrayList<>();
 
@@ -310,7 +312,6 @@ public class MainTest {
 
         //initialize same nodes from db
         List<String> dbUrls = new ArrayList<>();
-        Thread.sleep(1000);
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
@@ -328,17 +329,22 @@ public class MainTest {
 
 
         final ArrayList<Client> clients = new ArrayList<>();
+        final ArrayList<Integer> clientNodes = new ArrayList<>();
         final ArrayList<Contract> contracts = new ArrayList<>();
+        final ArrayList<Boolean> contractsApproved = new ArrayList<>();
         for(int i = 0; i < 40;i++) {
             Contract contract = new Contract(myKey);
             contract.seal();
             assertTrue(contract.isOk());
             contracts.add(contract);
-
-            Client client = new Client(new PrivateKey(2048), mm.get(rand.nextInt(3)).myInfo, null);
+            contractsApproved.add(false);
+            NodeInfo info = mm.get(rand.nextInt(3)).myInfo;
+            clientNodes.add(info.getNumber());
+            Client client = new Client(TestKeys.privateKey(i), info, null);
             clients.add(client);
         }
         Semaphore semaphore = new Semaphore(-39);
+        final AtomicInteger atomicInteger = new AtomicInteger(40);
         final ArrayList<Thread> threads = new ArrayList<>();
         for(int i = 0; i < 40;i++) {
             int finalI = i;
@@ -347,6 +353,7 @@ public class MainTest {
                     Thread.sleep(rand.nextInt(500));
                     Contract contract= contracts.get(finalI);
                     Client client = clients.get(finalI);
+                    System.out.println("Register item " + contract.getId().toBase64String() +" @ node #" +clientNodes.get(finalI));
                     client.register(contract.getPackedTransaction(), 15000);
                     ItemResult rr;
                     while (true) {
@@ -357,6 +364,8 @@ public class MainTest {
                     }
                     assertEquals(rr.state,ItemState.APPROVED);
                     semaphore.release();
+                    atomicInteger.decrementAndGet();
+                    contractsApproved.set(finalI,true);
                 } catch (ClientError clientError) {
                     clientError.printStackTrace();
                     fail(clientError.getMessage());
@@ -369,7 +378,6 @@ public class MainTest {
                 }
 
             });
-            threads.add(th);
             th.start();
         }
 
@@ -382,22 +390,43 @@ public class MainTest {
                     e.printStackTrace();
                     fail(e.getMessage());
                 }
+                System.out.println("Adding new node @ node #" +(finalI+1));
                 mm.get(finalI).node.addNode(mm.get(3).myInfo);
+                System.out.println("Done new node @ node #" +(finalI+1));
 
             });
-            threads.add(th);
             th.start();
         }
 
 
-        assertTrue(semaphore.tryAcquire(15, TimeUnit.SECONDS));
+        if(!semaphore.tryAcquire(15, TimeUnit.SECONDS)) {
+            for(int i =0; i < contractsApproved.size();i++) {
+                if(!contractsApproved.get(i)) {
+                    System.out.println("Stuck item:" + contracts.get(i).getId().toBase64String());
+                }
+            }
+
+            fail("Items stuck: " + atomicInteger.get());
+        }
+
 
         for(Main m : mm) {
             m.shutdown();
         }
+        System.gc();
 
     }
 
+
+
+    @Test
+    public void genKeys() throws Exception {
+
+        for(int i = 0; i < 36; i++) {
+            System.out.println("\""+Base64.encodeString(new PrivateKey(2048).pack()) +"\",");
+        }
+
+    }
     @Test
     public void localNetwork() throws Exception {
         List<Main> mm = new ArrayList<>();
