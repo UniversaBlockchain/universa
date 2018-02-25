@@ -318,11 +318,13 @@ public class MainTest {
         rand.setSeed(new Date().getTime());
 
 
-        final ArrayList<Integer> nodeSleeps = new ArrayList<>();
-
+        //final ArrayList<Integer> clientSleeps = new ArrayList<>();
+        //final ArrayList<Integer> nodeSleeps = new ArrayList<>();
+        final Integer[] clientSleeps = new Integer[]{57, 366, 493, 436, 475, 3, 483, 84, 201, 120, 318, 484, 442, 391, 415, 467, 342, 372, 397, 262, 309, 274, 97, 388, 344, 12, 9, 52, 237, 362, 19, 27, 332, 116, 212, 164, 326, 375, 351, 41};
+        final Integer[] nodeSleeps = new Integer[]{151, 490, 315, 366};
         for (int i = 0; i < 4; i++) {
             mm.add(createMainFromDb(dbUrls.get(i), false));
-            nodeSleeps.add(rand.nextInt(500));
+            //nodeSleeps.add(rand.nextInt(500));
         }
 
 
@@ -331,7 +333,6 @@ public class MainTest {
 
         final ArrayList<Client> clients = new ArrayList<>();
         final ArrayList<Integer> clientNodes = new ArrayList<>();
-        final ArrayList<Integer> clientSleeps = new ArrayList<>();
         final ArrayList<Contract> contracts = new ArrayList<>();
         final ArrayList<Boolean> contractsApproved = new ArrayList<>();
         for(int i = 0; i < 40;i++) {
@@ -344,7 +345,7 @@ public class MainTest {
             clientNodes.add(info.getNumber());
             Client client = new Client(TestKeys.privateKey(i), info, null);
             clients.add(client);
-            clientSleeps.add(rand.nextInt(500));
+            //clientSleeps.add(rand.nextInt(500));
         }
         Semaphore semaphore = new Semaphore(-39);
         final AtomicInteger atomicInteger = new AtomicInteger(40);
@@ -353,7 +354,8 @@ public class MainTest {
             int finalI = i;
             Thread th = new Thread(() -> {
                 try {
-                    Thread.sleep(clientSleeps.get(finalI));
+                    //Thread.sleep(clientSleeps.get(finalI));
+                    Thread.sleep(clientSleeps[finalI]);
                     Contract contract= contracts.get(finalI);
                     Client client = clients.get(finalI);
                     System.out.println("Register item " + contract.getId().toBase64String() +" @ node #" +clientNodes.get(finalI));
@@ -388,7 +390,8 @@ public class MainTest {
             int finalI = i;
             Thread th = new Thread(() -> {
                 try {
-                    Thread.sleep(nodeSleeps.get(finalI));
+                    //Thread.sleep(nodeSleeps.get(finalI));
+                    Thread.sleep(nodeSleeps[finalI]);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     fail(e.getMessage());
