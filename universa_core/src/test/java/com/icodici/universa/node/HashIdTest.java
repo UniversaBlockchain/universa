@@ -1,8 +1,8 @@
 package com.icodici.universa.node;
 
-import com.icodici.crypto.Gost3411_2012_256;
-import com.icodici.crypto.Sha3_256;
-import com.icodici.crypto.Sha512_256;
+import com.icodici.crypto.digest.Gost3411_2012_256;
+import com.icodici.crypto.digest.Sha3_256;
+import com.icodici.crypto.digest.Sha512_256;
 import com.icodici.universa.HashId;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64;
@@ -81,7 +81,7 @@ HashIdTest {
         assertArrayEquals(new Sha3_256().digest(src), Arrays.copyOfRange(hid, 32, 64));
         assertArrayEquals(new Gost3411_2012_256().digest(src), Arrays.copyOfRange(hid, 64, 96));
 
-        System.out.println("src: "+ Base64.encodeString(src));
-        System.out.println("hid: "+ Base64.encodeString(hid));
+//        System.out.println("src: "+ Base64.encodeString(src));
+//        System.out.println("hid: "+ Base64.encodeString(hid));
     }
 }
