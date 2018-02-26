@@ -1132,6 +1132,8 @@ public class CLIMain {
             addError("QUANTIZER_COST_LIMIT", f.getPath(), e.toString());
         } catch (IOException e) {
             addError("READ_ERROR", f.getPath(), e.toString());
+        } catch (Exception e) {
+            addError("UNKNOWN_ERROR", f.getPath(), e.toString());
         }
     }
 
