@@ -1,11 +1,16 @@
 package com.icodici.universa.node;
 
+import com.icodici.crypto.Gost3411_2012_256;
+import com.icodici.crypto.Sha3_256;
+import com.icodici.crypto.Sha512_256;
 import com.icodici.universa.HashId;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Base64;
 import net.sergeych.utils.Base64u;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -65,5 +70,18 @@ HashIdTest {
         test.put(idA, "hello");
         assertEquals("hello", test.get(idA));
         assertEquals("hello", test.get(idA1));
+    }
+
+    @Test
+    public void v3Hash() throws Exception {
+        byte[] src = Do.randomBytes(107);
+        byte[] hid = HashId.of(src).getDigest();
+
+        assertArrayEquals(new Sha512_256().digest(src), Arrays.copyOfRange(hid, 0, 32));
+        assertArrayEquals(new Sha3_256().digest(src), Arrays.copyOfRange(hid, 32, 64));
+        assertArrayEquals(new Gost3411_2012_256().digest(src), Arrays.copyOfRange(hid, 64, 96));
+
+        System.out.println("src: "+ Base64.encodeString(src));
+        System.out.println("hid: "+ Base64.encodeString(hid));
     }
 }

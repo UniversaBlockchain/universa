@@ -64,7 +64,7 @@ import static java.util.Arrays.asList;
 
 public class CLIMain {
 
-    private static final String CLI_VERSION = "2.4.1";
+    private static final String CLI_VERSION = "3.0.1";
 
     private static OptionParser parser;
     private static OptionSet options;
