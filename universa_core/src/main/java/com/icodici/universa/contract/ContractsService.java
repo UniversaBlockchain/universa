@@ -25,11 +25,13 @@ public class ContractsService {
 
     /**
      * Implementing revoking procedure.
+     * <br><br>
      * Service create temp contract with given contract in revoking items and return it.
      * That temp contract should be send to Universa and given contract will be revoked.
-     * @param c - contract should revoked be
-     * @param keys - keys from owner of c
-     * @return
+     * <br><br>
+     * @param c is contract should revoked be
+     * @param keys is keys from owner of c
+     * @return working contract that should be register in the Universa to finish procedure.
      */
     public synchronized static Contract createRevocation(Contract c, PrivateKey... keys) {
 
@@ -62,13 +64,17 @@ public class ContractsService {
     }
 
     /**
-     * Implementing split procedure.
-     * Service create new revision of given contract, split it to pair contract with split amount.
-     * @param c - contract should split be
-     * @param amount - amount that should be split from given contract
-     * @param fieldName - name of filed that should be split
-     * @param keys - keys from owner of c
-     * @return
+     * Implementing split procedure for token-type contracts.
+     * <br><br>
+     * Service create new revision of given contract, split it to a pair of contracts with split amount.
+     * <br><br>
+     * Given contract should have splitjoin permission for given keys.
+     * <br><br>
+     * @param c is contract should split be
+     * @param amount is value that should be split from given contract
+     * @param fieldName is name of field that should be split
+     * @param keys is keys from owner of c
+     * @return working contract that should be register in the Universa to finish procedure.
      */
     public synchronized static Contract createSplit(Contract c, long amount, String fieldName, Set<PrivateKey> keys) {
         Contract splitFrom = c.createRevision();
@@ -86,13 +92,17 @@ public class ContractsService {
 
     /**
      * Implementing join procedure.
-     * Service create new revision of first contract, update amount field with sum of amount fields in both contracts
+     * <br><br>
+     * Service create new revision of first contract, update amount field with sum of amount fields in the both contracts
      * and put second contract in revoking items of created new revision.
-     * @param contract1 - contract should be join to
-     * @param contract2 - contract should be join
-     * @param fieldName - name of field that should be join by
-     * @param keys - keys from owner of both contracts
-     * @return
+     * <br><br>
+     * Given contract should have splitjoin permission for given keys.
+     * <br><br>
+     * @param contract1 is contract should be join to
+     * @param contract2 is contract should be join
+     * @param fieldName is name of field that should be join by
+     * @param keys is keys from owner of both contracts
+     * @return working contract that should be register in the Universa to finish procedure.
      */
     public synchronized static Contract createJoin(Contract contract1, Contract contract2, String fieldName, Set<PrivateKey> keys) {
         Contract joinTo = contract1.createRevision();
@@ -112,16 +122,80 @@ public class ContractsService {
     }
 
 
-
+    /**
+     * First step of swap procedure. Calls from swapper1 part.
+     *<br><br>
+     * Get single contracts.
+     *<br><br>
+     * Service create new revisions of existing contracts, change owners,
+     * added transactional sections with references to each other with asks two signs of swappers
+     * and sign contract that was own for calling part.
+     *<br><br>
+     * Swap procedure consist from three steps:<br>
+     * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
+     * (2) sign contracts on the second swapper site;<br>
+     * (3) sign lost contracts on the first swapper site and finishing swap.
+     *<br><br>
+     * @param contract1 is own for calling part (swapper1 owned), existing or new revision of contract
+     * @param contract2 is foreign for calling part (swapper2 owned), existing or new revision contract
+     * @param fromKeys is own for calling part (swapper1 keys) private keys
+     * @param toKeys is foreign for calling part (swapper2 keys) public keys
+     * @return swap contract including new revisions of old contracts swapping between;
+     * should be send to partner (swapper2) and he should go to step (2) of the swap procedure.
+     */
     public synchronized static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
         return startSwap(contract1, contract2, fromKeys, toKeys, true);
     }
 
 
+    /**
+     * First step of swap procedure. Calls from swapper1 part.
+     *<br><br>
+     * Get lists of contracts.
+     *<br><br>
+     * Service create new revisions of existing contracts, change owners,
+     * added transactional sections with references to each other with asks two signs of swappers
+     * and sign contract that was own for calling part.
+     *<br><br>
+     * Swap procedure consist from three steps:<br>
+     * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
+     * (2) sign contracts on the second swapper site;<br>
+     * (3) sign lost contracts on the first swapper site and finishing swap.
+     *<br><br>
+     * @param contracts1 is list of own for calling part (swapper1 owned), existing or new revision of contract
+     * @param contracts2 is list of foreign for calling part (swapper2 owned), existing or new revision contract
+     * @param fromKeys is own for calling part (swapper1 keys) private keys
+     * @param toKeys is foreign for calling part (swapper2 keys) public keys
+     * @return swap contract including new revisions of old contracts swapping between;
+     * should be send to partner (swapper2) and he should go to step (2) of the swap procedure.
+     */
     public synchronized static Contract startSwap(List<Contract> contracts1, List<Contract> contracts2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
         return startSwap(contracts1, contracts2, fromKeys, toKeys, true);
     }
 
+
+    /**
+     * First step of swap procedure. Calls from swapper1 part.
+     *<br><br>
+     * Get single contracts.
+     *<br><br>
+     * Service create new revisions of existing contracts, change owners,
+     * added transactional sections with references to each other with asks two signs of swappers
+     * and sign contract that was own for calling part.
+     *<br><br>
+     * Swap procedure consist from three steps:<br>
+     * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
+     * (2) sign contracts on the second swapper site;<br>
+     * (3) sign lost contracts on the first swapper site and finishing swap.
+     *<br><br>
+     * @param contract1 is own for calling part (swapper1 owned), existing or new revision of contract
+     * @param contract2 is foreign for calling part (swapper2 owned), existing or new revision contract
+     * @param fromKeys is own for calling part (swapper1 keys) private keys
+     * @param toKeys is foreign for calling part (swapper2 keys) public keys
+     * @param createNewRevision if true - create new revision of given contracts. If false - use them as new revisions.
+     * @return swap contract including new revisions of old contracts swapping between;
+     * should be send to partner (swapper2) and he should go to step (2) of the swap procedure.
+     */
     public synchronized static Contract startSwap(Contract contract1, Contract contract2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
         List<Contract> contracts1 = new ArrayList<>();
         contracts1.add(contract1);
@@ -132,19 +206,28 @@ public class ContractsService {
         return startSwap(contracts1, contracts2, fromKeys, toKeys, createNewRevision);
     }
 
+
     /**
      * First step of swap procedure. Calls from swapper1 part.
-     *
+     *<br><br>
+     * Get lists of contracts.
+     *<br><br>
      * Service create new revisions of existing contracts, change owners,
      * added transactional sections with references to each other with asks two signs of swappers
      * and sign contract that was own for calling part.
-     *
-     * @param contracts1 - own for calling part (swapper1) existing or new revision of contract
-     * @param contracts2 - foreign for calling part (swapper2) existing or new revision contract
-     * @param fromKeys - own for calling part (swapper1) private keys
-     * @param toKeys - foreign for calling part (swapper2) public keys
-     * @param createNewRevision - if true - create new revision of given contracts. If false - use them as new revisions.
-     * @return swap contract including new revisions of old contracts swapping between
+     *<br><br>
+     * Swap procedure consist from three steps:<br>
+     * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
+     * (2) sign contracts on the second swapper site;<br>
+     * (3) sign lost contracts on the first swapper site and finishing swap.
+     *<br><br>
+     * @param contracts1 is list of own for calling part (swapper1 owned), existing or new revision of contract
+     * @param contracts2 is list of foreign for calling part (swapper2 owned), existing or new revision contract
+     * @param fromKeys is own for calling part (swapper1 keys) private keys
+     * @param toKeys is foreign for calling part (swapper2 keys) public keys
+     * @param createNewRevision if true - create new revision of given contracts. If false - use them as new revisions.
+     * @return swap contract including new revisions of old contracts swapping between;
+     * should be send to partner (swapper2) and he should go to step (2) of the swap procedure.
      */
     public synchronized static Contract startSwap(List<Contract> contracts1, List<Contract> contracts2, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
@@ -274,18 +357,25 @@ public class ContractsService {
         return swapContract;
     }
 
+
     /**
      * Second step of swap procedure. Calls from swapper2 part.
-     *
-     * Swapper2 got swap contract from swapper1, give it to service,
-     * service sign new contract where calling part was owner, store hashId of this contract.
+     *<br><br>
+     * Swapper2 got swap contract from swapper1 and give it to service.
+     * Service sign new contract where calling part was owner, store hashId of this contract.
      * Then add to reference of new contract, that will be own for calling part,
      * contract_id and point it to contract that was own for calling part.
      * Then sign second contract too.
-     *
-     * @param swapContract - processing swap contract, now got from swapper1
-     * @param keys - own (swapper2) private keys
-     * @return modified swapContract
+     *<br><br>
+     * Swap procedure consist from three steps:<br>
+     * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
+     * (2) sign contracts on the second swapper site;<br>
+     * (3) sign lost contracts on the first swapper site and finishing swap.
+     *<br><br>
+     * @param swapContract is being processing swap contract, got from swapper1
+     * @param keys is own (belongs to swapper2) private keys
+     * @return modified swapContract;
+     * should be send back to partner (swapper1) and he should go to step (3) of the swap procedure.
      */
     public synchronized static Contract signPresentedSwap(Contract swapContract, Set<PrivateKey> keys) {
 
@@ -336,15 +426,21 @@ public class ContractsService {
         return swapContract;
     }
 
+
     /**
      * Third and final step of swap procedure. Calls from swapper1 part.
-     *
-     * Swapper1 got contracts from swapper2, give it to service and
-     * service finally sign contract that will be own for calling part.
-     *
-     * @param swapContract - processing swap contract, now got back from swapper2
-     * @param keys - own (swapper1) private keys
-     * @return modified swapContract
+     *<br><br>
+     * Swapper1 got swap contract from swapper2, give it to service and
+     * service finally sign contract (that is inside swap contract) that will be own for calling part.
+     *<br><br>
+     * Swap procedure consist from three steps:<br>
+     * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
+     * (2) sign contracts on the second swapper site;<br>
+     * (3) sign lost contracts on the first swapper site and finishing swap.
+     *<br><br>
+     * @param swapContract is being processing swap contract, now got back from swapper2
+     * @param keys is own (belongs to swapper1) private keys
+     * @return ready and sealed swapContract that should be register in the Universa to finish procedure.
      */
     public synchronized static Contract finishSwap(Contract swapContract, Set<PrivateKey> keys) {
 
@@ -366,12 +462,17 @@ public class ContractsService {
     }
 
     /**
-     * Сreate a contract with two signatures
-     * The service creates a contract with two signatures, which must send something with the recipient's approval before the transfer.
-     * @param contract - the main contract, on the basis of which a contract is created with two signatures
-     * @param fromKeys - own private keys
-     * @param toKeys - foreign public keys
-     * @return contract with two signatures
+     * Creates a contract with two signatures.
+     *<br><br>
+     * The service creates a contract which asks two signatures.
+     * It can not be registered without both parts of deal, so it is make sure both parts that they agreed with contract.
+     * Service creates a contract that should be send to partner,
+     * then partner should sign it and return back for final sign from calling part.
+     *<br><br>
+     * @param contract is the main contract, on the basis of which a contract is created with two signatures
+     * @param fromKeys is own private keys
+     * @param toKeys is foreign public keys
+     * @return contract with two signatures that should be send from first part to partner.
      */
     public synchronized static Contract createTwoSignedContract(Contract contract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys){
 
@@ -431,7 +532,12 @@ public class ContractsService {
     /**
      * Create paid transaction, which consist from contract you want to register and payment contract that will be
      * spend to process transaction.
-     * @return
+     *<br><br>
+     * @param payload is prepared contract you want to register in the Universa.
+     * @param payment is approved contract with transaction units belongs to you.
+     * @param amount is number of transaction units you want to spend to register payload contract.
+     * @param keys is own private keys, which are set as owner of payment contract
+     * @return parcel, it ready to send to the Universa.
      */
     public synchronized static Parcel createParcel(Contract payload, Contract payment, int amount, Set<PrivateKey> keys) {
 
@@ -445,15 +551,16 @@ public class ContractsService {
         return parcel;
     }
 
+
     /**
-     * Create fresh contract in first revision with transaction units.
+     * Creates fresh contract in the first revision with transaction units.
+     *<br><br>
      * This contract should be registered and then should be used as payment for other contract's processing.
      * TU contracts signs with special Universa keys and set as owner public keys from params.
-     *
-     * @param amount - amount of TU that will be have an owner
-     * @param ownerKeys - public keys that will became an owner of TU
-     *
-     * @return selaed TU contract
+     *<br><br>
+     * @param amount is initial number of TU that will be have an owner
+     * @param ownerKeys is public keys that will became an owner of TU     *
+     * @return sealed TU contract; should be registered in the Universa by simplified procedure.
      */
     public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys) throws IOException {
 
@@ -477,7 +584,15 @@ public class ContractsService {
         return tu;
     }
 
-    public static Decimal getDecimalField(Contract contract, String fieldName) {
+
+    /**
+     * Return field from given contract as Decimal if it possible.
+     *<br><br>
+     * @param contract is contract from which field should be got.
+     * @param fieldName is name of the field to got
+     * @return field as Decimal or null.
+     */
+    private static Decimal getDecimalField(Contract contract, String fieldName) {
 
         Object valueObject = contract.getStateData().get(fieldName);
         if(valueObject instanceof String) {

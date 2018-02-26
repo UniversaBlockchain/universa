@@ -23,3 +23,9 @@ dependencies {
     compile project(':contrib:nanohttpd')
     compile project(':crypto')
 }
+
+task contractsServiceJavadoc(type: Javadoc) {
+    source = sourceSets.main.allJava
+    include("**/ContractsService.java")
+    destinationDir = file("../docs/ContractsService/javadoc")
+}
