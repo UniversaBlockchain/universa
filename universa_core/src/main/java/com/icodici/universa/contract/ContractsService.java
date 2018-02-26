@@ -13,6 +13,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -442,6 +443,33 @@ public class ContractsService {
         Parcel parcel = new Parcel(payload.getTransactionPack(), paymentDecreased.getTransactionPack());
 
         return parcel;
+    }
+
+    /**
+     * Create paid transaction, which consist from contract you want to register and payment contract that will be
+     * spend to process transaction.
+     * @return
+     */
+    public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys) throws IOException {
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(Config.tuKeyPath));
+        Contract tu = Contract.fromDslFile(Config.tuTemplatePath);
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        tu.registerRole(ownerRole);
+        tu.createRole("owner", ownerRole);
+
+        tu.getStateData().set("transaction_units", amount);
+
+        tu.addSignerKey(manufacturePrivateKey);
+        tu.seal();
+
+        return tu;
     }
 
     public static Decimal getDecimalField(Contract contract, String fieldName) {

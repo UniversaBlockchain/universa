@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class ContractsServiceTest extends ContractTestBase {
 
@@ -131,5 +132,25 @@ public class ContractsServiceTest extends ContractTestBase {
     {
         exception.expect(NumberFormatException.class);
         checkCreateParcel("simple_root_contract.yml","bad_contract_payment.yml");
+    }
+
+    @Test
+    public void createTU() throws Exception
+    {
+        PrivateKey privateKey = TestKeys.privateKey(3);
+        Set<PublicKey> keys = new HashSet();
+        keys.add(privateKey.getPublicKey());
+        Contract tu = ContractsService.createFreshTU(100, keys);
+        tu.check();
+        tu.traceErrors();
+
+        assertEquals(true, tu.getRole("owner").isAllowedForKeys(keys));
+        assertEquals(100, tu.getStateData().getIntOrThrow("transaction_units"));
+
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read( "./src/test_contracts/keys/tu_key.private.unikey"));
+        Set<PublicKey> issuerKeys = new HashSet();
+        issuerKeys.add(manufacturePrivateKey.getPublicKey());
+        assertEquals(false, tu.getRole("owner").isAllowedForKeys(issuerKeys));
     }
 }
