@@ -48,7 +48,7 @@ public abstract class Digest {
     /**
      * Override to provide digest length in bytes.
      */
-    protected abstract int getLength();
+    public abstract int getLength();
 
     /**
      * The processing chunk size, used in HMAC/PRF implementations.

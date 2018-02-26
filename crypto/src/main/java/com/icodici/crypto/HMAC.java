@@ -86,7 +86,7 @@ public class HMAC extends Digest {
     }
 
     @Override
-    protected int getLength() {
+    public int getLength() {
         return hash.getLength();
     }
 }

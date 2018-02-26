@@ -21,7 +21,7 @@ abstract class SpongyCastleDigest extends Digest {
     }
 
     @Override
-    protected int getLength() {
+    public int getLength() {
         return getUnderlyingDigest().getDigestSize();
     }
 }

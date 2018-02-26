@@ -62,7 +62,7 @@ public class Syntex1 extends Digest {
     }
 
     @Override
-    protected int getLength() {
+    public int getLength() {
         return 36;
     }
 }

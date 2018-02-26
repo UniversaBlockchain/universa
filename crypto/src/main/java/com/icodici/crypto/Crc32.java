@@ -29,7 +29,7 @@ public class Crc32 extends Digest {
     }
 
     @Override
-    protected int getLength() {
+    public int getLength() {
         return 32;
     }
 }
