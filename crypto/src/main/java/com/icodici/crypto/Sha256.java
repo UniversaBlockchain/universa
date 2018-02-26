@@ -7,36 +7,21 @@
 
 package com.icodici.crypto;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import org.spongycastle.crypto.Digest;
+import org.spongycastle.crypto.digests.SHA256Digest;
 
 /**
- * Created by sergeych on 07/01/16.
+ * SHA-256 (SHA-2 family) digest implementation.
  */
-public class Sha256 extends Digest {
+public class Sha256 extends SpongyCastleDigest {
 
-    MessageDigest md;
+    final org.spongycastle.crypto.Digest md = new SHA256Digest();
 
     public Sha256() {
-        try {
-            md = MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 is not implemented");
-        }
     }
 
     @Override
-    protected void _update(byte[] data, int offset, int size) {
-        md.update(data,offset,size);
-    }
-
-    @Override
-    protected byte[] _digest() {
-        return md.digest();
-    }
-
-    @Override
-    protected int getLength() {
-        return 32;
+    protected Digest getUnderlyingDigest() {
+        return md;
     }
 }

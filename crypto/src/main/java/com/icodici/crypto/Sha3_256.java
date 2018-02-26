@@ -8,21 +8,22 @@
 package com.icodici.crypto;
 
 import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.SHA512Digest;
+import org.spongycastle.crypto.digests.SHA3Digest;
+import org.spongycastle.crypto.digests.SHA512tDigest;
 
 /**
- * SHA-512 (SHA-2 family) digest implementation.
+ * SHA3-256 (SHA-3 family) digest implementation.
  */
-public class Sha512 extends SpongyCastleDigest {
+public class Sha3_256 extends SpongyCastleDigest {
 
-    final org.spongycastle.crypto.Digest md = new SHA512Digest();
+    final Digest md = new SHA3Digest(256);
 
-    public Sha512() {
+    public Sha3_256() {
     }
 
     @Override
     protected int getChunkSize() {
-        return 128;
+        return 136;
     }
 
     @Override

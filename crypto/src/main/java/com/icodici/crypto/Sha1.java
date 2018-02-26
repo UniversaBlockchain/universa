@@ -7,41 +7,21 @@
 
 package com.icodici.crypto;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import org.spongycastle.crypto.Digest;
+import org.spongycastle.crypto.digests.SHA1Digest;
 
 /**
- * Created by sergeych on 07/01/16.
+ * SHA-1 digest implementation.
  */
-public class Sha1 extends Digest {
+public class Sha1 extends SpongyCastleDigest {
 
-    MessageDigest md;
+    final org.spongycastle.crypto.Digest md = new SHA1Digest();
 
     public Sha1() {
-        try {
-            md = MessageDigest.getInstance("SHA-1");
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-1 is not implemented");
-        }
     }
 
     @Override
-    protected void _update(byte[] data, int offset, int size) {
-        md.update(data,offset,size);
-    }
-
-    @Override
-    protected byte[] _digest() {
-        return md.digest();
-    }
-
-    @Override
-    protected int getLength() {
-        return 20;
-    }
-
-    @Override
-    protected int getChunkSize() {
-        return 64;
+    protected Digest getUnderlyingDigest() {
+        return md;
     }
 }
