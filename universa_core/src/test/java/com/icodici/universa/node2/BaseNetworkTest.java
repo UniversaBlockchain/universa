@@ -2611,12 +2611,11 @@ public class BaseNetworkTest extends TestCase {
     protected Contract getApprovedTUContract() throws Exception {
         synchronized (tuContractLock) {
             if (tuContract == null) {
-                PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
-                Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-                stepaTU.addSignerKey(manufacturePrivateKey);
-                stepaTU.seal();
+                PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+                Set<PublicKey> keys = new HashSet();
+                keys.add(ownerKey.getPublicKey());
+                Contract stepaTU = ContractsService.createFreshTU(100000000, keys);
                 stepaTU.check();
-                //stepaTU.setIsTU(true);
                 stepaTU.traceErrors();
                 System.out.println("register new TU ");
                 node.registerItem(stepaTU);

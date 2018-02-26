@@ -446,9 +446,14 @@ public class ContractsService {
     }
 
     /**
-     * Create paid transaction, which consist from contract you want to register and payment contract that will be
-     * spend to process transaction.
-     * @return
+     * Create fresh contract in first revision with transaction units.
+     * This contract should be registered and then should be used as payment for other contract's processing.
+     * TU contracts signs with special Universa keys and set as owner public keys from params.
+     *
+     * @param amount - amount of TU that will be have an owner
+     * @param ownerKeys - public keys that will became an owner of TU
+     *
+     * @return selaed TU contract
      */
     public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys) throws IOException {
 
