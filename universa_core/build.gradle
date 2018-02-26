@@ -29,3 +29,9 @@ task contractsServiceJavadoc(type: Javadoc) {
     include("**/ContractsService.java")
     destinationDir = file("../docs/ContractsService/javadoc")
 }
+
+task nodeJavadoc(type: Javadoc) {
+    source = sourceSets.main.allJava
+    include("**/node2/Node.java")
+    destinationDir = file("../docs/node/javadoc")
+}
