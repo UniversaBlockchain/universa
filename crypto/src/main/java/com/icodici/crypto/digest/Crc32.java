@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -29,7 +29,7 @@ public class Crc32 extends Digest {
     }
 
     @Override
-    protected int getLength() {
+    public int getLength() {
         return 32;
     }
 }

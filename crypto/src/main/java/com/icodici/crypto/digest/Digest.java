@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import net.sergeych.utils.Bytes;
 
@@ -48,7 +48,7 @@ public abstract class Digest {
     /**
      * Override to provide digest length in bytes.
      */
-    protected abstract int getLength();
+    public abstract int getLength();
 
     /**
      * The processing chunk size, used in HMAC/PRF implementations.
@@ -178,5 +178,4 @@ public abstract class Digest {
         update(in);
         return hexDigest();
     }
-
 }

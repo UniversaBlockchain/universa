@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, All Rights Reserved
+ * Copyright (c) 2017, iCodici S.n.C, All Rights Reserved
  *
  * Written by Stepan Mamontov <micromillioner@yahoo.com>
  */
@@ -7,6 +7,7 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.*;
+import com.icodici.crypto.digest.Crc32;
 import com.icodici.universa.Errors;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;

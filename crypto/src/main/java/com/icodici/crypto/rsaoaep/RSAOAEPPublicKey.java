@@ -114,7 +114,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
     private AsymmetricBlockCipher makeEncryptor(HashType mgf1HashType) {
         final Digest dummyDigest = new SHA1Digest(); // Only to satisfy interface.
 
-        return new OAEPEncoding(RSAOAEPEngine.make(), dummyDigest, mgf1HashType.makeDigest(), new byte[0]);
+        return new OAEPEncoding(RSAEngineFactory.make(), dummyDigest, mgf1HashType.makeDigest(), new byte[0]);
     }
 
     /**
@@ -194,7 +194,7 @@ public class RSAOAEPPublicKey extends AbstractPublicKey {
             }
 
             final Signer signatureChecker = new PSSSigner(
-                    RSAOAEPEngine.make(),
+                    RSAEngineFactory.make(),
                     primaryDigest, state.mgf1HashType.makeDigest(),
                     saltLength);
             signatureChecker.init(false, new ParametersWithRandom(state.keyParameters, state.rng));

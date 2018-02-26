@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, All Rights Reserved
+ * Copyright (c) 2018, iCodici S.n.C, All Rights Reserved
  *
  * Written by Stepan Mamontov <micromillioner@yahoo.com>
  */

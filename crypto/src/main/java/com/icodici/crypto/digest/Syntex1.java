@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import java.util.Arrays;
 
@@ -62,7 +62,7 @@ public class Syntex1 extends Digest {
     }
 
     @Override
-    protected int getLength() {
+    public int getLength() {
         return 36;
     }
 }

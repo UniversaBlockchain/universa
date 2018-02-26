@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Sha256;
 import com.icodici.crypto.rsaoaep.RSAOAEPPublicKey;
 import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.biserializer.BiDeserializer;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, All Rights Reserved
+ * Copyright (c) 2018, iCodici S.n.C, All Rights Reserved
  *
  * Written by Stepan Mamontov <micromillioner@yahoo.com>
  */
@@ -8,12 +8,9 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node.ItemState;
 import net.sergeych.boss.Boss;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 public class ParcelNotification extends ItemNotification {
 

@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Sha256;
 import org.junit.Test;
 
 import static org.junit.Assert.*;

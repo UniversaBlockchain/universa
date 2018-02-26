@@ -64,7 +64,7 @@ import static java.util.Arrays.asList;
 
 public class CLIMain {
 
-    private static final String CLI_VERSION = "2.3.0";
+    private static final String CLI_VERSION = "3.0.1";
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -960,15 +960,32 @@ public class CLIMain {
                     reporter.verbose("creating new keys directory: " + keysDir.toString());
                     final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwx------");
                     final FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(perms);
-                    Files.createDirectory(keysDir, ownerOnly);
+                    try {
+                        Files.createDirectory(keysDir, ownerOnly);
+                    }
+                    catch(java.lang.UnsupportedOperationException e) {
+                        // Windows must die
+                        Files.createDirectory(keysDir);
+                        // this operation is not supported:
+                        //Files.setPosixFilePermissions(keysDir, perms);
+                        System.out.println("* Warning: can't set permissions on keys directory on windows");
+                        System.out.println("*          it is strongly recommended to restrict access to it manually\n");
+                    }
                 }
 
                 Path keyFile = keysDir.resolve("main.private.unikey");
                 try (OutputStream out = Files.newOutputStream(keyFile)) {
                     out.write(privateKey.pack());
                 }
-                final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
-                Files.setPosixFilePermissions(keyFile, perms);
+                try {
+                    final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
+                    Files.setPosixFilePermissions(keyFile, perms);
+                }
+                catch(UnsupportedOperationException e) {
+                    System.out.println("* Warning: can't set permissions on key file on windows.");
+                    System.out.println("*          it is strongly recommended to restrict access to it manually\n");
+
+                }
                 prefs.put("privateKeyFile", keyFile.toString());
                 report("new private key has just been generated and stored to the " + keysDir);
             }
@@ -1061,7 +1078,12 @@ public class CLIMain {
                 out.write(Boss.pack(session.asBinder()));
             }
             final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
-            Files.setPosixFilePermissions(sessionFile, perms);
+            try {
+                Files.setPosixFilePermissions(sessionFile, perms);
+            }
+            catch(UnsupportedOperationException x) {
+                // fucking windows :( have no idea what to do with it
+            }
             prefs.put("session_" + nodeNumber, sessionFile.toString());
             report("Session has been stored to the " + keysDir + "/" + sessionFile);
         }

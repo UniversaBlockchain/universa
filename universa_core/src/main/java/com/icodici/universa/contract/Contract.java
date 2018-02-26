@@ -134,7 +134,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         } else {
             // new format: only references are included
             for (Binder b : (List<Binder>) payload.getList("revoking", Collections.EMPTY_LIST)) {
-                HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
+                HashId hid = HashId.withDigest(b.getBinaryOrThrow("composite3"));
                 Contract r = pack.getReference(hid);
                 if (r != null) {
                     revokingItems.add(r);
@@ -144,7 +144,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 }
             }
             for (Binder b : (List<Binder>) payload.getList("new", Collections.EMPTY_LIST)) {
-                HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
+                HashId hid = HashId.withDigest(b.getBinaryOrThrow("composite3"));
                 Contract n = pack.getReference(hid);
                 if (n != null) {
                     newItems.add(n);

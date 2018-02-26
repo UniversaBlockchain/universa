@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.HMAC;
 import net.sergeych.tools.Bindable;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;

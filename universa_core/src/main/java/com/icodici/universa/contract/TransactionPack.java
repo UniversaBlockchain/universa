@@ -351,11 +351,11 @@ public class TransactionPack implements BiSerializable {
             } else {
                 // new format: only references are included
                 for (Binder b : (List<Binder>) payload.getList("revoking", Collections.EMPTY_LIST)) {
-                    HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
+                    HashId hid = HashId.withDigest(b.getBinaryOrThrow("composite3"));
                     dependencies.add(hid);
                 }
                 for (Binder b : (List<Binder>) payload.getList("new", Collections.EMPTY_LIST)) {
-                    HashId hid = HashId.withDigest(b.getBinaryOrThrow("sha512"));
+                    HashId hid = HashId.withDigest(b.getBinaryOrThrow("composite3"));
                     dependencies.add(hid);
                 }
             }
