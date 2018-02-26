@@ -299,10 +299,10 @@ public class MainTest {
         //create 4 nodes from config file. 3 know each other. 4th knows everyone. nobody knows 4th
         List<Main> mm = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
-            mm.add(createMain("node" + (i + 1),"_dynamic_test", false));
+            mm.add(createMain("node" + (i + 1), "_dynamic_test", false));
         }
         //shutdown nodes
-        for(Main m : mm) {
+        for (Main m : mm) {
             m.shutdown();
         }
         mm.clear();
@@ -318,13 +318,11 @@ public class MainTest {
         rand.setSeed(new Date().getTime());
 
 
-        //final ArrayList<Integer> clientSleeps = new ArrayList<>();
-        //final ArrayList<Integer> nodeSleeps = new ArrayList<>();
-        final Integer[] clientSleeps = new Integer[]{57, 366, 493, 436, 475, 3, 483, 84, 201, 120, 318, 484, 442, 391, 415, 467, 342, 372, 397, 262, 309, 274, 97, 388, 344, 12, 9, 52, 237, 362, 19, 27, 332, 116, 212, 164, 326, 375, 351, 41};
-        final Integer[] nodeSleeps = new Integer[]{151, 490, 315, 366};
+        final ArrayList<Integer> clientSleeps = new ArrayList<>();
+        final ArrayList<Integer> nodeSleeps = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             mm.add(createMainFromDb(dbUrls.get(i), false));
-            //nodeSleeps.add(rand.nextInt(500));
+            nodeSleeps.add(rand.nextInt(100));
         }
 
 
@@ -335,7 +333,7 @@ public class MainTest {
         final ArrayList<Integer> clientNodes = new ArrayList<>();
         final ArrayList<Contract> contracts = new ArrayList<>();
         final ArrayList<Boolean> contractsApproved = new ArrayList<>();
-        for(int i = 0; i < 40;i++) {
+        for (int i = 0; i < 40; i++) {
             Contract contract = new Contract(myKey);
             contract.seal();
             assertTrue(contract.isOk());
@@ -345,20 +343,20 @@ public class MainTest {
             clientNodes.add(info.getNumber());
             Client client = new Client(TestKeys.privateKey(i), info, null);
             clients.add(client);
-            //clientSleeps.add(rand.nextInt(500));
+            clientSleeps.add(rand.nextInt(100));
         }
         Semaphore semaphore = new Semaphore(-39);
         final AtomicInteger atomicInteger = new AtomicInteger(40);
         final ArrayList<Thread> threads = new ArrayList<>();
-        for(int i = 0; i < 40;i++) {
+        for (int i = 0; i < 40; i++) {
             int finalI = i;
             Thread th = new Thread(() -> {
                 try {
                     //Thread.sleep(clientSleeps.get(finalI));
-                    Thread.sleep(clientSleeps[finalI]);
-                    Contract contract= contracts.get(finalI);
+                    Thread.sleep(clientSleeps.get(finalI));
+                    Contract contract = contracts.get(finalI);
                     Client client = clients.get(finalI);
-                    System.out.println("Register item " + contract.getId().toBase64String() +" @ node #" +clientNodes.get(finalI));
+                    System.out.println("Register item " + contract.getId().toBase64String() + " @ node #" + clientNodes.get(finalI));
                     client.register(contract.getPackedTransaction(), 15000);
                     ItemResult rr;
                     while (true) {
@@ -367,10 +365,10 @@ public class MainTest {
                         if (!rr.state.isPending())
                             break;
                     }
-                    assertEquals(rr.state,ItemState.APPROVED);
+                    assertEquals(rr.state, ItemState.APPROVED);
                     semaphore.release();
                     atomicInteger.decrementAndGet();
-                    contractsApproved.set(finalI,true);
+                    contractsApproved.set(finalI, true);
                 } catch (ClientError clientError) {
                     clientError.printStackTrace();
                     fail(clientError.getMessage());
@@ -386,42 +384,42 @@ public class MainTest {
             th.start();
         }
 
-        for(int i = 0; i < 3;i++) {
+        for (int i = 0; i < 3; i++) {
             int finalI = i;
             Thread th = new Thread(() -> {
                 try {
                     //Thread.sleep(nodeSleeps.get(finalI));
-                    Thread.sleep(nodeSleeps[finalI]);
+                    Thread.sleep(nodeSleeps.get(finalI)  );
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     fail(e.getMessage());
                 }
-                System.out.println("Adding new node @ node #" +(finalI+1));
+                System.out.println("Adding new node @ node #" + (finalI + 1));
                 mm.get(finalI).node.addNode(mm.get(3).myInfo);
-                System.out.println("Done new node @ node #" +(finalI+1));
+                System.out.println("Done new node @ node #" + (finalI + 1));
 
             });
             th.start();
         }
 
 
-        if(!semaphore.tryAcquire(15, TimeUnit.SECONDS)) {
-            for(int i =0; i < contractsApproved.size();i++) {
-                if(!contractsApproved.get(i)) {
+        if (!semaphore.tryAcquire(15, TimeUnit.SECONDS)) {
+            for (int i = 0; i < contractsApproved.size(); i++) {
+                if (!contractsApproved.get(i)) {
                     System.out.println("Stuck item:" + contracts.get(i).getId().toBase64String());
                 }
             }
 
             System.out.print("Client sleeps: ");
-            for(Integer s : clientSleeps) {
-                System.out.print(s+", ");
+            for (Integer s : clientSleeps) {
+                System.out.print(s + ", ");
             }
             System.out.println();
 
 
             System.out.print("Node sleeps: ");
-            for(Integer s : nodeSleeps) {
-                System.out.print(s+", ");
+            for (Integer s : nodeSleeps) {
+                System.out.print(s + ", ");
             }
             System.out.println();
 
@@ -429,7 +427,7 @@ public class MainTest {
         }
 
 
-        for(Main m : mm) {
+        for (Main m : mm) {
             m.shutdown();
         }
         System.gc();
