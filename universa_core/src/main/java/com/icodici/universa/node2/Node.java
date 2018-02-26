@@ -1223,7 +1223,8 @@ public class Node {
 
         private final HashId itemId;
         private final HashId parcelId;
-        private final Config config;
+        //private final Config config;
+        //private final List<NodeInfo> nodes;
         private Approvable item;
         private final StateRecord record;
         private final ItemState stateWas;
@@ -1273,10 +1274,6 @@ public class Node {
          *                        If false checking item wait until forceChecking() will be called.
          */
         public ItemProcessor(HashId itemId, HashId parcelId, Approvable item, Object lock, boolean isCheckingForce) {
-
-            synchronized (Node.this.config) {
-                config = Node.this.config.copy();
-            }
 
 
             mutex = lock;
@@ -1728,10 +1725,11 @@ public class Node {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                     }
                     notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
-                    network.eachNode(node -> {
+                    List<NodeInfo> nodes = network.allNodes();
+                    for(NodeInfo node : nodes) {
                         if (!positiveNodes.contains(node) && !negativeNodes.contains(node))
                             network.deliver(node, notification);
-                    });
+                    }
                 }
             }
         }
@@ -1970,7 +1968,8 @@ public class Node {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
                 }
                 notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
-                network.eachNode(node -> {
+                List<NodeInfo> nodes = network.allNodes();
+                for(NodeInfo node : nodes) {
                     if (!positiveNodes.contains(node) && !negativeNodes.contains(node)) {
 //                        debug("unknown consensus on the node " + node.getNumber() + " , deliver new consensus with result: " + getResult());
                         // if node do not know own vote we do not send notification, just looking for own state
@@ -1982,13 +1981,14 @@ public class Node {
                             }
                         }
                     }
-                });
+                }
             }
         }
 
         private final Boolean checkIfAllReceivedConsensus() {
             if(processingState.canContinue()) {
-                Boolean allReceived = network.allNodes().size() == positiveNodes.size() + negativeNodes.size();
+                List<NodeInfo> nodes = network.allNodes();
+                Boolean allReceived = nodes.size() <= positiveNodes.size() + negativeNodes.size();
 
 //                debug("is for item " + itemId + " all got consensus: " + allReceived + " : " + network.allNodes().size() + "/" + positiveNodes.size() + "+" + negativeNodes.size());
                 if (allReceived) {
@@ -2141,7 +2141,7 @@ public class Node {
                     synchronized (resyncMutex) {
                         if (!resyncingItems.containsKey(hid)) {
 //                            debug("item " + hid + " will be resynced, state: " + (record != null ? record.getState() : null));
-                            resyncingItems.put(hid, new ResyncingItem(hid, record,config));
+                            resyncingItems.put(hid, new ResyncingItem(hid, record));
                         } else {
 //                            debug("item " + hid + " already resyncing");
                         }
@@ -2497,7 +2497,6 @@ public class Node {
      */
     private class ResyncingItem {
 
-        private final Config config;
         private HashId hashId;
         private StateRecord record;
         private final ItemState stateWas;
@@ -2509,9 +2508,8 @@ public class Node {
 
         private final Object mutex = new Object();
 
-        public ResyncingItem(HashId hid, StateRecord record,Config config) {
+        public ResyncingItem(HashId hid, StateRecord record) {
             resyncingState = ResyncingItemProcessingState.WAIT_FOR_VOTES;
-            this.config = config;
             this.hashId = hid;
             this.record = record;
 
