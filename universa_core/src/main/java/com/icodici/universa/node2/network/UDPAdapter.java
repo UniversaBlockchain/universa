@@ -7,6 +7,7 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.*;
+import com.icodici.crypto.digest.Crc32;
 import com.icodici.universa.Errors;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;

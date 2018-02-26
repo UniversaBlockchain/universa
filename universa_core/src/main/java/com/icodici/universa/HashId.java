@@ -7,7 +7,7 @@
 
 package com.icodici.universa;
 
-import com.icodici.crypto.Sha512;
+import com.icodici.crypto.digest.Sha512;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;

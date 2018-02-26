@@ -7,6 +7,9 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Digest;
+import com.icodici.crypto.digest.Sha256;
+import com.icodici.crypto.digest.Sha512;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;

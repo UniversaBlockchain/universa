@@ -5,19 +5,19 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.SHA1Digest;
+import org.spongycastle.crypto.digests.SHA256Digest;
 
 /**
- * SHA-1 digest implementation.
+ * SHA-256 (SHA-2 family) digest implementation.
  */
-public class Sha1 extends SpongyCastleDigest {
+public class Sha256 extends SpongyCastleDigest {
 
-    final org.spongycastle.crypto.Digest md = new SHA1Digest();
+    final org.spongycastle.crypto.Digest md = new SHA256Digest();
 
-    public Sha1() {
+    public Sha256() {
     }
 
     @Override

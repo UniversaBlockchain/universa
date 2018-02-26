@@ -1,9 +1,8 @@
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import org.junit.Test;
 import org.spongycastle.util.encoders.Hex;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 

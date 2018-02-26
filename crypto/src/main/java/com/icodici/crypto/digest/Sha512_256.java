@@ -5,24 +5,24 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import org.spongycastle.crypto.Digest;
-import org.spongycastle.crypto.digests.GOST3411_2012_256Digest;
+import org.spongycastle.crypto.digests.SHA512tDigest;
 
 /**
- * GOST R 34.11-2012, 256 variation “Streebog” (GOST family) digest implementation.
+ * SHA-512/256 (SHA-2 family) digest implementation.
  */
-public class Gost3411_2012_256 extends SpongyCastleDigest {
+public class Sha512_256 extends SpongyCastleDigest {
 
-    final Digest md = new GOST3411_2012_256Digest();
+    final org.spongycastle.crypto.Digest md = new SHA512tDigest(256);
 
-    public Gost3411_2012_256() {
+    public Sha512_256() {
     }
 
     @Override
     protected int getChunkSize() {
-        return 64;
+        return 128;
     }
 
     @Override

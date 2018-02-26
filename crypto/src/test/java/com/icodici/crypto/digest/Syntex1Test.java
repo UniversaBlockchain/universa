@@ -5,8 +5,9 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
+import com.icodici.crypto.digest.Syntex1;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;

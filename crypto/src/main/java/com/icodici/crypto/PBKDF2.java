@@ -7,6 +7,9 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Digest;
+import com.icodici.crypto.digest.HMAC;
+
 import java.nio.charset.Charset;
 
 import static java.util.Arrays.copyOf;

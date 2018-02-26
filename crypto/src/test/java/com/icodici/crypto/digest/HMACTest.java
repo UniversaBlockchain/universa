@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import net.sergeych.utils.Base64;
 import org.junit.Test;

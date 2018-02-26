@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import net.sergeych.utils.Bytes;
 
@@ -178,5 +178,4 @@ public abstract class Digest {
         update(in);
         return hexDigest();
     }
-
 }

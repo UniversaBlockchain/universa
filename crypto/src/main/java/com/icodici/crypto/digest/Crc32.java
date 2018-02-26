@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

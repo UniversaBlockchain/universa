@@ -5,7 +5,7 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 import org.spongycastle.crypto.Digest;
 import org.spongycastle.crypto.digests.SHA512Digest;

@@ -7,6 +7,10 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Digest;
+import com.icodici.crypto.digest.Sha1;
+import com.icodici.crypto.digest.Sha256;
+import com.icodici.crypto.digest.Sha512;
 import net.sergeych.boss.Boss;
 import net.sergeych.utils.Base64;
 

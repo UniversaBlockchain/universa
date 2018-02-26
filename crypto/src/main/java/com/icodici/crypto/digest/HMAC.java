@@ -5,7 +5,10 @@
  *
  */
 
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
+
+import com.icodici.crypto.digest.Digest;
+import com.icodici.crypto.digest.Sha256;
 
 import java.util.Arrays;
 
@@ -43,7 +46,7 @@ public class HMAC extends Digest {
      * Create new HMAC hash.
      *
      * @param key
-     *         secretn key
+     *         secret key
      * @param hashClass
      *         class of the hash to use to sign the message. SHA256+ is recommended.
      */

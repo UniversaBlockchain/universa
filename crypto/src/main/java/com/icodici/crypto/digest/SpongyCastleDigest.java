@@ -1,4 +1,4 @@
-package com.icodici.crypto;
+package com.icodici.crypto.digest;
 
 /**
  * Any digest implementation based on the SpongyCastle cryptography backend.

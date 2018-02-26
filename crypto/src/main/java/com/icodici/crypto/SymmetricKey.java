@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.HMAC;
 import net.sergeych.tools.ByteRingBuffer;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Hashable;
