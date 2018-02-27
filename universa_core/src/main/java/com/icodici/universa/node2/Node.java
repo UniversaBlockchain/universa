@@ -54,6 +54,7 @@ public class Node {
     private final ItemInformer informer = new ItemInformer();
 
     private final ItemLock itemLock = new ItemLock();
+    private final ParcelLock parcelLock = new ParcelLock();
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
@@ -594,8 +595,8 @@ public class Node {
      */
     protected Object checkParcelInternal(@NonNull HashId parcelId, Parcel parcel, boolean autoStart) {
         try {
-            return ParcelLock.synchronize(parcelId, (lock) -> {
-                // let's look exisiting parcel processor
+            return parcelLock.synchronize(parcelId, (lock) -> {
+                // let's look existing parcel processor
                 ParcelProcessor processor = parcelProcessors.get(parcelId);
                 if (processor != null) {
                     return processor;
