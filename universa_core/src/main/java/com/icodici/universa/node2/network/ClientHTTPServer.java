@@ -27,6 +27,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClientHTTPServer extends BasicHttpServer {
 
+
+    private static final String API_VERSION = "3.0.1";
+
     private final BufferedLogger log;
     private ItemCache cache;
     private ParcelCache parcelCache;
