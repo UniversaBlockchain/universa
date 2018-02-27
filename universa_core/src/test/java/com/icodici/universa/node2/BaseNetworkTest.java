@@ -1313,8 +1313,41 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(newLamborghini.getOwner().isAllowedForKeys(martyPublicKeys));
     }
 
-    @Test(timeout = 90000)
+    @Test(timeout = 9000)
     public void createTwoSignedContractAllGood() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        Contract twoSignContract = ContractsService.createTwoSignedContract(martyPrivateKeys, stepaPublicKeys);
+
+        twoSignContract = imitateSendingTransactionToPartner(twoSignContract);
+
+        twoSignContract.seal();
+        twoSignContract.addSignatureToSeal(stepaPrivateKeys);
+
+        registerAndCheckDeclined(twoSignContract);
+
+        twoSignContract = imitateSendingTransactionToPartner(twoSignContract);
+
+        twoSignContract.seal();
+        twoSignContract.addSignatureToSeal(martyPrivateKeys);
+
+        twoSignContract.check();
+        twoSignContract.traceErrors();
+        System.out.println("twoSignedContract is valid: " + twoSignContract.isOk());
+        registerAndCheckApproved(twoSignContract);
     }
 
     @Test(timeout = 90000)
