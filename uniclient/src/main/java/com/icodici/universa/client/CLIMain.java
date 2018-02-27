@@ -2037,7 +2037,7 @@ public class CLIMain {
         out.println("\nUniversa client tool, v. " + CLI_VERSION + "\n");
 
         if (options == null)
-            System.err.println("error while parsing command linee");
+            System.err.println("error while parsing command line");
         else {
             Integer columns = (Integer) options.valueOf("term-width");
             if (columns == null)

@@ -145,7 +145,7 @@ abstract public class Notification {
             return n;
         }
         else {
-//            System.out.println("*** unknown notification class code: "+code);
+            System.out.println("*** unknown notification class code: "+code);
             return null;
         }
     }
