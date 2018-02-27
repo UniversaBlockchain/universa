@@ -251,9 +251,9 @@ The improperly signed contracts will not be accepted by the Universa network.
 
 #### Registering and revoking the contract in the Universa network
 
-When the contract is prepared and checked (using the `--check` option), it is a time to register it in the Universa network. To do it, run the command like:
+When the contract is prepared and checked (using the `--check` option), it is a time to register it in the Universa network. From version 3.0.1 contract's processing should be paid bu transaction units. Point to you transaction units contract with key `--tu`. To register contract, run the command like:
 
-    uniclient --register contract.unicon
+    uniclient --register contract.unicon --tu tu.unicon
 
 This command submits the contract for approval. The response will be similar to:
 
@@ -288,6 +288,8 @@ Other possible contract states are:
 * `DECLINED` – the contract can’t be accepted, for example, it has errors, wrong links, already processed.
 * `REVOKED` – the contract was recently revoked. This state is not kept for long, the network has short memory of discarded items.
 * `UNDEFINED` – the election failed for example due to severe network outage. You can try again soon.
+
+Use key `--amount` to manually set the amount of transaction units will be spend for contract processing. Use approved transaction units contract with key `--tu`. After successful `--register` your file with transaction units contract will be resaved with new revision of transaction units contract and decreased amount of transaction units, so you can use it again without additionally operations.
 
 If you registered the contract you may revoke contract via simple command (use the same private key you have used before to sign the contract):
 

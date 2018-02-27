@@ -13,7 +13,11 @@ Bulk operations for import, export, register and check.
 
 Probe files, not only ids.
 
-### 2.2.? (??.12.2017)
+### 3.0.1 (27.02.2018)
+
+* Added `--tu` and `--amount` keys for `--register` command to avoid paid processing of contracts.
+
+### 2.2.4 (29.12.2017)
 
 * Added `--cost` as standalone key and as key for use with `--register`.
 
