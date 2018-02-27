@@ -73,7 +73,7 @@ public class ParcelNotification extends ItemNotification {
                 + "]";
     }
 
-    static {
+    public static void init() {
         registerClass(CODE_PARCEL_NOTIFICATION, ParcelNotification.class);
     }
 

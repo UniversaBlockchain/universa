@@ -109,7 +109,7 @@ public class ItemNotification extends Notification {
                 + "]";
     }
 
-    static {
+    static public void init() {
         registerClass(CODE_ITEM_NOTIFICATION, ItemNotification.class);
     }
 }

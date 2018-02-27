@@ -150,4 +150,11 @@ abstract public class Notification {
         }
     }
 
+    static {
+        // preload
+        ItemNotification.init();
+        ParcelNotification.init();
+        ItemResyncNotification.init();
+    }
+
 }
