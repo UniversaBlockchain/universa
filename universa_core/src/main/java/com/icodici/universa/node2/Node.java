@@ -678,6 +678,7 @@ public class Node {
         for (ItemProcessor ip : processors.values()) {
             ip.emergencyBreak();
         }
+        executorService.shutdown();
     }
 
 

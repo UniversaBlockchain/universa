@@ -128,6 +128,13 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("throw_error", this::throw_error);
     }
 
+    @Override
+    public void shutdown() {
+        es.shutdown();
+        node.shutdown();
+        super.shutdown();
+    }
+
     private Binder throw_error(Binder binder, Session session) throws IOException {
         throw new IOException("just a test");
     }

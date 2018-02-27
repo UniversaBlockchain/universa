@@ -129,6 +129,8 @@ public class UDPAdapter extends DatagramAdapter {
         socket.close();
         socket.disconnect();
         closeSessions();
+        timer.cancel();
+        timer.purge();
     }
 
 
