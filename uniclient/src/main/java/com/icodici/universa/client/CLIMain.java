@@ -327,13 +327,14 @@ public class CLIMain {
             if (options != null)
                 usage("Unrecognized parameter: " + e.getMessage());
             else
-                e.printStackTrace();
+                usage("No options: " + e.getMessage());
         } catch (Finished e) {
             if (reporter.isQuiet())
                 System.out.println(reporter.reportJson());
         } catch (Exception e) {
             System.err.println(e.toString());
-            e.printStackTrace();
+//            e.printStackTrace();
+            usage("Error: " + e.getMessage());
 //            usage(e.getMessage());
             System.exit(100);
         }

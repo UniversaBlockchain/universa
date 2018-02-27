@@ -2481,4 +2481,10 @@ public class CLIMainTest {
         main.waitReady();
         return main;
     }
+
+//    @Test
+//    public void tempTest() throws Exception {
+//        callMain("--generate");
+//        System.out.println(output);
+//    }
 }
