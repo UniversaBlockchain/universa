@@ -520,7 +520,7 @@ public class ContractsService {
         reference.signed_by.add(creatorTo);
         contractNew.getTransactional().addReference(reference);
 
-        contractNew.setOwnerKeys(fromKeys);
+        contractNew.setOwnerKeys(toKeys);
         contractNew.seal();
 
         twoSignContract.addNewItems(contractNew);
