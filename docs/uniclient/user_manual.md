@@ -17,7 +17,8 @@ The client has many features and self documents as usual when executed as `unicl
 
 JRE 1.8+ is required to run uniclient, it coulbe download from the [Oracle downloads site](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
 
-Download the current version of the uniclient tool from [our cloud storage](https://lnd.im/uniclient) and unzip it. Now you can start it with the bundled `uniclient` command on unix or start it directly using `java -jar uniclient.jar` (for example, on Windows).
+Download the current version of the uniclient tool from 
+[our cloud storage](https://drive.google.com/file/d/1ODg3CIn93NZPVFF7HWWG3BR0XqdOKDZ4/view) and unzip it. Now you can start it with the bundled `uniclient` command on unix or `uniclient.bat` on windows. Alternatively, you can start it directly using `java -jar uniclient.jar`.
 
 Executing `uniclient` with no arguments will show built-in help.
 
