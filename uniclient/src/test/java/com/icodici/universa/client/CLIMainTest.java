@@ -2186,6 +2186,19 @@ public class CLIMainTest {
         assertTrue (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 1);
     }
 
+    //////////////// common realistic use cases
+
+    @Test
+    public void createAndRegisterTokenFromDSL() throws Exception {
+        callMain2("-create", rootPath + "coin100.yml", "-name", basePath + "realToken.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "realToken.unicon").exists());
+        callMain("--register", basePath + "realToken.unicon",
+                "--wait", "1000");
+        System.out.println(output);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+    }
+
 
 //    @Test
     public void showSwapResult() throws Exception {
