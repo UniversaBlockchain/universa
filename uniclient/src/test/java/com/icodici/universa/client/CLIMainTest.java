@@ -2193,7 +2193,7 @@ public class CLIMainTest {
 
         // You have a token dsl and want to release own tokens
 
-        callMain2("-create", rootPath + "coin100.yml", "-name", basePath + "realToken.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "realToken.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realToken.unicon").exists());
         callMain("--register", basePath + "realToken.unicon",
@@ -2215,6 +2215,22 @@ public class CLIMainTest {
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
     }
+
+    @Test
+    public void createAndRegisterShareFromDSL() throws Exception {
+
+        // You have a token dsl and want to release own tokens
+
+        callMain2("-create", rootPath + "ShareDSLTemplate.yml", "-name", basePath + "realShare.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "realShare.unicon").exists());
+        callMain("--register", basePath + "realShare.unicon",
+                "--wait", "1000");
+        System.out.println(output);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+    }
+
+    //////////////////////////////////////
 
 
 //    @Test
