@@ -2198,10 +2198,10 @@ public class CLIMainTest {
         callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "realToken.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realToken.unicon").exists());
-        callMain("--register", basePath + "realToken.unicon",
-                "--tu", tuContract,
+        callMain("-register", basePath + "realToken.unicon",
+                "-tu", tuContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
-                "--wait", "1000");
+                "-wait", "1000");
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
     }
