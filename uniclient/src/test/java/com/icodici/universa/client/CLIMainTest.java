@@ -2190,10 +2190,27 @@ public class CLIMainTest {
 
     @Test
     public void createAndRegisterTokenFromDSL() throws Exception {
+
+        // You have a token dsl and want to release own tokens
+
         callMain2("-create", rootPath + "coin100.yml", "-name", basePath + "realToken.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realToken.unicon").exists());
         callMain("--register", basePath + "realToken.unicon",
+                "--wait", "1000");
+        System.out.println(output);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+    }
+
+    @Test
+    public void createAndRegisterNotaryFromDSL() throws Exception {
+
+        // You have a notary dsl and want to release notarized document for someone
+
+        callMain2("-create", rootPath + "NotaryDSLTemplate.yml", "-name", basePath + "realNotary.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "realNotary.unicon").exists());
+        callMain("--register", basePath + "realNotary.unicon",
                 "--wait", "1000");
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
