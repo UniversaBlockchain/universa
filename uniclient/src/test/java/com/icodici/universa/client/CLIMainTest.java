@@ -186,11 +186,11 @@ public class CLIMainTest {
     @AfterClass
     public static void cleanAfter() throws Exception {
         File file = new File(basePath);
-//        if(file.exists()) {
-//            for (File f : file.listFiles())
-//                f.delete();
-//        }
-//        file.delete();
+        if(file.exists()) {
+            for (File f : file.listFiles())
+                f.delete();
+        }
+        file.delete();
 
         destroyLocalNetwork();
     }
@@ -2193,10 +2193,14 @@ public class CLIMainTest {
 
         // You have a token dsl and want to release own tokens
 
+        String tuContract = getApprovedTUContract();
+
         callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "realToken.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realToken.unicon").exists());
         callMain("--register", basePath + "realToken.unicon",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "--wait", "1000");
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
@@ -2207,10 +2211,14 @@ public class CLIMainTest {
 
         // You have a notary dsl and want to release notarized document for someone
 
+        String tuContract = getApprovedTUContract();
+
         callMain2("-create", rootPath + "NotaryDSLTemplate.yml", "-name", basePath + "realNotary.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realNotary.unicon").exists());
         callMain("--register", basePath + "realNotary.unicon",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "--wait", "1000");
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
@@ -2221,10 +2229,14 @@ public class CLIMainTest {
 
         // You have a token dsl and want to release own tokens
 
+        String tuContract = getApprovedTUContract();
+
         callMain2("-create", rootPath + "ShareDSLTemplate.yml", "-name", basePath + "realShare.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realShare.unicon").exists());
         callMain("--register", basePath + "realShare.unicon",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "--wait", "1000");
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
