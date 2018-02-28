@@ -78,8 +78,8 @@ public class CLIMainTest {
         ownerKey3 = TestKeys.privateKey(2);
 
 //        new File(rootPath + "/simple_root_contract.unicon").delete();
-        assert (new File(rootPath + "/simple_root_contract.yml").exists());
-        assert (new File(rootPath + "/simple_root_contract_v2.yml").exists());
+        assertTrue (new File(rootPath + "/simple_root_contract.yml").exists());
+        assertTrue (new File(rootPath + "/simple_root_contract_v2.yml").exists());
 
         CLIMain.setTestMode();
         CLIMain.setTestRootPath(rootPath);
@@ -186,11 +186,11 @@ public class CLIMainTest {
     @AfterClass
     public static void cleanAfter() throws Exception {
         File file = new File(basePath);
-        if(file.exists()) {
-            for (File f : file.listFiles())
-                f.delete();
-        }
-        file.delete();
+//        if(file.exists()) {
+//            for (File f : file.listFiles())
+//                f.delete();
+//        }
+//        file.delete();
 
         destroyLocalNetwork();
     }
@@ -239,7 +239,7 @@ public class CLIMainTest {
     public void createContract() throws Exception {
         callMain("-c", rootPath + "simple_root_contract.yml", "-j", "-name", basePath + "simple_root_contract.unicon");
         System.out.println(output);
-        assert (new File(basePath + "simple_root_contract.unicon").exists());
+        assertTrue (new File(basePath + "simple_root_contract.unicon").exists());
     }
 
     @Test
@@ -254,8 +254,8 @@ public class CLIMainTest {
                 "-name", basePath + "simple_root_contract3.unicon",
                 "-set", field, "-value", value);
         System.out.println(output);
-        assert (new File(basePath + "simple_root_contract3.unicon").exists());
-        assert (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
+        assertTrue (new File(basePath + "simple_root_contract3.unicon").exists());
+        assertTrue (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
     }
 
     @Test
@@ -264,8 +264,8 @@ public class CLIMainTest {
                 rootPath + "simple_root_contract.yml", "-name", basePath + "simple_root_contract1.unicon",
                 rootPath + "simple_root_contract.yml", "-name", basePath + "simple_root_contract2.unicon");
         System.out.println(output);
-        assert (new File(basePath + "simple_root_contract1.unicon").exists());
-        assert (new File(basePath + "simple_root_contract2.unicon").exists());
+        assertTrue (new File(basePath + "simple_root_contract1.unicon").exists());
+        assertTrue (new File(basePath + "simple_root_contract2.unicon").exists());
     }
 
     @Test
@@ -275,8 +275,8 @@ public class CLIMainTest {
                 rootPath + "simple_root_contract.yml", "-name", basePath + "simple_root_contract2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         System.out.println(output);
-        assert (new File(basePath + "simple_root_contract1.unicon").exists());
-        assert (new File(basePath + "simple_root_contract2.unicon").exists());
+        assertTrue (new File(basePath + "simple_root_contract1.unicon").exists());
+        assertTrue (new File(basePath + "simple_root_contract2.unicon").exists());
     }
 
     @Test
@@ -461,7 +461,7 @@ public class CLIMainTest {
                 "-name", basePath + "simple_root_contract_v2.unicon"
         );
         System.out.println(new File(basePath + "simple_root_contract_v2.unicon").getAbsolutePath());
-        assert (new File(basePath + "simple_root_contract_v2.unicon").exists());
+        assertTrue (new File(basePath + "simple_root_contract_v2.unicon").exists());
         if (errors.size() > 0) {
             System.out.println(errors);
         }
@@ -475,8 +475,8 @@ public class CLIMainTest {
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
                 "--fingerprints"
         );
-        assert (output.indexOf("test_files/_xer0yfe2nn1xthc.private.unikey") >= 0);
-        assert (output.indexOf("B24XkVNy3fSJUZBzLsnJo4f+ZqGwbNxHgBr198FIPgyy") >= 0);
+        assertTrue (output.indexOf("test_files/_xer0yfe2nn1xthc.private.unikey") >= 0);
+        assertTrue (output.indexOf("B24XkVNy3fSJUZBzLsnJo4f+ZqGwbNxHgBr198FIPgyy") >= 0);
 //        System.out.println(output);
         assertEquals(0, errors.size());
     }
@@ -486,7 +486,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon");
         System.out.println(output);
-        assert (output.indexOf("export as json ok") >= 0);
+        assertTrue (output.indexOf("export as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -495,7 +495,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-as", "json");
         System.out.println(output);
-        assert (output.indexOf("export as json ok") >= 0);
+        assertTrue (output.indexOf("export as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -504,7 +504,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-as", "json", "-pretty");
         System.out.println(output);
-        assert (output.indexOf("export as json ok") >= 0);
+        assertTrue (output.indexOf("export as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -513,7 +513,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-as", "xml");
         System.out.println(output);
-        assert (output.indexOf("export as xml ok") >= 0);
+        assertTrue (output.indexOf("export as xml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -522,7 +522,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-as", "yaml");
         System.out.println(output);
-        assert (output.indexOf("export as yaml ok") >= 0);
+        assertTrue (output.indexOf("export as yaml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -532,7 +532,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-name", basePath + name);
         System.out.println(output);
-        assert (output.indexOf(name + " export as json ok") >= 0);
+        assertTrue (output.indexOf(name + " export as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -543,7 +543,7 @@ public class CLIMainTest {
                 basePath + "contract1.unicon",
                 basePath + "contract2.unicon");
         System.out.println(output);
-        assert (output.indexOf("export as json ok") >= 1);
+        assertTrue (output.indexOf("export as json ok") >= 1);
         assertEquals(0, errors.size());
     }
 
@@ -554,8 +554,8 @@ public class CLIMainTest {
                 basePath + "contract1.unicon", "-as", "json", "-pretty",
                 basePath + "contract2.unicon", "-as", "xml");
         System.out.println(output);
-        assert (output.indexOf("export as json ok") >= 0);
-        assert (output.indexOf("export as xml ok") >= 0);
+        assertTrue (output.indexOf("export as json ok") >= 0);
+        assertTrue (output.indexOf("export as xml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -566,7 +566,7 @@ public class CLIMainTest {
                 basePath + "contract1.unicon",
                 basePath + "contract2.unicon");
         System.out.println(output);
-        assert (output.indexOf("export as json ok") >= 1);
+        assertTrue (output.indexOf("export as json ok") >= 1);
         assertEquals(0, errors.size());
     }
 
@@ -577,7 +577,7 @@ public class CLIMainTest {
                 basePath + "contract1.unicon," + basePath + "contract2.unicon",
                 "-pretty", "-v");
         System.out.println(output);
-        assert (output.indexOf("export as json ok") >= 1);
+        assertTrue (output.indexOf("export as json ok") >= 1);
         assertEquals(0, errors.size());
     }
 
@@ -587,7 +587,7 @@ public class CLIMainTest {
                 "-e", "-as", "xml",
                 basePath + "contract1.unicon," + basePath + "contract2.unicon");
         System.out.println(output);
-        assert (output.indexOf("export as xml ok") >= 1);
+        assertTrue (output.indexOf("export as xml ok") >= 1);
         assertEquals(0, errors.size());
     }
 
@@ -598,8 +598,8 @@ public class CLIMainTest {
                 basePath + "contract1.unicon", "-name", basePath + "test6.XML",
                 basePath + "contract2.unicon", "-name", basePath + "test6.YML");
         System.out.println(output);
-        assert (output.indexOf("export as xml ok") >= 0);
-        assert (output.indexOf("export as yml ok") >= 0);
+        assertTrue (output.indexOf("export as xml ok") >= 0);
+        assertTrue (output.indexOf("export as yml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -621,7 +621,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "--extract-key", role);
         System.out.println(output);
-        assert (output.indexOf(role + " export public keys ok") >= 0);
+        assertTrue (output.indexOf(role + " export public keys ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -631,7 +631,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-extract-key", role);
         System.out.println(output);
-        assert (output.indexOf(role + " export public keys ok") < 0);
+        assertTrue (output.indexOf(role + " export public keys ok") < 0);
         assertEquals(0, errors.size());
     }
 
@@ -642,7 +642,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-get", field1, "-get", field2);
         System.out.println(output);
-        assert (output.indexOf("export fields as json ok") >= 0);
+        assertTrue (output.indexOf("export fields as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -653,7 +653,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-get", field1 + "," + field2);
         System.out.println(output);
-        assert (output.indexOf("export fields as json ok") >= 0);
+        assertTrue (output.indexOf("export fields as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -664,7 +664,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-as", "xml", "-get", field1, "-get", field2);
         System.out.println(output);
-        assert (output.indexOf("export fields as xml ok") >= 0);
+        assertTrue (output.indexOf("export fields as xml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -675,7 +675,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-as", "yaml", "-get", field1, "-get", field2);
         System.out.println(output);
-        assert (output.indexOf("export fields as yaml ok") >= 0);
+        assertTrue (output.indexOf("export fields as yaml ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -686,7 +686,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-get", field1, "-get", field2, "-as", "json");
         System.out.println(output);
-        assert (output.indexOf("export fields as json ok") >= 0);
+        assertTrue (output.indexOf("export fields as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -697,7 +697,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-get", field1, "-get", field2, "-as", "json", "-pretty");
         System.out.println(output);
-        assert (output.indexOf("export fields as json ok") >= 0);
+        assertTrue (output.indexOf("export fields as json ok") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -745,8 +745,8 @@ public class CLIMainTest {
                 "-set", field2, "-value", value2);
         System.out.println(output);
 //        assert(output.indexOf("update field " + field1 + " ok") >= 0);
-        assert (output.indexOf("update field " + field2 + " ok") >= 0);
-        assert (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -762,9 +762,9 @@ public class CLIMainTest {
                 "-set", field1, "-value", value1,
                 "-set", field2, "-value", value2);
         System.out.println(output);
-        assert (output.indexOf("update field " + field1 + " ok") >= 0);
-        assert (output.indexOf("update field " + field2 + " ok") >= 0);
-        assert (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
+        assertTrue (output.indexOf("update field " + field1 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -797,9 +797,9 @@ public class CLIMainTest {
                 "-set", field2, "-value", value2,
                 "-pretty");
         System.out.println(output);
-        assert (output.indexOf("update field " + field1 + " ok") >= 0);
-        assert (output.indexOf("update field " + field2 + " ok") >= 0);
-        assert (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
+        assertTrue (output.indexOf("update field " + field1 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -837,9 +837,9 @@ public class CLIMainTest {
                 "-set", field1, "-value", value1,
                 "-set", field2, "-value", value2);
         System.out.println(output);
-        assert (output.indexOf("update field " + field1 + " ok") >= 0);
-        assert (output.indexOf("update field " + field2 + " ok") >= 0);
-        assert (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
+        assertTrue (output.indexOf("update field " + field1 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -849,7 +849,7 @@ public class CLIMainTest {
         callMain(
                 "-e", basePath + "contract_to_export.unicon", "-get", field, "-as", "json");
         System.out.println(output);
-        assert (output.indexOf("export fields as json ok") < 0);
+        assertTrue (output.indexOf("export fields as json ok") < 0);
         assertEquals(0, errors.size());
     }
 
@@ -858,7 +858,7 @@ public class CLIMainTest {
         callMain(
                 "-i", basePath + "contract_to_import.json");
         System.out.println(output);
-        assert (output.indexOf("import from json ok") >= 0);
+        assertTrue (output.indexOf("import from json ok") >= 0);
         assertEquals(1, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -870,7 +870,7 @@ public class CLIMainTest {
         callMain(
                 "-i", basePath + "contract_to_import.json");
         System.out.println(output);
-        assert (output.indexOf("import from json ok") >= 0);
+        assertTrue (output.indexOf("import from json ok") >= 0);
         assertEquals(1, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -882,7 +882,7 @@ public class CLIMainTest {
         callMain(
                 "-i", basePath + "contract_to_import.XML");
         System.out.println(output);
-        assert (output.indexOf("import from xml ok") >= 0);
+        assertTrue (output.indexOf("import from xml ok") >= 0);
         assertEquals(1, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -894,7 +894,7 @@ public class CLIMainTest {
         callMain(
                 "-i", basePath + "contract_to_import.yaml");
         System.out.println(output);
-        assert (output.indexOf("import from yaml ok") >= 0);
+        assertTrue (output.indexOf("import from yaml ok") >= 0);
         assertEquals(1, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -914,9 +914,9 @@ public class CLIMainTest {
                 "-set", field2, "-value", value2);
         System.out.println(output);
         assertEquals(1, errors.size());
-        assert (output.indexOf("import from yaml ok") >= 0);
-        assert (output.indexOf("update field " + field2 + " ok") >= 0);
-        assert (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
+        assertTrue (output.indexOf("import from yaml ok") >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
         }
@@ -929,9 +929,9 @@ public class CLIMainTest {
                 basePath + "contract_to_import.xml",
                 basePath + "contract_to_import.yaml");
         System.out.println(output);
-        assert (output.indexOf("import from json ok") >= 0);
-        assert (output.indexOf("import from yaml ok") >= 0);
-        assert (output.indexOf("import from xml ok") >= 0);
+        assertTrue (output.indexOf("import from json ok") >= 0);
+        assertTrue (output.indexOf("import from yaml ok") >= 0);
+        assertTrue (output.indexOf("import from xml ok") >= 0);
         assertEquals(3, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -947,9 +947,9 @@ public class CLIMainTest {
                 "-name", basePath + "contract_xml.unicon", basePath + "contract_to_import.xml",
                 "-name", basePath + "contract_yaml.unicon", basePath + "contract_to_import.yaml");
         System.out.println(output);
-        assert (output.indexOf("import from json ok") >= 0);
-        assert (output.indexOf("import from yaml ok") >= 0);
-        assert (output.indexOf("import from xml ok") >= 0);
+        assertTrue (output.indexOf("import from json ok") >= 0);
+        assertTrue (output.indexOf("import from yaml ok") >= 0);
+        assertTrue (output.indexOf("import from xml ok") >= 0);
         assertEquals(3, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -965,9 +965,9 @@ public class CLIMainTest {
                 basePath + "contract_to_import.xml",
                 basePath + "contract_to_import.yaml");
         System.out.println(output);
-        assert (output.indexOf("import from json ok") >= 0);
-        assert (output.indexOf("import from yaml ok") >= 0);
-        assert (output.indexOf("import from xml ok") >= 0);
+        assertTrue (output.indexOf("import from json ok") >= 0);
+        assertTrue (output.indexOf("import from yaml ok") >= 0);
+        assertTrue (output.indexOf("import from xml ok") >= 0);
         assertEquals(3, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -983,9 +983,9 @@ public class CLIMainTest {
                         basePath + "contract_to_import.xml," +
                         basePath + "contract_to_import.yaml");
         System.out.println(output);
-        assert (output.indexOf("import from json ok") >= 0);
-        assert (output.indexOf("import from yaml ok") >= 0);
-        assert (output.indexOf("import from xml ok") >= 0);
+        assertTrue (output.indexOf("import from json ok") >= 0);
+        assertTrue (output.indexOf("import from yaml ok") >= 0);
+        assertTrue (output.indexOf("import from xml ok") >= 0);
         assertEquals(3, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -1001,9 +1001,9 @@ public class CLIMainTest {
                         basePath + "contract_to_import.xml," +
                         basePath + "contract_to_import.yaml");
         System.out.println(output);
-        assert (output.indexOf("import from json ok") >= 0);
-        assert (output.indexOf("import from yaml ok") >= 0);
-        assert (output.indexOf("import from xml ok") >= 0);
+        assertTrue (output.indexOf("import from json ok") >= 0);
+        assertTrue (output.indexOf("import from yaml ok") >= 0);
+        assertTrue (output.indexOf("import from xml ok") >= 0);
         assertEquals(3, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -1040,7 +1040,7 @@ public class CLIMainTest {
         callMain(
                 "-i", basePath + "contract_to_import.xml", "-name", basePath + name);
         System.out.println(output);
-        assert (output.indexOf("import from xml ok") >= 0);
+        assertTrue (output.indexOf("import from xml ok") >= 0);
         assertEquals(1, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
@@ -1099,7 +1099,7 @@ public class CLIMainTest {
         for (Integer i : coinValues) {
             total += i;
         }
-        assert (output.indexOf(total + " (TUNC)") >= 0);
+        assertTrue (output.indexOf(total + " (TUNC)") >= 0);
     }
 
     @Test
@@ -1107,7 +1107,7 @@ public class CLIMainTest {
 
         callMain("-f", rootPath + "not_exist_subfolder/", "-v", "-r");
         System.out.println(output);
-        assert (output.indexOf("No contracts found") >= 0);
+        assertTrue (output.indexOf("No contracts found") >= 0);
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_FOUND.name(), errors.get(0).get("code"));
             assertEquals(rootPath + "not_exist_subfolder/", errors.get(0).get("object"));
@@ -1154,7 +1154,7 @@ public class CLIMainTest {
     public void downloadContract() throws Exception {
         callMain("-d", "www.universa.io");
         System.out.println(output);
-        assert (output.indexOf("downloading from www.universa.io") >= 0);
+        assertTrue (output.indexOf("downloading from www.universa.io") >= 0);
         assertEquals(0, errors.size());
     }
 
@@ -1223,7 +1223,7 @@ public class CLIMainTest {
         callMain("-ch", basePath + "notexist.unicon", "-v");
         System.out.println(output);
 
-        assert (output.indexOf("No contracts found") >= 0);
+        assertTrue (output.indexOf("No contracts found") >= 0);
     }
 
     @Test
@@ -1351,7 +1351,7 @@ public class CLIMainTest {
         callMain("--probe", c.getId().toBase64String());
 
         System.out.println(output);
-        assert (output.indexOf(ItemState.APPROVED.name()) >= 0);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
 
 
 
@@ -1374,7 +1374,7 @@ public class CLIMainTest {
         callMain("--probe", tc.getId().toBase64String());
 
         System.out.println(output);
-        assert (output.indexOf(ItemState.APPROVED.name()) >= 1);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 1);
 
 
 
@@ -1387,7 +1387,7 @@ public class CLIMainTest {
 
         System.out.println(output);
 
-        assert (output.indexOf(ItemState.REVOKED.name()) >= 0);
+        assertTrue (output.indexOf(ItemState.REVOKED.name()) >= 0);
     }
 //
 //    @Test
@@ -1735,7 +1735,7 @@ public class CLIMainTest {
         callMain("--probe", c.getId().toBase64String());
 
         System.out.println(output);
-        assert (output.indexOf(ItemState.APPROVED.name()) >= 0);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
 
 
 
@@ -1753,7 +1753,7 @@ public class CLIMainTest {
 
         System.out.println(output);
 
-        assert (output.indexOf(ItemState.REVOKED.name()) >= 0);
+        assertTrue (output.indexOf(ItemState.REVOKED.name()) >= 0);
     }
 
     @Test
@@ -1778,7 +1778,7 @@ public class CLIMainTest {
         System.out.println(output);
         assertEquals(0, errors.size());
 
-        assert (output.indexOf(ItemState.REVOKED.name()) >= 0);
+        assertTrue (output.indexOf(ItemState.REVOKED.name()) >= 0);
     }
 
     @Test
@@ -1796,7 +1796,7 @@ public class CLIMainTest {
         System.out.println(output);
         assertEquals(0, errors.size());
 
-        assert (output.indexOf(ItemState.REVOKED.name()) < 0);
+        assertTrue (output.indexOf(ItemState.REVOKED.name()) < 0);
     }
 
     @Test
@@ -1832,7 +1832,7 @@ public class CLIMainTest {
         System.out.println(output);
         assertEquals(0, errors.size());
 
-        assert (output.indexOf(ItemState.REVOKED.name()) >= 1);
+        assertTrue (output.indexOf(ItemState.REVOKED.name()) >= 1);
     }
 
     @Test
@@ -1917,7 +1917,7 @@ public class CLIMainTest {
         callMain("--cost", basePath + "contract_for_cost.unicon");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
+        assertTrue (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
     }
 
     @Test
@@ -1945,7 +1945,7 @@ public class CLIMainTest {
                 basePath + "contract_for_cost2.unicon");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 2);
+        assertTrue (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 2);
     }
 
     @Test
@@ -1971,7 +1971,7 @@ public class CLIMainTest {
                 "--cost");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
+        assertTrue (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 0);
     }
 
     @Test
@@ -2000,7 +2000,7 @@ public class CLIMainTest {
 
         System.out.println(output);
 
-        assert (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+        assertTrue (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
 
         Contract loaded2 = CLIMain.loadContract(tuContract, true);
 
@@ -2034,10 +2034,10 @@ public class CLIMainTest {
 
         System.out.println(output);
 
-        assert (output.indexOf("registering the paid contract " + contract.getId()
+        assertTrue (output.indexOf("registering the paid contract " + contract.getId()
                 + " from " + basePath + "contract_for_register_and_cost.unicon"
                 + " for 2 TU") >= 0);
-        assert (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+        assertTrue (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
     }
 
     @Test
@@ -2062,7 +2062,7 @@ public class CLIMainTest {
 
         System.out.println("--- load --- " + loaded.getId());
 
-        assert(loaded.getId().equals(stepaTU.getId()));
+        assertTrue (loaded.getId().equals(stepaTU.getId()));
 
 
         Contract paymentDecreased = loaded.createRevision(stepaPrivateKey);
@@ -2079,7 +2079,7 @@ public class CLIMainTest {
 
         System.out.println("--- load 2 --- " + loaded2.getId());
 
-        assert(loaded2.getId().equals(paymentDecreased.getId()));
+        assertTrue (loaded2.getId().equals(paymentDecreased.getId()));
 
     }
 
@@ -2125,7 +2125,7 @@ public class CLIMainTest {
         callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
         System.out.println(output);
 
-        assert (output.indexOf("ERROR: QUANTIZER_COST_LIMIT") >= 0);
+        assertTrue (output.indexOf("ERROR: QUANTIZER_COST_LIMIT") >= 0);
         Contract.setTestQuantaLimit(-1);
     }
 
@@ -2152,7 +2152,7 @@ public class CLIMainTest {
         callMain("--register", basePath + "contract_for_register_and_cost.unicon", "--cost");
         System.out.println(output);
 
-        assert (output.indexOf("ERROR: QUANTIZER_COST_LIMIT") >= 0);
+        assertTrue (output.indexOf("ERROR: QUANTIZER_COST_LIMIT") >= 0);
         Contract.setTestQuantaLimit(-1);
     }
 
@@ -2183,7 +2183,7 @@ public class CLIMainTest {
                 "--cost");
         System.out.println(output);
 
-        assert (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 1);
+        assertTrue (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 1);
     }
 
 
