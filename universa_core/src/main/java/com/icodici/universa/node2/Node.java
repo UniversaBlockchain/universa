@@ -1428,7 +1428,12 @@ public class Node {
                         }
 
                         record.setExpiresAt(item.getExpiresAt());
-                        record.save();
+                        try {
+                            record.save();
+                        } catch (Ledger.Failure failure) {
+                            emergencyBreak();
+                            return;
+                        }
                     }
 
                     if(!processingState.isProcessedToConsensus()) {
@@ -1659,7 +1664,14 @@ public class Node {
                     synchronized (mutex) {
                         lockedToCreate.clear();
                         lockedToRevoke.clear();
-                        record.save();
+
+                        try {
+                            record.save();
+                        } catch (Ledger.Failure failure) {
+                            emergencyBreak();
+                            return;
+                        }
+
                         if (record.getState() != ItemState.APPROVED) {
                             log.e("record is not approved " + record.getState());
                         }
@@ -1692,7 +1704,12 @@ public class Node {
                                 .plus(newState == ItemState.REVOKED ?
                                         config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
                         record.setExpiresAt(expiration);
-                        record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+                        try {
+                            record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+                        } catch (Ledger.Failure failure) {
+                            failure.printStackTrace();
+                            log.e(failure.getMessage());
+                        }
                     }
                     return null;
                 });

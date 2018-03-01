@@ -1,0 +1,1 @@
+alter table ledger alter column expires_at set data type bigint;
