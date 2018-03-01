@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>
  * Key authentication, two steps, client calls serber:
  * <p>
- * connect(my_public_key, client_salt) -> server_nonce get_token(signed(my_public_key, server_nonce, client_nonce)) ->
+ * connect(my_public_key, client_salt) -- server_nonce get_token(signed(my_public_key, server_nonce, client_nonce)) --
  * signed(node_key, server_nonce, encrypted(my_public_key, session_key))
  * <p>
  * Threadpool is used, and controlled by setting THREAD_LIMIT to some specific value, or to null for CachedThreadPool.

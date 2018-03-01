@@ -63,7 +63,6 @@ public abstract class Network {
      * @return the downloaded item, null if the node can't provide it or network error has occurred
      *
      * @throws InterruptedException
-     * @throws TimeoutException     if the item can;t be obtained whithin a given timeout
      */
     public abstract Approvable getItem(HashId itemId, NodeInfo node, Duration maxTimeout)
             throws InterruptedException;

@@ -19,8 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * An implementation of {@link ITempFile}, keeping the file in memory.
- * The {@link InMemoryTempFile::getName} can be used to retrieve the file
- * using {@link InMemoryTempFile::getFileByName} method.
+ * The {@link InMemoryTempFile#getName} can be used to retrieve the file
+ * using {@link InMemoryTempFile#getFileByName} method.
  */
 public class InMemoryTempFile implements ITempFile, AutoCloseable {
 

@@ -94,7 +94,7 @@ public interface BasicHTTPService extends AutoCloseable {
         /**
          * Represent query as Binder of key-values. Values should be decoded, either String or {@link FileUpload}.
          * Contains both query parameters from URL arguments and from forms, where present.
-         * Each key is a {@link String}; a value is either a single {@link String} or {@link java.util.List<String>},
+         * Each key is a {@link String}; a value is either a single {@link String} or {@link java.util.List} of {@link String},
          * depending on how many values were provided for the single key.
          *
          * @return

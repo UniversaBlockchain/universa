@@ -15,25 +15,25 @@ import com.icodici.universa.Approvable;
  * Allowed states:
  * <pre>
  * (UNDEFINED)
- *      --> PENDING
- *              --> (destroyed by expiration)
- *              --> PENDING_NEGATIVE | PENDING_POSITIVE
- *                      --> APPROVED
- *                      --> DECLINED
- *                              --> (destroyed by expiration)
- *              --> APPROVED
- *              --> DECLINED
- *                      --> (destroyed by expiration)
+ *      -- PENDING
+ *              -- (destroyed by expiration)
+ *              -- PENDING_NEGATIVE | PENDING_POSITIVE
+ *                      -- APPROVED
+ *                      -- DECLINED
+ *                              -- (destroyed by expiration)
+ *              -- APPROVED
+ *              -- DECLINED
+ *                      -- (destroyed by expiration)
  *
- *       --> LOCKED_FOR_CREATION
- *              --> APPOVED
- *              --> (destroyed)
+ *       -- LOCKED_FOR_CREATION
+ *              -- APPROVED
+ *              -- (destroyed)
  * ------------------------------------------------------------
  * (APPROVED)
- *      --> LOCKED
- *              --> APPROVED
- *      --> REVOKED
- *              --> (destroyed by expiration)
+ *      -- LOCKED
+ *              -- APPROVED
+ *      -- REVOKED
+ *              -- (destroyed by expiration)
  * </pre>
  */
 public enum ItemState {

@@ -50,7 +50,6 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * Set the permission id. Id is used to simplify detection of the permission changes. Each permission must have a unique per-contract
      * id set while serializing the contract. Once permission id is set, it must never bbe changed.
      *
-     * @return permission id or null
      */
     public void setId(@NonNull String id) {
         if( this.id != null && !this.id.equals(id) )

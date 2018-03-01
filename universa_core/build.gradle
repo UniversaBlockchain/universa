@@ -77,3 +77,9 @@ task nodeJavadoc(type: Javadoc) {
     include("**/node2/Node.java")
     destinationDir = file("../docs/node/javadoc")
 }
+
+task allJavadoc(type: Javadoc) {
+    source = sourceSets.main.allJava
+    classpath = sourceSets.main.compileClasspath
+    destinationDir = file("../docs/javadoc")
+}
