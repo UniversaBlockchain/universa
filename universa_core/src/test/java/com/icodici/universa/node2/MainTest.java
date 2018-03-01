@@ -114,7 +114,7 @@ public class MainTest {
                 .collect(Collectors.toList())
                 .toString();
 
-        assertEquals("[http://localhost:8080, http://localhost:6002, http://localhost:6004]", pubUrls);
+        assertEquals("[http://localhost:8080, http://localhost:6002, http://localhost:6004, http://localhost:6006]", pubUrls);
 
         main.shutdown();
         main.logger.stopInterceptingStdOut();
