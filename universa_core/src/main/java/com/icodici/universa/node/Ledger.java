@@ -66,7 +66,7 @@ public interface Ledger {
      * Shortcut method: check that record exists and its state returns {@link ItemState#isApproved()}}. Check it to
      * ensure its meaning.
      *
-     * @param id
+     * @param id is {@link HashId} for checking item
      * @return true if it is.
      */
     default boolean isApproved(HashId id) {

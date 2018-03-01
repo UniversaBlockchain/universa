@@ -48,8 +48,10 @@ public class UDPAdapter extends DatagramAdapter {
      * Create an instance that listens for the incoming datagrams using the specified configurations. The adapter should
      * start serving incoming datagrams immediately upon creation.
      *
-     * @param sessionKey
-     * @param myNodeInfo
+     * @param ownPrivateKey is {@link PrivateKey} for signing requests
+     * @param sessionKey is {@link SymmetricKey} with session
+     * @param myNodeInfo is {@link NodeInfo} object described node this UDPAdapter work with
+     * @throws IOException if something went wrong
      */
     public UDPAdapter(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo) throws IOException {
         super(ownPrivateKey, sessionKey, myNodeInfo);

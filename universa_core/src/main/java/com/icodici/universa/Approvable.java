@@ -64,6 +64,7 @@ public interface Approvable extends HashIdentifiable {
      * Check the the document is valid assuming all mentioned items are OK, e.g. items, approved by it (if any),
      * items revoking by it and referenced  by it.
      *
+     * @param prefix is for marking checking item
      * @return true if this instance is completely checked with positive result.
      * @throws Quantiser.QuantiserException if processing cost limit is got
      */

@@ -190,7 +190,7 @@ public class Node {
      * If the item is being electing, block until the item been processed with the consensus. Otherwise
      * returns state immediately.
      *
-     * @param itemId item ti check or wait for
+     * @param itemId item to check or wait for
      * @param millisToWait is time to wait in milliseconds
      * @return item state
      * @throws TimeoutException for timeout
@@ -2192,7 +2192,7 @@ public class Node {
         /**
          * Status should break other processes and possibility to launch processes.
          *
-         * @return
+         * @return true if consensus got and processing going father
          */
         public boolean isProcessedToConsensus() {
             switch (this) {

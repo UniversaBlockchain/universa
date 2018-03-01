@@ -81,7 +81,7 @@ public class NodeInfo implements BiSerializable {
     /**
      * Integer node it is now the preferred way to identify nodes
      *
-     * @return
+     * @return node number
      */
     public int getNumber() {
         return number;

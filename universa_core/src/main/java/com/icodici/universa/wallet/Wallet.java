@@ -39,9 +39,10 @@ public class Wallet {
      * Join this contract with other (split when the sum of contracts is greater) or
      * split the current one to have the input value in the one contract.
      *
-     * @param fieldName
-     * @param value     value to have in a one contract
-     * @return
+     * @param fieldName is name of field for split or join
+     * @param value is value to have in a one contract
+     * @return built {@link Contract}
+     * @throws Exception if something went wrong
      */
     public synchronized Contract buildContractWithValue(String fieldName, @NonNull Decimal value) throws Exception {
         if (value == null || Decimal.ZERO.equals(value) || this.contracts.size() == 0) return null;

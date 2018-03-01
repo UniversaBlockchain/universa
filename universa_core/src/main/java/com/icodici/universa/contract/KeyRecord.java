@@ -39,8 +39,6 @@ public class KeyRecord extends Binder implements BiSerializable {
      * PublicKey} instance, same as {@link #getPublicKey()} returns.
      *
      * @param binder is data for KeyRecord as {@link Binder}
-     *
-     * @throws IllegalArgumentException
      */
     public KeyRecord(Binder binder) {
         super(binder);

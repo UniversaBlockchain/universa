@@ -66,7 +66,7 @@ public class SimpleRole extends Role {
     /**
      * Testing only. For one-key roles, return the keyrecord.
      *
-     * @return
+     * @return got {@link KeyRecord}
      */
     @Deprecated
     public KeyRecord getKeyRecord() {

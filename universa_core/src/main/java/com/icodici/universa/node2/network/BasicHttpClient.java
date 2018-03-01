@@ -63,6 +63,12 @@ public class BasicHttpClient {
     /**
      * Authenticate self to the remote party. Blocks until the handshake is done. It is important to start() connection
      * before any use.
+     *
+     * @param privateKey is client's {@link PrivateKey}
+     * @param nodePublicKey is Node's {@link PublicKey}
+     * @param session is {@link BasicHttpClientSession} object, can be null
+     * @return created or already using {@link BasicHttpClientSession}
+     * @throws IOException is something went wrong
      */
     public BasicHttpClientSession start(PrivateKey privateKey, PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
 

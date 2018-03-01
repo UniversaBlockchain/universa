@@ -12,6 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.node2.NodeInfo;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -65,7 +66,9 @@ public abstract class DatagramAdapter {
      * Create an instance that listens for the incoming datagrams using the specified configurations. The adapter should
      * start serving incoming datagrams immediately upon creation.
      *
-     * @param myNodeInfo
+     * @param ownPrivateKey is {@link PrivateKey} for signing requests
+     * @param sessionKey is {@link SymmetricKey} with session
+     * @param myNodeInfo is {@link NodeInfo} object described node this UDPAdapter work with
      */
     public DatagramAdapter(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo) {
         this.myNodeInfo = myNodeInfo;
@@ -83,6 +86,8 @@ public abstract class DatagramAdapter {
 
     /**
      * Add callback for errors.
+     *
+     * @param fn is callback for errors
      */
     public void addErrorsCallback(Function<String, String> fn) {
         errorCallbacks.add(fn);

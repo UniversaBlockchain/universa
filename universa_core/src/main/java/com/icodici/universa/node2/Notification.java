@@ -73,7 +73,7 @@ abstract public class Notification {
      * notifications.
      *
      * @param code  unique type code (per class)
-     * @param klass
+     * @param klass is inherited {@link Notification} class
      */
     static protected void registerClass(int code, Class<? extends Notification> klass) {
         classes.put(code, klass);
