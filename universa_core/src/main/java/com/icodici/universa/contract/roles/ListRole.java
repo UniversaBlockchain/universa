@@ -178,6 +178,7 @@ public class ListRole extends Role {
                         : this.mode.name().toLowerCase(), this.roles);
     }
 
+
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         super.deserialize(data, deserializer);
@@ -185,8 +186,8 @@ public class ListRole extends Role {
         this.quorumSize = data.getInt("quorumSize", 0);
 
         Object mode = data.getOrDefault("mode", null);
-        if (mode != null && mode instanceof Mode) {
-            this.mode = (Mode) mode;
+        if (mode != null) {
+            this.mode = Mode.valueOf((String) mode);
         }
 
         List<Binder> roles = data.getList("roles", null);
@@ -200,9 +201,10 @@ public class ListRole extends Role {
 
     @Override
     public Binder serialize(BiSerializer s) {
+
         return super.serialize(s).putAll(
                 "quorumSize", s.serialize(this.quorumSize),
-                "mode", s.serialize(this.mode),
+                "mode", s.serialize(this.mode.name()),
                 "roles", s.serialize(this.roles));
     }
 
