@@ -1692,7 +1692,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private ZonedDateTime expiresAt;
         private HashId origin;
         private HashId parent;
-        private Binder data;
+        private Binder data = new Binder();
         private String branchId;
 
         private State() {
