@@ -1622,7 +1622,12 @@ public class Node {
                         StateRecord r = ledger.findOrCreate(revokingItem.getId());
                         r.setState(ItemState.REVOKED);
                         r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
-                        r.save();
+                        try {
+                            r.save();
+                        } catch (Ledger.Failure failure) {
+                            emergencyBreak();
+                            return;
+                        }
                     }
                 }
                 for (Approvable newItem : commitingItem.getNewItems()) {
@@ -1631,7 +1636,12 @@ public class Node {
                         StateRecord r = ledger.findOrCreate(newItem.getId());
                         r.setState(ItemState.APPROVED);
                         r.setExpiresAt(newItem.getExpiresAt());
-                        r.save();
+                        try {
+                            r.save();
+                        } catch (Ledger.Failure failure) {
+                            emergencyBreak();
+                            return;
+                        }
                     }
 
                     downloadAndCommitSubItemsOf(newItem);
