@@ -172,7 +172,7 @@ public class StateRecord implements HashIdentifiable {
      * Update recordId. Normally, only {@link Ledger} do it, so avoid calling it. The recordId could be set only if it
      * is not yet set and there is a connected ledger.
      *
-     * @param recordId
+     * @param recordId id of record as long
      */
     public void setRecordId(long recordId) {
         checkLedgerExists();
@@ -213,7 +213,7 @@ public class StateRecord implements HashIdentifiable {
      * Note that the operation is allowed only to the records in {@link ItemState#PENDING}. If the item is already
      * checked locally and is therefore in PENDING_NEGATIVE or PENDING_POSITIVE state, it can not lock any other items.
      *
-     * @param idToRevoke
+     * @param idToRevoke is {@link HashId} for item should be revoked
      * @return locked record id null if it could not be node
      */
     public StateRecord lockToRevoke(HashId idToRevoke) {
@@ -282,6 +282,8 @@ public class StateRecord implements HashIdentifiable {
 
     /**
      * Unlock the record if it was in a locked state, does nothing otherwise.
+     *
+     * @return self {@link StateRecord}
      */
     public StateRecord unlock() {
         switch (state) {

@@ -26,7 +26,7 @@ public final class ParcelLock {
      *
      * @param id       ot get a lock to
      * @param callable lamda to execute exclusively for the id
-     * @param <T>
+     * @param <T> type
      *
      * @return whatever the callable returns
      *

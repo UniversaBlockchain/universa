@@ -49,7 +49,7 @@ public class ModifyDataPermission extends Permission {
      * checkChanges processes the map of changes with the list of fields with predefined data options for a role.
      *
      * @param contract     source (valid) contract
-     * @param changedContract
+     * @param changedContract is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
      */
     @Override

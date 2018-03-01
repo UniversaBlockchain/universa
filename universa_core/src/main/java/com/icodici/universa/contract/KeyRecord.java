@@ -38,7 +38,7 @@ public class KeyRecord extends Binder implements BiSerializable {
      * Construct from a builder. Note that on successful construction "key" parameter will be updated with valid {@link
      * PublicKey} instance, same as {@link #getPublicKey()} returns.
      *
-     * @param binder
+     * @param binder is data for KeyRecord as {@link Binder}
      *
      * @throws IllegalArgumentException
      */

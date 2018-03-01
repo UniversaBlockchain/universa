@@ -57,7 +57,7 @@ public class ChangeNumberPermission extends Permission {
      * to allow using several such permission, from which some may allow the change, and some may not. If a check
      * will add error, though, it will prevent subsequent permission objects to allow the change.
      *  @param contract     source (valid) contract
-     * @param changed
+     * @param changed is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
      */
     @Override

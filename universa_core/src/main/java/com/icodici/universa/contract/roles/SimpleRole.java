@@ -108,9 +108,9 @@ public class SimpleRole extends Role {
      * So, it is safe to edit cloned keyRecords, while keys itself are not copied and are packed with Boss effeciently.
      * More or less ;)
      *
-     * @param name
+     * @param name is new name for the role
      *
-     * @return
+     * @return cloned {@link SimpleRole}
      */
     public SimpleRole cloneAs(String name) {
         SimpleRole r = new SimpleRole(name);

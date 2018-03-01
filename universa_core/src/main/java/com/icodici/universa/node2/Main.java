@@ -187,7 +187,7 @@ public class Main {
     /**
      * For unit-tests. Blocks until the node is initialized.
      *
-     * @throws InterruptedException
+     * @throws InterruptedException for unexpected interrupt
      */
     public void waitReady() throws InterruptedException {
         eventReady.await();

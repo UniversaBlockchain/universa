@@ -85,7 +85,7 @@ public class Quantiser {
         /**
          * Return cost of the process.
          *
-         * @return
+         * @return processing cost
          */
         public int getCost() {
             switch (this) {

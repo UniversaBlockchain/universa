@@ -213,8 +213,10 @@ public class Config {
     }
 
     /**
-     * num of known (approved, declined, revoked or locked) subcontracts of a complex contract that starts resync
+     * Num of known (approved, declined, revoked or locked) subcontracts of a complex contract that starts resync
      * if some another contracts is unknown
+     *
+     * @return num of known subcontracts
      */
     public int getKnownSubContractsToResync() {
         return knownSubContractsToResync;

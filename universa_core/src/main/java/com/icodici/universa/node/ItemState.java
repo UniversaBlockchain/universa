@@ -90,7 +90,7 @@ public enum ItemState {
     /**
      * Check that either positive or negative consensus was found
      *
-     * @return
+     * @return true if consensus found
      */
     public boolean isConsensusFound() {
         switch (this) {

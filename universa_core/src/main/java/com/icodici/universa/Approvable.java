@@ -65,6 +65,7 @@ public interface Approvable extends HashIdentifiable {
      * items revoking by it and referenced  by it.
      *
      * @return true if this instance is completely checked with positive result.
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     boolean check(String prefix) throws Quantiser.QuantiserException;
 

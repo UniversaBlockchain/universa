@@ -20,6 +20,8 @@ import java.net.Socket;
 public class MicroHTTPD extends NanoHTTPD {
     /**
      * Constructor.
+     * @param portToListen is port number
+     * @param threadLimit is maximum available threads
      */
     public MicroHTTPD(int portToListen, @Nullable Integer threadLimit) {
         super(portToListen);

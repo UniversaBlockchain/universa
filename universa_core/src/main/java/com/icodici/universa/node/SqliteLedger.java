@@ -267,7 +267,7 @@ public class SqliteLedger implements Ledger {
     /**
      * Enable or disable records caching. USe it in tests only, in production it should always be enabled
      *
-     * @param enable
+     * @param enable, if true it is enabling cache
      */
     public void enableCache(boolean enable) {
         if (enable) {

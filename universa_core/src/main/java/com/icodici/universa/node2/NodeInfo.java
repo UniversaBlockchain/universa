@@ -90,7 +90,7 @@ public class NodeInfo implements BiSerializable {
     /**
      * String node name is now a secondary identificator
      *
-     * @return
+     * @return name
      */
     public String getName() {
         return nodeName;

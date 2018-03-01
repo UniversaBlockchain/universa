@@ -96,7 +96,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @param sealed binary sealed contract.
      * @param pack   the transaction pack to resolve dependeincise agains.
      *
-     * @throws IllegalArgumentException on the various format errors
+     * @throws IOException on the various format errors
      */
     public Contract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
@@ -194,8 +194,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @param sealed binary sealed contract
      * @param data   unpacked sealed data (it is ready by the time of calling it)
+     * @param pack is {@link TransactionPack} for contract was sent with
      *
-     * @throws IllegalArgumentException on the various format errors
+     * @throws IOException on the various format errors
      */
     public Contract(byte[] sealed, Binder data, TransactionPack pack) throws IOException {
         this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
@@ -270,7 +271,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
      * creation (but before sealing).
      *
-     * @param key
+     * @param key is {@link PrivateKey} for creating roles "issuer", "owner", "creator" and sign contract
      */
     public Contract(PrivateKey key) {
         this();
@@ -722,7 +723,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Add one or more contracts to revoke. The contracts must be approved loaded from a binary. Do not call {@link
      * #seal()} on them as resealing discards network approval by changing the id!
      *
-     * @param toRevoke
+     * @param toRevoke is comma-separated contract to revoke
      */
     public void addRevokingItems(Contract... toRevoke) {
         for (Contract c : toRevoke) {
@@ -792,9 +793,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Resolve object describing role and create either: - new role object - symlink to named role instance, ensure it
      * is register and return it, if it is a Map, tries to construct and register {@link Role} then return it.
      *
-     * @param roleObject
+     * @param roleName is name of the role
+     * @param roleObject is object for role creating
      *
-     * @return
+     * @return created {@link Role}
      */
     @NonNull
     protected Role createRole(String roleName, Object roleObject) {
@@ -1135,6 +1137,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * of this contract, with all fields and references correctly set. After this call one need to change mutable
      * fields, add signing keys, seal it and then apss to Universa network for approval.
      *
+     * @param transactional is {@link Transactional} section to create new revision with
      * @return new revision of this contract, identical to this one, to be modified.
      */
     public synchronized Contract createRevision(Transactional transactional) {
@@ -1362,7 +1365,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Add one or more siblings to the contract. Note that those must be sealed before calling {@link #seal()} or {@link
      * #getPackedTransaction()}. Do not reseal as it changes the id!
      *
-     * @param newContracts
+     * @param newContracts is comma-separated contracts
      */
     public void addNewItems(Contract... newContracts) {
         for (Contract c : newContracts) {
@@ -1374,10 +1377,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Get the named field in 'dotted' notation, e.g. 'state.data.name', or 'state.origin', 'definition.issuer' and so
      * on.
      *
-     * @param name
-     *
-     * @return
+     * @param name of field to got value from
+     * @param <T> type for value
+     * @return found value
      */
+
     public <T> T get(String name) {
         String originalName = name;
         if (name.startsWith("definition.")) {
@@ -1419,8 +1423,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Set the named field in 'dotted' notation, e.g. 'state.data.name', or 'state.origin', 'definition.issuer' and so
      * on.
      *
-     * @param name
-     * @param value
+     * @param name of field to be set
+     * @param value to be set
      */
     public void set(String name, Binder value) {
         if (name.startsWith("definition.")) {
@@ -1565,7 +1569,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * To pack and write corresponding .unicon file use {@link #getPackedTransaction()}.
      *
      * @param packedItem some packed from of the universa contract
-     *
+     * @return unpacked {@link Contract}
      * @throws IOException if the packedItem is broken
      */
     public static Contract fromPackedTransaction(@NonNull byte[] packedItem) throws IOException {
@@ -1615,6 +1619,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @param keys that should be tested
      *
      * @return true if the set of keys is enough revoke this contract.
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     public boolean canBeRevoked(Set<PublicKey> keys) throws Quantiser.QuantiserException {
         for (Permission perm : permissions.getList("revoke")) {
@@ -1636,8 +1641,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     /**
      * Verify signature, but before quantize this operation.
-     * @param key
-     * @throws Quantiser.QuantiserException
+     * @param key that will be quantized
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     protected void verifySignatureQuantized(PublicKey key) throws Quantiser.QuantiserException {
         // Add check signature quanta
@@ -1652,8 +1657,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     /**
      * Quantize given permission (add cost for that permission).
      * Use for permissions that will be applicated, but before checking.
-     * @param permission
-     * @throws Quantiser.QuantiserException
+     * @param permission that will be quantized
+     * @throws Quantiser.QuantiserException if processing cost limit is got
      */
     public void checkApplicablePermissionQuantized(Permission permission) throws Quantiser.QuantiserException {
         // Add check an applicable permission quanta
@@ -1777,9 +1782,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private Integer branchRevision = null;
 
         /**
-         * Revision at which this branch was splitted
+         * Revision at which this branch was split
          *
-         * @return
+         * @return branch revision as int
          */
         public Integer getBranchRevision() {
             if (branchRevision == null) {
@@ -2026,7 +2031,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     /**
      * Make a valid deep copy of a contract
      *
-     * @return
+     * @return instance of {@link Contract}
      */
     public synchronized Contract copy() {
         return Boss.load(Boss.dump(this));

@@ -173,7 +173,7 @@ public class Node {
      * This method launch resync process, call to network to know what consensus is or hasn't consensus for the item.
      *
      * @param id item to resync
-     *
+     * @throws Exception with various types
      */
     public void resync(HashId id) throws Exception {
 
@@ -191,8 +191,10 @@ public class Node {
      * returns state immediately.
      *
      * @param itemId item ti check or wait for
-     *
+     * @param millisToWait is time to wait in milliseconds
      * @return item state
+     * @throws TimeoutException for timeout
+     * @throws InterruptedException for unexpected interrupt
      */
     public ItemResult waitItem(HashId itemId, long millisToWait) throws TimeoutException, InterruptedException {
 
@@ -213,7 +215,9 @@ public class Node {
      * If the parcel is being processing, block until the parcel been processed (been processed payment and payload contracts).
      *
      * @param parcelId parcel to wait for
-     *
+     * @param millisToWait is time to wait in milliseconds
+     * @throws TimeoutException for timeout
+     * @throws InterruptedException for unexpected interrupt
      */
     public void waitParcel(HashId parcelId, long millisToWait) throws TimeoutException, InterruptedException {
 
@@ -505,11 +509,11 @@ public class Node {
         }
     }
 
-    protected Object checkItemInternal(@NonNull HashId itemId) {
+    private Object checkItemInternal(@NonNull HashId itemId) {
         return checkItemInternal(itemId, null, null, false, false);
     }
 
-    protected Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item, boolean autoStart, boolean forceChecking) {
+    private Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item, boolean autoStart, boolean forceChecking) {
 
         return checkItemInternal(itemId, parcelId, item, autoStart, forceChecking, false);
     }
@@ -530,7 +534,7 @@ public class Node {
      *         ItemResult if it is already processed or can't be processed, say, created_at field is too far in
      *         the past, in which case result state will be ItemState#DISCARDED.
      */
-    protected Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item,
+    private Object checkItemInternal(@NonNull HashId itemId, HashId parcelId, Approvable item,
                                        boolean autoStart, boolean forceChecking, boolean ommitItemResult) {
         try {
             // first, let's lock to the item id:
@@ -634,7 +638,7 @@ public class Node {
     /**
      * Get the cached item.
      *
-     * @param itemId
+     * @param itemId is {@link HashId} of the looking item
      *
      * @return cached item or null if it is missing
      */
@@ -648,13 +652,13 @@ public class Node {
     /**
      * Get the cached parcel.
      *
-     * @param itemId
+     * @param parcelId is {@link HashId} of {@link Parcel}
      *
-     * @return cached parcel or null if it is missing
+     * @return cached {@link Parcel} or null if it is missing
      */
-    public Parcel getParcel(HashId itemId) {
+    public Parcel getParcel(HashId parcelId) {
         synchronized (parcelCache) {
-            @Nullable Parcel i = parcelCache.get(itemId);
+            @Nullable Parcel i = parcelCache.get(parcelId);
             return i;
         }
     }
@@ -2097,7 +2101,7 @@ public class Node {
         /**
          * Status should break other processes and possibility to launch processes.
          *
-         * @return
+         * @return true if consensus found
          */
         public boolean isProcessedToConsensus() {
             switch (this) {

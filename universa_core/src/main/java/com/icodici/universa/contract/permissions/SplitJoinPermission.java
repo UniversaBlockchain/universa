@@ -66,7 +66,7 @@ public class SplitJoinPermission extends Permission {
      * though, it will prevent subsequent permission objects to allow the change.
      *
      * @param contract     source (valid) contract
-     * @param changed
+     * @param changed is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
      */
     @Override
