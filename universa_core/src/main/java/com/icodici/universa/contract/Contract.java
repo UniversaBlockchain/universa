@@ -165,6 +165,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         roles.values().forEach(role -> {
             role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+            role.getAnonymousIds().forEach(anonId -> {
+                transactionPack.getKeysForPack().forEach(
+                        key -> {
+                            try {
+                                if(key.matchAnonymousId(anonId)) {
+                                    keys.put(ExtendedSignature.keyId(key), key);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            });
         });
 
         for (Object signature : (List) data.getOrThrow("signatures")) {
@@ -237,6 +250,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         roles.values().forEach(role -> {
             role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+            role.getAnonymousIds().forEach(anonId -> {
+                transactionPack.getKeysForPack().forEach(
+                        key -> {
+                            try {
+                                if(key.matchAnonymousId(anonId)) {
+                                    keys.put(ExtendedSignature.keyId(key), key);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            });
         });
 
         for (Object signature : (List) data.getOrThrow("signatures")) {

@@ -85,6 +85,12 @@ public class RoleLink extends Role {
     }
 
     @Override
+    public Set<byte[]> getAnonymousIds() {
+        final Role role = resolve();
+        return (role == null) ? null : role.getAnonymousIds();
+    }
+
+    @Override
     public Set<PublicKey> getKeys() {
         final Role role = resolve();
         return (role == null) ? null : role.getKeys();
