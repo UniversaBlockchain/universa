@@ -30,6 +30,7 @@ import java.util.*;
 public class SimpleRole extends Role {
 
     private final Map<PublicKey, KeyRecord> keyRecords = new HashMap<>();
+    private final Set<byte[]> anonymousIds = new HashSet<>();
 
     public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
@@ -79,8 +80,14 @@ public class SimpleRole extends Role {
         return new HashSet(keyRecords.values());
     }
 
+    @Override
     public Set<PublicKey> getKeys() {
         return keyRecords.keySet();
+    }
+
+    @Override
+    public Set<byte[]> getAnonymousIds() {
+        return anonymousIds;
     }
 
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {

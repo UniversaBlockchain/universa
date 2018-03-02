@@ -85,6 +85,8 @@ public abstract class Role implements BiSerializable {
 
     public abstract Set<PublicKey> getKeys();
 
+    public abstract Set<byte[]> getAnonymousIds();
+
     public Set<KeyRecord> getKeyRecords() {
         return Collections.emptySet();
     }
