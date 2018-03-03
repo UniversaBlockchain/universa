@@ -19,6 +19,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -99,7 +100,17 @@ public class SimpleRole extends Role {
 
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         // any will go logic
-        return keys.stream().anyMatch(k -> keyRecords.containsKey(k.getPublicKey()));
+        return keys.stream().anyMatch(k -> {
+            boolean anyMatch1 = anonymousIds.stream().anyMatch(anonId -> {
+                try {
+                    return k.matchAnonymousId(anonId.getBytes());
+                } catch (IOException e) {
+                    return false;
+                }
+            });
+            boolean anyMatch2 = keyRecords.containsKey(k.getPublicKey());
+            return anyMatch1 || anyMatch2;
+        });
     }
 
     public boolean isValid() {
