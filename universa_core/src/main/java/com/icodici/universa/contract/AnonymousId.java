@@ -47,6 +47,11 @@ public class AnonymousId implements BiSerializable {
     }
 
     @Override
+    public int hashCode() {
+        return anonymousId.hashCode();
+    }
+
+    @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         anonymousId = data.getBinaryOrThrow("anonymousId");
     }

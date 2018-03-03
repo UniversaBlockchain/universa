@@ -119,8 +119,12 @@ public class SimpleRole extends Role {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof SimpleRole)
-            return ((SimpleRole) obj).getName().equals(getName()) && ((SimpleRole) obj).equalKeys(this);
+        if (obj instanceof SimpleRole) {
+            boolean a = ((SimpleRole) obj).getName().equals(getName());
+            boolean b = ((SimpleRole) obj).equalKeys(this);
+            boolean c = ((SimpleRole) obj).anonymousIds.containsAll(this.anonymousIds);
+            return a && b && c;
+        }
         return false;
     }
 
@@ -140,6 +144,7 @@ public class SimpleRole extends Role {
     public SimpleRole cloneAs(String name) {
         SimpleRole r = new SimpleRole(name);
         keyRecords.values().forEach(kr -> r.addKeyRecord(kr));
+        anonymousIds.forEach(aid -> r.anonymousIds.add(aid));
         return r;
     }
 
