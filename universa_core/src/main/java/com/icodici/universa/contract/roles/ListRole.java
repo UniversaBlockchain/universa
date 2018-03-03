@@ -204,7 +204,7 @@ public class ListRole extends Role {
 
         return super.serialize(s).putAll(
                 "quorumSize", s.serialize(this.quorumSize),
-                "mode", s.serialize(this.mode.name()),
+                "mode", s.serialize(this.mode == null ? null : this.mode.name()),
                 "roles", s.serialize(this.roles));
     }
 
