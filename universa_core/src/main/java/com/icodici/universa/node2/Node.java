@@ -7,12 +7,16 @@
 
 package com.icodici.universa.node2;
 
-import com.icodici.crypto.PrivateKey;
-import com.icodici.db.Db;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.Reference;
+import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
+import com.icodici.universa.contract.permissions.ModifyDataPermission;
+import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiAdapter;
@@ -25,7 +29,6 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -67,6 +70,19 @@ public class Node {
         public Thread newThread(Runnable r) {
             Thread thread = new Thread(threadGroup,r);
             thread.setName("node-"+myInfo.getNumber()+"-worker");
+            return thread;
+        }
+    });
+
+    private ScheduledExecutorService lowPrioExecutorService = new ScheduledThreadPoolExecutor(16, new ThreadFactory() {
+
+        private final ThreadGroup threadGroup = new ThreadGroup("low-prio-node-workers");
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread thread = new Thread(threadGroup,r);
+            thread.setName("low-prio-node-"+myInfo.getNumber()+"-worker");
+            thread.setPriority((Thread.NORM_PRIORITY+Thread.MIN_PRIORITY)/2);
             return thread;
         }
     });
@@ -1646,6 +1662,8 @@ public class Node {
                             emergencyBreak();
                             return;
                         }
+
+                        lowPrioExecutorService.schedule(() -> checkSpecialItem(newItem),100,TimeUnit.MILLISECONDS);
                     }
 
                     downloadAndCommitSubItemsOf(newItem);
@@ -1686,6 +1704,8 @@ public class Node {
                             log.e("record is not approved " + record.getState());
                         }
                     }
+                    lowPrioExecutorService.schedule(() -> checkSpecialItem(item),100,TimeUnit.MILLISECONDS);
+
                 } catch (TimeoutException | InterruptedException e) {
                     setState(ItemState.UNDEFINED);
                     record.destroy();
@@ -2105,6 +2125,104 @@ public class Node {
         public String toString() {
             return "ip -> parcel: " + parcelId + ", item: " + itemId + ", processing state: " + processingState;
         }
+    }
+
+    private void checkSpecialItem(Approvable item) {
+        if(item instanceof Contract) {
+            Contract contract = (Contract) item;
+            if (contract.getIssuer().getKeys().equals(new HashSet<>(Arrays.asList(config.getNetworkConfigIssuerKey())))) {
+                if(contract.getParent() == null)
+                    return;
+
+                if(contract.getRevoking().size() == 0 || !contract.getRevoking().get(0).getId().equals(contract.getParent()))
+                    return;
+
+                Contract parent = contract.getRevoking().get(0);
+
+
+                if(!checkContractCorrespondsToConfig(parent,network.allNodes())) {
+                    return;
+                }
+
+                if(!checkIfContractContainsNetConfig(contract)) {
+                    return;
+                }
+
+                List<NodeInfo> networkNodes = network.allNodes();
+
+                List contractNodes = (List)DefaultBiMapper.getInstance().deserializeObject(contract.getStateData().get("net_config"));
+                contractNodes.stream().forEach(nodeInfo -> {
+                    if(!networkNodes.contains(nodeInfo)) {
+                        addNode((NodeInfo) nodeInfo);
+                    }
+
+                    networkNodes.remove(nodeInfo);
+                });
+
+                networkNodes.stream().forEach( nodeInfo -> removeNode(nodeInfo));
+            }
+        }
+    }
+
+    private boolean checkIfContractContainsNetConfig(Contract contract) {
+        if(!contract.getStateData().containsKey("net_config")) {
+            return false;
+        }
+
+        //check if owner is list role
+        if(!(contract.getOwner() instanceof ListRole)) {
+            return false;
+        }
+
+        //TODO: network council criteria here
+        // check if quorum matches network concil criteria
+        ListRole owner = (ListRole) contract.getOwner();
+        if(owner.getQuorum() == 0 || owner.getQuorum() < owner.getRoles().size()-1) {
+            return false;
+        }
+
+        //check if owner keys set equals to nodes key set
+        Object obj = DefaultBiMapper.getInstance().deserializeObject(contract.getStateData().get("net_config"));
+        if(!(obj instanceof List)) {
+            return false;
+        }
+
+        List contractNodes = (List) obj;
+        Set<PublicKey> ownerKeys = contract.getOwner().getKeys();
+        if(contractNodes.size() != ownerKeys.size() || !contractNodes.stream().allMatch(nodeInfo -> nodeInfo instanceof NodeInfo && ownerKeys.contains(((NodeInfo)nodeInfo).getPublicKey()))) {
+            return false;
+        }
+
+        for(Permission permission : contract.getPermissions().values()) {
+            if(permission instanceof ChangeOwnerPermission) {
+                if(!(permission.getRole() instanceof RoleLink) || ((RoleLink)permission.getRole()).getRole() != contract.getOwner())
+                    return false;
+            }
+
+            if(permission instanceof ModifyDataPermission) {
+                if(((ModifyDataPermission)permission).getFields().containsKey("net_config")) {
+                    if(!(permission.getRole() instanceof RoleLink) || ((RoleLink)permission.getRole()).getRole() != contract.getOwner())
+                        return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private boolean checkContractCorrespondsToConfig(Contract contract, List<NodeInfo> netNodes) {
+        //check if contract contains net config
+        if(!checkIfContractContainsNetConfig(contract)) {
+            return false;
+        }
+
+        //check if net config equals to current network configuration
+        List<NodeInfo> contractNodes = DefaultBiMapper.getInstance().deserializeObject(contract.getStateData().get("net_config"));
+        if(contractNodes.size() != netNodes.size() || !contractNodes.stream().allMatch(nodeInfo -> netNodes.contains(nodeInfo))) {
+            return false;
+        }
+
+        return true;
     }
 
 

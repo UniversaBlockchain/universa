@@ -444,13 +444,6 @@ public class MainTest {
 
 
     @Test
-    public void keyGen1111() throws Exception {
-        byte[] bytes = new PrivateKey(Do.read("./src/test_node_config_v2_dynamic_test/node4/tmp/node2_4.private.unikey")).getPublicKey().pack();
-        FileOutputStream fos = new FileOutputStream("./src/test_node_config_v2_dynamic_test/node4/config/keys/node2_4.public.unikey");
-        fos.write(bytes);
-    }
-
-    @Test
     public void reconfigurationContractTest() throws Exception {
 
 //        PrivateKey reconfigKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
@@ -477,7 +470,7 @@ public class MainTest {
         }
         mm.clear();
 
-        Contract contract = createNetConfigContract(netConfig);
+        Contract configContract = createNetConfigContract(netConfig);
 
         List<String> dbUrls = new ArrayList<>();
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
@@ -491,45 +484,52 @@ public class MainTest {
 
         Client client = new Client(TestKeys.privateKey(0), mm.get(0).myInfo, null);
 
-        Parcel parcel = createParcelWithFreshTU(client, contract);
+        Parcel parcel = createParcelWithFreshTU(client, configContract);
         client.registerParcel(parcel.pack(),15000);
 
 
         ItemResult rr;
         while (true) {
 
-            rr = client.getState(contract.getId());
+            rr = client.getState(configContract.getId());
             Thread.currentThread().sleep(50);
             if (!rr.state.isPending())
                 break;
         }
         assertEquals(rr.state, ItemState.APPROVED);
 
-        contract = createNetConfigContract(contract,netConfigNew,nodeKeys);
+        configContract = createNetConfigContract(configContract,netConfigNew,nodeKeys);
 
-        parcel = createParcelWithFreshTU(client, contract);
+        parcel = createParcelWithFreshTU(client, configContract);
         client.registerParcel(parcel.pack(),15000);
         while (true) {
 
-            rr = client.getState(contract.getId());
+            rr = client.getState(configContract.getId());
             Thread.currentThread().sleep(50);
             if (!rr.state.isPending())
                 break;
         }
         assertEquals(rr.state, ItemState.APPROVED);
+        Thread.sleep(1000);
+        for (Main m : mm) {
+            assertEquals(m.config.getPositiveConsensus(), 3);
+        }
+        configContract = createNetConfigContract(configContract,netConfig,nodeKeys);
 
-        contract = createNetConfigContract(contract,netConfig,nodeKeys);
-
-        parcel = createParcelWithFreshTU(client, contract);
+        parcel = createParcelWithFreshTU(client, configContract);
         client.registerParcel(parcel.pack(),15000);
         while (true) {
 
-            rr = client.getState(contract.getId());
+            rr = client.getState(configContract.getId());
             Thread.currentThread().sleep(50);
             if (!rr.state.isPending())
                 break;
         }
         assertEquals(rr.state, ItemState.APPROVED);
+        Thread.sleep(1000);
+        for (Main m : mm) {
+            assertEquals(m.config.getPositiveConsensus(), 2);
+        }
 
         for (Main m : mm) {
             m.shutdown();
@@ -590,15 +590,6 @@ public class MainTest {
         return contract;
     }
 
-
-    @Test
-    public void genKeys() throws Exception {
-
-        for(int i = 0; i < 36; i++) {
-            System.out.println("\""+Base64.encodeString(new PrivateKey(2048).pack()) +"\",");
-        }
-
-    }
     @Test
     public void localNetwork() throws Exception {
         List<Main> mm = new ArrayList<>();

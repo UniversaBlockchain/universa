@@ -150,7 +150,7 @@ public class Main {
             int resyncBreak = (int) Math.ceil(n * 0.2);
             if (resyncBreak < 1)
                 resyncBreak = 1;
-            log("Network consensus is set to (negative/positive/resyncBreak): " + negative + " / " + positive + " / " + resyncBreak);
+            log(myInfo.getNumber() + ": Network consensus is set to (negative/positive/resyncBreak): " + negative + " / " + positive + " / " + resyncBreak);
             config.setPositiveConsensus(positive);
             config.setNegativeConsensus(negative);
             config.setResyncBreakConsensus(resyncBreak);
