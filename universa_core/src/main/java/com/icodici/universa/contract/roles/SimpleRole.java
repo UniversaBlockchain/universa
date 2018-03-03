@@ -19,6 +19,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -31,7 +32,7 @@ import java.util.*;
 public class SimpleRole extends Role {
 
     private final Map<PublicKey, KeyRecord> keyRecords = new HashMap<>();
-    private final Set<byte[]> anonymousIds = new HashSet<>();
+    private final Set<AnonymousId> anonymousIds = new HashSet<>();
 
     public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
@@ -49,17 +50,21 @@ public class SimpleRole extends Role {
         super(name);
         records.forEach(x -> {
             KeyRecord kr = null;
+            AnonymousId anonId = null;
             if (x instanceof KeyRecord)
                 kr = (KeyRecord) x;
             else if (x instanceof PublicKey)
                 kr = new KeyRecord((PublicKey) x);
             else if (x instanceof AnonymousId)
-                kr = new KeyRecord((AnonymousId) x);
+                anonId = (AnonymousId) x;
             else if (x instanceof PrivateKey)
                 kr = new KeyRecord(((PrivateKey) x).getPublicKey());
             else
                 throw new IllegalArgumentException("Cant create KeyRecord from " + x);
-            keyRecords.put(kr.getPublicKey(), kr);
+            if (anonId != null)
+                anonymousIds.add(anonId);
+            else
+                keyRecords.put(kr.getPublicKey(), kr);
         });
     }
 
@@ -89,17 +94,27 @@ public class SimpleRole extends Role {
     }
 
     @Override
-    public Set<byte[]> getAnonymousIds() {
+    public Set<AnonymousId> getAnonymousIds() {
         return anonymousIds;
     }
 
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         // any will go logic
-        return keys.stream().anyMatch(k -> keyRecords.containsKey(k.getPublicKey()));
+        return keys.stream().anyMatch(k -> {
+            boolean anyMatch1 = anonymousIds.stream().anyMatch(anonId -> {
+                try {
+                    return k.matchAnonymousId(anonId.getBytes());
+                } catch (IOException e) {
+                    return false;
+                }
+            });
+            boolean anyMatch2 = keyRecords.containsKey(k.getPublicKey());
+            return anyMatch1 || anyMatch2;
+        });
     }
 
     public boolean isValid() {
-        return !keyRecords.isEmpty();
+        return !keyRecords.isEmpty() || !anonymousIds.isEmpty();
     }
 
     @Override
@@ -150,12 +165,20 @@ public class SimpleRole extends Role {
             });
 
         }
+        List anonIdList = data.getList("anonIds", null);
+        anonymousIds.clear();
+        if (anonIdList != null) {
+            for (Object aid : anonIdList) {
+                anonymousIds.add( deserializer.deserialize(aid));
+            }
+        }
     }
 
     @Override
     public Binder serialize(BiSerializer s) {
         return super.serialize(s).putAll(
-                        "keys", s.serialize(keyRecords.values())
+                        "keys", s.serialize(keyRecords.values()),
+                        "anonIds", s.serialize(anonymousIds)
                 );
     }
 

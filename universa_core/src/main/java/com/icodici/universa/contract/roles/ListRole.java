@@ -10,6 +10,7 @@ package com.icodici.universa.contract.roles;
 
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -153,7 +154,7 @@ public class ListRole extends Role {
     }
 
     @Override
-    public Set<byte[]> getAnonymousIds() {
+    public Set<AnonymousId> getAnonymousIds() {
         return this.roles.stream()
                 .flatMap(role -> role.getAnonymousIds().stream())
                 .collect(Collectors.toSet());

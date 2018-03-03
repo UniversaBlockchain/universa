@@ -1505,11 +1505,13 @@ public class MainTest {
         contract.addSignerKey(myPrivKey);
         contract.seal();
 
-        contract.check();
+        System.out.println("contract.check(): " + contract.check());
         contract.traceErrors();
 
         //ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);
-        ItemResult itemResult = ts.node.node.registerItem(contract);
+        ItemResult itemResult0 = ts.node.node.registerItem(contract);
+        Thread.sleep(1000000000);
+        ItemResult itemResult = ts.node.node.waitItem(contract.getId(), 100);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
