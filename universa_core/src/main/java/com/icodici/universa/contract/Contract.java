@@ -1767,6 +1767,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         public Binder getData() {
+            if( data == null )
+                data = new Binder();
             return data;
         }
 

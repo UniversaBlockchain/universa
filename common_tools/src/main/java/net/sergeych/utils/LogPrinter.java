@@ -10,6 +10,8 @@ package net.sergeych.utils;
 //import android.util.Log;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Log reporting stub. Platform-dependency crutches. Fuck Java for the lack of conditional
@@ -45,19 +47,28 @@ public class LogPrinter {
     }
 
     public void log(char type,String tag,Callable<String> source) {
-        if( type == 'd' && !showDebugMessages )
-            return;
-        try {
-            log(type, tag, source.call());
-        } catch (Exception e) {
-            wtf("Exception in log source callable: ", e);
-        }
+        es.submit( () -> {
+            if (type == 'd' && !showDebugMessages)
+                return;
+            try {
+                log(type, tag, source.call());
+            } catch (Exception e) {
+                wtf("Exception in log source callable: ", e);
+            }
+        });
+    }
+
+
+    public void e(Callable<String> msg) {
+        log('e', tag, msg);
     }
 
     public void log(char type, String tag, String message) {
-        if( type == 'd' && !showDebugMessages )
-            return;
-        outputLog(tag, message);
+        es.submit( () -> {
+            if (type == 'd' && !showDebugMessages)
+                return;
+            outputLog(tag, message);
+        });
     }
 
     public void outputLog(String tag, String message) {
@@ -97,4 +108,6 @@ public class LogPrinter {
         log('f', tag, message + ": "+t);
         t.printStackTrace();
     }
+
+    private static ExecutorService es = Executors.newSingleThreadExecutor();
 }
