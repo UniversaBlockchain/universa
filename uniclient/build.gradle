@@ -32,10 +32,41 @@ task fatJar(type: Jar) {
     }
 //    baseName = project.name + '-all'
     archiveName = 'uniclient.jar'
-    doFirst {
-        from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    }
     exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    // Remove some redundant files from universa_core which are actually not used.
+    exclude 'migrations/**', 'COPYING.LIBGMP'
+    exclude 'META-INF/nanohttpd/**', 'META-INF/LICENSE',
+            'META-INF/maven/org.postgresql/**', 'META-INF/maven/org.postgresql/**',
+            'META-INF/maven/com.ongres.scram/**', 'META-INF/maven/org.xerial/**'
+    exclude 'org/nanohttpd/**', 'org/postgresql/**', 'org/sqlite/**', 'org/checkerframework/**'
+    // Remove GMP native code optimization for SunOS; can be reenabled if there are any users.
+    exclude 'sunos-x86-64/**'
+    // Prevent duplicates
+    duplicatesStrategy 'exclude'
+    // Safer with too many files in the archive
+    zip64 true
+    // Fat-Jar primary logic
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
+
+    // This set of commands may compress the jar file even more, to the utmost level,
+    // but it requires 7zip compressor to be available.
+//    doLast {
+//        exec {
+//            workingDir 'build/libs'; commandLine 'rm', '-rf', 'uniclient-tmp'
+//        }
+//        exec {
+//            workingDir 'build/libs'; commandLine '7z', 'x', '-bb0', '-bd', '-ouniclient-tmp', 'uniclient.jar'
+//        }
+//        exec {
+//            workingDir 'build/libs'; commandLine 'rm', '-f', 'uniclient.jar'
+//        }
+//        exec {
+//            workingDir 'build/libs/uniclient-tmp';
+//            commandLine '7z', 'a', '-bb0', '-bd', '-tZIP', '-mx9', '-mm=Deflate', '-mfb=258', '-mpass=15', '../uniclient.jar', '*'
+//        }
+//        exec {
+//            workingDir 'build/libs'; commandLine 'rm', '-rf', 'uniclient-tmp'
+//        }
+//    }
 }

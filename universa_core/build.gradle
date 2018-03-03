@@ -58,10 +58,9 @@ task fatJar(type: Jar) {
     }
 //    baseName = project.name + '-all'
     archiveName = 'uninode-all.jar'
-    doFirst {
-        from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    }
     exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    duplicatesStrategy 'exclude'
+    zip64 true
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
