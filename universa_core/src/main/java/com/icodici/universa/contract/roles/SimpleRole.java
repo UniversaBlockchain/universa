@@ -165,12 +165,20 @@ public class SimpleRole extends Role {
             });
 
         }
+        List anonIdList = data.getList("anonIds", null);
+        anonymousIds.clear();
+        if (anonIdList != null) {
+            for (Object aid : anonIdList) {
+                anonymousIds.add( deserializer.deserialize(aid));
+            }
+        }
     }
 
     @Override
     public Binder serialize(BiSerializer s) {
         return super.serialize(s).putAll(
-                        "keys", s.serialize(keyRecords.values())
+                        "keys", s.serialize(keyRecords.values()),
+                        "anonIds", s.serialize(anonymousIds)
                 );
     }
 
