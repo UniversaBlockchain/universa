@@ -5,11 +5,9 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.Node;
-import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
 import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
-import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
 

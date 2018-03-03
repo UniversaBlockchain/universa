@@ -125,6 +125,7 @@ public class CLIMain {
                         .ofType(Integer.class)
                         .defaultsTo(1)
                         .describedAs("tu amount");
+                accepts("tutest", "Use with -register and -tu. Key is point to use test transaction units.");
                 accepts("probe", "query the state of the document in the Universa network")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
@@ -601,6 +602,7 @@ public class CLIMain {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("register"));
         String tuSource = (String) options.valueOf("tu");
         int tuAmount = (int) options.valueOf("amount");
+        boolean tutest = options.has("tutest");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -623,10 +625,12 @@ public class CLIMain {
                 if(tu != null && tuKeys != null && tuKeys.size() > 0) {
                     report("registering the paid contract " + contract.getId() + " from " + source
                             + " for " + tuAmount + " TU");
-                    Parcel parcel = registerContract(contract, tu, tuAmount, tuKeys, (int) options.valueOf("wait"));
+                    Parcel parcel = registerContract(contract, tu, tuAmount, tuKeys, tutest, (int) options.valueOf("wait"));
                     if(parcel != null) {
                         report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
-                        saveContract(parcel.getPaymentContract(), tuSource, true, false);
+                        saveContract(parcel.getPaymentContract(),
+                                tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon"),
+                                true, false);
                     }
                 } else {
                     report("registering the contract " + contract.getId().toBase64String() + " from " + source);
@@ -895,6 +899,10 @@ public class CLIMain {
         if (options.has("pretty")) {
             sources.remove("-pretty");
             sources.remove("--pretty");
+        }
+        if (options.has("tutest")) {
+            sources.remove("-tutest");
+            sources.remove("--tutest");
         }
         List<String> names = (List) options.valuesOf("name");
         if (names != null) {
@@ -1834,7 +1842,7 @@ public class CLIMain {
      * @param contract              must be a sealed binary.
      * @param waitTime - wait time for responce.
      */
-    public static Parcel registerContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, int waitTime) throws IOException {
+    public static Parcel registerContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, boolean withTestPayment, int waitTime) throws IOException {
 
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
@@ -1842,7 +1850,7 @@ public class CLIMain {
             report("contract id: " + contract.getId().toBase64String());
             addErrors(errors);
         } else {
-            Parcel parcel = ContractsService.createParcel(contract, tu, amount,  tuKeys);
+            Parcel parcel = ContractsService.createParcel(contract, tu, amount,  tuKeys, withTestPayment);
             getClientNetwork().registerParcel(parcel.pack(), waitTime);
             ItemResult r = getClientNetwork().check(contract.getId());
             report("paid contract " + contract.getId() +  " submitted with result: " + r.toString());

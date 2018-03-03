@@ -17,10 +17,9 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node2.Config;
-import com.icodici.universa.node2.Node;
-import com.icodici.universa.node2.NodeInfo;
-import com.icodici.universa.node2.Quantiser;
+import com.icodici.universa.node2.*;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
@@ -217,34 +216,40 @@ public class Client {
     }
 
     public boolean registerParcel(byte[] packed, long millisToWait) throws ClientError {
-        boolean result = protect(() -> (boolean) httpClient.command("approveParcel", "packedItem", packed)
+        Object result = protect(() -> httpClient.command("approveParcel", "packedItem", packed)
                 .get("result"));
-        if (millisToWait > 0) {
-            Instant end = Instant.now().plusMillis(millisToWait);
-            try {
-                Parcel parcel = Parcel.unpack(packed);
-                Node.ParcelProcessingState pState = getParcelProcessingState(parcel.getId());
-                while(Instant.now().isBefore(end) && pState.isProcessing()) {
+        if(result instanceof String) {
+            System.out.println(">> registerParcel " + result);
+        } else {
+            if (millisToWait > 0) {
+                Instant end = Instant.now().plusMillis(millisToWait);
+                try {
+                    Parcel parcel = Parcel.unpack(packed);
+                    Node.ParcelProcessingState pState = getParcelProcessingState(parcel.getId());
+                    while (Instant.now().isBefore(end) && pState.isProcessing()) {
+                        System.out.println("parcel state is: " + pState);
+                        Thread.currentThread().sleep(100);
+                        pState = getParcelProcessingState(parcel.getId());
+                    }
                     System.out.println("parcel state is: " + pState);
-                    Thread.currentThread().sleep(100);
-                    pState = getParcelProcessingState(parcel.getId());
+                    ItemResult lastResult = getState(parcel.getPayloadContract().getId());
+                    while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
+                        Thread.currentThread().sleep(100);
+                        lastResult = getState(parcel.getPayloadContract().getId());
+                        System.out.println("test: " + lastResult);
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (Quantiser.QuantiserException e) {
+                    throw new ClientError(e);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                System.out.println("parcel state is: " + pState);
-                ItemResult lastResult = getState(parcel.getPayloadContract().getId());
-                while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
-                    Thread.currentThread().sleep(100);
-                    lastResult = getState(parcel.getPayloadContract().getId());
-                    System.out.println("test: " + lastResult);
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (Quantiser.QuantiserException e) {
-                throw new ClientError(e);
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+            return (boolean) result;
         }
-        return result;
+
+        return false;
     }
 
     public final ItemResult getState(@NonNull Approvable item) throws ClientError {
@@ -266,8 +271,14 @@ public class Client {
 
     public Node.ParcelProcessingState getParcelProcessingState(HashId parcelId) throws ClientError {
         return protect(() -> {
-            return (Node.ParcelProcessingState) httpClient.command("getParcelProcessingState",
-                    "parcelId", parcelId).getOrThrow("processingState");
+            Binder result = httpClient.command("getParcelProcessingState",
+                    "parcelId", parcelId);
+
+            Object ps = result.getOrThrow("processingState");
+            if (ps instanceof Node.ParcelProcessingState)
+                return (Node.ParcelProcessingState) ps;
+
+            return Node.ParcelProcessingState.valueOf(result.getBinder("processingState").getStringOrThrow("state"));
         });
     }
 
