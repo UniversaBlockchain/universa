@@ -1274,6 +1274,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return setRole("issuer", asList(keys));
     }
 
+    public Role setIssuerKeys(AnonymousId... anonKeys) {
+        return setRole("issuer", asList(anonKeys));
+    }
+
     public void setExpiresAt(ZonedDateTime dateTime) {
         state.setExpiresAt(dateTime);
     }

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2017, All Rights Reserved
  *
- * Written by Leonid Novikov <nil182@mail.ru>
+ * Written by Leonid Novikov <flint.emerald@gmail.com>
  */
 
 package com.icodici.universa.node2;

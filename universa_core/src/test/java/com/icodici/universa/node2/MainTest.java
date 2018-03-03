@@ -8,12 +8,14 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
@@ -1491,6 +1493,56 @@ public class MainTest {
             else
                 assertEquals(ItemState.UNDEFINED, subItemResult.state);
         }
+    }
+
+
+
+    @Test
+    public void registerContractWithAnonymousId() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        PrivateKey myPrivKey = TestKeys.privateKey(1);
+        PublicKey myPubKey = myPrivKey.getPublicKey();
+        byte[] myAnonId = myPrivKey.createAnonymousId();
+
+        Contract contract = new Contract();
+        contract.setExpiresAt(ZonedDateTime.now().plusDays(90));
+        Role r = contract.setIssuerKeys(AnonymousId.fromBytes(myAnonId));
+        contract.registerRole(new RoleLink("owner", "issuer"));
+        contract.registerRole(new RoleLink("creator", "issuer"));
+        contract.addPermission(new ChangeOwnerPermission(r));
+
+        contract.addSignerKey(myPrivKey);
+        contract.seal();
+
+        contract.check();
+        contract.traceErrors();
+
+        //ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);
+        ItemResult itemResult = ts.node.node.registerItem(contract);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+
+
+    @Test
+    public void registerContractWithAnonymousId_bak() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        PrivateKey myPrivKey = TestKeys.privateKey(1);
+        PublicKey myPubKey = myPrivKey.getPublicKey();
+        byte[] myAnonId = myPrivKey.createAnonymousId();
+
+        Contract contract = new Contract();
+        contract.setExpiresAt(ZonedDateTime.now().plusDays(90));
+        Role r = contract.setIssuerKeys(myPubKey);
+        contract.registerRole(new RoleLink("owner", "issuer"));
+        contract.registerRole(new RoleLink("creator", "issuer"));
+        contract.addPermission(new ChangeOwnerPermission(r));
+
+        contract.addSignerKey(myPrivKey);
+        contract.seal();
+
+        ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
 

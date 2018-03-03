@@ -10,6 +10,7 @@ package com.icodici.universa.contract.roles;
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -52,6 +53,8 @@ public class SimpleRole extends Role {
                 kr = (KeyRecord) x;
             else if (x instanceof PublicKey)
                 kr = new KeyRecord((PublicKey) x);
+            else if (x instanceof AnonymousId)
+                kr = new KeyRecord((AnonymousId) x);
             else if (x instanceof PrivateKey)
                 kr = new KeyRecord(((PrivateKey) x).getPublicKey());
             else
