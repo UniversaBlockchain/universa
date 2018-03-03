@@ -152,7 +152,7 @@ public class HashId implements Comparable<HashId> {
     /**
      * Return new HashId calculating composite digest hash of the data (see {@link CompositeDigest} class)
      *
-     * @param data
+     * @param data for hashing
      * @return HashId instance corresponding to the data parameter, using default hash algorithm
      */
     public static HashId of(byte[] data) {

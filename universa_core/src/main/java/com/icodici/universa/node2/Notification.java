@@ -43,18 +43,18 @@ abstract public class Notification {
     /**
      * Write self to boss writer
      *
-     * @param writer
+     * @param writer is {@link Boss.Writer} to write to
      *
-     * @throws IOException
+     * @throws IOException with read exceptions
      */
     abstract protected void writeTo(Boss.Writer writer) throws IOException;
 
     /**
      * Read self from boss reader
      *
-     * @param reader
+     * @param reader is {@link Boss.Reader} to read from
      *
-     * @throws IOException
+     * @throws IOException with read exceptions
      */
     abstract protected void readFrom(Boss.Reader reader) throws IOException;
 
@@ -73,7 +73,7 @@ abstract public class Notification {
      * notifications.
      *
      * @param code  unique type code (per class)
-     * @param klass
+     * @param klass is inherited {@link Notification} class
      */
     static protected void registerClass(int code, Class<? extends Notification> klass) {
         classes.put(code, klass);
@@ -145,9 +145,16 @@ abstract public class Notification {
             return n;
         }
         else {
-//            System.out.println("*** unknown notification class code: "+code);
+            System.out.println("*** unknown notification class code: "+code);
             return null;
         }
+    }
+
+    static {
+        // preload
+        ItemNotification.init();
+        ParcelNotification.init();
+        ItemResyncNotification.init();
     }
 
 }

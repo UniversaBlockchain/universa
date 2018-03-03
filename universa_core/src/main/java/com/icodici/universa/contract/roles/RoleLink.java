@@ -53,7 +53,7 @@ public class RoleLink extends Role {
      * Return the resolved role taken from a bound contract. A resolved role may be a {@link RoleLink} itself, or null
      * (if a link is incorrect).
      *
-     * @return
+     * @return {@link Role}
      */
     @Nullable
     public Role getRole() {
@@ -82,6 +82,12 @@ public class RoleLink extends Role {
     @Override
     public Set<KeyRecord> getKeyRecords() {
         return resolve().getKeyRecords();
+    }
+
+    @Override
+    public Set<byte[]> getAnonymousIds() {
+        final Role role = resolve();
+        return (role == null) ? null : role.getAnonymousIds();
     }
 
     @Override
@@ -121,9 +127,9 @@ public class RoleLink extends Role {
     /**
      * RoleLink equality is different: it only checks that it points to the same role.
      *
-     * @param obj
+     * @param obj is object to be checked with
      *
-     * @return
+     * @return true if equals
      */
     @Override
     public boolean equals(Object obj) {

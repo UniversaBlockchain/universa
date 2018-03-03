@@ -72,6 +72,11 @@ public class PostgresLedger implements Ledger {
     /**
      * Get the instance of the {@link Db} for a calling thread. Safe to call repeatedly (returns the same instance per
      * thread).
+     *
+     * @param consumer is {@link DbPool.DbConsumer}
+     * @param <T> is type
+     * @return result
+     * @throws Exception if something went wrong
      */
     public final <T> T inPool(DbPool.DbConsumer<T> consumer) throws Exception {
         return dbPool.execute(consumer);
@@ -317,7 +322,7 @@ public class PostgresLedger implements Ledger {
     /**
      * Enable or disable records caching. USe it in tests only, in production it should always be enabled
      *
-     * @param enable
+     * @param enable, if true it is enabling cache
      */
     public void enableCache(boolean enable) {
         if (enable) {

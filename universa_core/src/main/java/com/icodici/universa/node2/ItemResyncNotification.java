@@ -66,7 +66,7 @@ public class ItemResyncNotification extends ItemNotification {
         return itemsToResync;
     }
 
-    static {
+    static public void init() {
         registerClass(CODE_ITEM_RESYNC_NOTIFICATION, ItemResyncNotification.class);
     }
 }

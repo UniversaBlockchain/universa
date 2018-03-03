@@ -65,7 +65,8 @@ public abstract class Role implements BiSerializable {
      * <p>
      * To check that the role can be performed by some other role, use {@link #isAllowedForKeys(Set)}.
      *
-     * @return
+     * @param otherRole is {@link Role} for checking by keys
+     * @return true if equals
      */
     public boolean equalKeys(@NonNull Role otherRole) {
         return otherRole.getKeys().equals(getKeys());
@@ -84,6 +85,8 @@ public abstract class Role implements BiSerializable {
 
     public abstract Set<PublicKey> getKeys();
 
+    public abstract Set<byte[]> getAnonymousIds();
+
     public Set<KeyRecord> getKeyRecords() {
         return Collections.emptySet();
     }
@@ -92,9 +95,9 @@ public abstract class Role implements BiSerializable {
      * If the role is a link or like, get the target role. If it is not possible (no target role, for example), throws
      * {@link IllegalStateException}.
      *
-     * @param <T>
+     * @param <T> is type
      *
-     * @return
+     * @return resolved role
      */
     public <T extends Role> @NonNull T resolve() {
         return (T) this;
@@ -103,7 +106,7 @@ public abstract class Role implements BiSerializable {
     /**
      * Testing only. For lne-key roles, return the keyrecord.
      *
-     * @return
+     * @return found {@link KeyRecord}
      */
     @Deprecated
     public KeyRecord getKeyRecord() {
@@ -140,7 +143,7 @@ public abstract class Role implements BiSerializable {
      *
      * @param roleName new role name
      *
-     * @return
+     * @return linked {@link RoleLink}
      */
     public RoleLink linkAs(String roleName) {
         RoleLink newRole = new RoleLink(roleName, name);

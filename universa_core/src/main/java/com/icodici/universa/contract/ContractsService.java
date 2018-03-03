@@ -544,6 +544,7 @@ public class ContractsService {
      * @param amount is initial number of TU that will be have an owner
      * @param ownerKeys is public keys that will became an owner of TU     *
      * @return sealed TU contract; should be registered in the Universa by simplified procedure.
+     * @throws IOException with exceptions while contract preparing
      */
     public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys) throws IOException {
 

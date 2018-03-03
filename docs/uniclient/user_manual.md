@@ -17,7 +17,8 @@ The client has many features and self documents as usual when executed as `unicl
 
 JRE 1.8+ is required to run uniclient, it coulbe download from the [Oracle downloads site](http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html).
 
-Download the current version of the uniclient tool from [our cloud storage](https://lnd.im/uniclient) and unzip it. Now you can start it with the bundled `uniclient` command on unix or start it directly using `java -jar uniclient.jar` (for example, on Windows).
+Download the current version of the uniclient tool from 
+[our cloud storage](https://drive.google.com/file/d/1ODg3CIn93NZPVFF7HWWG3BR0XqdOKDZ4/view) and unzip it. Now you can start it with the bundled `uniclient` command on unix or `uniclient.bat` on windows. Alternatively, you can start it directly using `java -jar uniclient.jar`.
 
 Executing `uniclient` with no arguments will show built-in help.
 
@@ -362,3 +363,28 @@ Command works with multiple files as other commands.
 #### Output control
 
 It is possible to format all uniclient output in the JSON format for easy parsing and further processing. Use `--json` key.
+
+#### Common use cases
+
+**_Case_**: you want to release your own tokens. You have edited as you want dsl template (f.e. `token_dsl.yml`), keys (f.e. `my_key.private.unikey`) and bought transaction units (f.e. `tu.unicon` with `my_key.private.unikey` as owner). Do the following:
+
+    -create token_dsl.yml -name my_token.unicon -k my_key.private.unikey    
+    -register my_token.unicon -tu tuContract -k my_key.private.unikey -wait 1000
+    
+as result you have approved by Universa contract `my_token.unicon` as binary file. That means you released your own tokens and can do split or join operations with it.
+
+
+**_Case_**: you want to release shares for your company. You have edited as you want dsl template (f.e. `shares_dsl.yml`), keys (f.e. `my_key.private.unikey`) and bought transaction units (f.e. `tu.unicon` with `my_key.private.unikey` as owner). Do the following:
+
+    -create shares_dsl.yml -name my_company_shares.unicon -k my_key.private.unikey    
+    -register my_company_shares.unicon -tu tuContract -k my_key.private.unikey -wait 1000
+
+as result you have approved by Universa contract `my_company_shares.unicon` as binary file. That means you released shares for your company and can distribute them between your partners and so on.
+
+
+**_Case_**: you have something and you want to be notarially certified as own of it. You have edited as you want dsl template (f.e. `notary_dsl.yml`), keys (f.e. `my_key.private.unikey`) and bought transaction units (f.e. `tu.unicon` with `my_key.private.unikey` as owner). Do the following:
+
+    -create notary_dsl.yml -name notaried_stuff.unicon -k my_key.private.unikey    
+    -register notaried_stuff.unicon -tu tuContract -k my_key.private.unikey -wait 1000
+
+as result you have approved by Universa contract `notaried_stuff.unicon` as binary file. That means you certified as owner by Universa and can dispose of contract's subject.

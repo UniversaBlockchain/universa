@@ -27,7 +27,7 @@ public final class ItemLock {
      *
      * @param id       ot get a lock to
      * @param callable lamda to execute exclusively for the id
-     * @param <T>
+     * @param <T> is type
      *
      * @return whatever the callable returns
      *

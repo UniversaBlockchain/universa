@@ -34,7 +34,6 @@ public class ContractDelta {
     private final Contract changed;
     private MapDelta stateDelta;
     private Map<String, Delta> stateChanges;
-    private Role creator;
 
     public ContractDelta(Contract existing, Contract changed) {
         this.existing = existing;
@@ -93,7 +92,7 @@ public class ContractDelta {
             addError(BADSTATE, "", "new state is identical");
         }
 
-        creator = changed.getRole("creator");
+        Role creator = changed.getRole("creator");
         if (creator == null) {
             addError(MISSING_CREATOR, "state.created_by", "");
             return;
@@ -133,12 +132,12 @@ public class ContractDelta {
     }
 
     private void excludePermittedChanges() throws Quantiser.QuantiserException {
-        Set<PublicKey> creatorKeys = creator.getKeys();
+        Set<PublicKey> checkingKeys = changed.getSealedByKeys();
         for (String key : existing.getPermissions().keySet()) {
             Collection<Permission> permissions = existing.getPermissions().get(key);
             boolean permissionQuantized = false;
             for (Permission permission : permissions) {
-                if (permission.isAllowedForKeys(creatorKeys)) {
+                if (permission.isAllowedForKeys(checkingKeys)) {
                     if(!permissionQuantized) {
                         changed.checkApplicablePermissionQuantized(permission);
                         permissionQuantized = true;
@@ -153,6 +152,7 @@ public class ContractDelta {
         ChangedItem<Role, Role> oc = (ChangedItem<Role, Role>) stateChanges.get("owner");
         if (oc != null) {
             stateChanges.remove("owner");
+            Role creator = changed.getRole("creator");
             if (!existing.isPermitted("change_owner", creator))
                 addError(FORBIDDEN, "state.owner", "creator has no right to change");
         }

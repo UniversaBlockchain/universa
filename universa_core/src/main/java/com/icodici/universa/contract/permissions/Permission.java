@@ -40,6 +40,8 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
 
     /**
      * Get the permission id or null if is not yet set.
+     *
+     * @return identificator
      */
     @Nullable
     public String getId() {
@@ -50,7 +52,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * Set the permission id. Id is used to simplify detection of the permission changes. Each permission must have a unique per-contract
      * id set while serializing the contract. Once permission id is set, it must never bbe changed.
      *
-     * @return permission id or null
+     * @param id is identificator
      */
     public void setId(@NonNull String id) {
         if( this.id != null && !this.id.equals(id) )
@@ -146,7 +148,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * nothing on the error and let others porceed. Unprocessed changes will cause error if no permission will clear
      * it.
      *  @param contract     source (valid) contract
-     * @param changed
+     * @param changed is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
      */
     public abstract void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges);

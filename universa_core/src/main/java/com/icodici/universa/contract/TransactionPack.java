@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
 import com.icodici.universa.node2.Quantiser;
@@ -56,13 +57,14 @@ public class TransactionPack implements BiSerializable {
     private byte[] packedBinary;
     private boolean reconstructed = false;
     private Map<HashId, Contract> references = new HashMap<>();
+    private Set<PublicKey> keysForPack = new HashSet<>();
     private Contract contract;
 
     /**
      * Create a transaction pack and add a contract to it. See {@link TransactionPack#TransactionPack()} and {@link
      * #setContract(Contract)} for more information.
      *
-     * @param contract
+     * @param contract is {@link Contract} to be send with this {@link TransactionPack}
      */
     public TransactionPack(Contract contract) {
         this();
@@ -70,7 +72,9 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * The list of contracts to approve.
+     * The main contract of this {@link TransactionPack}.
+     *
+     * @return a {@link Contract}
      */
     public Contract getContract() {
         return contract;
@@ -82,6 +86,10 @@ public class TransactionPack implements BiSerializable {
 
     public Contract getReference(HashIdentifiable hid) {
         return getReference(hid.getId());
+    }
+
+    public Set<PublicKey> getKeysForPack() {
+        return keysForPack;
     }
 
     public TransactionPack() {
@@ -125,7 +133,7 @@ public class TransactionPack implements BiSerializable {
      * Direct add the reference. Not recommended as {@link #setContract(Contract)} already does it for all referenced
      * contracts. Use it to add references not mentioned in the added contracts.
      *
-     * @param reference
+     * @param reference is {@link Contract} for adding
      */
     public void addReference(Contract reference) {
         if (!references.containsKey(reference.getId())) {
@@ -135,11 +143,24 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
+     * Add public key to {@link TransactionPack} that will match with anonimous ids in the {@link Contract} roles.
+     *
+     * @param keys is {@link PublicKey} that will be compare with anonimous ids.
+     */
+    public void addKeys(PublicKey... keys) {
+        for (PublicKey key : keys) {
+            if (!keysForPack.contains(key)) {
+                keysForPack.add(key);
+            }
+        }
+    }
+
+    /**
      * store the referenced contract. Called by the {@link #setContract(Contract)} and only useful if the latter is
      * overriden. Referenced contracts are not processed by themselves but only as parts of the contracts add with
      * {@link #setContract(Contract)}
      *
-     * @param contract
+     * @param contract is {@link Contract} for putting
      */
     protected synchronized void putReference(Contract contract) {
 //        if (!contract.isOk())
@@ -230,6 +251,19 @@ public class TransactionPack implements BiSerializable {
             byte[] bb = data.getBinaryOrThrow("contract");
             contract = new Contract(bb, this);
             quantiser.addWorkCostFrom(contract.getQuantiser());
+
+            List<Object> keysList = deserializer.deserializeCollection(data.getListOrThrow("keys"));
+
+            keysForPack = new HashSet<>();
+            for (Object x : keysList) {
+                if (x instanceof Bytes)
+                    x = ((Bytes) x).toArray();
+                if (x instanceof byte[]) {
+                    keysForPack.add(new PublicKey((byte[]) x));
+                } else {
+                    throw new IllegalArgumentException("unsupported key object: " + x.getClass().getName());
+                }
+            }
         }
     }
 
@@ -242,6 +276,11 @@ public class TransactionPack implements BiSerializable {
                     serializer.serialize(
                             references.values().stream()
                                     .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
+                    ),
+                    "keys",
+                    serializer.serialize(
+                            keysForPack.stream()
+                                    .map(x -> x.pack()).collect(Collectors.toList())
                     )
             );
         }
@@ -255,10 +294,11 @@ public class TransactionPack implements BiSerializable {
      * Unpack either old contract binary (all included), or newer transaction pack. Could be used to load old contracts
      * to perform a transaction.
      *
-     * @param packOrContractBytes
+     * @param packOrContractBytes binary that was packed by {@link TransactionPack#pack()}
      * @param allowNonTransactions if false, non-trasnaction pack data will cause IOException.
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
+     * @throws IOException if something went wrong
      */
     public static TransactionPack unpack(byte[] packOrContractBytes, boolean allowNonTransactions) throws IOException {
 
@@ -283,9 +323,10 @@ public class TransactionPack implements BiSerializable {
      * Unpack either old contract binary (all included), or newer transaction pack. Could be used to load old contracts
      * to perform a transaction.
      *
-     * @param packOrContractBytes
+     * @param packOrContractBytes binary that was packed by {@link TransactionPack#pack()}
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
+     * @throws IOException if something went wrong
      */
     public static TransactionPack unpack(byte[] packOrContractBytes) throws IOException {
         return unpack(packOrContractBytes, true);
@@ -295,7 +336,7 @@ public class TransactionPack implements BiSerializable {
     /**
      * Shortcut to {@link Boss#pack(Object)} for this.
      *
-     * @return
+     * @return packed binary
      */
     public synchronized byte[] pack() {
         if (packedBinary == null)

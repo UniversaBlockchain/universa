@@ -40,7 +40,8 @@ public abstract class Network {
     /**
      * Put the notification to the delivery queue. Must not block the calling thread.
      *
-     * @param notification
+     * @param toNode is {@link NodeInfo} of node for sending
+     * @param notification is sending {@link Notification}
      */
     public abstract void deliver(NodeInfo toNode, Notification notification);
 
@@ -59,11 +60,10 @@ public abstract class Network {
      *
      * @param itemId item do load
      * @param node   node where the item should be loaded from
-     *
+     * @param maxTimeout is maximum timeout
      * @return the downloaded item, null if the node can't provide it or network error has occurred
      *
-     * @throws InterruptedException
-     * @throws TimeoutException     if the item can;t be obtained whithin a given timeout
+     * @throws InterruptedException with unexpected interruption
      */
     public abstract Approvable getItem(HashId itemId, NodeInfo node, Duration maxTimeout)
             throws InterruptedException;
@@ -87,7 +87,7 @@ public abstract class Network {
     /**
      * Enumerate all nodes passing them to the consumer
      *
-     * @param consumer
+     * @param consumer is {@link Consumer} object
      */
     public void eachNode(Consumer<NodeInfo> consumer) {
         netConfig.forEachNode(n -> consumer.accept(n));

@@ -10,6 +10,7 @@ package com.icodici.universa.contract.roles;
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -30,6 +31,7 @@ import java.util.*;
 public class SimpleRole extends Role {
 
     private final Map<PublicKey, KeyRecord> keyRecords = new HashMap<>();
+    private final Set<byte[]> anonymousIds = new HashSet<>();
 
     public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
@@ -51,6 +53,8 @@ public class SimpleRole extends Role {
                 kr = (KeyRecord) x;
             else if (x instanceof PublicKey)
                 kr = new KeyRecord((PublicKey) x);
+            else if (x instanceof AnonymousId)
+                kr = new KeyRecord((AnonymousId) x);
             else if (x instanceof PrivateKey)
                 kr = new KeyRecord(((PrivateKey) x).getPublicKey());
             else
@@ -66,7 +70,7 @@ public class SimpleRole extends Role {
     /**
      * Testing only. For one-key roles, return the keyrecord.
      *
-     * @return
+     * @return got {@link KeyRecord}
      */
     @Deprecated
     public KeyRecord getKeyRecord() {
@@ -79,8 +83,14 @@ public class SimpleRole extends Role {
         return new HashSet(keyRecords.values());
     }
 
+    @Override
     public Set<PublicKey> getKeys() {
         return keyRecords.keySet();
+    }
+
+    @Override
+    public Set<byte[]> getAnonymousIds() {
+        return anonymousIds;
     }
 
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
@@ -108,9 +118,9 @@ public class SimpleRole extends Role {
      * So, it is safe to edit cloned keyRecords, while keys itself are not copied and are packed with Boss effeciently.
      * More or less ;)
      *
-     * @param name
+     * @param name is new name for the role
      *
-     * @return
+     * @return cloned {@link SimpleRole}
      */
     public SimpleRole cloneAs(String name) {
         SimpleRole r = new SimpleRole(name);

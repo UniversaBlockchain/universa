@@ -21,8 +21,8 @@ public interface BasicHTTPService extends AutoCloseable {
      * Start the service in a separate thread, returns as soon as listening port will be opened. Should not
      * return before the port is opened! Must use Executors.newFixedThreadPool for workers.
      *
-     * @param port
-     * @param maxResponseThreads
+     * @param port is port number
+     * @param maxResponseThreads is maximum available threads
      * @throws IOException if port can't be open for listening
      */
     void start(int port, int maxResponseThreads) throws IOException;
@@ -31,7 +31,7 @@ public interface BasicHTTPService extends AutoCloseable {
      * Shutdown the service and free all allocated resources. Note it must not shutdown the worker pool,
      * instead, let it finish off normally (e.g. be finalized). Must close listening socket.
      *
-     * @throws Exception
+     * @throws Exception for closing exceptions
      */
     @Override
     void close() throws Exception;
@@ -94,10 +94,10 @@ public interface BasicHTTPService extends AutoCloseable {
         /**
          * Represent query as Binder of key-values. Values should be decoded, either String or {@link FileUpload}.
          * Contains both query parameters from URL arguments and from forms, where present.
-         * Each key is a {@link String}; a value is either a single {@link String} or {@link java.util.List<String>},
+         * Each key is a {@link String}; a value is either a single {@link String} or {@link java.util.List} of {@link String},
          * depending on how many values were provided for the single key.
          *
-         * @return
+         * @return params as {@link Binder}
          */
         Binder getParams();
 
@@ -109,7 +109,7 @@ public interface BasicHTTPService extends AutoCloseable {
         /**
          * E.g. GET, POST, whatever.
          *
-         * @return
+         * @return string presentation of method
          */
         String getMethod();
     }
@@ -145,6 +145,8 @@ public interface BasicHTTPService extends AutoCloseable {
 
         /**
          * Set the HTTP response code to specific value.
+         *
+         * @param code is int representation of HTTP response
          */
         void setResponseCode(int code);
     }

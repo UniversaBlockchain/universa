@@ -152,6 +152,13 @@ public class ListRole extends Role {
                 .collect(Collectors.toSet());
     }
 
+    @Override
+    public Set<byte[]> getAnonymousIds() {
+        return this.roles.stream()
+                .flatMap(role -> role.getAnonymousIds().stream())
+                .collect(Collectors.toSet());
+    }
+
     /**
      * Mode of combining roles
      */

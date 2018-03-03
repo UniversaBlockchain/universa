@@ -31,6 +31,7 @@ import java.util.TreeSet;
 public class KeyRecord extends Binder implements BiSerializable {
 
     private PublicKey publicKey;
+    private AnonymousId anonymousId = null;
 
     private KeyRecord() {}
 
@@ -38,9 +39,7 @@ public class KeyRecord extends Binder implements BiSerializable {
      * Construct from a builder. Note that on successful construction "key" parameter will be updated with valid {@link
      * PublicKey} instance, same as {@link #getPublicKey()} returns.
      *
-     * @param binder
-     *
-     * @throws IllegalArgumentException
+     * @param binder is data for KeyRecord as {@link Binder}
      */
     public KeyRecord(Binder binder) {
         super(binder);
@@ -75,6 +74,11 @@ public class KeyRecord extends Binder implements BiSerializable {
     public KeyRecord(PublicKey key) {
         this.publicKey = key;
         put("key", key);
+    }
+
+    public KeyRecord(AnonymousId anonId) {
+        //this.publicKey = key;
+        //put("key", key);
     }
 
     public PublicKey getPublicKey() {

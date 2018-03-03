@@ -64,7 +64,7 @@ import static java.util.Arrays.asList;
 
 public class CLIMain {
 
-    private static final String CLI_VERSION = "3.0.1";
+    private static final String CLI_VERSION = "3.0.2";
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -327,13 +327,14 @@ public class CLIMain {
             if (options != null)
                 usage("Unrecognized parameter: " + e.getMessage());
             else
-                e.printStackTrace();
+                usage("No options: " + e.getMessage());
         } catch (Finished e) {
             if (reporter.isQuiet())
                 System.out.println(reporter.reportJson());
         } catch (Exception e) {
             System.err.println(e.toString());
-            e.printStackTrace();
+//            e.printStackTrace();
+            usage("Error: " + e.getMessage());
 //            usage(e.getMessage());
             System.exit(100);
         }
@@ -2036,7 +2037,7 @@ public class CLIMain {
         out.println("\nUniversa client tool, v. " + CLI_VERSION + "\n");
 
         if (options == null)
-            System.err.println("error while parsing command linee");
+            System.err.println("error while parsing command line");
         else {
             Integer columns = (Integer) options.valueOf("term-width");
             if (columns == null)
@@ -2047,6 +2048,7 @@ public class CLIMain {
             try {
                 parser.formatHelpWith(new BuiltinHelpFormatter(columns, 2));
                 parser.printHelpOn(out);
+                out.println("\nOnline    docs: https://lnd.im/UniClientUserManual\n");
             } catch (IOException e) {
                 e.printStackTrace();
             }

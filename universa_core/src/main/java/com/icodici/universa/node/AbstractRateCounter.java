@@ -29,13 +29,13 @@ public abstract class AbstractRateCounter implements Serializable {
 
     /**
      * The duration set by the {@link #reset(int, Duration)}
-     * @return
+     * @return {@link Duration}
      */
     public abstract Duration getDuration();
 
     /**
      * The pulse limit set by the {@link #reset(int, Duration)}
-     * @return
+     * @return limit
      */
     public abstract int getPulseLimit();
 

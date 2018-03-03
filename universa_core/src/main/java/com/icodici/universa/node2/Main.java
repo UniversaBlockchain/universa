@@ -30,7 +30,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    public static final String NODE_VERSION = "3.0.1";
+    public static final String NODE_VERSION = "3.0.6";
     private PostgresLedger ledger;
     private OptionParser parser;
     private OptionSet options;
@@ -187,7 +187,7 @@ public class Main {
     /**
      * For unit-tests. Blocks until the node is initialized.
      *
-     * @throws InterruptedException
+     * @throws InterruptedException for unexpected interrupt
      */
     public void waitReady() throws InterruptedException {
         eventReady.await();

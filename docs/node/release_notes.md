@@ -3,6 +3,6 @@ Node interface
 Release notes
 -------------
 
-### 2.?.? (27.02.2018)
+### 3.0.1 (27.02.2018)
 
 Release of paid contracts. 

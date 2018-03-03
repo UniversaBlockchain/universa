@@ -144,20 +144,34 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode();
-        //System.out.println("Request to approve, package size: " + params.getBinaryOrThrow("packedItem").length);
-        return Binder.of(
-                "itemResult",
-                node.registerItem(Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem")))
-        );
+        try {
+            //System.out.println("Request to approve, package size: " + params.getBinaryOrThrow("packedItem").length);
+            return Binder.of(
+                    "itemResult",
+                    node.registerItem(Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem")))
+            );
+        } catch (Exception e) {
+            return Binder.of(
+                    "itemResult",
+                    "ERROR: " + e.getMessage()
+            );
+        }
     }
 
     private Binder approveParcel(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode();
-//        System.out.println("Request to approve parcel, package size: " + params.getBinaryOrThrow("packedItem").length);
-        return Binder.of(
-                "result",
-                node.registerParcel(Parcel.unpack(params.getBinaryOrThrow("packedItem")))
-        );
+        try {
+    //        System.out.println("Request to approve parcel, package size: " + params.getBinaryOrThrow("packedItem").length);
+            return Binder.of(
+                    "result",
+                    node.registerParcel(Parcel.unpack(params.getBinaryOrThrow("packedItem")))
+            );
+        } catch (Exception e) {
+            return Binder.of(
+                    "result",
+                    "ERROR: " + e.getMessage()
+            );
+        }
     }
 
     static AtomicInteger asyncStarts = new AtomicInteger();
@@ -181,14 +195,28 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder getState(Binder params, Session session) throws CommandFailedException {
         checkNode();
-        return Binder.of("itemResult",
-                node.checkItem((HashId) params.get("itemId")));
+        try {
+            return Binder.of("itemResult",
+                    node.checkItem((HashId) params.get("itemId")));
+        } catch (Exception e) {
+            return Binder.of(
+                    "itemResult",
+                    "ERROR: " + e.getMessage()
+            );
+        }
     }
 
     private Binder getParcelProcessingState(Binder params, Session session) throws CommandFailedException {
         checkNode();
-        return Binder.of("processingState",
-                node.checkParcelProcessingState((HashId) params.get("parcelId")));
+        try {
+            return Binder.of("processingState",
+                    node.checkParcelProcessingState((HashId) params.get("parcelId")));
+        } catch (Exception e) {
+            return Binder.of(
+                    "processingState",
+                    "ERROR: " + e.getMessage()
+            );
+        }
     }
 
     private void checkNode() throws CommandFailedException {

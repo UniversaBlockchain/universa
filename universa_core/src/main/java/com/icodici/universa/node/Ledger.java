@@ -58,7 +58,7 @@ public interface Ledger {
      * ItemState#PENDING} state. The operation must be implemented as atomic.
      *
      * @param itemdId hashId to register, or null if it is already in use
-     * @return
+     * @return found or created {@link StateRecord}
      */
     StateRecord findOrCreate(HashId itemdId);
 
@@ -66,7 +66,7 @@ public interface Ledger {
      * Shortcut method: check that record exists and its state returns {@link ItemState#isApproved()}}. Check it to
      * ensure its meaning.
      *
-     * @param id
+     * @param id is {@link HashId} for checking item
      * @return true if it is.
      */
     default boolean isApproved(HashId id) {
@@ -78,7 +78,7 @@ public interface Ledger {
      * Shortcut method: check that record exists and its state returns {@link ItemState#isConsensusFound()}}. Check it to
      * ensure its meaning.
      *
-     * @param id
+     * @param id is {@link HashId} for checking item
      * @return true if it is.
      */
     default boolean isConsensusFound(HashId id) {
@@ -93,6 +93,7 @@ public interface Ledger {
      * {@link Rollback} instance, which just rollbacks the transaction, in which case it always return null.
      *
      * @param callable to execute
+     * @param <T> is type
      * @return null if transaction is rolled back throwing a {@link Rollback} exception, otherwise what callable
      * returns.
      */
@@ -101,21 +102,22 @@ public interface Ledger {
     /**
      * Destroy the record and free space in the ledger.
      *
-     * @param record
+     * @param record is {@link StateRecord} to destroy
      */
     void destroy(StateRecord record);
 
     /**
      * save a record into the ledger
      *
-     * @param stateRecord
+     * @param stateRecord is {@link StateRecord} to save
      */
     void save(StateRecord stateRecord);
 
     /**
      * Refresh record.
      *
-     * @param stateRecord
+     * @param stateRecord is {@link StateRecord} to reload
+     * @throws StateRecord.NotFoundException as itself
      */
     void reload(StateRecord stateRecord) throws StateRecord.NotFoundException;
 

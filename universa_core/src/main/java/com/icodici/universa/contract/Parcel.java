@@ -110,9 +110,10 @@ public class Parcel implements BiSerializable {
     /**
      * Unpack parcel.
      *
-     * @param packOrContractBytes
+     * @param packOrContractBytes is binary that was packed by {@link Parcel#pack()}
      *
-     * @return parcel
+     * @return a {@link Parcel}
+     * @throws IOException if something went wrong
      */
     public synchronized static Parcel unpack(byte[] packOrContractBytes) throws IOException {
 
@@ -130,7 +131,7 @@ public class Parcel implements BiSerializable {
     /**
      * Shortcut to {@link Boss#pack(Object)} for this.
      *
-     * @return
+     * @return a packed binary
      */
     public synchronized byte[] pack() {
         if (packedBinary == null)
