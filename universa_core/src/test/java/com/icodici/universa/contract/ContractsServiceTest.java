@@ -128,7 +128,7 @@ public class ContractsServiceTest extends ContractTestBase {
         payload.addSignerKey(privateKey);
         payload.seal();
 
-        Contract payment = ContractsService.createFreshTU(100, publicKeys, true);
+        Contract payment = InnerContractsService.createFreshTU(100, publicKeys, true);
 
         Parcel parcel = ContractsService.createParcel(payload, payment, 20, privateKeys, true);
 
@@ -177,7 +177,7 @@ public class ContractsServiceTest extends ContractTestBase {
         PrivateKey privateKey = TestKeys.privateKey(3);
         Set<PublicKey> keys = new HashSet();
         keys.add(privateKey.getPublicKey());
-        Contract tu = ContractsService.createFreshTU(100, keys);
+        Contract tu = InnerContractsService.createFreshTU(100, keys);
         tu.check();
         tu.traceErrors();
 
@@ -197,7 +197,7 @@ public class ContractsServiceTest extends ContractTestBase {
         PrivateKey privateKey = TestKeys.privateKey(3);
         Set<PublicKey> keys = new HashSet();
         keys.add(privateKey.getPublicKey());
-        Contract tu = ContractsService.createFreshTU(100, keys, true);
+        Contract tu = InnerContractsService.createFreshTU(100, keys, true);
         tu.check();
         tu.traceErrors();
 
