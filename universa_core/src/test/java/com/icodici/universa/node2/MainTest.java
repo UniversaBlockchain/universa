@@ -1510,7 +1510,7 @@ public class MainTest {
 
         //ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);
         ItemResult itemResult0 = ts.node.node.registerItem(contract);
-        Thread.sleep(1000000000);
+        //Thread.sleep(1000000000);
         ItemResult itemResult = ts.node.node.waitItem(contract.getId(), 100);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }

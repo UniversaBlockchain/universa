@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
@@ -69,6 +70,8 @@ public class TransactionPack implements BiSerializable {
     public TransactionPack(Contract contract) {
         this();
         setContract(contract);
+        for (PrivateKey key : contract.getKeysToSignWith())
+            addKeys(key.getPublicKey());
     }
 
     /**
@@ -248,9 +251,6 @@ public class TransactionPack implements BiSerializable {
                     references.put(c.getId(), c);
                 }
             }
-            byte[] bb = data.getBinaryOrThrow("contract");
-            contract = new Contract(bb, this);
-            quantiser.addWorkCostFrom(contract.getQuantiser());
 
             List<Object> keysList = deserializer.deserializeCollection(data.getListOrThrow("keys"));
 
@@ -264,6 +264,10 @@ public class TransactionPack implements BiSerializable {
                     throw new IllegalArgumentException("unsupported key object: " + x.getClass().getName());
                 }
             }
+
+            byte[] bb = data.getBinaryOrThrow("contract");
+            contract = new Contract(bb, this);
+            quantiser.addWorkCostFrom(contract.getQuantiser());
         }
     }
 
