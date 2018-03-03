@@ -1514,7 +1514,7 @@ public class MainTest {
         contract.addSignerKey(myPrivKey);
         contract.seal();
 
-        contract.check();
+        System.out.println("contract.check(): " + contract.check());
         contract.traceErrors();
 
         //ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);

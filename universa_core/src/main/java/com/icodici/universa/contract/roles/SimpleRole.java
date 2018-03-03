@@ -31,7 +31,7 @@ import java.util.*;
 public class SimpleRole extends Role {
 
     private final Map<PublicKey, KeyRecord> keyRecords = new HashMap<>();
-    private final Set<byte[]> anonymousIds = new HashSet<>();
+    private final Set<AnonymousId> anonymousIds = new HashSet<>();
 
     public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
@@ -61,7 +61,7 @@ public class SimpleRole extends Role {
             else
                 throw new IllegalArgumentException("Cant create KeyRecord from " + x);
             if (anonId != null)
-                anonymousIds.add(anonId.getBytes());
+                anonymousIds.add(anonId);
             else
                 keyRecords.put(kr.getPublicKey(), kr);
         });
@@ -93,7 +93,7 @@ public class SimpleRole extends Role {
     }
 
     @Override
-    public Set<byte[]> getAnonymousIds() {
+    public Set<AnonymousId> getAnonymousIds() {
         return anonymousIds;
     }
 

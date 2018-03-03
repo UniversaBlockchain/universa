@@ -169,7 +169,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 transactionPack.getKeysForPack().forEach(
                         key -> {
                             try {
-                                if(key.matchAnonymousId(anonId)) {
+                                if(key.matchAnonymousId(anonId.getBytes())) {
                                     keys.put(ExtendedSignature.keyId(key), key);
                                 }
                             } catch (IOException e) {
@@ -255,7 +255,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 transactionPack.getKeysForPack().forEach(
                         key -> {
                             try {
-                                if(key.matchAnonymousId(anonId)) {
+                                if(key.matchAnonymousId(anonId.getBytes())) {
                                     keys.put(ExtendedSignature.keyId(key), key);
                                 }
                             } catch (IOException e) {
