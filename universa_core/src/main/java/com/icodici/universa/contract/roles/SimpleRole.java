@@ -103,7 +103,7 @@ public class SimpleRole extends Role {
     }
 
     public boolean isValid() {
-        return !keyRecords.isEmpty();
+        return !keyRecords.isEmpty() || !anonymousIds.isEmpty();
     }
 
     @Override
