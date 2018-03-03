@@ -49,17 +49,21 @@ public class SimpleRole extends Role {
         super(name);
         records.forEach(x -> {
             KeyRecord kr = null;
+            AnonymousId anonId = null;
             if (x instanceof KeyRecord)
                 kr = (KeyRecord) x;
             else if (x instanceof PublicKey)
                 kr = new KeyRecord((PublicKey) x);
             else if (x instanceof AnonymousId)
-                kr = new KeyRecord((AnonymousId) x);
+                anonId = (AnonymousId) x;
             else if (x instanceof PrivateKey)
                 kr = new KeyRecord(((PrivateKey) x).getPublicKey());
             else
                 throw new IllegalArgumentException("Cant create KeyRecord from " + x);
-            keyRecords.put(kr.getPublicKey(), kr);
+            if (anonId != null)
+                anonymousIds.add(anonId.getBytes());
+            else
+                keyRecords.put(kr.getPublicKey(), kr);
         });
     }
 
