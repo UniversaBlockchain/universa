@@ -483,11 +483,43 @@ public class CLIMainTest {
 
     @Test
     public void exportTest() throws Exception {
-        callMain(
-                "-e", basePath + "contract_to_export.unicon");
+        callMain("-e", basePath + "contract_to_export.unicon");
         System.out.println(output);
         assertTrue (output.indexOf("export as json ok") >= 0);
         assertEquals(0, errors.size());
+    }
+
+//    @Test
+    public void exportTUTest() throws Exception {
+        callMain2("--network");
+        Contract c1 = CLIMain.loadContract(rootPath + "test_access_3.unicon");
+        System.out.println(c1.getId());
+        callMain2("--probe", c1.getId().toBase64String());
+//        Contract c2 = CLIMain.loadContract(rootPath + "test_access_2_rev1.unicon");
+//        System.out.println(c2.getId());
+//        callMain2("--probe", c2.getId().toBase64String());
+//        Contract c3 = CLIMain.loadContract(rootPath + "test_access_2_rev1_rev2.unicon");
+//        System.out.println(c3.getId());
+//        callMain2("--probe", c3.getId().toBase64String());
+
+//        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", rootPath + "realToken.unicon",
+//                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+//        assertTrue (new File(rootPath + "realToken.unicon").exists());
+//        callMain2("-register", rootPath + "realToken.unicon",
+//                "-tu", rootPath + "test_access_3.unicon", "-tutest",
+//                "-k", rootPath + "at70.privateKey.unikey",
+//                "-wait", "1000");
+        callMain("-e", rootPath + "test_access_3_rev1.unicon", "-pretty");
+        System.out.println(output);
+
+//        Thread.sleep(10000);
+//
+//        Contract c5 = CLIMain.loadContract(rootPath + "test_access_3_rev1.unicon");
+//        System.out.println(c5.getId());
+//        callMain2("--probe", c5.getId().toBase64String());
+//        Contract c6 = CLIMain.loadContract(rootPath + "realToken.unicon");
+//        System.out.println(c6.getId());
+//        callMain2("--probe", c6.getId().toBase64String());
     }
 
     @Test
