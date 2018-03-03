@@ -2056,7 +2056,7 @@ public class CLIMain {
             try {
                 parser.formatHelpWith(new BuiltinHelpFormatter(columns, 2));
                 parser.printHelpOn(out);
-                out.println("\nOnline    docs: https://lnd.im/UniClientUserManual\n");
+                out.println("\nOnline docs: https://lnd.im/UniClientUserManual\n");
             } catch (IOException e) {
                 e.printStackTrace();
             }
