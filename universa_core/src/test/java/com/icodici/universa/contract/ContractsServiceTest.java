@@ -114,6 +114,37 @@ public class ContractsServiceTest extends ContractTestBase {
 
     }
 
+    private void checkCreateParcelFotTestNet(String contract_file_payload, String contract_file_payment) throws Exception
+    {
+        final String ROOT_PATH = "./src/test_contracts/contractService/";
+
+        PrivateKey privateKey = TestKeys.privateKey(3);
+        Set<PrivateKey> privateKeys = new HashSet<>();
+        privateKeys.add(privateKey);
+        Set<PublicKey> publicKeys = new HashSet<>();
+        publicKeys.add(privateKey.getPublicKey());
+
+        Contract payload = Contract.fromDslFile(ROOT_PATH + contract_file_payload);
+        payload.addSignerKey(privateKey);
+        payload.seal();
+
+        Contract payment = ContractsService.createFreshTU(100, publicKeys, true);
+
+        Parcel parcel = ContractsService.createParcel(payload, payment, 20, privateKeys, true);
+
+        assertEquals(parcel.getPayloadContract().getState().getBranchId(), payload.getState().getBranchId());
+        assertEquals(parcel.getPaymentContract().getState().getBranchId(), payment.getState().getBranchId());
+
+        assertEquals(parcel.getPayloadContract().getStateData(), payload.getStateData());
+        assertEquals(parcel.getPaymentContract().getDefinition().getData(), payment.getDefinition().getData());
+
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 20, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+
+        System.out.println("OK");
+
+    }
+
     @Test
     public void checkCreateGoodParcel() throws Exception
     {
@@ -135,6 +166,12 @@ public class ContractsServiceTest extends ContractTestBase {
     }
 
     @Test
+    public void checkCreateGoodParcelForTestNet() throws Exception
+    {
+        checkCreateParcelFotTestNet("simple_root_contract.yml", "simple_root_contract.yml");
+    }
+
+    @Test
     public void createTU() throws Exception
     {
         PrivateKey privateKey = TestKeys.privateKey(3);
@@ -149,8 +186,29 @@ public class ContractsServiceTest extends ContractTestBase {
 
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read( "./src/test_contracts/keys/tu_key.private.unikey"));
-        Set<PublicKey> issuerKeys = new HashSet();
-        issuerKeys.add(manufacturePrivateKey.getPublicKey());
-        assertEquals(false, tu.getRole("owner").isAllowedForKeys(issuerKeys));
+        Set<PublicKey> badKeys = new HashSet();
+        badKeys.add(manufacturePrivateKey.getPublicKey());
+        assertEquals(false, tu.getRole("owner").isAllowedForKeys(badKeys));
+    }
+
+    @Test
+    public void createTestTU() throws Exception
+    {
+        PrivateKey privateKey = TestKeys.privateKey(3);
+        Set<PublicKey> keys = new HashSet();
+        keys.add(privateKey.getPublicKey());
+        Contract tu = ContractsService.createFreshTU(100, keys, true);
+        tu.check();
+        tu.traceErrors();
+
+        assertEquals(true, tu.getRole("owner").isAllowedForKeys(keys));
+        assertEquals(100, tu.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, tu.getStateData().getIntOrThrow("test_transaction_units"));
+
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read( "./src/test_contracts/keys/tu_key.private.unikey"));
+        Set<PublicKey> badKeys = new HashSet();
+        badKeys.add(manufacturePrivateKey.getPublicKey());
+        assertEquals(false, tu.getRole("owner").isAllowedForKeys(badKeys));
     }
 }

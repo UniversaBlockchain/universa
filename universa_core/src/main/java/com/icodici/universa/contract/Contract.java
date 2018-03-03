@@ -516,6 +516,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public boolean paymentCheck(PublicKey issuerKey) throws Quantiser.QuantiserException {
         boolean res = true;
+
+        boolean hasTestTU = getStateData().get("test_transaction_units") != null;
+
         // Checks that there is a payment contract and the payment should be >= 1
         int transaction_units = getStateData().getInt("transaction_units", 0);
         if (transaction_units <= 0) {
@@ -528,6 +531,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (o == null || o.getClass() != Integer.class) {
             res = false;
             addError(Errors.BAD_VALUE, "transaction_units name/type mismatch");
+        }
+
+        if(hasTestTU) {
+            o = getStateData().get("test_transaction_units");
+            if (o == null || o.getClass() != Integer.class) {
+                res = false;
+                addError(Errors.BAD_VALUE, "test_transaction_units name/type mismatch");
+            }
         }
 
         // check valid decrement_permission

@@ -802,8 +802,26 @@ public class Node {
                                 }
                             }
                             if(parent != null) {
+                                boolean hasTestTU = payment.getStateData().get("test_transaction_units") != null;
                                 // set pay limit for payload processing
-                                int limit = Quantiser.quantaPerUTN * (parent.getStateData().getIntOrThrow("transaction_units") - payment.getStateData().getIntOrThrow("transaction_units"));
+                                int limit = 0;
+                                if(hasTestTU) {
+                                    limit = Quantiser.quantaPerUTN * (
+                                            parent.getStateData().getIntOrThrow("test_transaction_units")
+                                                    - payment.getStateData().getIntOrThrow("test_transaction_units")
+                                    );
+                                    if(limit <= 0) {
+                                        limit = Quantiser.quantaPerUTN * (
+                                                parent.getStateData().getIntOrThrow("transaction_units")
+                                                        - payment.getStateData().getIntOrThrow("transaction_units")
+                                        );
+                                    }
+                                } else {
+                                    limit = Quantiser.quantaPerUTN * (
+                                            parent.getStateData().getIntOrThrow("transaction_units")
+                                                    - payment.getStateData().getIntOrThrow("transaction_units")
+                                    );
+                                }
                                 payload.getQuantiser().reset(limit);
 
                                 // force payload checking (we've freeze it at processor start)
@@ -843,6 +861,10 @@ public class Node {
                         payloadProcessor.removedEvent.await();
                     }
                 } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    processingState = ParcelProcessingState.FINISHED;
+                    doneEvent.fire();
+                } catch (Exception e) {
                     e.printStackTrace();
                     processingState = ParcelProcessingState.FINISHED;
                     doneEvent.fire();

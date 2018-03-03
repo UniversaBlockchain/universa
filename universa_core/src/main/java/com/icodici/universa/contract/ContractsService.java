@@ -541,8 +541,30 @@ public class ContractsService {
      */
     public synchronized static Parcel createParcel(Contract payload, Contract payment, int amount, Set<PrivateKey> keys) {
 
+        return createParcel(payload, payment, amount, keys, false);
+    }
+
+    /**
+     * Create paid transaction, which consist from contract you want to register and payment contract that will be
+     * spend to process transaction.
+     *<br><br>
+     * @param payload is prepared contract you want to register in the Universa.
+     * @param payment is approved contract with transaction units belongs to you.
+     * @param amount is number of transaction units you want to spend to register payload contract.
+     * @param keys is own private keys, which are set as owner of payment contract
+     * @param withTestPayment if true {@link Parcel} will be created with test payment
+     * @return parcel, it ready to send to the Universa.
+     */
+    public synchronized static Parcel createParcel(Contract payload, Contract payment, int amount, Set<PrivateKey> keys,
+                                                   boolean withTestPayment) {
+
         Contract paymentDecreased = payment.createRevision(keys);
-        paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
+
+        if(withTestPayment) {
+            paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
+        } else {
+            paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
+        }
 
         paymentDecreased.seal();
 
@@ -565,8 +587,31 @@ public class ContractsService {
      */
     public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys) throws IOException {
 
+        return createFreshTU(amount, ownerKeys, false);
+    }
+
+
+    /**
+     * Creates fresh contract in the first revision with transaction units.
+     *<br><br>
+     * This contract should be registered and then should be used as payment for other contract's processing.
+     * TU contracts signs with special Universa keys and set as owner public keys from params.
+     *<br><br>
+     * @param amount is initial number of TU that will be have an owner
+     * @param ownerKeys is public keys that will became an owner of TU
+     * @param withTestTU if true TU will be created with test transaction units
+     * @return sealed TU contract; should be registered in the Universa by simplified procedure.
+     * @throws IOException with exceptions while contract preparing
+     */
+    public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys, boolean withTestTU) throws IOException {
+
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(Config.tuKeyPath));
-        Contract tu = Contract.fromDslFile(Config.tuTemplatePath);
+        Contract tu;
+        if(withTestTU) {
+            tu = Contract.fromDslFile(Config.testTUTemplatePath);
+        } else {
+            tu = Contract.fromDslFile(Config.tuTemplatePath);
+        }
 
         SimpleRole ownerRole = new SimpleRole("owner");
         for (PublicKey k : ownerKeys) {
@@ -578,6 +623,9 @@ public class ContractsService {
         tu.createRole("owner", ownerRole);
 
         tu.getStateData().set("transaction_units", amount);
+        if(withTestTU) {
+            tu.getStateData().set("test_transaction_units", amount * 100);
+        }
 
         tu.addSignerKey(manufacturePrivateKey);
         tu.seal();

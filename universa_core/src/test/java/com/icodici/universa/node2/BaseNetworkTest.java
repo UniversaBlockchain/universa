@@ -2419,6 +2419,117 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
+    public void registerParcelWithTestPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        Set<PublicKey> keys = new HashSet();
+        keys.add(ownerKey.getPublicKey());
+        Contract stepaTU = ContractsService.createFreshTU(100, keys, true);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, true);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey()));
+
+//        LogPrinter.showDebug(true);
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+
+    @Test(timeout = 90000)
+    public void registerParcelWithTestTUButRealPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        Set<PublicKey> keys = new HashSet();
+        keys.add(ownerKey.getPublicKey());
+        Contract stepaTU = ContractsService.createFreshTU(100, keys, true);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey()));
+
+//        LogPrinter.showDebug(true);
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+
+
+    @Test(timeout = 90000)
     public void declineParcelWithBadPayload() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
@@ -2594,10 +2705,10 @@ public class BaseNetworkTest extends TestCase {
 
     public synchronized Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
 
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
-        Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-        stepaTU.addSignerKey(manufacturePrivateKey);
-        stepaTU.seal();
+        PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        Set<PublicKey> ownerKeys = new HashSet();
+        ownerKeys.add(ownerKey.getPublicKey());
+        Contract stepaTU = ContractsService.createFreshTU(100000000, ownerKeys);
         stepaTU.check();
         //stepaTU.setIsTU(true);
         stepaTU.traceErrors();
