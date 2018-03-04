@@ -520,10 +520,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         boolean hasTestTU = getStateData().get("test_transaction_units") != null;
 
         // Checks that there is a payment contract and the payment should be >= 1
-        int transaction_units = getStateData().getInt("transaction_units", 0);
-        if (transaction_units <= 0) {
+        int transaction_units = getStateData().getInt("transaction_units", -1);
+        int test_transaction_units = getStateData().getInt("test_transaction_units", -1);
+        if (transaction_units < 0) {
             res = false;
-            addError(Errors.BAD_VALUE, "transaction_units <= 0");
+            addError(Errors.BAD_VALUE, "transaction_units < 0");
         }
 
         // check valid name/type fields combination
@@ -538,6 +539,29 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (o == null || o.getClass() != Integer.class) {
                 res = false;
                 addError(Errors.BAD_VALUE, "test_transaction_units name/type mismatch");
+            }
+
+            if (test_transaction_units < 0) {
+                res = false;
+                addError(Errors.BAD_VALUE, "test_transaction_units < 0");
+            }
+
+            if(state.origin != null) {
+                getContext();
+                Contract parent;
+                // if exist siblings for contract (more then itself)
+                if (getSiblings().size() > 1) {
+                    parent = getContext().base;
+                } else {
+                    parent = getRevokingItem(getParent());
+                }
+                int was_transaction_units = parent.getStateData().getInt("transaction_units", -1);
+                int was_test_transaction_units = parent.getStateData().getInt("test_transaction_units", -1);
+
+                if (transaction_units != was_transaction_units && test_transaction_units != was_test_transaction_units) {
+                    res = false;
+                    addError(Errors.BAD_VALUE, "transaction_units and test_transaction_units can not be spent both");
+                }
             }
         }
 

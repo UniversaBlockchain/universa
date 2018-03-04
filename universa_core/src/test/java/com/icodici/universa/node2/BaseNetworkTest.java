@@ -2473,6 +2473,65 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
+
+    @Test(timeout = 90000)
+    public void registerParcelWithTestAndRealPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Contract stepaTU = InnerContractsService.createFreshTU(100, stepaPublicKeys, true);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys);
+
+        paymentDecreased.getStateData().set("test_transaction_units", stepaTU.getStateData().getIntOrThrow("test_transaction_units") - 1);
+        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        paymentDecreased.seal();
+
+        Parcel parcel = new Parcel(stepaCoins.getTransactionPack(), paymentDecreased.getTransactionPack());
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+
+        assertFalse(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey()));
+
+//        LogPrinter.showDebug(true);
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+
     @Test(timeout = 90000)
     public void registerParcelWithTestTUButRealPayment() throws Exception {
 
