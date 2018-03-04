@@ -124,7 +124,7 @@ public class TestItem implements Approvable {
     }
 
     @Override
-    public boolean isTU(PublicKey issuerKey) {
+    public boolean isTU(PublicKey issuerKey, String issuerName) {
         return true;
     }
 }

@@ -68,6 +68,9 @@ definition:
     # optional, but almost always needed name or four currency
     name: TU
 
+    # required for TU
+    issuerName: "Universa Reserve System"
+
     description: TU.
 
 # required section. Data that represent current contract state, could be modified in accordance with

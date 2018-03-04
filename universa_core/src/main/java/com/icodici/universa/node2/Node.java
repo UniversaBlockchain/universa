@@ -934,6 +934,7 @@ public class Node {
                 }
 
                 payment = parcel.getPaymentContract();
+                payment.setIsShouldBeTU(true);
                 payload = parcel.getPayloadContract();
 
                 // create item processors or get results for payment and payload
@@ -1288,8 +1289,14 @@ public class Node {
                     try {
                         boolean checkPassed = false;
 
-                        if(item.isTU(config.getTransactionUnitsIssuerKey())) {
-                            checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKey());
+                        if(item.isShouldBeTU()) {
+                            if(item.isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName())) {
+                                checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKey());
+                            } else {
+                                checkPassed = false;
+                                item.addError(Errors.BADSTATE, item.getId().toString(),
+                                        "Item that should be TU contract is not TU contract");
+                            }
                         } else {
                             checkPassed = item.check();
                         }
@@ -1553,7 +1560,7 @@ public class Node {
                     // at this point we should requery the nodes that did not yet answered us
                     Notification notification;
                     ParcelNotification.ParcelNotificationType notificationType;
-                    if(item.isTU(config.getTransactionUnitsIssuerKey())) {
+                    if(item.isShouldBeTU()) {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                     } else {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
@@ -1769,7 +1776,7 @@ public class Node {
                 // at this point we should requery the nodes that did not yet answered us
                 Notification notification;
                 ParcelNotification.ParcelNotificationType notificationType;
-                if(item.isTU(config.getTransactionUnitsIssuerKey())) {
+                if(item.isShouldBeTU()) {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
@@ -1963,7 +1970,7 @@ public class Node {
                 Notification notification;
 
                 ParcelNotification.ParcelNotificationType notificationType;
-                if(item.isTU(config.getTransactionUnitsIssuerKey())) {
+                if(item.isShouldBeTU()) {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;

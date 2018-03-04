@@ -97,6 +97,8 @@ public class Config {
     public static String testTUTemplatePath = "./src/test_contracts/TestTUTemplate.yml";
     public static String tuKeyPath = "./src/test_contracts/keys/tu_key.private.unikey";
 
+    private String tuIssuerName = "Universa Reserve System";
+
     /**
      * num of known (approved, declined, revoked or locked) subcontracts of a complex contract that starts resync if some another contracts is unknown
      */
@@ -229,6 +231,10 @@ public class Config {
         } catch (EncryptionError e) {
             return null;
         }
+    }
+
+    public String getTUIssuerName() {
+        return tuIssuerName;
     }
 
     public boolean updateConsensusConfig(int nodesCount) {

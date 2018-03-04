@@ -58,6 +58,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private int apiLevel = MAX_API_LEVEL;
     private Context context = null;
 
+    private boolean shouldBeTU = false;
     /**
      * true if the contract was imported from sealed capsule
      */
@@ -2088,10 +2089,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public boolean isTU(PublicKey issuerKey) {
+    public boolean isTU(PublicKey issuerKey, String issuerName) {
         if (!getIssuer().getKeys().equals(new HashSet<>(Arrays.asList(issuerKey))))
             return false;
+        if ( !issuerName.equals(getDefinition().getData().get("issuerName")))
+            return false;
         return true;
+    }
+
+    @Override
+    public boolean isShouldBeTU() {
+        return shouldBeTU;
+    }
+    public void setIsShouldBeTU(boolean shouldBeTU) {
+        this.shouldBeTU = shouldBeTU;
     }
 
     /**
