@@ -25,6 +25,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
+import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -492,34 +493,36 @@ public class CLIMainTest {
 //    @Test
     public void exportTUTest() throws Exception {
         callMain2("--network");
-        Contract c1 = CLIMain.loadContract(rootPath + "test_access_3.unicon");
+        Contract c1 = CLIMain.loadContract(rootPath + "test_access.unicon");
         System.out.println(c1.getId());
         callMain2("--probe", c1.getId().toBase64String());
-//        Contract c2 = CLIMain.loadContract(rootPath + "test_access_2_rev1.unicon");
+//        System.out.println(Bytes.toHex(c1.getIssuer().getKeys().iterator().next().pack()));
+//        Contract c2 = CLIMain.loadContract(rootPath + "test_access_rev1.unicon");
 //        System.out.println(c2.getId());
 //        callMain2("--probe", c2.getId().toBase64String());
 //        Contract c3 = CLIMain.loadContract(rootPath + "test_access_2_rev1_rev2.unicon");
 //        System.out.println(c3.getId());
 //        callMain2("--probe", c3.getId().toBase64String());
 
-//        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", rootPath + "realToken.unicon",
-//                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
-//        assertTrue (new File(rootPath + "realToken.unicon").exists());
-//        callMain2("-register", rootPath + "realToken.unicon",
-//                "-tu", rootPath + "test_access_3.unicon", "-tutest",
-//                "-k", rootPath + "at70.privateKey.unikey",
-//                "-wait", "1000");
-        callMain("-e", rootPath + "test_access_3_rev1.unicon", "-pretty");
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", rootPath + "realToken.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(rootPath + "realToken.unicon").exists());
+        callMain2("-register", rootPath + "realToken.unicon",
+                "-tu", rootPath + "test_access.unicon",
+                "-tutest",
+                "-k", rootPath + "at70.privateKey.unikey",
+                "-wait", "1000");
+        callMain("-e", rootPath + "test_access.unicon", "-pretty");
         System.out.println(output);
 
-//        Thread.sleep(10000);
-//
-//        Contract c5 = CLIMain.loadContract(rootPath + "test_access_3_rev1.unicon");
-//        System.out.println(c5.getId());
-//        callMain2("--probe", c5.getId().toBase64String());
-//        Contract c6 = CLIMain.loadContract(rootPath + "realToken.unicon");
-//        System.out.println(c6.getId());
-//        callMain2("--probe", c6.getId().toBase64String());
+        Thread.sleep(10000);
+
+        Contract c5 = CLIMain.loadContract(rootPath + "test_access.unicon");
+        System.out.println(c5.getId());
+        callMain2("--probe", c5.getId().toBase64String());
+        Contract c6 = CLIMain.loadContract(rootPath + "realToken.unicon");
+        System.out.println(c6.getId());
+        callMain2("--probe", c6.getId().toBase64String());
     }
 
     @Test
