@@ -153,7 +153,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             return Binder.of(
                     "itemResult",
-                    "ERROR: " + e.getMessage()
+                    "approve ERROR: " + e.getMessage()
             );
         }
     }
@@ -169,7 +169,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             return Binder.of(
                     "result",
-                    "ERROR: " + e.getMessage()
+                    "approveParcel ERROR: " + e.getMessage()
             );
         }
     }
@@ -201,7 +201,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             return Binder.of(
                     "itemResult",
-                    "ERROR: " + e.getMessage()
+                    "getState ERROR: " + e.getMessage()
             );
         }
     }
@@ -214,7 +214,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             return Binder.of(
                     "processingState",
-                    "ERROR: " + e.getMessage()
+                    "getParcelProcessingState ERROR: " + e.getMessage()
             );
         }
     }

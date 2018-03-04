@@ -47,8 +47,7 @@ public class Parcel implements BiSerializable {
     }
 
     //New constructor for initializing an object from a binder when deserializing
-    public Parcel(Binder data)
-    {
+    public Parcel(Binder data) throws IOException {
         BiDeserializer biD = new BiDeserializer();
         deserialize(data, biD);
     }
@@ -94,16 +93,16 @@ public class Parcel implements BiSerializable {
     public synchronized Binder serialize(BiSerializer s) {
 //        System.out.println("Parcel serialize ");
         return Binder.of(
-                "payload", s.serialize(payload),
-                "payment", s.serialize(payment),
+                "payload", payload.pack(),
+                "payment", payment.pack(),
                 "hashId", s.serialize(hashId));
     }
 
     @Override
-    public synchronized void deserialize(Binder data, BiDeserializer ds) {
+    public synchronized void deserialize(Binder data, BiDeserializer ds) throws IOException {
 //        System.out.println("Parcel deserialize ");
-        payload = ds.deserialize(data.get("payload"));
-        payment = ds.deserialize(data.get("payment"));
+        payload = TransactionPack.unpack(data.getBinary("payload"));
+        payment = TransactionPack.unpack(data.getBinary("payment"));
         hashId = ds.deserialize(data.get("hashId"));
     }
 
