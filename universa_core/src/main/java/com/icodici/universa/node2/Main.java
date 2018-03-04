@@ -30,7 +30,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    public static final String NODE_VERSION = "3.0.9";
+    public static final String NODE_VERSION = "3.1.0-hk2";
     private PostgresLedger ledger;
     private OptionParser parser;
     private OptionSet options;

@@ -1288,6 +1288,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         state.setExpiresAt(dateTime);
     }
 
+    public void getExpiresAt(ZonedDateTime dateTime) {
+        state.setExpiresAt(dateTime);
+    }
+
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         int l = data.getIntOrThrow("api_level");
