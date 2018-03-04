@@ -11,10 +11,7 @@ import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.Do;
 import org.junit.*;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -75,9 +72,13 @@ public class ResearchTest extends TestCase {
         System.out.println("startLocalNetwork...");
         nodeStartProcessList = new ArrayList<>();
         nodeStartThreadList = new ArrayList<>();
-        for (int n = 1; n <= 3; ++n) {
+        for (int n = 1; n <= 4; ++n) {
             String curDir = System.getProperty("user.dir");
+            String tmpDir = System.getProperty("java.io.tmpdir");
+            String logFile = tmpDir + "/log_node_"+n+".txt";
             ProcessBuilder processBuilder = new ProcessBuilder("java", "-jar", curDir+"/../out/artifacts/universa_core_test_jar/universa_core_test.jar", "-c", curDir+"/../universa_core/src/test_node_config_v2/node"+n);
+            processBuilder.redirectOutput(new File(logFile));
+            processBuilder.redirectError(new File(logFile));
             startProcessAsync(processBuilder, false);
         }
         Thread.sleep(1000);
