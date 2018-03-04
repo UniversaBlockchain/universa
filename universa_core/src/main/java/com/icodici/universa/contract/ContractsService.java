@@ -469,28 +469,24 @@ public class ContractsService {
      * Service creates a contract that should be send to partner,
      * then partner should sign it and return back for final sign from calling part.
      *<br><br>
+     * @param BaseContract is base contract
      * @param fromKeys is own private keys
      * @param toKeys is foreign public keys
+     * @param createNewRevision create new revision if true
      * @return contract with two signatures that should be send from first part to partner.
      */
-    public synchronized static Contract createTwoSignedContract(Set<PrivateKey> fromKeys, Set<PublicKey> toKeys) {
+    public synchronized static Contract createTwoSignedContract(Contract BaseContract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
-        Contract twoSignContract = new Contract();
+        Contract twoSignContract = BaseContract;
 
-        Contract.Definition cd = twoSignContract.getDefinition();
-        cd.setExpiresAt(twoSignContract.getCreatedAt().plusDays(30));
+        if (createNewRevision)
+            twoSignContract = BaseContract.createRevision(fromKeys);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
+        SimpleRole creatorFrom = new SimpleRole("creator");
         for (PrivateKey k : fromKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
-            issuerRole.addKeyRecord(kr);
+            creatorFrom.addKeyRecord(kr);
         }
-
-        twoSignContract.registerRole(issuerRole);
-        twoSignContract.createRole("creator", issuerRole);
-
-        twoSignContract.createTransactionalSection();
-        twoSignContract.getTransactional().setId(HashId.createRandom().toBase64String());
 
         SimpleRole ownerTo = new SimpleRole("owner");
         for (PublicKey k : toKeys) {
@@ -498,11 +494,18 @@ public class ContractsService {
             ownerTo.addKeyRecord(kr);
         }
 
+        twoSignContract.registerRole(creatorFrom);
+        twoSignContract.createRole("creator", creatorFrom);
+
+        twoSignContract.createTransactionalSection();
+        twoSignContract.getTransactional().setId(HashId.createRandom().toBase64String());
+
         Reference reference = new Reference();
         reference.transactional_id = twoSignContract.getTransactional().getId();
         reference.type = Reference.TYPE_TRANSACTIONAL;
         reference.required = true;
         reference.signed_by = new ArrayList<>();
+        reference.signed_by.add(creatorFrom);
         reference.signed_by.add(ownerTo);
         twoSignContract.getTransactional().addReference(reference);
 

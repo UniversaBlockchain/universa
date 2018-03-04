@@ -1313,7 +1313,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(newLamborghini.getOwner().isAllowedForKeys(martyPublicKeys));
     }
 
-    @Test(timeout = 9000)
+    @Test(timeout = 90000)
     public void createTwoSignedContractAllGood() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -1330,23 +1330,36 @@ public class BaseNetworkTest extends TestCase {
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        Contract twoSignContract = ContractsService.createTwoSignedContract(martyPrivateKeys, stepaPublicKeys);
+        Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+
+        System.out.println("Base contract contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Contract twoSignContract = ContractsService.createTwoSignedContract(baseContract, martyPrivateKeys, stepaPublicKeys, true);
 
         twoSignContract = imitateSendingTransactionToPartner(twoSignContract);
 
-        twoSignContract.seal();
+        twoSignContract.check();
+        twoSignContract.traceErrors();
+        registerAndCheckDeclined(twoSignContract);
+
         twoSignContract.addSignatureToSeal(stepaPrivateKeys);
 
+        twoSignContract.check();
+        twoSignContract.traceErrors();
         registerAndCheckDeclined(twoSignContract);
 
         twoSignContract = imitateSendingTransactionToPartner(twoSignContract);
 
-        twoSignContract.seal();
         twoSignContract.addSignatureToSeal(martyPrivateKeys);
 
         twoSignContract.check();
         twoSignContract.traceErrors();
-        System.out.println("twoSignedContract is valid: " + twoSignContract.isOk());
+        System.out.println("Contract with two signature is valid: " + twoSignContract.isOk());
         registerAndCheckApproved(twoSignContract);
     }
 
