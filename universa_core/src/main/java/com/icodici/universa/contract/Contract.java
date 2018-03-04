@@ -1234,6 +1234,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return registerRole(role);
     }
 
+    @NonNull
+    public Role setCreatorKeys(Object... keys) {
+        return setRole("creator", asList(keys));
+    }
+
     public Role getOwner() {
         return getRole("owner");
     }
@@ -1249,7 +1254,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @NonNull
-    public Role setOwnerKeys(PublicKey... keys) {
+    public Role setOwnerKeys(Object... keys) {
         return setOwnerKeys(asList(keys));
     }
 
@@ -1270,12 +1275,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return state.getData();
     }
 
-    public Role setIssuerKeys(PublicKey... keys) {
+    public Role setIssuerKeys(Object... keys) {
         return setRole("issuer", asList(keys));
-    }
-
-    public Role setIssuerKeys(AnonymousId... anonKeys) {
-        return setRole("issuer", asList(anonKeys));
     }
 
     public void setExpiresAt(ZonedDateTime dateTime) {
