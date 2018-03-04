@@ -9,6 +9,7 @@ package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Do;
@@ -21,6 +22,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeoutException;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -33,9 +35,16 @@ public class DatagramAdapterTest {
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
         NodeInfo node3 = new NodeInfo(TestKeys.publicKey(2),12, "test_node_12", "localhost", 16204, 16205, 16303);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
-        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3); // create implemented class with node1
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+        nodes.add(node3);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3, nc); // create implemented class with node1
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -83,8 +92,14 @@ public class DatagramAdapterTest {
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
 
         d1.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
         d2.setTestMode(DatagramAdapter.TestModes.SHUFFLE_PACKETS);
@@ -135,9 +150,16 @@ public class DatagramAdapterTest {
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
         NodeInfo node3 = new NodeInfo(TestKeys.publicKey(2),12, "test_node_12", "localhost", 16204, 16205, 16303);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
-        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3); // create implemented class with node1
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+        nodes.add(node3);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3, nc); // create implemented class with node1
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -217,16 +239,25 @@ public class DatagramAdapterTest {
         NodeInfo node4 = new NodeInfo(TestKeys.publicKey(0),13, "test_node_13", "localhost", 16205, 16206, 16304);
         NodeInfo node5 = new NodeInfo(TestKeys.publicKey(1),14, "test_node_14", "localhost", 16206, 16207, 16305);
 
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+        nodes.add(node3);
+        nodes.add(node4);
+        nodes.add(node5);
+
+        NetConfig nc = new NetConfig(nodes);
+
         SymmetricKey symmetricKey1 = new SymmetricKey();
         SymmetricKey symmetricKey2 = new SymmetricKey();
         SymmetricKey symmetricKey3 = new SymmetricKey();
         SymmetricKey symmetricKey4 = new SymmetricKey();
         SymmetricKey symmetricKey5 = new SymmetricKey();
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey2, node2); // create implemented class with node1
-        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), symmetricKey3, node3); // create implemented class with node1
-        DatagramAdapter d4 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey4, node4); // create implemented class with node1
-        DatagramAdapter d5 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey5, node5); // create implemented class with node1
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey2, node2, nc); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), symmetricKey3, node3, nc); // create implemented class with node1
+        DatagramAdapter d4 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey4, node4, nc); // create implemented class with node1
+        DatagramAdapter d5 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey5, node5, nc); // create implemented class with node1
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -394,16 +425,25 @@ public class DatagramAdapterTest {
         NodeInfo node4 = new NodeInfo(TestKeys.publicKey(0),13, "test_node_13", "localhost", 16205, 16206, 16304);
         NodeInfo node5 = new NodeInfo(TestKeys.publicKey(1),14, "test_node_14", "localhost", 16206, 16207, 16305);
 
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+        nodes.add(node3);
+        nodes.add(node4);
+        nodes.add(node5);
+
+        NetConfig nc = new NetConfig(nodes);
+
         SymmetricKey symmetricKey1 = new SymmetricKey();
         SymmetricKey symmetricKey2 = new SymmetricKey();
         SymmetricKey symmetricKey3 = new SymmetricKey();
         SymmetricKey symmetricKey4 = new SymmetricKey();
         SymmetricKey symmetricKey5 = new SymmetricKey();
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey2, node2); // create implemented class with node1
-        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), symmetricKey3, node3); // create implemented class with node1
-        DatagramAdapter d4 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey4, node4); // create implemented class with node1
-        DatagramAdapter d5 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey5, node5); // create implemented class with node1
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey2, node2, nc); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), symmetricKey3, node3, nc); // create implemented class with node1
+        DatagramAdapter d4 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey4, node4, nc); // create implemented class with node1
+        DatagramAdapter d5 = new UDPAdapter(TestKeys.privateKey(1), symmetricKey5, node5, nc); // create implemented class with node1
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -576,10 +616,15 @@ public class DatagramAdapterTest {
 
         int numNodes = 100;
 
-        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),1, "test_node_1", "localhost", 16201, 16202, 16301);
+
+        List<NodeInfo> nodeInfos = new ArrayList<>();
+        nodeInfos.add(node1);
+
+        NetConfig nc = new NetConfig(nodeInfos);
 
         SymmetricKey symmetricKey1 = new SymmetricKey();
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1); // create implemented class with node1
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1, nc); // create implemented class with node1
 
         List symmetricKeyErrors = new ArrayList();
         d1.addErrorsCallback(m -> {
@@ -609,12 +654,13 @@ public class DatagramAdapterTest {
         for (int i = 0; i < numNodes; i++) {
 
             int keyIndex = new Random().nextInt(2);
-            NodeInfo n = new NodeInfo(TestKeys.publicKey(keyIndex),2 + i, "test_node_2" + i, "localhost", 16203 + i, 16204+i, 16302+i);
+            NodeInfo n = new NodeInfo(TestKeys.publicKey(keyIndex),2 + i, "test_node_r_" + i, "localhost", 16203 + i, 16204+i, 16302+i);
 
+            nc.addNode(n);
             nodes.add(n);
 
             SymmetricKey sk = new SymmetricKey();
-            DatagramAdapter d = new UDPAdapter(TestKeys.privateKey(keyIndex), sk, n); // create implemented class with node1
+            DatagramAdapter d = new UDPAdapter(TestKeys.privateKey(keyIndex), sk, n, nc); // create implemented class with node1
 
             adapters.add(d);
 
@@ -676,8 +722,10 @@ public class DatagramAdapterTest {
 
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
 
+        NetConfig nc = new NetConfig(asList(node1));
+
         SymmetricKey symmetricKey1 = new SymmetricKey();
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1); // create implemented class with node1
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1, nc); // create implemented class with node1
 
         List symmetricKeyErrors = new ArrayList();
         d1.addErrorsCallback(m -> {
@@ -709,10 +757,11 @@ public class DatagramAdapterTest {
             int keyIndex = new Random().nextInt(2);
             NodeInfo n = new NodeInfo(TestKeys.publicKey(keyIndex),2 + i, "test_node_2" + i, "localhost", 16203 + i, 16204+i, 16302+i);
 
+            nc.addNode(n);
             nodes.add(n);
 
             SymmetricKey sk = new SymmetricKey();
-            DatagramAdapter d = new UDPAdapter(TestKeys.privateKey(keyIndex), sk, n); // create implemented class with node1
+            DatagramAdapter d = new UDPAdapter(TestKeys.privateKey(keyIndex), sk, n, nc); // create implemented class with node1
 
             adapters.add(d);
 
@@ -774,9 +823,16 @@ public class DatagramAdapterTest {
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
         NodeInfo node3 = new NodeInfo(TestKeys.publicKey(2),12, "test_node_12", "localhost", 16204, 16205, 16303);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
-        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3); // create implemented class with node1
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+        nodes.add(node3);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3, nc); // create implemented class with node1
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -856,8 +912,14 @@ public class DatagramAdapterTest {
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
@@ -927,7 +989,7 @@ public class DatagramAdapterTest {
         d2.shutdown();
 
         // create new adapter with d2 credentials
-        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
         ArrayList<byte[]> receviedFor3 = new ArrayList<>();
 
         d3.receive(d-> {
@@ -969,8 +1031,14 @@ public class DatagramAdapterTest {
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -1048,8 +1116,14 @@ public class DatagramAdapterTest {
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -1099,8 +1173,14 @@ public class DatagramAdapterTest {
         NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
         NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1); // create implemented class with node1
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
 
         d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -1185,7 +1265,7 @@ public class DatagramAdapterTest {
         d2.shutdown();
 
         // create new adapter with d2 credentials
-        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
         ArrayList<byte[]> receviedFor3 = new ArrayList<>();
 
         d3.setTestMode(DatagramAdapter.TestModes.LOST_AND_SHUFFLE_PACKETS);
@@ -1219,6 +1299,60 @@ public class DatagramAdapterTest {
         // receiver must s
 //        assertArrayEquals(payload1, data);
 
+
+        d1.shutdown();
+        d2.shutdown();
+        d3.shutdown();
+    }
+
+
+    @Test
+    public void sendBadNetConfig() throws Exception {
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+        NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
+        NodeInfo node3 = new NodeInfo(TestKeys.publicKey(2),12, "test_node_12", "localhost", 16204, 16205, 16303);
+
+        List<NodeInfo> nodes = new ArrayList<>();
+//        nodes.add(node1);
+        nodes.add(node2);
+        nodes.add(node3);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
+        DatagramAdapter d3 = new UDPAdapter(TestKeys.privateKey(2), new SymmetricKey(), node3, nc); // create implemented class with node1
+
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d3.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+
+        byte[] payload1 = "test data set 1".getBytes();
+
+        AsyncEvent<Void> ae = new AsyncEvent<>();
+        List keyErrors = new ArrayList();
+        d2.addErrorsCallback(m -> {
+            System.err.println(m);
+            if(m.indexOf("BAD_VALUE: datagram got from unknown node") >= 0)
+                keyErrors.add(m);
+//            ae.fire();
+            return m;});
+
+        // send from adapter d1, to d2 as it is connected with node2 credentials:
+        d1.send(node2, payload1);
+        d1.send(node2, payload1);
+        d1.send(node2, payload1);
+
+        try {
+            ae.await(5000);
+        } catch (TimeoutException e) {
+            System.out.println("time is up");
+        }
+
+        assertEquals(1, keyErrors.size());
+
+        // And test it for all interfaceces and big arrays of data
 
         d1.shutdown();
         d2.shutdown();

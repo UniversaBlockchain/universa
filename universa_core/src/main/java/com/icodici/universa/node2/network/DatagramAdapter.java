@@ -10,6 +10,7 @@ package com.icodici.universa.node2.network;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.SymmetricKey;
+import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
 import java.io.IOException;
@@ -52,6 +53,7 @@ public abstract class DatagramAdapter {
     static public final int RETRANSMIT_TIME = 250;
 
     protected NodeInfo myNodeInfo;
+    protected NetConfig netConfig;
     protected Consumer<byte[]> receiver = null;
     protected final SymmetricKey sessionKey;
     protected final PrivateKey ownPrivateKey;
@@ -69,9 +71,11 @@ public abstract class DatagramAdapter {
      * @param ownPrivateKey is {@link PrivateKey} for signing requests
      * @param sessionKey is {@link SymmetricKey} with session
      * @param myNodeInfo is {@link NodeInfo} object described node this UDPAdapter work with
+     * @param netConfig is {@link NetConfig} where all nodes data is stored
      */
-    public DatagramAdapter(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo) {
+    public DatagramAdapter(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo, NetConfig netConfig) {
         this.myNodeInfo = myNodeInfo;
+        this.netConfig = netConfig;
         this.sessionKey = sessionKey;
         this.ownPrivateKey = ownPrivateKey;
     }

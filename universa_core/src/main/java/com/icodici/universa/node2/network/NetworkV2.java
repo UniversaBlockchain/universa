@@ -44,7 +44,7 @@ public class NetworkV2 extends Network {
         this.myInfo = myInfo;
         this.myKey = myKey;
 
-        adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo);
+        adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo, netConfig);
 //        adapter.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         adapter.receive(this::onReceived);
         adapter.addErrorsCallback(this::exceptionCallback);

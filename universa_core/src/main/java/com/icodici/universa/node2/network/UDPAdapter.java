@@ -9,6 +9,7 @@ package com.icodici.universa.node2.network;
 import com.icodici.crypto.*;
 import com.icodici.crypto.digest.Crc32;
 import com.icodici.universa.Errors;
+import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -51,10 +52,11 @@ public class UDPAdapter extends DatagramAdapter {
      * @param ownPrivateKey is {@link PrivateKey} for signing requests
      * @param sessionKey is {@link SymmetricKey} with session
      * @param myNodeInfo is {@link NodeInfo} object described node this UDPAdapter work with
+     * @param netConfig is {@link NetConfig} where all nodes data is stored
      * @throws IOException if something went wrong
      */
-    public UDPAdapter(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo) throws IOException {
-        super(ownPrivateKey, sessionKey, myNodeInfo);
+    public UDPAdapter(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo, NetConfig netConfig) throws IOException {
+        super(ownPrivateKey, sessionKey, myNodeInfo, netConfig);
 
         socket = new DatagramSocket(myNodeInfo.getNodeAddress().getPort());
         socket.setReuseAddress(true);
@@ -232,10 +234,13 @@ public class UDPAdapter extends DatagramAdapter {
         report(getLabel(), "send hello to " + session.remoteNodeId, VerboseLevel.BASE);
 
         session.state = Session.HELLO;
+        Binder binder = Binder.fromKeysValues(
+                "data", myNodeInfo.getNumber()
+        );
         Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
                                 new Random().nextInt(Integer.MAX_VALUE), PacketTypes.HELLO,
                                 session.address, session.port,
-                                myNodeInfo.getPublicKey().pack());
+                                Boss.pack(binder));
         sendBlock(block, session);
     }
 
@@ -586,6 +591,8 @@ public class UDPAdapter extends DatagramAdapter {
                         e.printStackTrace();
                     } catch (EncryptionError e) {
                         callErrorCallbacks(getLabel() + " EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+
+                        report(getLabel(), " EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage(), VerboseLevel.BASE);
                         for (Session s : sessionsById.values()) {
                             report(getLabel(), ">>---", VerboseLevel.BASE);
                             report(getLabel(), ">>local node: " + myNodeInfo.getNumber() + " remote node: " + s.remoteNodeId, VerboseLevel.BASE);
@@ -593,7 +600,7 @@ public class UDPAdapter extends DatagramAdapter {
                             report(getLabel(), ">>state: " + s.state, VerboseLevel.BASE);
                             report(getLabel(), ">>session key: " + s.sessionKey.hashCode(), VerboseLevel.BASE);
                         }
-                        e.printStackTrace();
+//                        e.printStackTrace();
                     } catch (IOException e) {
                         e.printStackTrace();
                     } catch (IllegalStateException e) {
@@ -634,23 +641,29 @@ public class UDPAdapter extends DatagramAdapter {
 
                 case PacketTypes.HELLO:
                     report(getLabel(), "got hello from " + block.senderNodeId, VerboseLevel.BASE);
-                    PublicKey key = new PublicKey(block.payload);
+//                    PublicKey key = new PublicKey(block.payload);
+                    NodeInfo senderNodeInfo = netConfig.getInfo(block.senderNodeId);
+                    if(senderNodeInfo != null) {
+                        PublicKey key = senderNodeInfo.getPublicKey();
 //                    session = sessionsById.get(block.senderNodeId);
 //                    if (session == null) {
 //                        session = getOrCreateSession(block.senderNodeId, block.address, block.port);
 //                    }
-                    session = getOrCreateSession(block.senderNodeId, block.address, block.port);
-                    session.publicKey = key;
-                    session.makeBlockDeliveredByType(PacketTypes.HELLO);
-                    if(session.state == Session.HANDSHAKE ||
-                            session.state == Session.EXCHANGING ||
-                            session.state == Session.SESSION ||
-                            // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
-                            session.remoteNodeId > myNodeInfo.getNumber()) {
+                        session = getOrCreateSession(block.senderNodeId, block.address, block.port);
+                        session.publicKey = key;
+                        session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                        if (session.state == Session.HANDSHAKE ||
+                                session.state == Session.EXCHANGING ||
+                                session.state == Session.SESSION ||
+                                // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
+                                session.remoteNodeId > myNodeInfo.getNumber()) {
 
-                        sendWelcome(session);
+                            sendWelcome(session);
+                        } else {
+                            report(getLabel(), "node sent handshake too, to " + session.remoteNodeId + " state: " + session.state, VerboseLevel.BASE);
+                        }
                     } else {
-                        report(getLabel(), "node sent handshake too, to " + session.remoteNodeId + " state: " + session.state, VerboseLevel.BASE);
+                        throw new EncryptionError(Errors.BAD_VALUE + ": datagram got from unknown node " + block.senderNodeId);
                     }
                     break;
 
