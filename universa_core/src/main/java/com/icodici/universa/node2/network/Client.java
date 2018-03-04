@@ -264,8 +264,18 @@ public class Client {
 //                                                    "itemId", itemId).getOrThrow("itemResult");
 //                System.out.println(">> " + r);
 //            }
-            return (ItemResult) httpClient.command("getState",
-                    "itemId", itemId).getOrThrow("itemResult");
+
+            Binder result = httpClient.command("getState",
+                    "itemId", itemId);
+
+            Object ir = result.getOrThrow("itemResult");
+            if (ir instanceof ItemResult)
+                return (ItemResult) ir;
+
+            if (ir instanceof String)
+                System.out.println(">> " + ir);
+
+            return ItemResult.UNDEFINED;
         });
     }
 

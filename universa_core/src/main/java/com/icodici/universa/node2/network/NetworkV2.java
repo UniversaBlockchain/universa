@@ -37,6 +37,7 @@ public class NetworkV2 extends Network {
 //    private Map<NodeInfo, Node> nodes = new HashMap<>();
 
     private static LogPrinter log = new LogPrinter("TLN");
+    protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     private Consumer<Notification> consumer;
 
     public NetworkV2(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
@@ -56,15 +57,14 @@ public class NetworkV2 extends Network {
                 List<Notification> nn = unpack(packedNotifications);
                 for (Notification n : nn) {
                     if( n == null )
-                        System.out.println("bad notification skipped");
+                        report(getLabel(), "bad notification skipped", DatagramAdapter.VerboseLevel.BASE);
                     else {
                         consumer.accept(n);
                     }
                 }
             }
         } catch (IOException e) {
-            System.err.println("ignoring notification, " + e);
-            e.printStackTrace();
+            report(getLabel(), "ignoring notification, " + e, DatagramAdapter.VerboseLevel.BASE);
         }
     }
 
@@ -93,8 +93,8 @@ public class NetworkV2 extends Network {
             }
             return nn;
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("failed to unpack notification: " + e);
+//            e.printStackTrace();
+            report(getLabel(), "failed to unpack notification: " + e, DatagramAdapter.VerboseLevel.BASE);
             throw new IOException("failed to unpack notifications", e);
         }
     }
@@ -124,7 +124,7 @@ public class NetworkV2 extends Network {
             byte[] data = packNotifications(myInfo, Do.listOf(notification));
             adapter.send(toNode, data);
         } catch (InterruptedException e) {
-            System.err.println("Expected interrupted exception");
+            report(getLabel(), "Expected interrupted exception");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -153,7 +153,7 @@ public class NetworkV2 extends Network {
 //            Contract c = Contract.fromPackedTransaction(data);
             return tp.getContract();
         } catch (Exception e) {
-            System.out.println("download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e);
+            report(getLabel(), "download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e, DatagramAdapter.VerboseLevel.BASE);
             e.printStackTrace();
             return null;
         }
@@ -175,7 +175,7 @@ public class NetworkV2 extends Network {
 //            Contract c = Contract.fromPackedTransaction(data);
             return parcel;
         } catch (Exception e) {
-            System.out.println("download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e);
+            report(getLabel(), "download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e);
             return null;
         }
     }
@@ -196,11 +196,35 @@ public class NetworkV2 extends Network {
     }
 
     private String exceptionCallback(String message) {
-        System.err.println("UDP adapter error: " + message);
+        report(getLabel(), "UDP adapter error: " + message, DatagramAdapter.VerboseLevel.BASE);
         return message;
     }
 
     public void shutdown() {
         adapter.shutdown();
+    }
+
+
+
+    public void setVerboseLevel(int level) {
+        this.verboseLevel = level;
+    }
+
+    public String getLabel()
+    {
+        return "Network Node " + myInfo.getNumber() + ": ";
+    }
+
+
+    public void report(String label, String message, int level)
+    {
+        if(level <= verboseLevel)
+            System.out.println(label + message);
+    }
+
+
+    public void report(String label, String message)
+    {
+        report(label, message, DatagramAdapter.VerboseLevel.DETAILED);
     }
 }

@@ -46,9 +46,7 @@ import net.sergeych.utils.Base64;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -628,9 +626,16 @@ public class CLIMain {
                     Parcel parcel = registerContract(contract, tu, tuAmount, tuKeys, tutest, (int) options.valueOf("wait"));
                     if(parcel != null) {
                         report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
-                        saveContract(parcel.getPaymentContract(),
-                                tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon"),
-                                true, false);
+
+                        CopyOption[] copyOptions = new CopyOption[]{
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.COPY_ATTRIBUTES
+                        };
+                        Files.copy(
+                                Paths.get(tuSource),
+                                Paths.get(tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon")),
+                                copyOptions);
+                        saveContract(parcel.getPaymentContract(), tuSource,true, false);
                     }
                 } else {
                     report("registering the contract " + contract.getId().toBase64String() + " from " + source);

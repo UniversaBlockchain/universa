@@ -1290,10 +1290,13 @@ public class Node {
                         boolean checkPassed = false;
 
                         if(item.isShouldBeTU()) {
+                            System.out.println("item.isShouldBeTU");
                             if(item.isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName())) {
                                 checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKey());
+                                System.out.println("paymentCheck " + checkPassed);
                             } else {
                                 checkPassed = false;
+                                System.out.println("is not TU contract " + checkPassed);
                                 item.addError(Errors.BADSTATE, item.getId().toString(),
                                         "Item that should be TU contract is not TU contract");
                             }

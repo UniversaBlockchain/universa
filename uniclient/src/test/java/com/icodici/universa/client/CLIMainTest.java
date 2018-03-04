@@ -1504,9 +1504,9 @@ public class CLIMainTest {
     @Test
     public void registerManyContractsFromVariousNodes() throws Exception {
 
-        ClientNetwork clientNetwork1 = new ClientNetwork("http://localhost:8080", null);
-        ClientNetwork clientNetwork2 = new ClientNetwork("http://localhost:6002", null);
-        ClientNetwork clientNetwork3 = new ClientNetwork("http://localhost:6004", null);
+        ClientNetwork clientNetwork1 = new ClientNetwork("http://localhost:8080", CLIMain.getPrivateKey(),null);
+        ClientNetwork clientNetwork2 = new ClientNetwork("http://localhost:6002", CLIMain.getPrivateKey(), null);
+        ClientNetwork clientNetwork3 = new ClientNetwork("http://localhost:6004", CLIMain.getPrivateKey(), null);
 
 
         int numContracts = 10;
