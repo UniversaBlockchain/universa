@@ -18,6 +18,7 @@ import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Main;
 import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.Quantiser;
@@ -112,6 +113,7 @@ public class CLIMainTest {
 
         Contract c1 = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c1.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        c1.addSignerKeyFromFile(rootPath+"keys/tu_key.private.unikey");
         PrivateKey goodKey1 = c1.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c1.getRole("owner")).addKeyRecord(new KeyRecord(goodKey1.getPublicKey()));
@@ -120,6 +122,7 @@ public class CLIMainTest {
 
         Contract c2 = Contract.fromDslFile(rootPath + "another_root_contract_v2.yml");
         c2.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        c2.addSignerKeyFromFile(rootPath+"keys/tu_key.private.unikey");
         PrivateKey goodKey2 = c2.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c2.getRole("owner")).addKeyRecord(new KeyRecord(goodKey2.getPublicKey()));
@@ -128,6 +131,7 @@ public class CLIMainTest {
 
         Contract c3 = Contract.fromDslFile(rootPath + "simple_root_contract_v2.yml");
         c3.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        c3.addSignerKeyFromFile(rootPath+"keys/tu_key.private.unikey");
         PrivateKey goodKey3 = c3.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c3.getRole("owner")).addKeyRecord(new KeyRecord(goodKey3.getPublicKey()));
@@ -1370,6 +1374,7 @@ public class CLIMainTest {
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.addSignerKeyFromFile(rootPath + "keys/tu_key.private.unikey");
         c.seal();
 
         System.out.println("---");
@@ -1803,10 +1808,14 @@ public class CLIMainTest {
         Thread.sleep(1500);
         System.out.println("probe before revoke");
         callMain2("--probe", c.getId().toBase64String(), "--verbose");
-        Thread.sleep(1500);
+        Thread.sleep(500);
+
+        String tuContract = getApprovedTUContract();
         callMain2("-revoke", contractFileName, "-v",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-k", PRIVATE_KEY_PATH);
-        Thread.sleep(1500);
+        Thread.sleep(2500);
         System.out.println("probe after revoke");
         callMain("--probe", c.getId().toBase64String(), "--verbose");
 
@@ -1845,11 +1854,23 @@ public class CLIMainTest {
         callMain2("--register", contractFileName1, contractFileName2, "--verbose");
 
         Thread.sleep(1500);
+
+
+        System.out.println("---");
+        System.out.println("check tu");
+        System.out.println("---");
+        String tuContract = getApprovedTUContract();
+
+        Contract tu = CLIMain.loadContract(tuContract);
+        System.out.println("check tu " + tu.getId().toBase64String());
+        callMain2("--probe", tu.getId().toBase64String(), "--verbose");
+
         System.out.println("---");
         System.out.println("revoke contracts");
         System.out.println("---");
-
         callMain2("-revoke", contractFileName1, contractFileName2, "-v",
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-k", PRIVATE_KEY_PATH);
 
 
@@ -1863,6 +1884,10 @@ public class CLIMainTest {
 
         Contract c2 = CLIMain.loadContract(contractFileName2);
         callMain("--probe", c2.getId().toBase64String(), "--verbose");
+
+        Contract tu2 = CLIMain.loadContract(tuContract);
+        System.out.println("check tu " + tu2.getId().toBase64String());
+        callMain2("--probe", tu2.getId().toBase64String(), "--verbose");
 
         System.out.println(output);
         assertEquals(0, errors.size());
@@ -2024,6 +2049,10 @@ public class CLIMainTest {
         System.out.println("--- get tu ---");
 
         String tuContract = getApprovedTUContract();
+
+        Contract tu = CLIMain.loadContract(tuContract);
+        System.out.println("check tu " + tu.getId().toBase64String());
+        callMain2("--probe", tu.getId().toBase64String(), "--verbose");
         LogPrinter.showDebug(true);
 
         System.out.println("--- registering contract (with processing cost print) ---");
@@ -2033,9 +2062,14 @@ public class CLIMainTest {
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "5000");
 
-        System.out.println(output);
-
         assertTrue (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+
+
+        Contract tu2 = CLIMain.loadContract(tuContract);
+        System.out.println("check tu " + tu2.getId().toBase64String());
+        callMain("--probe", tu2.getId().toBase64String(), "--verbose");
+
+        System.out.println(output);
 
         Contract loaded2 = CLIMain.loadContract(tuContract, true);
 
@@ -2130,7 +2164,7 @@ public class CLIMainTest {
                 stepaTU.traceErrors();
                 CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
                 System.out.println("--- register new tu --- " + stepaTU.getId());
-                callMain2("--register", basePath + "stepaTU.unicon", "--cost");
+                callMain2("--register", basePath + "stepaTU.unicon", "--cost", "-wait", "2000");
                 tuContract = stepaTU;
             }
             return basePath + "stepaTU.unicon";
@@ -2571,6 +2605,8 @@ public class CLIMainTest {
         System.out.println(path);
         String[] args = new String[]{"--test", "--config", path, nolog ? "--nolog" : ""};
         Main main = new Main(args);
+        main.config.setTransactionUnitsIssuerKeyData(Bytes.fromHex("1E 08 1C 01 00 01 C4 00 01 B9 C7 CB 1B BA 3C 30 80 D0 8B 29 54 95 61 41 39 9E C6 BB 15 56 78 B8 72 DC 97 58 9F 83 8E A0 B7 98 9E BB A9 1D 45 A1 6F 27 2F 61 E0 26 78 D4 9D A9 C2 2F 29 CB B6 F7 9F 97 60 F3 03 ED 5C 58 27 27 63 3B D3 32 B5 82 6A FB 54 EA 26 14 E9 17 B6 4C 5D 60 F7 49 FB E3 2F 26 52 16 04 A6 5E 6E 78 D1 78 85 4D CD 7B 71 EB 2B FE 31 39 E9 E0 24 4F 58 3A 1D AE 1B DA 41 CA 8C 42 2B 19 35 4B 11 2E 45 02 AD AA A2 55 45 33 39 A9 FD D1 F3 1F FA FE 54 4C 2E EE F1 75 C9 B4 1A 27 5C E9 C0 42 4D 08 AD 3E A2 88 99 A3 A2 9F 70 9E 93 A3 DF 1C 75 E0 19 AB 1F E0 82 4D FF 24 DA 5D B4 22 A0 3C A7 79 61 41 FD B7 02 5C F9 74 6F 2C FE 9A DD 36 44 98 A2 37 67 15 28 E9 81 AC 40 CE EF 05 AA 9E 36 8F 56 DA 97 10 E4 10 6A 32 46 16 D0 3B 6F EF 80 41 F3 CC DA 14 74 D1 BF 63 AC 28 E0 F1 04 69 63 F7"));
+        main.config.getKeysWhiteList().add(main.config.getTransactionUnitsIssuerKey());
         main.waitReady();
         return main;
     }

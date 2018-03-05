@@ -685,6 +685,9 @@ public class CLIMain {
 
     private static void doRevoke() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("revoke"));
+        String tuSource = (String) options.valueOf("tu");
+        int tuAmount = (int) options.valueOf("amount");
+        boolean tutest = options.has("tutest");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -698,16 +701,52 @@ public class CLIMain {
 
             Contract contract = loadContract(source);
             report("doRevoke " + contract);
+            Contract tu = null;
+            if(tuSource != null) {
+                tu = loadContract(tuSource, true);
+                report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
+            }
+
+            Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
             if (contract != null) {
-                try {
-                    if (contract.check()) {
-                        report("revoke contract from " + source);
-                        revokeContract(contract, keysMap().values().toArray(new PrivateKey[0]));
-                    } else {
-                        addErrors(contract.getErrors());
+                if(tu != null && tuKeys != null && tuKeys.size() > 0) {
+                    report("registering the paid contract " + contract.getId() + " from " + source
+                            + " for " + tuAmount + " TU");
+                    Parcel parcel = null;
+                    try {
+                        if (contract.check()) {
+                            report("revoke contract from " + source);
+                            parcel = revokeContract(contract, tu, tuAmount, tuKeys, tutest, keysMap().values().toArray(new PrivateKey[0]));
+                        } else {
+                            addErrors(contract.getErrors());
+                        }
+                    } catch (Quantiser.QuantiserException e) {
+                        addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
                     }
-                } catch (Quantiser.QuantiserException e) {
-                    addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+                    if(parcel != null) {
+                        report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
+
+                        CopyOption[] copyOptions = new CopyOption[]{
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.COPY_ATTRIBUTES
+                        };
+                        Files.copy(
+                                Paths.get(tuSource),
+                                Paths.get(tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon")),
+                                copyOptions);
+                        saveContract(parcel.getPaymentContract(), tuSource,true, false);
+                    }
+                } else {
+                    try {
+                        if (contract.check()) {
+                            report("revoke contract from " + source);
+                            revokeContract(contract, keysMap().values().toArray(new PrivateKey[0]));
+                        } else {
+                            addErrors(contract.getErrors());
+                        }
+                    } catch (Quantiser.QuantiserException e) {
+                        addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+                    }
                 }
             }
         }
@@ -1800,14 +1839,32 @@ public class CLIMain {
      *
      * @param contract
      *
+     * @return Parcel - revoking transaction contract.
+     */
+    public static Parcel revokeContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, boolean withTestPayment, PrivateKey... key) throws IOException {
+
+        report("keys num: " + key.length);
+
+        Contract tc = ContractsService.createRevocation(contract, key);
+        Parcel parcel = registerContract(tc, tu, amount, tuKeys, withTestPayment, 0);
+
+        return parcel;
+    }
+
+    /**
+     * Revoke specified contract and create a revocation transactional contract.
+     *
+     * @param contract
+     *
      * @return Contract - revoking transaction contract.
      */
+    @Deprecated
     public static Contract revokeContract(Contract contract, PrivateKey... key) throws IOException {
 
         report("keys num: " + key.length);
 
         Contract tc = ContractsService.createRevocation(contract, key);
-        registerContract(tc, 0,true);
+        registerContract(tc, 0, true);
 
         return tc;
     }
