@@ -59,6 +59,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Context context = null;
 
     private boolean shouldBeTU = false;
+    private boolean suitableForTestnet = false;
+
     /**
      * true if the contract was imported from sealed capsule
      */
@@ -2102,11 +2104,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public boolean isShouldBeTU() {
+    public boolean shouldBeTU() {
         return shouldBeTU;
     }
-    public void setIsShouldBeTU(boolean shouldBeTU) {
+    public void setShouldBeTU(boolean shouldBeTU) {
         this.shouldBeTU = shouldBeTU;
+    }
+
+    public void setSuitableForTestnet(boolean suitableForTestnet) {
+        this.suitableForTestnet = suitableForTestnet;
+    }
+
+    public boolean isSuitableForTestnet() {
+        return suitableForTestnet;
     }
 
     /**

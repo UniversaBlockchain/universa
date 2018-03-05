@@ -7,8 +7,6 @@
 
 package com.icodici.universa.node2;
 
-import com.icodici.crypto.PrivateKey;
-import com.icodici.db.Db;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
@@ -25,7 +23,6 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -730,6 +727,7 @@ public class Node {
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
 
+
         public ParcelProcessor(HashId parcelId, Parcel parcel, Object lock) {
             mutex = lock;
 
@@ -793,53 +791,21 @@ public class Node {
                         if (payloadResult == null) {
 
                             processingState = ParcelProcessingState.PAYLOAD_CHECKING;
-                            // check payment parent
-                            Contract parent = null;
-                            for(Contract c : payment.getRevoking()) {
-                                if(c.getId().equals(payment.getParent())) {
-                                    parent = c;
-                                    break;
-                                }
-                            }
-                            if(parent != null) {
-                                boolean hasTestTU = payment.getStateData().get("test_transaction_units") != null;
-                                // set pay limit for payload processing
-                                int limit = 0;
-                                if(hasTestTU) {
-                                    limit = Quantiser.quantaPerUTN * (
-                                            parent.getStateData().getIntOrThrow("test_transaction_units")
-                                                    - payment.getStateData().getIntOrThrow("test_transaction_units")
-                                    );
-                                    if(limit <= 0) {
-                                        limit = Quantiser.quantaPerUTN * (
-                                                parent.getStateData().getIntOrThrow("transaction_units")
-                                                        - payment.getStateData().getIntOrThrow("transaction_units")
-                                        );
-                                    }
-                                } else {
-                                    limit = Quantiser.quantaPerUTN * (
-                                            parent.getStateData().getIntOrThrow("transaction_units")
-                                                    - payment.getStateData().getIntOrThrow("transaction_units")
-                                    );
-                                }
-                                payload.getQuantiser().reset(limit);
 
-                                // force payload checking (we've freeze it at processor start)
-                                payloadProcessor.forceChecking(true);
+                            payload.getQuantiser().reset(parcel.getQuantasLimit());
 
-                                for (NodeInfo ni : payloadDelayedVotes.keySet())
-                                    payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
-                                payloadDelayedVotes.clear();
+                            // force payload checking (we've freeze it at processor start)
+                            payloadProcessor.forceChecking(true);
 
-                                processingState = ParcelProcessingState.PAYLOAD_POLLING;
-                                if(!payloadProcessor.isDone()) {
-                                    payloadProcessor.doneEvent.await();
-                                }
-                                payloadResult = payloadProcessor.getResult();
-                            } else {
-                                payloadProcessor.emergencyBreak();
+                            for (NodeInfo ni : payloadDelayedVotes.keySet())
+                                payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
+                            payloadDelayedVotes.clear();
+
+                            processingState = ParcelProcessingState.PAYLOAD_POLLING;
+                            if(!payloadProcessor.isDone()) {
                                 payloadProcessor.doneEvent.await();
                             }
+                            payloadResult = payloadProcessor.getResult();
                         } else {
                         }
                     } else {
@@ -934,7 +900,6 @@ public class Node {
                 }
 
                 payment = parcel.getPaymentContract();
-                payment.setIsShouldBeTU(true);
                 payload = parcel.getPayloadContract();
 
                 // create item processors or get results for payment and payload
@@ -1289,7 +1254,7 @@ public class Node {
                     try {
                         boolean checkPassed = false;
 
-                        if(item.isShouldBeTU()) {
+                        if(item.shouldBeTU()) {
                             if(item.isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName())) {
                                 checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKey());
                             } else {
@@ -1560,7 +1525,7 @@ public class Node {
                     // at this point we should requery the nodes that did not yet answered us
                     Notification notification;
                     ParcelNotification.ParcelNotificationType notificationType;
-                    if(item.isShouldBeTU()) {
+                    if(item.shouldBeTU()) {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                     } else {
                         notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
@@ -1776,7 +1741,7 @@ public class Node {
                 // at this point we should requery the nodes that did not yet answered us
                 Notification notification;
                 ParcelNotification.ParcelNotificationType notificationType;
-                if(item.isShouldBeTU()) {
+                if(item.shouldBeTU()) {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
@@ -1970,7 +1935,7 @@ public class Node {
                 Notification notification;
 
                 ParcelNotification.ParcelNotificationType notificationType;
-                if(item.isShouldBeTU()) {
+                if(item.shouldBeTU()) {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
                 } else {
                     notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;

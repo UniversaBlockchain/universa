@@ -7,6 +7,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.universa.HashId;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -23,6 +24,13 @@ public class Parcel implements BiSerializable {
     private TransactionPack payload = null;
     private TransactionPack payment = null;
     private HashId hashId;
+
+    public int getQuantasLimit() {
+        return quantasLimit;
+    }
+
+    private int quantasLimit = 0;
+    private boolean isTestPayment = false;
 
     public Parcel() {
     }
@@ -44,6 +52,40 @@ public class Parcel implements BiSerializable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        Contract parent = null;
+        for(Contract c : payment.getContract().getRevoking()) {
+            if(c.getId().equals(payment.getContract().getParent())) {
+                parent = c;
+                break;
+            }
+        }
+        if(parent != null) {
+            boolean hasTestTU = payment.getContract().getStateData().get("test_transaction_units") != null;
+            // set pay quantasLimit for payload processing
+            if (hasTestTU) {
+                isTestPayment = true;
+                quantasLimit = Quantiser.quantaPerUTN * (
+                        parent.getStateData().getIntOrThrow("test_transaction_units")
+                                - payment.getContract().getStateData().getIntOrThrow("test_transaction_units")
+                );
+                if (quantasLimit <= 0) {
+                    isTestPayment = false;
+                    quantasLimit = Quantiser.quantaPerUTN * (
+                            parent.getStateData().getIntOrThrow("transaction_units")
+                                    - payment.getContract().getStateData().getIntOrThrow("transaction_units")
+                    );
+                }
+            } else {
+                isTestPayment = false;
+                quantasLimit = Quantiser.quantaPerUTN * (
+                        parent.getStateData().getIntOrThrow("transaction_units")
+                                - payment.getContract().getStateData().getIntOrThrow("transaction_units")
+                );
+            }
+        }
+        payment.getContract().setShouldBeTU(true);
+        payload.getContract().setSuitableForTestnet(isTestPayment);
     }
 
     //New constructor for initializing an object from a binder when deserializing
