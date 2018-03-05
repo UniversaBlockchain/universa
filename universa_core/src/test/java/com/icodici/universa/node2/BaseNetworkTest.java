@@ -1364,6 +1364,36 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test(timeout = 90000)
+    public void createTokenContractAllGood() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        Contract TokenContract = ContractsService.createTokenContract(martyPrivateKeys,stepaPublicKeys,"100000000000");
+
+        TokenContract.check();
+        TokenContract.traceErrors();
+        registerAndCheckApproved(TokenContract);
+    }
+
+    @Test(timeout = 90000)
+    public void createSharesContractAllGood() throws Exception {
+
+    }
+
+    @Test(timeout = 90000)
+    public void createNotaryContractAllGood() throws Exception {
+
+    }
+
+    @Test(timeout = 90000)
     public void swapContractsViaTransactionAllGood() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
