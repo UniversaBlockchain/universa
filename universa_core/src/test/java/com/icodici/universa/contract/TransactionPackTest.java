@@ -9,6 +9,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.ItemResult;
@@ -36,6 +37,7 @@ public class TransactionPackTest {
     private Contract n1;
     private Contract r0;
     private Contract c;
+    private PublicKey publicKey;
 
 
     @Before
@@ -45,6 +47,7 @@ public class TransactionPackTest {
         n0 = testContracts.getN0();
         n1 = testContracts.getN1();
         r0 = testContracts.getR0();
+        publicKey = TestKeys.publicKey(0);
     }
 
     @Test
@@ -108,6 +111,21 @@ public class TransactionPackTest {
         assertEquals(0, c2.getNewItems().size());
     }
 
+    @Test
+    public void packAndUnpackWithKeys() throws Exception {
+        TransactionPack tp = new TransactionPack();
+        tp.setContract(c);
+        tp.addKeys(publicKey);
+        checkPackWithKeys(tp);
+
+        assertSame(tp,c.getTransactionPack());
+
+        byte[] packedTp = tp.pack();
+
+        TransactionPack tp1 = TransactionPack.unpack(packedTp);
+        checkPackWithKeys(tp1);
+    }
+
     public void checkSimplePack(TransactionPack tp) {
         assertEquals(3, tp.getReferences().size());
         assertEquals(c.getId(), tp.getContract().getId());
@@ -118,6 +136,16 @@ public class TransactionPackTest {
         assertTrue(rids.contains(r0.getId()));
         assertTrue(nids.contains(n0.getId()));
         assertTrue(nids.contains(n1.getId()));
+    }
+
+    public void checkPackWithKeys(TransactionPack tp) {
+        checkSimplePack(tp);
+
+        Set<PublicKey> keys = tp.getKeysForPack();
+
+        System.out.println("keys num: " + keys.size() + " key: " + keys.iterator().next().toString());
+
+        assertTrue(keys.contains(publicKey));
     }
 
 

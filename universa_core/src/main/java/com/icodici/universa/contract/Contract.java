@@ -168,6 +168,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         roles.values().forEach(role -> {
             role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+            role.getAnonymousIds().forEach(anonId -> {
+                transactionPack.getKeysForPack().forEach(
+                        key -> {
+                            try {
+                                if(key.matchAnonymousId(anonId.getBytes())) {
+                                    keys.put(ExtendedSignature.keyId(key), key);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            });
         });
 
         for (Object signature : (List) data.getOrThrow("signatures")) {
@@ -241,6 +254,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         roles.values().forEach(role -> {
             role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+            role.getAnonymousIds().forEach(anonId -> {
+                transactionPack.getKeysForPack().forEach(
+                        key -> {
+                            try {
+                                if(key.matchAnonymousId(anonId.getBytes())) {
+                                    keys.put(ExtendedSignature.keyId(key), key);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            });
         });
 
         for (Object signature : (List) data.getOrThrow("signatures")) {
@@ -1304,6 +1330,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return registerRole(role);
     }
 
+    @NonNull
+    public Role setCreatorKeys(Object... keys) {
+        return setRole("creator", asList(keys));
+    }
+
     public Role getOwner() {
         return getRole("owner");
     }
@@ -1319,7 +1350,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @NonNull
-    public Role setOwnerKeys(PublicKey... keys) {
+    public Role setOwnerKeys(Object... keys) {
         return setOwnerKeys(asList(keys));
     }
 
@@ -1340,7 +1371,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return state.getData();
     }
 
-    public Role setIssuerKeys(PublicKey... keys) {
+    public Role setIssuerKeys(Object... keys) {
         return setRole("issuer", asList(keys));
     }
 
@@ -1797,7 +1828,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private ZonedDateTime expiresAt;
         private HashId origin;
         private HashId parent;
-        private Binder data;
+        private Binder data = new Binder();
         private String branchId;
 
         private State() {

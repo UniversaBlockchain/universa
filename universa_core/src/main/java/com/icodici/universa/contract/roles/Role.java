@@ -9,6 +9,7 @@ package com.icodici.universa.contract.roles;
 
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.*;
@@ -84,6 +85,8 @@ public abstract class Role implements BiSerializable {
     }
 
     public abstract Set<PublicKey> getKeys();
+
+    public abstract Set<AnonymousId> getAnonymousIds();
 
     public Set<KeyRecord> getKeyRecords() {
         return Collections.emptySet();

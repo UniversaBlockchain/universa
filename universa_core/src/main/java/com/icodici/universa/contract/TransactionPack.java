@@ -8,6 +8,8 @@
 package com.icodici.universa.contract;
 
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
 import com.icodici.universa.node2.Quantiser;
@@ -56,6 +58,7 @@ public class TransactionPack implements BiSerializable {
     private byte[] packedBinary;
     private boolean reconstructed = false;
     private Map<HashId, Contract> references = new HashMap<>();
+    private Set<PublicKey> keysForPack = new HashSet<>();
     private Contract contract;
 
     /**
@@ -67,6 +70,8 @@ public class TransactionPack implements BiSerializable {
     public TransactionPack(Contract contract) {
         this();
         setContract(contract);
+        for (PrivateKey key : contract.getKeysToSignWith())
+            addKeys(key.getPublicKey());
     }
 
     /**
@@ -84,6 +89,10 @@ public class TransactionPack implements BiSerializable {
 
     public Contract getReference(HashIdentifiable hid) {
         return getReference(hid.getId());
+    }
+
+    public Set<PublicKey> getKeysForPack() {
+        return keysForPack;
     }
 
     public TransactionPack() {
@@ -133,6 +142,19 @@ public class TransactionPack implements BiSerializable {
         if (!references.containsKey(reference.getId())) {
             packedBinary = null;
             references.put(reference.getId(), reference);
+        }
+    }
+
+    /**
+     * Add public key to {@link TransactionPack} that will match with anonimous ids in the {@link Contract} roles.
+     *
+     * @param keys is {@link PublicKey} that will be compare with anonimous ids.
+     */
+    public void addKeys(PublicKey... keys) {
+        for (PublicKey key : keys) {
+            if (!keysForPack.contains(key)) {
+                keysForPack.add(key);
+            }
         }
     }
 
@@ -229,6 +251,20 @@ public class TransactionPack implements BiSerializable {
                     references.put(c.getId(), c);
                 }
             }
+
+            List<Object> keysList = deserializer.deserializeCollection(data.getListOrThrow("keys"));
+
+            keysForPack = new HashSet<>();
+            for (Object x : keysList) {
+                if (x instanceof Bytes)
+                    x = ((Bytes) x).toArray();
+                if (x instanceof byte[]) {
+                    keysForPack.add(new PublicKey((byte[]) x));
+                } else {
+                    throw new IllegalArgumentException("unsupported key object: " + x.getClass().getName());
+                }
+            }
+
             byte[] bb = data.getBinaryOrThrow("contract");
             contract = new Contract(bb, this);
             quantiser.addWorkCostFrom(contract.getQuantiser());
@@ -244,6 +280,11 @@ public class TransactionPack implements BiSerializable {
                     serializer.serialize(
                             references.values().stream()
                                     .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
+                    ),
+                    "keys",
+                    serializer.serialize(
+                            keysForPack.stream()
+                                    .map(x -> x.pack()).collect(Collectors.toList())
                     )
             );
         }

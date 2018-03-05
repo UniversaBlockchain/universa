@@ -17,8 +17,11 @@ import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
-
+import com.icodici.universa.contract.permissions.*;
+import java.time.Instant;
 import java.io.IOException;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 /**
@@ -472,64 +475,109 @@ public class ContractsService {
      * Service creates a contract that should be send to partner,
      * then partner should sign it and return back for final sign from calling part.
      *<br><br>
-     * @param contract is the main contract, on the basis of which a contract is created with two signatures
+     * @param BaseContract is base contract
      * @param fromKeys is own private keys
      * @param toKeys is foreign public keys
+     * @param createNewRevision create new revision if true
      * @return contract with two signatures that should be send from first part to partner.
      */
-    public synchronized static Contract createTwoSignedContract(Contract contract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys){
 
-        Contract twoSignContract = new Contract();
+    public synchronized static Contract createTwoSignedContract(Contract BaseContract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
-        Contract.Definition cd = twoSignContract.getDefinition();
-        cd.setExpiresAt(twoSignContract.getCreatedAt().plusDays(30));
+        Contract twoSignContract = BaseContract;
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
-        for (PrivateKey k : fromKeys) {
-            KeyRecord kr = new KeyRecord(k.getPublicKey());
-            issuerRole.addKeyRecord(kr);
-        }
+        if (createNewRevision)
+            twoSignContract = BaseContract.createRevision(fromKeys);
 
-        twoSignContract.registerRole(issuerRole);
-        twoSignContract.createRole("owner", issuerRole);
-        twoSignContract.createRole("creator", issuerRole);
-
-        Contract contractNew = contract.createRevision(fromKeys);
-        contractNew.createTransactionalSection();
-        contractNew.getTransactional().setId(HashId.createRandom().toBase64String());
-
-        SimpleRole ownerFrom = new SimpleRole("owner");
         SimpleRole creatorFrom = new SimpleRole("creator");
         for (PrivateKey k : fromKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
-            ownerFrom.addKeyRecord(kr);
             creatorFrom.addKeyRecord(kr);
         }
 
         SimpleRole ownerTo = new SimpleRole("owner");
-        SimpleRole creatorTo = new SimpleRole("creator");
         for (PublicKey k : toKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerTo.addKeyRecord(kr);
-            creatorTo.addKeyRecord(kr);
         }
 
+        twoSignContract.registerRole(creatorFrom);
+        twoSignContract.createRole("creator", creatorFrom);
+
+        twoSignContract.createTransactionalSection();
+        twoSignContract.getTransactional().setId(HashId.createRandom().toBase64String());
+
         Reference reference = new Reference();
-        reference.transactional_id = contractNew.getTransactional().getId();
+        reference.transactional_id = twoSignContract.getTransactional().getId();
         reference.type = Reference.TYPE_TRANSACTIONAL;
         reference.required = true;
         reference.signed_by = new ArrayList<>();
-        reference.signed_by.add(ownerFrom);
-        reference.signed_by.add(creatorTo);
-        contractNew.getTransactional().addReference(reference);
+        reference.signed_by.add(creatorFrom);
+        reference.signed_by.add(ownerTo);
+        twoSignContract.getTransactional().addReference(reference);
 
-        contractNew.setOwnerKeys(toKeys);
-        contractNew.seal();
-
-        twoSignContract.addNewItems(contractNew);
+        twoSignContract.setOwnerKeys(toKeys);
         twoSignContract.seal();
 
         return twoSignContract;
+    }
+
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount){
+        Contract TokenContract = new Contract();
+        TokenContract.setApiLevel(3);
+
+        Contract.Definition cd = TokenContract.getDefinition();
+        cd.setExpiresAt(ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC));
+
+        Binder data = new Binder();
+        data.set("name", "Token name");
+        data.set("currency_code", "TKN");
+        data.set("currency_name", "Token name");
+        data.set("description", "Token description");
+        cd.setData(data);
+
+        SimpleRole revokeRole = new SimpleRole("revoke_role");
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        TokenContract.registerRole(issuerRole);
+        TokenContract.createRole("issuer", issuerRole);
+        TokenContract.createRole("creator", issuerRole);
+        TokenContract.getStateData().set("amount", amount);
+
+        ChangeOwnerPermission co_perm = new ChangeOwnerPermission(ownerRole);
+        TokenContract.addPermission(co_perm);
+
+        Binder params = new Binder();
+        params.set("min_value", 0.01);
+        params.set("min_unit", 0.001);
+        params.set("field_name", "amount");
+        params.set("join_match_fields", "state.origin");
+
+        SplitJoinPermission sj_perm = new SplitJoinPermission(ownerRole, params);
+        TokenContract.addPermission(sj_perm);
+
+        RevokePermission rev_perm = new RevokePermission(revokeRole);
+        TokenContract.addPermission(rev_perm);
+
+        TokenContract.setOwnerKeys(ownerKeys);
+
+        TokenContract.seal();
+        TokenContract.addSignatureToSeal(issuerKeys);
+
+        return TokenContract;
     }
 
     /**

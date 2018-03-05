@@ -39,6 +39,11 @@ public class NodeInfo implements BiSerializable {
     private String nodeName;
     private String publicHost;
 
+    public NodeInfo() {
+
+    }
+
+
     public NodeInfo(@NonNull PublicKey publicKey, int number, @NonNull String nodeName, @NonNull String host,
                     int datagramPort, int clientHttpPort, int serverHttpPort) {
         this(publicKey, number, nodeName, host, host, datagramPort, clientHttpPort, serverHttpPort);

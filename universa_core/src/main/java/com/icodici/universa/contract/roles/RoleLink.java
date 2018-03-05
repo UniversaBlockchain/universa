@@ -9,6 +9,7 @@ package com.icodici.universa.contract.roles;
 
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.BiDeserializer;
@@ -82,6 +83,12 @@ public class RoleLink extends Role {
     @Override
     public Set<KeyRecord> getKeyRecords() {
         return resolve().getKeyRecords();
+    }
+
+    @Override
+    public Set<AnonymousId> getAnonymousIds() {
+        final Role role = resolve();
+        return (role == null) ? null : role.getAnonymousIds();
     }
 
     @Override

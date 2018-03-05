@@ -10,6 +10,7 @@ package com.icodici.universa.contract.roles;
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -18,6 +19,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -30,6 +32,7 @@ import java.util.*;
 public class SimpleRole extends Role {
 
     private final Map<PublicKey, KeyRecord> keyRecords = new HashMap<>();
+    private final Set<AnonymousId> anonymousIds = new HashSet<>();
 
     public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
@@ -47,15 +50,21 @@ public class SimpleRole extends Role {
         super(name);
         records.forEach(x -> {
             KeyRecord kr = null;
+            AnonymousId anonId = null;
             if (x instanceof KeyRecord)
                 kr = (KeyRecord) x;
             else if (x instanceof PublicKey)
                 kr = new KeyRecord((PublicKey) x);
+            else if (x instanceof AnonymousId)
+                anonId = (AnonymousId) x;
             else if (x instanceof PrivateKey)
                 kr = new KeyRecord(((PrivateKey) x).getPublicKey());
             else
                 throw new IllegalArgumentException("Cant create KeyRecord from " + x);
-            keyRecords.put(kr.getPublicKey(), kr);
+            if (anonId != null)
+                anonymousIds.add(anonId);
+            else
+                keyRecords.put(kr.getPublicKey(), kr);
         });
     }
 
@@ -79,23 +88,43 @@ public class SimpleRole extends Role {
         return new HashSet(keyRecords.values());
     }
 
+    @Override
     public Set<PublicKey> getKeys() {
         return keyRecords.keySet();
     }
 
+    @Override
+    public Set<AnonymousId> getAnonymousIds() {
+        return anonymousIds;
+    }
+
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         // any will go logic
-        return keys.stream().anyMatch(k -> keyRecords.containsKey(k.getPublicKey()));
+        return keys.stream().anyMatch(k -> {
+            boolean anyMatch1 = anonymousIds.stream().anyMatch(anonId -> {
+                try {
+                    return k.matchAnonymousId(anonId.getBytes());
+                } catch (IOException e) {
+                    return false;
+                }
+            });
+            boolean anyMatch2 = keyRecords.containsKey(k.getPublicKey());
+            return anyMatch1 || anyMatch2;
+        });
     }
 
     public boolean isValid() {
-        return !keyRecords.isEmpty();
+        return !keyRecords.isEmpty() || !anonymousIds.isEmpty();
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof SimpleRole)
-            return ((SimpleRole) obj).getName().equals(getName()) && ((SimpleRole) obj).equalKeys(this);
+        if (obj instanceof SimpleRole) {
+            boolean a = ((SimpleRole) obj).getName().equals(getName());
+            boolean b = ((SimpleRole) obj).equalKeys(this);
+            boolean c = ((SimpleRole) obj).anonymousIds.containsAll(this.anonymousIds);
+            return a && b && c;
+        }
         return false;
     }
 
@@ -115,12 +144,13 @@ public class SimpleRole extends Role {
     public SimpleRole cloneAs(String name) {
         SimpleRole r = new SimpleRole(name);
         keyRecords.values().forEach(kr -> r.addKeyRecord(kr));
+        anonymousIds.forEach(aid -> r.anonymousIds.add(aid));
         return r;
     }
 
     @Override
     public String toString() {
-        return "SimpleRole<" + System.identityHashCode(this) + ":" + getName() + ":anyOf:" + keyRecords.keySet() + ">";
+        return "SimpleRole<" + System.identityHashCode(this) + ":" + getName() + ":anyOf:" + keyRecords.keySet() + "|" + anonymousIds + ">";
     }
 
     public boolean isAllowedForKeys(SimpleRole anotherRole) {
@@ -140,12 +170,20 @@ public class SimpleRole extends Role {
             });
 
         }
+        List anonIdList = data.getList("anonIds", null);
+        anonymousIds.clear();
+        if (anonIdList != null) {
+            for (Object aid : anonIdList) {
+                anonymousIds.add( deserializer.deserialize(aid));
+            }
+        }
     }
 
     @Override
     public Binder serialize(BiSerializer s) {
         return super.serialize(s).putAll(
-                        "keys", s.serialize(keyRecords.values())
+                        "keys", s.serialize(keyRecords.values()),
+                        "anonIds", s.serialize(anonymousIds)
                 );
     }
 

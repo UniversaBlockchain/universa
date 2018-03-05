@@ -8,10 +8,16 @@
 package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
+import com.icodici.universa.contract.permissions.ModifyDataPermission;
+import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.BasicHttpClient;
@@ -22,12 +28,14 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64;
+import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -108,7 +116,7 @@ public class MainTest {
                 .collect(Collectors.toList())
                 .toString();
 
-        assertEquals("[http://localhost:8080, http://localhost:6002, http://localhost:6004]", pubUrls);
+        assertEquals("[http://localhost:8080, http://localhost:6002, http://localhost:6004, http://localhost:6006]", pubUrls);
 
         main.shutdown();
         main.logger.stopInterceptingStdOut();
@@ -435,15 +443,153 @@ public class MainTest {
     }
 
 
-
     @Test
-    public void genKeys() throws Exception {
+    public void reconfigurationContractTest() throws Exception {
 
-        for(int i = 0; i < 36; i++) {
-            System.out.println("\""+Base64.encodeString(new PrivateKey(2048).pack()) +"\",");
+//        PrivateKey reconfigKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
+//        String string = new Bytes(reconfigKey.getPublicKey().pack()).toHex();
+//        System.out.println(string);
+
+
+
+        List<Main> mm = new ArrayList<>();
+        List<PrivateKey> nodeKeys = new ArrayList<>();
+        List<PrivateKey> nodeKeysNew = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            mm.add(createMain("node" + (i + 1), "_dynamic_test", false));
+            if(i < 3)
+                nodeKeys.add(new PrivateKey(Do.read("./src/test_node_config_v2_dynamic_test/node" + (i + 1) + "/tmp/node2_" + (i + 1) + ".private.unikey")));
+            nodeKeysNew.add(new PrivateKey(Do.read("./src/test_node_config_v2_dynamic_test/node" + (i + 1) + "/tmp/node2_" + (i + 1) + ".private.unikey")));
         }
 
+        List<NodeInfo> netConfig = mm.get(0).netConfig.toList();
+        List<NodeInfo> netConfigNew = mm.get(3).netConfig.toList();
+
+        for (Main m : mm) {
+            m.shutdown();
+        }
+        mm.clear();
+
+        Contract configContract = createNetConfigContract(netConfig);
+
+        List<String> dbUrls = new ArrayList<>();
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+
+        for (int i = 0; i < 4; i++) {
+            mm.add(createMainFromDb(dbUrls.get(i), false));
+        }
+
+        Client client = new Client(TestKeys.privateKey(0), mm.get(0).myInfo, null);
+
+        Parcel parcel = createParcelWithFreshTU(client, configContract);
+        client.registerParcel(parcel.pack(),15000);
+
+
+        ItemResult rr;
+        while (true) {
+
+            rr = client.getState(configContract.getId());
+            Thread.currentThread().sleep(50);
+            if (!rr.state.isPending())
+                break;
+        }
+        assertEquals(rr.state, ItemState.APPROVED);
+
+        configContract = createNetConfigContract(configContract,netConfigNew,nodeKeys);
+
+        parcel = createParcelWithFreshTU(client, configContract);
+        client.registerParcel(parcel.pack(),15000);
+        while (true) {
+
+            rr = client.getState(configContract.getId());
+            Thread.currentThread().sleep(50);
+            if (!rr.state.isPending())
+                break;
+        }
+        assertEquals(rr.state, ItemState.APPROVED);
+        Thread.sleep(1000);
+        for (Main m : mm) {
+            assertEquals(m.config.getPositiveConsensus(), 3);
+        }
+        configContract = createNetConfigContract(configContract,netConfig,nodeKeys);
+
+        parcel = createParcelWithFreshTU(client, configContract);
+        client.registerParcel(parcel.pack(),15000);
+        while (true) {
+
+            rr = client.getState(configContract.getId());
+            Thread.currentThread().sleep(50);
+            if (!rr.state.isPending())
+                break;
+        }
+        assertEquals(rr.state, ItemState.APPROVED);
+        Thread.sleep(1000);
+        for (Main m : mm) {
+            assertEquals(m.config.getPositiveConsensus(), 2);
+        }
+
+        for (Main m : mm) {
+            m.shutdown();
+        }
     }
+
+    private Contract createNetConfigContract(Contract contract, List<NodeInfo> netConfig, List<PrivateKey> currentConfigKeys) throws IOException {
+        contract = contract.createRevision();
+        ListRole listRole = new ListRole("owner");
+        for(NodeInfo ni: netConfig) {
+            SimpleRole role = new SimpleRole(ni.getName());
+            contract.registerRole(role);
+            role.addKeyRecord(new KeyRecord(ni.getPublicKey()));
+            listRole.addRole(role);
+        }
+        listRole.setQuorum(netConfig.size()-1);
+        contract.registerRole(listRole);
+        contract.getStateData().set("net_config",netConfig);
+
+        List<KeyRecord> creatorKeys = new ArrayList<>();
+        for(PrivateKey key : currentConfigKeys) {
+            creatorKeys.add(new KeyRecord(key.getPublicKey()));
+            contract.addSignerKey(key);
+        }
+        contract.setCreator(creatorKeys);
+
+        contract.seal();
+        return contract;
+    }
+
+    private Contract createNetConfigContract(List<NodeInfo> netConfig) throws IOException {
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
+        Contract contract = new Contract();
+        contract.setIssuerKeys(manufacturePrivateKey.getPublicKey());
+        contract.registerRole(new RoleLink("creator", "issuer"));
+        ListRole listRole = new ListRole("owner");
+        for(NodeInfo ni: netConfig) {
+            SimpleRole role = new SimpleRole(ni.getName());
+            contract.registerRole(role);
+            role.addKeyRecord(new KeyRecord(ni.getPublicKey()));
+            listRole.addRole(role);
+        }
+        listRole.setQuorum(netConfig.size()-1);
+        contract.registerRole(listRole);
+
+        RoleLink ownerLink = new RoleLink("ownerlink","owner");
+        ChangeOwnerPermission changeOwnerPermission = new ChangeOwnerPermission(ownerLink);
+        HashMap<String,Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("net_config",null);
+        Binder modifyDataParams = Binder.of("fields",fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink,modifyDataParams);
+        contract.addPermission(changeOwnerPermission);
+        contract.addPermission(modifyDataPermission);
+        contract.setExpiresAt(ZonedDateTime.now().plusYears(40));
+        contract.getStateData().set("net_config",netConfig);
+        contract.addSignerKey(manufacturePrivateKey);
+        contract.seal();
+        return contract;
+    }
+
     @Test
     public void localNetwork() throws Exception {
         List<Main> mm = new ArrayList<>();
@@ -1338,6 +1484,58 @@ public class MainTest {
             else
                 assertEquals(ItemState.UNDEFINED, subItemResult.state);
         }
+    }
+
+
+
+    @Test
+    public void registerContractWithAnonymousId() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        PrivateKey myPrivKey = TestKeys.privateKey(1);
+        PublicKey myPubKey = myPrivKey.getPublicKey();
+        byte[] myAnonId = myPrivKey.createAnonymousId();
+
+        Contract contract = new Contract();
+        contract.setExpiresAt(ZonedDateTime.now().plusDays(90));
+        Role r = contract.setIssuerKeys(AnonymousId.fromBytes(myAnonId));
+        contract.registerRole(new RoleLink("owner", "issuer"));
+        contract.registerRole(new RoleLink("creator", "issuer"));
+        contract.addPermission(new ChangeOwnerPermission(r));
+
+        contract.addSignerKey(myPrivKey);
+        contract.seal();
+
+        System.out.println("contract.check(): " + contract.check());
+        contract.traceErrors();
+
+        //ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);
+        ItemResult itemResult0 = ts.node.node.registerItem(contract);
+        //Thread.sleep(1000000000);
+        ItemResult itemResult = ts.node.node.waitItem(contract.getId(), 100);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+
+
+    @Test
+    public void registerContractWithAnonymousId_bak() throws Exception {
+        TestSpace ts = prepareTestSpace();
+        PrivateKey myPrivKey = TestKeys.privateKey(1);
+        PublicKey myPubKey = myPrivKey.getPublicKey();
+        byte[] myAnonId = myPrivKey.createAnonymousId();
+
+        Contract contract = new Contract();
+        contract.setExpiresAt(ZonedDateTime.now().plusDays(90));
+        Role r = contract.setIssuerKeys(myPubKey);
+        contract.registerRole(new RoleLink("owner", "issuer"));
+        contract.registerRole(new RoleLink("creator", "issuer"));
+        contract.addPermission(new ChangeOwnerPermission(r));
+
+        contract.addSignerKey(myPrivKey);
+        contract.seal();
+
+        ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
     }
 
 

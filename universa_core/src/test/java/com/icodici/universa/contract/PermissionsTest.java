@@ -88,8 +88,8 @@ public class PermissionsTest extends ContractTestBase {
         assertTrue(c.check());
         assertEquals(c, ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getContract());
         Role cOwner = c.getOwner();
-        assert (cOwner.isAllowedForKeys(new HashSet<>(Do.listOf(ownerKey1))));
-        assert (!cOwner.isAllowedForKeys(new HashSet<>(Do.listOf(ownerKey2))));
+        assertTrue (cOwner.isAllowedForKeys(new HashSet<>(Do.listOf(ownerKey1))));
+        assertTrue (!cOwner.isAllowedForKeys(new HashSet<>(Do.listOf(ownerKey2))));
 
         // Bad contract change: owner has no right to change owner ;)
         Contract c1 = c.createRevision(TestKeys.privateKey(0));
