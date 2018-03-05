@@ -1422,7 +1422,8 @@ public class BaseNetworkTest extends TestCase {
         //
 
         AnonymousId stepaAnonId = AnonymousId.fromBytes(stepaPublicKeys.iterator().next().createAnonymousId());
-        Contract anonOwnerContract = c1.createRevision(key);
+        Contract anonOwnerContract = c1.createRevisionAnonymously(Arrays.asList(key));
+        anonOwnerContract.addSignerKey(key);
         anonOwnerContract.setOwnerKey(stepaAnonId);
         anonOwnerContract.seal();
         anonOwnerContract.check();
@@ -1434,7 +1435,8 @@ public class BaseNetworkTest extends TestCase {
 
         //
 
-        Contract anonSignedContract = anonOwnerContract.createRevision(stepaPrivateKeys);
+        Contract anonSignedContract = anonOwnerContract.createRevisionAnonymously(stepaPrivateKeys);
+        anonSignedContract.addSignerKeys(stepaPrivateKeys);
         anonSignedContract.setOwnerKeys(martyPublicKeys);
         anonSignedContract.seal();
         anonSignedContract.check();
