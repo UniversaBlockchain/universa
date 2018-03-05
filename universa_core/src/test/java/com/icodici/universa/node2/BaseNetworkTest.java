@@ -1423,7 +1423,6 @@ public class BaseNetworkTest extends TestCase {
         AnonymousId stepaAnonId = AnonymousId.fromBytes(stepaPublicKeys.iterator().next().createAnonymousId());
         Contract anonOwnerContract = c1.createRevision(key);
         anonOwnerContract.setOwnerKey(stepaAnonId);
-
         anonOwnerContract.seal();
         anonOwnerContract.check();
         anonOwnerContract.traceErrors();
@@ -1436,7 +1435,6 @@ public class BaseNetworkTest extends TestCase {
 
         Contract anonSignedContract = anonOwnerContract.createRevision(stepaPrivateKeys);
         anonSignedContract.setOwnerKeys(martyPublicKeys);
-
         anonSignedContract.seal();
         anonSignedContract.check();
         anonSignedContract.traceErrors();
@@ -1447,7 +1445,72 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(0, afterSend.getOwner().getAnonymousIds().size());
         assertTrue(afterSend.getOwner().isAllowedForKeys(martyPublicKeys));
-        assertFalse(afterSend.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+
+        Contract anonPublishedContract = new Contract(anonSignedContract.getLastSealedBinary());
+        ItemResult itemResult = node.waitItem(anonPublishedContract.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+    }
+
+    @Test(timeout = 90000)
+    public void changeOwnerWithAnonId2() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        for (PrivateKey pk : martyPrivateKeys)
+            martyPublicKeys.add(pk.getPublicKey());
+
+        PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract c1 = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c1.addSignerKey(key);
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+        registerAndCheckApproved(c1);
+
+        //
+
+        AnonymousId stepaAnonId = AnonymousId.fromBytes(stepaPublicKeys.iterator().next().createAnonymousId());
+        Contract anonOwnerContract = c1.createRevision(key);
+        anonOwnerContract.setOwnerKey(stepaAnonId);
+        anonOwnerContract.seal();
+        anonOwnerContract.check();
+        anonOwnerContract.traceErrors();
+        registerAndCheckApproved(anonOwnerContract);
+
+        assertTrue(anonOwnerContract.getOwner().getAnonymousIds().iterator().next().equals(stepaAnonId));
+        assertEquals(0, anonOwnerContract.getOwner().getKeys().size());
+
+        //
+
+        Contract anonSignedContract = anonOwnerContract.createRevision();
+        anonSignedContract.setOwnerKeys(martyPublicKeys);
+        anonSignedContract.setCreatorKeys(stepaAnonId);
+        anonSignedContract.addSignerKey(stepaPrivateKeys.iterator().next());
+        anonSignedContract.seal();
+        anonSignedContract.check();
+        anonSignedContract.traceErrors();
+
+        Contract afterSend = imitateSendingTransactionToPartner(anonSignedContract);
+
+        registerAndCheckApproved(afterSend);
+
+        assertEquals(0, afterSend.getOwner().getAnonymousIds().size());
+        assertTrue(afterSend.getOwner().isAllowedForKeys(martyPublicKeys));
+
+        Contract anonPublishedContract = new Contract(anonSignedContract.getLastSealedBinary());
+        ItemResult itemResult = node.waitItem(anonPublishedContract.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
     }
 
     @Test(timeout = 90000)
