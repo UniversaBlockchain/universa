@@ -565,6 +565,22 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     res = false;
                     addError(Errors.BAD_VALUE, "transaction_units and test_transaction_units can not be spent both");
                 }
+                if(isSuitableForTestnet()) {
+                    if (was_test_transaction_units - test_transaction_units > 3) {
+                        res = false;
+                        addError(Errors.BAD_VALUE, "Cannot spend more then 3 test_transaction_units in the test payment mode.");
+                    }
+                }
+            } else {
+                if(isSuitableForTestnet()) {
+                    res = false;
+                    addError(Errors.BAD_VALUE, "Payment contract has not origin but it is not allowed for parcel. Use standalone register for payment contract.");
+                }
+            }
+        } else {
+            if(isSuitableForTestnet()) {
+                res = false;
+                addError(Errors.BAD_VALUE, "Payment contract that marked as for testnet has not test_transaction_units.");
             }
         }
 

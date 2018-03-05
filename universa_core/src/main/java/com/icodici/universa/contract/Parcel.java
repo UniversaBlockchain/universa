@@ -85,6 +85,7 @@ public class Parcel implements BiSerializable {
             }
         }
         payment.getContract().setShouldBeTU(true);
+        payment.getContract().setSuitableForTestnet(isTestPayment);
         payload.getContract().setSuitableForTestnet(isTestPayment);
     }
 
