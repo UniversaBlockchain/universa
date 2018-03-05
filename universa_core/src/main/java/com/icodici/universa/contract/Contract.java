@@ -404,6 +404,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
         }
 
+        checkTestPaymentLimitations();
+
         try {
             // common check for all cases
 //            errors.clear();
@@ -511,6 +513,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (!refContract.isSignedBy(refRole)) {
                 res = false;
                 addError(Errors.BAD_SIGNATURE, "fingerprint mismatch");
+            }
+        }
+
+        return res;
+    }
+
+    public boolean checkTestPaymentLimitations() {
+        boolean res = true;
+        if(isSuitableForTestnet()) {
+            // we won't check TU contract
+            if (!shouldBeTU()) {
+                for (PublicKey key : sealedByKeys.keySet()) {
+                    if (key != null) {
+                        if (key.getBitStrength() != 2048) {
+                            res = false;
+                            addError(Errors.BAD_SIGNATURE, "Only 2048 keys is allowed in the test payment mode");
+                        }
+                    }
+                }
             }
         }
 
