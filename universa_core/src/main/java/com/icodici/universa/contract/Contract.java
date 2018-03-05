@@ -7,6 +7,7 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -36,6 +37,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -993,6 +995,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         keysToSignWith.add(privateKey);
     }
 
+    public void addSignerKeys(Collection<PrivateKey> keys) {
+        keys.forEach(k -> keysToSignWith.add(k));
+    }
+
     /**
      * Important. This method should be invoked after {@link #check()}.
      *
@@ -1225,6 +1231,28 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return newRevision;
     }
 
+    public synchronized Contract createRevisionAnonymously(Collection<?> keys) {
+        return createRevisionAnonymously(keys, null);
+    }
+
+    public synchronized Contract createRevisionAnonymously(Collection<?> keys, Transactional transactional) {
+        Contract newRevision = createRevision(transactional);
+        Set<AnonymousId> aids = new HashSet<>();
+        AtomicBoolean returnNull = new AtomicBoolean(false);
+        keys.forEach(k -> {
+            if (k instanceof AbstractKey)
+                aids.add(AnonymousId.fromBytes(((AbstractKey) k).createAnonymousId()));
+            else if (k instanceof AnonymousId)
+                aids.add((AnonymousId)k);
+            else
+                returnNull.set(true);
+        });
+        newRevision.setCreatorKeys(aids);
+        if (returnNull.get())
+            return null;
+        return newRevision;
+    }
+
 
     public Role setCreator(Collection<KeyRecord> records) {
         return setRole("creator", records);
@@ -1237,6 +1265,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     @NonNull
     public Role setCreatorKeys(Object... keys) {
         return setRole("creator", asList(keys));
+    }
+
+    @NonNull
+    public Role setCreatorKeys(Collection<?> keys) {
+        return setRole("creator", keys);
     }
 
     public Role getOwner() {

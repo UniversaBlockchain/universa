@@ -1,0 +1,149 @@
+{
+  "api_level": 3,
+  "definition": {
+    "data": {
+      "issuerName": "Universa Reserve System",
+      "name": "transaction units pack"
+    },
+    "references": [],
+    "permissions": {
+      "WmHiPh": {
+        "name": "decrement_permission",
+        "min_value": 0,
+        "role": {
+          "target_name": "issuer",
+          "__type": "RoleLink",
+          "name": "issuer2"
+        },
+        "__type": "com.icodici.universa.contract.permissions.ChangeNumberPermission",
+        "field_name": "test_transaction_units"
+      },
+      "4ptcX3": {
+        "min_value": 0,
+        "role": {
+          "target_name": "owner",
+          "__type": "RoleLink",
+          "name": "owner2"
+        },
+        "max_step": -1,
+        "__type": "com.icodici.universa.contract.permissions.ChangeNumberPermission",
+        "name": "decrement_permission",
+        "field_name": "transaction_units"
+      },
+      "iPEjQd": {
+        "min_value": 0,
+        "role": {
+          "target_name": "owner",
+          "__type": "RoleLink",
+          "name": "owner2"
+        },
+        "max_step": -1,
+        "__type": "com.icodici.universa.contract.permissions.ChangeNumberPermission",
+        "name": "decrement_permission",
+        "field_name": "test_transaction_units"
+      },
+      "qOwu9W": {
+        "name": "change_owner",
+        "role": {
+          "keys": [
+            {
+              "key": {
+                "__type": "RSAPublicKey",
+                "packed": {
+                  "__type": "binary",
+                  "base64": "HggcAQABxAABxSSWfXW20wGsRn9khVZDtvcCtUqP/scN3oVPU3r0152Fu62pfx9Mjc1cmQnR\nYSkeZzWA50RYQTU3FlXC5iIN7w+Lm6TGPQxWe+uYGMgKLCbAmyMXPWupvzeB5SEMtylQ5ml1\n2iwFQkamqOiFE2KWMYz/UGhW87/ELPckmpoanZUa8OGCACUfFGALAZV0G+rQ/8xiW3hkGHmO\nFP0kejZaCZGPO/XGVay+2q0V2cw6CHar+D9F9FomXYA4bAInlY3zOLHdG8ddUTzhHQWOKmzo\nF9eIW67U9rd9qIR04U9ls9wGLQchqlG/kxHHfR4Js86mwYNgUKW49fQRppig+SsrjQ\u003d\u003d"
+                }
+              },
+              "__type": "KeyRecord"
+            }
+          ],
+          "__type": "SimpleRole",
+          "name": "issuer"
+        },
+        "__type": "ChangeOwnerPermission"
+      }
+    },
+    "created_at": {
+      "seconds": 1520081587,
+      "__type": "unixtime"
+    },
+    "issuer": {
+      "keys": [
+        {
+          "key": {
+            "__type": "RSAPublicKey",
+            "packed": {
+              "__type": "binary",
+              "base64": "HggcAQABxAABxSSWfXW20wGsRn9khVZDtvcCtUqP/scN3oVPU3r0152Fu62pfx9Mjc1cmQnR\nYSkeZzWA50RYQTU3FlXC5iIN7w+Lm6TGPQxWe+uYGMgKLCbAmyMXPWupvzeB5SEMtylQ5ml1\n2iwFQkamqOiFE2KWMYz/UGhW87/ELPckmpoanZUa8OGCACUfFGALAZV0G+rQ/8xiW3hkGHmO\nFP0kejZaCZGPO/XGVay+2q0V2cw6CHar+D9F9FomXYA4bAInlY3zOLHdG8ddUTzhHQWOKmzo\nF9eIW67U9rd9qIR04U9ls9wGLQchqlG/kxHHfR4Js86mwYNgUKW49fQRppig+SsrjQ\u003d\u003d"
+            }
+          },
+          "__type": "KeyRecord"
+        }
+      ],
+      "__type": "SimpleRole",
+      "name": "issuer"
+    }
+  },
+  "state": {
+    "owner": {
+      "keys": [
+        {
+          "key": {
+            "__type": "RSAPublicKey",
+            "packed": {
+              "__type": "binary",
+              "base64": "HggcAQABxAABqT+4m+UeJ3CvwjbHGwGn9Al+FrPaV/qCJX+X5DvBF76mIZsBtFu3Gyuxve4/\nL6ws3GZVnfQo1Ix1J8HvHbeU+ZG1TgxERRrDL5UpKlI4P3dzlyaF1zzzDExFbnWxoawrA79s\nGGtxE84R16nMNAriDUsLLyas3Im+xKBOJe303JJTtwn/07qtLj7d72c6SpplkJyc9lGB+Z7M\nUIaESgH3XFAipNkkqtl1RnNzE4fLdIQnECvTzf9dlX+j7wsVrFhgPk1Nf9Xos+4oJzSHI6QC\nTYwJQ5Yjh6DQMBbApwpp1gTp50VUzlkOTh0DzzK7UOH2EtXbRkbdc/AUbuS+iPR73w\u003d\u003d"
+            }
+          },
+          "__type": "KeyRecord"
+        }
+      ],
+      "__type": "SimpleRole",
+      "name": "owner"
+    },
+    "parent": {
+      "composite3": {
+        "__type": "binary",
+        "base64": "h4qd+9fX6MaDKFHkvVJmu7/Z/kXe2Hlsg4YGUHRmBPV/3CGlVr6+FOz1IqhDQxaW31yN9GP5\nk9nwpN/bdYymPsbpJrdot9FrG5RjB29Hw8CIXodRl9VMI0WV/+4QX2p9"
+      },
+      "__type": "HashId"
+    },
+    "expires_at": {
+      "seconds": 1527857587,
+      "__type": "unixtime"
+    },
+    "data": {
+      "transaction_units": 96,
+      "test_transaction_units": 9996
+    },
+    "origin": {
+      "composite3": {
+        "__type": "binary",
+        "base64": "CralQOEl2S+9qChWm3GMUknX6iVABlTFY0nqYDuxOGCABC7nU0iYQzyMKfrI0wyPdGsZHEMJ\nJ1mzf2g4VKrx6wPQEXPbsVhNe8S6FVDG4W5OstHWrsSTBvUXwRx1o6pz"
+      },
+      "__type": "HashId"
+    },
+    "created_at": {
+      "seconds": 1520200568,
+      "__type": "unixtime"
+    },
+    "created_by": {
+      "keys": [
+        {
+          "key": {
+            "__type": "RSAPublicKey",
+            "packed": {
+              "__type": "binary",
+              "base64": "HggcAQABxAABqT+4m+UeJ3CvwjbHGwGn9Al+FrPaV/qCJX+X5DvBF76mIZsBtFu3Gyuxve4/\nL6ws3GZVnfQo1Ix1J8HvHbeU+ZG1TgxERRrDL5UpKlI4P3dzlyaF1zzzDExFbnWxoawrA79s\nGGtxE84R16nMNAriDUsLLyas3Im+xKBOJe303JJTtwn/07qtLj7d72c6SpplkJyc9lGB+Z7M\nUIaESgH3XFAipNkkqtl1RnNzE4fLdIQnECvTzf9dlX+j7wsVrFhgPk1Nf9Xos+4oJzSHI6QC\nTYwJQ5Yjh6DQMBbApwpp1gTp50VUzlkOTh0DzzK7UOH2EtXbRkbdc/AUbuS+iPR73w\u003d\u003d"
+            }
+          },
+          "__type": "KeyRecord"
+        }
+      ],
+      "__type": "SimpleRole",
+      "name": "creator"
+    },
+    "revision": 9
+  },
+  "transactional": {}
+}
