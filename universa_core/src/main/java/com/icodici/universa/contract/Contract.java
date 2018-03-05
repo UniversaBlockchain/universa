@@ -528,8 +528,29 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     if (key != null) {
                         if (key.getBitStrength() != 2048) {
                             res = false;
-                            addError(Errors.BAD_SIGNATURE, "Only 2048 keys is allowed in the test payment mode");
+                            addError(Errors.BAD_SIGNATURE, "Only 2048 keys is allowed in the test payment mode.");
                         }
+                    }
+                }
+
+                ZonedDateTime expirationLimit = ZonedDateTime.now().plusYears(1);
+
+                if(getExpiresAt().isAfter(expirationLimit)) {
+                    res = false;
+                    addError(Errors.EXPIRED, "Contracts with expiration date father then 1 year from now is not allowed in the test payment mode.");
+                }
+
+                for (Approvable ni : getNewItems()) {
+                    if(ni.getExpiresAt().isAfter(expirationLimit)) {
+                        res = false;
+                        addError(Errors.EXPIRED, "New items with expiration date father then 1 year from now is not allowed in the test payment mode.");
+                    }
+                }
+
+                for (Approvable ri : getRevokingItems()) {
+                    if(ri.getExpiresAt().isAfter(expirationLimit)) {
+                        res = false;
+                        addError(Errors.EXPIRED, "Revoking items with expiration date father then 1 year from now is not allowed in the test payment mode.");
                     }
                 }
             }
