@@ -21,6 +21,9 @@ import java.util.List;
 public class Config {
 
 
+    public Config () {
+        keysWhiteList.add(getTransactionUnitsIssuerKey());
+    }
 
     public Config copy() {
         Config config = new Config();
@@ -44,6 +47,7 @@ public class Config {
         config.checkItemTime = checkItemTime;
         config.maxResyncTime = maxResyncTime;
         config.transactionUnitsIssuerKeyData = transactionUnitsIssuerKeyData;
+        config.keysWhiteList = keysWhiteList;
         return config;
     }
 
@@ -91,8 +95,19 @@ public class Config {
     private Duration resyncTime = Duration.ofMillis(1000);
     private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
+
+    public void setTransactionUnitsIssuerKeyData(Bytes transactionUnitsIssuerKeyData) {
+        this.transactionUnitsIssuerKeyData = transactionUnitsIssuerKeyData;
+    }
+
 //    private Bytes transactionUnitsIssuerKeyData = Bytes.fromHex("1E 08 1C 01 00 01 C4 00 01 B9 C7 CB 1B BA 3C 30 80 D0 8B 29 54 95 61 41 39 9E C6 BB 15 56 78 B8 72 DC 97 58 9F 83 8E A0 B7 98 9E BB A9 1D 45 A1 6F 27 2F 61 E0 26 78 D4 9D A9 C2 2F 29 CB B6 F7 9F 97 60 F3 03 ED 5C 58 27 27 63 3B D3 32 B5 82 6A FB 54 EA 26 14 E9 17 B6 4C 5D 60 F7 49 FB E3 2F 26 52 16 04 A6 5E 6E 78 D1 78 85 4D CD 7B 71 EB 2B FE 31 39 E9 E0 24 4F 58 3A 1D AE 1B DA 41 CA 8C 42 2B 19 35 4B 11 2E 45 02 AD AA A2 55 45 33 39 A9 FD D1 F3 1F FA FE 54 4C 2E EE F1 75 C9 B4 1A 27 5C E9 C0 42 4D 08 AD 3E A2 88 99 A3 A2 9F 70 9E 93 A3 DF 1C 75 E0 19 AB 1F E0 82 4D FF 24 DA 5D B4 22 A0 3C A7 79 61 41 FD B7 02 5C F9 74 6F 2C FE 9A DD 36 44 98 A2 37 67 15 28 E9 81 AC 40 CE EF 05 AA 9E 36 8F 56 DA 97 10 E4 10 6A 32 46 16 D0 3B 6F EF 80 41 F3 CC DA 14 74 D1 BF 63 AC 28 E0 F1 04 69 63 F7");
     private Bytes transactionUnitsIssuerKeyData = Bytes.fromHex("1E 08 1C 01 00 01 C4 00 01 C5 24 96 7D 75 B6 D3 01 AC 46 7F 64 85 56 43 B6 F7 02 B5 4A 8F FE C7 0D DE 85 4F 53 7A F4 D7 9D 85 BB AD A9 7F 1F 4C 8D CD 5C 99 09 D1 61 29 1E 67 35 80 E7 44 58 41 35 37 16 55 C2 E6 22 0D EF 0F 8B 9B A4 C6 3D 0C 56 7B EB 98 18 C8 0A 2C 26 C0 9B 23 17 3D 6B A9 BF 37 81 E5 21 0C B7 29 50 E6 69 75 DA 2C 05 42 46 A6 A8 E8 85 13 62 96 31 8C FF 50 68 56 F3 BF C4 2C F7 24 9A 9A 1A 9D 95 1A F0 E1 82 00 25 1F 14 60 0B 01 95 74 1B EA D0 FF CC 62 5B 78 64 18 79 8E 14 FD 24 7A 36 5A 09 91 8F 3B F5 C6 55 AC BE DA AD 15 D9 CC 3A 08 76 AB F8 3F 45 F4 5A 26 5D 80 38 6C 02 27 95 8D F3 38 B1 DD 1B C7 5D 51 3C E1 1D 05 8E 2A 6C E8 17 D7 88 5B AE D4 F6 B7 7D A8 84 74 E1 4F 65 B3 DC 06 2D 07 21 AA 51 BF 93 11 C7 7D 1E 09 B3 CE A6 C1 83 60 50 A5 B8 F5 F4 11 A6 98 A0 F9 2B 2B 8D");
+
+    public List<PublicKey> getKeysWhiteList() {
+        return keysWhiteList;
+    }
+
+    private List<PublicKey> keysWhiteList = new ArrayList<>();
 
     public static String tuTemplatePath = "./src/test_contracts/TUTemplate.yml";
     public static String testTUTemplatePath = "./src/test_contracts/TestTUTemplate.yml";

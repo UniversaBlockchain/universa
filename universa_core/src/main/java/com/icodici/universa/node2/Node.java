@@ -82,9 +82,11 @@ public class Node {
     }
 
     /**
-     * Asynchronous (non blocking) check/register item state. If the item is new and eligible to process with the
+     * Asynchronous (non blocking) check/register for item from white list. If the item is new and eligible to process with the
      * consensus, the processing will be started immediately. If it is already processing, the current state will be
      * returned.
+     *
+     * If item is not signed by keys from white list will return {@link ItemResult#UNDEFINED}
      *
      * @param item to register/check state
      *
@@ -92,8 +94,12 @@ public class Node {
      */
     public @NonNull ItemResult registerItem(Approvable item) {
 
-        Object x = checkItemInternal(item.getId(), null, item, true, true);
-        return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+        if (item.isInWhiteList(config.getKeysWhiteList())) {
+            Object x = checkItemInternal(item.getId(), null, item, true, true);
+            return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+        }
+
+        return ItemResult.UNDEFINED;
     }
 
     /**

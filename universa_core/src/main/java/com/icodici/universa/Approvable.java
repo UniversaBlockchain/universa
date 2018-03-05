@@ -98,6 +98,10 @@ public interface Approvable extends HashIdentifiable {
         return false;
     }
 
+    default boolean isInWhiteList(List<PublicKey> whiteList) {
+        return false;
+    }
+
     default boolean shouldBeTU() {
         return false;
     }

@@ -2950,6 +2950,26 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayloadContract().getId(), 8000).state);
     }
 
+
+
+    @Test(timeout = 90000)
+    public void declineItemFromoutWhiteList() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        node.registerItem(stepaCoins);
+        ItemResult itemResult = node.waitItem(stepaCoins.getId(), 18000);
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+    }
+
     @Ignore("Stress test")
     @Test(timeout = 900000)
     public void testLedgerLocks() throws Exception {

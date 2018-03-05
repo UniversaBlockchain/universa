@@ -127,4 +127,9 @@ public class TestItem implements Approvable {
     public boolean isTU(PublicKey issuerKey, String issuerName) {
         return true;
     }
+
+    @Override
+    public boolean isInWhiteList(List<PublicKey> whiteList) {
+        return true;
+    }
 }
