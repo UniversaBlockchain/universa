@@ -270,6 +270,8 @@ ItemResult<PENDING_POSITIVE 2017-11-01T02:04:29+01:00[Europe/Warsaw] (copy)>
 
 This means that the node 30 has initiated the voting. Notice the contract ID in the “registering the contract” line. It is a BASE64-encoded ID of the contract which will be used from now to uniquely identify it.
 
+**Important**. After command run file with your transaction units with old revision will backuped to `<file_name>_rev<rev_number>.unicon`. And new approved revision of transaction units contract will save with old file name. So, you always will have actual transaction units in one file. But if something went wrong you can restore previous revisions from backups.
+
 The status of the contract initially could be one of `PENDING` / `PENDING_NEGATIVE` / `PENDING_POSITIVE` as the starting node checks it against its copy of the shared ledger. To update the state, `--probe` it in a second or two:
 
     uniclient --probe SWlZ0U73oUJ3hWLeIFAJeUaU0y0CowYOxzhfAfPCQ6zouwFUyfXlJoyO1fUb1jbFoSPv/zXiAzVaEBGrdU62SA
@@ -290,7 +292,15 @@ Other possible contract states are:
 * `REVOKED` – the contract was recently revoked. This state is not kept for long, the network has short memory of discarded items.
 * `UNDEFINED` – the election failed for example due to severe network outage. You can try again soon.
 
-Use key `--amount` to manually set the amount of transaction units will be spend for contract processing. Use approved transaction units contract with key `--tu`. After successful `--register` your file with transaction units contract will be resaved with new revision of transaction units contract and decreased amount of transaction units, so you can use it again without additionally operations.
+Use key `--amount` to manually set the amount of transaction units will be spend for contract processing:
+     
+     uniclient --register contract.unicon --tu tu.unicon --amount 1
+     
+Use approved transaction units contract with key `--tu`. After any `--register` your file with transaction units contract will be saved with new revision of transaction units contract and decreased amount of transaction units, so you can use it again without additionally operations.
+
+If you want to try payment in the test mode use `--tutest` keu with `--register` and `--tu`:
+
+    uniclient --register contract.unicon --tu tu.unicon --tutest
 
 If you registered the contract you may revoke contract via simple command (use the same private key you have used before to sign the contract):
 
