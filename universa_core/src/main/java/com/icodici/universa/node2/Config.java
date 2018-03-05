@@ -113,6 +113,8 @@ public class Config {
     public static String testTUTemplatePath = "./src/test_contracts/TestTUTemplate.yml";
     public static String tuKeyPath = "./src/test_contracts/keys/tu_key.private.unikey";
 
+    public static int maxExpirationMonthsInTestMode = 12;
+
     private String tuIssuerName = "Universa Reserve System";
 
     /**

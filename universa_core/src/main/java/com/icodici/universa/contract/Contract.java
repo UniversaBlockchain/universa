@@ -533,7 +533,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     }
                 }
 
-                ZonedDateTime expirationLimit = ZonedDateTime.now().plusYears(1);
+                ZonedDateTime expirationLimit = ZonedDateTime.now().plusMonths(Config.maxExpirationMonthsInTestMode);
 
                 if(getExpiresAt().isAfter(expirationLimit)) {
                     res = false;
