@@ -12,6 +12,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
@@ -519,62 +520,46 @@ public class ContractsService {
         return twoSignContract;
     }
 
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount){
-        Contract TokenContract = new Contract();
-        TokenContract.setApiLevel(3);
 
-        Contract.Definition cd = TokenContract.getDefinition();
-        cd.setExpiresAt(ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC));
+    public synchronized static Contract createBaseContract(
+            Set<PrivateKey> issuerKeys,
+            ZonedDateTime datetime,
+            Binder data,
+            Role issuerRole,
+            Role creatorRole,
+            Role ownerRole,
+            List<Permission> perms,
+            String amount)
+    {
+        Contract baseContract = new Contract();
+        baseContract.setApiLevel(3);
 
-        Binder data = new Binder();
-        data.set("name", "Token name");
-        data.set("currency_code", "TKN");
-        data.set("currency_name", "Token name");
-        data.set("description", "Token description");
-        cd.setData(data);
+        Contract.Definition cd = baseContract.getDefinition();
+        cd.setExpiresAt(datetime);
 
-        SimpleRole revokeRole = new SimpleRole("revoke_role");
+        if (data != null)
+            cd.setData(data);
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
-        for (PrivateKey k : issuerKeys) {
-            KeyRecord kr = new KeyRecord(k.getPublicKey());
-            issuerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
-        }
+        if (issuerRole != null)
+            baseContract.createRole("issuer", issuerRole);
 
-        SimpleRole ownerRole = new SimpleRole("owner");
-        for (PublicKey k : ownerKeys) {
-            KeyRecord kr = new KeyRecord(k);
-            ownerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
-        }
+        if (creatorRole != null)
+            baseContract.createRole("creator", creatorRole);
 
-        TokenContract.registerRole(issuerRole);
-        TokenContract.createRole("issuer", issuerRole);
-        TokenContract.createRole("creator", issuerRole);
-        TokenContract.getStateData().set("amount", amount);
+        if (ownerRole != null)
+            baseContract.createRole("owner", ownerRole);
 
-        ChangeOwnerPermission co_perm = new ChangeOwnerPermission(ownerRole);
-        TokenContract.addPermission(co_perm);
+        if (amount != null)
+            baseContract.getStateData().set("amount", amount);
 
-        Binder params = new Binder();
-        params.set("min_value", 0.01);
-        params.set("min_unit", 0.001);
-        params.set("field_name", "amount");
-        params.set("join_match_fields", "state.origin");
+        if (perms != null)
+            for (Permission perm: perms)
+                baseContract.addPermission(perm);
 
-        SplitJoinPermission sj_perm = new SplitJoinPermission(ownerRole, params);
-        TokenContract.addPermission(sj_perm);
+        baseContract.seal();
+        baseContract.addSignatureToSeal(issuerKeys);
 
-        RevokePermission rev_perm = new RevokePermission(revokeRole);
-        TokenContract.addPermission(rev_perm);
-
-        TokenContract.setOwnerKeys(ownerKeys);
-
-        TokenContract.seal();
-        TokenContract.addSignatureToSeal(issuerKeys);
-
-        return TokenContract;
+        return baseContract;
     }
 
     /**
