@@ -3219,9 +3219,8 @@ public class BaseNetworkTest extends TestCase {
 
     public synchronized Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
 
-        PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> ownerKeys = new HashSet();
-        ownerKeys.add(ownerKey.getPublicKey());
+        keys.stream().forEach(key -> ownerKeys.add(key.getPublicKey()));
         Contract stepaTU = InnerContractsService.createFreshTU(100000000, ownerKeys);
         stepaTU.check();
         //stepaTU.setIsTU(true);
