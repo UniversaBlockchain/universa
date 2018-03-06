@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Digest;
 import com.icodici.crypto.digest.HMAC;
 import net.sergeych.tools.Bindable;
 import net.sergeych.tools.Binder;
@@ -24,14 +25,15 @@ import java.util.Arrays;
 import java.util.Collection;
 
 /**
- * All the functions that some key should be able to perform. The default implementation throws
- * {@link UnsupportedOperationException} - this is a valid behaviour for the function that the key is not able to perform.
+ * All the functions that some key should be able to perform. The default implementation throws {@link
+ * UnsupportedOperationException} - this is a valid behaviour for the function that the key is not able to perform.
  * Well, there could be keys that do nothing too. Just for ;)
  * <p>
  * Created by sergeych on 17.12.16.
  */
 public abstract class AbstractKey implements Bindable {
-    public static final int FINGERPRINT_SHA512 = 7;
+    public static final int FINGERPRINT_SHA256 = 7;
+    public static final int FINGERPRINT_SHA384 = 8;
 
     protected KeyInfo keyInfo;
 
@@ -144,7 +146,7 @@ public abstract class AbstractKey implements Bindable {
     @Override
     public final Binder toBinder() {
         return new Binder("keyInfo", packedInfo(),
-                          "data", pack()
+                "data", pack()
         );
     }
 
@@ -160,10 +162,9 @@ public abstract class AbstractKey implements Bindable {
      * in binary form and are bit-effective, when using with {@link net.sergeych.boss.Boss} encoders (the default for
      * Attesta).
      *
-     * @param binder from where to restore.
-     *
+     * @param binder
+     *         from where to restore.
      * @return ready to use key
-     *
      * @throws IOException
      * @throws EncryptionError
      */
@@ -231,6 +232,20 @@ public abstract class AbstractKey implements Bindable {
     }
 
     /**
+     * Arbitrary fingerprint calculation. As the digest may be different adn it might be useful to include more
+     * information than a key to it, it is possible to update some digest instance with key data.
+     * <p>
+     * Create any digest you need and call this method to update it with a ket data.
+     * <p>
+     * This can and should be used to obtain higher-order composite fingerprints for high security setups.
+     *
+     * @return same digest instance (to chain calls)
+     */
+    public Digest updateDigestWithKeyComponents(Digest digest) {
+        throw new RuntimeException("this key does not support fingerprints");
+    }
+
+    /**
      * Create a random (e.g. every call a different) sequence of bytes that identidy this key. There can almost infinite
      * number if anonynous ids for e key (more than 1.0E77), so it is really anonymous way to identify some key. The
      * anonymousId for public and private keys are the same.
@@ -262,9 +277,7 @@ public abstract class AbstractKey implements Bindable {
      * id for this key.
      *
      * @param packedId
-     *
      * @return true if it matches.
-     *
      * @throws IOException
      */
     public boolean matchAnonymousId(@NonNull byte[] packedId) throws IOException {
@@ -273,5 +286,16 @@ public abstract class AbstractKey implements Bindable {
         hmac.update(packedId, 0, 32);
         byte[] idDigest = Arrays.copyOfRange(packedId, 32, 64);
         return Arrays.equals(hmac.digest(), idDigest);
+    }
+
+    /**
+     * Generate address for the key, see {@link KeyAddress} for more.
+     *
+     * @param useSha3_284 use SHA3-284 for hash, otherwise SHA3-256
+     * @param keyMark some data code in 0..15 range inclusive
+     * @return generated address
+     */
+    public KeyAddress address(boolean useSha3_284, int keyMark) {
+        return new KeyAddress(this, keyMark, useSha3_284);
     }
 }

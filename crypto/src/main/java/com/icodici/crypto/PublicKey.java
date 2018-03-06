@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Digest;
 import com.icodici.crypto.digest.Sha256;
 import com.icodici.crypto.rsaoaep.RSAOAEPPublicKey;
 import net.sergeych.biserializer.BiAdapter;
@@ -31,6 +32,7 @@ import java.util.Map;
 public class PublicKey extends AbstractKey {
     private final RSAOAEPPublicKey publicKey;
     private byte[] cachedHint;
+    private boolean publicExponent;
 
     public PublicKey(AbstractPublicKey publicKey) {
         this.publicKey = (RSAOAEPPublicKey) publicKey;
@@ -117,8 +119,8 @@ public class PublicKey extends AbstractKey {
     }
 
     /**
-     * Keys equality check. Only public keys are equal to each other. Right now private keys can't
-     * be equal to the public even if the latter is its part.
+     * Keys equality check. Only public keys are equal to each other. Right now private keys can't be equal to the
+     * public even if the latter is its part.
      *
      * @param obj
      *         key to compare with. Should be PublicKey instaance.
@@ -150,12 +152,11 @@ public class PublicKey extends AbstractKey {
     @Override
     public byte[] fingerprint() {
         synchronized (publicKey) {
-            if( _fingerprint == null ) {
+            if (_fingerprint == null) {
                 _fingerprint = new byte[33];
-                _fingerprint[0] = (byte) FINGERPRINT_SHA512;
-                Map<String, Object> a = publicKey.toHash();
+                _fingerprint[0] = (byte) FINGERPRINT_SHA256;
                 System.arraycopy(
-                        new Sha256().update((byte[])a.get("e")).update((byte[])a.get("n")).digest(),
+                        updateDigestWithKeyComponents(new Sha256()).digest(),
                         0,
                         _fingerprint,
                         1,
@@ -165,12 +166,19 @@ public class PublicKey extends AbstractKey {
         }
     }
 
+    @Override
+    public Digest updateDigestWithKeyComponents(Digest digest) {
+        Map<String, Object> a = publicKey.toHash();
+        digest.update((byte[]) a.get("e")).update((byte[]) a.get("n"));
+        return digest;
+    }
+
     public static final BiAdapter PUBLIC_KEY_BI_ADAPTER = new BiAdapter() {
 
         @Override
         public Binder serialize(Object object, BiSerializer serializer) {
             return Binder.of("packed",
-                    serializer.serialize(((PublicKey) object).pack()));
+                             serializer.serialize(((PublicKey) object).pack()));
         }
 
         @Override
@@ -190,5 +198,14 @@ public class PublicKey extends AbstractKey {
 
     static {
         DefaultBiMapper.registerAdapter(PublicKey.class, PUBLIC_KEY_BI_ADAPTER);
+    }
+
+    public long getPublicExponent() {
+        Map<String, Object> params = publicKey.toHash();
+        byte[] arr = (byte[]) params.get("e");
+        long e = 0;
+        for (int i = 0; i < arr.length; i++)
+            e = (e << 8) | arr[i];
+        return e;
     }
 }

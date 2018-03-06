@@ -17,7 +17,7 @@ public class AbstractKeyTest {
         assertEquals(33, f1.length);
         byte[] f2 = k.fingerprint();
         assertArrayEquals(f1, f2);
-        assertEquals(AbstractKey.FINGERPRINT_SHA512, f1[0]);
+        assertEquals(AbstractKey.FINGERPRINT_SHA256, f1[0]);
     }
 
     @Test

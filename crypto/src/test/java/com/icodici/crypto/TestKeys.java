@@ -14,9 +14,13 @@ import net.sergeych.tools.Do;
  */
 public class TestKeys {
 
-    static PrivateKey privateKey(int index) throws EncryptionError {
+    static PrivateKey privateKey(int index)  {
         byte[] src = Do.decodeBase64(binaryKeys[index]);
-        return new PrivateKey(src);
+        try {
+            return new PrivateKey(src);
+        } catch (EncryptionError encryptionError) {
+            throw new RuntimeException("failed to create test key", encryptionError);
+        }
     }
 
 
