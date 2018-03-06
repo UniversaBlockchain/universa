@@ -847,7 +847,7 @@ public class MainTest {
         Main main = mm.get(0);
         assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
         assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
-        PrivateKey myKey = TestKeys.privateKey(3);
+        PrivateKey myKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
 
         //Client client = new Client(myKey, main.myInfo, null);
 
@@ -992,7 +992,7 @@ public class MainTest {
         Main main = mm.get(0);
         assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
         assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
-        PrivateKey myKey = TestKeys.privateKey(3);
+        PrivateKey myKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
 
         Set<PrivateKey> fromPrivateKeys = new HashSet<>();
         fromPrivateKeys.add(myKey);
