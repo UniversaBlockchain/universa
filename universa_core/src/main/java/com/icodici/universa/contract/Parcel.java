@@ -53,6 +53,31 @@ public class Parcel implements BiSerializable {
             e.printStackTrace();
         }
 
+        prepareForNode();
+    }
+
+    //New constructor for initializing an object from a binder when deserializing
+    public Parcel(Binder data) throws IOException {
+        BiDeserializer biD = new BiDeserializer();
+        deserialize(data, biD);
+    }
+
+
+    public TransactionPack getPayload() {
+        return payload;
+    }
+
+
+
+
+    public TransactionPack getPayment() {
+        return payment;
+    }
+
+
+
+    public void prepareForNode() {
+
         Contract parent = null;
         for(Contract c : payment.getContract().getRevoking()) {
             if(c.getId().equals(payment.getContract().getParent())) {
@@ -87,24 +112,6 @@ public class Parcel implements BiSerializable {
         payment.getContract().setShouldBeTU(true);
         payment.getContract().setSuitableForTestnet(isTestPayment);
         payload.getContract().setSuitableForTestnet(isTestPayment);
-    }
-
-    //New constructor for initializing an object from a binder when deserializing
-    public Parcel(Binder data) throws IOException {
-        BiDeserializer biD = new BiDeserializer();
-        deserialize(data, biD);
-    }
-
-
-    public TransactionPack getPayload() {
-        return payload;
-    }
-
-
-
-
-    public TransactionPack getPayment() {
-        return payment;
     }
 
 
@@ -147,6 +154,8 @@ public class Parcel implements BiSerializable {
         payload = TransactionPack.unpack(data.getBinary("payload"));
         payment = TransactionPack.unpack(data.getBinary("payment"));
         hashId = ds.deserialize(data.get("hashId"));
+
+        prepareForNode();
     }
 
     /**

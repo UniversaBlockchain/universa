@@ -708,6 +708,7 @@ public class CLIMain {
             }
 
             Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
+            report("tuKeys num: " + tuKeys.size());
             if (contract != null) {
                 if(tu != null && tuKeys != null && tuKeys.size() > 0) {
                     report("registering the paid contract " + contract.getId() + " from " + source

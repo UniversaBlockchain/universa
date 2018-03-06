@@ -252,9 +252,9 @@ The improperly signed contracts will not be accepted by the Universa network.
 
 #### Registering and revoking the contract in the Universa network
 
-When the contract is prepared and checked (using the `--check` option), it is a time to register it in the Universa network. From version 3.0.1 contract's processing should be paid bu transaction units. Point to you transaction units contract with key `--tu`. To register contract, run the command like:
+When the contract is prepared and checked (using the `--check` option), it is a time to register it in the Universa network. From version 3.0.1 contract's processing should be paid bu transaction units. Point to you transaction units contract with key `--tu`. Don't forget point to keys to sign contract you want to register and payment contract. To register contract, run the command like:
 
-    uniclient --register contract.unicon --tu tu.unicon
+    uniclient --register contract.unicon --tu tu.unicon -k key.private.unikey
 
 This command submits the contract for approval. The response will be similar to:
 

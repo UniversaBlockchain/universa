@@ -113,7 +113,6 @@ public class CLIMainTest {
 
         Contract c1 = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c1.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-        c1.addSignerKeyFromFile(rootPath+"keys/tu_key.private.unikey");
         PrivateKey goodKey1 = c1.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c1.getRole("owner")).addKeyRecord(new KeyRecord(goodKey1.getPublicKey()));
@@ -122,7 +121,6 @@ public class CLIMainTest {
 
         Contract c2 = Contract.fromDslFile(rootPath + "another_root_contract_v2.yml");
         c2.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-        c2.addSignerKeyFromFile(rootPath+"keys/tu_key.private.unikey");
         PrivateKey goodKey2 = c2.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c2.getRole("owner")).addKeyRecord(new KeyRecord(goodKey2.getPublicKey()));
@@ -131,7 +129,6 @@ public class CLIMainTest {
 
         Contract c3 = Contract.fromDslFile(rootPath + "simple_root_contract_v2.yml");
         c3.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-        c3.addSignerKeyFromFile(rootPath+"keys/tu_key.private.unikey");
         PrivateKey goodKey3 = c3.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c3.getRole("owner")).addKeyRecord(new KeyRecord(goodKey3.getPublicKey()));
@@ -1371,10 +1368,10 @@ public class CLIMainTest {
 
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        c.addSignerKeyFromFile(rootPath + "keys/tu_key.private.unikey");
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
-        c.addSignerKeyFromFile(rootPath + "keys/tu_key.private.unikey");
         c.seal();
 
         System.out.println("---");
@@ -1764,8 +1761,11 @@ public class CLIMainTest {
         System.out.println("register contract");
         System.out.println("---");
 
+        String tuContract = getApprovedTUContract();
 //        CLIMain.registerContract(c);
-        callMain2("--register", contractFileName, "--verbose");
+        callMain2("--register", contractFileName, "--verbose",
+                "--tu", tuContract,
+                "--k", rootPath + "keys/stepan_mamontov.private.unikey");
 
         Thread.sleep(1500);
         System.out.println("---");
@@ -1779,8 +1779,11 @@ public class CLIMainTest {
 
 
 
-        callMain2("-revoke", contractFileName, "-v",
-                "-k", PRIVATE_KEY_PATH);
+        tuContract = getApprovedTUContract();
+        callMain2("-revoke", contractFileName,
+                "-k", PRIVATE_KEY_PATH, "-v",
+                "--tu", tuContract,
+                "--k", rootPath + "keys/stepan_mamontov.private.unikey");
 
 
 
@@ -1800,7 +1803,10 @@ public class CLIMainTest {
     public void revokeContract() throws Exception {
         String contractFileName = basePath + "contract_for_revoke3.unicon";
 
-        callMain2("--register", contractFileName, "--verbose");
+        String tuContract = getApprovedTUContract();
+        callMain2("--register", contractFileName, "--verbose",
+                "--tu", tuContract,
+                "--k", rootPath + "keys/stepan_mamontov.private.unikey");
 
         Contract c = CLIMain.loadContract(contractFileName);
         System.out.println("contract: " + c.getId().toBase64String());
@@ -1810,11 +1816,11 @@ public class CLIMainTest {
         callMain2("--probe", c.getId().toBase64String(), "--verbose");
         Thread.sleep(500);
 
-        String tuContract = getApprovedTUContract();
-        callMain2("-revoke", contractFileName, "-v",
+        tuContract = getApprovedTUContract();
+        callMain2("-revoke", contractFileName,
+                "-k", PRIVATE_KEY_PATH, "-v",
                 "--tu", tuContract,
-                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
-                "-k", PRIVATE_KEY_PATH);
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey");
         Thread.sleep(2500);
         System.out.println("probe after revoke");
         callMain("--probe", c.getId().toBase64String(), "--verbose");
@@ -1829,7 +1835,11 @@ public class CLIMainTest {
     public void revokeContractWithoutKey() throws Exception {
         String contractFileName = basePath + "contract_for_revoke1.unicon";
 
-        callMain2("--register", contractFileName, "--verbose");
+
+        String tuContract = getApprovedTUContract();
+        callMain2("--register", contractFileName, "--verbose",
+                "--tu", tuContract,
+                "--k", rootPath + "keys/stepan_mamontov.private.unikey");
         callMain2("-revoke", contractFileName, "-v");
 
         Thread.sleep(1500);
@@ -1851,7 +1861,10 @@ public class CLIMainTest {
         System.out.println("---");
         System.out.println("register contracts");
         System.out.println("---");
-        callMain2("--register", contractFileName1, contractFileName2, "--verbose");
+        String tuContract = getApprovedTUContract();
+        callMain2("--register", contractFileName1, contractFileName2, "--verbose",
+                "--tu", tuContract,
+                "--k", rootPath + "keys/stepan_mamontov.private.unikey");
 
         Thread.sleep(1500);
 
@@ -1859,7 +1872,8 @@ public class CLIMainTest {
         System.out.println("---");
         System.out.println("check tu");
         System.out.println("---");
-        String tuContract = getApprovedTUContract();
+
+        tuContract = getApprovedTUContract();
 
         Contract tu = CLIMain.loadContract(tuContract);
         System.out.println("check tu " + tu.getId().toBase64String());
@@ -2062,18 +2076,11 @@ public class CLIMainTest {
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "5000");
 
-        assertTrue (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
-
-
-        Contract tu2 = CLIMain.loadContract(tuContract);
-        System.out.println("check tu " + tu2.getId().toBase64String());
-        callMain("--probe", tu2.getId().toBase64String(), "--verbose");
 
         System.out.println(output);
 
-        Contract loaded2 = CLIMain.loadContract(tuContract, true);
+        assertTrue (output.indexOf("paid contract " + contract.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
 
-        System.out.println("--- load 2 --- " + loaded2.getId() + " from " + tuContract);
     }
 
     @Test
