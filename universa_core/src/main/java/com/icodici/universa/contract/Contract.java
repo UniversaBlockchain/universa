@@ -1004,6 +1004,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return role;
     }
 
+    public void anonymizeRole(String roleName) {
+    }
+
     public boolean isPermitted(String permissionName, KeyRecord keyRecord) throws Quantiser.QuantiserException {
         return isPermitted(permissionName, keyRecord.getPublicKey());
     }
