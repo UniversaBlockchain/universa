@@ -2262,6 +2262,197 @@ public class CLIMainTest {
         assertTrue (output.indexOf("Contract processing cost is " + costShouldBe + " TU") >= 1);
     }
 
+    @Test
+    public void anonymizeRole() throws Exception {
+
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "forRoleAnonymizing.unicon").exists());
+        callMain("-anonymize", basePath + "forRoleAnonymizing.unicon",
+                "-role", "issuer");
+        assertTrue (new File(basePath + "forRoleAnonymizing_anonymized.unicon").exists());
+        System.out.println(output);
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract contract = CLIMain.loadContract(basePath + "forRoleAnonymizing_anonymized.unicon", true);
+
+        assertFalse(contract.getIssuer().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract = new Contract(contract.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(key.getPublicKey()));
+    }
+
+    @Test
+    public void anonymizeAllRoles() throws Exception {
+
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "forRoleAnonymizing.unicon").exists());
+        callMain("-anonymize", basePath + "forRoleAnonymizing.unicon");
+        assertTrue (new File(basePath + "forRoleAnonymizing_anonymized.unicon").exists());
+        System.out.println(output);
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerKey = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+        Contract contract = CLIMain.loadContract(basePath + "forRoleAnonymizing_anonymized.unicon", true);
+
+        assertFalse(contract.getOwner().getKeys().contains(ownerKey.getPublicKey()));
+        assertFalse(contract.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(contract.getCreator().getKeys().contains(key.getPublicKey()));
+        Contract anonPublishedContract = new Contract(contract.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract.getOwner().getKeys().contains(ownerKey.getPublicKey()));
+        assertFalse(anonPublishedContract.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract.getCreator().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(ownerKey.getPublicKey()));
+    }
+
+    @Test
+    public void anonymizeRoleAndSaveWithName() throws Exception {
+
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "forRoleAnonymizing.unicon").exists());
+        callMain("-anonymize", basePath + "forRoleAnonymizing.unicon",
+                "-role", "issuer",
+                "-name", basePath + "myAnon.unicon");
+        assertTrue (new File(basePath + "myAnon.unicon").exists());
+        System.out.println(output);
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract contract = CLIMain.loadContract(basePath + "myAnon.unicon", true);
+
+        assertFalse(contract.getIssuer().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract = new Contract(contract.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(key.getPublicKey()));
+    }
+
+    @Test
+    public void anonymizeRoleForTwoContracts() throws Exception {
+
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing1.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing2.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "forRoleAnonymizing1.unicon").exists());
+        assertTrue (new File(basePath + "forRoleAnonymizing2.unicon").exists());
+
+        callMain("-anonymize", basePath + "forRoleAnonymizing1.unicon", basePath + "forRoleAnonymizing2.unicon",
+                "-role", "issuer");
+        assertTrue (new File(basePath + "forRoleAnonymizing1_anonymized.unicon").exists());
+        assertTrue (new File(basePath + "forRoleAnonymizing2_anonymized.unicon").exists());
+        System.out.println(output);
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract contract1 = CLIMain.loadContract(basePath + "forRoleAnonymizing1_anonymized.unicon", true);
+
+        assertFalse(contract1.getIssuer().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract1 = new Contract(contract1.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract1.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract1.getSealedByKeys().contains(key.getPublicKey()));
+
+        Contract contract2 = CLIMain.loadContract(basePath + "forRoleAnonymizing2_anonymized.unicon", true);
+
+        assertFalse(contract2.getIssuer().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract2 = new Contract(contract2.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract2.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract2.getSealedByKeys().contains(key.getPublicKey()));
+    }
+
+    @Test
+    public void anonymizeRoleForTwoContractsWithNames() throws Exception {
+
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing1.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing2.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "forRoleAnonymizing1.unicon").exists());
+        assertTrue (new File(basePath + "forRoleAnonymizing2.unicon").exists());
+
+        callMain("-anonymize", basePath + "forRoleAnonymizing1.unicon", basePath + "forRoleAnonymizing2.unicon",
+                "-role", "issuer",
+                "-name", basePath + "myAnon1.unicon", "-name", basePath + "myAnon2.unicon");
+        assertTrue (new File(basePath + "myAnon1.unicon").exists());
+        assertTrue (new File(basePath + "myAnon2.unicon").exists());
+        System.out.println(output);
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract contract1 = CLIMain.loadContract(basePath + "myAnon1.unicon", true);
+
+        assertFalse(contract1.getIssuer().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract1 = new Contract(contract1.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract1.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract1.getSealedByKeys().contains(key.getPublicKey()));
+
+        Contract contract2 = CLIMain.loadContract(basePath + "myAnon2.unicon", true);
+
+        assertFalse(contract2.getIssuer().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract2 = new Contract(contract2.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract2.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract2.getSealedByKeys().contains(key.getPublicKey()));
+    }
+
+    @Test
+    public void anonymizeAllRolesForTwoContracts() throws Exception {
+
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing1.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing2.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        assertTrue (new File(basePath + "forRoleAnonymizing1.unicon").exists());
+        assertTrue (new File(basePath + "forRoleAnonymizing2.unicon").exists());
+
+        callMain("-anonymize", basePath + "forRoleAnonymizing1.unicon", basePath + "forRoleAnonymizing2.unicon");
+
+        assertTrue (new File(basePath + "forRoleAnonymizing1_anonymized.unicon").exists());
+        assertTrue (new File(basePath + "forRoleAnonymizing2_anonymized.unicon").exists());
+        System.out.println(output);
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerKey = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+        Contract contract1 = CLIMain.loadContract(basePath + "forRoleAnonymizing1_anonymized.unicon", true);
+
+        assertFalse(contract1.getOwner().getKeys().contains(ownerKey.getPublicKey()));
+        assertFalse(contract1.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(contract1.getCreator().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract1 = new Contract(contract1.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract1.getOwner().getKeys().contains(ownerKey.getPublicKey()));
+        assertFalse(anonPublishedContract1.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract1.getCreator().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract1.getSealedByKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract1.getSealedByKeys().contains(ownerKey.getPublicKey()));
+
+        Contract contract2 = CLIMain.loadContract(basePath + "forRoleAnonymizing1_anonymized.unicon", true);
+
+        assertFalse(contract2.getOwner().getKeys().contains(ownerKey.getPublicKey()));
+        assertFalse(contract2.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(contract2.getCreator().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract2 = new Contract(contract2.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract2.getOwner().getKeys().contains(ownerKey.getPublicKey()));
+        assertFalse(anonPublishedContract2.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract2.getCreator().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract2.getSealedByKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract2.getSealedByKeys().contains(ownerKey.getPublicKey()));
+    }
+
     //////////////// common realistic use cases
 
     @Test

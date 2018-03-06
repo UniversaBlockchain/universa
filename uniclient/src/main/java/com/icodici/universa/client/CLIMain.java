@@ -236,6 +236,19 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("file");
+                accepts("anonymize", "Key erase public key from given contract for role given with -role key and replace " +
+                        "it with anonymous id for that public key. If -role key is missed will anonymize all roles. " +
+                        "After anonymizing contract will be saved as <file_name>_anonymized.unicon. " +
+                        "If you want to save with custom name use -name keys.")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("file");
+                accepts("role", "Use with -anonymize. Set the role name for anonymizing.")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("role_name");
 
 
 //                acceptsAll(asList("ie"), "Test - delete.")
@@ -318,6 +331,9 @@ public class CLIMain {
             }
             if (options.has("cost")) {
                 doCost();
+            }
+            if (options.has("anonymize")) {
+                doAnonymize();
             }
 
             usage(null);
@@ -916,6 +932,40 @@ public class CLIMain {
         finish();
     }
 
+    private static void doAnonymize() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("anonymize"));
+        List<String> roles = new ArrayList<String>((List) options.valuesOf("role"));
+        List<String> names = (List) options.valuesOf("name");
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+            Contract contract = loadContract(source);
+            if (contract != null) {
+                if(roles.size() <= 0) {
+                    roles = new ArrayList<>(contract.getRoles().keySet());
+                }
+                for (String roleName : roles) {
+
+                    report("Anonymizing role " + roleName + " in " + source + "...");
+                    contract.anonymizeRole(roleName);
+                }
+                if (names.size() > s) {
+                    saveContract(contract, names.get(s), true, true);
+                } else {
+                    saveContract(contract, source.replaceAll("(?i)\\.(unicon)$", "_anonymized.unicon"), true, true);
+                }
+            }
+        }
+
+        finish();
+    }
+
 
     private static void cleanNonOptionalArguments(List sources) throws IOException {
 
@@ -975,10 +1025,16 @@ public class CLIMain {
             sources.remove("--set");
         }
         List updateValues = options.valuesOf("value");
-        if (extractFields != null) {
+        if (updateValues != null) {
             sources.removeAll(updateValues);
             sources.remove("-value");
             sources.remove("--value");
+        }
+        List roleValues = options.valuesOf("role");
+        if (roleValues != null) {
+            sources.removeAll(roleValues);
+            sources.remove("-role");
+            sources.remove("--role");
         }
     }
 
