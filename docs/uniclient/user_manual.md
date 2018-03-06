@@ -370,6 +370,22 @@ This command will calculate cost of processing and prints it to the console, but
 
 Command works with multiple files as other commands.
 
+#### Anonymizing 
+
+You can make roles in your contract anonymous. It means to erase public keys for the role from contract's binary. To do it use key `--anonymize` in pair with `-anonymize`:
+
+    uniclient --anonymize contract.unicon -role owner
+    
+Anonymized contract will save to `contract_anonymized.unicon`. Old `contract_anonymized.unicon` have been still non-anonymized. To save anonymized contract with custom name use `-name` key:
+    
+    uniclient --anonymize contract.unicon -role owner -name myAnon.unicon
+    
+If you want to anonymize all roles in the contract just ommit `-role` key:
+    
+    uniclient --anonymize contract.unicon
+    
+**Important.** You public keys still will be packed to transaction pack for signed contract. So send or publish anonymous contracts without transaction pack, as sealed binary. Or do not sign it until send to Universa for registering. 
+    
 #### Output control
 
 It is possible to format all uniclient output in the JSON format for easy parsing and further processing. Use `--json` key.
