@@ -252,16 +252,18 @@ public class TransactionPack implements BiSerializable {
                 }
             }
 
-            List<Object> keysList = deserializer.deserializeCollection(data.getListOrThrow("keys"));
+            List<Object> keysList = deserializer.deserializeCollection(data.getList("keys", new ArrayList<>()));
 
             keysForPack = new HashSet<>();
-            for (Object x : keysList) {
-                if (x instanceof Bytes)
-                    x = ((Bytes) x).toArray();
-                if (x instanceof byte[]) {
-                    keysForPack.add(new PublicKey((byte[]) x));
-                } else {
-                    throw new IllegalArgumentException("unsupported key object: " + x.getClass().getName());
+            if(keysList != null) {
+                for (Object x : keysList) {
+                    if (x instanceof Bytes)
+                        x = ((Bytes) x).toArray();
+                    if (x instanceof byte[]) {
+                        keysForPack.add(new PublicKey((byte[]) x));
+                    } else {
+                        throw new IllegalArgumentException("unsupported key object: " + x.getClass().getName());
+                    }
                 }
             }
 
@@ -274,19 +276,23 @@ public class TransactionPack implements BiSerializable {
     @Override
     public Binder serialize(BiSerializer serializer) {
         synchronized (this) {
-            return Binder.of(
+
+            Binder of = Binder.of(
                     "contract", contract.getLastSealedBinary(),
                     "references",
                     serializer.serialize(
                             references.values().stream()
                                     .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
-                    ),
-                    "keys",
-                    serializer.serialize(
-                            keysForPack.stream()
-                                    .map(x -> x.pack()).collect(Collectors.toList())
                     )
+
             );
+            if(keysForPack.size() > 0) {
+                of.set("keys", serializer.serialize(
+                        keysForPack.stream()
+                                .map(x -> x.pack()).collect(Collectors.toList())
+                ));
+            }
+            return of;
         }
     }
 
