@@ -957,6 +957,26 @@ public class ContractTest extends ContractTestBase {
         }
     }
 
+    @Test
+    public void checkAnonymizingRole() throws Exception {
+
+        PrivateKey key = new PrivateKey(Do.read(PRIVATE_KEY_PATH));
+        Contract contract = createCoin100apiv3();
+        contract.addSignerKey(key);
+        sealCheckTrace(contract, true);
+
+        assertTrue(contract.getIssuer().getKeys().contains(key.getPublicKey()));
+
+        contract.anonymizeRole("issuer");
+
+        assertFalse(contract.getIssuer().getKeys().contains(key.getPublicKey()));
+
+        Contract anonPublishedContract = new Contract(contract.getLastSealedBinary());
+
+        assertFalse(anonPublishedContract.getIssuer().getKeys().contains(key.getPublicKey()));
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(key.getPublicKey()));
+    }
+
     /**
      * Imitate procedure of contract processing as it will be on the Node.
      * Gte contract from param, create from it new contract,

@@ -86,3 +86,4 @@ fabric.properties
 !/.idea/artifacts/uniclient_main_jar.xml
 !/.idea/artifacts/uninode_jar.xml
 /universa_core/META-INF/MANIFEST.MF
+/uniclient/src/test_files/temp_contracts/
