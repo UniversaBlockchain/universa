@@ -15,6 +15,7 @@ Probe files, not only ids.
 
 ### 3.1.0 (05.03.2018)
 * Added `--tutest` key for `--register` command with `--tu` key to use test transaction units as payment.
+* Added `--anonymize` and `--role` keys to making anonymous roles in the contract.
 
 ### 3.0.1 (27.02.2018)
 * Added `--tu` and `--amount` keys for `--register` command to avoid paid processing of contracts.
