@@ -119,6 +119,8 @@ public class Config {
 
     public static int maxExpirationMonthsInTestMode = 12;
 
+    public static int maxCostTUInTestMode = 3;
+
     private String tuIssuerName = "Universa Reserve System";
 
     /**

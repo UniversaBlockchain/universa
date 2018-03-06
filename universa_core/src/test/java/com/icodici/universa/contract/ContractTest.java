@@ -16,6 +16,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiSerializationException;
 import net.sergeych.biserializer.BossBiMapper;
@@ -955,6 +956,120 @@ public class ContractTest extends ContractTestBase {
             byte[] s = ((Bytes) signature).toArray();
             System.out.println(ExtendedSignature.verify(manufacturePrivateKey.getPublicKey(), s, contractBytes2));
         }
+    }
+
+    @Test
+    public void checkTestnetExpirationDateCriteria() throws Exception {
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+        Contract contract = Contract.fromDslFile(rootPath + "LamborghiniTestDrive.yml");
+        contract.addSignerKey(key);
+        sealCheckTrace(contract, true);
+        contract.setExpiresAt(ZonedDateTime.now().plusMonths(13));
+
+        assertFalse(contract.isSuitableForTestnet());
+
+        // now set contract limited for testnet
+        contract.setLimitedForTestnet(true);
+        sealCheckTrace(contract, false);
+
+        assertFalse(contract.isSuitableForTestnet());
+    }
+
+    @Test
+    public void checkTestnetNewItemExpirationDateCriteria() throws Exception {
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+
+        Contract newItem = Contract.fromDslFile(rootPath + "LamborghiniTestDrive.yml");
+        newItem.addSignerKey(key);
+        sealCheckTrace(newItem, true);
+        newItem.setExpiresAt(ZonedDateTime.now().plusMonths(13));
+
+        Contract contract = Contract.fromDslFile(rootPath + "LamborghiniTestDrive.yml");
+        contract.addSignerKey(key);
+        contract.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+        contract.addNewItems(newItem);
+        sealCheckTrace(contract, true);
+
+        assertFalse(contract.isSuitableForTestnet());
+
+        // now set contract limited for testnet
+        contract.setLimitedForTestnet(true);
+        sealCheckTrace(contract, false);
+
+        assertFalse(contract.isSuitableForTestnet());
+    }
+
+    @Test
+    public void checkTestnetKeyStrengthCriteria() throws Exception {
+
+        PrivateKey key = new PrivateKey(Do.read(PRIVATE_KEY_PATH));
+        Contract contract = createCoin100apiv3();
+        contract.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+        contract.addSignerKey(key);
+        sealCheckTrace(contract, true);
+
+        assertFalse(contract.isSuitableForTestnet());
+
+        // now set contract limited for testnet
+        contract.setLimitedForTestnet(true);
+        sealCheckTrace(contract, false);
+
+        assertFalse(contract.isSuitableForTestnet());
+    }
+
+    @Test
+    public void checkTestnetCostTUCriteria() throws Exception {
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+
+        Contract contract = Contract.fromDslFile(rootPath + "LamborghiniTestDrive.yml");
+        contract.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+        contract.addSignerKey(key);
+
+        for (int i = 0; i < 100; i++) {
+            Contract newItem = Contract.fromDslFile(rootPath + "LamborghiniTestDrive.yml");
+            newItem.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+            newItem.addSignerKey(key);
+            sealCheckTrace(newItem, true);
+            contract.addNewItems(newItem);
+        }
+
+        sealCheckTrace(contract, true);
+
+        System.out.println("Processing cost is " + contract.getProcessedCostTU());
+
+        assertTrue(contract.getProcessedCostTU() > Config.maxCostTUInTestMode);
+
+        assertFalse(contract.isSuitableForTestnet());
+
+        // now set contract limited for testnet
+        contract.setLimitedForTestnet(true);
+        sealCheckTrace(contract, false);
+
+        assertFalse(contract.isSuitableForTestnet());
+    }
+
+    @Test
+    public void checkFitTestnetCriteria() throws Exception {
+
+        PrivateKey key = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
+
+        Contract contract = Contract.fromDslFile(rootPath + "LamborghiniTestDrive.yml");
+        contract.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+        contract.addSignerKey(key);
+        sealCheckTrace(contract, true);
+
+        System.out.println("Processing cost is " + contract.getProcessedCostTU());
+
+        assertTrue(contract.isSuitableForTestnet());
+
+        // now set contract limited for testnet
+        contract.setLimitedForTestnet(true);
+        sealCheckTrace(contract, true);
+
+        assertTrue(contract.isSuitableForTestnet());
     }
 
     @Test

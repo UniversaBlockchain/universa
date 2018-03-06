@@ -2656,9 +2656,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertFalse(parcel.getPaymentContract().isSuitableForTestnet());
+        assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
         assertTrue(parcel.getPayloadContract().isOk());
-        assertFalse(parcel.getPayloadContract().isSuitableForTestnet());
+        assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
@@ -2713,9 +2713,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isSuitableForTestnet());
+        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
         assertTrue(parcel.getPayloadContract().isOk());
-        assertTrue(parcel.getPayloadContract().isSuitableForTestnet());
+        assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
@@ -2731,7 +2731,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test(timeout = 90000)
-    public void declineParcelWith4TUTestPayment() throws Exception {
+    public void declineParcelWithTooBigCostTUTestPayment() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
@@ -2741,9 +2741,17 @@ public class BaseNetworkTest extends TestCase {
         }
 
 
+        PrivateKey stepaPrivateKey = stepaPrivateKeys.iterator().next();
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.setExpiresAt(ZonedDateTime.now().plusMonths(1));
-        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.addSignerKey(stepaPrivateKey);
+
+        for (int i = 0; i < 100; i++) {
+            Contract newItem = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+            newItem.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+            newItem.addSignerKey(stepaPrivateKey);
+            stepaCoins.addNewItems(newItem);
+        }
         stepaCoins.seal();
         stepaCoins.check();
         stepaCoins.traceErrors();
@@ -2759,7 +2767,11 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 4, stepaPrivateKeys, true);
+        int processedCost = stepaCoins.getProcessedCostTU();
+        System.out.println("stepaCoins processed cost in TU: " + processedCost);
+        assertTrue(processedCost > Config.maxCostTUInTestMode);
+
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, processedCost, stepaPrivateKeys, true);
 
         parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
         parcel.getPayment().getContract().traceErrors();
@@ -2767,12 +2779,12 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().traceErrors();
 
         assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
-        assertEquals(10000 - 4, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+        assertEquals(10000 - processedCost, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
-        assertFalse(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isSuitableForTestnet());
-        assertTrue(parcel.getPayloadContract().isOk());
-        assertTrue(parcel.getPayloadContract().isSuitableForTestnet());
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertFalse(parcel.getPayloadContract().isOk());
+        assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
@@ -2783,8 +2795,8 @@ public class BaseNetworkTest extends TestCase {
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         // check payment and payload contracts
-        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
     }
 
     @Test(timeout = 90000)
@@ -2830,9 +2842,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isSuitableForTestnet());
+        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
         assertFalse(parcel.getPayloadContract().isOk());
-        assertTrue(parcel.getPayloadContract().isSuitableForTestnet());
+        assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
@@ -2889,9 +2901,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
-        assertTrue(parcel.getPaymentContract().isSuitableForTestnet());
+        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
         assertFalse(parcel.getPayloadContract().isOk());
-        assertTrue(parcel.getPayloadContract().isSuitableForTestnet());
+        assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
