@@ -2793,10 +2793,10 @@ public class BaseNetworkTest extends TestCase {
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
         // wait parcel
-        node.waitParcel(parcel.getId(), 8000);
+        node.waitParcel(parcel.getId(), 18000);
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 18000).state);
     }
 
     @Test(timeout = 90000)
