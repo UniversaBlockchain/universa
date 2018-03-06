@@ -954,11 +954,12 @@ public class CLIMain {
 
                     report("Anonymizing role " + roleName + " in " + source + "...");
                     contract.anonymizeRole(roleName);
+                    contract.seal();
                 }
                 if (names.size() > s) {
-                    saveContract(contract, names.get(s), true, true);
+                    saveContract(contract, names.get(s), true, false);
                 } else {
-                    saveContract(contract, source.replaceAll("(?i)\\.(unicon)$", "_anonymized.unicon"), true, true);
+                    saveContract(contract, source.replaceAll("(?i)\\.(unicon)$", "_anonymized.unicon"), true, false);
                 }
             }
         }

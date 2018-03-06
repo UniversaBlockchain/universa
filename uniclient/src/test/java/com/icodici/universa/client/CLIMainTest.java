@@ -2504,7 +2504,7 @@ public class CLIMainTest {
         callMain("--register", basePath + "realShare.unicon",
                 "--tu", tuContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
-                "--wait", "1000");
+                "--wait", "2000");
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
     }

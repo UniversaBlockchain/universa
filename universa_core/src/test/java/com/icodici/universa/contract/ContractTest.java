@@ -968,6 +968,7 @@ public class ContractTest extends ContractTestBase {
         assertTrue(contract.getIssuer().getKeys().contains(key.getPublicKey()));
 
         contract.anonymizeRole("issuer");
+        contract.anonymizeRole("owner");
         contract.seal();
 
         assertFalse(contract.getIssuer().getKeys().contains(key.getPublicKey()));
