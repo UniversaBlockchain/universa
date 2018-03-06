@@ -10,15 +10,15 @@ definition:
     type: access certificate
   references: []
   permissions:
-    T4N4vZ:
-      role: {target_name: owner, __type: RoleLink, name: '@revoke'}
-      __type: RevokePermission
-      name: revoke
-    7Yo1MO:
+    GTEOsL:
       role: {target_name: owner, __type: RoleLink, name: '@change_owner'}
       __type: ChangeOwnerPermission
       name: change_owner
-  created_at: {seconds: 1520268479, __type: unixtime}
+    HjcWYr:
+      role: {target_name: owner, __type: RoleLink, name: '@revoke'}
+      __type: RevokePermission
+      name: revoke
+  created_at: {seconds: 1520327216, __type: unixtime}
   issuer:
     keys:
     - name: Universa
@@ -40,6 +40,7 @@ definition:
       __type: KeyRecord
     __type: SimpleRole
     name: issuer
+    anonIds: []
 state:
   owner:
     keys:
@@ -62,10 +63,11 @@ state:
       __type: KeyRecord
     __type: SimpleRole
     name: owner
+    anonIds: []
   parent: null
   data: {}
   branch_id: null
   origin: null
-  created_at: {seconds: 1520268479, __type: unixtime}
+  created_at: {seconds: 1520327216, __type: unixtime}
   created_by: {target_name: issuer, __type: RoleLink, name: creator}
   revision: 1
