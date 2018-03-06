@@ -187,6 +187,13 @@ public class SimpleRole extends Role {
                 );
     }
 
+    @Override
+    public void anonymize() {
+        for (PublicKey publicKey : keyRecords.keySet())
+            anonymousIds.add(AnonymousId.fromBytes(publicKey.createAnonymousId()));
+        keyRecords.clear();
+    }
+
     static {
         DefaultBiMapper.registerClass(SimpleRole.class);
     }

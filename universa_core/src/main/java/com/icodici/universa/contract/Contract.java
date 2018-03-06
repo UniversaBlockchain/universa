@@ -1005,6 +1005,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public void anonymizeRole(String roleName) {
+        Role role = roles.get(roleName);
+        if (role != null)
+            role.anonymize();
     }
 
     public boolean isPermitted(String permissionName, KeyRecord keyRecord) throws Quantiser.QuantiserException {

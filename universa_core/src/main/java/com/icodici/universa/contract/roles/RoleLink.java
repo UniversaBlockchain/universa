@@ -154,6 +154,13 @@ public class RoleLink extends Role {
         roleName = data.getStringOrThrow("target_name");
     }
 
+    @Override
+    public void anonymize() {
+        final Role role = resolve();
+        if (role != null)
+            role.anonymize();
+    }
+
     static {
         DefaultBiMapper.registerClass(RoleLink.class);
     }

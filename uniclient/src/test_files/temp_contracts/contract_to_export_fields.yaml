@@ -1,0 +1,25 @@
+state.origin:
+  composite3: !!binary |-
+    dx/oUyNRV5UhRLhq5MxE9fEuMIn+SA79hDqyCDDxwZ0jmz0O/uYCALgI/iEnNugt8xG4n+Jh3JLc+qdzHJ+FiT9liqvlVhD52wNo237ZOW5HjOCGpGx8Ux4u+LUdigWZ
+  __type: HashId
+definition.issuer:
+  keys:
+  - name: Universa
+    key:
+      __type: RSAPublicKey
+      packed:
+        __type: binary
+        base64: |-
+          HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0W
+          smcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOyta
+          ICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJ
+          UZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/na
+          Iaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ
+          /4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzF
+          bNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GL
+          y+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKx
+          BNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6
+          DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=
+    __type: KeyRecord
+  __type: SimpleRole
+  name: issuer

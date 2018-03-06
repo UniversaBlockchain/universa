@@ -216,6 +216,12 @@ public class ListRole extends Role {
                 "roles", s.serialize(this.roles));
     }
 
+    @Override
+    public void anonymize() {
+        for (Role role : roles)
+            role.anonymize();
+    }
+
     static {
         DefaultBiMapper.registerClass(ListRole.class);
     }

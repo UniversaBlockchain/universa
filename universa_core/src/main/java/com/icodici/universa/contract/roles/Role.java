@@ -152,4 +152,9 @@ public abstract class Role implements BiSerializable {
             contract.registerRole(newRole);
         return newRole;
     }
+
+    /**
+     * If this role has public keys, they will be replaced with AnonymousIds.
+     */
+    public abstract void anonymize();
 }

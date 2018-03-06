@@ -1,0 +1,95 @@
+api_level: 3
+definition:
+  expires_at:
+    seconds: 1659720337
+    __type: unixtime
+  data:
+    description: this documents certifies the right of holder (owner) to access all
+      readonly Universa services within the period starting at 'active since' and
+      ending at the time of contract expiration.
+    active_since:
+      seconds: 1501953889
+      __type: unixtime
+    type: access certificate
+  references: []
+  permissions:
+    RfDpzr:
+      name: revoke
+      role:
+        target_name: owner
+        __type: RoleLink
+        name: '@revoke'
+      __type: RevokePermission
+    qylnOn:
+      name: change_owner
+      role:
+        target_name: owner
+        __type: RoleLink
+        name: '@change_owner'
+      __type: ChangeOwnerPermission
+  created_at:
+    seconds: 1520279075
+    __type: unixtime
+  issuer:
+    keys:
+    - name: Universa
+      key:
+        __type: RSAPublicKey
+        packed:
+          __type: binary
+          base64: |-
+            HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0W
+            smcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOyta
+            ICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJ
+            UZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/na
+            Iaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ
+            /4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzF
+            bNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GL
+            y+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKx
+            BNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6
+            DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=
+      __type: KeyRecord
+    __type: SimpleRole
+    name: issuer
+state:
+  owner:
+    keys:
+    - name:
+        last: Pupkin
+        salutation: Mr.
+        first: Vasiliy
+      key:
+        __type: RSAPublicKey
+        packed:
+          __type: binary
+          base64: |-
+            HggcAQABxAACmracE0XoeiS+Da/HmT1SjEuBdBGPWOLRLW+0w8XmPRch+mdwPfUz2h3d1Q6c
+            jC2gjPZ70ExINtkuNxhKt06uPgSDSomXuNMfJx8wWPqPxlkhLTq5JI2WSXSgIhQ5BMEXtzEH
+            M/zvnVA7Lmio358SPNooHNzVdlq3NirUVpTA6kiQWCdgjMKhRFiowHkDJweWvzf0ZNLB5URy
+            EuEJSc3twqLo0gHczC/Fm9bq58BPBw8N41gLJ3ViWh6j180cbb/MkY+QTzlSGNbGWKLvrnqo
+            +N7o21MUNbMPSX/m5gibZB1DZPY+AprU3gcB9uMG9G2xfeK6dtp1/IN74bLjhApq7SoPJiDv
+            zHKYfbEq/Ac3+n+j+7IcoSjxn8TVRzhTr3xmQM4ShfKnVJxCyQp+hiVRWhvAUACxkOU0G42c
+            7CQAf8HNj4R4sD3P1g6TqqRIrCyj8XeeU4WChnQRrndXcN4mRAXd4acYbo8yF1O702D/RtJn
+            46MKOJ1GB+xaHPD5wKfEVYWchFrw10dvtR9z4jE+d9yRiTRvgve4RF0e7D9AHrVKAiW2VR0O
+            QJT6aWvh5ETyLdmdegU9OBXNV/Tg84Nab3aWAjhedXh4ix7sokXakPa1Uv+I1rx447jS/BkT
+            7IQE3gVTuHx4+VOCol86VXO7/8LFRhHIATxR3DtNKLN+JgU=
+      __type: KeyRecord
+    __type: SimpleRole
+    name: owner
+  parent: null
+  expires_at:
+    seconds: 1520282675
+    __type: unixtime
+  data: {}
+  branch_id: null
+  origin: null
+  created_at:
+    seconds: 1520279075
+    __type: unixtime
+  created_by:
+    target_name: issuer
+    __type: RoleLink
+    name: creator
+  revision: 1
+transactional:
+  id: null
