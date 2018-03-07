@@ -23,6 +23,7 @@ import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.BasicHttpClient;
 import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
@@ -1142,9 +1143,196 @@ public class MainTest {
         }
 
         Main main = mm.get(0);
-//        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
-//        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
         PrivateKey myKey = TestKeys.privateKey(3);
+
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+        System.out.println("---------- verbose nothing ---------------");
+
+        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
+
+        Contract testContract = new Contract(myKey);
+        testContract.seal();
+        assertTrue(testContract.isOk());
+        Parcel parcel = createParcelWithFreshTU(client, testContract);
+        client.registerParcel(parcel.pack(), 1000);
+        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+
+        main.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        System.out.println("---------- verbose base ---------------");
+
+        Contract testContract2 = new Contract(myKey);
+        testContract2.seal();
+        assertTrue(testContract2.isOk());
+        Parcel parcel2 = createParcelWithFreshTU(client, testContract2);
+        client.registerParcel(parcel2.pack(), 1000);
+        ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
+
+        assertEquals (DatagramAdapter.VerboseLevel.BASE, main.network.getVerboseLevel());
+
+        main.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        System.out.println("---------- verbose nothing ---------------");
+
+        Contract testContract3 = new Contract(myKey);
+        testContract3.seal();
+        assertTrue(testContract3.isOk());
+        Parcel parcel3 = createParcelWithFreshTU(client, testContract3);
+        client.registerParcel(parcel3.pack(), 1000);
+        ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
+
+        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void checkUDPVerbose() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            mm.add(createMain("node" + (i + 1), false));
+        }
+
+        Main main = mm.get(0);
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+        System.out.println("---------- verbose nothing ---------------");
+
+        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getUDPVerboseLevel());
+
+        Contract testContract = new Contract(myKey);
+        testContract.seal();
+        assertTrue(testContract.isOk());
+        Parcel parcel = createParcelWithFreshTU(client, testContract);
+        client.registerParcel(parcel.pack(), 1000);
+        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+
+        main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        System.out.println("---------- verbose base ---------------");
+
+        Contract testContract2 = new Contract(myKey);
+        testContract2.seal();
+        assertTrue(testContract2.isOk());
+        Parcel parcel2 = createParcelWithFreshTU(client, testContract2);
+        client.registerParcel(parcel2.pack(), 1000);
+        ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
+
+        assertEquals (DatagramAdapter.VerboseLevel.BASE, main.network.getUDPVerboseLevel());
+
+        main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+        System.out.println("---------- verbose nothing ---------------");
+
+        Contract testContract3 = new Contract(myKey);
+        testContract3.seal();
+        assertTrue(testContract3.isOk());
+        Parcel parcel3 = createParcelWithFreshTU(client, testContract3);
+        client.registerParcel(parcel3.pack(), 1000);
+        ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
+
+        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getUDPVerboseLevel());
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void checkShutdown() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            mm.add(createMain("node" + (i + 1), false));
+        }
+
+        Main main = mm.get(0);
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Contract testContract = new Contract(myKey);
+        for (int i = 0; i < 10; i++) {
+            Contract nc = new Contract(myKey);
+            testContract.addNewItems(nc);
+        }
+        testContract.seal();
+        assertTrue(testContract.isOk());
+        Parcel parcel = createParcelWithFreshTU(client, testContract);
+        client.registerParcel(parcel.pack());
+        System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getId()));
+        System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
+        main.shutdown();
+
+        mm.remove(main);
+        main = createMain("node1", false);
+        mm.add(main);
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+        ItemResult itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
+        System.out.println(">> after shutdown state: " + itemResult + " and new " + itemResult2);
+        assertEquals (ItemState.UNDEFINED, itemResult.state);
+        assertEquals (ItemState.UNDEFINED, itemResult2.state);
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void checkRestartUDP() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            mm.add(createMain("node" + (i + 1), false));
+        }
+
+        Main main = mm.get(0);
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Contract testContract = new Contract(myKey);
+        for (int i = 0; i < 10; i++) {
+            Contract nc = new Contract(myKey);
+            testContract.addNewItems(nc);
+        }
+        testContract.seal();
+        assertTrue(testContract.isOk());
+        Parcel parcel = createParcelWithFreshTU(client, testContract);
+        client.registerParcel(parcel.pack());
+        System.out.println(">> before restart state: " + client.getState(parcel.getPayloadContract().getId()));
+        System.out.println(">> before restart state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
+
+        main.restartUDPAdapter();
+        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+        ItemResult itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
+        System.out.println(">> after restart state: " + itemResult + " and new " + itemResult2);
+
+        while (itemResult.state.isPending()) {
+            Thread.currentThread().sleep(100);
+            itemResult = client.getState(parcel.getPayloadContract().getId());
+            System.out.println(">> wait result: " + itemResult);
+        }
+        itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
+
+        assertEquals (ItemState.APPROVED, itemResult.state);
+        assertEquals (ItemState.APPROVED, itemResult2.state);
 
         mm.forEach(x -> x.shutdown());
     }

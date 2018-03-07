@@ -120,6 +120,17 @@ public class Main {
                     lvlId = DatagramAdapter.VerboseLevel.DETAILED;
                 }
                 setVerboseLevel(lvlId);
+            } else if(options.has("udp-verbose")) {
+                String lvl = (String) options.valueOf("udp-verbose");
+                int lvlId = 0;
+                if("nothing".equals(lvl)) {
+                    lvlId = DatagramAdapter.VerboseLevel.NOTHING;
+                } else if("base".equals(lvl)) {
+                    lvlId = DatagramAdapter.VerboseLevel.BASE;
+                } else if("detail".equals(lvl)) {
+                    lvlId = DatagramAdapter.VerboseLevel.DETAILED;
+                }
+                setUDPVerboseLevel(lvlId);
             } else if(options.has("restart-socket")) {
                 restartUDPAdapter();
             } else if(options.has("shutdown")) {
@@ -244,6 +255,13 @@ public class Main {
      */
     public void setVerboseLevel(int level) {
         network.setVerboseLevel(level);
+    }
+
+    /**
+     * Set UDP verbose level via {@link  DatagramAdapter.VerboseLevel}
+     */
+    public void setUDPVerboseLevel(int level) {
+        network.setUDPVerboseLevel(level);
     }
 
     /**
