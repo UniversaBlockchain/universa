@@ -20,6 +20,13 @@ public class KeyAddressTest {
         assertEquals(7, b.getTypeMark());
         assertEquals(7, a.getTypeMark());
         assertTrue(b.isMatchingKey(key1));
+        assertTrue(a.isMatchingKeyAddress(b));
+        assertTrue(b.isMatchingKeyAddress(a));
+
+        assertTrue(key1.isMatchingKey(key1));
+        assertTrue(key1.isMatchingKeyAddress(a));
+        assertTrue(key1.isMatchingKeyAddress(b));
+
 
         byte[] pack = a.getPacked();
         pack[7] ^= 71;
@@ -31,8 +38,8 @@ public class KeyAddressTest {
         }
     }
 
-    @Test
-    public void getPacked() {
-        System.out.println("l=" + new KeyAddress(key1, 7, false).toString().length());
-    }
+//    @Test
+//    public void getPacked() {
+//        System.out.println("l=" + new KeyAddress(key1, 7, false).toString().length());
+//    }
 }

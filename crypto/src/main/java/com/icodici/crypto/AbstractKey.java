@@ -31,7 +31,7 @@ import java.util.Collection;
  * <p>
  * Created by sergeych on 17.12.16.
  */
-public abstract class AbstractKey implements Bindable {
+public abstract class AbstractKey implements Bindable, KeyMatcher {
     public static final int FINGERPRINT_SHA256 = 7;
     public static final int FINGERPRINT_SHA384 = 8;
 
@@ -297,5 +297,32 @@ public abstract class AbstractKey implements Bindable {
      */
     public KeyAddress address(boolean useSha3_284, int keyMark) {
         return new KeyAddress(this, keyMark, useSha3_284);
+    }
+
+    private KeyAddress shortAddress;
+
+    public final KeyAddress getShortAddress() {
+        if( shortAddress == null )
+            shortAddress = address(false, 0);
+        return shortAddress;
+    }
+
+    private KeyAddress longAddress;
+
+    public final KeyAddress getLongAddress() {
+        if( longAddress == null )
+            longAddress = address(true, 0);
+        return longAddress;
+    }
+
+    @Override
+    public boolean isMatchingKey(AbstractKey key) {
+        return getShortAddress().isMatchingKeyAddress(key.getShortAddress());
+    }
+
+    @Override
+    public final boolean isMatchingKeyAddress(KeyAddress other) {
+        return other.isLong() ?
+                getLongAddress().isMatchingKeyAddress(other) : getShortAddress().isMatchingKeyAddress(other);
     }
 }

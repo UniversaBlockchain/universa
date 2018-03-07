@@ -27,16 +27,16 @@ import java.util.Arrays;
  *
  * Packed to string the long address takes 72 characters, short version only 51.
  */
-public class KeyAddress {
+public class KeyAddress implements KeyMatcher {
 
     private final int keyMask;
     private final byte[] keyDigest;
-    private boolean isLong;
+    private boolean _isLong;
     private byte[] packed;
     private int typeMark;
 
     /**
-     * Build new KeyAddress for a given key
+     * Build new KeyAddrAddress for a given key
      *
      * @param key
      *         to calculate address from
@@ -53,7 +53,7 @@ public class KeyAddress {
         keyMask = mask(key);
 
         Digest digest = useSha3_284 ? new Sha3_384() : new Sha3_256();
-        isLong = useSha3_284;
+        _isLong = useSha3_284;
 
         packed = new byte[1 + 4 + digest.getLength()];
         packed[0] = (byte) (((keyMask << 4) | typeMark) & 0xFF);
@@ -84,8 +84,8 @@ public class KeyAddress {
         if (keyMask == 0)
             throw new IllegalAddressException("keyMask is 0");
 
-        isLong = packedSource.length == 53;
-        Digest digest = isLong ? new Sha3_384() : new Sha3_256();
+        _isLong = packedSource.length == 53;
+        Digest digest = _isLong ? new Sha3_384() : new Sha3_256();
 
         int digestLength1 = 1 + digest.getLength();
         keyDigest = Arrays.copyOfRange(packed, 1, digestLength1);
@@ -116,14 +116,32 @@ public class KeyAddress {
      * @param key to check
      * @return true if the key matches (what means, it is the key corresponding to this address)
      */
+    @Override
     public boolean isMatchingKey(AbstractKey key) {
-        KeyAddress other = new KeyAddress(key, 0, isLong);
+        KeyAddress other = new KeyAddress(key, 0, _isLong);
         if (other.keyMask != keyMask)
             return false;
         if (!Arrays.equals(keyDigest, other.keyDigest))
             return false;
         return true;
     }
+
+    /**
+     * Check that the address matches key information. It DOES NOT check the typeMark {@link #getTypeMark()}! If the
+     * type mark is important, check it by hand.
+     *
+     * @param other
+     * @return
+     */
+    @Override
+    public boolean isMatchingKeyAddress(KeyAddress other) {
+        return other.keyMask == keyMask && Arrays.equals(keyDigest, other.keyDigest);
+    }
+
+    /**
+     * @return true if long version SHA3-284) was used for this address
+     */
+    public final boolean isLong() { return _isLong; }
 
     /**
      * @return packed binary address
