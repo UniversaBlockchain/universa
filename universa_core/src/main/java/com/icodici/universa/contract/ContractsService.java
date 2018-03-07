@@ -479,7 +479,6 @@ public class ContractsService {
      * @param createNewRevision create new revision if true
      * @return contract with two signatures that should be send from first part to partner.
      */
-
     public synchronized static Contract createTwoSignedContract(Contract BaseContract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
         Contract twoSignContract = BaseContract;
@@ -520,7 +519,21 @@ public class ContractsService {
         return twoSignContract;
     }
 
-
+    /**
+     * Creates a base contract.
+     *<br><br>
+     * The service creates a base contract.
+     *<br><br>
+     * @param issuerKeys is own private keys.
+     * @param datetime is time of expiration of the contract. Must be in distant future.
+     * @param data Any immutable structured data issuer might need to include into the contract this data will be also copied without change during any contract changes.
+     * @param issuerRole is role of issuer.
+     * @param creatorRole is role of creator.
+     * @param ownerRole is role of owner.
+     * @param perms is permissions for contract roles.
+     * @param amount is amount transaction units.
+     * @return signed and sealed contract, ready for register.
+     */
     public synchronized static Contract createBaseContract(
             Set<PrivateKey> issuerKeys,
             ZonedDateTime datetime,
