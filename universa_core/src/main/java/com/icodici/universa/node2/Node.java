@@ -100,6 +100,15 @@ public class Node {
         network.subscribe(myInfo, notification -> onNotification(notification));
     }
 
+//    /**
+//     * Looking for all locked items in ledger and try to resync them.
+//     */
+//    public void resyncAllLocked() {
+//        List<Approvable> items = new ArrayList<>();
+//        ledger.getAllByState(ItemState.LOCKED);
+//        ledger.getAllByState(ItemState.LOCKED_FOR_CREATION);
+//    }
+
     /**
      * Asynchronous (non blocking) check/register for item from white list. If the item is new and eligible to process with the
      * consensus, the processing will be started immediately. If it is already processing, the current state will be

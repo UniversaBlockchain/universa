@@ -112,6 +112,12 @@ public abstract class DatagramAdapter {
         this.testMode = testMode;
     }
 
+
+
+    public int getVerboseLevel() {
+        return verboseLevel;
+    }
+
     public void setVerboseLevel(int level) {
         this.verboseLevel = level;
     }

@@ -61,7 +61,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private Context context = null;
 
     private boolean shouldBeTU = false;
-    private boolean suitableForTestnet = false;
+    private boolean limitedForTestnet = false;
+    private boolean isSuitableForTestnet = false;
 
     /**
      * true if the contract was imported from sealed capsule
@@ -432,8 +433,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
         }
 
-        checkTestPaymentLimitations();
-
         try {
             // common check for all cases
 //            errors.clear();
@@ -464,6 +463,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         checkDupesCreation();
 
         checkReferencedItems(contractsTree);
+
+        checkTestPaymentLimitations();
 
         return errors.size() == 0;
     }
@@ -547,39 +548,58 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return res;
     }
 
-    public boolean checkTestPaymentLimitations() {
+    private boolean checkTestPaymentLimitations() {
         boolean res = true;
-        if(isSuitableForTestnet()) {
-            // we won't check TU contract
-            if (!shouldBeTU()) {
-                for (PublicKey key : sealedByKeys.keySet()) {
-                    if (key != null) {
-                        if (key.getBitStrength() != 2048) {
+        // we won't check TU contract
+        if (!shouldBeTU()) {
+            isSuitableForTestnet = true;
+            for (PublicKey key : sealedByKeys.keySet()) {
+                if (key != null) {
+                    if (key.getBitStrength() != 2048) {
+                        isSuitableForTestnet = false;
+                        if (isLimitedForTestnet()) {
                             res = false;
-                            addError(Errors.BAD_SIGNATURE, "Only 2048 keys is allowed in the test payment mode.");
+                            addError(Errors.FORBIDDEN, "Only 2048 keys is allowed in the test payment mode.");
                         }
                     }
                 }
+            }
 
-                ZonedDateTime expirationLimit = ZonedDateTime.now().plusMonths(Config.maxExpirationMonthsInTestMode);
+            ZonedDateTime expirationLimit = ZonedDateTime.now().plusMonths(Config.maxExpirationMonthsInTestMode);
 
-                if(getExpiresAt().isAfter(expirationLimit)) {
+            if(getExpiresAt().isAfter(expirationLimit)) {
+                isSuitableForTestnet = false;
+                if (isLimitedForTestnet()) {
                     res = false;
-                    addError(Errors.EXPIRED, "Contracts with expiration date father then 1 year from now is not allowed in the test payment mode.");
+                    addError(Errors.FORBIDDEN, "Contracts with expiration date father then " + Config.maxExpirationMonthsInTestMode + " months from now is not allowed in the test payment mode.");
                 }
+            }
 
-                for (Approvable ni : getNewItems()) {
-                    if(ni.getExpiresAt().isAfter(expirationLimit)) {
+            for (Approvable ni : getNewItems()) {
+                if(ni.getExpiresAt().isAfter(expirationLimit)) {
+                    isSuitableForTestnet = false;
+                    if (isLimitedForTestnet()) {
                         res = false;
-                        addError(Errors.EXPIRED, "New items with expiration date father then 1 year from now is not allowed in the test payment mode.");
+                        addError(Errors.FORBIDDEN, "New items with expiration date father then " + Config.maxExpirationMonthsInTestMode + " months from now is not allowed in the test payment mode.");
                     }
                 }
+            }
 
-                for (Approvable ri : getRevokingItems()) {
-                    if(ri.getExpiresAt().isAfter(expirationLimit)) {
+            for (Approvable ri : getRevokingItems()) {
+                if(ri.getExpiresAt().isAfter(expirationLimit)) {
+                    isSuitableForTestnet = false;
+                    if(isLimitedForTestnet()) {
                         res = false;
-                        addError(Errors.EXPIRED, "Revoking items with expiration date father then 1 year from now is not allowed in the test payment mode.");
+                        addError(Errors.FORBIDDEN, "Revoking items with expiration date father then " + Config.maxExpirationMonthsInTestMode + " months from now is not allowed in the test payment mode.");
                     }
+                }
+            }
+
+            if (getProcessedCostTU() > Config.maxCostTUInTestMode) {
+                isSuitableForTestnet = false;
+                if(isLimitedForTestnet()) {
+                    res = false;
+                    addError(Errors.FORBIDDEN, "Contract can cost not more then " + Config.maxCostTUInTestMode + " TU in the test payment mode.");
                 }
             }
         }
@@ -635,20 +655,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     res = false;
                     addError(Errors.BAD_VALUE, "transaction_units and test_transaction_units can not be spent both");
                 }
-                if(isSuitableForTestnet()) {
-                    if (was_test_transaction_units - test_transaction_units > 3) {
-                        res = false;
-                        addError(Errors.BAD_VALUE, "Cannot spend more then 3 test_transaction_units in the test payment mode.");
-                    }
-                }
+//                if(isLimitedForTestnet()) {
+//                    if (was_test_transaction_units - test_transaction_units > 3) {
+//                        res = false;
+//                        addError(Errors.BAD_VALUE, "Cannot spend more then 3 test_transaction_units in the test payment mode.");
+//                    }
+//                }
             } else {
-                if(isSuitableForTestnet()) {
+                if(isLimitedForTestnet()) {
                     res = false;
                     addError(Errors.BAD_VALUE, "Payment contract has not origin but it is not allowed for parcel. Use standalone register for payment contract.");
                 }
             }
         } else {
-            if(isSuitableForTestnet()) {
+            if(isLimitedForTestnet()) {
                 res = false;
                 addError(Errors.BAD_VALUE, "Payment contract that marked as for testnet has not test_transaction_units.");
             }
@@ -2239,12 +2259,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         this.shouldBeTU = shouldBeTU;
     }
 
-    public void setSuitableForTestnet(boolean suitableForTestnet) {
-        this.suitableForTestnet = suitableForTestnet;
+    public void setLimitedForTestnet(boolean limitedForTestnet) {
+        this.limitedForTestnet = limitedForTestnet;
     }
 
+    public boolean isLimitedForTestnet() {
+        return limitedForTestnet;
+    }
+
+    /**
+     * Use after check(). Shows if contract is fit testnet criteria.
+     * @return true if can registered in the testnet or false if no.
+     */
     public boolean isSuitableForTestnet() {
-        return suitableForTestnet;
+        return isSuitableForTestnet;
     }
 
     @Override

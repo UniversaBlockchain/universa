@@ -22,10 +22,7 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Properties;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 /**
@@ -213,6 +210,21 @@ public class PostgresLedger implements Ledger {
             return -1;
         }
     }
+
+//    @Override
+//    public List<StateRecord> getAllByState(ItemState is) {
+//        try {
+//            return dbPool.execute((db) -> {
+//                ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE state = ?", is.ordinal());
+//                for ( : rs.)
+//                List<StateRecord> records = new ArrayList<>();
+//                return records;
+//            });
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+//    }
 
     @Override
     public <T> T transaction(Callable<T> callable) {

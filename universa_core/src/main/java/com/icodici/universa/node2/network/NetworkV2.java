@@ -32,7 +32,7 @@ public class NetworkV2 extends Network {
 
     private final NodeInfo myInfo;
     private final PrivateKey myKey;
-    private final UDPAdapter adapter;
+    private UDPAdapter adapter;
 
 //    private Map<NodeInfo, Node> nodes = new HashMap<>();
 
@@ -122,10 +122,15 @@ public class NetworkV2 extends Network {
     public void deliver(NodeInfo toNode, Notification notification) {
         try {
             byte[] data = packNotifications(myInfo, Do.listOf(notification));
-            adapter.send(toNode, data);
+            if(adapter != null) {
+                adapter.send(toNode, data);
+            } else {
+                report(getLabel(), "UDPAdapter is null");
+            }
         } catch (InterruptedException e) {
             report(getLabel(), "Expected interrupted exception");
         } catch (Exception e) {
+            report(getLabel(), "deliver exception: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -201,13 +206,42 @@ public class NetworkV2 extends Network {
     }
 
     public void shutdown() {
-        adapter.shutdown();
+        if(adapter != null)
+            adapter.shutdown();
     }
 
 
+    /**
+     * Restart {@link  UDPAdapter}
+     */
+    public void restartUDPAdapter() throws IOException {
+        if(adapter != null)
+            adapter.shutdown();
+
+        adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo, netConfig);
+        adapter.receive(this::onReceived);
+        adapter.addErrorsCallback(this::exceptionCallback);
+    }
+
+
+    public int getVerboseLevel() {
+        return verboseLevel;
+    }
 
     public void setVerboseLevel(int level) {
         this.verboseLevel = level;
+    }
+
+    public int getUDPVerboseLevel() {
+        if(adapter != null)
+            return adapter.getVerboseLevel();
+
+        return 0;
+    }
+
+    public void setUDPVerboseLevel(int level) {
+        if(adapter != null)
+            adapter.setVerboseLevel(level);
     }
 
     public String getLabel()

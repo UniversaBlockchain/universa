@@ -10,6 +10,7 @@ package com.icodici.crypto;
 import org.spongycastle.crypto.Digest;
 import org.spongycastle.crypto.digests.SHA1Digest;
 import org.spongycastle.crypto.digests.SHA256Digest;
+import org.spongycastle.crypto.digests.SHA3Digest;
 import org.spongycastle.crypto.digests.SHA512Digest;
 
 import java.util.Collections;
@@ -24,13 +25,19 @@ import java.util.Map;
 public enum HashType {
     SHA1,
     SHA256,
-    SHA512;
+    SHA512,
+    SHA3_256,
+    SHA3_384,
+    SHA3_512;
     /* When adding any new value, make sure to add the line in {@link algorithmByType}! */
 
     private static Map algorithmByType = Collections.unmodifiableMap(new HashMap<HashType, Digest>() {{
         put(HashType.SHA1, new SHA1Digest());
         put(HashType.SHA256, new SHA256Digest());
         put(HashType.SHA512, new SHA512Digest());
+        put(HashType.SHA3_256, new SHA3Digest(256));
+        put(HashType.SHA3_384, new SHA3Digest(384));
+        put(HashType.SHA3_512, new SHA3Digest(512));
     }});
 
     private static Map algorithmNameByType = Collections.unmodifiableMap(new HashMap<HashType, String>() {{

@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Digest;
 import com.icodici.crypto.rsaoaep.RSAOAEPPrivateKey;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -139,6 +140,11 @@ public class PrivateKey extends AbstractKey {
 
     public static PrivateKey fromPath(Path path) throws IOException {
         return new PrivateKey(Do.read(path.toAbsolutePath().toString()));
+    }
+
+    @Override
+    public Digest updateDigestWithKeyComponents(Digest digest) {
+        return getPublicKey().updateDigestWithKeyComponents(digest);
     }
 
     static {

@@ -26,7 +26,7 @@ import java.util.function.Consumer;
  */
 public abstract class Network {
 
-    private NetConfig netConfig;
+    protected NetConfig netConfig;
 
     public Network(NetConfig netConfig) {
         this.netConfig = netConfig;

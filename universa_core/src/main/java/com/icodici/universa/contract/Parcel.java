@@ -11,7 +11,6 @@ import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
-import net.sergeych.utils.Bytes;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -110,8 +109,8 @@ public class Parcel implements BiSerializable {
             }
         }
         payment.getContract().setShouldBeTU(true);
-        payment.getContract().setSuitableForTestnet(isTestPayment);
-        payload.getContract().setSuitableForTestnet(isTestPayment);
+        payment.getContract().setLimitedForTestnet(isTestPayment);
+        payload.getContract().setLimitedForTestnet(isTestPayment);
     }
 
 
