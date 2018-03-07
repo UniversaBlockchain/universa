@@ -569,15 +569,14 @@ public class ContractTest extends ContractTestBase {
         assertEquals(costShouldBeForJoin, processingContract.getProcessedCost());
     }
 
-    @Test
-    public void calculateSplit7To2ProcessingCost() throws Exception {
+    public Contract calculateSplit7To2ProcessingCost(String privateKeyPath, boolean createContractWith2048KeyIssuer) throws Exception {
 
         // Should create 7 contracts, sign and seal it all, then create revision and split to 2 contracts. Then calculate cost of processing.
         // should repeat contract processing procedure on the Node
         // (Contract.fromPackedTransaction() -> Contract(byte[], TransactionPack) -> Contract.check())
 
-        Contract contract = createCoin100apiv3();
-        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        Contract contract = createContractWith2048KeyIssuer ? createCoin100k2048apiv3() : createCoin100apiv3();
+        contract.addSignerKeyFromFile(privateKeyPath);
         sealCheckTrace(contract, true);
 
         System.out.println("----- split -----");
@@ -585,7 +584,7 @@ public class ContractTest extends ContractTestBase {
         for (int i = 0; i < 6; i++) {
             contract = contract.createRevision();
             Contract splitted = contract.splitValue(FIELD_NAME, new Decimal(15));
-            splitted.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+            splitted.addSignerKeyFromFile(privateKeyPath);
             sealCheckTrace(splitted, true);
             assertEquals(new Decimal(15), new Decimal(Long.valueOf(splitted.getStateData().get("amount").toString())));
             sealCheckTrace(contract, true);
@@ -603,7 +602,7 @@ public class ContractTest extends ContractTestBase {
             } else {
                 Contract splitting = splittedList.get(i).createRevision();
                 splittedChanges = splitting.splitValue(FIELD_NAME, new Decimal(5));
-                splittedChanges.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+                splittedChanges.addSignerKeyFromFile(privateKeyPath);
                 sealCheckTrace(splittedChanges, true);
                 sealCheckTrace(splitting, true);
                 forJoin.getRevokingItems().add(splitting);
@@ -611,9 +610,38 @@ public class ContractTest extends ContractTestBase {
             }
         }
         forJoin.getStateData().set(FIELD_NAME, new Decimal(95));
-        forJoin.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        forJoin.addSignerKeyFromFile(privateKeyPath);
         sealCheckTrace(forJoin, true);
 
+        Contract processingContract = processContractAsItWillBeOnTheNode(forJoin);
+        System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCost() + " (UTN)");
+        return processingContract;
+    }
+
+    @Test
+    public void calculateSplit7To2ProcessingCost_key2048() throws Exception {
+        Contract processingContract = calculateSplit7To2ProcessingCost(PRIVATE_KEY2048_PATH, true);
+        // Check 4096 bits signature forJoin (1) +
+        // Check 4096 bits signature splittedChanges (1) +
+        // x6 Check 4096 bits signature splittedList revoking (1*6=6) +
+        // Check 4096 bits signature forJoin revoking (1) +
+        // Register forJoin (20) +
+        // Register splittedChanges (20) +
+        // x6 Register revoking item a version (20*6=120) +
+        // Register revoking from forJoin (20) +
+        // Check forJoin change owner permission (1) +
+        // Check forJoin change split join permission (1+2) +
+        // Check forJoin change revoke permission (1) +
+        // Check splittedChanges change owner permission (1) +
+        // Check splittedChanges change split join permission (1+2) +
+        // Check splittedChanges change revoke permission (1) +
+        int costShouldBeForSplit = 199;
+        assertEquals(costShouldBeForSplit, processingContract.getProcessedCost());
+    }
+
+    @Test
+    public void calculateSplit7To2ProcessingCost_key4096() throws Exception {
+        Contract processingContract = calculateSplit7To2ProcessingCost(PRIVATE_KEY_PATH, false);
         // Check 4096 bits signature forJoin (8) +
         // Check 4096 bits signature splittedChanges (8) +
         // x6 Check 4096 bits signature splittedList revoking (8*6=48) +
@@ -629,9 +657,6 @@ public class ContractTest extends ContractTestBase {
         // Check splittedChanges change split join permission (1+2) +
         // Check splittedChanges change revoke permission (1) +
         int costShouldBeForSplit = 262;
-
-        Contract processingContract = processContractAsItWillBeOnTheNode(forJoin);
-        System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCost() + " (UTN)");
         assertEquals(costShouldBeForSplit, processingContract.getProcessedCost());
     }
 

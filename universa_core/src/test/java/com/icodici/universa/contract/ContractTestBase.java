@@ -39,9 +39,11 @@ public class ContractTestBase extends TestCase {
     protected static final String SUBSCRIPTION = "subscription.yml";
     protected static final String SUBSCRIPTION_WITH_DATA = "subscription_with_data.yml";
     protected static final String PRIVATE_KEY = "_xer0yfe2nn1xthc.private.unikey";
+    protected static final String PRIVATE_KEY_2048 = "keys/marty_mcfly.private.unikey";
 
     protected final String SUBSCRIPTION_PATH = rootPath + SUBSCRIPTION;
     protected final String PRIVATE_KEY_PATH = rootPath + PRIVATE_KEY;
+    protected final String PRIVATE_KEY2048_PATH = rootPath + PRIVATE_KEY_2048;
 
     protected static final String FIELD_NAME = "amount";
 
@@ -127,6 +129,11 @@ public class ContractTestBase extends TestCase {
 
     protected Contract createCoin100apiv3() throws IOException {
         Contract c = Contract.fromDslFile(rootPath + "coin100.yml");
+        return c;
+    }
+
+    protected Contract createCoin100k2048apiv3() throws IOException {
+        Contract c = Contract.fromDslFile(rootPath + "coin100k2048.yml");
         return c;
     }
 
