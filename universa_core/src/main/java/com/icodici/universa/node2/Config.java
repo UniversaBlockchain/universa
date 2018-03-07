@@ -121,6 +121,8 @@ public class Config {
 
     public static int maxCostTUInTestMode = 3;
 
+    public static int quantiser_quantaPerUTN = 200;
+
     private String tuIssuerName = "Universa Reserve System";
 
     /**

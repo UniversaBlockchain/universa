@@ -614,7 +614,8 @@ public class ContractTest extends ContractTestBase {
         sealCheckTrace(forJoin, true);
 
         Contract processingContract = processContractAsItWillBeOnTheNode(forJoin);
-        System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCost() + " (UTN)");
+        System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCost() + " (Quanta)");
+        System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCostTU() + " (TU)");
         return processingContract;
     }
 
