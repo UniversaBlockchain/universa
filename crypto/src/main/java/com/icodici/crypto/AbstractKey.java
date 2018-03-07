@@ -291,12 +291,12 @@ public abstract class AbstractKey implements Bindable, KeyMatcher {
     /**
      * Generate address for the key, see {@link KeyAddress} for more.
      *
-     * @param useSha3_284 use SHA3-284 for hash, otherwise SHA3-256
+     * @param useSha3_384 use SHA3-384 for hash, otherwise SHA3-256
      * @param keyMark some data code in 0..15 range inclusive
      * @return generated address
      */
-    public KeyAddress address(boolean useSha3_284, int keyMark) {
-        return new KeyAddress(this, keyMark, useSha3_284);
+    public KeyAddress address(boolean useSha3_384, int keyMark) {
+        return new KeyAddress(this, keyMark, useSha3_384);
     }
 
     private KeyAddress shortAddress;

@@ -1,6 +1,9 @@
 package com.icodici.crypto;
 
+import net.sergeych.boss.Boss;
 import org.junit.Test;
+
+import java.io.IOException;
 
 import static org.junit.Assert.*;
 
@@ -38,8 +41,16 @@ public class KeyAddressTest {
         }
     }
 
-//    @Test
-//    public void getPacked() {
-//        System.out.println("l=" + new KeyAddress(key1, 7, false).toString().length());
-//    }
+    @Test
+    public void serialize() throws IOException {
+        KeyAddress a = key1.address(true, 8);
+        KeyAddress b = key1.address(false, 9);
+        Boss.Reader r = new Boss.Reader(Boss.dump(a,b).toArray());
+        KeyAddress x = r.read();
+        KeyAddress y = r.read();
+        assertEquals(8, x.getTypeMark());
+        assertEquals(9, y.getTypeMark());
+        assertTrue(x.isMatchingKey(key1));
+        assertTrue(y.isMatchingKeyAddress(b));
+    }
 }

@@ -4,8 +4,11 @@ import com.icodici.crypto.digest.Crc32;
 import com.icodici.crypto.digest.Digest;
 import com.icodici.crypto.digest.Sha3_256;
 import com.icodici.crypto.digest.Sha3_384;
+import net.sergeych.biserializer.*;
+import net.sergeych.tools.Binder;
 import net.sergeych.utils.Safe58;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -42,18 +45,18 @@ public class KeyAddress implements KeyMatcher {
      *         to calculate address from
      * @param typeMark
      *         any small number between 0 and 15 inclusive to be stored with address (will also be protected)
-     * @param useSha3_284
+     * @param useSha3_384
      *         use longer but more solid hash which is more resistent to wuantum attacks
      */
-    public KeyAddress(AbstractKey key, int typeMark, boolean useSha3_284) {
+    public KeyAddress(AbstractKey key, int typeMark, boolean useSha3_384) {
         this.typeMark = typeMark;
         if ((typeMark & 0xF0) != 0)
             throw new IllegalArgumentException("type mark must be in [0..15] range");
 
         keyMask = mask(key);
 
-        Digest digest = useSha3_284 ? new Sha3_384() : new Sha3_256();
-        _isLong = useSha3_284;
+        Digest digest = useSha3_384 ? new Sha3_384() : new Sha3_256();
+        _isLong = useSha3_384;
 
         packed = new byte[1 + 4 + digest.getLength()];
         packed[0] = (byte) (((keyMask << 4) | typeMark) & 0xFF);
@@ -135,11 +138,13 @@ public class KeyAddress implements KeyMatcher {
      */
     @Override
     public boolean isMatchingKeyAddress(KeyAddress other) {
+        if( _isLong != other._isLong )
+            throw new IllegalArgumentException("can't match addresses of different length");
         return other.keyMask == keyMask && Arrays.equals(keyDigest, other.keyDigest);
     }
 
     /**
-     * @return true if long version SHA3-284) was used for this address
+     * @return true if long version SHA3-384) was used for this address
      */
     public final boolean isLong() { return _isLong; }
 
@@ -201,5 +206,24 @@ public class KeyAddress implements KeyMatcher {
         public IllegalAddressException(String message, Throwable cause) {
             super(message, cause);
         }
+    }
+
+    static {
+        DefaultBiMapper.registerAdapter(KeyAddress.class, new BiAdapter() {
+            @Override
+            public Binder serialize(Object object, BiSerializer serializer) {
+                return Binder.of("uaddress", ((KeyAddress)object).getPacked());
+            }
+
+            @Override
+            public Object deserialize(Binder binder, BiDeserializer deserializer) {
+                try {
+                    return new KeyAddress(binder.getBinary("uaddress"));
+                } catch (IllegalAddressException e) {
+                    e.printStackTrace();
+                    throw new IllegalArgumentException("can't reconstruct KeyAddress");
+                }
+            }
+        });
     }
 }
