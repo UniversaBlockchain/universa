@@ -1013,12 +1013,17 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
         public void prepareToSend(int packetSize) {
+            // TODO: resolve issue with magic digit
+            prepareToSend(packetSize,5);
+        }
+
+        public void prepareToSend(int packetSize, int bossArtefact) {
             packets = new ConcurrentHashMap<>();
             datagrams = new ConcurrentHashMap<>();
 
             List headerData = asList(0, 0, senderNodeId, receiverNodeId, blockId, type);
-            // TODO: resolve issue with magic digit
-            int headerSize = Boss.dump(headerData).size() + 3; // 3 - Boss artefact
+
+            int headerSize = Boss.dump(headerData).size() + bossArtefact; // 5 - Boss artefact
 
             byte[] blockByteArray;
             DatagramPacket datagramPacket;
@@ -1038,6 +1043,13 @@ public class UDPAdapter extends DatagramAdapter {
                 packets.put(packetId, packet);
 
                 blockByteArray = packet.makeByteArray();
+                if(blockByteArray.length > packetSize) {
+                    datagrams.clear();
+                    packets.clear();
+                    prepareToSend(packetSize,bossArtefact+1);
+                    return;
+                }
+
                 datagramPacket = new DatagramPacket(blockByteArray, blockByteArray.length, address, port);
                 datagrams.put(packetId, datagramPacket);
 
