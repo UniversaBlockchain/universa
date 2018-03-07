@@ -14,7 +14,9 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.PostgresLedger;
 import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.network.ClientHTTPServer;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.NetworkV2;
+import com.icodici.universa.node2.network.UDPAdapter;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -67,6 +69,12 @@ public class Main {
                         .describedAs("db_url");
                 accepts("test", "intended to be used in integration tests");
                 accepts("nolog", "do not buffer log messages (good fot testing)");
+                accepts("verbose", "sets verbose level to nothing, base or detail")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("level");
+                accepts("restart-socket", "restarts UDPAdapter: shutdown it and create new");
+                accepts("shutdown", "delicate shutdown with rollback current processing contracts");
             }
         };
         try {
@@ -100,6 +108,22 @@ public class Main {
                 log("node local URL: " + myInfo.publicUrlString());
                 log("node info: " + myInfo.toBinder());
 
+
+            } else if(options.has("verbose")) {
+                String lvl = (String) options.valueOf("verbose");
+                int lvlId = 0;
+                if("nothing".equals(lvl)) {
+                    lvlId = DatagramAdapter.VerboseLevel.NOTHING;
+                } else if("base".equals(lvl)) {
+                    lvlId = DatagramAdapter.VerboseLevel.BASE;
+                } else if("detail".equals(lvl)) {
+                    lvlId = DatagramAdapter.VerboseLevel.DETAILED;
+                }
+                setVerboseLevel(lvlId);
+            } else if(options.has("restart-socket")) {
+                restartUDPAdapter();
+            } else if(options.has("shutdown")) {
+                shutdown();
             } else {
                 System.err.println("Neither config no database option passed, leaving");
                 return;
@@ -194,7 +218,7 @@ public class Main {
     }
 
     /**
-     * For unit-tests. REquest the shutdown and wait until the node stops.
+     * Request the shutdown and wait until the node stops.
      */
     public void shutdown() {
         try {
@@ -211,6 +235,24 @@ public class Main {
         try {
             logger.close();
         } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Set verbose level via {@link  DatagramAdapter.VerboseLevel}
+     */
+    public void setVerboseLevel(int level) {
+        network.setVerboseLevel(level);
+    }
+
+    /**
+     * Set verbose level via {@link  UDPAdapter}
+     */
+    public void restartUDPAdapter() {
+        try {
+            network.restartUDPAdapter();
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

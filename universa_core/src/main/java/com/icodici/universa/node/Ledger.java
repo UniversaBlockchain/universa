@@ -13,6 +13,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
+import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
@@ -126,6 +127,14 @@ public interface Ledger {
     default long countRecords() {
         return -1;
     }
+
+//    /**
+//     * Return all records with given {@link ItemState}.
+//     *
+//     * @param is is {@link ItemState} to looking for.
+//     * @return all found records
+//     */
+//    List<StateRecord> getAllByState(ItemState is);
 
     default StateRecord getLockOwnerOf(HashId itemId) {
         return getLockOwnerOf(getRecord(itemId));

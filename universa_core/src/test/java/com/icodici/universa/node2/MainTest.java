@@ -1134,6 +1134,21 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
+    @Test
+    public void checkVerbose() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            mm.add(createMain("node" + (i + 1), false));
+        }
+
+        Main main = mm.get(0);
+//        assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
+//        assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        mm.forEach(x -> x.shutdown());
+    }
+
 
     public synchronized Parcel createParcelWithFreshTU(Client client, Contract c) throws Exception {
 

@@ -32,7 +32,7 @@ public class NetworkV2 extends Network {
 
     private final NodeInfo myInfo;
     private final PrivateKey myKey;
-    private final UDPAdapter adapter;
+    private UDPAdapter adapter;
 
 //    private Map<NodeInfo, Node> nodes = new HashMap<>();
 
@@ -126,6 +126,7 @@ public class NetworkV2 extends Network {
         } catch (InterruptedException e) {
             report(getLabel(), "Expected interrupted exception");
         } catch (Exception e) {
+            report(getLabel(), "deliver exception: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -205,9 +206,21 @@ public class NetworkV2 extends Network {
     }
 
 
+    /**
+     * Restart {@link  UDPAdapter}
+     */
+    public void restartUDPAdapter() throws IOException {
+        adapter.shutdown();
+
+        adapter = new UDPAdapter(myKey, new SymmetricKey(), myInfo, netConfig);
+        adapter.receive(this::onReceived);
+        adapter.addErrorsCallback(this::exceptionCallback);
+    }
+
 
     public void setVerboseLevel(int level) {
         this.verboseLevel = level;
+        adapter.setVerboseLevel(level);
     }
 
     public String getLabel()
