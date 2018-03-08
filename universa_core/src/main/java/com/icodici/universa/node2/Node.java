@@ -1800,6 +1800,7 @@ public class Node {
                         // cancel by timeout expired
                         processingState = ItemProcessingState.FINISHED;
                         stopConsensusReceivedChecker();
+                        removeSelf();
                         return;
                     }
                 }
