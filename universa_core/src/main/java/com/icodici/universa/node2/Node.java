@@ -711,10 +711,26 @@ public class Node {
     }
 
     public void shutdown() {
+        System.out.println(toString() + "please wait, shutting down has started, num alive item processors: " + processors.size());
         for (ItemProcessor ip : processors.values()) {
             ip.emergencyBreak();
         }
+
+        while(processors.size() > 0) {
+            System.out.println("---------------------------------------------");
+            System.out.println(toString() + "please wait, shutting down is still continue, num alive item processors: " + processors.size());
+            for (HashId hid : processors.keySet()) {
+                ItemProcessor ipr = processors.get(hid);
+                System.out.println(toString() + "processor " + hid + " is " + ipr);
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         executorService.shutdown();
+        System.out.println(toString() + "shutdown finished");
     }
 
 
@@ -2029,11 +2045,12 @@ public class Node {
 
         private void close() {
 
-            // fire all event to release possible listeners
-            processingState = ItemProcessingState.DONE;
+            if(processingState.canContinue())
+                processingState = ItemProcessingState.DONE;
 
             stopPoller();
 
+            // fire all event to release possible listeners
             downloadedEvent.fire();
             pollingReadyEvent.fire();
             doneEvent.fire();
