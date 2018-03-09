@@ -244,6 +244,10 @@ public class NetworkV2 extends Network {
             adapter.setVerboseLevel(level);
     }
 
+    public UDPAdapter getUDPAdapter() {
+        return adapter;
+    }
+
     public String getLabel()
     {
         return "Network Node " + myInfo.getNumber() + ": ";

@@ -469,6 +469,18 @@ public class UDPAdapter extends DatagramAdapter {
         }
     }
 
+    /// for debug
+
+
+
+    public Block createTestBlock(int senderNodeId, int receiverNodeId, int blockId, int type,
+                                                   InetAddress address, int port, byte[] payload) {
+        return new Block(senderNodeId, receiverNodeId,
+                blockId, type,
+                address, port,
+                payload);
+    }
+
 
     class SocketListenThread extends Thread
     {
@@ -914,7 +926,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    public static class Packet {
+    public class Packet {
         private int senderNodeId;
         private int receiverNodeId;
         private int blockId;
@@ -962,7 +974,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    public static class Block
+    public class Block
     {
         private int senderNodeId;
         private int receiverNodeId;

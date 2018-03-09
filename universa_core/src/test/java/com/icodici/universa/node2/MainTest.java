@@ -1792,12 +1792,12 @@ public class MainTest {
         }
     }
 
-    protected void sendHello(NodeInfo myNodeInfo, NodeInfo destination, DatagramSocket socket) throws InterruptedException {
+    protected void sendHello(NodeInfo myNodeInfo, NodeInfo destination, DatagramSocket socket, UDPAdapter udpAdapter) throws InterruptedException {
 
         Binder binder = Binder.fromKeysValues(
                 "data", myNodeInfo.getNumber()
         );
-        UDPAdapter.Block block = new UDPAdapter.Block(myNodeInfo.getNumber(), destination.getNumber(),
+        UDPAdapter.Block block = udpAdapter.createTestBlock(myNodeInfo.getNumber(), destination.getNumber(),
                 new Random().nextInt(Integer.MAX_VALUE), UDPAdapter.PacketTypes.HELLO,
                 destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
                 Boss.pack(binder));
@@ -1829,7 +1829,7 @@ public class MainTest {
                         NodeInfo source = mm.get(finalI).myInfo;
                         NodeInfo destination = mm.get(finalJ).myInfo;
                         while (true) {
-                            sendHello(source,destination,socket);
+                            sendHello(source,destination,socket,mm.get(finalI).network.getUDPAdapter());
                         }
 
                     } catch (SocketException e) {
