@@ -1223,6 +1223,20 @@ public class MainTest {
         assertEquals (DatagramAdapter.VerboseLevel.BASE, main.network.getUDPVerboseLevel());
 
         main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+
+        main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+        System.out.println("---------- verbose detailed ---------------");
+
+        Contract testContract4 = new Contract(myKey);
+        testContract4.seal();
+        assertTrue(testContract4.isOk());
+        Parcel parcel4 = createParcelWithFreshTU(client, testContract4,Do.listOf(myKey));
+        client.registerParcel(parcel4.pack(), 1000);
+        ItemResult itemResult4 = client.getState(parcel4.getPayloadContract().getId());
+
+        assertEquals (DatagramAdapter.VerboseLevel.DETAILED, main.network.getUDPVerboseLevel());
+
+        main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         System.out.println("---------- verbose nothing ---------------");
 
         Contract testContract3 = new Contract(myKey);
