@@ -20,10 +20,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
-import com.icodici.universa.node2.network.BasicHttpClient;
-import com.icodici.universa.node2.network.Client;
-import com.icodici.universa.node2.network.ClientError;
-import com.icodici.universa.node2.network.DatagramAdapter;
+import com.icodici.universa.node2.network.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
@@ -39,8 +36,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.*;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -54,6 +50,7 @@ import static org.junit.Assert.*;
 
 @Ignore("start it manually")
 public class MainTest {
+
 
     @After
     public void tearDown() throws Exception {
@@ -1775,4 +1772,91 @@ public class MainTest {
         Client client = null;
     }
 
+
+    private static final int MAX_PACKET_SIZE = 512;
+    protected void sendBlock(UDPAdapter.Block block, DatagramSocket socket) throws InterruptedException {
+
+        if(!block.isValidToSend()) {
+            block.prepareToSend(MAX_PACKET_SIZE);
+        }
+
+        List<DatagramPacket> outs = new ArrayList(block.getDatagrams().values());
+
+        try {
+
+            for (DatagramPacket d : outs) {
+                socket.send(d);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    protected void sendHello(NodeInfo myNodeInfo, NodeInfo destination, DatagramSocket socket) throws InterruptedException {
+
+        Binder binder = Binder.fromKeysValues(
+                "data", myNodeInfo.getNumber()
+        );
+        UDPAdapter.Block block = new UDPAdapter.Block(myNodeInfo.getNumber(), destination.getNumber(),
+                new Random().nextInt(Integer.MAX_VALUE), UDPAdapter.PacketTypes.HELLO,
+                destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
+                Boss.pack(binder));
+        sendBlock(block, socket);
+    }
+
+
+    @Test
+    public void udpDisruptionTest() throws Exception{
+        List<Main> mm = new ArrayList<>();
+        final int NODE_COUNT = 4;
+        final int PORT_BASE = 8124;
+
+        for (int i = 0; i < NODE_COUNT; i++) {
+            mm.add(createMain("node" + (i + 1), false));
+        }
+
+
+        for(int i = 0; i < NODE_COUNT; i++) {
+            for(int j = 0; j < NODE_COUNT;j++) {
+                if(j == i)
+                    continue;
+                final int finalI = i;
+                final int finalJ = j;
+                new Thread(() -> {
+                    try {
+                        DatagramSocket socket = new DatagramSocket(PORT_BASE+finalI*NODE_COUNT+finalJ);
+                        socket.setReuseAddress(true);
+                        NodeInfo source = mm.get(finalI).myInfo;
+                        NodeInfo destination = mm.get(finalJ).myInfo;
+                        while (true) {
+                            sendHello(source,destination,socket);
+                        }
+
+                    } catch (SocketException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                }).start();
+            }
+        }
+        Thread.sleep(1000);
+
+        PrivateKey myKey = TestKeys.privateKey(0);
+        Client client = new Client(myKey,mm.get(0).myInfo,null);
+        Contract contract = new Contract(myKey);
+        contract.seal();
+        Parcel parcel = createParcelWithFreshTU(client,contract,Do.listOf(myKey));
+        client.registerParcel(parcel.pack(),15000);
+        ItemResult rr;
+        while(true) {
+            rr = client.getState(contract.getId());
+            if(!rr.state.isPending())
+                break;
+        }
+
+        assertEquals(rr.state, ItemState.APPROVED);
+
+    }
 }

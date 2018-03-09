@@ -914,7 +914,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    public class Packet {
+    public static class Packet {
         private int senderNodeId;
         private int receiverNodeId;
         private int blockId;
@@ -962,7 +962,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    public class Block
+    public static class Block
     {
         private int senderNodeId;
         private int receiverNodeId;
@@ -1072,7 +1072,7 @@ public class UDPAdapter extends DatagramAdapter {
             if(!packets.containsKey(packet.packetId)) {
                 packets.put(packet.packetId, packet);
             }
-            report(getLabel(), " addToPackets: " + packets.size() + " from " + packet.brotherPacketsNum + ", blockId: " + packet.blockId + " packetId: " + packet.packetId + " type: " + packet.type);
+            //report(getLabel(), " addToPackets: " + packets.size() + " from " + packet.brotherPacketsNum + ", blockId: " + packet.blockId + " packetId: " + packet.packetId + " type: " + packet.type);
         }
 
         public void markPacketAsDelivered(Packet packet) throws InterruptedException {
@@ -1106,6 +1106,10 @@ public class UDPAdapter extends DatagramAdapter {
 
         public Boolean isDelivered() {
             return delivered;
+        }
+
+        public ConcurrentHashMap<Integer, DatagramPacket> getDatagrams() {
+            return datagrams;
         }
     }
 
