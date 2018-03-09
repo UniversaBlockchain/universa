@@ -2263,6 +2263,61 @@ public class CLIMainTest {
     }
 
     @Test
+    public void createShortAddressTest() throws Exception {
+
+        callMain("-address", rootPath + "_xer0yfe2nn1xthc.private.unikey", "-short");
+        System.out.println(output);
+        assertTrue (output.indexOf("test_files/_xer0yfe2nn1xthc.private.unikey") >= 0);
+        assertTrue (output.indexOf("Address: 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R") >= 0);
+
+        callMain("-address-match", "26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R",
+                "-keyfile", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("Matching result: true") >= 0);
+    }
+
+    @Test
+    public void createLongAddressTest() throws Exception {
+
+        callMain("-address", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("test_files/_xer0yfe2nn1xthc.private.unikey") >= 0);
+        assertTrue (output.indexOf("Address: bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z") >= 0);
+
+        callMain("-address-match", "bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z",
+                "-keyfile", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("Matching result: true") >= 0);
+    }
+
+    @Test
+    public void matchingAddressTestPositive() throws Exception {
+
+        callMain("-address-match", "26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R",
+                "-keyfile", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("Matching result: true") >= 0);
+
+        callMain("-folder-match", rootPath,
+                "-addr", "26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R");
+        System.out.println(output);
+        assertTrue (output.indexOf("Filekey: _xer0yfe2nn1xthc.private.unikey") >= 0);
+    }
+
+    @Test
+    public void matchingAddressTestNegative() throws Exception {
+
+        callMain("-address-match", "27RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R",
+                "-keyfile", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        System.out.println(output);
+        assertTrue (output.indexOf("Matching result: false") >= 0);
+
+        callMain("-folder-match", rootPath,"-addr", "27RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R");
+        System.out.println(output);
+        assertTrue (output.indexOf("Invalid address.") >= 0);
+    }
+
+    @Test
     public void anonymizeRole() throws Exception {
 
         callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing.unicon",

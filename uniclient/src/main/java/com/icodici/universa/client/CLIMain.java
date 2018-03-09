@@ -13,6 +13,7 @@ import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
+import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractsService;
@@ -249,7 +250,30 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("role_name");
-
+                accepts("address", "Generate address from key. Path to key define in parameter -address. " +
+                        "For generate short address use parameter -short.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("file");
+                accepts("short", "Generate short key.");
+                accepts("address-match", "Matching address with key from file. Address define in parameter -address-match." +
+                        "Path to key define in parameter -keyfile.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("file");
+                accepts("keyfile", "Path to key for matching with address.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("file");
+                accepts("folder-match", "Associates the entered address with the key file in the specified directory. Path to directory define in parameter -folder-match. "+
+                        "Address define in parameter -addr.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("file");
+                accepts("addr", "Address for finding key in folder.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("address");
 
 //                acceptsAll(asList("ie"), "Test - delete.")
 //                        .withRequiredArg().ofType(String.class)
@@ -335,7 +359,15 @@ public class CLIMain {
             if (options.has("anonymize")) {
                 doAnonymize();
             }
-
+            if (options.has("address")) {
+                doCreateAddress((String) options.valueOf("address"), options.has("short"));
+            }
+            if (options.has("address-match")) {
+                doAddressMatch((String) options.valueOf("address-match"), (String) options.valueOf("keyfile"));
+            }
+            if (options.has("folder-match")) {
+                doSelectKeyInFolder((String) options.valueOf("folder-match"), (String) options.valueOf("addr"));
+            }
             usage(null);
 
         } catch (OptionException e) {
@@ -967,6 +999,78 @@ public class CLIMain {
         finish();
     }
 
+    private static void doCreateAddress(String keyFilePath, boolean bShort) throws IOException {
+
+        report("Generate " + (bShort ? "short" : "long") + " address from key: " + keyFilePath);
+
+        PrivateKey key = new PrivateKey(Do.read(keyFilePath));
+        KeyAddress address = new KeyAddress(key.getPublicKey(), 0, !bShort);
+
+        report("Address: " + address.toString());
+
+        finish();
+    }
+
+    private static void doAddressMatch(String address, String keyFilePath) throws IOException {
+
+        boolean bResult = false;
+
+        try {
+            PrivateKey key = new PrivateKey(Do.read(keyFilePath));
+
+            KeyAddress keyAddress = new KeyAddress(address);
+
+            bResult = keyAddress.isMatchingKey(key.getPublicKey());
+        }
+        catch (Exception e) {};
+
+        report("Matching address: " + address + " with key: "+ keyFilePath);
+        report("Matching result: " + bResult);
+
+        finish();
+    }
+
+    private static void doSelectKeyInFolder(String keysPath, String address) throws IOException {
+
+        File folder = new File(keysPath);
+        KeyAddress keyAddress;
+
+        try {
+            keyAddress = new KeyAddress(address);
+        }
+        catch (Exception e) {
+            report("Invalid address.");
+            finish();
+            return;
+        }
+
+        if (folder.exists()) {
+            for (File file : folder.listFiles()) {
+                if (!file.isDirectory()) {
+                    boolean bResult = false;
+
+                    try {
+                        PrivateKey key = new PrivateKey(Do.read(keysPath + "/" + file.getName()));
+                        bResult = keyAddress.isMatchingKey(key.getPublicKey());
+                    } catch (Exception e) {
+                        bResult = false;
+                    }
+
+                    if (bResult) {
+                        report("Filekey: " + file.getName());
+                        finish();
+                        return;
+                    }
+                }
+            }
+
+            report("File not found.");
+        }
+        else
+            report("There is no such directory");
+
+        finish();
+    }
 
     private static void cleanNonOptionalArguments(List sources) throws IOException {
 
