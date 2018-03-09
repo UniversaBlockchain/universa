@@ -398,13 +398,14 @@ public class DatagramAdapterTest {
         System.out.println("receviedFor5 got: " + (receviedFor5.size()));
         System.out.println("all got: " + (receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()));
 
-        assertTrue((numSends * attempts) - (receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) < 50);
-
         d1.shutdown();
         d2.shutdown();
         d3.shutdown();
         d4.shutdown();
         d5.shutdown();
+
+        assertTrue((numSends * attempts) - (receviedFor1.size() + receviedFor2.size() + receviedFor3.size() + receviedFor4.size() + receviedFor5.size()) < 50);
+
     }
 
 

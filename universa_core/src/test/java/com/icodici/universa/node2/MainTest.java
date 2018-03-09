@@ -1806,8 +1806,9 @@ public class MainTest {
         }
     }
 
-    protected void sendHello(NodeInfo myNodeInfo, NodeInfo destination, DatagramSocket socket, UDPAdapter udpAdapter) throws InterruptedException {
+    protected void sendHello(NodeInfo myNodeInfo, NodeInfo destination, UDPAdapter udpAdapter) throws InterruptedException {
 
+//        System.out.println(">> send froud from " + myNodeInfo.getNumber() + " to " + destination.getNumber());
         Binder binder = Binder.fromKeysValues(
                 "data", myNodeInfo.getNumber()
         );
@@ -1815,7 +1816,7 @@ public class MainTest {
                 new Random().nextInt(Integer.MAX_VALUE), UDPAdapter.PacketTypes.HELLO,
                 destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
                 Boss.pack(binder));
-        sendBlock(block, socket);
+        sendBlock(block, udpAdapter.getSocket());
     }
 
 
@@ -1828,6 +1829,8 @@ public class MainTest {
         for (int i = 0; i < NODE_COUNT; i++) {
             mm.add(createMain("node" + (i + 1), false));
         }
+//        mm.get(0).setUDPVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        mm.get(1).setUDPVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
 
 
         for(int i = 0; i < NODE_COUNT; i++) {
@@ -1838,16 +1841,18 @@ public class MainTest {
                 final int finalJ = j;
                 new Thread(() -> {
                     try {
-                        DatagramSocket socket = new DatagramSocket(PORT_BASE+finalI*NODE_COUNT+finalJ);
-                        socket.setReuseAddress(true);
                         NodeInfo source = mm.get(finalI).myInfo;
                         NodeInfo destination = mm.get(finalJ).myInfo;
                         while (true) {
-                            sendHello(source,destination,socket,mm.get(finalI).network.getUDPAdapter());
+                            if(new Random().nextInt(100000) == 0)
+                                sendHello(source,destination,mm.get(finalI).network.getUDPAdapter());
+//                            try {
+//                                Thread.currentThread().wait(50);
+//                            } catch (InterruptedException e) {
+//                                e.printStackTrace();
+//                            }
                         }
 
-                    } catch (SocketException e) {
-                        e.printStackTrace();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -1862,7 +1867,7 @@ public class MainTest {
         Contract contract = new Contract(myKey);
         contract.seal();
         Parcel parcel = createParcelWithFreshTU(client,contract,Do.listOf(myKey));
-        client.registerParcel(parcel.pack(),15000);
+        client.registerParcel(parcel.pack(),60000);
         ItemResult rr;
         while(true) {
             rr = client.getState(contract.getId());
@@ -1872,5 +1877,7 @@ public class MainTest {
 
         assertEquals(rr.state, ItemState.APPROVED);
 
+
+        mm.forEach(x -> x.shutdown());
     }
 }

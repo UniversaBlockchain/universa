@@ -194,6 +194,12 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    public DatagramSocket getSocket()
+    {
+        return socket;
+    }
+
+
     public void report(String label, String message, int level)
     {
         if(level <= verboseLevel)
@@ -243,7 +249,7 @@ public class UDPAdapter extends DatagramAdapter {
                 Collections.shuffle(outs);
             }
 
-            report(getLabel(), () -> concatReportMessage("sending packets num:  ", outs.size()));
+            report(getLabel(), () -> concatReportMessage("for block: ", block.blockId, " sending packets num:  ", outs.size()));
             for (DatagramPacket d : outs) {
                 if(testMode == TestModes.LOST_PACKETS || testMode == TestModes.LOST_AND_SHUFFLE_PACKETS) {
                     if (new Random().nextInt(100) < lostPacketsPercent) {
@@ -252,6 +258,7 @@ public class UDPAdapter extends DatagramAdapter {
                     }
                 }
                 socket.send(d);
+                report(getLabel(), () -> concatReportMessage("for block: ", block.blockId, " sent packets num:  ", outs.size()));
             }
         } catch (IOException e) {
             report(getLabel(), "send block error, socket already closed");
@@ -554,7 +561,7 @@ public class UDPAdapter extends DatagramAdapter {
     protected String concatReportMessage(Object... messages) {
         String returnMessage = "";
         for (Object m : messages) {
-            returnMessage += m.toString();
+            returnMessage += m != null ? m.toString() : "null";
         }
         return returnMessage;
     }
@@ -605,6 +612,8 @@ public class UDPAdapter extends DatagramAdapter {
                     if(!threadSocket.isClosed()) {
                         if(active) {
                             threadSocket.receive(receivedDatagram);
+
+                            report(getLabel(), () -> concatReportMessage(">>>> got data"));
                         }
                     }
                 } catch (SocketException e) {
@@ -768,9 +777,8 @@ public class UDPAdapter extends DatagramAdapter {
                         session.makeBlockDeliveredByType(PacketTypes.HELLO);
                         if (session.state == Session.HANDSHAKE ||
                                 session.state == Session.EXCHANGING ||
-                                session.state == Session.SESSION ||
-                                // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
-                                session.remoteNodeId > myNodeInfo.getNumber()) {
+                                // it's for nacks
+                                session.state == Session.SESSION) {
 
                             sendWelcome(session);
                         } else {
@@ -778,6 +786,17 @@ public class UDPAdapter extends DatagramAdapter {
                             final int sessionState = session.state;
                             report(getLabel(), () -> concatReportMessage("node sent handshake too, to ",
                                     sessionRemoteNodeId, " state: ", sessionState), VerboseLevel.BASE);
+
+                            // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
+                            if(session.state == Session.HELLO) {
+                                if(session.remoteNodeId > myNodeInfo.getNumber()) {
+                                    sendWelcome(session);
+                                }
+                                // else do nothing
+                            } else {
+                                // if current node has higher state - downstate and resend
+                                downStateAndResend(session);
+                            }
                         }
                     } else {
                         throw new EncryptionError(Errors.BAD_VALUE + ": datagram got from unknown node " + block.senderNodeId);
@@ -793,7 +812,7 @@ public class UDPAdapter extends DatagramAdapter {
                         session.makeBlockDeliveredByType(PacketTypes.WELCOME);
                         if (session.state == Session.HELLO ||
                                 // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
-                                session.remoteNodeId > myNodeInfo.getNumber()) {
+                                (session.state == Session.WELCOME && session.remoteNodeId > myNodeInfo.getNumber())) {
 
                             sendKeyRequest(session);
                         } else {
@@ -801,7 +820,11 @@ public class UDPAdapter extends DatagramAdapter {
                             final int sessionState = session.state;
                             report(getLabel(), () -> concatReportMessage("node sent handshake too, to ",
                                     sessionRemoteNodeId, " state: ", sessionState), VerboseLevel.BASE);
+                            downStateAndResend(session);
                         }
+                    } else {
+                        block.type = PacketTypes.HELLO;
+                        obtainSolidBlock(block);
                     }
                     break;
 
@@ -853,6 +876,9 @@ public class UDPAdapter extends DatagramAdapter {
                         } else {
                             throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session is broken or does not exist");
                         }
+                    } else {
+                        block.type = PacketTypes.HELLO;
+                        obtainSolidBlock(block);
                     }
                     break;
 
@@ -897,6 +923,9 @@ public class UDPAdapter extends DatagramAdapter {
                         } else {
                             throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session does not exist");
                         }
+                    } else {
+                        block.type = PacketTypes.HELLO;
+                        obtainSolidBlock(block);
                     }
                     break;
 
@@ -904,7 +933,8 @@ public class UDPAdapter extends DatagramAdapter {
                     report(getLabel(), () -> concatReportMessage("got data from ", block.senderNodeId), VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
                     try {
-                        if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+                        if(session != null && session.isValid() &&
+                                (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
 
                             session.makeBlockDeliveredByType(PacketTypes.HELLO);
                             session.makeBlockDeliveredByType(PacketTypes.WELCOME);
@@ -982,7 +1012,8 @@ public class UDPAdapter extends DatagramAdapter {
                     report(getLabel(), () -> concatReportMessage("blockId: ", ackBlockId));
 
                     session = sessionsById.get(block.senderNodeId);
-                    if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+                    if(session != null && session.isValid() &&
+                            (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                         session.moveBlocksFromSendingToWaiting();
                         session.removeDataBlocksFromWaiting();
                         session.state = Session.HANDSHAKE;
@@ -1047,6 +1078,21 @@ public class UDPAdapter extends DatagramAdapter {
                     session = getOrCreateSession(block.senderNodeId, address, port);
                     sendNack(session, block.blockId);
                 }
+            }
+        }
+
+
+        public void downStateAndResend(Session session) throws InterruptedException, EncryptionError {
+            switch (session.state) {
+                case Session.WELCOME:
+                    sendHello(session);
+                    break;
+                case Session.KEY_REQ:
+                    sendWelcome(session);
+                    break;
+                case Session.SESSION:
+                    sendKeyRequest(session);
+                    break;
             }
         }
     }
