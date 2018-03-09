@@ -810,9 +810,7 @@ public class UDPAdapter extends DatagramAdapter {
                         session.remoteNonce = block.payload;
                         session.makeBlockDeliveredByType(PacketTypes.HELLO);
                         session.makeBlockDeliveredByType(PacketTypes.WELCOME);
-                        if (session.state == Session.HELLO ||
-                                // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
-                                (session.state == Session.WELCOME && session.remoteNodeId > myNodeInfo.getNumber())) {
+                        if (session.state == Session.HELLO) {
 
                             sendKeyRequest(session);
                         } else {
@@ -820,7 +818,16 @@ public class UDPAdapter extends DatagramAdapter {
                             final int sessionState = session.state;
                             report(getLabel(), () -> concatReportMessage("node sent handshake too, to ",
                                     sessionRemoteNodeId, " state: ", sessionState), VerboseLevel.BASE);
-                            downStateAndResend(session);
+
+                            // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
+                            if(session.state == Session.WELCOME) {
+                                if (session.remoteNodeId > myNodeInfo.getNumber()) {
+                                    sendKeyRequest(session);
+                                }
+                                // else do nothing
+                            } else {
+                                downStateAndResend(session);
+                            }
                         }
                     } else {
                         block.type = PacketTypes.HELLO;
@@ -851,29 +858,44 @@ public class UDPAdapter extends DatagramAdapter {
                                 if (Arrays.equals(receiverNonce, session.localNonce)) {
                                     session.remoteNonce = senderNonce;
 
-                                    if (session.state == Session.WELCOME ||
-                                            // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
-                                            session.remoteNodeId > myNodeInfo.getNumber()) {
+                                    if (session.state == Session.WELCOME) {
 
                                         session.createSessionKey();
+                                        sendSessionKey(session);
                                         final boolean sessionIsValid = session.isValid();
                                         report(getLabel(), () -> concatReportMessage(" check session ",
                                                 sessionIsValid));
-                                        sendSessionKey(session);
+
                                     } else {
                                         final int sessionRemoteNodeId = session.remoteNodeId;
                                         final int sessionState = session.state;
                                         report(getLabel(), () -> concatReportMessage("node sent handshake too, to ",
                                                 sessionRemoteNodeId, " state: ", sessionState), VerboseLevel.BASE);
+                                        if(session.state == Session.KEY_REQ) {
+                                            if (session.remoteNodeId > myNodeInfo.getNumber()) {
+
+                                                session.createSessionKey();
+                                                sendSessionKey(session);
+                                                final boolean sessionIsValid = session.isValid();
+                                                report(getLabel(), () -> concatReportMessage(" check session ",
+                                                        sessionIsValid));
+                                            }
+                                            // else do nothing
+                                        } else {
+                                            downStateAndResend(session);
+                                        }
                                     }
 //                                    session.makeBlockDeliveredByType(PacketTypes.SESSION);
                                 } else {
+                                    sendHello(session);
                                     throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid (not equals with current). Got nonce: " + receiverNonce + " from node " + block.senderNodeId + " with sender nonce " + senderNonce);
                                 }
                             } else {
+                                sendHello(session);
                                 throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
                             }
                         } else {
+                            sendHello(session);
                             throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session is broken or does not exist");
                         }
                     } else {
@@ -915,12 +937,15 @@ public class UDPAdapter extends DatagramAdapter {
 
                                     sendWaitingBlocks(session);
                                 } else {
+                                    sendHello(session);
                                     throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid (not equals with current)");
                                 }
                             } else {
+                                sendHello(session);
                                 throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
                             }
                         } else {
+                            sendHello(session);
                             throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session does not exist");
                         }
                     } else {
