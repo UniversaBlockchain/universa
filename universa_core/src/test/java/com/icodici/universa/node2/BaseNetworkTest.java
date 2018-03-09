@@ -2730,7 +2730,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
     }
 
-    @Test(timeout = 90000)
+//    @Test(timeout = 90000)
     public void declineParcelWithTooBigCostTUTestPayment() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
