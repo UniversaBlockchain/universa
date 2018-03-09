@@ -453,6 +453,7 @@ public class MainTest {
 //        String string = new Bytes(reconfigKey.getPublicKey().pack()).toHex();
 //        System.out.println(string);
 
+        PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
 
 
         List<Main> mm = new ArrayList<>();
@@ -473,7 +474,7 @@ public class MainTest {
         }
         mm.clear();
 
-        Contract configContract = createNetConfigContract(netConfig);
+        Contract configContract = createNetConfigContract(netConfig,issuerKey);
 
         List<String> dbUrls = new ArrayList<>();
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
@@ -487,7 +488,7 @@ public class MainTest {
 
         Client client = new Client(TestKeys.privateKey(0), mm.get(0).myInfo, null);
 
-        Parcel parcel = createParcelWithFreshTU(client, configContract);
+        Parcel parcel = createParcelWithFreshTU(client, configContract,Do.listOf(issuerKey));
         client.registerParcel(parcel.pack(),15000);
 
 
@@ -503,7 +504,7 @@ public class MainTest {
 
         configContract = createNetConfigContract(configContract,netConfigNew,nodeKeys);
 
-        parcel = createParcelWithFreshTU(client, configContract);
+        parcel = createParcelWithFreshTU(client, configContract,nodeKeys);
         client.registerParcel(parcel.pack(),15000);
         while (true) {
 
@@ -519,7 +520,7 @@ public class MainTest {
         }
         configContract = createNetConfigContract(configContract,netConfig,nodeKeys);
 
-        parcel = createParcelWithFreshTU(client, configContract);
+        parcel = createParcelWithFreshTU(client, configContract,nodeKeys);
         client.registerParcel(parcel.pack(),15000);
         while (true) {
 
@@ -539,7 +540,8 @@ public class MainTest {
         }
     }
 
-    private Contract createNetConfigContract(Contract contract, List<NodeInfo> netConfig, List<PrivateKey> currentConfigKeys) throws IOException {
+
+    private Contract createNetConfigContract(Contract contract, List<NodeInfo> netConfig, Collection<PrivateKey> currentConfigKeys) throws IOException {
         contract = contract.createRevision();
         ListRole listRole = new ListRole("owner");
         for(NodeInfo ni: netConfig) {
@@ -551,22 +553,18 @@ public class MainTest {
         listRole.setQuorum(netConfig.size()-1);
         contract.registerRole(listRole);
         contract.getStateData().set("net_config",netConfig);
-
         List<KeyRecord> creatorKeys = new ArrayList<>();
         for(PrivateKey key : currentConfigKeys) {
             creatorKeys.add(new KeyRecord(key.getPublicKey()));
             contract.addSignerKey(key);
         }
         contract.setCreator(creatorKeys);
-
         contract.seal();
         return contract;
     }
-
-    private Contract createNetConfigContract(List<NodeInfo> netConfig) throws IOException {
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
+    private Contract createNetConfigContract(List<NodeInfo> netConfig,PrivateKey issuerKey) throws IOException {
         Contract contract = new Contract();
-        contract.setIssuerKeys(manufacturePrivateKey.getPublicKey());
+        contract.setIssuerKeys(issuerKey.getPublicKey());
         contract.registerRole(new RoleLink("creator", "issuer"));
         ListRole listRole = new ListRole("owner");
         for(NodeInfo ni: netConfig) {
@@ -577,7 +575,6 @@ public class MainTest {
         }
         listRole.setQuorum(netConfig.size()-1);
         contract.registerRole(listRole);
-
         RoleLink ownerLink = new RoleLink("ownerlink","owner");
         ChangeOwnerPermission changeOwnerPermission = new ChangeOwnerPermission(ownerLink);
         HashMap<String,Object> fieldsMap = new HashMap<>();
@@ -588,7 +585,7 @@ public class MainTest {
         contract.addPermission(modifyDataPermission);
         contract.setExpiresAt(ZonedDateTime.now().plusYears(40));
         contract.getStateData().set("net_config",netConfig);
-        contract.addSignerKey(manufacturePrivateKey);
+        contract.addSignerKey(issuerKey);
         contract.seal();
         return contract;
     }
@@ -1031,7 +1028,7 @@ public class MainTest {
                     }
                     testContract.seal();
                     assertTrue(testContract.isOk());
-                    Parcel parcel = createParcelWithFreshTU(client, testContract);
+                    Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
                     contractList.add(parcel);
                     contractHashesMap.put(parcel.getId(), parcel);
                 }
@@ -1158,7 +1155,7 @@ public class MainTest {
         Contract testContract = new Contract(myKey);
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshTU(client, testContract);
+        Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
         client.registerParcel(parcel.pack(), 1000);
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
 
@@ -1168,7 +1165,7 @@ public class MainTest {
         Contract testContract2 = new Contract(myKey);
         testContract2.seal();
         assertTrue(testContract2.isOk());
-        Parcel parcel2 = createParcelWithFreshTU(client, testContract2);
+        Parcel parcel2 = createParcelWithFreshTU(client, testContract2,Do.listOf(myKey));
         client.registerParcel(parcel2.pack(), 1000);
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
@@ -1180,7 +1177,7 @@ public class MainTest {
         Contract testContract3 = new Contract(myKey);
         testContract3.seal();
         assertTrue(testContract3.isOk());
-        Parcel parcel3 = createParcelWithFreshTU(client, testContract3);
+        Parcel parcel3 = createParcelWithFreshTU(client, testContract3,Do.listOf(myKey));
         client.registerParcel(parcel3.pack(), 1000);
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
@@ -1212,7 +1209,7 @@ public class MainTest {
         Contract testContract = new Contract(myKey);
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshTU(client, testContract);
+        Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
         client.registerParcel(parcel.pack(), 1000);
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
 
@@ -1222,7 +1219,7 @@ public class MainTest {
         Contract testContract2 = new Contract(myKey);
         testContract2.seal();
         assertTrue(testContract2.isOk());
-        Parcel parcel2 = createParcelWithFreshTU(client, testContract2);
+        Parcel parcel2 = createParcelWithFreshTU(client, testContract2,Do.listOf(myKey));
         client.registerParcel(parcel2.pack(), 1000);
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
@@ -1234,7 +1231,7 @@ public class MainTest {
         Contract testContract3 = new Contract(myKey);
         testContract3.seal();
         assertTrue(testContract3.isOk());
-        Parcel parcel3 = createParcelWithFreshTU(client, testContract3);
+        Parcel parcel3 = createParcelWithFreshTU(client, testContract3,Do.listOf(myKey));
         client.registerParcel(parcel3.pack(), 1000);
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
@@ -1267,7 +1264,7 @@ public class MainTest {
         }
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshTU(client, testContract);
+        Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
         client.registerParcel(parcel.pack());
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getId()));
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
@@ -1299,7 +1296,6 @@ public class MainTest {
 
         Main main = mm.get(0);
         PrivateKey myKey = TestKeys.privateKey(3);
-
         Client client = null;
         try {
             client = new Client(myKey, main.myInfo, null);
@@ -1314,7 +1310,7 @@ public class MainTest {
         }
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshTU(client, testContract);
+        Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
         client.registerParcel(parcel.pack());
         System.out.println(">> before restart state: " + client.getState(parcel.getPayloadContract().getId()));
         System.out.println(">> before restart state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
@@ -1338,21 +1334,20 @@ public class MainTest {
     }
 
 
-    public synchronized Parcel createParcelWithFreshTU(Client client, Contract c) throws Exception {
-
-        PrivateKey stepaPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/stepan_mamontov.private.unikey"));
-        Set<PrivateKey> keys = new HashSet<>();
-        keys.add(stepaPrivateKey);
-
+    public synchronized Parcel createParcelWithFreshTU(Client client, Contract c, Collection<PrivateKey> keys) throws Exception {
         Set<PublicKey> ownerKeys = new HashSet();
-        keys.stream().forEach(key -> ownerKeys.add(key.getPublicKey()));
+        keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
         Contract stepaTU = InnerContractsService.createFreshTU(100000000, ownerKeys);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
         ItemResult itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
 //        node.registerItem(stepaTU);
 //        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
-
-        return ContractsService.createParcel(c, stepaTU, 150, keys);
+        Set<PrivateKey> keySet = new HashSet<>();
+        keySet.addAll(keys);
+        return ContractsService.createParcel(c, stepaTU, 150, keySet);
     }
 
 
