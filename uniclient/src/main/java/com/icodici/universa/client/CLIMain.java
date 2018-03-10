@@ -1035,10 +1035,11 @@ public class CLIMain {
         File folder = new File(keysPath);
         KeyAddress keyAddress;
 
+        if (!keysPath.endsWith("/")) keysPath = keysPath.concat("/");
+
         try {
             keyAddress = new KeyAddress(address);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             report("Invalid address.");
             finish();
             return;
@@ -1050,7 +1051,7 @@ public class CLIMain {
                     boolean bResult = false;
 
                     try {
-                        PrivateKey key = new PrivateKey(Do.read(keysPath + "/" + file.getName()));
+                        PrivateKey key = new PrivateKey(Do.read(keysPath + file.getName()));
                         bResult = keyAddress.isMatchingKey(key.getPublicKey());
                     } catch (Exception e) {
                         bResult = false;
@@ -1067,7 +1068,7 @@ public class CLIMain {
             report("File not found.");
         }
         else
-            report("There is no such directory");
+            report("There is no such directory.");
 
         finish();
     }
