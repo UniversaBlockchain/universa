@@ -184,6 +184,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         }
                 );
             });
+            role.getKeyAddresses().forEach(keyAddr -> {
+                transactionPack.getKeysForPack().forEach(
+                        key -> {
+                            try {
+                                if(key.isMatchingKeyAddress(keyAddr)) {
+                                    keys.put(ExtendedSignature.keyId(key), key);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            });
         });
 
         for (Object signature : (List) data.getOrThrow("signatures")) {
@@ -265,6 +278,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                                     keys.put(ExtendedSignature.keyId(key), key);
                                 }
                             } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            });
+            role.getKeyAddresses().forEach(keyAddr -> {
+                transactionPack.getKeysForPack().forEach(
+                        key -> {
+                            try {
+                                if(key.isMatchingKeyAddress(keyAddr)) {
+                                    keys.put(ExtendedSignature.keyId(key), key);
+                                }
+                            } catch (Exception e) {
                                 e.printStackTrace();
                             }
                         }

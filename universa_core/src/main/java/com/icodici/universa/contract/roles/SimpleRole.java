@@ -64,9 +64,10 @@ public class SimpleRole extends Role {
                 keyAddresses.add((KeyAddress) x);
             else
                 throw new IllegalArgumentException("Cant create KeyRecord from " + x);
+
             if (anonId != null)
                 anonymousIds.add(anonId);
-            else
+            else if (kr != null)
                 keyRecords.put(kr.getPublicKey(), kr);
         });
     }
@@ -101,6 +102,11 @@ public class SimpleRole extends Role {
         return anonymousIds;
     }
 
+    @Override
+    public Set<KeyAddress> getKeyAddresses() {
+        return keyAddresses;
+    }
+
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         // any will go logic
         return keys.stream().anyMatch(k -> {
@@ -133,8 +139,15 @@ public class SimpleRole extends Role {
             boolean a = ((SimpleRole) obj).getName().equals(getName());
             boolean b = ((SimpleRole) obj).equalKeys(this);
             boolean c = ((SimpleRole) obj).anonymousIds.containsAll(this.anonymousIds);
-            boolean d = ((SimpleRole) obj).keyAddresses.containsAll(this.keyAddresses);
-            return a && b && c && d;
+            boolean d = this.anonymousIds.containsAll(((SimpleRole) obj).anonymousIds); //TODO When comparing the roles (method equals), we used a comparison of the set of anonymous identifiers only in one direction.
+
+            Set<byte[]> pka1 = new HashSet<>();
+            Set<byte[]> pka2 = new HashSet<>();
+            for (KeyAddress ka: ((SimpleRole) obj).keyAddresses) pka1.add(ka.getPacked());
+            for (KeyAddress ka: this.keyAddresses) pka2.add(ka.getPacked());
+            boolean e = pka1.containsAll(pka2) && pka2.containsAll(pka1);
+
+            return a && b && c && d && e;
         }
         return false;
     }
