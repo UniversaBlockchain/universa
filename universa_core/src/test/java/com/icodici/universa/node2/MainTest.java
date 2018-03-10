@@ -161,6 +161,8 @@ public class MainTest {
         Thread thread = new Thread(() -> {
             try {
                 Main m = new Main(args);
+                m.config.setTransactionUnitsIssuerKeyData(Bytes.fromHex("1E 08 1C 01 00 01 C4 00 01 B9 C7 CB 1B BA 3C 30 80 D0 8B 29 54 95 61 41 39 9E C6 BB 15 56 78 B8 72 DC 97 58 9F 83 8E A0 B7 98 9E BB A9 1D 45 A1 6F 27 2F 61 E0 26 78 D4 9D A9 C2 2F 29 CB B6 F7 9F 97 60 F3 03 ED 5C 58 27 27 63 3B D3 32 B5 82 6A FB 54 EA 26 14 E9 17 B6 4C 5D 60 F7 49 FB E3 2F 26 52 16 04 A6 5E 6E 78 D1 78 85 4D CD 7B 71 EB 2B FE 31 39 E9 E0 24 4F 58 3A 1D AE 1B DA 41 CA 8C 42 2B 19 35 4B 11 2E 45 02 AD AA A2 55 45 33 39 A9 FD D1 F3 1F FA FE 54 4C 2E EE F1 75 C9 B4 1A 27 5C E9 C0 42 4D 08 AD 3E A2 88 99 A3 A2 9F 70 9E 93 A3 DF 1C 75 E0 19 AB 1F E0 82 4D FF 24 DA 5D B4 22 A0 3C A7 79 61 41 FD B7 02 5C F9 74 6F 2C FE 9A DD 36 44 98 A2 37 67 15 28 E9 81 AC 40 CE EF 05 AA 9E 36 8F 56 DA 97 10 E4 10 6A 32 46 16 D0 3B 6F EF 80 41 F3 CC DA 14 74 D1 BF 63 AC 28 E0 F1 04 69 63 F7"));
+                m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
                 m.waitReady();
                 mm.add(m);
             } catch (InterruptedException e) {
@@ -176,7 +178,7 @@ public class MainTest {
         return mm.get(0);
     }
 
-    @Test
+//    @Test
     public void networkReconfigurationTestSerial() throws Exception {
 
         //create 4 nodes from config file. 3 know each other. 4th knows everyone. nobody knows 4th
@@ -207,7 +209,8 @@ public class MainTest {
         PrivateKey myKey = TestKeys.privateKey(3);
         Main main = mm.get(3);
 
-        Contract contract = new Contract(myKey);
+        PrivateKey universaKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+        Contract contract = new Contract(universaKey);
         contract.seal();
         assertTrue(contract.isOk());
 
@@ -218,13 +221,14 @@ public class MainTest {
         ItemResult rr = client.register(contract.getPackedTransaction(), 15000);
         while (attempts-- > 0) {
             rr = client.getState(contract.getId());
+            System.out.println(rr);
             Thread.currentThread().sleep(1000);
             if (!rr.state.isPending())
                 break;
         }
         assertEquals(rr.state,ItemState.PENDING_POSITIVE);
 
-        contract = new Contract(myKey);
+        contract = new Contract(universaKey);
         contract.seal();
         assertTrue(contract.isOk());
 
@@ -245,12 +249,13 @@ public class MainTest {
             mm.get(i).node.addNode(main.myInfo);
         }
 
-        contract = new Contract(myKey);
+        contract = new Contract(universaKey);
         contract.seal();
         assertTrue(contract.isOk());
 
         client.register(contract.getPackedTransaction(), 15000);
-        while (true) {
+        attempts = 3;
+        while (attempts-- > 0) {
             rr = client.getState(contract.getId());
             Thread.currentThread().sleep(50);
             if (!rr.state.isPending())
@@ -265,7 +270,7 @@ public class MainTest {
             mm.get(i).node.removeNode(main.myInfo);
         }
 
-        contract = new Contract(myKey);
+        contract = new Contract(universaKey);
         contract.seal();
         assertTrue(contract.isOk());
 
@@ -280,7 +285,7 @@ public class MainTest {
         }
         assertEquals(rr.state,ItemState.PENDING_POSITIVE);
 
-        contract = new Contract(myKey);
+        contract = new Contract(universaKey);
         contract.seal();
         assertTrue(contract.isOk());
 
@@ -1556,6 +1561,8 @@ public class MainTest {
             System.out.println("" + (i++) + " - " + subItemResult.state);
             assertEquals(ItemState.UNDEFINED, subItemResult.state);
         }
+
+        ts.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -1581,6 +1588,8 @@ public class MainTest {
             System.out.println("" + (i++) + " - " + subItemResult.state);
             assertEquals(ItemState.APPROVED, subItemResult.state);
         }
+
+        ts.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -1615,6 +1624,8 @@ public class MainTest {
             else
                 assertEquals(ItemState.UNDEFINED, subItemResult.state);
         }
+
+        ts.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -1632,6 +1643,8 @@ public class MainTest {
             System.out.println("" + (i++) + " - " + subItemResult.state);
             assertEquals(ItemState.APPROVED, subItemResult.state);
         }
+
+        ts.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -1659,6 +1672,8 @@ public class MainTest {
             System.out.println("" + (i++) + " - " + subItemResult.state);
             assertEquals(ItemState.APPROVED, subItemResult.state);
         }
+
+        ts.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -1695,6 +1710,8 @@ public class MainTest {
             else
                 assertEquals(ItemState.UNDEFINED, subItemResult.state);
         }
+
+        ts.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -1759,7 +1776,7 @@ public class MainTest {
         testSpace.node = testSpace.nodes.get(0);
         assertEquals("http://localhost:8080", testSpace.node.myInfo.internalUrlString());
         assertEquals("http://localhost:8080", testSpace.node.myInfo.publicUrlString());
-        testSpace.myKey = TestKeys.privateKey(3);
+        testSpace.myKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
         testSpace.client = new Client(testSpace.myKey, testSpace.node.myInfo, null);
         return testSpace;
     }
@@ -1832,33 +1849,55 @@ public class MainTest {
 //        mm.get(0).setUDPVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        mm.get(1).setUDPVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
 
+        class TestRunnable implements Runnable {
 
+            int finalI;
+            int finalJ;
+            boolean alive = true;
+
+            @Override
+            public void run() {
+                try {
+                    NodeInfo source = mm.get(finalI).myInfo;
+                    NodeInfo destination = mm.get(finalJ).myInfo;
+
+                    while (alive) {
+                        if(new Random().nextInt(100000) == 0)
+                            sendHello(source,destination,mm.get(finalI).network.getUDPAdapter());
+//                            try {
+//                                Thread.currentThread().wait(50);
+//                            } catch (InterruptedException e) {
+//                                e.printStackTrace();
+//                            }
+                    }
+                } catch (Exception e) {
+                    System.out.println("runnable exception: " + e.toString());
+                }
+            }
+        }
+
+        List<Thread> threadsList = new ArrayList<>();
+        List<TestRunnable> runnableList = new ArrayList<>();
         for(int i = 0; i < NODE_COUNT; i++) {
             for(int j = 0; j < NODE_COUNT;j++) {
                 if(j == i)
                     continue;
                 final int finalI = i;
                 final int finalJ = j;
+                TestRunnable runnableSingle = new TestRunnable();
+                runnableList.add(runnableSingle);
+                threadsList.add(
                 new Thread(() -> {
-                    try {
-                        NodeInfo source = mm.get(finalI).myInfo;
-                        NodeInfo destination = mm.get(finalJ).myInfo;
-                        while (true) {
-                            if(new Random().nextInt(100000) == 0)
-                                sendHello(source,destination,mm.get(finalI).network.getUDPAdapter());
-//                            try {
-//                                Thread.currentThread().wait(50);
-//                            } catch (InterruptedException e) {
-//                                e.printStackTrace();
-//                            }
-                        }
+                    runnableSingle.finalI = finalI;
+                    runnableSingle.finalJ = finalJ;
+                    runnableSingle.run();
 
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-
-                }).start();
+                }));
             }
+        }
+
+        for (Thread th : threadsList) {
+            th.start();
         }
         Thread.sleep(1000);
 
@@ -1878,6 +1917,13 @@ public class MainTest {
         assertEquals(rr.state, ItemState.APPROVED);
 
 
+
+        for (TestRunnable tr : runnableList) {
+            tr.alive = false;
+        }
+        for (Thread th : threadsList) {
+            th.interrupt();
+        }
         mm.forEach(x -> x.shutdown());
     }
 }
