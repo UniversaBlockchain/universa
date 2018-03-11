@@ -1335,7 +1335,7 @@ public class DatagramAdapterTest {
         List keyErrors = new ArrayList();
         d2.addErrorsCallback(m -> {
             System.err.println(m);
-            if(m.indexOf("BAD_VALUE: datagram got from unknown node") >= 0)
+            if(m.indexOf("BAD_VALUE: block got from unknown node") >= 0)
                 keyErrors.add(m);
 //            ae.fire();
             return m;});
@@ -1351,7 +1351,7 @@ public class DatagramAdapterTest {
             System.out.println("time is up");
         }
 
-        assertEquals(1, keyErrors.size());
+        assertTrue(keyErrors.size() > 0);
 
         // And test it for all interfaceces and big arrays of data
 

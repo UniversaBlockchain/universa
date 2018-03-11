@@ -832,7 +832,7 @@ public class UDPAdapter extends DatagramAdapter {
                         if(obtainedBlocks.containsKey(block.blockId)) {
                             obtainedBlocks.remove(block.blockId);
                         }
-                        throw new EncryptionError(Errors.BAD_VALUE + ": datagram got from unknown node " + block.senderNodeId);
+                        throw new EncryptionError(Errors.BAD_VALUE + ": block got from unknown node " + block.senderNodeId);
                     }
                     break;
 
