@@ -1344,10 +1344,6 @@ public class BaseNetworkTest extends TestCase {
 
         twoSignContract = imitateSendingTransactionToPartner(twoSignContract);
 
-        twoSignContract.check();
-        twoSignContract.traceErrors();
-        registerAndCheckDeclined(twoSignContract);
-
         twoSignContract.addSignatureToSeal(stepaPrivateKeys);
 
         twoSignContract.check();
