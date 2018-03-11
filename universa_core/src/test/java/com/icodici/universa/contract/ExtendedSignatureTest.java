@@ -112,6 +112,35 @@ public class ExtendedSignatureTest extends TestCase{
         assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.extractKeyId(signature));
     }
 
+    @Test
+    public void extractPublicKey() throws Exception {
+        byte[] data = "Hello world".getBytes();
+        PrivateKey k = TestKeys.privateKey(3);
+        byte [] signature = ExtendedSignature.sign(k, data, true);
+        PublicKey pubKey = k.getPublicKey();
+        ExtendedSignature es = ExtendedSignature.verify(pubKey, signature, data);
+        assertNotNull(es);
+        assertAlmostSame(es.getCreatedAt(), ZonedDateTime.now());
+        assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.keyId(pubKey));
+        assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.extractKeyId(signature));
+        assertNotNull(es.getPublicKey());
+        assertEquals(pubKey, es.getPublicKey());
+    }
+
+    @Test
+    public void extractPublicKeyNull() throws Exception {
+        byte[] data = "Hello world".getBytes();
+        PrivateKey k = TestKeys.privateKey(3);
+        byte [] signature = ExtendedSignature.sign(k, data);
+        PublicKey pubKey = k.getPublicKey();
+        ExtendedSignature es = ExtendedSignature.verify(pubKey, signature, data);
+        assertNotNull(es);
+        assertAlmostSame(es.getCreatedAt(), ZonedDateTime.now());
+        assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.keyId(pubKey));
+        assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.extractKeyId(signature));
+        assertEquals(null, es.getPublicKey());
+    }
+
     public static double parallelize(ExecutorService es,int nThreads,Runnable r) throws ExecutionException, InterruptedException {
         long t = System.nanoTime();
         ArrayList<Future<?>> all = new ArrayList<>();

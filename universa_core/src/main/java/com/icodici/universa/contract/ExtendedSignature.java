@@ -37,11 +37,16 @@ public class ExtendedSignature {
         return createdAt;
     }
 
+    public PublicKey getPublicKey() {
+        return publicKey;
+    }
+
     /**
      * return keyId (see {@link #keyId} of the key that was used to sign data.
      */
     private Bytes keyId;
     private ZonedDateTime createdAt;
+    private PublicKey publicKey = null;
 
     /**
      * Sign the data with a given key.
@@ -52,15 +57,28 @@ public class ExtendedSignature {
      * @return binary signature
      */
     static public byte[] sign(PrivateKey key, byte[] data) {
+        return sign(key, data, false);
+    }
+
+    /**
+     * Sign the data with a given key.
+     *
+     * @param key is {@link PrivateKey} to sign with
+     * @param data to be sign with key
+     *
+     * @return binary signature
+     */
+    static public byte[] sign(PrivateKey key, byte[] data, boolean savePublicKey) {
         try {
-            byte[] targetSignature = Boss.pack(
-                    Binder.fromKeysValues(
-                            "key", keyId(key),
-                            "sha512", new Sha512().digest(data),
-                            "sha3_384", new Sha3_384().digest(data),
-                            "created_at", ZonedDateTime.now()
-                    )
+            Binder targetSignatureBinder = Binder.fromKeysValues(
+                    "key", keyId(key),
+                    "sha512", new Sha512().digest(data),
+                    "sha3_384", new Sha3_384().digest(data),
+                    "created_at", ZonedDateTime.now()
             );
+            if (savePublicKey)
+                targetSignatureBinder.put("pub_key", key.getPublicKey().pack());
+            byte[] targetSignature = Boss.pack(targetSignatureBinder);
             Binder result = Binder.fromKeysValues(
                     "exts", targetSignature,
                     "sign", key.sign(targetSignature, HashType.SHA512),
@@ -140,6 +158,13 @@ public class ExtendedSignature {
                 es.keyId = b.getBytesOrThrow("key");
                 es.createdAt = b.getZonedDateTimeOrThrow("created_at");
                 es.signature = signature;
+                es.publicKey = null;
+                try {
+                    byte[] publicKeyBytes = b.getBinaryOrThrow("pub_key");
+                    es.publicKey = new PublicKey(publicKeyBytes);
+                } catch (IllegalArgumentException e) {
+                    es.publicKey = null;
+                }
                 Bytes hash = b.getBytesOrThrow("sha512");
                 Bytes dataHash = new Bytes(new Sha512().digest(data));
                 boolean isHashValid = hash.equals(dataHash);
