@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.*;
+import com.icodici.crypto.digest.Sha3_384;
 import com.icodici.crypto.digest.Sha512;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -17,7 +18,7 @@ import java.time.ZonedDateTime;
 
 /**
  * The extended signature signs the resource with sha512, timestamp and 32-byte key id, see {@link #keyId}. The signed
- * timestamp seals the signature creatoin time. The whole extended signature then is signed by the provided private key.
+ * timestamp seals the signature creation time. The whole extended signature then is signed by the provided private key.
  * This not only provides timestamps in signatures, but also repels theoretically possible chosen-text type attacks on
  * source documents, as actual signature is calculated twice and includes timestamp.
  * <p>
@@ -56,12 +57,14 @@ public class ExtendedSignature {
                     Binder.fromKeysValues(
                             "key", keyId(key),
                             "sha512", new Sha512().digest(data),
+                            "sha3_384", new Sha3_384().digest(data),
                             "created_at", ZonedDateTime.now()
                     )
             );
             Binder result = Binder.fromKeysValues(
                     "exts", targetSignature,
-                    "sign", key.sign(targetSignature, HashType.SHA512)
+                    "sign", key.sign(targetSignature, HashType.SHA512),
+                    "sign2", key.sign(targetSignature, HashType.SHA3_384)
             );
             return Boss.pack(result);
         } catch (EncryptionError e) {
@@ -122,14 +125,36 @@ public class ExtendedSignature {
             ExtendedSignature es = new ExtendedSignature();
 
             byte[] exts = src.getBinaryOrThrow("exts");
-            if (key.verify(exts, src.getBinaryOrThrow("sign"), HashType.SHA512)) {
+            boolean isSignValid = key.verify(exts, src.getBinaryOrThrow("sign"), HashType.SHA512);
+            boolean isSign2Valid = true;
+            byte[] sign2bin = null;
+            try {
+                sign2bin = src.getBinaryOrThrow("sign2");
+            } catch (IllegalArgumentException e) {
+                sign2bin = null;
+            }
+            if (sign2bin != null)
+                isSign2Valid = key.verify(exts, sign2bin, HashType.SHA3_384);
+            if (isSignValid && isSign2Valid) {
                 Binder b = Boss.unpack(exts);
                 es.keyId = b.getBytesOrThrow("key");
                 es.createdAt = b.getZonedDateTimeOrThrow("created_at");
                 es.signature = signature;
                 Bytes hash = b.getBytesOrThrow("sha512");
                 Bytes dataHash = new Bytes(new Sha512().digest(data));
-                if (hash.equals(dataHash))
+                boolean isHashValid = hash.equals(dataHash);
+                Bytes hash2 = null;
+                boolean isHash2Valid = true;
+                try {
+                    hash2 = b.getBytesOrThrow("sha3_384");
+                } catch (IllegalArgumentException e) {
+                    hash2 = null;
+                }
+                if (hash2 != null) {
+                    Bytes dataHash2 = new Bytes(new Sha3_384().digest(data));
+                    isHash2Valid = hash2.equals(dataHash2);
+                }
+                if (isHashValid && isHash2Valid)
                     return es;
             }
         } catch (EncryptionError encryptionError) {
