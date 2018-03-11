@@ -178,7 +178,7 @@ public class MainTest {
         return mm.get(0);
     }
 
-//    @Test
+    @Test
     public void networkReconfigurationTestSerial() throws Exception {
 
         //create 4 nodes from config file. 3 know each other. 4th knows everyone. nobody knows 4th
@@ -254,8 +254,7 @@ public class MainTest {
         assertTrue(contract.isOk());
 
         client.register(contract.getPackedTransaction(), 15000);
-        attempts = 3;
-        while (attempts-- > 0) {
+        while (true) {
             rr = client.getState(contract.getId());
             Thread.currentThread().sleep(50);
             if (!rr.state.isPending())
@@ -345,6 +344,7 @@ public class MainTest {
         final ArrayList<Client> clients = new ArrayList<>();
         final ArrayList<Integer> clientNodes = new ArrayList<>();
         final ArrayList<Contract> contracts = new ArrayList<>();
+        final ArrayList<Parcel> parcels = new ArrayList<>();
         final ArrayList<Boolean> contractsApproved = new ArrayList<>();
         for (int i = 0; i < 40; i++) {
             Contract contract = new Contract(myKey);
@@ -357,10 +357,11 @@ public class MainTest {
             Client client = new Client(TestKeys.privateKey(i), info, null);
             clients.add(client);
             clientSleeps.add(rand.nextInt(100));
+            Parcel parcel = createParcelWithFreshTU(client,contract,Do.listOf(myKey));
+            parcels.add(parcel);
         }
         Semaphore semaphore = new Semaphore(-39);
         final AtomicInteger atomicInteger = new AtomicInteger(40);
-        final ArrayList<Thread> threads = new ArrayList<>();
         for (int i = 0; i < 40; i++) {
             int finalI = i;
             Thread th = new Thread(() -> {
@@ -370,7 +371,7 @@ public class MainTest {
                     Contract contract = contracts.get(finalI);
                     Client client = clients.get(finalI);
                     System.out.println("Register item " + contract.getId().toBase64String() + " @ node #" + clientNodes.get(finalI));
-                    client.register(contract.getPackedTransaction(), 15000);
+                    client.registerParcel(parcels.get(finalI).pack(), 15000);
                     ItemResult rr;
                     while (true) {
                         rr = client.getState(contract.getId());
