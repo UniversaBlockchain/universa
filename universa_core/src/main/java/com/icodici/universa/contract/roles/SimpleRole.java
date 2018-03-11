@@ -21,6 +21,7 @@ import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
+import java.security.Key;
 import java.util.*;
 
 /**
@@ -130,7 +131,7 @@ public class SimpleRole extends Role {
     }
 
     public boolean isValid() {
-        return !keyRecords.isEmpty() || !anonymousIds.isEmpty();
+        return !keyRecords.isEmpty() || !anonymousIds.isEmpty() || !keyAddresses.isEmpty();
     }
 
     @Override
@@ -141,14 +142,43 @@ public class SimpleRole extends Role {
             boolean c = ((SimpleRole) obj).anonymousIds.containsAll(this.anonymousIds);
             boolean d = this.anonymousIds.containsAll(((SimpleRole) obj).anonymousIds); //TODO When comparing the roles (method equals), we used a comparison of the set of anonymous identifiers only in one direction.
 
-            Set<byte[]> pka1 = new HashSet<>();
-            Set<byte[]> pka2 = new HashSet<>();
-            for (KeyAddress ka: ((SimpleRole) obj).keyAddresses) pka1.add(ka.getPacked());
-            for (KeyAddress ka: this.keyAddresses) pka2.add(ka.getPacked());
-            boolean e = pka1.containsAll(pka2) && pka2.containsAll(pka1);
+            if (!(a && b && c && d))
+                return false;
 
-            return a && b && c && d && e;
+            boolean e = true;
+            for (KeyAddress ka1: this.getKeyAddresses()) {
+                e = false;
+                for (KeyAddress ka2: ((SimpleRole) obj).getKeyAddresses()) {
+                    if (ka1.equals(ka2)) {
+                        e = true;
+                        break;
+                    }
+                }
+
+                if (!e)
+                    break;
+            }
+
+            if (!e)
+                return false;
+
+            e = true;
+            for (KeyAddress ka1: ((SimpleRole) obj).getKeyAddresses()) {
+                e = false;
+                for (KeyAddress ka2: this.getKeyAddresses()) {
+                    if (ka1.equals(ka2)) {
+                        e = true;
+                        break;
+                    }
+                }
+
+                if (!e)
+                    break;
+            }
+
+            return e;
         }
+
         return false;
     }
 
@@ -207,7 +237,7 @@ public class SimpleRole extends Role {
         keyAddresses.clear();
         if (keyAddrList != null) {
             for (Object keyAddr :  keyAddrList) {
-                keyAddresses.add( deserializer.deserialize(keyAddr));
+                keyAddresses.add(deserializer.deserialize(keyAddr));
             }
         }
     }

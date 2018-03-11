@@ -7,6 +7,7 @@
 
 package com.icodici.universa.client;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
@@ -15,6 +16,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.ContractsService;
+import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -2315,6 +2317,59 @@ public class CLIMainTest {
         callMain("-folder-match", rootPath,"-addr", "27RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R");
         System.out.println(output);
         assertTrue (output.indexOf("Invalid address.") >= 0);
+    }
+
+    @Test
+    public void testExportImportWithAddresses() throws Exception {
+
+        callMain2("-create", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contractWithAddresses.unicon",
+                "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        Contract contract = CLIMain.loadContract(basePath + "contractWithAddresses.unicon", true);
+
+        Set<KeyAddress> keyAddresses = new HashSet<>();
+        keyAddresses.add(new KeyAddress(TestKeys.publicKey(0), 0, true));
+        SimpleRole sr1 = new SimpleRole("owner", keyAddresses);
+
+        contract.registerRole(sr1);
+        contract.addSignerKey(TestKeys.privateKey(0));
+        contract.seal();
+
+        CLIMain.saveContract(contract, basePath + "contractWithAddresses.unicon");
+
+        callMain("-e", basePath + "contractWithAddresses.unicon", "-name", basePath + "contractWithAddresses.json");
+        System.out.println(output);
+        assertTrue (output.indexOf("export as json ok") >= 0);
+        assertEquals(0, errors.size());
+
+        callMain("-i", basePath + "contractWithAddresses.json", "-name", basePath + "contractWithAddressesImported.unicon");
+        System.out.println(output);
+        assertTrue (output.indexOf("import from json ok") >= 0);
+        assertEquals(1, errors.size());
+        if(errors.size() > 0) {
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
+        }
+
+        Contract contractImported = CLIMain.loadContract(basePath + "contractWithAddressesImported.unicon", true);
+
+        assertTrue(contractImported.getOwner().getKeyAddresses().iterator().next().isMatchingKey(TestKeys.privateKey(0).getPublicKey()));
+
+        PrivateKey creatorPrivateKey = new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey"));
+        contractImported.addSignatureToSeal(creatorPrivateKey);
+        contractImported.addSignatureToSeal(TestKeys.privateKey(0));
+
+        assertTrue(contractImported.check());
+
+        Set<PrivateKey> signKeys= new HashSet<>();
+        signKeys.add(creatorPrivateKey);
+        signKeys.add(TestKeys.privateKey(0));
+        contractImported.setKeysToSignWith(signKeys);
+        byte[] sealedContract = contractImported.sealAsV2();
+        TransactionPack tp = new TransactionPack();
+        tp.addKeys(creatorPrivateKey.getPublicKey());
+        tp.addKeys(TestKeys.privateKey(0).getPublicKey());
+        Contract restoredContract = new Contract(sealedContract, tp);
+
+        assertTrue(restoredContract.check());
     }
 
     @Test
