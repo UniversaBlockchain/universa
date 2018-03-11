@@ -253,6 +253,9 @@ public class MainTest {
         contract.seal();
         assertTrue(contract.isOk());
 
+//        main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+//        mm.get(0).setUDPVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+
         client.register(contract.getPackedTransaction(), 15000);
         while (true) {
             rr = client.getState(contract.getId());
@@ -261,6 +264,8 @@ public class MainTest {
                 break;
         }
         assertEquals(rr.state,ItemState.APPROVED);
+//        main.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+//        mm.get(0).setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
 
 
 

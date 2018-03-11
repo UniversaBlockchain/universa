@@ -438,6 +438,7 @@ public class UDPAdapter extends DatagramAdapter {
 
     protected void checkUnsent() {
         List<Block> blocksToRemove;
+        List<Session> brokenSessions = new ArrayList<>();
         for(Session session : sessionsById.values()) {
             blocksToRemove = new ArrayList();
             for (Block block : session.sendingBlocksQueue) {
@@ -469,6 +470,33 @@ public class UDPAdapter extends DatagramAdapter {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+            }
+
+            if(blocksToRemove.size() > 0) {
+                report(getLabel(), () -> concatReportMessage("Session with remote ", session.remoteNodeId,
+                        " is possible broken, state: ",
+                        session.state,
+                        ", num sending: ", session.sendingBlocksQueue.size(),
+                        ", num waiting: ", session.waitingBlocksQueue.size()));
+
+                if(session.state != Session.EXCHANGING && session.state != Session.SESSION) {
+                    if(session.sendingBlocksQueue.isEmpty()) {
+
+                        report(getLabel(), () -> concatReportMessage("Session with remote ",
+                                session.remoteNodeId, " is broken, state: ",
+                                session.state,
+                                ", num sending: ", session.sendingBlocksQueue.size(),
+                                ", num waiting: ", session.waitingBlocksQueue.size(), ", will be removed"));
+                        brokenSessions.add(session);
+                    }
+                }
+            }
+        }
+
+
+        for(Session session : brokenSessions) {
+            if (sessionsById.containsKey(session.remoteNodeId)) {
+                sessionsById.remove(session.remoteNodeId);
             }
         }
     }
@@ -789,7 +817,7 @@ public class UDPAdapter extends DatagramAdapter {
 
                             // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
                             if(session.state == Session.HELLO) {
-                                if(session.remoteNodeId > myNodeInfo.getNumber()) {
+                                if(myNodeInfo.getNumber() < session.remoteNodeId ) {
                                     sendWelcome(session);
                                 }
                                 // else do nothing
@@ -799,6 +827,11 @@ public class UDPAdapter extends DatagramAdapter {
                             }
                         }
                     } else {
+                        report(getLabel(), () -> concatReportMessage("Block from unknown node ",
+                                block.senderNodeId, " was already obtained, will remove from obtained"));
+                        if(obtainedBlocks.containsKey(block.blockId)) {
+                            obtainedBlocks.remove(block.blockId);
+                        }
                         throw new EncryptionError(Errors.BAD_VALUE + ": datagram got from unknown node " + block.senderNodeId);
                     }
                     break;
@@ -821,7 +854,7 @@ public class UDPAdapter extends DatagramAdapter {
 
                             // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
                             if(session.state == Session.WELCOME) {
-                                if (session.remoteNodeId > myNodeInfo.getNumber()) {
+                                if (myNodeInfo.getNumber() < session.remoteNodeId ) {
                                     sendKeyRequest(session);
                                 }
                                 // else do nothing
@@ -872,7 +905,7 @@ public class UDPAdapter extends DatagramAdapter {
                                         report(getLabel(), () -> concatReportMessage("node sent handshake too, to ",
                                                 sessionRemoteNodeId, " state: ", sessionState), VerboseLevel.BASE);
                                         if(session.state == Session.KEY_REQ) {
-                                            if (session.remoteNodeId > myNodeInfo.getNumber()) {
+                                            if (myNodeInfo.getNumber() < session.remoteNodeId ) {
 
                                                 session.createSessionKey();
                                                 sendSessionKey(session);
@@ -1109,6 +1142,8 @@ public class UDPAdapter extends DatagramAdapter {
 
         public void downStateAndResend(Session session) throws InterruptedException, EncryptionError {
             switch (session.state) {
+                case Session.HELLO:
+                    sendHello(session);
                 case Session.WELCOME:
                     sendHello(session);
                     break;
