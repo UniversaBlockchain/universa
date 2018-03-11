@@ -32,6 +32,7 @@ import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import javax.xml.crypto.Data;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -1830,7 +1831,7 @@ public class MainTest {
         }
     }
 
-    protected void sendHello(NodeInfo myNodeInfo, NodeInfo destination, UDPAdapter udpAdapter) throws InterruptedException {
+    protected void sendHello(NodeInfo myNodeInfo, NodeInfo destination, UDPAdapter udpAdapter, DatagramSocket socket) throws InterruptedException {
 
 //        System.out.println(">> send froud from " + myNodeInfo.getNumber() + " to " + destination.getNumber());
         Binder binder = Binder.fromKeysValues(
@@ -1840,7 +1841,7 @@ public class MainTest {
                 new Random().nextInt(Integer.MAX_VALUE), UDPAdapter.PacketTypes.HELLO,
                 destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
                 Boss.pack(binder));
-        sendBlock(block, udpAdapter.getSocket());
+        sendBlock(block, socket);
     }
 
 
@@ -1848,7 +1849,7 @@ public class MainTest {
     public void udpDisruptionTest() throws Exception{
         List<Main> mm = new ArrayList<>();
         final int NODE_COUNT = 4;
-        final int PORT_BASE = 8124;
+        final int PORT_BASE = 12000;
 
         for (int i = 0; i < NODE_COUNT; i++) {
             mm.add(createMain("node" + (i + 1), false));
@@ -1867,15 +1868,10 @@ public class MainTest {
                 try {
                     NodeInfo source = mm.get(finalI).myInfo;
                     NodeInfo destination = mm.get(finalJ).myInfo;
+                    DatagramSocket socket = new DatagramSocket(PORT_BASE+ finalI*NODE_COUNT+finalJ);
 
                     while (alive) {
-                        if(new Random().nextInt(100000) == 0)
-                            sendHello(source,destination,mm.get(finalI).network.getUDPAdapter());
-//                            try {
-//                                Thread.currentThread().wait(50);
-//                            } catch (InterruptedException e) {
-//                                e.printStackTrace();
-//                            }
+                        sendHello(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
                     }
                 } catch (Exception e) {
                     System.out.println("runnable exception: " + e.toString());
