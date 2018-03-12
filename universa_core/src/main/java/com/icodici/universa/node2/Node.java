@@ -45,6 +45,13 @@ import java.util.function.Supplier;
  */
 public class Node {
 
+    public boolean isSanitating() {
+        return !recordsToSanitate.isEmpty();
+    }
+
+    private List<StateRecord> recordsToSanitate;
+
+
     private static LogPrinter log = new LogPrinter("NODE");
 
     private final Config config;
@@ -98,6 +105,11 @@ public class Node {
         config.updateConsensusConfig(network.getNodesCount());
 
         network.subscribe(myInfo, notification -> onNotification(notification));
+
+        recordsToSanitate = ledger.findUnfinished();
+        System.out.println("NODE " + myInfo.getNumber() + " UNFINSHED " + recordsToSanitate.size());
+        //TODO: resync PENDING* items and handle LOCKED* accordingly
+
     }
 
 //    /**

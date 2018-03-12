@@ -223,6 +223,11 @@ public class ClientHTTPServer extends BasicHttpServer {
         if (node == null) {
             throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
         }
+
+        if(node.isSanitating()) {
+            throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
+        }
+
     }
 
     static private Binder networkData = null;
