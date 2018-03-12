@@ -896,6 +896,9 @@ public class Node {
 
             processingState = ParcelProcessingState.INIT;
 
+            report(getLabel(), () -> concatReportMessage("parcel processor for: ", parcelId, " created"),
+                    DatagramAdapter.VerboseLevel.BASE);
+
             if (this.parcel != null)
                  executorService.submit(() -> parcelDownloaded(),
                          Node.this.toString() + " pp > parcel " + parcelId + " :: ParcelProcessor -> parcelDownloaded");
@@ -904,6 +907,9 @@ public class Node {
         //////////// processing section /////////////
 
         private void pulseProcessing() {
+            report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                    parcelId, " :: pulseProcessing, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 synchronized (mutex) {
                     if (processSchedule == null || processSchedule.isDone()) {
@@ -919,10 +925,16 @@ public class Node {
          * Then wait decision about payload contract.
          */
         private void process() {
+            report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                    parcelId, " :: process, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
                 processingState = ParcelProcessingState.PREPARING;
                 try {
+                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                            parcelId, " :: check payment, state ", processingState),
+                            DatagramAdapter.VerboseLevel.BASE);
                     // wait payment
                     if (paymentResult == null) {
                         processingState = ParcelProcessingState.PAYMENT_CHECKING;
@@ -938,8 +950,15 @@ public class Node {
                         paymentResult = paymentProcessor.getResult();
                     }
 
+                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                            parcelId, " :: payment checked, state ", processingState),
+                            DatagramAdapter.VerboseLevel.BASE);
                     // if payment is ok, wait payload
                     if (paymentResult.state.isApproved()) {
+
+                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                                parcelId, " :: check payload, state ", processingState),
+                                DatagramAdapter.VerboseLevel.BASE);
 
                         if (payloadResult == null) {
 
@@ -961,6 +980,9 @@ public class Node {
                             payloadResult = payloadProcessor.getResult();
                         } else {
                         }
+                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                                parcelId, " :: payload checked, state ", processingState),
+                                DatagramAdapter.VerboseLevel.BASE);
                     } else {
                         if(payloadProcessor != null) {
                             payloadProcessor.emergencyBreak();
@@ -970,6 +992,11 @@ public class Node {
 
                     // we got payment and payload result, can fire done event for waiters
                     processingState = ParcelProcessingState.FINISHED;
+
+                    report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                            parcelId, " :: processing finished, state ", processingState),
+                            DatagramAdapter.VerboseLevel.BASE);
+
                     doneEvent.fire();
 
                     // but we want to wait until paymentProcessor and payloadProcessor will be removed
@@ -1047,6 +1074,10 @@ public class Node {
         }
 
         private final void parcelDownloaded() {
+
+            report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                    parcelId, " :: parcelDownloaded, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 synchronized (parcelCache) {
                     parcelCache.put(parcel);
@@ -1194,6 +1225,9 @@ public class Node {
          * Remove parcel processor from the Node and stop all processes.
          */
         private final void removeSelf() {
+            report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                    parcelId, " :: removeSelf, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canRemoveSelf()) {
                 parcelProcessors.remove(parcelId);
 
@@ -1307,6 +1341,11 @@ public class Node {
 
             alreadyChecked = false;
 
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: created, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
+
             if (this.item != null)
                 executorService.submit(() -> itemDownloaded(),
                         Node.this.toString() + toString() + " :: ItemProcessor -> itemDownloaded");
@@ -1363,6 +1402,10 @@ public class Node {
         }
 
         private final void itemDownloaded() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: itemDownloaded, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 synchronized (cache) {
                     cache.put(item);
@@ -1385,6 +1428,10 @@ public class Node {
         //////////// check item section /////////////
 
         private final synchronized void checkItem() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: checkItem, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()
@@ -1556,6 +1603,10 @@ public class Node {
         }
 
         private final void commitCheckedAndStartPolling() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: commitCheckedAndStartPolling, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()) {
@@ -1642,6 +1693,10 @@ public class Node {
         //////////// polling section /////////////
 
         private final void pulseStartPolling() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: pulseStartPolling, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()) {
@@ -1755,6 +1810,10 @@ public class Node {
         }
 
         private final void approveAndCommit() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: approveAndCommit, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 // todo: fix logic to surely copy approving item dependency. e.g. download original or at least dependencies
                 // first we need to flag our state as approved
@@ -1846,6 +1905,10 @@ public class Node {
         }
 
         private void rollbackChanges(ItemState newState) {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: rollbackChanges, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             synchronized (ledgerRollbackLock) {
                 ledger.transaction(() -> {
                     synchronized (mutex) {
@@ -1890,6 +1953,10 @@ public class Node {
         //////////// sending new state section /////////////
 
         private final void pulseSendNewConsensus() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: pulseSendNewConsensus, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
                 processingState = ItemProcessingState.SENDING_CONSENSUS;
@@ -2116,6 +2183,10 @@ public class Node {
         }
 
         private final void broadcastMyState() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: broadcastMyState, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 Notification notification;
 
@@ -2136,6 +2207,10 @@ public class Node {
          * @param isCheckingForce
          */
         private void forceChecking(boolean isCheckingForce) {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: forceChecking, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             this.isCheckingForce = isCheckingForce;
             if(processingState.canContinue()) {
                 if (processingState == ItemProcessingState.DOWNLOADED) {
@@ -2147,6 +2222,10 @@ public class Node {
         }
 
         private void close() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: close, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
 
             if(processingState.canContinue())
                 processingState = ItemProcessingState.DONE;
@@ -2180,6 +2259,10 @@ public class Node {
          * Emergency break all processes and remove self.
          */
         private void emergencyBreak() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: emergencyBreak, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
 
             processingState = ItemProcessingState.EMERGENCY_BREAK;
 
@@ -2203,6 +2286,10 @@ public class Node {
         }
 
         private final void removeSelf() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: removeSelf, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canRemoveSelf()) {
                 processors.remove(itemId);
 
