@@ -646,7 +646,7 @@ public class Node {
                         // it is too old - client must manually check other nodes. For us it's unknown
                         item.addError(Errors.EXPIRED, "created_at", "too old");
                         report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
-                                "too old: ", r.getState()),
+                                "too old: "),
                                 DatagramAdapter.VerboseLevel.BASE);
                         return ItemResult.DISCARDED;
                     }
@@ -1127,18 +1127,18 @@ public class Node {
                     // we freeze payload checking until payment will be approved
                     x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
                     if (x instanceof ItemProcessor) {
+                        payloadProcessor = ((ItemProcessor) x);
                         report(getLabel(), () -> concatReportMessage("parcel processor for: ",
                                 parcelId, " :: payload is processing, item processing state: ",
-                                paymentProcessor.processingState, ", parcel processing state ", processingState,
-                                ", item state ", paymentProcessor.getState()),
+                                payloadProcessor.processingState, ", parcel processing state ", processingState,
+                                ", item state ", payloadProcessor.getState()),
                                 DatagramAdapter.VerboseLevel.BASE);
-                        payloadProcessor = ((ItemProcessor) x);
                     } else {
                         payloadResult = (ItemResult) x;
                         report(getLabel(), () -> concatReportMessage("parcel processor for: ",
                                 parcelId, " :: payload already processed, parcel processing state ",
                                 processingState,
-                                ", item state ", paymentResult.state),
+                                ", item state ", payloadResult.state),
                                 DatagramAdapter.VerboseLevel.BASE);
                     }
                 }
