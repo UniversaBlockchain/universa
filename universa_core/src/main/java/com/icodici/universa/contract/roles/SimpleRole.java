@@ -219,9 +219,8 @@ public class SimpleRole extends Role {
         // role can have keys - this should actually be refactored to let role
         // hold other roles and so on.
         List keyList = data.getList("keys", null);
+        keyRecords.clear();
         if (keyList != null) {
-            // TODO: the list of keys must be cleared before the condition is checked "if (keyList != null)". Otherwise, when the role is deserialized without the keys, the old role keys remain
-            keyRecords.clear();
             keyList.forEach(kr -> {
                 addKeyRecord(deserializer.deserialize(kr));
             });
