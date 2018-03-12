@@ -56,7 +56,7 @@ public class Node {
     private final ItemCache cache;
     private final ParcelCache parcelCache;
     private final ItemInformer informer = new ItemInformer();
-    protected int verboseLevel = DatagramAdapter.VerboseLevel.BASE;
+    protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
 
     private final ItemLock itemLock = new ItemLock();

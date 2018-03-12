@@ -2509,30 +2509,6 @@ public class CLIMainTest {
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
     }
 
-//    @Test
-    public void createAndRegisterTokenFromDSLRealNetwork() throws Exception {
-
-//        System.out.println(ZonedDateTime.now().plusMonths(9).toEpochSecond());
-        callMain2("--network");
-        Contract c1 = CLIMain.loadContract(rootPath + "tu.unicon");
-        System.out.println(c1.getId());
-        callMain("--probe", c1.getId().toBase64String());
-
-//        String tuContract = rootPath + "tu.unicon";
-//
-//        callMain2("-create", rootPath + "TokenDSLTemplateforTestnet.yml", "-name", rootPath + "realToken.unicon",
-//                "-k", rootPath + "keys/stepan_mamontov.private.unikey");
-//        assertTrue (new File(rootPath + "realToken.unicon").exists());
-//        callMain("-register", rootPath + "realToken.unicon",
-//                "-tu", tuContract,
-//                "-tutest",
-//                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
-//                "-k", rootPath + "keys/First.private.unikey",
-//                "-wait", "30000");
-        System.out.println(output);
-        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
-    }
-
     //////////////////////////////////////
 
 

@@ -997,6 +997,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public ZonedDateTime getCreatedAt() {
+        if(state.origin != null)
+            return state.createdAt;
         return definition.createdAt;
     }
 
