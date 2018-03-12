@@ -9,6 +9,8 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.db.DbPool;
+import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
@@ -38,6 +40,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.*;
 import java.nio.file.Path;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1858,5 +1862,114 @@ public class MainTest {
 
         assertEquals(rr.state, ItemState.APPROVED);
 
+    }
+
+
+
+
+    @Test
+    public void dbSanitationTest() throws Exception {
+
+        List<String> dbUrls = new ArrayList<>();
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+        dbUrls.stream().forEach(url -> {
+            try {
+                clearLedger(url);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        List<Main> mm = new ArrayList<>();
+        final int NODE_COUNT = 4;
+        PrivateKey myKey = TestKeys.privateKey(0);
+
+        for (int i = 0; i < NODE_COUNT; i++) {
+            Main m = createMain("node" + (i + 1), false);
+            m.config.getKeysWhiteList().add(myKey.getPublicKey());
+            mm.add(m);
+
+        }
+
+
+        ArrayList<Client> clients = new ArrayList<>();
+        ArrayList<Contract> contracts = new ArrayList<>();
+
+        Node.successThreshold = 100;
+        for(int i = 0; i < 100; i++) {
+            Client client = new Client(myKey, mm.get(i % NODE_COUNT).myInfo, null);
+            Contract contract = new Contract(myKey);
+            contract.seal();
+            client.register(contract.getPackedTransaction(), 15000);
+
+            ItemResult rr;
+            while (true) {
+                rr = client.getState(contract.getId());
+                if (!rr.state.isPending())
+                    break;
+            }
+            clients.add(client);
+            contracts.add(contract);
+            assertEquals(rr.state, ItemState.APPROVED);
+        }
+
+        Thread.sleep(2000);
+
+        //50 APPROVED CHILDREN #0-49
+        for(int i = 0; i < 50; i++) {
+            Node.successThreshold = 100-i;
+            Contract contract = contracts.get(i);
+            Client client = clients.get(i);
+            contract = contract.createRevision(myKey);
+            contract.setOwnerKeys(TestKeys.privateKey(1).getPublicKey());
+            Contract newContract = new Contract(myKey);
+            contract.addNewItems(newContract);
+            contract.seal();
+
+            client.register(contract.getPackedTransaction());
+            contracts.set(i,contract);
+        }
+        Node.successThreshold = 100;
+        Thread.sleep(2000);
+        //50 DECLINED CHILDREN #50-99
+        for(int i = 0; i < 50; i++) {
+            Node.successThreshold = 100-i;
+            Contract contract = contracts.get(i+50);
+            Client client = clients.get(i);
+            contract = contract.createRevision(myKey);
+            Contract newContract = new Contract(myKey);
+            contract.addNewItems(newContract);
+            contract.seal();
+
+            client.register(contract.getPackedTransaction());
+            contracts.set(i+50,contract);
+        }
+        mm.stream().forEach(m -> m.shutdown());
+        mm.clear();
+
+        for (int i = 0; i < NODE_COUNT; i++) {
+            Main m = createMainFromDb(dbUrls.get(i),false);
+            m.config.getKeysWhiteList().add(myKey.getPublicKey());
+            mm.add(m);
+
+        }
+
+        mm.stream().forEach(m -> m.shutdown());
+    }
+
+
+    private void clearLedger(String url) throws Exception {
+        Properties properties = new Properties();
+        try(DbPool dbPool = new DbPool(url, properties, 64)) {
+            try (PooledDb db = dbPool.db()) {
+                try (PreparedStatement statement = db.statement("delete from ledger;")
+                ) {
+                    statement.executeUpdate();
+                }
+            }
+        }
     }
 }

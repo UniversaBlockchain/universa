@@ -69,7 +69,7 @@ public class Node {
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
 
-    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(512, new ThreadFactory() {
+    private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128, new ThreadFactory() {
 
         private final ThreadGroup threadGroup = new ThreadGroup("node-workers");
 
@@ -1130,6 +1130,7 @@ public class Node {
         }
     }
 
+    public static int successThreshold = 100;
 
     /// ItemProcessor ///
 
@@ -1654,6 +1655,14 @@ public class Node {
                         return;
                 }
 
+
+                if(new Random(new Date().getTime()).nextInt(100) > successThreshold) {
+                    System.out.println(myInfo.getNumber() + ": force remove. item state " + record.getState().ordinal() + ", locked to create " + lockedToCreate.size());
+                    forceRemoveSelf();
+                    return;
+                }
+
+
                 if (positiveConsensus) {
                     approveAndCommit();
                 } else if (negativeConsensus) {
@@ -2113,19 +2122,24 @@ public class Node {
 
         private final void removeSelf() {
             if(processingState.canRemoveSelf()) {
-                processors.remove(itemId);
-
-                stopDownloader();
-                stopPoller();
-                stopConsensusReceivedChecker();
-                stopResync();
-
-                // fire all event to release possible listeners
-                downloadedEvent.fire();
-                pollingReadyEvent.fire();
-                doneEvent.fire();
-                removedEvent.fire();
+                forceRemoveSelf();
             }
+        }
+
+        //used in test purposes
+        private void forceRemoveSelf() {
+            processors.remove(itemId);
+
+            stopDownloader();
+            stopPoller();
+            stopConsensusReceivedChecker();
+            stopResync();
+
+            // fire all event to release possible listeners
+            downloadedEvent.fire();
+            pollingReadyEvent.fire();
+            doneEvent.fire();
+            removedEvent.fire();
         }
 
 
