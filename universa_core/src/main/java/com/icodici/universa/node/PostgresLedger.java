@@ -184,6 +184,23 @@ public class PostgresLedger implements Ledger {
         });
     }
 
+    @Override
+    public List<StateRecord> findUnfinished() {
+        return protect(() -> {
+            List<StateRecord> list = new LinkedList<>();
+                try (ResultSet rs = inPool(db -> db.queryRow("select * from sr_find_unfinished()" ))) {
+                    if(rs != null) {
+                        do {
+                            StateRecord record = new StateRecord(this, rs);
+                            list.add(record);
+                        } while (rs.next());
+                    }
+                }
+            return list;
+
+        });
+    }
+
     private <T> T protect(Callable<T> block) {
         try {
             return block.call();

@@ -19,6 +19,7 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
@@ -173,6 +174,11 @@ public class SqliteLedger implements Ledger {
     @Override
     public void removeNode(NodeInfo nodeInfo) {
 
+    }
+
+    @Override
+    public List<StateRecord> findUnfinished() {
+        return null;
     }
 
 

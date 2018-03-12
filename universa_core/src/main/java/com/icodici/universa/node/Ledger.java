@@ -166,4 +166,5 @@ public interface Ledger {
     void addNode(NodeInfo nodeInfo);
     void removeNode(NodeInfo nodeInfo);
 
+    List<StateRecord> findUnfinished();
 }
