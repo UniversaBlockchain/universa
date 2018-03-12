@@ -37,7 +37,7 @@ public class NetworkV2 extends Network {
 //    private Map<NodeInfo, Node> nodes = new HashMap<>();
 
     private static LogPrinter log = new LogPrinter("TLN");
-    protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
+    protected int verboseLevel = DatagramAdapter.VerboseLevel.BASE;
     private Consumer<Notification> consumer;
 
     public NetworkV2(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
