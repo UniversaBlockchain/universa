@@ -616,9 +616,14 @@ public class Node {
                                        boolean autoStart, boolean forceChecking, boolean ommitItemResult) {
         try {
             // first, let's lock to the item id:
+            report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId),
+                    DatagramAdapter.VerboseLevel.BASE);
             return itemLock.synchronize(itemId, (lock) -> {
                 ItemProcessor ip = processors.get(itemId);
                 if (ip != null) {
+                    report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
+                            "found item processor in state: ", ip.processingState),
+                            DatagramAdapter.VerboseLevel.BASE);
                     return ip;
                 }
 
@@ -628,6 +633,9 @@ public class Node {
                     // if it is not pending, it means it is already processed:
                     if (r != null && !r.isPending()) {
                         // it is, and we may still have it cached - we do not put it again:
+                        report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
+                                "found item result, and state is: ", r.getState()),
+                                DatagramAdapter.VerboseLevel.BASE);
                         return new ItemResult(r, cache.get(itemId) != null);
                     }
 
@@ -637,6 +645,9 @@ public class Node {
                             item.getCreatedAt().isBefore(ZonedDateTime.now().minus(config.getMaxItemCreationAge()))) {
                         // it is too old - client must manually check other nodes. For us it's unknown
                         item.addError(Errors.EXPIRED, "created_at", "too old");
+                        report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
+                                "too old: ", r.getState()),
+                                DatagramAdapter.VerboseLevel.BASE);
                         return ItemResult.DISCARDED;
                     }
                 }
@@ -648,6 +659,9 @@ public class Node {
                             cache.put(item);
                         }
                     }
+                    report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
+                            "nothing found, will create item processor"),
+                            DatagramAdapter.VerboseLevel.BASE);
                     ItemProcessor processor = new ItemProcessor(itemId, parcelId, item, lock, forceChecking);
                     processors.put(itemId, processor);
                     return processor;
@@ -926,7 +940,9 @@ public class Node {
          */
         private void process() {
             report(getLabel(), () -> concatReportMessage("parcel processor for: ",
-                    parcelId, " :: process, state ", processingState),
+                    parcelId, " :: process, payment ",
+                    payment.getId(), ", payload ",
+                    payload.getId(), ", state ", processingState),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
@@ -984,6 +1000,10 @@ public class Node {
                                 parcelId, " :: payload checked, state ", processingState),
                                 DatagramAdapter.VerboseLevel.BASE);
                     } else {
+                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                                parcelId, " :: payment was not approved: ", paymentResult.state,
+                                ", state ", processingState),
+                                DatagramAdapter.VerboseLevel.BASE);
                         if(payloadProcessor != null) {
                             payloadProcessor.emergencyBreak();
                             payloadProcessor.doneEvent.await();
@@ -1091,15 +1111,35 @@ public class Node {
                     Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
                     if (x instanceof ItemProcessor) {
                         paymentProcessor = ((ItemProcessor) x);
+                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                                parcelId, " :: payment is processing, item processing state: ",
+                                paymentProcessor.processingState, ", parcel processing state ", processingState,
+                                ", item state ", paymentProcessor.getState()),
+                                DatagramAdapter.VerboseLevel.BASE);
                     } else {
                         paymentResult = (ItemResult) x;
+                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                                parcelId, " :: payment already processed, parcel processing state ",
+                                processingState,
+                                ", item state ", paymentResult.state),
+                                DatagramAdapter.VerboseLevel.BASE);
                     }
                     // we freeze payload checking until payment will be approved
                     x = checkItemInternal(payload.getId(), parcelId, payload, true, false);
                     if (x instanceof ItemProcessor) {
+                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                                parcelId, " :: payload is processing, item processing state: ",
+                                paymentProcessor.processingState, ", parcel processing state ", processingState,
+                                ", item state ", paymentProcessor.getState()),
+                                DatagramAdapter.VerboseLevel.BASE);
                         payloadProcessor = ((ItemProcessor) x);
                     } else {
                         payloadResult = (ItemResult) x;
+                        report(getLabel(), () -> concatReportMessage("parcel processor for: ",
+                                parcelId, " :: payload already processed, parcel processing state ",
+                                processingState,
+                                ", item state ", paymentResult.state),
+                                DatagramAdapter.VerboseLevel.BASE);
                     }
                 }
 
