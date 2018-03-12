@@ -18,6 +18,7 @@ import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.biserializer.BiDeserializer;
@@ -55,6 +56,8 @@ public class Node {
     private final ItemCache cache;
     private final ParcelCache parcelCache;
     private final ItemInformer informer = new ItemInformer();
+    protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
+    protected String label = null;
 
     private final ItemLock itemLock = new ItemLock();
     private final ParcelLock parcelLock = new ParcelLock();
@@ -97,6 +100,8 @@ public class Node {
         parcelCache = new ParcelCache(config.getMaxCacheAge());
         config.updateConsensusConfig(network.getNodesCount());
 
+        label = "Node(" + myInfo.getNumber() + ") ";
+
         network.subscribe(myInfo, notification -> onNotification(notification));
     }
 
@@ -122,10 +127,20 @@ public class Node {
      */
     public @NonNull ItemResult registerItem(Approvable item) {
 
+        report(getLabel(), () -> concatReportMessage("register item: ", item.getId()),
+                DatagramAdapter.VerboseLevel.BASE);
         if (item.isInWhiteList(config.getKeysWhiteList())) {
             Object x = checkItemInternal(item.getId(), null, item, true, true);
-            return (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+
+            ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+            report(getLabel(), () -> concatReportMessage("item processor for: ", item.getId(),
+                    " was created, state is ", ir.state),
+                    DatagramAdapter.VerboseLevel.BASE);
+            return ir;
         }
+
+        report(getLabel(), () -> concatReportMessage("item: ", item.getId(), " not belongs to whitelist"),
+                DatagramAdapter.VerboseLevel.BASE);
 
         return ItemResult.UNDEFINED;
     }
@@ -142,11 +157,26 @@ public class Node {
      */
     public boolean registerParcel(Parcel parcel) {
 
+        report(getLabel(), () -> concatReportMessage("register parcel: ", parcel.getId()),
+                DatagramAdapter.VerboseLevel.BASE);
         try {
-            checkParcelInternal(parcel.getId(), parcel, true);
-            return true;
+            Object x = checkParcelInternal(parcel.getId(), parcel, true);
+            if (x instanceof ParcelProcessor) {
+                report(getLabel(), () -> concatReportMessage("parcel processor created for parcel: ",
+                        parcel.getId(), ", state is ", ((ParcelProcessor) x).processingState),
+                        DatagramAdapter.VerboseLevel.BASE);
+                return true;
+            }
+
+            report(getLabel(), () -> concatReportMessage("parcel processor hasn't created: ",
+                    parcel.getId()),
+                    DatagramAdapter.VerboseLevel.BASE);
+            return false;
 
         } catch (Exception e) {
+            report(getLabel(), () -> concatReportMessage("register parcel: ", parcel.getId(),
+                    "failed", e.getMessage()),
+                    DatagramAdapter.VerboseLevel.BASE);
             throw new RuntimeException("failed to process parcel", e);
         }
     }
@@ -160,8 +190,16 @@ public class Node {
      */
     public @NonNull ItemResult checkItem(HashId itemId) {
 
+        report(getLabel(), () -> concatReportMessage("check item processor state for item: ",
+                itemId),
+                DatagramAdapter.VerboseLevel.BASE);
         Object x = checkItemInternal(itemId);
         ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+
+        report(getLabel(), () -> concatReportMessage("item state for: ",
+                itemId, "is ", ir.state),
+                DatagramAdapter.VerboseLevel.BASE);
+
         ItemInformer.Record record = informer.takeFor(itemId);
         if (record != null)
             ir.errors = record.errorRecords;
@@ -178,10 +216,19 @@ public class Node {
      */
     public @NonNull ParcelProcessingState checkParcelProcessingState(HashId parcelId) {
 
+        report(getLabel(), () -> concatReportMessage("check parcel processor state for parcel: ",
+                parcelId),
+                DatagramAdapter.VerboseLevel.BASE);
         Object x = checkParcelInternal(parcelId);
         if (x instanceof ParcelProcessor) {
+            report(getLabel(), () -> concatReportMessage("parcel processor for parcel: ",
+                    parcelId, " state is ", ((ParcelProcessor) x).processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
             return ((ParcelProcessor) x).processingState;
         }
+        report(getLabel(), () -> concatReportMessage("parcel processor for parcel: ",
+                parcelId, " was not found"),
+                DatagramAdapter.VerboseLevel.BASE);
 
         return ParcelProcessingState.NOT_EXIST;
     }
@@ -666,6 +713,12 @@ public class Node {
     }
 
 
+    public String getLabel()
+    {
+        return label;
+    }
+
+
     /**
      * Get the cached item.
      *
@@ -731,6 +784,56 @@ public class Node {
         }
         executorService.shutdown();
         System.out.println(toString() + "shutdown finished");
+    }
+
+
+
+
+
+    public int getVerboseLevel() {
+        return verboseLevel;
+    }
+
+    public void setVerboseLevel(int level) {
+        this.verboseLevel = level;
+    }
+
+
+    public void report(String label, String message, int level)
+    {
+        if(level <= verboseLevel)
+            System.out.println(label + message);
+    }
+
+
+    public void report(String label, Callable<String> message, int level)
+    {
+        if(level <= verboseLevel)
+            try {
+                System.out.println(label + message.call());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+    }
+
+
+    public void report(String label, String message)
+    {
+        report(label, message, DatagramAdapter.VerboseLevel.DETAILED);
+    }
+
+
+    public void report(String label, Callable<String> message)
+    {
+        report(label, message, DatagramAdapter.VerboseLevel.DETAILED);
+    }
+
+    protected String concatReportMessage(Object... messages) {
+        String returnMessage = "";
+        for (Object m : messages) {
+            returnMessage += m != null ? m.toString() : "null";
+        }
+        return returnMessage;
     }
 
 

@@ -1160,6 +1160,7 @@ public class MainTest {
         System.out.println("---------- verbose nothing ---------------");
 
         assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
+        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.node.getVerboseLevel());
 
         Contract testContract = new Contract(myKey);
         testContract.seal();
@@ -1179,6 +1180,7 @@ public class MainTest {
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
         assertEquals (DatagramAdapter.VerboseLevel.BASE, main.network.getVerboseLevel());
+        assertEquals (DatagramAdapter.VerboseLevel.BASE, main.node.getVerboseLevel());
 
         main.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
         System.out.println("---------- verbose nothing ---------------");
@@ -1191,6 +1193,7 @@ public class MainTest {
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
         assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.network.getVerboseLevel());
+        assertEquals (DatagramAdapter.VerboseLevel.NOTHING, main.node.getVerboseLevel());
 
         mm.forEach(x -> x.shutdown());
     }

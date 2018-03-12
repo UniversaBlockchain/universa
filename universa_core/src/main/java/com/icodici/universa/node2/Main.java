@@ -255,6 +255,7 @@ public class Main {
      */
     public void setVerboseLevel(int level) {
         network.setVerboseLevel(level);
+        node.setVerboseLevel(level);
     }
 
     /**
