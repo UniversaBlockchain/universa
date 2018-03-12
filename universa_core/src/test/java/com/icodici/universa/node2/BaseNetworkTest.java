@@ -6,6 +6,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
@@ -1511,6 +1512,129 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, itemResult.state);
         assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
     }
+
+    @Test(timeout = 90000)
+    public void changeOwnerWithAddress() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        for (PrivateKey pk : martyPrivateKeys)
+            martyPublicKeys.add(pk.getPublicKey());
+
+        PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract c1 = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c1.addSignerKey(key);
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+        registerAndCheckApproved(c1);
+
+        //
+
+        KeyAddress stepaAddress = stepaPublicKeys.iterator().next().getShortAddress();
+        Contract anonOwnerContract = c1.createRevisionWithAddress(Arrays.asList(key));
+        anonOwnerContract.addSignerKey(key);
+        anonOwnerContract.setOwnerKey(stepaAddress);
+        anonOwnerContract.seal();
+        anonOwnerContract.check();
+        anonOwnerContract.traceErrors();
+        registerAndCheckApproved(anonOwnerContract);
+
+        assertTrue(anonOwnerContract.getOwner().getKeyAddresses().iterator().next().equals(stepaAddress));
+        assertEquals(0, anonOwnerContract.getOwner().getKeys().size());
+
+        //
+
+        Contract anonSignedContract = anonOwnerContract.createRevisionWithAddress(stepaPrivateKeys);
+        anonSignedContract.addSignerKeys(stepaPrivateKeys);
+        anonSignedContract.setOwnerKeys(martyPublicKeys);
+        anonSignedContract.seal();
+        anonSignedContract.check();
+        anonSignedContract.traceErrors();
+
+        Contract afterSend = imitateSendingTransactionToPartner(anonSignedContract);
+
+        registerAndCheckApproved(afterSend);
+
+        assertEquals(0, afterSend.getOwner().getKeyAddresses().size());
+        assertTrue(afterSend.getOwner().isAllowedForKeys(martyPublicKeys));
+
+        Contract anonPublishedContract = new Contract(anonSignedContract.getLastSealedBinary());
+        ItemResult itemResult = node.waitItem(anonPublishedContract.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+    }
+
+    @Test(timeout = 90000)
+    public void changeOwnerWithAddress2() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        for (PrivateKey pk : martyPrivateKeys)
+            martyPublicKeys.add(pk.getPublicKey());
+
+        PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract c1 = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
+        c1.addSignerKey(key);
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+        registerAndCheckApproved(c1);
+
+        //
+
+        KeyAddress stepaAddress = stepaPublicKeys.iterator().next().getLongAddress();
+        Contract anonOwnerContract = c1.createRevision(key);
+        anonOwnerContract.setOwnerKey(stepaAddress);
+        anonOwnerContract.seal();
+        anonOwnerContract.check();
+        anonOwnerContract.traceErrors();
+        registerAndCheckApproved(anonOwnerContract);
+
+        assertTrue(anonOwnerContract.getOwner().getKeyAddresses().iterator().next().equals(stepaAddress));
+        assertEquals(0, anonOwnerContract.getOwner().getKeys().size());
+
+        //
+
+        Contract anonSignedContract = anonOwnerContract.createRevision();
+        anonSignedContract.setOwnerKeys(martyPublicKeys);
+        anonSignedContract.setCreatorKeys(stepaAddress);
+        anonSignedContract.addSignerKey(stepaPrivateKeys.iterator().next());
+        anonSignedContract.seal();
+        anonSignedContract.check();
+        anonSignedContract.traceErrors();
+
+        Contract afterSend = imitateSendingTransactionToPartner(anonSignedContract);
+
+        registerAndCheckApproved(afterSend);
+
+        assertEquals(0, afterSend.getOwner().getKeyAddresses().size());
+        assertTrue(afterSend.getOwner().isAllowedForKeys(martyPublicKeys));
+
+        Contract anonPublishedContract = new Contract(anonSignedContract.getLastSealedBinary());
+        ItemResult itemResult = node.waitItem(anonPublishedContract.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+    }
+
 
     @Test(timeout = 90000)
     public void swapContractsViaTransactionAllGood() throws Exception {

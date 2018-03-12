@@ -7,10 +7,7 @@
 
 package com.icodici.universa.contract;
 
-import com.icodici.crypto.AbstractKey;
-import com.icodici.crypto.EncryptionError;
-import com.icodici.crypto.PrivateKey;
-import com.icodici.crypto.PublicKey;
+import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
@@ -1392,6 +1389,28 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 aids.add(AnonymousId.fromBytes(((AbstractKey) k).createAnonymousId()));
             else if (k instanceof AnonymousId)
                 aids.add((AnonymousId)k);
+            else
+                returnNull.set(true);
+        });
+        newRevision.setCreatorKeys(aids);
+        if (returnNull.get())
+            return null;
+        return newRevision;
+    }
+
+    public synchronized Contract createRevisionWithAddress(Collection<?> keys) {
+        return createRevisionWithAddress(keys, null);
+    }
+
+    public synchronized Contract createRevisionWithAddress(Collection<?> keys, Transactional transactional) {
+        Contract newRevision = createRevision(transactional);
+        Set<KeyAddress> aids = new HashSet<>();
+        AtomicBoolean returnNull = new AtomicBoolean(false);
+        keys.forEach(k -> {
+            if (k instanceof AbstractKey)
+                aids.add(((AbstractKey) k).getPublicKey().getShortAddress());
+            else if (k instanceof KeyAddress)
+                aids.add((KeyAddress)k);
             else
                 returnNull.set(true);
         });
