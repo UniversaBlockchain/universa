@@ -1317,8 +1317,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(newLamborghini.getOwner().isAllowedForKeys(martyPublicKeys));
     }
 
-    @Test(timeout = 90000)
-    public void createTwoSignedContractAllGood() throws Exception {
+    private void checkCreateTwoSignedContractAllGood(boolean newRev) throws Exception {
         if(node == null) {
             System.out.println("network not inited");
             return;
@@ -1341,9 +1340,11 @@ public class BaseNetworkTest extends TestCase {
         baseContract.seal();
 
         System.out.println("Base contract contract is valid: " + baseContract.isOk());
-        registerAndCheckApproved(baseContract);
 
-        Contract twoSignContract = ContractsService.createTwoSignedContract(baseContract, martyPrivateKeys, stepaPublicKeys, true);
+        if (newRev)
+            registerAndCheckApproved(baseContract);
+
+        Contract twoSignContract = ContractsService.createTwoSignedContract(baseContract, martyPrivateKeys, stepaPublicKeys, newRev);
 
         twoSignContract = imitateSendingTransactionToPartner(twoSignContract);
 
@@ -1365,6 +1366,12 @@ public class BaseNetworkTest extends TestCase {
         twoSignContract.traceErrors();
         System.out.println("Contract with two signature is valid: " + twoSignContract.isOk());
         registerAndCheckApproved(twoSignContract);
+    }
+
+    @Test(timeout = 90000)
+    public void createTwoSignedContractAllGood() throws Exception {
+        checkCreateTwoSignedContractAllGood(false);
+        checkCreateTwoSignedContractAllGood(true);
     }
 
     @Test(timeout = 90000)
