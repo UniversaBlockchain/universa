@@ -1547,14 +1547,17 @@ public class BaseNetworkTest extends TestCase {
         anonOwnerContract.seal();
         anonOwnerContract.check();
         anonOwnerContract.traceErrors();
-        registerAndCheckApproved(anonOwnerContract);
 
-        assertTrue(anonOwnerContract.getOwner().getKeyAddresses().iterator().next().equals(stepaAddress));
-        assertEquals(0, anonOwnerContract.getOwner().getKeys().size());
+        Contract anonAfterSend = imitateSendingTransactionToPartner(anonOwnerContract);
+
+        registerAndCheckApproved(anonAfterSend);
+
+        assertTrue(anonAfterSend.getOwner().getKeyAddresses().iterator().next().equals(stepaAddress));
+        assertEquals(0, anonAfterSend.getOwner().getKeys().size());
 
         //
 
-        Contract anonSignedContract = anonOwnerContract.createRevisionWithAddress(stepaPrivateKeys);
+        Contract anonSignedContract = anonAfterSend.createRevisionWithAddress(stepaPrivateKeys);
         anonSignedContract.addSignerKeys(stepaPrivateKeys);
         anonSignedContract.setOwnerKeys(martyPublicKeys);
         anonSignedContract.seal();
