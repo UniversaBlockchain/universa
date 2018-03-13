@@ -234,8 +234,8 @@ public class SimpleRole extends Role {
             }
         }
         List keyAddrList = data.getList("addresses", null);
+        keyAddresses.clear();
         if (keyAddrList != null) {
-            keyAddresses.clear();
             for (Object keyAddr :  keyAddrList) {
                 KeyAddress ka = deserializer.deserialize(keyAddr);
                 keyAddresses.add(ka);
