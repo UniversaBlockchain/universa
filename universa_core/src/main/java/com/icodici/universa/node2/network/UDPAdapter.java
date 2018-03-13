@@ -94,7 +94,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     @Override
-    public void send(NodeInfo destination, byte[] payload) throws EncryptionError, InterruptedException {
+    public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send to ", destination.getNumber(),
                 ", is shutting down: ", isShuttingDown), VerboseLevel.BASE);
 
@@ -267,7 +267,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected void sendAsDataBlock(Block rawDataBlock, Session session) throws EncryptionError, InterruptedException {
+    protected void sendAsDataBlock(Block rawDataBlock, Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send data to ", session.remoteNodeId), VerboseLevel.BASE);
         report(getLabel(), () -> concatReportMessage("sessionKey is ", session.sessionKey.hashCode(),
                 " for ", session.remoteNodeId));
@@ -276,24 +276,39 @@ public class UDPAdapter extends DatagramAdapter {
         report(getLabel(), () -> concatReportMessage("sendAsDataBlock: Crc32 id is ",
                 Arrays.equals(rawDataBlock.crc32, crc32Local)));
 
-        byte[] encrypted = session.sessionKey.etaEncrypt(rawDataBlock.payload.clone());
+        try {
+            byte[] encrypted = session.sessionKey.etaEncrypt(rawDataBlock.payload.clone());
 
-        Binder binder = Binder.fromKeysValues(
-                "data", encrypted,
-                "crc32", rawDataBlock.crc32
-        );
-        byte[] packedData = Boss.pack(binder);
-        report(getLabel(), () -> concatReportMessage(" data size: ", rawDataBlock.payload.length,
-                " for ", session.remoteNodeId));
-        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
-                                rawDataBlock.blockId, PacketTypes.DATA,
-                                session.address, session.port,
-                                packedData);
-        sendBlock(block, session);
+            Binder binder = Binder.fromKeysValues(
+                    "data", encrypted,
+                    "crc32", rawDataBlock.crc32
+            );
+            byte[] packedData = Boss.pack(binder);
+            report(getLabel(), () -> concatReportMessage(" data size: ", rawDataBlock.payload.length,
+                    " for ", session.remoteNodeId));
+            Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                    rawDataBlock.blockId, PacketTypes.DATA,
+                    session.address, session.port,
+                    packedData);
+            sendBlock(block, session);
+        } catch (EncryptionError encryptionError) {
+            callErrorCallbacks("[sendAsDataBlock] EncryptionError in node "
+                    + myNodeInfo.getNumber() + ": " + encryptionError.getMessage());
+            if (sessionsById.containsKey(session.remoteNodeId)) {
+                sessionsById.remove(session.remoteNodeId);
+            }
+            Session newSession = getOrCreateSession(session.remoteNodeId,
+                    session.address,
+                    session.port);
+            newSession.publicKey = session.publicKey;
+            newSession.remoteNodeId = session.remoteNodeId;
+            newSession.addBlockToWaitingQueue(rawDataBlock);
+            sendHello(newSession);
+        }
     }
 
 
-    protected void sendHello(Session session) throws EncryptionError, InterruptedException {
+    protected void sendHello(Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send hello to ", session.remoteNodeId), VerboseLevel.BASE);
 
         session.state = Session.HELLO;
@@ -340,7 +355,21 @@ public class UDPAdapter extends DatagramAdapter {
                                     Boss.pack(binder));
             sendBlock(block, session);
         } catch (EncryptionError encryptionError) {
-            encryptionError.printStackTrace();
+            callErrorCallbacks("[sendKeyRequest] EncryptionError in node "
+                    + myNodeInfo.getNumber() + ": " + encryptionError.getMessage());
+//            encryptionError.printStackTrace();
+            if (sessionsById.containsKey(session.remoteNodeId)) {
+                sessionsById.remove(session.remoteNodeId);
+            }
+            Session newSession = getOrCreateSession(session.remoteNodeId,
+                    session.address,
+                    session.port);
+            newSession.publicKey = session.publicKey;
+            newSession.remoteNodeId = session.remoteNodeId;
+            for (Block b : session.waitingBlocksQueue) {
+                newSession.addBlockToWaitingQueue(b);
+            }
+            sendHello(newSession);
         }
     }
 
@@ -368,7 +397,22 @@ public class UDPAdapter extends DatagramAdapter {
             sendBlock(block, session);
             session.state = Session.SESSION;
         } catch (EncryptionError encryptionError) {
-            encryptionError.printStackTrace();
+            callErrorCallbacks("[sendSessionKey] EncryptionError in node "
+                    + myNodeInfo.getNumber() + ": " + encryptionError.getMessage());
+
+//            encryptionError.printStackTrace();
+            if (sessionsById.containsKey(session.remoteNodeId)) {
+                sessionsById.remove(session.remoteNodeId);
+            }
+            Session newSession = getOrCreateSession(session.remoteNodeId,
+                    session.address,
+                    session.port);
+            newSession.publicKey = session.publicKey;
+            newSession.remoteNodeId = session.remoteNodeId;
+            for (Block b : session.waitingBlocksQueue) {
+                newSession.addBlockToWaitingQueue(b);
+            }
+            sendHello(newSession);
         }
     }
 
@@ -407,7 +451,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected Session getOrCreateSession(int remoteId, InetAddress address, int port) throws EncryptionError {
+    protected Session getOrCreateSession(int remoteId, InetAddress address, int port) {
 
         if(sessionsById.containsKey(remoteId)) {
             Session s = sessionsById.get(remoteId);
@@ -539,7 +583,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected void sendWaitingBlocks(Session session) throws EncryptionError {
+    protected void sendWaitingBlocks(Session session) {
         if (session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
             report(getLabel(), () -> concatReportMessage("waiting blocks num ", session.waitingBlocksQueue.size()));
             try {
@@ -1117,7 +1161,7 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
-        public void answerAckOrNack(Session session, Block block, InetAddress address, int port) throws InterruptedException, EncryptionError {
+        public void answerAckOrNack(Session session, Block block, InetAddress address, int port) throws InterruptedException {
             if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                 sendAck(session, block.blockId);
             } else {
@@ -1140,7 +1184,7 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
-        public void downStateAndResend(Session session) throws InterruptedException, EncryptionError {
+        public void downStateAndResend(Session session) throws InterruptedException {
             switch (session.state) {
                 case Session.HELLO:
                     sendHello(session);
@@ -1408,7 +1452,7 @@ public class UDPAdapter extends DatagramAdapter {
         private BlockingQueue<Packet> sendingPacketsQueue = new LinkedBlockingQueue<>();
 
 
-        Session(InetAddress address, int port) throws EncryptionError {
+        Session(InetAddress address, int port) {
             this.address = address;
             this.port = port;
             localNonce = Do.randomBytes(64);
