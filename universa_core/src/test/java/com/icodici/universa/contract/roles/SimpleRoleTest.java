@@ -8,6 +8,7 @@
 package com.icodici.universa.contract.roles;
 
 import com.icodici.crypto.EncryptionError;
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.KeyRecord;
@@ -16,9 +17,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -56,4 +55,35 @@ public class SimpleRoleTest {
         keys.forEach(k->assertTrue(kk.contains(k.getPublicKey())));
     }
 
+    @Test
+    public void testAddressRole() throws Exception {
+        Set<KeyAddress> keyAddresses = new HashSet<>();
+        keyAddresses.add(new KeyAddress(keys.get(0).getPublicKey(), 0, true));
+
+        SimpleRole sr = new SimpleRole("tr1", keyAddresses);
+
+        Binder serialized = DefaultBiMapper.serialize(sr);
+        Role r1 = DefaultBiMapper.deserialize(serialized);
+
+        Set<PublicKey> pubKeys = new HashSet<>();
+        pubKeys.add(keys.get(0).getPublicKey());
+
+        assertTrue(sr.isAllowedForKeys(pubKeys));
+        assertTrue(r1.isAllowedForKeys(pubKeys));
+
+        assertEquals(sr, r1);
+    }
+
+    @Test
+    public void testCloneAsAddressRole() throws Exception {
+        Set<KeyAddress> keyAddresses = new HashSet<>();
+        keyAddresses.add(new KeyAddress(keys.get(0).getPublicKey(), 0, true));
+
+        SimpleRole sr = new SimpleRole("tr1", keyAddresses);
+
+        SimpleRole r1 = sr.cloneAs("tr2");
+        SimpleRole r2 = r1.cloneAs("tr1");
+
+        assertEquals(sr, r2);
+    }
 }

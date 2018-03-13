@@ -9,6 +9,7 @@
 package com.icodici.universa.contract.roles;
 
 import com.icodici.crypto.AbstractKey;
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
@@ -157,6 +158,13 @@ public class ListRole extends Role {
     public Set<AnonymousId> getAnonymousIds() {
         return this.roles.stream()
                 .flatMap(role -> role.getAnonymousIds().stream())
+                .collect(Collectors.toSet());
+    }
+
+    @Override
+    public Set<KeyAddress> getKeyAddresses() {
+        return this.roles.stream()
+                .flatMap(role -> role.getKeyAddresses().stream())
                 .collect(Collectors.toSet());
     }
 

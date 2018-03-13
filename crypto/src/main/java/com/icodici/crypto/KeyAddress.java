@@ -208,21 +208,36 @@ public class KeyAddress implements KeyMatcher {
         }
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof KeyAddress) {
+            KeyAddress ka = (KeyAddress) obj;
+
+            return Arrays.equals(ka.getPacked(), getPacked());
+        }
+        return super.equals(obj);
+    }
+
     static {
         DefaultBiMapper.registerAdapter(KeyAddress.class, new BiAdapter() {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
-                return Binder.of("uaddress", ((KeyAddress)object).getPacked());
+                return Binder.of("uaddress", serializer.serialize(((KeyAddress)object).getPacked())); //TODO: serialization is necessary
             }
 
             @Override
             public Object deserialize(Binder binder, BiDeserializer deserializer) {
                 try {
-                    return new KeyAddress(binder.getBinary("uaddress"));
+                    return new KeyAddress(binder.getBinaryOrThrow("uaddress"));
                 } catch (IllegalAddressException e) {
                     e.printStackTrace();
                     throw new IllegalArgumentException("can't reconstruct KeyAddress");
                 }
+            }
+
+            @Override
+            public String typeName() {
+                return "KeyAddress";
             }
         });
     }

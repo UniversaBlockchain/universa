@@ -486,8 +486,10 @@ public class ContractsService {
 
         Contract twoSignContract = BaseContract;
 
-        if (createNewRevision)
+        if (createNewRevision) {
             twoSignContract = BaseContract.createRevision(fromKeys);
+            twoSignContract.getKeysToSignWith().clear();
+        }
 
         SimpleRole creatorFrom = new SimpleRole("creator");
         for (PrivateKey k : fromKeys) {
@@ -500,9 +502,6 @@ public class ContractsService {
             KeyRecord kr = new KeyRecord(k);
             ownerTo.addKeyRecord(kr);
         }
-
-        twoSignContract.registerRole(creatorFrom);
-        twoSignContract.createRole("creator", creatorFrom);
 
         twoSignContract.createTransactionalSection();
         twoSignContract.getTransactional().setId(HashId.createRandom().toBase64String());

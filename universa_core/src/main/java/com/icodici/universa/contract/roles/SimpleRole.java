@@ -10,6 +10,7 @@ package com.icodici.universa.contract.roles;
 import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.BiDeserializer;
@@ -20,6 +21,7 @@ import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
+import java.security.Key;
 import java.util.*;
 
 /**
@@ -33,6 +35,7 @@ public class SimpleRole extends Role {
 
     private final Map<PublicKey, KeyRecord> keyRecords = new HashMap<>();
     private final Set<AnonymousId> anonymousIds = new HashSet<>();
+    private final Set<KeyAddress> keyAddresses = new HashSet<>();
 
     public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
@@ -44,7 +47,6 @@ public class SimpleRole extends Role {
     public SimpleRole(String name) {
         super(name);
     }
-
 
     public SimpleRole(String name, @NonNull Collection records) {
         super(name);
@@ -59,11 +61,14 @@ public class SimpleRole extends Role {
                 anonId = (AnonymousId) x;
             else if (x instanceof PrivateKey)
                 kr = new KeyRecord(((PrivateKey) x).getPublicKey());
+            else if (x instanceof KeyAddress)
+                keyAddresses.add((KeyAddress) x);
             else
                 throw new IllegalArgumentException("Cant create KeyRecord from " + x);
+
             if (anonId != null)
                 anonymousIds.add(anonId);
-            else
+            else if (kr != null)
                 keyRecords.put(kr.getPublicKey(), kr);
         });
     }
@@ -98,6 +103,11 @@ public class SimpleRole extends Role {
         return anonymousIds;
     }
 
+    @Override
+    public Set<KeyAddress> getKeyAddresses() {
+        return keyAddresses;
+    }
+
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         // any will go logic
         return keys.stream().anyMatch(k -> {
@@ -109,12 +119,19 @@ public class SimpleRole extends Role {
                 }
             });
             boolean anyMatch2 = keyRecords.containsKey(k.getPublicKey());
-            return anyMatch1 || anyMatch2;
+            boolean anyMatch3 = keyAddresses.stream().anyMatch(address -> {
+                try {
+                    return k.isMatchingKeyAddress(address);
+                } catch (IllegalArgumentException e) {
+                    return false;
+                }
+            });
+            return anyMatch1 || anyMatch2 || anyMatch3;
         });
     }
 
     public boolean isValid() {
-        return !keyRecords.isEmpty() || !anonymousIds.isEmpty();
+        return !keyRecords.isEmpty() || !anonymousIds.isEmpty() || !keyAddresses.isEmpty();
     }
 
     @Override
@@ -123,8 +140,45 @@ public class SimpleRole extends Role {
             boolean a = ((SimpleRole) obj).getName().equals(getName());
             boolean b = ((SimpleRole) obj).equalKeys(this);
             boolean c = ((SimpleRole) obj).anonymousIds.containsAll(this.anonymousIds);
-            return a && b && c;
+            boolean d = this.anonymousIds.containsAll(((SimpleRole) obj).anonymousIds); //TODO When comparing the roles (method equals), we used a comparison of the set of anonymous identifiers only in one direction.
+
+            if (!(a && b && c && d))
+                return false;
+
+            boolean e = true;
+            for (KeyAddress ka1: this.getKeyAddresses()) {
+                e = false;
+                for (KeyAddress ka2: ((SimpleRole) obj).getKeyAddresses()) {
+                    if (ka1.equals(ka2)) {
+                        e = true;
+                        break;
+                    }
+                }
+
+                if (!e)
+                    break;
+            }
+
+            if (!e)
+                return false;
+
+            e = true;
+            for (KeyAddress ka1: ((SimpleRole) obj).getKeyAddresses()) {
+                e = false;
+                for (KeyAddress ka2: this.getKeyAddresses()) {
+                    if (ka1.equals(ka2)) {
+                        e = true;
+                        break;
+                    }
+                }
+
+                if (!e)
+                    break;
+            }
+
+            return e;
         }
+
         return false;
     }
 
@@ -145,6 +199,8 @@ public class SimpleRole extends Role {
         SimpleRole r = new SimpleRole(name);
         keyRecords.values().forEach(kr -> r.addKeyRecord(kr));
         anonymousIds.forEach(aid -> r.anonymousIds.add(aid));
+        keyAddresses.forEach(keyAddr -> r.keyAddresses.add(keyAddr));
+
         return r;
     }
 
@@ -163,12 +219,11 @@ public class SimpleRole extends Role {
         // role can have keys - this should actually be refactored to let role
         // hold other roles and so on.
         List keyList = data.getList("keys", null);
+        keyRecords.clear();
         if (keyList != null) {
-            keyRecords.clear();
             keyList.forEach(kr -> {
                 addKeyRecord(deserializer.deserialize(kr));
             });
-
         }
         List anonIdList = data.getList("anonIds", null);
         anonymousIds.clear();
@@ -177,14 +232,22 @@ public class SimpleRole extends Role {
                 anonymousIds.add( deserializer.deserialize(aid));
             }
         }
+        List keyAddrList = data.getList("addresses", null);
+        keyAddresses.clear();
+        if (keyAddrList != null) {
+            for (Object keyAddr :  keyAddrList) {
+                keyAddresses.add(deserializer.deserialize(keyAddr));
+            }
+        }
     }
 
     @Override
     public Binder serialize(BiSerializer s) {
         return super.serialize(s).putAll(
-                        "keys", s.serialize(keyRecords.values()),
-                        "anonIds", s.serialize(anonymousIds)
-                );
+                "keys", s.serialize(keyRecords.values()),
+                "anonIds", s.serialize(anonymousIds),
+                "addresses", s.serialize(keyAddresses)
+        );
     }
 
     @Override
