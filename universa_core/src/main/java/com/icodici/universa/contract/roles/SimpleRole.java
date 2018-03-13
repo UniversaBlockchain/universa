@@ -229,14 +229,16 @@ public class SimpleRole extends Role {
         anonymousIds.clear();
         if (anonIdList != null) {
             for (Object aid : anonIdList) {
+                // todo cast to AnonymousId directly
                 anonymousIds.add( deserializer.deserialize(aid));
             }
         }
         List keyAddrList = data.getList("addresses", null);
-        keyAddresses.clear();
         if (keyAddrList != null) {
+            new KeyAddress();
             for (Object keyAddr :  keyAddrList) {
-                keyAddresses.add(deserializer.deserialize(keyAddr));
+                KeyAddress ka = deserializer.deserialize(keyAddr);
+                keyAddresses.add(ka);
             }
         }
     }

@@ -38,6 +38,12 @@ public class KeyAddress implements KeyMatcher {
     private byte[] packed;
     private int typeMark;
 
+
+    public KeyAddress() {
+        keyMask = 0;
+        keyDigest = null;
+    }
+
     /**
      * Build new KeyAddrAddress for a given key
      *

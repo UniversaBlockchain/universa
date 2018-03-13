@@ -2407,6 +2407,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Config.forceInit(PublicKey.class);
         Config.forceInit(PrivateKey.class);
         Config.forceInit(KeyRecord.class);
+        Config.forceInit(KeyAddress.class);
 
         DefaultBiMapper.registerClass(Contract.class);
         DefaultBiMapper.registerClass(ChangeNumberPermission.class);
