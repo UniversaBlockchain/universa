@@ -180,6 +180,21 @@ public class TransactionPack implements BiSerializable {
             Quantiser quantiser = new Quantiser();
             quantiser.reset(Contract.getTestQuantaLimit());
 
+            List<Object> keysList = deserializer.deserializeCollection(data.getList("keys", new ArrayList<>()));
+
+            keysForPack = new HashSet<>();
+            if(keysList != null) {
+                for (Object x : keysList) {
+                    if (x instanceof Bytes)
+                        x = ((Bytes) x).toArray();
+                    if (x instanceof byte[]) {
+                        keysForPack.add(new PublicKey((byte[]) x));
+                    } else {
+                        throw new IllegalArgumentException("unsupported key object: " + x.getClass().getName());
+                    }
+                }
+            }
+
             List<Bytes> referenceBytesList = deserializer.deserializeCollection(
                     data.getListOrThrow("references")
             );
@@ -249,21 +264,6 @@ public class TransactionPack implements BiSerializable {
                     Contract c = new Contract(b.toArray(), this);
                     quantiser.addWorkCostFrom(c.getQuantiser());
                     references.put(c.getId(), c);
-                }
-            }
-
-            List<Object> keysList = deserializer.deserializeCollection(data.getList("keys", new ArrayList<>()));
-
-            keysForPack = new HashSet<>();
-            if(keysList != null) {
-                for (Object x : keysList) {
-                    if (x instanceof Bytes)
-                        x = ((Bytes) x).toArray();
-                    if (x instanceof byte[]) {
-                        keysForPack.add(new PublicKey((byte[]) x));
-                    } else {
-                        throw new IllegalArgumentException("unsupported key object: " + x.getClass().getName());
-                    }
                 }
             }
 
