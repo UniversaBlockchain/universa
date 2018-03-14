@@ -399,7 +399,7 @@ public class Client {
         try {
             return e.execute();
         } catch (Exception ex) {
-            ex.printStackTrace();
+            //ex.printStackTrace();
             throw new ClientError(ex);
         }
     }

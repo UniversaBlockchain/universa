@@ -30,6 +30,7 @@ public class ItemCache {
             } catch (InterruptedException e) {
             }
         });
+        cleaner.setName("item-cache-cleaner");
         cleaner.setDaemon(true);
         cleaner.setPriority(Thread.MIN_PRIORITY);
         cleaner.start();

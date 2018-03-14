@@ -11,7 +11,9 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.biserializer.BiSerializer;
@@ -22,6 +24,7 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
 
@@ -185,20 +188,50 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public List<StateRecord> findUnfinished() {
+    public Map<HashId,StateRecord> findUnfinished() {
         return protect(() -> {
-            List<StateRecord> list = new LinkedList<>();
+            HashMap<HashId,StateRecord> map = new HashMap<>();
                 try (ResultSet rs = inPool(db -> db.queryRow("select * from sr_find_unfinished()" ))) {
                     if(rs != null) {
                         do {
                             StateRecord record = new StateRecord(this, rs);
-                            list.add(record);
+                            map.put(record.getId(),record);
                         } while (rs.next());
                     }
                 }
-            return list;
+            return map;
 
         });
+    }
+
+    @Override
+    public Approvable getItem(final StateRecord record) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("select * from items where id = ?", record.getRecordId()))) {
+                if(rs == null)
+                    return null;
+                return Contract.fromPackedTransaction(rs.getBytes("packed"));
+            }
+        });
+    }
+
+    @Override
+    public void putItem(StateRecord record, Approvable item, Instant keepTill) {
+        try (PooledDb db = dbPool.db()) {
+                try (
+                        PreparedStatement statement =
+                                db.statement(
+                                        "insert into items(id,packed,keepTill) values(?,?,?);"
+                                )
+                ) {
+                    statement.setLong(1, record.getRecordId());
+                    statement.setBytes(2, ((Contract) item).getPackedTransaction());
+                    statement.setLong(3, keepTill.getEpochSecond());
+                    statement.executeUpdate();
+                }
+        } catch (SQLException se) {
+            throw new Failure("item save failed:" + se);
+        }
     }
 
     private <T> T protect(Callable<T> block) {
@@ -275,6 +308,7 @@ public class PostgresLedger implements Ledger {
         }
         protect(() -> {
             inPool(d -> {
+                d.update("DELETE FROM items WHERE id = ?", recordId);
                 d.update("DELETE FROM ledger WHERE id = ?", recordId);
                 return null;
             });

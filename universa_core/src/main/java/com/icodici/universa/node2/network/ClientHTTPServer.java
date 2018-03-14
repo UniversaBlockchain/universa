@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 public class ClientHTTPServer extends BasicHttpServer {
 
@@ -143,7 +144,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
-        checkNode();
+        checkNode(session);
         try {
             //System.out.println("Request to approve, package size: " + params.getBinaryOrThrow("packedItem").length);
             return Binder.of(
@@ -159,7 +160,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder approveParcel(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
-        checkNode();
+        checkNode(session);
         try {
     //        System.out.println("Request to approve parcel, package size: " + params.getBinaryOrThrow("packedItem").length);
             return Binder.of(
@@ -182,7 +183,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         params.getListOrThrow("packedItems").forEach((item) ->
                 es.execute(() -> {
                     try {
-                        checkNode();
+                        checkNode(session);
                         System.out.println("Request to start registration #"+n+":"+k.incrementAndGet());
                         node.registerItem(Contract.fromPackedTransaction(((Bytes)item).toArray()));
                     } catch (Exception e) {
@@ -194,7 +195,8 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder getState(Binder params, Session session) throws CommandFailedException {
-        checkNode();
+
+        checkNode(session);
         try {
             return Binder.of("itemResult",
                     node.checkItem((HashId) params.get("itemId")));
@@ -207,7 +209,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder getParcelProcessingState(Binder params, Session session) throws CommandFailedException {
-        checkNode();
+        checkNode(session);
         try {
             return Binder.of("processingState",
                     node.checkParcelProcessingState((HashId) params.get("parcelId")));
@@ -219,12 +221,16 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
-    private void checkNode() throws CommandFailedException {
+    private void checkNode(Session session) throws CommandFailedException {
         if (node == null) {
             throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
         }
 
         if(node.isSanitating()) {
+            //WHILE NODE IS SANITATING IT COMMUNICATES WITH THE OTHER NODES ONLY
+            if(netConfig.toList().stream().anyMatch(nodeInfo -> nodeInfo.getPublicKey().equals(session.getPublicKey())))
+                return;
+
             throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
         }
 

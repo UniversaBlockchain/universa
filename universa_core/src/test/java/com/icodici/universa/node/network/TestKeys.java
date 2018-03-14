@@ -23,7 +23,7 @@ public class TestKeys {
     }
 
 
-    static String binaryKeys[] = new String[]{
+    public static String binaryKeys[] = new String[]{
             "JgAcAQABvIDxdLhF++STfUSbcnF7BQD2FsByvNaznuyf3zerGbsNuMgPjc45vnQIlCdGYUADNv/ZD9ZXMVJ7sqU7tuGDwW1Y9KItOpOBfojs/1Ke650543wuvWamkMpojVQpXfO8NmSnWBjm7m8LxgWQf2jZrjlAEkWZ4y+5MCcYTg2UMt9PebyA2I1WqmtpWA5fFhGrxy/LsldTnQVqi85AxHTOXrRlEjGuhMyWHOeA5l7M/GzeW7HWBsRM37amX46UdTcHyCV2rFu2tPgzxhA1qif0u6mU3rUTtqq+p+u2BWWVzj+NcVLOb49ip3CI4WCu1prmfZrI9g8RvOsKWJKMGBn+GzP2aok=",
             "JgAcAQABvIDtlV347of+oF+5mWPYnhGbABLHpp6/eD7WAlZee+hnjI4lh0sEaOEyz9ajBUgEqkw19IsJL1JwmwngK2rE9E9ZOWlvOAQzzHm6t4iY4/BK+TBdk3n3G5xm2wltS2Eg32ivu9r0kjCrl6Ud6LaNHsTfacklvP3S2aGHL5nYrbc7MbyAxcUgBFq8JJecR3eB/9uZjXvu/88Bvy2QH9UP1Xw8eYptFcNelZ45bj0AhAJAiDikNeF748iGFqPXzxkNUXyIx1FH7OdtkXSlG5864gt8Tsgmr4aQDBhJJXSmmg/kS5ieRhl8z3IBhPIujYKUHF0Nm2TZu7u7fHYi+4CcOvzLvs0=",
             "JgAcAQABvIDjqoZBjQ0G1cfljjqpYZB6GT28udRk8DzJ9Vkh60H8BBjhiXEoNFDfX6Lv0rGT+Vj+aHpVx3WA8AoyyRx1hrEilOnNxXsU+Njz1xlXthSU+Yc5aSBQF9NmIdPE/CUIxpZ9jwxjFuS7xzuSvKMwZHQE4fOsV341QwWXYs+h5jvPibyAvM2j/YRWf68Dc9kyRCrTFpWYbIFwd4wthxMtHgVgcLVIlQKtay5ar63Vxkvzchqol7AHJanxtJbpKNQ9S4lJhJZgPFhznNjGD7r/g0U6psdxcct/eJjiL4gMBu/A8VmBOUgFsrOCAb6ataOKACIDSI3kz4i9vmB8tyVG6VbMvlU=",

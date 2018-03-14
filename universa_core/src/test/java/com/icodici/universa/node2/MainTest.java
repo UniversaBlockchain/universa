@@ -42,6 +42,7 @@ import java.net.*;
 import java.nio.file.Path;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1869,95 +1870,145 @@ public class MainTest {
 
     @Test
     public void dbSanitationTest() throws Exception {
+        final int NODE_COUNT = 4;
+        PrivateKey myKey = TestKeys.privateKey(NODE_COUNT);
+
 
         List<String> dbUrls = new ArrayList<>();
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+        List<Ledger> ledgers = new ArrayList<>();
         dbUrls.stream().forEach(url -> {
             try {
                 clearLedger(url);
+                PostgresLedger ledger = new PostgresLedger(url);
+                ledgers.add(ledger);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
+        Random random = new Random(123);
+
+        List<Contract> origins = new ArrayList<>();
+        List<Contract> newRevisions = new ArrayList<>();
+        List<Contract> newContracts = new ArrayList<>();
+
+        final int N = 10;
+        for(int i = 0; i < N; i++) {
+            Contract origin = new Contract(myKey);
+            origin.seal();
+            origins.add(origin);
+
+            Contract newRevision = origin.createRevision(myKey);
+
+            if(i < N/2) {
+                //ACCEPTED
+                newRevision.setOwnerKeys(TestKeys.privateKey(NODE_COUNT + 1).getPublicKey());
+            } else {
+                //DECLINED
+                //State is equal
+            }
+
+            Contract newContract = new Contract(myKey);
+            newRevision.addNewItems(newContract);
+            newRevision.seal();
+
+            newContracts.add(newContract);
+            newRevisions.add(newRevision);
+            int unfinishedNodesCount = random.nextInt(2)+1;
+            Set<Integer> unfinishedNodesNumbers = new HashSet<>();
+            while(unfinishedNodesCount > unfinishedNodesNumbers.size()) {
+                unfinishedNodesNumbers.add(random.nextInt(NODE_COUNT)+1);
+            }
+
+            System.out.println("item# "+ newRevision.getId().toBase64String().substring(0,6) + " nodes " + unfinishedNodesNumbers.toString());
+            int finalI = i;
+            for(int j = 0; j < NODE_COUNT;j++) {
+                boolean finished = !unfinishedNodesNumbers.contains(j+1);
+                Ledger ledger = ledgers.get(j);
+
+
+                StateRecord originRecord = ledger.findOrCreate(origin.getId());
+                originRecord.setExpiresAt(origin.getExpiresAt());
+                originRecord.setCreatedAt(origin.getCreatedAt());
+
+                StateRecord newRevisionRecord = ledger.findOrCreate(newRevision.getId());
+                newRevisionRecord.setExpiresAt(newRevision.getExpiresAt());
+                newRevisionRecord.setCreatedAt(newRevision.getCreatedAt());
+
+                StateRecord newContractRecord = ledger.findOrCreate(newContract.getId());
+                newContractRecord.setExpiresAt(newContract.getExpiresAt());
+                newContractRecord.setCreatedAt(newContract.getCreatedAt());
+
+                if(finished) {
+                    if(finalI < N/2) {
+                        originRecord.setState(ItemState.REVOKED);
+                        newContractRecord.setState(ItemState.APPROVED);
+                        newRevisionRecord.setState(ItemState.APPROVED);
+                    } else {
+                        originRecord.setState(ItemState.APPROVED);
+                        newContractRecord.setState(ItemState.UNDEFINED);
+                        newRevisionRecord.setState(ItemState.DECLINED);
+                    }
+                } else {
+                    originRecord.setState(ItemState.LOCKED);
+                    originRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
+                    newContractRecord.setState(ItemState.LOCKED_FOR_CREATION);
+                    newContractRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
+                    newRevisionRecord.setState(finalI < N/2 ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE);
+                }
+
+                originRecord.save();
+                ledger.putItem(originRecord,origin, Instant.now().plusSeconds(3600*24));
+                newRevisionRecord.save();
+                ledger.putItem(newRevisionRecord,newRevision, Instant.now().plusSeconds(3600*24));
+                if(newContractRecord.getState() == ItemState.UNDEFINED) {
+                    newContractRecord.destroy();
+                } else {
+                    newContractRecord.save();
+                }
+
+            }
+        }
+        ledgers.stream().forEach(ledger -> ledger.close());
+
 
         List<Main> mm = new ArrayList<>();
-        final int NODE_COUNT = 4;
-        PrivateKey myKey = TestKeys.privateKey(0);
+        List<Client> clients = new ArrayList<>();
 
         for (int i = 0; i < NODE_COUNT; i++) {
             Main m = createMain("node" + (i + 1), false);
-            m.config.getKeysWhiteList().add(myKey.getPublicKey());
             mm.add(m);
-
-        }
-
-
-        ArrayList<Client> clients = new ArrayList<>();
-        ArrayList<Contract> contracts = new ArrayList<>();
-
-        Node.successThreshold = 100;
-        for(int i = 0; i < 100; i++) {
-            Client client = new Client(myKey, mm.get(i % NODE_COUNT).myInfo, null);
-            Contract contract = new Contract(myKey);
-            contract.seal();
-            client.register(contract.getPackedTransaction(), 15000);
-
-            ItemResult rr;
-            while (true) {
-                rr = client.getState(contract.getId());
-                if (!rr.state.isPending())
-                    break;
-            }
+            Client client = new Client(TestKeys.privateKey(i), m.myInfo, null);
             clients.add(client);
-            contracts.add(contract);
-            assertEquals(rr.state, ItemState.APPROVED);
         }
 
-        Thread.sleep(2000);
 
-        //50 APPROVED CHILDREN #0-49
-        for(int i = 0; i < 50; i++) {
-            Node.successThreshold = 100-i;
-            Contract contract = contracts.get(i);
-            Client client = clients.get(i);
-            contract = contract.createRevision(myKey);
-            contract.setOwnerKeys(TestKeys.privateKey(1).getPublicKey());
-            Contract newContract = new Contract(myKey);
-            contract.addNewItems(newContract);
-            contract.seal();
 
-            client.register(contract.getPackedTransaction());
-            contracts.set(i,contract);
+        while (true) {
+            try {
+                for(int i =0; i < NODE_COUNT; i++) {
+                    clients.get(i).getState(newRevisions.get(0));
+                }
+                break;
+            } catch (ClientError e) {
+                Thread.sleep(1000);
+                mm.stream().forEach( m -> System.out.println("node#" +m.myInfo.getNumber() + " is " +  (m.node.isSanitating() ? "" : "not ") + "sanitating"));
+            }
+
         }
-        Node.successThreshold = 100;
-        Thread.sleep(2000);
-        //50 DECLINED CHILDREN #50-99
-        for(int i = 0; i < 50; i++) {
-            Node.successThreshold = 100-i;
-            Contract contract = contracts.get(i+50);
-            Client client = clients.get(i);
-            contract = contract.createRevision(myKey);
-            Contract newContract = new Contract(myKey);
-            contract.addNewItems(newContract);
-            contract.seal();
 
-            client.register(contract.getPackedTransaction());
-            contracts.set(i+50,contract);
+
+        for(int i = 0; i < N; i++) {
+            ItemResult rr = clients.get(i%NODE_COUNT).getState(newRevisions.get(i).getId());
+            ItemState targetState = i < N/2 ? ItemState.APPROVED : ItemState.DECLINED;
+            assertEquals(rr.state,targetState);
         }
+        Thread.sleep(1000);
         mm.stream().forEach(m -> m.shutdown());
-        mm.clear();
-
-        for (int i = 0; i < NODE_COUNT; i++) {
-            Main m = createMainFromDb(dbUrls.get(i),false);
-            m.config.getKeysWhiteList().add(myKey.getPublicKey());
-            mm.add(m);
-
-        }
-
-        mm.stream().forEach(m -> m.shutdown());
+        Thread.sleep(1000);
     }
 
 
@@ -1965,6 +2016,11 @@ public class MainTest {
         Properties properties = new Properties();
         try(DbPool dbPool = new DbPool(url, properties, 64)) {
             try (PooledDb db = dbPool.db()) {
+                try (PreparedStatement statement = db.statement("delete from items;")
+                ) {
+                    statement.executeUpdate();
+                }
+
                 try (PreparedStatement statement = db.statement("delete from ledger;")
                 ) {
                     statement.executeUpdate();
