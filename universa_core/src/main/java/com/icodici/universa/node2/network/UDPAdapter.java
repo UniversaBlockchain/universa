@@ -94,7 +94,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     @Override
-    public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
+    synchronized public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send to ", destination.getNumber(),
                 ", is shutting down: ", isShuttingDown), VerboseLevel.BASE);
 

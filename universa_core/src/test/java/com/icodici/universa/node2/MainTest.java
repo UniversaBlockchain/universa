@@ -849,7 +849,7 @@ public class MainTest {
     @Test
     public void localNetwork2() throws Exception {
         List<Main> mm = new ArrayList<>();
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 4; i++)
             mm.add(createMain("node" + (i + 1), false));
         Main main = mm.get(0);
         assertEquals("http://localhost:8080", main.myInfo.internalUrlString());

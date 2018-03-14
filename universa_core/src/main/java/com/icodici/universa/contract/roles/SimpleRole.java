@@ -140,7 +140,7 @@ public class SimpleRole extends Role {
             boolean a = ((SimpleRole) obj).getName().equals(getName());
             boolean b = ((SimpleRole) obj).equalKeys(this);
             boolean c = ((SimpleRole) obj).anonymousIds.containsAll(this.anonymousIds);
-            boolean d = this.anonymousIds.containsAll(((SimpleRole) obj).anonymousIds); //TODO When comparing the roles (method equals), we used a comparison of the set of anonymous identifiers only in one direction.
+            boolean d = this.anonymousIds.containsAll(((SimpleRole) obj).anonymousIds);
 
             if (!(a && b && c && d))
                 return false;
@@ -229,8 +229,8 @@ public class SimpleRole extends Role {
         anonymousIds.clear();
         if (anonIdList != null) {
             for (Object aid : anonIdList) {
-                // todo cast to AnonymousId directly
-                anonymousIds.add( deserializer.deserialize(aid));
+                AnonymousId anonymousId = deserializer.deserialize(aid);
+                anonymousIds.add(anonymousId);
             }
         }
         List keyAddrList = data.getList("addresses", null);
