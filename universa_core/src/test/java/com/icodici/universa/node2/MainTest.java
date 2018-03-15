@@ -849,7 +849,7 @@ public class MainTest {
     @Test
     public void localNetwork2() throws Exception {
         List<Main> mm = new ArrayList<>();
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 4; i++)
             mm.add(createMain("node" + (i + 1), false));
         Main main = mm.get(0);
         assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
@@ -858,8 +858,8 @@ public class MainTest {
 
         //Client client = new Client(myKey, main.myInfo, null);
 
-        final long CONTRACTS_PER_THREAD = 100;
-        final long THREADS_COUNT = 2;
+        final long CONTRACTS_PER_THREAD = 60;
+        final long THREADS_COUNT = 4;
 
         class TestRunnable implements Runnable {
 

@@ -94,7 +94,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     @Override
-    public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
+    synchronized public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send to ", destination.getNumber(),
                 ", is shutting down: ", isShuttingDown), VerboseLevel.BASE);
 
@@ -160,6 +160,8 @@ public class UDPAdapter extends DatagramAdapter {
         closeSessions();
         timer.cancel();
         timer.purge();
+        heartBeatTimer.cancel();
+        heartBeatTimer.purge();
 
         try {
             while (socket.isConnected()) {
@@ -267,7 +269,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected void sendAsDataBlock(Block rawDataBlock, Session session) throws InterruptedException {
+    synchronized protected void sendAsDataBlock(Block rawDataBlock, Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send data to ", session.remoteNodeId), VerboseLevel.BASE);
         report(getLabel(), () -> concatReportMessage("sessionKey is ", session.sessionKey.hashCode(),
                 " for ", session.remoteNodeId));
@@ -335,7 +337,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected void sendKeyRequest(Session session) throws InterruptedException {
+    synchronized protected void sendKeyRequest(Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send key request to ", session.remoteNodeId), VerboseLevel.BASE);
 
         session.state = Session.KEY_REQ;
@@ -374,7 +376,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    protected void sendSessionKey(Session session) throws InterruptedException {
+    synchronized protected void sendSessionKey(Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send session key to ", session.remoteNodeId), VerboseLevel.BASE);
         report(getLabel(), () -> concatReportMessage("sessionKey is ", session.sessionKey.hashCode(),
                 " for ", session.remoteNodeId));
@@ -382,7 +384,8 @@ public class UDPAdapter extends DatagramAdapter {
         List data = asList(session.sessionKey.getKey(), session.remoteNonce);
         try {
             byte[] packed = Boss.pack(data);
-            byte[] encrypted = session.publicKey.encrypt(packed);
+            PublicKey sessionPublicKey = new PublicKey(session.publicKey.pack());
+            byte[] encrypted = sessionPublicKey.encrypt(packed);
             byte[] signed = ownPrivateKey.sign(encrypted, HashType.SHA512);
 
             Binder binder = Binder.fromKeysValues(

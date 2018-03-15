@@ -9,6 +9,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Core;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.PostgresLedger;
@@ -32,7 +33,7 @@ import java.time.Duration;
 import static java.util.Arrays.asList;
 
 public class Main {
-    public static final String NODE_VERSION = "3.1.2";
+    public static final String NODE_VERSION = Core.VERSION;
     private PostgresLedger ledger;
     private OptionParser parser;
     private OptionSet options;

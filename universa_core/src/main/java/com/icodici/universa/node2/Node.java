@@ -797,6 +797,7 @@ public class Node {
             }
         }
         executorService.shutdown();
+        lowPrioExecutorService.shutdown();
         System.out.println(toString() + "shutdown finished");
     }
 
