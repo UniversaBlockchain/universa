@@ -58,10 +58,12 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     @BeforeClass
     public static void beforeClass() throws Exception {
         initTestSet();
+        Thread.sleep(200);
     }
 
     @AfterClass
     public static void afterClass() throws Exception {
+        Thread.sleep(200);
         networks_s.forEach(n->n.shutDown());
         nodesMap_s.forEach((i,n)-> {
             n.getLedger().close();
@@ -77,7 +79,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         nc_s = null;
         config_s = null;
 
-//        Thread.sleep(5000);
+        Thread.sleep(200);
     }
 
     private static void initTestSet() throws Exception {
