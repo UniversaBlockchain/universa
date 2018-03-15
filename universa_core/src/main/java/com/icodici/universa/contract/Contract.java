@@ -164,6 +164,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             newItems.forEach(i -> i.context = context);
         }
 
+        // fill references with contracts from TransactionPack
+        for(Reference ref : getReferencedItems()) {
+            for(Contract c : pack.getReferences().values()) {
+                if(ref.isMathingWith(c)) {
+                    ref.addMatchingItem(c);
+                }
+            }
+        }
+
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
         roles.values().forEach(role -> {
