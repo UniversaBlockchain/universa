@@ -1,5 +1,6 @@
 package com.icodici.universa.contract;
 
+import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
@@ -22,6 +23,7 @@ public class Reference implements BiSerializable {
     public List<Role> signed_by = new ArrayList<>();
     public List<String> fields = new ArrayList<>();
     public List<String> roles = new ArrayList<>();
+    public List<Approvable> matchingItems = new ArrayList<>();
 
     public static final int TYPE_TRANSACTIONAL = 1;
     public static final int TYPE_EXISTING = 2;
@@ -99,6 +101,17 @@ public class Reference implements BiSerializable {
     }
 
 
+    /**
+     * Check if given item matching with current reference criteria
+     * @param a item to check for matching
+     * @return true if match or false
+     */
+    public boolean isMathingWith(Approvable a) {
+        //todo: add this checking for matching with given item
+        return false;
+    }
+
+
 
 
 
@@ -137,6 +150,11 @@ public class Reference implements BiSerializable {
 
     public Reference setFields(List<String> fields) {
         this.fields = fields;
+        return this;
+    }
+
+    public Reference addMatchingItem(Approvable a) {
+        this.matchingItems.add(a);
         return this;
     }
 
