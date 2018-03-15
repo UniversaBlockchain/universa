@@ -173,6 +173,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
 
+        // fill sealedByKeys from signatures matching with roles
+
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
         roles.values().forEach(role -> {
@@ -271,6 +273,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if(getSiblings().size() > 1) {
             newItems.forEach(i -> i.context = context);
         }
+
+        // fill references with contracts from TransactionPack
+        for(Reference ref : getReferencedItems()) {
+            for(Contract c : pack.getReferences().values()) {
+                if(ref.isMathingWith(c)) {
+                    ref.addMatchingItem(c);
+                }
+            }
+        }
+
+        // fill sealedByKeys from signatures matching with roles
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
@@ -1723,52 +1736,52 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         throw new IllegalArgumentException("bad root: " + name);
     }
 
-    public List<Contract> extractByValidReference(List<Contract> contracts) {
-        return contracts.stream()
-                .filter(this::isValidReference)
-                .collect(Collectors.toList());
-    }
-
-    private boolean isValidReference(Contract contract) {
-        boolean resultWrap = true;
-
-        List<Reference> referencesList = this.getDefinition().getReferences();
-
-        for (Reference references: referencesList) {
-            boolean result = true;
-
-            if (references == null) result = false;
-
-            //check roles
-            if (result) {
-                List<String> roles = references.getRoles();
-                Map<String, Role> contractRoles = contract.getRoles();
-                result = roles.stream()
-                        .anyMatch(role -> contractRoles.containsKey(role));
-            }
-
-            //check origin
-            if (result) {
-                final HashId origin = references.origin;
-                result = (origin == null || !(contract.getOrigin().equals(this.getOrigin())));
-            }
-
-
-            //check fields
-            if (result) {
-                List<String> fields = references.getFields();
-                Binder stateData = contract.getStateData();
-                result = fields.stream()
-                        .anyMatch(field -> stateData.get(field) != null);
-            }
-
-            if (!result)
-                resultWrap = false;
-        }
-
-
-        return resultWrap;
-    }
+//    public List<Contract> extractByValidReference(List<Contract> contracts) {
+//        return contracts.stream()
+//                .filter(this::isValidReference)
+//                .collect(Collectors.toList());
+//    }
+//
+//    private boolean isValidReference(Contract contract) {
+//        boolean resultWrap = true;
+//
+//        List<Reference> referencesList = this.getDefinition().getReferences();
+//
+//        for (Reference references: referencesList) {
+//            boolean result = true;
+//
+//            if (references == null) result = false;
+//
+//            //check roles
+//            if (result) {
+//                List<String> roles = references.getRoles();
+//                Map<String, Role> contractRoles = contract.getRoles();
+//                result = roles.stream()
+//                        .anyMatch(role -> contractRoles.containsKey(role));
+//            }
+//
+//            //check origin
+//            if (result) {
+//                final HashId origin = references.origin;
+//                result = (origin == null || !(contract.getOrigin().equals(this.getOrigin())));
+//            }
+//
+//
+//            //check fields
+//            if (result) {
+//                List<String> fields = references.getFields();
+//                Binder stateData = contract.getStateData();
+//                result = fields.stream()
+//                        .anyMatch(field -> stateData.get(field) != null);
+//            }
+//
+//            if (!result)
+//                resultWrap = false;
+//        }
+//
+//
+//        return resultWrap;
+//    }
 
     public static Contract fromSealedFile(String contractFileName) throws IOException {
         return new Contract(Do.read(contractFileName), new TransactionPack());
