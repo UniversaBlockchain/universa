@@ -12,6 +12,7 @@ import net.sergeych.utils.Bytes;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class Reference implements BiSerializable {
     public String name = "";
@@ -108,7 +109,33 @@ public class Reference implements BiSerializable {
      */
     public boolean isMathingWith(Approvable a) {
         //todo: add this checking for matching with given item
-        return false;
+
+        boolean result = true;
+
+        if(a instanceof Contract) {
+            //check roles
+            Contract contract = (Contract) a;
+            if (result) {
+                Map<String, Role> contractRoles = contract.getRoles();
+                result = roles.stream()
+                        .anyMatch(role -> contractRoles.containsKey(role));
+            }
+
+            //check origin
+            if (result) {
+                result = (origin == null || !(contract.getOrigin().equals(origin)));
+            }
+
+
+            //check fields
+            if (result) {
+                Binder stateData = contract.getStateData();
+                result = fields.stream()
+                        .anyMatch(field -> stateData.get(field) != null);
+            }
+        }
+
+        return result;
     }
 
 
