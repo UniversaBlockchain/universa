@@ -200,6 +200,7 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+
     @Override
     public long countRecords() {
         try {
