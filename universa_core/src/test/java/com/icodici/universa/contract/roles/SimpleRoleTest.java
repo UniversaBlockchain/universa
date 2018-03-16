@@ -39,6 +39,11 @@ public class SimpleRoleTest {
     public void serializeOne() throws Exception {
         SimpleRole sr = new SimpleRole("tr1");
         sr.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
+
+        sr.addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
+        sr.addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
+        sr.addRequiredReference("ref3", Role.RequiredMode.ANY_OF);
+
         Binder serialized = DefaultBiMapper.serialize(sr);
         Role r1 = DefaultBiMapper.deserialize(serialized);
         assertEquals(sr, r1);
