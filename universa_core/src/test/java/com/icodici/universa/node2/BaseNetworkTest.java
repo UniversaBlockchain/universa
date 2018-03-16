@@ -3490,8 +3490,9 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = llcProperty.createRevision();
+        Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
         llcProperty2.setOwnerKeys(thirdPartyPublicKeys);
+//        llcProperty2.addSignerKeys(stepaPrivateKeys);
         llcProperty2.seal();
         llcProperty2.check();
         llcProperty2.traceErrors();
@@ -3540,7 +3541,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = ContractsService.createRevocation(llcProperty);
+        Contract llcProperty2 = ContractsService.createRevocation(llcProperty, stepaPrivateKeys.iterator().next());
         llcProperty2.check();
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
@@ -3588,7 +3589,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100, "amount", new HashSet<>());
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100, "amount", stepaPrivateKeys);
         llcProperty2.check();
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
@@ -3639,6 +3640,7 @@ public class BaseNetworkTest extends TestCase {
         Contract llcProperty2 = llcProperty.createRevision();
         llcProperty2.getStateData().set("units",
                 llcProperty.getStateData().getIntOrThrow("units") - 1);
+        llcProperty2.addSignerKeys(stepaPrivateKeys);
         llcProperty2.seal();
         llcProperty2.check();
         llcProperty2.traceErrors();
