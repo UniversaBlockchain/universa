@@ -23,11 +23,15 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
-
+import net.sergeych.tools.Binder;
+import com.icodici.universa.contract.permissions.*;
+import java.time.Instant;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.core.Is.is;
@@ -1315,8 +1319,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(newLamborghini.getOwner().isAllowedForKeys(martyPublicKeys));
     }
 
-    @Test(timeout = 90000)
-    public void createTwoSignedContractAllGood() throws Exception {
+    private void checkCreateTwoSignedContractAllGood(boolean newRev) throws Exception {
         if(node == null) {
             System.out.println("network not inited");
             return;
@@ -1339,9 +1342,11 @@ public class BaseNetworkTest extends TestCase {
         baseContract.seal();
 
         System.out.println("Base contract contract is valid: " + baseContract.isOk());
-        registerAndCheckApproved(baseContract);
 
-        Contract twoSignContract = ContractsService.createTwoSignedContract(baseContract, martyPrivateKeys, stepaPublicKeys, true);
+        if (newRev)
+            registerAndCheckApproved(baseContract);
+
+        Contract twoSignContract = ContractsService.createTwoSignedContract(baseContract, martyPrivateKeys, stepaPublicKeys, newRev);
 
         twoSignContract = imitateSendingTransactionToPartner(twoSignContract);
 
@@ -1362,34 +1367,181 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test(timeout = 90000)
+    public void createTwoSignedContractAllGood() throws Exception {
+        checkCreateTwoSignedContractAllGood(false);
+        checkCreateTwoSignedContractAllGood(true);
+    }
+
+    @Test(timeout = 90000)
     public void createTokenContractAllGood() throws Exception {
 
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
 
-        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        Contract TokenContract = ContractsService.createTokenContract(martyPrivateKeys,stepaPublicKeys,"100000000000");
+        ZonedDateTime datetime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC);
 
-        TokenContract.check();
-        TokenContract.traceErrors();
-        registerAndCheckApproved(TokenContract);
+        Binder data = new Binder();
+        data.set("name", "Token name");
+        data.set("currency_code", "TKN");
+        data.set("currency_name", "Token name");
+        data.set("description", "Token description");
+
+        Binder params = new Binder();
+        params.set("min_value", 0.01);
+        params.set("min_unit", 0.001);
+        params.set("field_name", "amount");
+        params.set("join_match_fields", "state.origin");
+
+        SimpleRole revokeRole = new SimpleRole("revoke_role");
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : martyPrivateKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : stepaPublicKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        ChangeOwnerPermission co_perm = new ChangeOwnerPermission(ownerRole);
+        SplitJoinPermission sj_perm = new SplitJoinPermission(ownerRole, params);
+        RevokePermission rev_perm = new RevokePermission(revokeRole);
+
+        List<Permission> perms = new ArrayList<Permission>();
+        perms.add(co_perm);
+        perms.add(sj_perm);
+        perms.add(rev_perm);
+
+        Contract tokenContract = ContractsService.createBaseContract(
+                martyPrivateKeys, datetime, data, issuerRole, issuerRole, ownerRole, perms, "100000000000");
+
+        tokenContract.check();
+        tokenContract.traceErrors();
+        registerAndCheckApproved(tokenContract);
     }
 
     @Test(timeout = 90000)
     public void createSharesContractAllGood() throws Exception {
 
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        ZonedDateTime datetime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC);
+
+        Binder data = new Binder();
+        data.set("name", "Share name");
+        data.set("currency_code", "SHN");
+        data.set("currency_name", "Share name");
+        data.set("description", "Share description");
+
+        Binder params = new Binder();
+        params.set("min_value", 1);
+        params.set("min_unit", 1);
+        params.set("field_name", "amount");
+        params.set("join_match_fields", "state.origin");
+
+        SimpleRole revokeRole = new SimpleRole("revoke_role");
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : martyPrivateKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : stepaPublicKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        ChangeOwnerPermission co_perm = new ChangeOwnerPermission(ownerRole);
+        SplitJoinPermission sj_perm = new SplitJoinPermission(ownerRole, params);
+        RevokePermission rev_perm = new RevokePermission(revokeRole);
+
+        List<Permission> perms = new ArrayList<Permission>();
+        perms.add(co_perm);
+        perms.add(sj_perm);
+        perms.add(rev_perm);
+
+        Contract sharesContract = ContractsService.createBaseContract(
+                martyPrivateKeys, datetime, data, issuerRole, issuerRole, ownerRole, perms, "100");
+
+        sharesContract.check();
+        sharesContract.traceErrors();
+        registerAndCheckApproved(sharesContract);
     }
 
     @Test(timeout = 90000)
     public void createNotaryContractAllGood() throws Exception {
 
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        ZonedDateTime datetime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC);
+
+        Binder data = new Binder();
+        data.set("name", "Notary");
+        data.set("description", "This contract represents the notary.");
+
+        SimpleRole revokeRole = new SimpleRole("revoke_role");
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : martyPrivateKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : stepaPublicKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        ChangeOwnerPermission co_perm = new ChangeOwnerPermission(ownerRole);
+        RevokePermission rev_perm = new RevokePermission(revokeRole);
+
+        List<Permission> perms = new ArrayList<Permission>();
+        perms.add(co_perm);
+        perms.add(rev_perm);
+
+        Contract notaryContract = ContractsService.createBaseContract(
+                martyPrivateKeys, datetime, data, issuerRole, issuerRole, ownerRole, perms, null);
+
+        notaryContract.check();
+        notaryContract.traceErrors();
+        registerAndCheckApproved(notaryContract);
     }
+
 
     @Test(timeout = 90000)
     public void changeOwnerWithAnonId() throws Exception {
