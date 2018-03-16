@@ -10,7 +10,6 @@ package com.icodici.universa.client;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
@@ -20,9 +19,7 @@ import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Main;
-import com.icodici.universa.node2.Node;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
@@ -45,7 +42,6 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.TimeoutException;
 
 import static com.icodici.universa.client.RegexMatcher.matches;
 import static org.junit.Assert.*;
@@ -2792,18 +2788,18 @@ public class CLIMainTest {
         c.check();
         c.traceErrors();
 
-        System.out.println("c " + " isok=" + c.isOk() + " new: " + c.getNew().size() + " rev: " + c.getRevoking().size() + " ref: " + c.getReferencedItems().size() + " signs:" + c.getSealedByKeys().size() + " data:" + c.getStateData() + " id:" + c.getId());
+        System.out.println("c " + " isok=" + c.isOk() + " new: " + c.getNew().size() + " rev: " + c.getRevoking().size() + " ref: " + c.getReferences().size() + " signs:" + c.getSealedByKeys().size() + " data:" + c.getStateData() + " id:" + c.getId());
         Contract cNew1 = c.getNew().get(0);
         Contract cNew2 = c.getNew().get(1);
-        System.out.println("cNew1 new: " + cNew1.getNew().size() + " rev: " + cNew1.getRevoking().size() + " ref: " + cNew1.getReferencedItems().size() + " signs:" + cNew1.getSealedByKeys().size() + " data:" + cNew1.getStateData() + " id:" + cNew1.getId());
-        System.out.println("cNew2 new: " + cNew2.getNew().size() + " rev: " + cNew2.getRevoking().size() + " ref: " + cNew2.getReferencedItems().size() + " signs:" + cNew2.getSealedByKeys().size() + " data:" + cNew2.getStateData() + " id:" + cNew2.getId());
+        System.out.println("cNew1 new: " + cNew1.getNew().size() + " rev: " + cNew1.getRevoking().size() + " ref: " + cNew1.getReferences().size() + " signs:" + cNew1.getSealedByKeys().size() + " data:" + cNew1.getStateData() + " id:" + cNew1.getId());
+        System.out.println("cNew2 new: " + cNew2.getNew().size() + " rev: " + cNew2.getRevoking().size() + " ref: " + cNew2.getReferences().size() + " signs:" + cNew2.getSealedByKeys().size() + " data:" + cNew2.getStateData() + " id:" + cNew2.getId());
         Contract cRevoke1 = cNew1.getRevoking().get(0);
         Contract cRevoke2 = cNew2.getRevoking().get(0);
-        System.out.println("cRevoke1 new: " + cRevoke1.getNew().size() + " rev: " + cRevoke1.getRevoking().size() + " ref: " + cRevoke1.getReferencedItems().size() + " signs:" + cRevoke1.getSealedByKeys().size() + " data:" + cRevoke1.getStateData() + " id:" + cRevoke1.getId());
-        System.out.println("cRevoke2 new: " + cRevoke2.getNew().size() + " rev: " + cRevoke2.getRevoking().size() + " ref: " + cRevoke2.getReferencedItems().size() + " signs:" + cRevoke2.getSealedByKeys().size() + " data:" + cRevoke2.getStateData() + " id:" + cRevoke2.getId());
+        System.out.println("cRevoke1 new: " + cRevoke1.getNew().size() + " rev: " + cRevoke1.getRevoking().size() + " ref: " + cRevoke1.getReferences().size() + " signs:" + cRevoke1.getSealedByKeys().size() + " data:" + cRevoke1.getStateData() + " id:" + cRevoke1.getId());
+        System.out.println("cRevoke2 new: " + cRevoke2.getNew().size() + " rev: " + cRevoke2.getRevoking().size() + " ref: " + cRevoke2.getReferences().size() + " signs:" + cRevoke2.getSealedByKeys().size() + " data:" + cRevoke2.getStateData() + " id:" + cRevoke2.getId());
 
         Contract cNew1_1 = cNew1.getNew().get(0);
-        System.out.println("cNew1_1 new: " + cNew1_1.getNew().size() + " rev: " + cNew1_1.getRevoking().size() + " ref: " + cNew1_1.getReferencedItems().size() + " signs:" + cNew1_1.getSealedByKeys().size() + " data:" + cNew1_1.getStateData() + " id:" + cNew1_1.getId());
+        System.out.println("cNew1_1 new: " + cNew1_1.getNew().size() + " rev: " + cNew1_1.getRevoking().size() + " ref: " + cNew1_1.getReferences().size() + " signs:" + cNew1_1.getSealedByKeys().size() + " data:" + cNew1_1.getStateData() + " id:" + cNew1_1.getId());
 
 
         CLIMain.exportContract(cNew1, rootPath + "cNew1.json", "json", true);

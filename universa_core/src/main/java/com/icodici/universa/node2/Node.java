@@ -1600,13 +1600,13 @@ public class Node {
         private final synchronized void checkSubItemsOf(Approvable checkingItem) {
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
-                    for (Reference refModel : checkingItem.getReferencedItems()) {
-                        HashId id = refModel.contract_id;
-                        if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
-                            if (!ledger.isApproved(id)) {
-                                checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
-                            }
+                    for (Approvable ref : checkingItem.getReferencedItems()) {
+                        HashId id = ref.getId();
+//                        if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
+                        if (!ledger.isApproved(id)) {
+                            checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                         }
+//                        }
                     }
                     // check revoking items
                     for (Approvable a : checkingItem.getRevokingItems()) {
@@ -1692,17 +1692,17 @@ public class Node {
                 HashMap<HashId, StateRecord> knownParts = new HashMap<>();
                 if (baseCheckPassed) {
                     // check the referenced items
-                    for (Reference refModel : item.getReferencedItems()) {
-                        HashId id = refModel.contract_id;
-                        if(refModel.type == Reference.TYPE_EXISTING && id != null) {
-                            StateRecord r = ledger.getRecord(id);
+                    for (Approvable ref : item.getReferencedItems()) {
+                        HashId id = ref.getId();
+//                        if(refModel.type == Reference.TYPE_EXISTING && id != null) {
+                        StateRecord r = ledger.getRecord(id);
 
-                            if (r == null || !r.getState().isConsensusFound()) {
-                                unknownParts.put(id, r);
-                            } else {
-                                knownParts.put(id, r);
-                            }
+                        if (r == null || !r.getState().isConsensusFound()) {
+                            unknownParts.put(id, r);
+                        } else {
+                            knownParts.put(id, r);
                         }
+//                        }
                     }
 
                     // check revoking items

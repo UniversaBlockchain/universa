@@ -165,7 +165,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // fill references with contracts from TransactionPack
-        for(Reference ref : getReferencedItems()) {
+        for(Reference ref : getReferences()) {
             for(Contract c : pack.getReferences().values()) {
                 if(ref.isMathingWith(c)) {
                     ref.addMatchingItem(c);
@@ -275,7 +275,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // fill references with contracts from TransactionPack
-        for(Reference ref : getReferencedItems()) {
+        for(Reference ref : getReferences()) {
             for(Contract c : pack.getReferences().values()) {
                 if(ref.isMathingWith(c)) {
                     ref.addMatchingItem(c);
@@ -405,12 +405,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public Set<Reference> getReferencedItems() {
+    public Set<Reference> getReferences() {
         Set<Reference> referencedItems = new HashSet<>();
         if (transactional != null && transactional.references != null)
             referencedItems.addAll(transactional.references);
         if (definition != null && definition.getReferences() != null)
             referencedItems.addAll(definition.getReferences());
+        return referencedItems;
+    }
+
+    @Override
+    public Set<Approvable> getReferencedItems() {
+
+        Set<Approvable> referencedItems = new HashSet<>();
+//        if (transactional != null && transactional.references != null)
+//            referencedItems.addAll(transactional.references);
+        if (definition != null && definition.getReferences() != null) {
+            for (Reference r : definition.getReferences()) {
+                referencedItems.addAll(r.matchingItems);
+            }
+        }
         return referencedItems;
     }
 
@@ -474,7 +488,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
         }
-        for (int i = 0; i < getReferencedItems().size(); i++) {
+        for (int i = 0; i < getReferences().size(); i++) {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
         }
 
@@ -516,14 +530,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private boolean checkReferencedItems(List<Contract> neighbourContracts) throws Quantiser.QuantiserException {
 
-        if (getReferencedItems().size() == 0) {
+        if (getReferences().size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
             return true;
         }
 
         // check each reference, all must be ok
         boolean allRefs_check = true;
-        for (final Reference rm : getReferencedItems()) {
+        for (final Reference rm : getReferences()) {
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
             for (int j = 0; j < neighbourContracts.size(); ++j) {

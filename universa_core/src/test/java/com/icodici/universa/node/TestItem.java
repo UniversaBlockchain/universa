@@ -37,7 +37,7 @@ public class TestItem implements Approvable {
     private boolean expiresAtPlusFive = true;
 
     @Override
-    public Set<Reference> getReferencedItems() {
+    public Set<Reference> getReferences() {
         return referencedItems;
     }
 
@@ -73,12 +73,22 @@ public class TestItem implements Approvable {
         newItems.addAll(Do.listOf(items));
     }
 
-    public void addReferencedItems(HashId... itemIds) {
-        Stream.of(itemIds).forEach(i -> {
+    public void addReferencedItems(Approvable... items) {
+        Stream.of(items).forEach(i -> {
             Reference refModel = new Reference();
-            refModel.contract_id = i;
+            refModel.addMatchingItem(i);
             referencedItems.add(refModel);
         });
+    }
+
+    @Override
+    public Set<Approvable> getReferencedItems() {
+
+        Set<Approvable> referencedItems = new HashSet<>();
+        for (Reference r : this.referencedItems) {
+            referencedItems.addAll(r.matchingItems);
+        }
+        return referencedItems;
     }
 
     @Override
