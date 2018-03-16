@@ -623,6 +623,53 @@ public class ContractsService {
 
 
     /**
+     * Create paid transaction, which consist from prepared TransactionPack you want to register
+     * and payment contract that will be
+     * spend to process transaction.
+     *<br><br>
+     * @param payload is prepared TransactionPack you want to register in the Universa.
+     * @param payment is approved contract with transaction units belongs to you.
+     * @param amount is number of transaction units you want to spend to register payload contract.
+     * @param keys is own private keys, which are set as owner of payment contract
+     * @return parcel, it ready to send to the Universa.
+     */
+    public synchronized static Parcel createParcel(TransactionPack payload, Contract payment, int amount, Set<PrivateKey> keys) {
+
+        return createParcel(payload, payment, amount, keys, false);
+    }
+
+    /**
+     * Create paid transaction, which consist from prepared TransactionPack you want to register
+     * and payment contract that will be
+     * spend to process transaction.
+     *<br><br>
+     * @param payload is prepared TransactionPack you want to register in the Universa.
+     * @param payment is approved contract with transaction units belongs to you.
+     * @param amount is number of transaction units you want to spend to register payload contract.
+     * @param keys is own private keys, which are set as owner of payment contract
+     * @param withTestPayment if true {@link Parcel} will be created with test payment
+     * @return parcel, it ready to send to the Universa.
+     */
+    public synchronized static Parcel createParcel(TransactionPack payload, Contract payment, int amount, Set<PrivateKey> keys,
+                                                   boolean withTestPayment) {
+
+        Contract paymentDecreased = payment.createRevision(keys);
+
+        if(withTestPayment) {
+            paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
+        } else {
+            paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
+        }
+
+        paymentDecreased.seal();
+
+        Parcel parcel = new Parcel(payload, paymentDecreased.getTransactionPack());
+
+        return parcel;
+    }
+
+
+    /**
      * Return field from given contract as Decimal if it possible.
      *<br><br>
      * @param contract is contract from which field should be got.
