@@ -449,6 +449,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
+    public Set<Approvable> getReferencedItems() {
+
+        Set<Approvable> referencedItems = new HashSet<>();
+//        if (transactional != null && transactional.references != null)
+//            referencedItems.addAll(transactional.references);
+        if (definition != null && definition.getReferences() != null) {
+            for (Reference r : definition.getReferences()) {
+                referencedItems.addAll(r.matchingItems);
+            }
+        }
+        return referencedItems;
+    }
+
+    @Override
     public Set<Approvable> getRevokingItems() {
         return (Set) revokingItems;
     }

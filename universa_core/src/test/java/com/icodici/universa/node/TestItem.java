@@ -92,6 +92,16 @@ public class TestItem implements Approvable {
     }
 
     @Override
+    public Set<Approvable> getReferencedItems() {
+
+        Set<Approvable> referencedItems = new HashSet<>();
+        for (Reference r : this.referencedItems) {
+            referencedItems.addAll(r.matchingItems);
+        }
+        return referencedItems;
+    }
+
+    @Override
     public Set<Approvable> getRevokingItems() {
         return revokingItems;
     }
