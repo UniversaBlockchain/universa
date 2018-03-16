@@ -20,6 +20,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.File;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -3347,6 +3348,56 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, itemResult.state);
     }
 
+    @Test
+    public void referenceForChangeOwner() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract trustedManager = new Contract(llcPrivateKeys.iterator().next());
+        trustedManager.setOwnerKeys(stepaPublicKeys);
+        trustedManager.seal();
+
+        registerAndCheckApproved(trustedManager);
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = llcProperty.createRevision();
+        llcProperty2.setOwnerKeys(thirdPartyPublicKeys);
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp = llcProperty2.getTransactionPack();
+        tp.addReference(trustedManager);
+
+        Contract tu = getApprovedTUContract();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
+        registerAndCheckApproved(parcel);
+    }
+
     @Ignore("Stress test")
     @Test(timeout = 900000)
     public void testLedgerLocks() throws Exception {
@@ -3476,9 +3527,12 @@ public class BaseNetworkTest extends TestCase {
     }
 
     private synchronized void registerAndCheckApproved(Contract c) throws Exception {
-        Parcel parcel = null;
+        Parcel parcel = registerWithNewParcel(c);
+        registerAndCheckApproved(parcel);
+    }
+
+    private synchronized void registerAndCheckApproved(Parcel parcel) throws Exception {
         try {
-            parcel = registerWithNewParcel(c);
 //            LogPrinter.showDebug(true);
             System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             node.waitParcel(parcel.getId(), 30000);
@@ -3489,15 +3543,6 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
         } catch (TimeoutException e) {
-
-            System.out.println("ping ");
-//            System.out.println(node.ping());
-////            System.out.println(node.traceTasksPool());
-//
-//            for (Node n : nodes) {
-//                System.out.println(n + " " + n.traceParcelProcessors());
-//                System.out.println(n + " " + n.traceItemProcessors());
-//            }
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {
