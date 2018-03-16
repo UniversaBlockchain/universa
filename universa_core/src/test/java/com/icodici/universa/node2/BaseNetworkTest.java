@@ -3398,6 +3398,54 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(parcel);
     }
 
+    @Test
+    public void referenceForRevoke() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract trustedManager = new Contract(llcPrivateKeys.iterator().next());
+        trustedManager.setOwnerKeys(stepaPublicKeys);
+        trustedManager.seal();
+
+        registerAndCheckApproved(trustedManager);
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = ContractsService.createRevocation(llcProperty);
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp = llcProperty2.getTransactionPack();
+        tp.addReference(trustedManager);
+
+        Contract tu = getApprovedTUContract();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
+        registerAndCheckApproved(parcel);
+    }
+
     @Ignore("Stress test")
     @Test(timeout = 900000)
     public void testLedgerLocks() throws Exception {
