@@ -208,6 +208,7 @@ public class ListRoleTest {
         Contract c = new Contract();
 
         SimpleRole s1 = new SimpleRole("owner");
+        s1.addRequiredReference("refName", Role.RequiredMode.ALL_OF);
         s1.addKeyRecord(new KeyRecord(keys.get(0).getPublicKey()));
 
         ListRole roleList = new ListRole("listAllMode", ListRole.Mode.ALL, Do.listOf(s1));
