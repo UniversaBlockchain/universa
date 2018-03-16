@@ -98,4 +98,31 @@ public class RoleReferencesTest {
         assertTrue(r1.getReferences(Role.RequiredMode.ANY_OF).isEmpty());
         assertTrue(r1.getReferences(Role.RequiredMode.ALL_OF).isEmpty());
     }
+
+    @Test
+    public void  isAllowed()  throws Exception {
+
+        PublicKey key = keys.get(0).getPublicKey();
+        Set<PublicKey> keySet = new HashSet<>();
+        keySet.add(key);
+        SimpleRole sr = new SimpleRole("tr1");
+        sr.addKeyRecord(new KeyRecord(key));
+
+        assertTrue(!sr.isAllowedForKeys(new HashSet<>()));
+        assertTrue(sr.isAllowedForKeys(keySet));
+        assertTrue(sr.isAllowedForKeysAndReferences(keySet,new HashSet<>()));
+        sr.addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
+        sr.addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
+        Set<String> allRef = new HashSet<>();
+        allRef.add("ref1");
+        assertTrue(!sr.isAllowedForKeysAndReferences(keySet,allRef));
+        allRef.add("ref2");
+        assertTrue(sr.isAllowedForKeysAndReferences(keySet,allRef));
+        sr.addRequiredReference("ref3", Role.RequiredMode.ANY_OF);
+        assertTrue(!sr.isAllowedForKeysAndReferences(keySet,allRef));
+        sr.addRequiredReference("ref4", Role.RequiredMode.ANY_OF);
+        sr.addRequiredReference("ref5", Role.RequiredMode.ANY_OF);
+        allRef.add("ref4");
+        assertTrue(sr.isAllowedForKeysAndReferences(keySet,allRef));
+    }
 }

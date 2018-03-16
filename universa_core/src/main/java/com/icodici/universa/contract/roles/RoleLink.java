@@ -20,6 +20,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.Collection;
 import java.util.Set;
 
 /**
@@ -35,6 +36,7 @@ public class RoleLink extends Role {
 
     private RoleLink() {
     }
+
 
     /**
      * Create a link to a named role. Note that such links can be created ahead of time, e.g. when there is no bound
@@ -102,6 +104,12 @@ public class RoleLink extends Role {
     public Set<PublicKey> getKeys() {
         final Role role = resolve();
         return (role == null) ? null : role.getKeys();
+    }
+
+    @Override
+    public boolean isAllowedForKeysAndReferences(Collection<? extends AbstractKey> keys, Collection<String> references) {
+        final Role role = resolve();
+        return (role == null) ? false : role.isAllowedForKeysAndReferences(keys, references);
     }
 
     @Override

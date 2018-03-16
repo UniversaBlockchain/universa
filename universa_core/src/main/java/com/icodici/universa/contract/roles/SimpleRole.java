@@ -108,6 +108,7 @@ public class SimpleRole extends Role {
         return keyAddresses;
     }
 
+    @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         // any will go logic
         return keys.stream().anyMatch(k -> {
