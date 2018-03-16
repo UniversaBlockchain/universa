@@ -20,12 +20,10 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.io.File;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.Executors;
@@ -466,15 +464,17 @@ public class BaseNetworkTest extends TestCase {
 
             TestItem main = new TestItem(true);
 
-            StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
+            TestItem existingItem1 = new TestItem(true);
+            StateRecord existing1 = ledger.findOrCreate(existingItem1.getId());
             existing1.setState(ItemState.APPROVED).save();
 
 
             // but second is not good
-            StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
+            TestItem existingItem2 = new TestItem(false);
+            StateRecord existing2 = ledger.findOrCreate(existingItem2.getId());
             existing2.setState(badState).save();
 
-            main.addReferencedItems(existing1.getId(), existing2.getId());
+            main.addReferencedItems(existingItem1, existingItem2);
 
             Thread.sleep(300);
 
@@ -524,7 +524,7 @@ public class BaseNetworkTest extends TestCase {
         node.registerItem(existing2);
         node.waitItem(existing2.getId(), 6000);
 
-        main.addReferencedItems(existing1.getId(), existing2.getId());
+        main.addReferencedItems(existing1, existing2);
         main.addNewItems(new1, new2);
 
         System.out.println("--------resister (main) item " + main.getId() + " ---------");
@@ -560,12 +560,12 @@ public class BaseNetworkTest extends TestCase {
         @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 15000);
 
         // but second is missing
-        HashId missingId = HashId.createRandom();
+        TestItem missing = new TestItem(true);
 
-        main.addReferencedItems(existing.getId(), missingId);
+        main.addReferencedItems(existing, missing);
 
         // check that main is declined
-        System.out.println("--------- missind id: " + missingId);
+        System.out.println("--------- missind id: " + missing.getId());
         System.out.println("--------- existing id: " + existing.getId());
         node.registerItem(main);
         // need some time to resync missingId
@@ -575,9 +575,9 @@ public class BaseNetworkTest extends TestCase {
         // and the references are intact
         assertEquals(ItemState.APPROVED, existingItem.state);
 
-        System.out.println(node.getItem(missingId));
+        System.out.println(node.getItem(missing.getId()));
 
-        assertNull(node.getItem(missingId));
+        assertNull(node.getItem(missing.getId()));
     }
 
 
@@ -2457,8 +2457,8 @@ public class BaseNetworkTest extends TestCase {
         }
         System.out.println(newDelorean.getTransactional().getId());
         System.out.println(newLamborghini.getTransactional().getId());
-        System.out.println(newDelorean.getReferencedItems().iterator().next().transactional_id);
-        System.out.println(newLamborghini.getReferencedItems().iterator().next().transactional_id);
+        System.out.println(newDelorean.getReferences().iterator().next().transactional_id);
+        System.out.println(newLamborghini.getReferences().iterator().next().transactional_id);
 
         System.out.println(newDelorean.getTransactional().getReferences().get(0));
         System.out.println(newLamborghini.getTransactional().getReferences().get(0));
@@ -4293,7 +4293,7 @@ public class BaseNetworkTest extends TestCase {
         HashMap<HashId, StateRecord> knownParts = new HashMap<>();
         if (baseCheckPassed) {
             // check the referenced items
-            for (Reference refModel : item.getReferencedItems()) {
+            for (Reference refModel : item.getReferences()) {
                 HashId id = refModel.contract_id;
                 if(refModel.type == Reference.TYPE_EXISTING && id != null) {
                     StateRecord r = node.getLedger().getRecord(id);
@@ -4332,7 +4332,7 @@ public class BaseNetworkTest extends TestCase {
 
     // check subitems of given item recursively (down for newItems line)
     private final void checkSubItemsOf(Approvable checkingItem, StateRecord record, List<StateRecord> lockedToCreate, List<StateRecord> lockedToRevoke) {
-        for (Reference refModel : checkingItem.getReferencedItems()) {
+        for (Reference refModel : checkingItem.getReferences()) {
             HashId id = refModel.contract_id;
             if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
                 if (!node.getLedger().isApproved(id)) {
