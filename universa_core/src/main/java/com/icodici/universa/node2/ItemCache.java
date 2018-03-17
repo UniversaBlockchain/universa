@@ -14,31 +14,35 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ItemCache {
 
-    private final Thread cleaner;
+    private final Timer cleanerTimer = new Timer();
     private final Duration maxAge;
 
     public ItemCache(Duration maxAge) {
         this.maxAge = maxAge;
-        cleaner = new Thread( ()-> {
-            try {
-                Thread.sleep(5000);
+
+        cleanerTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
                 cleanUp();
-            } catch (InterruptedException e) {
             }
-        });
-        cleaner.setDaemon(true);
-        cleaner.setPriority(Thread.MIN_PRIORITY);
-        cleaner.start();
+        }, 5000, 5000);
     }
 
     final void cleanUp() {
         // we should avoid creating an object for each check:
         Instant now = Instant.now();
         records.values().forEach(r->r.checkExpiration(now));
+    }
+
+    public void shutdown() {
+        cleanerTimer.cancel();
+        cleanerTimer.purge();
     }
 
     public @Nullable Approvable get(HashId itemId) {
@@ -80,7 +84,7 @@ public class ItemCache {
 
         private void checkExpiration(Instant now) {
             if( expiresAt.isBefore(now) ) {
-                System.out.println("cache expired "+item.getId());
+//                System.out.println("cache expired "+item.getId());
                 records.remove(item.getId());
             }
         }

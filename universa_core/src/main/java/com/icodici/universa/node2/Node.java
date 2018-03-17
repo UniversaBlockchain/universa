@@ -808,6 +808,7 @@ public class Node {
         } catch (InterruptedException e) {
             System.out.println("lowPrioExecutorService.awaitTermination... timeout");
         }
+        cache.shutdown();
         System.out.println(toString() + "shutdown finished");
     }
 
