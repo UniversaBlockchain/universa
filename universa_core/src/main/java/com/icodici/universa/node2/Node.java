@@ -809,6 +809,7 @@ public class Node {
             System.out.println("lowPrioExecutorService.awaitTermination... timeout");
         }
         cache.shutdown();
+        parcelCache.shutdown();
         System.out.println(toString() + "shutdown finished");
     }
 

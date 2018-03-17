@@ -25,7 +25,6 @@ public class ItemCache {
 
     public ItemCache(Duration maxAge) {
         this.maxAge = maxAge;
-
         cleanerTimer.schedule(new TimerTask() {
             @Override
             public void run() {
