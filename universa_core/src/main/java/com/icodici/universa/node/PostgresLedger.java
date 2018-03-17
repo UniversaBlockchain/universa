@@ -261,6 +261,22 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
+    public Map<ItemState, Integer> getLedgerSize(Instant createdAfter) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("select count(id), state from ledger where created_at >= ? group by state",createdAfter != null ? createdAfter.getEpochSecond() : 0))) {
+                Map<ItemState,Integer> result = new HashMap<>();
+                do {
+                    int count = rs.getInt(1);
+                    ItemState state = ItemState.values()[rs.getInt(2)];
+                    result.put(state,count);
+
+                } while (rs.next());
+                return result;
+            }
+        });
+    }
+
 //    @Override
 //    public List<StateRecord> getAllByState(ItemState is) {
 //        try {

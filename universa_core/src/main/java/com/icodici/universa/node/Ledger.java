@@ -142,6 +142,8 @@ public interface Ledger {
         return getLockOwnerOf(getRecord(itemId));
     }
 
+    Map<ItemState,Integer> getLedgerSize(Instant createdAfter);
+
     public static class Rollback extends Db.RollbackException {
     }
 

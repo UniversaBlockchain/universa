@@ -203,6 +203,7 @@ public class Main {
         if( r != null )
             r.destroy();
 
+        clientHTTPServer.setConfig(config);
         clientHTTPServer.setNode(node);
         clientHTTPServer.setCache(cache);
         clientHTTPServer.setParcelCache(parcelCache);

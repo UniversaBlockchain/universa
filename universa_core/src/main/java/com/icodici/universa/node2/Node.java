@@ -35,7 +35,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
@@ -44,6 +43,17 @@ import java.util.function.Supplier;
  * In v2 node is always the local node. All the rest takes com.icodici.universa.node2.network.Network class.
  */
 public class Node {
+
+    private Instant nodeStartTime;
+    private Map<ItemState, Integer> ledgerSize;
+
+    private Instant lastStatsBuildTime;
+    private LinkedList<Map<ItemState,Integer>> ledgerStatsHistory = new LinkedList<>();
+    private LinkedList<Instant> ledgerHistoryTimestamps = new LinkedList<>();
+
+    private Integer smallIntervalApproved;
+    private Integer bigIntervalApproved;
+    private Integer uptimeApproved;
 
     public boolean isSanitating() {
         return !recordsToSanitate.isEmpty();
@@ -109,6 +119,38 @@ public class Node {
         recordsToSanitate = ledger.findUnfinished();
         if(!recordsToSanitate.isEmpty())
             executorService.schedule(() -> startSanitation(),2,TimeUnit.SECONDS);
+        else
+            dbSanitationFinished();
+    }
+
+    private void dbSanitationFinished() {
+        nodeStartTime = Instant.now();
+        lastStatsBuildTime = nodeStartTime;
+        ledgerSize = ledger.getLedgerSize(null);
+        executorService.scheduleAtFixedRate(() -> collectStats(),config.getStatsIntervalSmall().getSeconds(),config.getStatsIntervalSmall().getSeconds(),TimeUnit.SECONDS);
+        bigIntervalApproved = 0;
+        smallIntervalApproved = 0;
+        uptimeApproved = 0;
+    }
+
+    private void collectStats() {
+        Instant now = Instant.now();
+        Map<ItemState, Integer> lastIntervalStats = ledger.getLedgerSize(lastStatsBuildTime);
+        ledgerStatsHistory.addLast(lastIntervalStats);
+        ledgerHistoryTimestamps.addLast(lastStatsBuildTime);
+
+        smallIntervalApproved = lastIntervalStats.getOrDefault(ItemState.APPROVED,0)+lastIntervalStats.getOrDefault(ItemState.REVOKED,0);
+        bigIntervalApproved += smallIntervalApproved;
+        uptimeApproved += smallIntervalApproved;
+
+        lastIntervalStats.keySet().forEach(is -> ledgerSize.put(is, ledgerSize.getOrDefault(is,0) + lastIntervalStats.get(is)));
+
+        while (ledgerHistoryTimestamps.getFirst().plus(config.getStatsIntervalBig()).isBefore(now)) {
+            ledgerHistoryTimestamps.removeFirst();
+            bigIntervalApproved -= ledgerStatsHistory.removeFirst().get(ItemState.APPROVED);
+        }
+
+        lastStatsBuildTime = now;
     }
 
     private void startSanitation() {
@@ -743,6 +785,16 @@ public class Node {
         }
     }
 
+    public Binder provideStats() {
+        return Binder.of(
+                "uptime", Instant.now().getEpochSecond() - nodeStartTime.getEpochSecond(),
+                "ledgerSize", ledgerSize.values().stream().reduce((i1, i2) -> i1+i2).get(),
+                "smallIntervalApproved", smallIntervalApproved,
+                "bigIntervalApproved", bigIntervalApproved,
+                "uptimeApproved", uptimeApproved
+        );
+    }
+
 
     /// ParcelProcessor ///
 
@@ -1257,7 +1309,7 @@ public class Node {
                 }
 
                 //save item in disk cache
-                ledger.putItem(record,item,Instant.now().plus(config.getMaxCacheAge()));
+                ledger.putItem(record,item,Instant.now().plus(config.getMaxDiskCacheAge()));
 
 
                 if(!processingState.isProcessedToConsensus()) {
@@ -2226,6 +2278,8 @@ public class Node {
 
                 idsToRemove.stream().forEach(id -> recordsToSanitate.remove(id));
 
+                if(recordsToSanitate.isEmpty())
+                    dbSanitationFinished();
                 //System.out.println("itemSanitationDone at " + myInfo.getNumber() + " item " + record.getId() + " " + recordsToSanitate.size());
 
             }

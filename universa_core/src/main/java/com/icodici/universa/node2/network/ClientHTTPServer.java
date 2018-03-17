@@ -35,6 +35,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private ItemCache cache;
     private ParcelCache parcelCache;
     private NetConfig netConfig;
+    private Config config;
 
     private boolean localCors = false;
 
@@ -124,6 +125,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         });
 
+        addSecureEndpoint("getStats", this::getStats);
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
         addSecureEndpoint("approve", this::approve);
@@ -208,6 +210,19 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
+    private Binder getStats(Binder params, Session session) throws CommandFailedException {
+
+        checkNode(session);
+
+        if(config == null || !config.getNetworkAdminKey().equals(session.getPublicKey())) {
+            return Binder.of(
+                    "error",
+                    "command needs admin key"
+            );
+        }
+        return node.provideStats();
+    }
+
     private Binder getParcelProcessingState(Binder params, Session session) throws CommandFailedException {
         checkNode(session);
         try {
@@ -284,6 +299,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setLocalCors(boolean localCors) {
         this.localCors = localCors;
+    }
+
+    public void setConfig(Config config) {
+        this.config = config;
     }
 
     //    @Override

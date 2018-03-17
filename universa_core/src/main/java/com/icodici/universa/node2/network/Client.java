@@ -279,6 +279,11 @@ public class Client {
         });
     }
 
+
+    public Binder getStats() throws ClientError {
+        return protect(() -> httpClient.command("getStats"));
+    }
+
     public Node.ParcelProcessingState getParcelProcessingState(HashId parcelId) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("getParcelProcessingState",

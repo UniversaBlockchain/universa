@@ -159,6 +159,11 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public Map<ItemState, Integer> getLedgerSize(Instant createdAfter) {
+        return null;
+    }
+
+    @Override
     public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
 
     }

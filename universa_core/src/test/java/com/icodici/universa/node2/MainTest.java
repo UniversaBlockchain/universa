@@ -42,6 +42,7 @@ import java.net.*;
 import java.nio.file.Path;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -1741,8 +1742,11 @@ public class MainTest {
     }
 
 
-
     private TestSpace prepareTestSpace() throws Exception {
+        return prepareTestSpace(TestKeys.privateKey(3));
+    }
+
+    private TestSpace prepareTestSpace(PrivateKey key) throws Exception {
         TestSpace testSpace = new TestSpace();
         testSpace.nodes = new ArrayList<>();
         for (int i = 0; i < 4; i++)
@@ -1750,7 +1754,7 @@ public class MainTest {
         testSpace.node = testSpace.nodes.get(0);
         assertEquals("http://localhost:8080", testSpace.node.myInfo.internalUrlString());
         assertEquals("http://localhost:8080", testSpace.node.myInfo.publicUrlString());
-        testSpace.myKey = TestKeys.privateKey(3);
+        testSpace.myKey = key;
         testSpace.client = new Client(testSpace.myKey, testSpace.node.myInfo, null);
         return testSpace;
     }
@@ -1917,7 +1921,7 @@ public class MainTest {
 
             newContracts.add(newContract);
             newRevisions.add(newRevision);
-            int unfinishedNodesCount = random.nextInt(2)+1;
+            int unfinishedNodesCount = random.nextInt(1)+1;
             Set<Integer> unfinishedNodesNumbers = new HashSet<>();
             while(unfinishedNodesCount > unfinishedNodesNumbers.size()) {
                 unfinishedNodesNumbers.add(random.nextInt(NODE_COUNT)+1);
@@ -1973,6 +1977,7 @@ public class MainTest {
             }
         }
         ledgers.stream().forEach(ledger -> ledger.close());
+        ledgers.clear();
 
 
         List<Main> mm = new ArrayList<>();
@@ -2009,6 +2014,16 @@ public class MainTest {
         Thread.sleep(1000);
         mm.stream().forEach(m -> m.shutdown());
         Thread.sleep(1000);
+
+        dbUrls.stream().forEach(url -> {
+            try {
+                PostgresLedger ledger = new PostgresLedger(url);
+                assertTrue(ledger.findUnfinished().isEmpty());
+                ledger.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
 
@@ -2027,5 +2042,32 @@ public class MainTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void nodeStatsTest() throws Exception {
+        PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
+        TestSpace testSpace = prepareTestSpace(issuerKey);
+        testSpace.nodes.get(0).config.setStatsIntervalSmall(Duration.ofSeconds(4));
+        testSpace.nodes.get(0).config.setStatsIntervalBig(Duration.ofSeconds(60));
+        testSpace.nodes.get(0).config.getKeysWhiteList().add(issuerKey.getPublicKey());
+
+        Binder binder = testSpace.client.getStats();
+        System.out.println(binder.toString());
+        Instant now;
+        for (int i = 0; i < 100; i++) {
+            now = Instant.now();
+            Contract contract = new Contract(issuerKey);
+            contract.seal();
+            testSpace.client.register(contract.getPackedTransaction(),1500);
+            contract = new Contract(issuerKey);
+            contract.seal();
+            testSpace.client.register(contract.getPackedTransaction(),1500);
+
+            Thread.sleep(4000-(Instant.now().toEpochMilli()-now.toEpochMilli()));
+            binder = testSpace.client.getStats();
+            System.out.println(binder.toString());
+        }
+
     }
 }
