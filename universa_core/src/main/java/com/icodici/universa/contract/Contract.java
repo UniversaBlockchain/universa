@@ -899,10 +899,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private void basicCheck() throws Quantiser.QuantiserException {
-        if (definition.createdAt == null ||
-                definition.createdAt.isAfter(ZonedDateTime.now()) ||
-                definition.createdAt.isBefore(getEarliestCreationTime())) {
+        if (definition.createdAt == null) {
             addError(BAD_VALUE, "definition.created_at", "invalid");
+        }
+
+        if(state.origin == null){
+            if (definition.createdAt.isAfter(ZonedDateTime.now()) ||
+                    definition.createdAt.isBefore(getEarliestCreationTime())) {
+                addError(BAD_VALUE, "definition.created_at", "invalid");
+            }
         }
 
         boolean stateExpiredAt = state.expiresAt == null || state.expiresAt.isBefore(ZonedDateTime.now());
