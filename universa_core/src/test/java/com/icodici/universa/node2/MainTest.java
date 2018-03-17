@@ -906,6 +906,8 @@ public class MainTest {
                         ItemResult itemResult = client.getState(id);
                         if (!itemResult.state.isPending())
                             contractHashesMap.remove(id);
+                        else
+                            break;
                     }
                 }
             }

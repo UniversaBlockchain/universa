@@ -87,7 +87,10 @@ public class PooledAsyncRunner implements IAsyncRunner {
     public void closed(ClientHandler clientHandler) {
         assert clientHandler != null;
 
-        executedFutures.get(clientHandler).cancel(true);
+        final Future future = executedFutures.remove(clientHandler);
+        if (future != null) {
+            future.cancel(true);
+        }
     }
 
     @Override
