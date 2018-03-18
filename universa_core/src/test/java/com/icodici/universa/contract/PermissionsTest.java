@@ -9,12 +9,14 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.wallet.Wallet;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -23,7 +25,9 @@ import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.HashSet;
+import java.util.Set;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.*;
@@ -416,6 +420,89 @@ public class PermissionsTest extends ContractTestBase {
         assertEquals(1, c2.getNewItems().size());
 
         sealCheckTrace(c2, false);
+    }
+
+    @Test
+    public void changeOwnerWithReference() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<String> references = new HashSet<>();
+        references.add("ceritfication_contract");
+
+        Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        assertThat(c.getPermissions().getFirst("change_owner").getRole(), is(instanceOf(RoleLink.class)));
+        assertFalse(c.getPermissions().getFirst("change_owner").getRole().isAllowedForKeys(stepaPublicKeys));
+        assertTrue(c.getPermissions().getFirst("change_owner").getRole().isAllowedFor(stepaPublicKeys, references));
+
+        System.out.println("Owner now :" + c.getOwner());
+        System.out.println("change owner permission :" + c.getPermissions().get("change_owner"));
+
+        c.seal();
+        c.check();
+        c.traceErrors();
+        assertTrue(c.isOk());
+        assertEquals(c, ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getContract());
+        Role cOwner = c.getOwner();
+        assertTrue (cOwner.isAllowedForKeys(stepaPublicKeys));
+        assertTrue (!cOwner.isAllowedForKeys(new HashSet<>(Do.listOf(ownerKey2))));
+
+        // Bad contract change: owner has no right to change owner ;)
+        Contract c1 = c.createRevision(TestKeys.privateKey(0));
+        c1.setOwnerKey(ownerKey2);
+        assertNotEquals(c.getOwner(), c1.getOwner());
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+        assertEquals(1, c1.getErrors().size());
+        ErrorRecord error = c1.getErrors().get(0);
+        assertEquals(Errors.FORBIDDEN, error.getError());
+
+        // good contract change: creator is an owner
+
+        Contract c2 = c.createRevision(stepaPrivateKeys);
+        assertEquals(c, ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getContract());
+
+//        System.out.println("c owner   : "+c.getRole("owner"));
+//        System.out.println("c2 creator: "+c2.getRole("creator"));
+
+        assertEquals(c.getOwner(), ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getRole());
+        assertEquals(c2, ((RoleLink) c2.getPermissions().getFirst("change_owner").getRole()).getContract());
+        assertEquals(c, ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getContract());
+        c2.setOwnerKey(ownerKey3);
+        assertNotEquals(c.getOwner(), c2.getOwner());
+        assertEquals(c.getOwner(), ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getRole());
+
+        sealCheckTrace(c2, true);
+
+//        PublicKey key = keys.get(0).getPublicKey();
+//        Set<PublicKey> keySet = new HashSet<>();
+//        keySet.add(key);
+//        SimpleRole sr = new SimpleRole("tr1");
+//        sr.addKeyRecord(new KeyRecord(key));
+//
+//        assertTrue(!sr.isAllowedForKeys(new HashSet<>()));
+//        assertTrue(sr.isAllowedForKeys(keySet));
+//        assertTrue(sr.isAllowedFor(keySet,new HashSet<>()));
+//        sr.addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
+//        sr.addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
+//        Set<String> allRef = new HashSet<>();
+//        allRef.add("ref1");
+//        assertTrue(!sr.isAllowedFor(keySet,allRef));
+//        allRef.add("ref2");
+//        assertTrue(sr.isAllowedFor(keySet,allRef));
+//        sr.addRequiredReference("ref3", Role.RequiredMode.ANY_OF);
+//        assertTrue(!sr.isAllowedFor(keySet,allRef));
+//        sr.addRequiredReference("ref4", Role.RequiredMode.ANY_OF);
+//        sr.addRequiredReference("ref5", Role.RequiredMode.ANY_OF);
+//        allRef.add("ref4");
+//        assertTrue(sr.isAllowedFor(keySet,allRef));
     }
 
 //    @Test

@@ -8,7 +8,6 @@
 package com.icodici.universa.contract.roles;
 
 import com.icodici.crypto.EncryptionError;
-import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.KeyRecord;
@@ -110,19 +109,19 @@ public class RoleReferencesTest {
 
         assertTrue(!sr.isAllowedForKeys(new HashSet<>()));
         assertTrue(sr.isAllowedForKeys(keySet));
-        assertTrue(sr.isAllowedForKeysAndReferences(keySet,new HashSet<>()));
+        assertTrue(sr.isAllowedFor(keySet,new HashSet<>()));
         sr.addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
         sr.addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
         Set<String> allRef = new HashSet<>();
         allRef.add("ref1");
-        assertTrue(!sr.isAllowedForKeysAndReferences(keySet,allRef));
+        assertTrue(!sr.isAllowedFor(keySet,allRef));
         allRef.add("ref2");
-        assertTrue(sr.isAllowedForKeysAndReferences(keySet,allRef));
+        assertTrue(sr.isAllowedFor(keySet,allRef));
         sr.addRequiredReference("ref3", Role.RequiredMode.ANY_OF);
-        assertTrue(!sr.isAllowedForKeysAndReferences(keySet,allRef));
+        assertTrue(!sr.isAllowedFor(keySet,allRef));
         sr.addRequiredReference("ref4", Role.RequiredMode.ANY_OF);
         sr.addRequiredReference("ref5", Role.RequiredMode.ANY_OF);
         allRef.add("ref4");
-        assertTrue(sr.isAllowedForKeysAndReferences(keySet,allRef));
+        assertTrue(sr.isAllowedFor(keySet,allRef));
     }
 }

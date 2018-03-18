@@ -67,6 +67,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean isSealed = false;
     private final Map<PublicKey, ExtendedSignature> sealedByKeys = new HashMap<>();
     private Set<PrivateKey> keysToSignWith = new HashSet<>();
+    private HashMap<String, Reference> references = new HashMap<>();
     private HashId id;
     private TransactionPack transactionPack;
 
@@ -165,7 +166,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // fill references with contracts from TransactionPack
-        for(Reference ref : getReferences()) {
+
+        if (transactional != null && transactional.references != null) {
+            for(Reference ref : transactional.references) {
+                references.put(ref.name, ref);
+            }
+        }
+        if (definition != null && definition.references != null){
+            for(Reference ref : definition.references) {
+                references.put(ref.name, ref);
+            }
+        }
+
+        for(Reference ref : getReferences().values()) {
             for(Contract c : pack.getReferences().values()) {
                 if(ref.isMathingWith(c)) {
                     ref.addMatchingItem(c);
@@ -275,7 +288,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // fill references with contracts from TransactionPack
-        for(Reference ref : getReferences()) {
+
+        if (transactional != null && transactional.references != null) {
+            for(Reference ref : transactional.references) {
+                references.put(ref.name, ref);
+            }
+        }
+        if (definition != null && definition.references != null){
+            for(Reference ref : definition.references) {
+                references.put(ref.name, ref);
+            }
+        }
+
+        for(Reference ref : getReferences().values()) {
             for(Contract c : pack.getReferences().values()) {
                 if(ref.isMathingWith(c)) {
                     ref.addMatchingItem(c);
@@ -405,13 +430,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public Set<Reference> getReferences() {
-        Set<Reference> referencedItems = new HashSet<>();
-        if (transactional != null && transactional.references != null)
-            referencedItems.addAll(transactional.references);
-        if (definition != null && definition.getReferences() != null)
-            referencedItems.addAll(definition.getReferences());
-        return referencedItems;
+    public HashMap<String, Reference> getReferences() {
+        return references;
     }
 
     @Override
@@ -537,7 +557,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         // check each reference, all must be ok
         boolean allRefs_check = true;
-        for (final Reference rm : getReferences()) {
+        for (final Reference rm : getReferences().values()) {
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
             for (int j = 0; j < neighbourContracts.size(); ++j) {
@@ -1135,7 +1155,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Collection<Permission> cp = permissions.get(permissionName);
         if (cp != null) {
             for (Permission p : cp) {
-                if (p.isAllowedForKeys(keys)) {
+                if (p.isAllowedFor(keys, getReferences().keySet())) {
                     checkApplicablePermissionQuantized(p);
                     return true;
                 }

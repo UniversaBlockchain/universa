@@ -29,12 +29,12 @@ import java.util.*;
 public interface Approvable extends HashIdentifiable {
 
     /**
-     * List of references that item shouuld have to be valid
+     * Map of references that item have.
      *
-     * @return referenced items list
+     * @return referenced items map
      */
-    default Set<Reference> getReferences() {
-        return new HashSet<>();
+    default HashMap<String, Reference> getReferences() {
+        return new HashMap<>();
     }
 
     /**

@@ -45,15 +45,14 @@ definition:
      # will have permission to change owner. It is very important to allow it, so the owner can pay with a coin, or
      # split a part of it for another beneficiary
     change_owner:
-      - issuer
-#      - role:
-#        name: list_role
-#        type: ALL_OF
-#        roles:
-#          - owner
-#        requires:
-#          all_of:
-#            - ceritfication_contract
+      - role:
+          name: list_role
+          type: ALL_OF
+          roles:
+            - owner
+          requires:
+            all_of:
+              - ceritfication_contract
 
     # who can revoke the contract: owner, and issuer altogether. Usually it means - when the issuer posess the contract
     # for example by bying it back from the customer, it is possible ro revoke it. Very much like destroying banknotes
