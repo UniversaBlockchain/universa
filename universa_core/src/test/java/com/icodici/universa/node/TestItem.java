@@ -95,7 +95,7 @@ public class TestItem implements Approvable {
     public Set<Approvable> getReferencedItems() {
 
         Set<Approvable> referencedItems = new HashSet<>();
-        for (Reference r : this.referencedItems) {
+        for (Reference r : this.references.values()) {
             referencedItems.addAll(r.matchingItems);
         }
         return referencedItems;

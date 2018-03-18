@@ -8,7 +8,6 @@
 package com.icodici.universa.contract.roles;
 
 import com.icodici.crypto.EncryptionError;
-import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.KeyRecord;
