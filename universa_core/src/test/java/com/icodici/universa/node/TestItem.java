@@ -30,15 +30,15 @@ public class TestItem implements Approvable {
     private boolean isGood = true;
     private HashId hashId = HashId.createRandom();
     private Set<Approvable> newItems = new HashSet<>();
-    private Set<Reference> referencedItems = new HashSet<>();
+    private HashMap<String, Reference> references = new HashMap<>();
     private Set<Approvable> revokingItems = new HashSet<>();
     private List<ErrorRecord> errors = new ArrayList<>();
 
     private boolean expiresAtPlusFive = true;
 
     @Override
-    public Set<Reference> getReferences() {
-        return referencedItems;
+    public HashMap<String, Reference> getReferences() {
+        return references;
     }
 
     public TestItem(boolean isOk) {
@@ -77,7 +77,7 @@ public class TestItem implements Approvable {
         Stream.of(items).forEach(i -> {
             Reference refModel = new Reference();
             refModel.addMatchingItem(i);
-            referencedItems.add(refModel);
+            references.put(refModel.name, refModel);
         });
     }
 
@@ -85,7 +85,7 @@ public class TestItem implements Approvable {
     public Set<Approvable> getReferencedItems() {
 
         Set<Approvable> referencedItems = new HashSet<>();
-        for (Reference r : this.referencedItems) {
+        for (Reference r : this.references.values()) {
             referencedItems.addAll(r.matchingItems);
         }
         return referencedItems;

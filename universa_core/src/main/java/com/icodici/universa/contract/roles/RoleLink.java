@@ -107,9 +107,9 @@ public class RoleLink extends Role {
     }
 
     @Override
-    public boolean isAllowedForKeysAndReferences(Collection<? extends AbstractKey> keys, Collection<String> references) {
+    public boolean isAllowedFor(Collection<? extends AbstractKey> keys, Collection<String> references) {
         final Role role = resolve();
-        return (role == null) ? false : role.isAllowedForKeysAndReferences(keys, references);
+        return (role == null) ? false : role.isAllowedFor(keys, references);
     }
 
     @Override

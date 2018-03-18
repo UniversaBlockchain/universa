@@ -36,6 +36,8 @@ public class ContractTestBase extends TestCase {
 
     protected final String ROOT_CONTRACT = rootPath + "simple_root_contract.yml";
 
+    protected final String CONTRACT_WITH_REFERENCE = rootPath + "simple_root_contract.yml";
+
     protected static final String SUBSCRIPTION = "subscription.yml";
     protected static final String SUBSCRIPTION_WITH_DATA = "subscription_with_data.yml";
     protected static final String PRIVATE_KEY = "_xer0yfe2nn1xthc.private.unikey";

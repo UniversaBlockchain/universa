@@ -109,21 +109,20 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         }
     }
 
-    //TODO: should be deleted?
     public boolean isAllowedForKeys(PublicKey... keys) {
         Set<PublicKey> keySet = new HashSet<>();
         for (PublicKey k : keys)
             keySet.add(k);
-        return role.isAllowedForKeys(keySet);
+        return isAllowedFor(keySet, null);
     }
 
-    //TODO: should be deleted?
     public boolean isAllowedForKeys(Collection<PublicKey> keys) {
-        return keys instanceof Set ? role.isAllowedForKeys((Set) keys) : role.isAllowedForKeys(new HashSet<>(keys));
+//        return keys instanceof Set ? role.isAllowedForKeys((Set) keys) : role.isAllowedForKeys(new HashSet<>(keys));
+        return isAllowedFor(keys, null);
     }
 
-    public boolean isAllowedForKeysAndReferences(Collection<PublicKey> keys,Collection<String> references) {
-        return role.isAllowedForKeysAndReferences(keys,references);
+    public boolean isAllowedFor(Collection<PublicKey> keys, Collection<String> references) {
+        return role.isAllowedFor(keys, references);
     }
 
     @Override

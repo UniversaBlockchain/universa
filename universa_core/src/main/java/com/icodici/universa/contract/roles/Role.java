@@ -78,14 +78,15 @@ public abstract class Role implements BiSerializable {
 
     public abstract boolean isAllowedForKeys(Set<? extends AbstractKey> keys);
 
-    public boolean isAllowedForKeysAndReferences(Collection<? extends AbstractKey> keys, Collection<String> references) {
+    public boolean isAllowedFor(Collection<? extends AbstractKey> keys, Collection<String> references) {
         if(!isAllowedForKeys(keys instanceof Set ? (Set<? extends AbstractKey>) keys : new HashSet<>(keys)))
             return false;
-        if(requiredAllReferences.stream().anyMatch(ref -> !references.contains(ref))) {
+        if(requiredAllReferences.stream().anyMatch(ref -> references == null || !references.contains(ref))) {
             return false;
         }
 
-        return requiredAnyReferences.isEmpty() || requiredAnyReferences.stream().anyMatch(ref -> references.contains(ref));
+        return requiredAnyReferences.isEmpty() ||
+                requiredAnyReferences.stream().anyMatch(ref -> references != null && references.contains(ref));
 
     }
 

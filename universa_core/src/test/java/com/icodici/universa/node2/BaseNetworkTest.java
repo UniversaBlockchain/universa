@@ -2457,8 +2457,8 @@ public class BaseNetworkTest extends TestCase {
         }
         System.out.println(newDelorean.getTransactional().getId());
         System.out.println(newLamborghini.getTransactional().getId());
-        System.out.println(newDelorean.getReferences().iterator().next().transactional_id);
-        System.out.println(newLamborghini.getReferences().iterator().next().transactional_id);
+        System.out.println(newDelorean.getReferences().values().iterator().next().transactional_id);
+        System.out.println(newLamborghini.getReferences().values().iterator().next().transactional_id);
 
         System.out.println(newDelorean.getTransactional().getReferences().get(0));
         System.out.println(newLamborghini.getTransactional().getReferences().get(0));
@@ -4295,7 +4295,7 @@ public class BaseNetworkTest extends TestCase {
         HashMap<HashId, StateRecord> knownParts = new HashMap<>();
         if (baseCheckPassed) {
             // check the referenced items
-            for (Reference refModel : item.getReferences()) {
+            for (Reference refModel : item.getReferences().values()) {
                 HashId id = refModel.contract_id;
                 if(refModel.type == Reference.TYPE_EXISTING && id != null) {
                     StateRecord r = node.getLedger().getRecord(id);
@@ -4334,7 +4334,7 @@ public class BaseNetworkTest extends TestCase {
 
     // check subitems of given item recursively (down for newItems line)
     private final void checkSubItemsOf(Approvable checkingItem, StateRecord record, List<StateRecord> lockedToCreate, List<StateRecord> lockedToRevoke) {
-        for (Reference refModel : checkingItem.getReferences()) {
+        for (Reference refModel : checkingItem.getReferences().values()) {
             HashId id = refModel.contract_id;
             if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
                 if (!node.getLedger().isApproved(id)) {
