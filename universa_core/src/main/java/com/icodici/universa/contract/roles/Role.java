@@ -120,15 +120,37 @@ public abstract class Role implements BiSerializable {
     }
 
 
+    public abstract void initWithDsl(Binder serializedRole);
+
     static public Role fromDslBinder(String name, Binder serializedRole) {
         if (name == null)
             name = serializedRole.getStringOrThrow("name");
 
-        if (serializedRole.containsKey("key")) {
-            // Single-key role
-            return new SimpleRole(name, new KeyRecord(serializedRole));
+        Role result;
+        String type = serializedRole.getString("type",null);
+        if(type == null || type.equalsIgnoreCase("simple")) {
+            result = new SimpleRole(name);
+        } else if(type.equalsIgnoreCase("link")) {
+            result = new RoleLink(name);
+        } else if(type.equalsIgnoreCase("list")) {
+            result = new ListRole(name);
+        } else {
+            throw new IllegalArgumentException("Unknown role type: " + type);
         }
-        return new SimpleRole(name, serializedRole.getListOrThrow("binders"));
+        result.initWithDsl(serializedRole);
+        if(serializedRole.containsKey("requires")) {
+            Binder requires = serializedRole.getBinderOrThrow("requires");
+            if(requires.containsKey("all_of")) {
+                result.requiredAllReferences.addAll(requires.getListOrThrow("all_of"));
+            }
+
+            if(requires.containsKey("any_of")) {
+                result.requiredAnyReferences.addAll(requires.getListOrThrow("any_of"));
+            }
+
+        }
+
+        return result;
     }
 
     public abstract Set<PublicKey> getKeys();
