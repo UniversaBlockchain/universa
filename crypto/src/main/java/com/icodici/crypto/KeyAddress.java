@@ -118,6 +118,12 @@ public class KeyAddress implements KeyMatcher {
         this(Safe58.decode(packedString));
     }
 
+    public KeyAddress(Binder binder) {
+        //TODO: implement
+        keyMask = 0;
+        keyDigest = new byte[0];
+    }
+
     /**
      * Check that the key matches this address, e.g. has of the same type and the digest of its components is the same.
      * The key components digest is calculated by the key self in the {@link AbstractKey#updateDigestWithKeyComponents(Digest)}

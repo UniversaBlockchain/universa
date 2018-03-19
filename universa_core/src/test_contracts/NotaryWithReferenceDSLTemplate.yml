@@ -47,7 +47,8 @@ definition:
     change_owner:
       - role:
           name: list_role
-          type: ALL_OF
+          type: list
+          mode: all
           roles:
             - owner
           requires:
