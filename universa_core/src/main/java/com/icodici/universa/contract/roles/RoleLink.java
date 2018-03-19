@@ -39,6 +39,14 @@ public class RoleLink extends Role {
 
 
     /**
+     * Create empty link role. To be initialized from dsl later
+     * @param name     new role name
+     */
+    public RoleLink(String name) {
+        super(name);
+    }
+
+    /**
      * Create a link to a named role. Note that such links can be created ahead of time, e.g. when there is no bound
      * contract or the target role does not yet exist. Just be sure to bind the contract with {@link
      * #setContract(Contract)} before using the instance.
@@ -128,6 +136,14 @@ public class RoleLink extends Role {
     public boolean equalKeys(Role otherRole) {
         final Role role = getRole();
         return (role == null) ? false : role.equalKeys(otherRole);
+    }
+
+    @Override
+    public void initWithDsl(Binder serializedRole) {
+        roleName = serializedRole.getStringOrThrow("target");
+        if (getName().equals(roleName))
+            throw new IllegalArgumentException("RoleLink: name and target name are equals: " + roleName);
+
     }
 
     @Override
