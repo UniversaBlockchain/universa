@@ -125,10 +125,9 @@ public abstract class Role implements BiSerializable {
     static public Role fromDslBinder(String name, Binder serializedRole) {
         if (name == null)
             name = serializedRole.getStringOrThrow("name");
-
         Role result;
-        String type = serializedRole.getString("type",null);
-        if(type == null || type.equalsIgnoreCase("simple")) {
+        String type =serializedRole.getString("type",null);
+            if(type == null || type.equalsIgnoreCase("simple")) {
             result = new SimpleRole(name);
         } else if(type.equalsIgnoreCase("link")) {
             result = new RoleLink(name);

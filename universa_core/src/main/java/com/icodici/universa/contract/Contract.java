@@ -2195,9 +2195,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 if (x instanceof Role)
                     // serialized, role object
                     role = registerRole((Role) x);
-                else
-                    // yaml, extended form: permission: { role: name, ... }
+                else if(x instanceof CharSequence) {
                     roleName = x.toString();
+                } else {
+                    // yaml, extended form: permission: { role: name, ... }
+                    role = Role.fromDslBinder("@" + name, Binder.of(x));
+                    registerRole(role);
+                }
             }
             if (role == null && roleName != null) {
                 // we need to create alias to existing role
