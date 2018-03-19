@@ -522,60 +522,198 @@ public class ContractsService {
     }
 
     /**
-     * Creates a base contract.
+     * Creates a token contract.
      *<br><br>
-     * The service creates a base contract.
+     * The service creates a token contract.
      *<br><br>
-     * @param issuerKeys is own private keys.
-     * @param datetime is time of expiration of the contract. Must be in distant future.
-     * @param data Any immutable structured data issuer might need to include into the contract this data will be also copied without change during any contract changes.
-     * @param issuerRole is role of issuer.
-     * @param creatorRole is role of creator.
-     * @param ownerRole is role of owner.
-     * @param perms is permissions for contract roles.
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
      * @param amount is amount transaction units.
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createBaseContract(
-            Set<PrivateKey> issuerKeys,
-            ZonedDateTime datetime,
-            Binder data,
-            Role issuerRole,
-            Role creatorRole,
-            Role ownerRole,
-            List<Permission> perms,
-            String amount)
-    {
-        Contract baseContract = new Contract();
-        baseContract.setApiLevel(3);
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount){
+        Contract tokenContract = new Contract();
+        tokenContract.setApiLevel(3);
 
-        Contract.Definition cd = baseContract.getDefinition();
-        cd.setExpiresAt(datetime);
+        Contract.Definition cd = tokenContract.getDefinition();
+        cd.setExpiresAt(ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC));
 
-        if (data != null)
-            cd.setData(data);
+        Binder data = new Binder();
+        data.set("name", "Token name");
+        data.set("currency_code", "TKN");
+        data.set("currency_name", "Token name");
+        data.set("description", "Token description.");
+        cd.setData(data);
 
-        if (issuerRole != null)
-            baseContract.createRole("issuer", issuerRole);
+        SimpleRole revokeRole = new SimpleRole("revoke_role");
 
-        if (creatorRole != null)
-            baseContract.createRole("creator", creatorRole);
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
 
-        if (ownerRole != null)
-            baseContract.createRole("owner", ownerRole);
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
 
-        if (amount != null)
-            baseContract.getStateData().set("amount", amount);
+        tokenContract.registerRole(issuerRole);
+        tokenContract.createRole("issuer", issuerRole);
+        tokenContract.createRole("creator", issuerRole);
+        tokenContract.getStateData().set("amount", amount);
 
-        if (perms != null)
-            for (Permission perm: perms)
-                baseContract.addPermission(perm);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        tokenContract.addPermission(changeOwnerPerm);
 
-        baseContract.seal();
-        baseContract.addSignatureToSeal(issuerKeys);
+        Binder params = new Binder();
+        params.set("min_value", 0.01);
+        params.set("min_unit", 0.001);
+        params.set("field_name", "amount");
+        params.set("join_match_fields", "state.origin");
 
-        return baseContract;
+        SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerRole, params);
+        tokenContract.addPermission(splitJoinPerm);
+
+        RevokePermission revokePerm = new RevokePermission(revokeRole);
+        tokenContract.addPermission(revokePerm);
+
+        tokenContract.setOwnerKeys(ownerKeys);
+
+        tokenContract.seal();
+        tokenContract.addSignatureToSeal(issuerKeys);
+
+        return tokenContract;
     }
+
+
+    /**
+     * Creates a share contract.
+     *<br><br>
+     * The service creates a share contract.
+     *<br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param amount is amount transaction units.
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createShareContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount){
+        Contract shareContract = new Contract();
+        shareContract.setApiLevel(3);
+
+        Contract.Definition cd = shareContract.getDefinition();
+        cd.setExpiresAt(ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC));
+
+        Binder data = new Binder();
+        data.set("name", "Share name");
+        data.set("currency_code", "SHN");
+        data.set("currency_name", "Share name");
+        data.set("description", "Share description.");
+        cd.setData(data);
+
+        SimpleRole revokeRole = new SimpleRole("revoke_role");
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        shareContract.registerRole(issuerRole);
+        shareContract.createRole("issuer", issuerRole);
+        shareContract.createRole("creator", issuerRole);
+        shareContract.getStateData().set("amount", amount);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        shareContract.addPermission(changeOwnerPerm);
+
+        Binder params = new Binder();
+        params.set("min_value", 1);
+        params.set("min_unit", 1);
+        params.set("field_name", "amount");
+        params.set("join_match_fields", "state.origin");
+
+        SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerRole, params);
+        shareContract.addPermission(splitJoinPerm);
+
+        RevokePermission revokePerm = new RevokePermission(revokeRole);
+        shareContract.addPermission(revokePerm);
+
+        shareContract.setOwnerKeys(ownerKeys);
+
+        shareContract.seal();
+        shareContract.addSignatureToSeal(issuerKeys);
+
+        return shareContract;
+    }
+
+
+    /**
+     * Creates a notary contract.
+     *<br><br>
+     * The service creates a notary contract.
+     *<br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createNotaryContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys){
+        Contract notaryContract = new Contract();
+        notaryContract.setApiLevel(3);
+
+        Contract.Definition cd = notaryContract.getDefinition();
+        cd.setExpiresAt(ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC));
+
+        Binder data = new Binder();
+        data.set("name", "Notary");
+        data.set("description", "This contract represents the notary.");
+        cd.setData(data);
+
+        SimpleRole revokeRole = new SimpleRole("revoke_role");
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+            revokeRole.addKeyRecord(kr);
+        }
+
+        notaryContract.registerRole(issuerRole);
+        notaryContract.createRole("issuer", issuerRole);
+        notaryContract.createRole("creator", issuerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        notaryContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm = new RevokePermission(revokeRole);
+        notaryContract.addPermission(revokePerm);
+
+        notaryContract.setOwnerKeys(ownerKeys);
+
+        notaryContract.seal();
+        notaryContract.addSignatureToSeal(issuerKeys);
+
+        return notaryContract;
+    }
+
 
     /**
      * Create paid transaction, which consist from contract you want to register and payment contract that will be
