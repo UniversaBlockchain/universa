@@ -76,6 +76,8 @@ public class TestItem implements Approvable {
     public void addReferencedItems(Approvable... items) {
         Stream.of(items).forEach(i -> {
             Reference refModel = new Reference();
+            refModel.name = i.getId().toBase64String();
+            refModel.type = Reference.TYPE_EXISTING;
             refModel.addMatchingItem(i);
             references.put(refModel.name, refModel);
         });

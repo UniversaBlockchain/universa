@@ -13,6 +13,7 @@ import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
@@ -23,14 +24,11 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
-import net.sergeych.tools.Binder;
-import com.icodici.universa.contract.permissions.*;
-import java.time.Instant;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.core.Is.is;
@@ -44,15 +42,13 @@ public class BaseNetworkTest extends TestCase {
 
     protected static final String ROOT_PATH = "./src/test_contracts/";
     protected static final String CONFIG_2_PATH = "./src/test_config_2/";
-
+    protected static Contract tuContract = null;
     protected Network network = null;
     protected Node node = null;
     protected List<Node> nodes = null;
     protected Map<NodeInfo,Node> nodesMap = null;
     protected Ledger ledger = null;
     protected Config config = null;
-
-    protected static Contract tuContract = null;
     protected Object tuContractLock = new Object();
 
 
@@ -518,7 +514,7 @@ public class BaseNetworkTest extends TestCase {
 
         System.out.println("--------resister (bad) item " + existing1.getId() + " ---------");
         node.registerItem(existing1);
-        node.waitItem(existing1.getId(), 6000);
+        ItemResult ir = node.waitItem(existing1.getId(), 6000);
 
         System.out.println("--------resister (good) item " + existing2.getId() + " ---------");
         node.registerItem(existing2);
@@ -3378,25 +3374,37 @@ public class BaseNetworkTest extends TestCase {
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        ref.contract_id = trustedManager.getId();
+        llcProperty.getDefinition().getReferences().add(ref);
         llcProperty.seal();
 
         registerAndCheckApproved(llcProperty);
 
         Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
         llcProperty2.setOwnerKeys(thirdPartyPublicKeys);
-//        llcProperty2.addSignerKeys(stepaPrivateKeys);
         llcProperty2.seal();
         llcProperty2.check();
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
 
-        TransactionPack tp = llcProperty2.getTransactionPack();
-        tp.addReference(trustedManager);
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addReference(trustedManager);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
 
         Contract tu = getApprovedTUContract();
         // stepaPrivateKeys - is also U keys
-        Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
-        registerAndCheckApproved(parcel);
+        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        waitAndCheckApproved(parcel);
     }
 
     @Test
@@ -3429,6 +3437,11 @@ public class BaseNetworkTest extends TestCase {
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        ref.contract_id = trustedManager.getId();
+        llcProperty.getDefinition().getReferences().add(ref);
         llcProperty.seal();
 
         registerAndCheckApproved(llcProperty);
@@ -3438,13 +3451,22 @@ public class BaseNetworkTest extends TestCase {
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
 
-        TransactionPack tp = llcProperty2.getTransactionPack();
-        tp.addReference(trustedManager);
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addReference(trustedManager);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
 
         Contract tu = getApprovedTUContract();
         // stepaPrivateKeys - is also U keys
-        Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
-        registerAndCheckApproved(parcel);
+        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        waitAndCheckApproved(parcel);
     }
 
     @Test
@@ -3477,22 +3499,38 @@ public class BaseNetworkTest extends TestCase {
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "TokenWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        ref.contract_id = trustedManager.getId();
+        llcProperty.getDefinition().getReferences().add(ref);
         llcProperty.seal();
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100, "amount", stepaPrivateKeys);
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100,
+                "amount", stepaPrivateKeys, true);
+//        llcProperty2.createRole("creator", llcProperty2.getRole("owner"));
+//        llcProperty2.getNew().get(0).createRole("creator", llcProperty2.getNew().get(0).getRole("owner"));
         llcProperty2.check();
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
 
-        TransactionPack tp = llcProperty2.getTransactionPack();
-        tp.addReference(trustedManager);
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addReference(trustedManager);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
 
         Contract tu = getApprovedTUContract();
         // stepaPrivateKeys - is also U keys
-        Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
-        registerAndCheckApproved(parcel);
+        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        waitAndCheckApproved(parcel);
     }
 
     @Test
@@ -3525,26 +3563,38 @@ public class BaseNetworkTest extends TestCase {
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "AbonementWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        ref.contract_id = trustedManager.getId();
+        llcProperty.getDefinition().getReferences().add(ref);
         llcProperty.seal();
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = llcProperty.createRevision();
+        Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
         llcProperty2.getStateData().set("units",
                 llcProperty.getStateData().getIntOrThrow("units") - 1);
-        llcProperty2.addSignerKeys(stepaPrivateKeys);
         llcProperty2.seal();
         llcProperty2.check();
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
 
-        TransactionPack tp = llcProperty2.getTransactionPack();
-        tp.addReference(trustedManager);
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addReference(trustedManager);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
 
         Contract tu = getApprovedTUContract();
         // stepaPrivateKeys - is also U keys
-        Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
-        registerAndCheckApproved(parcel);
+        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        waitAndCheckApproved(parcel);
     }
 
     @Ignore("Stress test")
@@ -3677,10 +3727,10 @@ public class BaseNetworkTest extends TestCase {
 
     private synchronized void registerAndCheckApproved(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
-        registerAndCheckApproved(parcel);
+        waitAndCheckApproved(parcel);
     }
 
-    private synchronized void registerAndCheckApproved(Parcel parcel) throws Exception {
+    private synchronized void waitAndCheckApproved(Parcel parcel) throws Exception {
         try {
 //            LogPrinter.showDebug(true);
             System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());

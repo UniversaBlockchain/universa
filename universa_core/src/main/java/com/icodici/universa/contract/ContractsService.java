@@ -83,14 +83,37 @@ public class ContractsService {
      * @param keys is keys from owner of c
      * @return working contract that should be register in the Universa to finish procedure.
      */
-    public synchronized static Contract createSplit(Contract c, long amount, String fieldName, Set<PrivateKey> keys) {
+    public synchronized static Contract createSplit(Contract c, long amount, String fieldName,
+                                                    Set<PrivateKey> keys) {
+        return createSplit(c, amount, fieldName,  keys, false);
+    }
+
+        /**
+         * Implementing split procedure for token-type contracts.
+         * <br><br>
+         * Service create new revision of given contract, split it to a pair of contracts with split amount.
+         * <br><br>
+         * Given contract should have splitjoin permission for given keys.
+         * <br><br>
+         * @param c is contract should split be
+         * @param amount is value that should be split from given contract
+         * @param fieldName is name of field that should be split
+         * @param keys is keys from owner of c
+         * @param andSetCreator if true set owners as creator in both contarcts
+         * @return working contract that should be register in the Universa to finish procedure.
+         */
+    public synchronized static Contract createSplit(Contract c, long amount, String fieldName,
+                                                    Set<PrivateKey> keys, boolean andSetCreator) {
         Contract splitFrom = c.createRevision();
         Contract splitTo = splitFrom.splitValue(fieldName, new Decimal(amount));
 
         for (PrivateKey key : keys) {
             splitTo.addSignerKey(key);
         }
-//        splitTo.createRole("creator", splitTo.getRole("owner"));
+        if(andSetCreator) {
+            splitTo.createRole("creator", splitTo.getRole("owner"));
+            splitFrom.createRole("creator", splitFrom.getRole("owner"));
+        }
         splitTo.seal();
         splitFrom.seal();
 
