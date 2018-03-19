@@ -463,18 +463,94 @@ public class PermissionsTest extends ContractTestBase {
         ErrorRecord error = c1.getErrors().get(0);
         assertEquals(Errors.FORBIDDEN, error.getError());
 
-        // good contract change: creator is an owner
+        // bad contract change: good key but bad reference
 
         Contract c2 = c.createRevision(stepaPrivateKeys);
         c2.setOwnerKey(ownerKey3);
+        assertEquals(c2, c2.getPermissions().getFirst("change_owner").getRole().getContract());
+        assertNotEquals(c.getOwner(), c2.getOwner());
+        c2.seal();
+        c2.check();
+        c2.traceErrors();
+        assertEquals(1, c2.getErrors().size());
+        error = c2.getErrors().get(0);
+        assertEquals(Errors.FORBIDDEN, error.getError());
+
+        // good contract change: creator is an owner
+
+        Contract c3 = c.createRevision(stepaPrivateKeys);
+        c3.setOwnerKey(ownerKey3);
         Reference ref = new Reference();
         ref.name = "ceritfication_contract";
         ref.type = Reference.TYPE_EXISTING;
-        c2.getReferences().put(ref.name, ref);
-        assertEquals(c2, c2.getPermissions().getFirst("change_owner").getRole().getContract());
-        assertNotEquals(c.getOwner(), c2.getOwner());
+        c3.getReferences().put(ref.name, ref);
+        assertEquals(c3, c3.getPermissions().getFirst("change_owner").getRole().getContract());
+        assertNotEquals(c.getOwner(), c3.getOwner());
 
-        sealCheckTrace(c2, true);
+        sealCheckTrace(c3, true);
+    }
+
+    @Test
+    public void crevokeWithReference() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<String> references = new HashSet<>();
+        references.add("ceritfication_contract");
+
+        Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        Role r = c.getPermissions().getFirst("revoke").getRole();
+        assertThat(r, is(instanceOf(ListRole.class)));
+        assertFalse(r.isAllowedFor(stepaPublicKeys, null));
+        assertTrue(r.isAllowedFor(stepaPublicKeys, references));
+
+        System.out.println("revoke permission :" + c.getPermissions().get("revoke"));
+
+        c.seal();
+        c.check();
+        c.traceErrors();
+        assertTrue(c.isOk());
+        assertEquals(c, (c.getPermissions().getFirst("revoke").getRole()).getContract());
+
+        // Bad contract change: owner has no right to change owner ;)
+        Contract c1 = c.createRevision(TestKeys.privateKey(0));
+        c1.setOwnerKey(ownerKey2);
+        assertNotEquals(c.getOwner(), c1.getOwner());
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+        assertEquals(1, c1.getErrors().size());
+        ErrorRecord error = c1.getErrors().get(0);
+        assertEquals(Errors.FORBIDDEN, error.getError());
+
+        // bad contract change: good key but bad reference
+
+        Contract c2 = ContractsService.createRevocation(c, stepaPrivateKeys.iterator().next());
+        assertEquals(c2.getRevoking().get(0), c2.getRevoking().get(0).getPermissions().getFirst("revoke").getRole().getContract());
+        c2.seal();
+        c2.check();
+        c2.traceErrors();
+        assertEquals(1, c2.getErrors().size());
+        error = c2.getErrors().get(0);
+        assertEquals(Errors.FORBIDDEN, error.getError());
+
+        // good contract change: creator is an owner
+
+        Contract c3 = ContractsService.createRevocation(c, stepaPrivateKeys.iterator().next());
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        c3.getRevoking().get(0).getReferences().put(ref.name, ref);
+//        assertEquals(c3.getRevoking().get(0), c3.getPermissions().getFirst("revoke").getRole().getContract());
+
+        System.out.println("-------------");
+        sealCheckTrace(c3, true);
     }
 
     @Test
@@ -517,20 +593,107 @@ public class PermissionsTest extends ContractTestBase {
 //        assertEquals(Errors.FORBIDDEN, error.getError());
         assertFalse(c1.isOk());
 
-        // good contract change: creator is an owner
+        // bad contract change: good key but no reference
 
         Contract c2 = ContractsService.createSplit(c, 1, "amount", stepaPrivateKeys);
         c2.createRole("creator", c2.getRole("owner"));
         c2.getNew().get(0).createRole("creator", c2.getNew().get(0).getRole("owner"));
-        Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
-        ref.type = Reference.TYPE_EXISTING;
-        c2.getReferences().put(ref.name, ref);
-        c2.getNew().get(0).getReferences().put(ref.name, ref);
         assertEquals(c2, c2.getPermissions().getFirst("split_join").getRole().getContract());
 
         System.out.println("-------------");
-        sealCheckTrace(c2, true);
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+//        assertEquals(1, c1.getErrors().size());
+//        ErrorRecord error = c1.getErrors().get(0);
+//        assertEquals(Errors.FORBIDDEN, error.getError());
+        assertFalse(c1.isOk());
+
+        // good contract change: creator is an owner
+
+        Contract c3 = ContractsService.createSplit(c, 1, "amount", stepaPrivateKeys);
+        c3.createRole("creator", c3.getRole("owner"));
+        c3.getNew().get(0).createRole("creator", c3.getNew().get(0).getRole("owner"));
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        c3.getReferences().put(ref.name, ref);
+        c3.getNew().get(0).getReferences().put(ref.name, ref);
+        assertEquals(c3, c3.getPermissions().getFirst("split_join").getRole().getContract());
+
+        System.out.println("-------------");
+        sealCheckTrace(c3, true);
+    }
+
+    @Test
+    public void decrementWithReference() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<String> references = new HashSet<>();
+        references.add("ceritfication_contract");
+
+        Contract c = Contract.fromDslFile(rootPath + "AbonementWithReferenceDSLTemplate.yml");
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        Role r = c.getPermissions().getFirst("decrement_permission").getRole();
+        assertThat(r, is(instanceOf(ListRole.class)));
+        assertFalse(r.isAllowedFor(stepaPublicKeys, null));
+        assertTrue(r.isAllowedFor(stepaPublicKeys, references));
+
+        System.out.println("decrement permission :" + c.getPermissions().get("decrement_permission"));
+
+        c.seal();
+        c.check();
+        c.traceErrors();
+        assertTrue(c.isOk());
+        assertEquals(c, (c.getPermissions().getFirst("decrement_permission").getRole()).getContract());
+
+        // Bad contract change: owner has no right to change owner ;)
+        Set<PrivateKey> badPrivateKeys = new HashSet<>();
+        badPrivateKeys.add(TestKeys.privateKey(0));
+        Contract c1 = c.createRevision(TestKeys.privateKey(0));
+        c1.getStateData().set("units", c.getStateData().getIntOrThrow("units") - 1);
+
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+//        assertEquals(1, c1.getErrors().size());
+//        ErrorRecord error = c1.getErrors().get(0);
+//        assertEquals(Errors.FORBIDDEN, error.getError());
+        assertFalse(c1.isOk());
+
+        // bad contract change: good key but no reference
+
+        Contract c2 = c.createRevision(stepaPrivateKeys);
+        c2.getStateData().set("units", c.getStateData().getIntOrThrow("units") - 1);
+        assertEquals(c2, c2.getPermissions().getFirst("decrement_permission").getRole().getContract());
+
+        System.out.println("-------------");
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+//        assertEquals(1, c1.getErrors().size());
+//        ErrorRecord error = c1.getErrors().get(0);
+//        assertEquals(Errors.FORBIDDEN, error.getError());
+        assertFalse(c1.isOk());
+
+        // good contract change: creator is an owner
+
+        Contract c3 = c.createRevision(stepaPrivateKeys);
+        c3.getStateData().set("units", c.getStateData().getIntOrThrow("units") - 1);
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        c3.getReferences().put(ref.name, ref);
+        assertEquals(c3, c3.getPermissions().getFirst("decrement_permission").getRole().getContract());
+
+        System.out.println("-------------");
+        sealCheckTrace(c3, true);
     }
 
 //    @Test

@@ -61,21 +61,18 @@ definition:
 
 
     decrement_permission:
-      - role: owner
+      - role:
+          name: list_role
+          type: list
+          mode: all
+          roles:
+            - owner
+          requires:
+            all_of:
+              - ceritfication_contract
         min_value: 1
         max_step: -1
         field_name: units
-#      - role:
-#        name: list_role
-#        type: ALL_OF
-#        roles:
-#          - owner
-#        requires:
-#          all_of:
-#            - ceritfication_contract
-#        min_value: 1
-#        max_step: -1
-#        field_name: units
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract
   # this data will be also copied without change during any contract changes.
