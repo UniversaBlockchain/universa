@@ -1352,9 +1352,9 @@ public class Node {
         private final Object resyncMutex;
 
         private ScheduledFuture<?> downloader;
-        private ScheduledFuture<?> poller;
-        private ScheduledFuture<?> consensusReceivedChecker;
-        private ScheduledFuture<?> resyncer;
+        private RunnableWithDynamicPeriod poller;
+        private RunnableWithDynamicPeriod consensusReceivedChecker;
+        private RunnableWithDynamicPeriod resyncer;
 
         /**
          *
@@ -1758,13 +1758,12 @@ public class Node {
                     synchronized (mutex) {
                         if (!processingState.isProcessedToConsensus()) {
                             if (poller == null) {
-                                long millis = config.getPollTime().toMillis();
-                                poller = executorService.scheduleAtFixedRate(() -> sendStartPollingNotification(),
-                                        millis,
-                                        millis,
-                                        TimeUnit.MILLISECONDS//,
-//                                        Node.this.toString() + toString() + " :: pulseStartPolling -> sendStartPollingNotification"
+                                List<Integer> pollTimes = config.getPollTime();
+                                poller = new RunnableWithDynamicPeriod(() -> sendStartPollingNotification(),
+                                        pollTimes,
+                                        executorService
                                 );
+                                poller.run();
                             }
                         }
                     }
@@ -2016,13 +2015,12 @@ public class Node {
 
                 synchronized (mutex) {
                     if(consensusReceivedChecker == null) {
-                        long millis = config.getConsensusReceivedCheckTime().toMillis();
-                        consensusReceivedChecker = executorService.scheduleAtFixedRate(() -> sendNewConsensusNotification(),
-                                millis,
-                                millis,
-                                TimeUnit.MILLISECONDS//,
-//                                Node.this.toString() + toString() + " :: pulseSendNewConsensus -> sendNewConsensusNotification"
+                        List<Integer> periodsMillis = config.getConsensusReceivedCheckTime();
+                        consensusReceivedChecker = new RunnableWithDynamicPeriod(() -> sendNewConsensusNotification(),
+                                periodsMillis,
+                                executorService
                         );
+                        consensusReceivedChecker.run();
                     }
                 }
             }
@@ -2130,14 +2128,13 @@ public class Node {
                     }
 
                     synchronized (mutex) {
-                        long millis = config.getResyncTime().toMillis();
+                        List<Integer> periodsMillis = config.getResyncTime();
                         if(resyncer == null) {
-                            resyncer = executorService.scheduleAtFixedRate(() -> sendResyncNotification(),
-                                    millis,
-                                    millis,
-                                    TimeUnit.MILLISECONDS//,
-//                                    Node.this.toString() + toString() + " :: pulseResync -> sendResyncNotification"
+                            resyncer = new RunnableWithDynamicPeriod(() -> sendResyncNotification(),
+                                    periodsMillis,
+                                    executorService
                             );
+                            resyncer.run();
                         }
                     }
                 }

@@ -40,7 +40,7 @@ public class RunnableWithDynamicPeriodTest {
         Thread.sleep(30000);
         System.out.println("executorService.size: " + executorService.getQueue().size());
         Assert.assertEquals(1, executorService.getQueue().size());
-        r.cancel();
+        r.cancel(true);
         Thread.sleep(1000);
         System.out.println("executorService.size: " + executorService.getQueue().size());
         Assert.assertEquals(0, executorService.getQueue().size());

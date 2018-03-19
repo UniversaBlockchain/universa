@@ -16,6 +16,7 @@ import net.sergeych.utils.Bytes;
 import java.time.Duration;
 import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Config {
@@ -40,10 +41,10 @@ public class Config {
             config.resyncBreakConsensus = resyncBreakConsensus;
         }
         config.maxElectionsTime = maxElectionsTime;
-        config.pollTime = pollTime;
-        config.consensusReceivedCheckTime = consensusReceivedCheckTime;
+        config.pollTimeMillis = new ArrayList<>(pollTimeMillis);
+        config.consensusReceivedCheckTime = new ArrayList<>(consensusReceivedCheckTime);
         config.maxConsensusReceivedCheckTime = maxConsensusReceivedCheckTime;
-        config.resyncTime = resyncTime;
+        config.resyncTime = new ArrayList<>(resyncTime);
         config.checkItemTime = checkItemTime;
         config.maxResyncTime = maxResyncTime;
         config.transactionUnitsIssuerKeyData = transactionUnitsIssuerKeyData;
@@ -91,10 +92,10 @@ public class Config {
     private int positiveConsensus;
     private int resyncBreakConsensus;
     private Duration maxElectionsTime = Duration.ofMinutes(15);
-    private Duration pollTime = Duration.ofMillis(1000);
-    private Duration consensusReceivedCheckTime = Duration.ofMillis(1000);
+    private List<Integer> pollTimeMillis = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
+    private List<Integer> consensusReceivedCheckTime = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration maxConsensusReceivedCheckTime = Duration.ofMinutes(15);
-    private Duration resyncTime = Duration.ofMillis(1000);
+    private List<Integer> resyncTime = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
 
@@ -198,23 +199,23 @@ public class Config {
         this.negativeConsensus = negativeConsensus;
     }
 
-    public Duration getPollTime() {
-        return pollTime;
+    public List<Integer> getPollTime() {
+        return pollTimeMillis;
     }
 
-    public void setPollTime(Duration pollTime) {
-        this.pollTime = pollTime;
+    public void setPollTime(List<Integer> pollTimeMillis) {
+        this.pollTimeMillis = new ArrayList<>(pollTimeMillis);
     }
 
-    public Duration getConsensusReceivedCheckTime() {
+    public List<Integer> getConsensusReceivedCheckTime() {
         return consensusReceivedCheckTime;
     }
 
-    public void setConsensusReceivedCheckTime(Duration consensusReceivedCheckTime) {
-        this.consensusReceivedCheckTime = consensusReceivedCheckTime;
+    public void setConsensusReceivedCheckTime(List<Integer> consensusReceivedCheckTime) {
+        this.consensusReceivedCheckTime = new ArrayList<>(consensusReceivedCheckTime);
     }
 
-    public Duration getResyncTime() {
+    public List<Integer> getResyncTime() {
         return resyncTime;
     }
 
@@ -222,8 +223,8 @@ public class Config {
         return checkItemTime;
     }
 
-    public void setResyncTime(Duration resyncTime) {
-        this.resyncTime = resyncTime;
+    public void setResyncTime(List<Integer> resyncTime) {
+        this.resyncTime = new ArrayList<>(resyncTime);
     }
 
     public TemporalAmount getMaxDownloadOnApproveTime() {

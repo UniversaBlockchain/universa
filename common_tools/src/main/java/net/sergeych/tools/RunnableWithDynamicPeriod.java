@@ -36,9 +36,9 @@ public class RunnableWithDynamicPeriod implements Runnable {
         waitsCount += 1;
     }
 
-    public void cancel() {
+    public void cancel(boolean b) {
         if (future != null)
-            future.cancel(true);
+            future.cancel(b);
     }
 
 }
