@@ -440,9 +440,7 @@ public class PermissionsTest extends ContractTestBase {
 
         Role r = c.getPermissions().getFirst("change_owner").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
-
-        //TODO: FALSE????
-        //assertFalse(r.isAllowedForKeys(stepaPublicKeys));
+        assertFalse(r.isAllowedFor(stepaPublicKeys, null));
         assertTrue(r.isAllowedFor(stepaPublicKeys, references));
 
         System.out.println("Owner now :" + c.getOwner());
@@ -453,9 +451,6 @@ public class PermissionsTest extends ContractTestBase {
         c.traceErrors();
         assertTrue(c.isOk());
         assertEquals(c, (c.getPermissions().getFirst("change_owner").getRole()).getContract());
-        Role cOwner = c.getOwner();
-        assertTrue (cOwner.isAllowedForKeys(stepaPublicKeys));
-        assertTrue (!cOwner.isAllowedForKeys(new HashSet<>(Do.listOf(ownerKey2))));
 
         // Bad contract change: owner has no right to change owner ;)
         Contract c1 = c.createRevision(TestKeys.privateKey(0));
@@ -471,17 +466,13 @@ public class PermissionsTest extends ContractTestBase {
         // good contract change: creator is an owner
 
         Contract c2 = c.createRevision(stepaPrivateKeys);
-        assertEquals(c, c.getPermissions().getFirst("change_owner").getRole().getContract());
-
-//        System.out.println("c owner   : "+c.getRole("owner"));
-//        System.out.println("c2 creator: "+c2.getRole("creator"));
-
-        //assertEquals(c.getOwner(), ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getRole());
-        assertEquals(c2, c2.getPermissions().getFirst("change_owner").getRole().getContract());
-        assertEquals(c, c.getPermissions().getFirst("change_owner").getRole().getContract());
         c2.setOwnerKey(ownerKey3);
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        c2.getReferences().put(ref.name, ref);
+        assertEquals(c2, c2.getPermissions().getFirst("change_owner").getRole().getContract());
         assertNotEquals(c.getOwner(), c2.getOwner());
-        //assertEquals(c.getOwner(), ((RoleLink) c.getPermissions().getFirst("change_owner").getRole()).getRole());
 
         sealCheckTrace(c2, true);
 

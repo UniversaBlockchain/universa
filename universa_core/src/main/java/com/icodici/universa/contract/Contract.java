@@ -449,20 +449,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public Set<Approvable> getReferencedItems() {
-
-        Set<Approvable> referencedItems = new HashSet<>();
-//        if (transactional != null && transactional.references != null)
-//            referencedItems.addAll(transactional.references);
-        if (definition != null && definition.getReferences() != null) {
-            for (Reference r : definition.getReferences()) {
-                referencedItems.addAll(r.matchingItems);
-            }
-        }
-        return referencedItems;
-    }
-
-    @Override
     public Set<Approvable> getRevokingItems() {
         return (Set) revokingItems;
     }
@@ -574,13 +560,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         for (final Reference rm : getReferences().values()) {
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
-            for (int j = 0; j < neighbourContracts.size(); ++j) {
-                Contract neighbour = neighbourContracts.get(j);
-                if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
-                        (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
-                    if (checkOneReference(rm, neighbour)) {
-                        rm_check = true;
-                    }
+            if(rm.type == Reference.TYPE_TRANSACTIONAL) {
+                for (int j = 0; j < neighbourContracts.size(); ++j) {
+                    Contract neighbour = neighbourContracts.get(j);
+                    if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
+                            (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
+                        if (checkOneReference(rm, neighbour)) {
+                            rm_check = true;
+                        }
+                }
+            } else if(rm.type == Reference.TYPE_EXISTING) {
+                rm_check = true;
             }
 
             if (rm_check == false) {
