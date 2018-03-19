@@ -475,29 +475,62 @@ public class PermissionsTest extends ContractTestBase {
         assertNotEquals(c.getOwner(), c2.getOwner());
 
         sealCheckTrace(c2, true);
+    }
 
-//        PublicKey key = keys.get(0).getPublicKey();
-//        Set<PublicKey> keySet = new HashSet<>();
-//        keySet.add(key);
-//        SimpleRole sr = new SimpleRole("tr1");
-//        sr.addKeyRecord(new KeyRecord(key));
-//
-//        assertTrue(!sr.isAllowedForKeys(new HashSet<>()));
-//        assertTrue(sr.isAllowedForKeys(keySet));
-//        assertTrue(sr.isAllowedFor(keySet,new HashSet<>()));
-//        sr.addRequiredReference("ref1", Role.RequiredMode.ALL_OF);
-//        sr.addRequiredReference("ref2", Role.RequiredMode.ALL_OF);
-//        Set<String> allRef = new HashSet<>();
-//        allRef.add("ref1");
-//        assertTrue(!sr.isAllowedFor(keySet,allRef));
-//        allRef.add("ref2");
-//        assertTrue(sr.isAllowedFor(keySet,allRef));
-//        sr.addRequiredReference("ref3", Role.RequiredMode.ANY_OF);
-//        assertTrue(!sr.isAllowedFor(keySet,allRef));
-//        sr.addRequiredReference("ref4", Role.RequiredMode.ANY_OF);
-//        sr.addRequiredReference("ref5", Role.RequiredMode.ANY_OF);
-//        allRef.add("ref4");
-//        assertTrue(sr.isAllowedFor(keySet,allRef));
+    @Test
+    public void splitJoinWithReference() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<String> references = new HashSet<>();
+        references.add("ceritfication_contract");
+
+        Contract c = Contract.fromDslFile(rootPath + "TokenWithReferenceDSLTemplate.yml");
+        c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        Role r = c.getPermissions().getFirst("split_join").getRole();
+        assertThat(r, is(instanceOf(ListRole.class)));
+        assertFalse(r.isAllowedFor(stepaPublicKeys, null));
+        assertTrue(r.isAllowedFor(stepaPublicKeys, references));
+
+        System.out.println("split join permission :" + c.getPermissions().get("split_join"));
+
+        c.seal();
+        c.check();
+        c.traceErrors();
+        assertTrue(c.isOk());
+        assertEquals(c, (c.getPermissions().getFirst("split_join").getRole()).getContract());
+
+        // Bad contract change: owner has no right to change owner ;)
+        Set<PrivateKey> badPrivateKeys = new HashSet<>();
+        badPrivateKeys.add(TestKeys.privateKey(0));
+        Contract c1 = ContractsService.createSplit(c, 1, "amount", badPrivateKeys);
+        c1.seal();
+        c1.check();
+        c1.traceErrors();
+//        assertEquals(1, c1.getErrors().size());
+//        ErrorRecord error = c1.getErrors().get(0);
+//        assertEquals(Errors.FORBIDDEN, error.getError());
+        assertFalse(c1.isOk());
+
+        // good contract change: creator is an owner
+
+        Contract c2 = ContractsService.createSplit(c, 1, "amount", stepaPrivateKeys);
+        c2.createRole("creator", c2.getRole("owner"));
+        c2.getNew().get(0).createRole("creator", c2.getNew().get(0).getRole("owner"));
+        Reference ref = new Reference();
+        ref.name = "ceritfication_contract";
+        ref.type = Reference.TYPE_EXISTING;
+        c2.getReferences().put(ref.name, ref);
+        c2.getNew().get(0).getReferences().put(ref.name, ref);
+        assertEquals(c2, c2.getPermissions().getFirst("split_join").getRole().getContract());
+
+        System.out.println("-------------");
+        sealCheckTrace(c2, true);
     }
 
 //    @Test

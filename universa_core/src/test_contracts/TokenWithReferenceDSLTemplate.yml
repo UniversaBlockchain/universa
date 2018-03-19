@@ -50,8 +50,16 @@ definition:
     split_join:
       # owner can split and join coins, e.g. manipulate to pay and receive payments.
 
-      # is also limited (a useful option):
-      - role: owner
+      - role:
+          name: list_role
+          type: list
+          mode: all
+          roles:
+            - owner
+          requires:
+            all_of:
+              - ceritfication_contract
+
         # Mimimum splittable value. It means that we can split 10 coints to 9.99 and 0.01. Note that the system now
         # only allow values not lessser tha. 0.000`000`001, e.g. 1E-9, 1 nano-unit of something.
         min_value: 0.01 # one cent is a minimum
@@ -70,15 +78,6 @@ definition:
         # adding other field to this allow additional emission:
         join_match_fields:
           - state.origin
-
-#      - role:
-#        name: list_role
-#        type: ALL_OF
-#        roles:
-#          - owner
-#        requires:
-#          all_of:
-#            - ceritfication_contract
 
     # who can revoke the contract: owner, and issuer altogether. Usually it means - when the issuer posess the contract
     # for example by bying it back from the customer, it is possible ro revoke it. Very much like destroying banknotes
