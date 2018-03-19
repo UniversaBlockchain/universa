@@ -149,6 +149,7 @@ public class NetworkV2 extends Network {
             URL url = new URL(nodeInfo.publicUrlString() + "/contracts/" + itemId.toBase64String());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestProperty("Connection", "close");
             connection.setRequestMethod("GET");
             if (200 != connection.getResponseCode())
                 return null;
@@ -171,6 +172,7 @@ public class NetworkV2 extends Network {
             URL url = new URL(nodeInfo.publicUrlString() + "/parcels/" + itemId.toBase64String());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestProperty("Connection", "close");
             connection.setRequestMethod("GET");
             if (200 != connection.getResponseCode())
                 return null;

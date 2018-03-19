@@ -798,6 +798,18 @@ public class Node {
         }
         executorService.shutdown();
         lowPrioExecutorService.shutdown();
+        try {
+            executorService.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            System.out.println("executorService.awaitTermination... timeout");
+        }
+        try {
+            lowPrioExecutorService.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            System.out.println("lowPrioExecutorService.awaitTermination... timeout");
+        }
+        cache.shutdown();
+        parcelCache.shutdown();
         System.out.println(toString() + "shutdown finished");
     }
 

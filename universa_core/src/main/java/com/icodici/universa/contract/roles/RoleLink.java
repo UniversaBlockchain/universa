@@ -37,6 +37,7 @@ public class RoleLink extends Role {
     private RoleLink() {
     }
 
+
     /**
      * Create empty link role. To be initialized from dsl later
      * @param name     new role name
