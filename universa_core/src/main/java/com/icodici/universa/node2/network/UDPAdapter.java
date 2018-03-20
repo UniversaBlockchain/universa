@@ -55,7 +55,7 @@ public class UDPAdapter extends DatagramAdapter {
     /**
      * Time between internal calls of cleanup function.
      */
-    static public final int CLEANUP_TIME = 5000;
+    static public final int CLEANUP_TIME = 15000;
 
     private boolean isShuttingDown = false;
 
@@ -675,10 +675,17 @@ public class UDPAdapter extends DatagramAdapter {
 
         private ConcurrentHashMap<Integer, Block> waitingBlocks = new ConcurrentHashMap<>();
 
-        private ConcurrentHashMap<Integer, Instant> obtainedBlocksMap = new ConcurrentHashMap<>();
-        private Duration maxObtainedBlockAge = Duration.ofSeconds(30);
+        private ConcurrentHashMap<Integer, Instant> obtainedBlocks = new ConcurrentHashMap<>();
+        private ConcurrentLinkedQueue<BlockTime> obtainedBlocksQueue = new ConcurrentLinkedQueue<>();
+        private Duration maxObtainedBlockAge = Duration.ofMinutes(5);
 
         protected String label = null;
+
+        private class BlockTime {
+            Integer blockId;
+            Instant expiresAt;
+            public BlockTime(Integer blockId, Instant expiresAt) {this.blockId=blockId; this.expiresAt=expiresAt;}
+        };
 
         public SocketListenThread(DatagramSocket socket){
 
@@ -688,12 +695,18 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
         public void cleanObtainedBlocks() {
+            // important: makes poll from obtainedBlocksQueue only here
             final Instant now = Instant.now();
-            obtainedBlocksMap.keySet().forEach(key -> {
-                Instant expiresAt = obtainedBlocksMap.get(key);
-                if (expiresAt.isBefore(now))
-                    obtainedBlocksMap.remove(key);
-            });
+            BlockTime blockTime = obtainedBlocksQueue.peek();
+            while(blockTime != null) {
+                if (blockTime.expiresAt.isBefore(now)) {
+                    obtainedBlocks.remove(blockTime.blockId);
+                    obtainedBlocksQueue.poll();
+                    blockTime = obtainedBlocksQueue.peek();
+                } else {
+                    break;
+                }
+            }
         }
 
         @Override
@@ -735,7 +748,7 @@ public class UDPAdapter extends DatagramAdapter {
                         if (waitingBlocks.containsKey(packet.blockId)) {
                             waitingBlock = waitingBlocks.get(packet.blockId);
                         } else {
-                            if (obtainedBlocksMap.containsKey(packet.blockId)) {
+                            if (obtainedBlocks.containsKey(packet.blockId)) {
                                 // Do nothing, cause we got and obtained this block already
                                 report(getLabel(), () -> concatReportMessage(" warning: repeated block given, with id ", packet.blockId));
                             } else {
@@ -899,8 +912,8 @@ public class UDPAdapter extends DatagramAdapter {
                     } else {
                         report(getLabel(), () -> concatReportMessage("Block from unknown node ",
                                 block.senderNodeId, " was already obtained, will remove from obtained"));
-                        if(obtainedBlocksMap.containsKey(block.blockId)) {
-                            obtainedBlocksMap.remove(block.blockId);
+                        if(obtainedBlocks.containsKey(block.blockId)) {
+                            obtainedBlocks.remove(block.blockId);
                         }
                         throw new EncryptionError(Errors.BAD_VALUE + ": block got from unknown node " + block.senderNodeId);
                     }
@@ -1183,7 +1196,9 @@ public class UDPAdapter extends DatagramAdapter {
 
         public void moveWaitingBlockToObtained(Block block) {
             waitingBlocks.remove(block.blockId);
-            obtainedBlocksMap.put(block.blockId, Instant.now().plus(maxObtainedBlockAge));
+            Instant blockExpiresAt = Instant.now().plus(maxObtainedBlockAge);
+            obtainedBlocks.put(block.blockId, blockExpiresAt);
+            obtainedBlocksQueue.add(new BlockTime(block.blockId, blockExpiresAt));
         }
 
 
@@ -1194,7 +1209,7 @@ public class UDPAdapter extends DatagramAdapter {
                 final String sessionToString = session != null ? session.toString() : "null";
                 report(getLabel(), () -> concatReportMessage("answerAckOrNack ", sessionToString), VerboseLevel.BASE);
                 // we remove block from obtained because it broken and will can be regiven with correct data
-                obtainedBlocksMap.remove(block.blockId);
+                obtainedBlocks.remove(block.blockId);
                 if(session != null) {
                     if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
                         sendNack(session, block.blockId);
