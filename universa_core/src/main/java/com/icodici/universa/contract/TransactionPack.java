@@ -58,6 +58,7 @@ public class TransactionPack implements BiSerializable {
     private byte[] packedBinary;
     private boolean reconstructed = false;
     private Map<HashId, Contract> references = new HashMap<>();
+    private Map<HashId, Contract> foreignReferences = new HashMap<>();
     private Set<PublicKey> keysForPack = new HashSet<>();
     private Contract contract;
 
@@ -146,6 +147,19 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
+     * Direct add the reference. Not recommended as {@link #setContract(Contract)} already does it for all referenced
+     * contracts. Use it to add references not mentioned in the added contracts.
+     *
+     * @param reference is {@link Contract} for adding
+     */
+    public void addForeignReference(Contract reference) {
+        if (!foreignReferences.containsKey(reference.getId())) {
+            packedBinary = null;
+            foreignReferences.put(reference.getId(), reference);
+        }
+    }
+
+    /**
      * Add public key to {@link TransactionPack} that will match with anonimous ids in the {@link Contract} roles.
      *
      * @param keys is {@link PublicKey} that will be compare with anonimous ids.
@@ -194,6 +208,18 @@ public class TransactionPack implements BiSerializable {
                     }
                 }
             }
+
+            List<Bytes> foreignReferenceBytesList = deserializer.deserializeCollection(
+                    data.getList("foreignReferences", new ArrayList<>())
+            );
+            if(foreignReferenceBytesList != null) {
+                for (Bytes b : foreignReferenceBytesList) {
+                    Contract frc = new Contract(b.toArray(), this);
+                    quantiser.addWorkCostFrom(frc.getQuantiser());
+                    foreignReferences.put(frc.getId(), frc);
+                }
+            }
+            
 
             List<Bytes> referenceBytesList = deserializer.deserializeCollection(
                     data.getListOrThrow("references")
@@ -286,6 +312,13 @@ public class TransactionPack implements BiSerializable {
                     )
 
             );
+            if(foreignReferences.size() > 0) {
+                of.set("foreignReferences",
+                        serializer.serialize(
+                                foreignReferences.values().stream()
+                                        .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
+                        ));
+            }
             if(keysForPack.size() > 0) {
                 of.set("keys", serializer.serialize(
                         keysForPack.stream()
@@ -355,10 +388,17 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * @return map of referenced contracts
+     * @return map of referenced from new and revoke contracts
      */
     public Map<HashId, Contract> getReferences() {
         return references;
+    }
+
+    /**
+     * @return map of referenced from definition contracts
+     */
+    public Map<HashId, Contract> getForeignReferences() {
+        return foreignReferences;
     }
 
     static {

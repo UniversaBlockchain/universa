@@ -182,8 +182,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         for(Reference ref : getReferences().values()) {
-            for(Contract c : pack.getReferences().values()) {
-                if(ref.isMatchingWith(c, pack.getReferences().values())) {
+            for(Contract c : pack.getForeignReferences().values()) {
+                if(ref.isMatchingWith(c, pack.getForeignReferences().values())) {
                     ref.addMatchingItem(c);
                 }
             }
@@ -306,8 +306,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         for(Reference ref : getReferences().values()) {
-            for(Contract c : pack.getReferences().values()) {
-                if(ref.isMatchingWith(c, pack.getReferences().values())) {
+            for(Contract c : pack.getForeignReferences().values()) {
+                if(ref.isMatchingWith(c, pack.getForeignReferences().values())) {
                     ref.addMatchingItem(c);
                 }
             }
@@ -565,13 +565,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         for (final Reference rm : getReferences().values()) {
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
-            for (int j = 0; j < neighbourContracts.size(); ++j) {
-                Contract neighbour = neighbourContracts.get(j);
-                if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
-                        (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
-                    if (checkOneReference(rm, neighbour)) {
-                        rm_check = true;
-                    }
+            if(rm.type == Reference.TYPE_TRANSACTIONAL) {
+                for (int j = 0; j < neighbourContracts.size(); ++j) {
+                    Contract neighbour = neighbourContracts.get(j);
+                    if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
+                            (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
+                        if (checkOneReference(rm, neighbour)) {
+                            rm_check = true;
+                        }
+                }
+            } else if(rm.type == Reference.TYPE_EXISTING) {
+                rm_check = rm.isValid();
             }
 
             if (rm_check == false) {
@@ -2231,12 +2235,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 // extended yaml style or serialized object
                 binderParams = Binder.from(params);
                 Object x = binderParams.getOrThrow("role");
-                if (x instanceof Role)
+                if (x instanceof Role) {
                     // serialized, role object
                     role = registerRole((Role) x);
-                else
+                }
+                else if (x instanceof Map) {
+                    // if Map object - create role from Map
+                    role = createRole("@" + name, (Map) x);
+                }
+                else {
                     // yaml, extended form: permission: { role: name, ... }
                     roleName = x.toString();
+                }
             }
             if (role == null && roleName != null) {
                 // we need to create alias to existing role

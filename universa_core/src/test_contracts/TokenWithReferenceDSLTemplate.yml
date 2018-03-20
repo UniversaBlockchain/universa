@@ -58,7 +58,7 @@ definition:
             - owner
           requires:
             all_of:
-              - ceritfication_contract
+              - certification_contract
 
         # Mimimum splittable value. It means that we can split 10 coints to 9.99 and 0.01. Note that the system now
         # only allow values not lessser tha. 0.000`000`001, e.g. 1E-9, 1 nano-unit of something.
@@ -91,6 +91,16 @@ definition:
 #        roles:
 #          - issuer
 #          - owner
+
+
+
+  references:
+  - reference:
+     name: certification_contract
+     where:
+       all_of:
+       - this.issuer == ref.definition.issuer
+
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract
   # this data will be also copied without change during any contract changes.

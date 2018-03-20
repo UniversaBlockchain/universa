@@ -69,10 +69,20 @@ definition:
             - owner
           requires:
             all_of:
-              - ceritfication_contract
+              - certification_contract
         min_value: 1
         max_step: -1
         field_name: units
+
+
+
+  references:
+  - reference:
+     name: certification_contract
+     where:
+       all_of:
+       - this.issuer == ref.definition.issuer
+
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract
   # this data will be also copied without change during any contract changes.

@@ -419,10 +419,23 @@ public class Reference implements BiSerializable {
                     result = result || checkConditions((Binder) item, ref, contracts, iteration);
             }
         }
-        else
-            throw new IllegalArgumentException("Expected all_of or any_of");
+        else {
+            result = false;
+//            throw new IllegalArgumentException("Expected all_of or any_of");
+        }
 
         return result;
+    }
+
+    /**
+     * Check if reference is valid i.e. have matching with criteria items
+     * @return true or false
+     */
+    public boolean isValid() {
+        if(matchingItems.size() == 0) {
+            System.err.println("bad ref: " + name + " " + baseContract.getId());
+        }
+        return matchingItems.size() > 0;
     }
 
     /**

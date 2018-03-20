@@ -3375,11 +3375,6 @@ public class BaseNetworkTest extends TestCase {
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
-        Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
-        ref.type = Reference.TYPE_EXISTING;
-        ref.contract_id = trustedManager.getId();
-        llcProperty.getDefinition().getReferences().add(ref);
         llcProperty.seal();
 
         registerAndCheckApproved(llcProperty);
@@ -3392,7 +3387,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addReference(trustedManager);
+        tp_before.addForeignReference(trustedManager);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3438,11 +3433,6 @@ public class BaseNetworkTest extends TestCase {
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
-        Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
-        ref.type = Reference.TYPE_EXISTING;
-        ref.contract_id = trustedManager.getId();
-        llcProperty.getDefinition().getReferences().add(ref);
         llcProperty.seal();
 
         registerAndCheckApproved(llcProperty);
@@ -3454,7 +3444,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addReference(trustedManager);
+        tp_before.addForeignReference(trustedManager);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3500,11 +3490,6 @@ public class BaseNetworkTest extends TestCase {
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "TokenWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
-        Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
-        ref.type = Reference.TYPE_EXISTING;
-        ref.contract_id = trustedManager.getId();
-        llcProperty.getDefinition().getReferences().add(ref);
         llcProperty.seal();
 
         registerAndCheckApproved(llcProperty);
@@ -3518,7 +3503,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addReference(trustedManager);
+        tp_before.addForeignReference(trustedManager);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3564,11 +3549,6 @@ public class BaseNetworkTest extends TestCase {
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "AbonementWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
-        Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
-        ref.type = Reference.TYPE_EXISTING;
-        ref.contract_id = trustedManager.getId();
-        llcProperty.getDefinition().getReferences().add(ref);
         llcProperty.seal();
 
         registerAndCheckApproved(llcProperty);
@@ -3582,7 +3562,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addReference(trustedManager);
+        tp_before.addForeignReference(trustedManager);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
