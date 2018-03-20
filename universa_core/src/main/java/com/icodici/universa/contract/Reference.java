@@ -278,6 +278,8 @@ public class Reference implements BiSerializable {
                             if (leftOperandContract.get(leftOperand).getClass().getName().endsWith("Role")) {
                                 KeyAddress ka = new KeyAddress(rightOperand);
                                 ret = ka.isMatchingKeyAddress((leftOperandContract.get(leftOperand)));
+                                // todo: here can be a role, may be here need comparision like this?
+//                                ret = ((Role) leftOperandContract.get(leftOperand)).isMatchingKeyAddress(ka);
                                 if (indxOperator == NOT_EQUAL)
                                     ret = !ret;
                             } else if (((indxOperator == NOT_EQUAL) && (!leftOperandContract.get(leftOperand).equals(rightOperand))) ||
@@ -296,7 +298,10 @@ public class Reference implements BiSerializable {
                         throw new IllegalArgumentException("Invalid operator in condition");
                 }
             }
-            catch (Exception e){}
+            catch (Exception e) {
+                // todo: please, do not hide exceptions but process it correctly or throw
+//                e.printStackTrace();
+            }
         }else{       //if rightOperand == null, then operation: defined / undefined
             if (indxOperator == DEFINED) {
                 try {

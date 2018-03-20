@@ -99,7 +99,10 @@ definition:
      name: certification_contract
      where:
        all_of:
-       - this.issuer == ref.definition.issuer
+       - ref.definition.issuer == "26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R"
+       - ref.definition.data.issuer == "Roga & Kopita"
+       - ref.definition.data.type == "chief accountant assignment"
+#       - this.owner == ref.state.data.accountant
 
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract

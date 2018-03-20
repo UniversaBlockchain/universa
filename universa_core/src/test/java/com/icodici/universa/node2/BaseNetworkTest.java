@@ -3367,11 +3367,13 @@ public class BaseNetworkTest extends TestCase {
             thirdPartyPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract trustedManager = new Contract(llcPrivateKeys.iterator().next());
-        trustedManager.setOwnerKeys(stepaPublicKeys);
-        trustedManager.seal();
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
 
-        registerAndCheckApproved(trustedManager);
+        registerAndCheckApproved(jobCertificate);
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
@@ -3387,7 +3389,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(trustedManager);
+        tp_before.addForeignReference(jobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3425,11 +3427,13 @@ public class BaseNetworkTest extends TestCase {
             thirdPartyPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract trustedManager = new Contract(llcPrivateKeys.iterator().next());
-        trustedManager.setOwnerKeys(stepaPublicKeys);
-        trustedManager.seal();
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
 
-        registerAndCheckApproved(trustedManager);
+        registerAndCheckApproved(jobCertificate);
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
@@ -3444,7 +3448,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(trustedManager);
+        tp_before.addForeignReference(jobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3482,11 +3486,13 @@ public class BaseNetworkTest extends TestCase {
             thirdPartyPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract trustedManager = new Contract(llcPrivateKeys.iterator().next());
-        trustedManager.setOwnerKeys(stepaPublicKeys);
-        trustedManager.seal();
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
 
-        registerAndCheckApproved(trustedManager);
+        registerAndCheckApproved(jobCertificate);
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "TokenWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
@@ -3503,7 +3509,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(trustedManager);
+        tp_before.addForeignReference(jobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3541,11 +3547,13 @@ public class BaseNetworkTest extends TestCase {
             thirdPartyPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract trustedManager = new Contract(llcPrivateKeys.iterator().next());
-        trustedManager.setOwnerKeys(stepaPublicKeys);
-        trustedManager.seal();
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
 
-        registerAndCheckApproved(trustedManager);
+        registerAndCheckApproved(jobCertificate);
 
         Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "AbonementWithReferenceDSLTemplate.yml");
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
@@ -3562,7 +3570,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(trustedManager);
+        tp_before.addForeignReference(jobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
