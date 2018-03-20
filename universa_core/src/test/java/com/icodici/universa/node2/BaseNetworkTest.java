@@ -15,6 +15,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -4650,4 +4651,22 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(res);
     }
 
+    @Test
+    public void checkReferencesContracts() throws Exception {
+        Contract contract1 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract1.yml");
+        Contract contract2 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract2.yml");
+        Contract contract3 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract3.yml");
+        contract1.seal();
+        contract2.seal();
+        contract3.seal();
+
+        TransactionPack tp = new TransactionPack();
+        tp.setContract(contract1);
+        tp.addReference(contract2);
+        tp.addReference(contract3);
+
+        Contract refContract1 = new Contract(contract1.seal(), tp);
+        Contract refContract2 = new Contract(contract2.seal(), tp);
+        Contract refContract3 = new Contract(contract3.seal(), tp);
+    }
 }

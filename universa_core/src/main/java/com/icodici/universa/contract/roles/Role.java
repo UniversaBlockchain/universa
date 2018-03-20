@@ -90,6 +90,31 @@ public abstract class Role implements BiSerializable {
 
     }
 
+    /**
+     * Check that the address matches role.
+     *
+     * @param keyAddress address for matching with role
+     * @return true if match or false
+     */
+    public boolean isMatchingKeyAddress(KeyAddress keyAddress) {
+        for (KeyAddress ka : this.getKeyAddresses()) {
+            if (keyAddress.isMatchingKeyAddress(ka))
+                return true;
+        }
+
+        for (PublicKey pk : this.getKeys()) {
+            if (keyAddress.isMatchingKey(pk))
+                return true;
+        }
+
+        return false;
+    }
+
+    public  boolean isMatchingRole(Role role) {
+
+        return false;
+    }
+
     public abstract boolean isValid();
 
     @Override

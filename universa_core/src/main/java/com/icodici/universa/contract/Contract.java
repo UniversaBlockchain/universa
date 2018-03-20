@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 
 import static com.icodici.crypto.PublicKey.PUBLIC_KEY_BI_ADAPTER;
 import static com.icodici.universa.Errors.*;
+import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
 import static java.util.Arrays.asList;
 
 @BiType(name = "UniversaContract")
@@ -169,18 +170,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         if (transactional != null && transactional.references != null) {
             for(Reference ref : transactional.references) {
+                ref.setContract(this);
                 references.put(ref.name, ref);
             }
         }
         if (definition != null && definition.references != null){
             for(Reference ref : definition.references) {
+                ref.setContract(this);
                 references.put(ref.name, ref);
             }
         }
 
         for(Reference ref : getReferences().values()) {
             for(Contract c : pack.getReferences().values()) {
-                if(ref.isMathingWith(c)) {
+                if(ref.isMatchingWith(c, pack.getReferences().values())) {
                     ref.addMatchingItem(c);
                 }
             }
@@ -291,18 +294,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         if (transactional != null && transactional.references != null) {
             for(Reference ref : transactional.references) {
+                ref.setContract(this);
                 references.put(ref.name, ref);
             }
         }
-        if (definition != null && definition.references != null){
+        if (definition != null && definition.references != null) {
             for(Reference ref : definition.references) {
+                ref.setContract(this);
                 references.put(ref.name, ref);
             }
         }
 
         for(Reference ref : getReferences().values()) {
             for(Contract c : pack.getReferences().values()) {
-                if(ref.isMathingWith(c)) {
+                if(ref.isMatchingWith(c, pack.getReferences().values())) {
                     ref.addMatchingItem(c);
                 }
             }
@@ -560,17 +565,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         for (final Reference rm : getReferences().values()) {
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
-            if(rm.type == Reference.TYPE_TRANSACTIONAL) {
-                for (int j = 0; j < neighbourContracts.size(); ++j) {
-                    Contract neighbour = neighbourContracts.get(j);
-                    if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
-                            (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
-                        if (checkOneReference(rm, neighbour)) {
-                            rm_check = true;
-                        }
-                }
-            } else if(rm.type == Reference.TYPE_EXISTING) {
-                rm_check = true;
+            for (int j = 0; j < neighbourContracts.size(); ++j) {
+                Contract neighbour = neighbourContracts.get(j);
+                if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
+                        (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
+                    if (checkOneReference(rm, neighbour)) {
+                        rm_check = true;
+                    }
             }
 
             if (rm_check == false) {
@@ -959,15 +960,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private void basicCheck() throws Quantiser.QuantiserException {
-        if (definition.createdAt == null) {
+        if (definition.createdAt == null ||
+                definition.createdAt.isAfter(ZonedDateTime.now()) ||
+                definition.createdAt.isBefore(getEarliestCreationTime())) {
             addError(BAD_VALUE, "definition.created_at", "invalid");
-        }
-
-        if(state.origin == null){
-            if (definition.createdAt.isAfter(ZonedDateTime.now()) ||
-                    definition.createdAt.isBefore(getEarliestCreationTime())) {
-                addError(BAD_VALUE, "definition.created_at", "invalid");
-            }
         }
 
         boolean stateExpiredAt = state.expiresAt == null || state.expiresAt.isBefore(ZonedDateTime.now());
@@ -1717,6 +1713,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 return (T) getId();
             case "origin":
                 return (T) getOrigin();
+            case "issuer":
+                return (T) getRole("issuer");
+            case "owner":
+                return (T) getRole("owner");
+            case "creator":
+                return (T) getRole("creator");
         }
         throw new IllegalArgumentException("bad root: " + originalName);
     }
@@ -1991,6 +1993,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         quantiser.addWorkCostFrom(contract.quantiser);
     }
 
+    public Reference findReferenceByName(String name) {
+        if (getReferences() == null)
+            return null;
+
+        return getReferences().get(name);
+    }
 
     public class State {
         private int revision;
@@ -2113,6 +2121,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private Multimap<String, Permission> permissions = new Multimap<>();
 
+    public Contract getContract() {
+        return this;
+    }
+
     public class Definition {
 
         private ZonedDateTime createdAt;
@@ -2144,6 +2156,43 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 expiresAt = decodeDslTime(t);
             registerRole(issuer);
             data = definition.getBinder("data");
+
+            List<LinkedHashMap<String, Binder>> refList = definition.getList("references", null);
+            if (refList != null) {
+                for (LinkedHashMap<String, Binder> refItem : refList) {
+                    Binder item = new Binder(refItem);
+                    Binder ref = item.getBinder("reference");
+                    if (ref != null) {
+                        String name = ref.getString("name");
+                        Binder where = null;
+                        try {
+                            where = ref.getBinderOrThrow("where");
+                        }
+                        catch (Exception e)
+                        {
+                            // Insert simple condition to binder with key all_of
+                            List<String> simpleConditions = ref.getList("where", null);
+                            if (simpleConditions != null)
+                                where = new Binder(all_of.name(), simpleConditions);
+                        }
+
+                        Reference reference = new Reference(getContract());
+
+                        if (name == null)
+                            throw new IllegalArgumentException("Expected reference name");
+
+                        reference.setName(name);
+
+                        if (where != null)
+                            reference.setConditions(where);
+
+                        references.add(reference);
+                    }
+                    else
+                        throw new IllegalArgumentException("Expected reference section");
+                }
+            }
+
             return this;
         }
 
@@ -2185,13 +2234,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 if (x instanceof Role)
                     // serialized, role object
                     role = registerRole((Role) x);
-                else if(x instanceof CharSequence) {
-                    roleName = x.toString();
-                } else {
+                else
                     // yaml, extended form: permission: { role: name, ... }
-                    role = Role.fromDslBinder("@" + name, Binder.of(x));
-                    registerRole(role);
-                }
+                    roleName = x.toString();
             }
             if (role == null && roleName != null) {
                 // we need to create alias to existing role

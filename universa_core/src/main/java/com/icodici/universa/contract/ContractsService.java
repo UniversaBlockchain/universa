@@ -340,7 +340,7 @@ public class ContractsService {
 
         for(Contract nc1 : newContracts1) {
             for(Contract nc2 : newContracts2) {
-                Reference reference = new Reference();
+                Reference reference = new Reference(nc1);
                 reference.transactional_id = nc2.getTransactional().getId();
                 reference.type = Reference.TYPE_TRANSACTIONAL;
                 reference.required = true;
@@ -353,7 +353,7 @@ public class ContractsService {
 
         for(Contract nc2 : newContracts2) {
             for (Contract nc1 : newContracts1) {
-                Reference reference = new Reference();
+                Reference reference = new Reference(nc2);
                 reference.transactional_id = nc1.getTransactional().getId();
                 reference.type = Reference.TYPE_TRANSACTIONAL;
                 reference.required = true;
@@ -529,7 +529,7 @@ public class ContractsService {
         twoSignContract.createTransactionalSection();
         twoSignContract.getTransactional().setId(HashId.createRandom().toBase64String());
 
-        Reference reference = new Reference();
+        Reference reference = new Reference(twoSignContract);
         reference.transactional_id = twoSignContract.getTransactional().getId();
         reference.type = Reference.TYPE_TRANSACTIONAL;
         reference.required = true;
