@@ -22,11 +22,10 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 import static java.util.Arrays.asList;
@@ -45,12 +44,18 @@ public class UDPAdapter extends DatagramAdapter {
     private ConcurrentHashMap<Integer, Session> sessionsById = new ConcurrentHashMap<>();
 
     private Timer timer = new Timer();
+    private Timer timerCleanup = new Timer();
+    private Timer heartBeatTimer = new Timer();
 
     /**
      * Time between beats showed adapter health, in milliseconds
      */
     static public final int HEART_BEAT_TIME = 20000;
-    private Timer heartBeatTimer = new Timer();
+
+    /**
+     * Time between internal calls of cleanup function.
+     */
+    static public final int CLEANUP_TIME = 5000;
 
     private boolean isShuttingDown = false;
 
@@ -83,6 +88,12 @@ public class UDPAdapter extends DatagramAdapter {
                 checkUnsent();
             }
         }, RETRANSMIT_TIME, RETRANSMIT_TIME);
+        timerCleanup.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                socketListenThread.cleanObtainedBlocks();
+            }
+        }, CLEANUP_TIME, CLEANUP_TIME);
 
         heartBeatTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -162,6 +173,8 @@ public class UDPAdapter extends DatagramAdapter {
         timer.purge();
         heartBeatTimer.cancel();
         heartBeatTimer.purge();
+        timerCleanup.cancel();
+        timerCleanup.purge();
 
         try {
             while (socket.isConnected()) {
@@ -662,7 +675,8 @@ public class UDPAdapter extends DatagramAdapter {
 
         private ConcurrentHashMap<Integer, Block> waitingBlocks = new ConcurrentHashMap<>();
 
-        private ConcurrentHashMap<Integer, Block> obtainedBlocks = new ConcurrentHashMap<>();
+        private ConcurrentHashMap<Integer, Instant> obtainedBlocksMap = new ConcurrentHashMap<>();
+        private Duration maxObtainedBlockAge = Duration.ofSeconds(30);
 
         protected String label = null;
 
@@ -671,6 +685,15 @@ public class UDPAdapter extends DatagramAdapter {
             byte[] buf = new byte[DatagramAdapter.MAX_PACKET_SIZE];
             receivedDatagram = new DatagramPacket(buf, buf.length);
             this.threadSocket = socket;
+        }
+
+        public void cleanObtainedBlocks() {
+            final Instant now = Instant.now();
+            obtainedBlocksMap.keySet().forEach(key -> {
+                Instant expiresAt = obtainedBlocksMap.get(key);
+                if (expiresAt.isBefore(now))
+                    obtainedBlocksMap.remove(key);
+            });
         }
 
         @Override
@@ -712,7 +735,7 @@ public class UDPAdapter extends DatagramAdapter {
                         if (waitingBlocks.containsKey(packet.blockId)) {
                             waitingBlock = waitingBlocks.get(packet.blockId);
                         } else {
-                            if (obtainedBlocks.containsKey(packet.blockId)) {
+                            if (obtainedBlocksMap.containsKey(packet.blockId)) {
                                 // Do nothing, cause we got and obtained this block already
                                 report(getLabel(), () -> concatReportMessage(" warning: repeated block given, with id ", packet.blockId));
                             } else {
@@ -876,8 +899,8 @@ public class UDPAdapter extends DatagramAdapter {
                     } else {
                         report(getLabel(), () -> concatReportMessage("Block from unknown node ",
                                 block.senderNodeId, " was already obtained, will remove from obtained"));
-                        if(obtainedBlocks.containsKey(block.blockId)) {
-                            obtainedBlocks.remove(block.blockId);
+                        if(obtainedBlocksMap.containsKey(block.blockId)) {
+                            obtainedBlocksMap.remove(block.blockId);
                         }
                         throw new EncryptionError(Errors.BAD_VALUE + ": block got from unknown node " + block.senderNodeId);
                     }
@@ -1160,7 +1183,7 @@ public class UDPAdapter extends DatagramAdapter {
 
         public void moveWaitingBlockToObtained(Block block) {
             waitingBlocks.remove(block.blockId);
-            obtainedBlocks.put(block.blockId, block);
+            obtainedBlocksMap.put(block.blockId, Instant.now().plus(maxObtainedBlockAge));
         }
 
 
@@ -1171,7 +1194,7 @@ public class UDPAdapter extends DatagramAdapter {
                 final String sessionToString = session != null ? session.toString() : "null";
                 report(getLabel(), () -> concatReportMessage("answerAckOrNack ", sessionToString), VerboseLevel.BASE);
                 // we remove block from obtained because it broken and will can be regiven with correct data
-                obtainedBlocks.remove(block.blockId);
+                obtainedBlocksMap.remove(block.blockId);
                 if(session != null) {
                     if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
                         sendNack(session, block.blockId);
