@@ -13,12 +13,19 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.AnonymousId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
+import com.icodici.universa.contract.Reference;
 import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.icodici.universa.contract.roles.Role.RequiredMode.ALL_OF;
+import static com.icodici.universa.contract.roles.Role.RequiredMode.ANY_OF;
 
 /**
  * Base class for any role combination, e.g. single key, any key from a set, all keys from a set, minimum number of key
@@ -29,8 +36,34 @@ import java.util.Set;
 @BiType(name = "Role")
 public abstract class Role implements BiSerializable {
 
+    enum RequiredMode {
+        ALL_OF,
+        ANY_OF
+    }
+
     private String name;
     private Contract contract;
+    private Set<String> requiredAllReferences = new HashSet<>();
+    private Set<String> requiredAnyReferences = new HashSet<>();
+
+
+
+
+    public void addAllRequiredReferences(Collection<Reference> references, RequiredMode requiredMode) {
+        (requiredMode == ALL_OF ? requiredAllReferences : requiredAnyReferences).addAll(references.stream().map(reference -> reference.getName()).collect(Collectors.toSet()));
+    }
+
+    public Set<String> getReferences(RequiredMode requiredMode) {
+        return requiredMode == ALL_OF ? requiredAllReferences : requiredAnyReferences;
+    }
+
+    public void addRequiredReference(Reference reference,RequiredMode requiredMode) {
+        addRequiredReference(reference.getName(), requiredMode);
+    }
+
+    public void addRequiredReference(String refName,RequiredMode requiredMode) {
+        (requiredMode == ALL_OF ? requiredAllReferences : requiredAnyReferences).add(refName);
+    }
 
     protected Role() {
     }
@@ -45,6 +78,43 @@ public abstract class Role implements BiSerializable {
 
     public abstract boolean isAllowedForKeys(Set<? extends AbstractKey> keys);
 
+    public boolean isAllowedFor(Collection<? extends AbstractKey> keys, Collection<String> references) {
+        if(!isAllowedForKeys(keys instanceof Set ? (Set<? extends AbstractKey>) keys : new HashSet<>(keys)))
+            return false;
+        if(requiredAllReferences.stream().anyMatch(ref -> references == null || !references.contains(ref))) {
+            return false;
+        }
+
+        return requiredAnyReferences.isEmpty() ||
+                requiredAnyReferences.stream().anyMatch(ref -> references != null && references.contains(ref));
+
+    }
+
+    /**
+     * Check that the address matches role.
+     *
+     * @param keyAddress address for matching with role
+     * @return true if match or false
+     */
+    public boolean isMatchingKeyAddress(KeyAddress keyAddress) {
+        for (KeyAddress ka : this.getKeyAddresses()) {
+            if (keyAddress.isMatchingKeyAddress(ka))
+                return true;
+        }
+
+        for (PublicKey pk : this.getKeys()) {
+            if (keyAddress.isMatchingKey(pk))
+                return true;
+        }
+
+        return false;
+    }
+
+    public  boolean isMatchingRole(Role role) {
+
+        return false;
+    }
+
     public abstract boolean isValid();
 
     @Override
@@ -56,7 +126,7 @@ public abstract class Role implements BiSerializable {
     public boolean equals(Object obj) {
         if (obj instanceof Role) {
             Role otherRole = (Role) obj;
-            return otherRole.name.equals(name) && otherRole.getClass() == getClass();
+            return otherRole.requiredAnyReferences.equals(requiredAnyReferences) && otherRole.requiredAllReferences.equals(requiredAllReferences) && otherRole.name.equals(name) && otherRole.getClass() == getClass();
         }
         return false;
     }
@@ -75,14 +145,36 @@ public abstract class Role implements BiSerializable {
     }
 
 
+    public abstract void initWithDsl(Binder serializedRole);
+
     static public Role fromDslBinder(String name, Binder serializedRole) {
         if (name == null)
             name = serializedRole.getStringOrThrow("name");
-        if (serializedRole.containsKey("key")) {
-            // Single-key role
-            return new SimpleRole(name, new KeyRecord(serializedRole));
+        Role result;
+        String type =serializedRole.getString("type",null);
+            if(type == null || type.equalsIgnoreCase("simple")) {
+            result = new SimpleRole(name);
+        } else if(type.equalsIgnoreCase("link")) {
+            result = new RoleLink(name);
+        } else if(type.equalsIgnoreCase("list")) {
+            result = new ListRole(name);
+        } else {
+            throw new IllegalArgumentException("Unknown role type: " + type);
         }
-        return new SimpleRole(name, serializedRole.getListOrThrow("binders"));
+        result.initWithDsl(serializedRole);
+        if(serializedRole.containsKey("requires")) {
+            Binder requires = serializedRole.getBinderOrThrow("requires");
+            if(requires.containsKey("all_of")) {
+                result.requiredAllReferences.addAll(requires.getListOrThrow("all_of"));
+            }
+
+            if(requires.containsKey("any_of")) {
+                result.requiredAnyReferences.addAll(requires.getListOrThrow("any_of"));
+            }
+
+        }
+
+        return result;
     }
 
     public abstract Set<PublicKey> getKeys();
@@ -132,13 +224,41 @@ public abstract class Role implements BiSerializable {
     public void deserialize(Binder data, BiDeserializer deserializer) {
         name = data.getStringOrThrow("name");
         contract = deserializer.getContext();
+        Binder required = data.getBinder("required");
+        if(required != null) {
+            if(required.containsKey(ALL_OF.name())) {
+                requiredAllReferences.addAll(deserializer.deserialize(required.getArray(ALL_OF.name())));
+            }
+
+            if(required.containsKey(ANY_OF.name())) {
+                requiredAnyReferences.addAll(deserializer.deserialize(required.getArray(ANY_OF.name())));
+            }
+
+        }
     }
 
     @Override
     public Binder serialize(BiSerializer s) {
-        return Binder.fromKeysValues(
+
+        Binder b = Binder.fromKeysValues(
                 "name", name
         );
+
+        if(!requiredAnyReferences.isEmpty() || !requiredAllReferences.isEmpty()) {
+            Binder required = new Binder();
+
+            if(!requiredAllReferences.isEmpty()) {
+                required.set(ALL_OF.name(),s.serialize(requiredAllReferences));
+            }
+
+            if(!requiredAllReferences.isEmpty()) {
+                required.set(ANY_OF.name(),s.serialize(requiredAnyReferences));
+            }
+
+            b.set("required",required);
+        }
+
+        return b;
     }
 
     /**

@@ -29,12 +29,22 @@ import java.util.*;
 public interface Approvable extends HashIdentifiable {
 
     /**
-     * List of items (e.g. smartcontracts) that should be valid until the end of the operation. These items will be
+     * Map of references that item have.
+     *
+     * @return referenced items map
+     */
+    default HashMap<String, Reference> getReferences() {
+        return new HashMap<>();
+    }
+
+    /**
+     * List of items (e.g. smartcontracts) that should be valid until the end of the operation.
+     * These items will be
      * write-locked until the consensus is found.
      *
      * @return referenced items list
      */
-    default Set<Reference> getReferencedItems() {
+    default Set<Approvable> getReferencedItems() {
         return new HashSet<>();
     }
 

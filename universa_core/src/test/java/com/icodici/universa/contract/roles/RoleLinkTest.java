@@ -52,6 +52,8 @@ public class RoleLinkTest {
     @Test
     public void serialize() throws Exception {
         RoleLink r1 = new RoleLink("name", "target");
+        r1.addRequiredReference("ref", Role.RequiredMode.ALL_OF);
+
         Binder s = DefaultBiMapper.serialize(r1);
         RoleLink r2 = DefaultBiMapper.deserialize(s);
         assertEquals(r1, r2);

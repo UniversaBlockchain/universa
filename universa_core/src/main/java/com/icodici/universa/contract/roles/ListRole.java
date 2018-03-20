@@ -12,6 +12,7 @@ import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.AnonymousId;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -20,6 +21,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -144,6 +146,36 @@ public class ListRole extends Role {
     @Override
     public boolean isValid() {
         return !this.roles.isEmpty();
+    }
+
+    @Override
+    public void initWithDsl(Binder serializedRole) {
+        List<Object> roleBinders = serializedRole.getListOrThrow("roles");
+
+        mode = Mode.valueOf(serializedRole.getStringOrThrow("mode").toUpperCase());
+        if(mode == Mode.QUORUM)
+            quorumSize = serializedRole.getIntOrThrow("quorumSize");
+
+        roleBinders.stream().forEach(x -> {
+
+            if(x instanceof String) {
+                roles.add(new RoleLink(x+"link"+ Instant.now().toEpochMilli(), (String) x));
+            } else {
+                Binder binder = Binder.of(x);
+                if (binder.size() == 1) {
+                    String name = binder.keySet().iterator().next();
+                    roles.add(Role.fromDslBinder(name, binder.getBinderOrThrow(name)));
+                } else {
+                    roles.add(Role.fromDslBinder(null, binder));
+                }
+            }
+        });
+    }
+
+    @Override
+    public void setContract(Contract contract) {
+        super.setContract(contract);
+        roles.forEach(r -> r.setContract(contract));
     }
 
     @Override

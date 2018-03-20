@@ -19,6 +19,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiSerializationException;
+import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
@@ -276,28 +277,28 @@ public class ContractTest extends ContractTestBase {
         assertTrue(c.check());
     }
 
-    @Test
-    public void shouldFindWithValidReference() throws Exception {
-        Contract c = Contract.fromDslFile(rootPath + "references/subscriptionReference.yml");
-        Contract c2 = Contract.fromDslFile(rootPath + "references/subscriptionRoot.yml");
-
-        List<Contract> contracts = c2.extractByValidReference(Arrays.asList(c));
-        assertNotNull(contracts);
-        assertEquals(1, contracts.size());
-    }
-
-    @Test
-    public void shouldFindWithValidReferenceSeal() throws Exception {
-        Contract c = Contract.fromDslFile(rootPath + "references/subscriptionReference.yml");
-        Contract c2 = Contract.fromDslFile(rootPath + "references/subscriptionRoot.yml");
-
-        c = new Contract(c.seal());
-        c2 = new Contract(c2.seal());
-
-        List<Contract> contracts = c2.extractByValidReference(Arrays.asList(c));
-        assertNotNull(contracts);
-        assertEquals(1, contracts.size());
-    }
+//    @Test
+//    public void shouldFindWithValidReference() throws Exception {
+//        Contract c = Contract.fromDslFile(rootPath + "references/subscriptionReference.yml");
+//        Contract c2 = Contract.fromDslFile(rootPath + "references/subscriptionRoot.yml");
+//
+//        List<Contract> contracts = c2.extractByValidReference(Arrays.asList(c));
+//        assertNotNull(contracts);
+//        assertEquals(1, contracts.size());
+//    }
+//
+//    @Test
+//    public void shouldFindWithValidReferenceSeal() throws Exception {
+//        Contract c = Contract.fromDslFile(rootPath + "references/subscriptionReference.yml");
+//        Contract c2 = Contract.fromDslFile(rootPath + "references/subscriptionRoot.yml");
+//
+//        c = new Contract(c.seal());
+//        c2 = new Contract(c2.seal());
+//
+//        List<Contract> contracts = c2.extractByValidReference(Arrays.asList(c));
+//        assertNotNull(contracts);
+//        assertEquals(1, contracts.size());
+//    }
 
     @Test
     public void testRoleFailures() throws Exception {
@@ -1159,6 +1160,24 @@ public class ContractTest extends ContractTestBase {
     public Contract processContractAsItWillBeOnTheNode(Contract contract) throws Exception {
 
         return processContractAsItWillBeOnTheNode(contract, -1);
+    }
+
+    /**
+     * Check serialization and deserialization contract with references
+     * @throws Exception
+     */
+    @Test
+    public void checkReferenceSerialization() throws Exception {
+        Contract contract = Contract.fromDslFile(rootPath + "simple_root_contract_with_references.yml");
+        contract.seal();
+        Binder b = BossBiMapper.serialize(contract);
+        Contract desContract = DefaultBiMapper.deserialize(b);
+
+        for (Reference ref: contract.getReferences().values()) {
+            Reference desRef = desContract.findReferenceByName(ref.getName());
+            assertTrue(desRef != null);
+            assertEquals(ref.getConditions(), desRef.getConditions());
+        }
     }
 
 //    @Test

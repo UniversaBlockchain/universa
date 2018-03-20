@@ -50,6 +50,10 @@ public class SimpleRole extends Role {
 
     public SimpleRole(String name, @NonNull Collection records) {
         super(name);
+        initWithRecords(records);
+    }
+
+    private void initWithRecords(@NonNull Collection records) {
         records.forEach(x -> {
             KeyRecord kr = null;
             AnonymousId anonId = null;
@@ -108,6 +112,7 @@ public class SimpleRole extends Role {
         return keyAddresses;
     }
 
+    @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         // any will go logic
         return keys.stream().anyMatch(k -> {
@@ -180,6 +185,53 @@ public class SimpleRole extends Role {
         }
 
         return false;
+    }
+
+    @Override
+    public void initWithDsl(Binder serializedRole) {
+        boolean keysFound = true;
+        boolean addressesFound = true;
+        boolean anonIdsFound = true;
+
+        if(serializedRole.containsKey("keys")) {
+            List<Binder> list = serializedRole.getListOrThrow("keys");
+            for(Object keyRecord : list) {
+                addKeyRecord(new KeyRecord(Binder.of(keyRecord)));
+            }
+        } else if(serializedRole.containsKey("key")) {
+            addKeyRecord(new KeyRecord(serializedRole));
+        } else {
+            keysFound = false;
+        }
+
+
+
+        if(serializedRole.containsKey("addresses")) {
+            List<Binder> list = serializedRole.getListOrThrow("addresses");
+            for(Object address : list) {
+                keyAddresses.add(new KeyAddress(Binder.of(address)));
+            }
+        } else if(serializedRole.containsKey("uaddress")) {
+            keyAddresses.add(new KeyAddress(serializedRole));
+        } else {
+            addressesFound = false;
+        }
+
+        if(serializedRole.containsKey("anonIds")) {
+            List<Binder> list = serializedRole.getListOrThrow("anonIds");
+            for(Object anonId : list) {
+                anonymousIds.add(new AnonymousId(Binder.of(anonId)));
+            }
+        } else if(serializedRole.containsKey("anonymousId")) {
+            anonymousIds.add(new AnonymousId(serializedRole));
+        } else {
+            anonIdsFound = false;
+        }
+
+        if(!addressesFound && !anonIdsFound && !keysFound) {
+            //TODO: ?????? "binders" were in old code
+            initWithRecords(serializedRole.getListOrThrow("binders"));
+        }
     }
 
     static {

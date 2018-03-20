@@ -30,15 +30,15 @@ public class TestItem implements Approvable {
     private boolean isGood = true;
     private HashId hashId = HashId.createRandom();
     private Set<Approvable> newItems = new HashSet<>();
-    private Set<Reference> referencedItems = new HashSet<>();
+    private HashMap<String, Reference> references = new HashMap<>();
     private Set<Approvable> revokingItems = new HashSet<>();
     private List<ErrorRecord> errors = new ArrayList<>();
 
     private boolean expiresAtPlusFive = true;
 
     @Override
-    public Set<Reference> getReferencedItems() {
-        return referencedItems;
+    public HashMap<String, Reference> getReferences() {
+        return references;
     }
 
     public TestItem(boolean isOk) {
@@ -73,12 +73,24 @@ public class TestItem implements Approvable {
         newItems.addAll(Do.listOf(items));
     }
 
-    public void addReferencedItems(HashId... itemIds) {
-        Stream.of(itemIds).forEach(i -> {
+    public void addReferencedItems(Approvable... items) {
+        Stream.of(items).forEach(i -> {
             Reference refModel = new Reference();
-            refModel.contract_id = i;
-            referencedItems.add(refModel);
+            refModel.name = i.getId().toBase64String();
+            refModel.type = Reference.TYPE_EXISTING;
+            refModel.addMatchingItem(i);
+            references.put(refModel.name, refModel);
         });
+    }
+
+    @Override
+    public Set<Approvable> getReferencedItems() {
+
+        Set<Approvable> referencedItems = new HashSet<>();
+        for (Reference r : this.references.values()) {
+            referencedItems.addAll(r.matchingItems);
+        }
+        return referencedItems;
     }
 
     @Override

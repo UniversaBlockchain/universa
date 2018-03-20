@@ -20,6 +20,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.Collection;
 import java.util.Set;
 
 /**
@@ -34,6 +35,14 @@ public class RoleLink extends Role {
     private String roleName;
 
     private RoleLink() {
+    }
+
+    /**
+     * Create empty link role. To be initialized from dsl later
+     * @param name     new role name
+     */
+    public RoleLink(String name) {
+        super(name);
     }
 
     /**
@@ -105,6 +114,12 @@ public class RoleLink extends Role {
     }
 
     @Override
+    public boolean isAllowedFor(Collection<? extends AbstractKey> keys, Collection<String> references) {
+        final Role role = resolve();
+        return (role == null) ? false : role.isAllowedFor(keys, references);
+    }
+
+    @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         final Role role = resolve();
         return (role == null) ? false : role.isAllowedForKeys(keys);
@@ -120,6 +135,14 @@ public class RoleLink extends Role {
     public boolean equalKeys(Role otherRole) {
         final Role role = getRole();
         return (role == null) ? false : role.equalKeys(otherRole);
+    }
+
+    @Override
+    public void initWithDsl(Binder serializedRole) {
+        roleName = serializedRole.getStringOrThrow("target");
+        if (getName().equals(roleName))
+            throw new IllegalArgumentException("RoleLink: name and target name are equals: " + roleName);
+
     }
 
     @Override

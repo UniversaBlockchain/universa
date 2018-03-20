@@ -13,7 +13,9 @@ import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -23,15 +25,11 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
-import net.sergeych.tools.Binder;
-import com.icodici.universa.contract.permissions.*;
-import java.time.Instant;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.core.Is.is;
@@ -45,15 +43,13 @@ public class BaseNetworkTest extends TestCase {
 
     protected static final String ROOT_PATH = "./src/test_contracts/";
     protected static final String CONFIG_2_PATH = "./src/test_config_2/";
-
+    protected static Contract tuContract = null;
     protected Network network = null;
     protected Node node = null;
     protected List<Node> nodes = null;
     protected Map<NodeInfo,Node> nodesMap = null;
     protected Ledger ledger = null;
     protected Config config = null;
-
-    protected static Contract tuContract = null;
     protected Object tuContractLock = new Object();
 
 
@@ -465,15 +461,17 @@ public class BaseNetworkTest extends TestCase {
 
             TestItem main = new TestItem(true);
 
-            StateRecord existing1 = ledger.findOrCreate(HashId.createRandom());
+            TestItem existingItem1 = new TestItem(true);
+            StateRecord existing1 = ledger.findOrCreate(existingItem1.getId());
             existing1.setState(ItemState.APPROVED).save();
 
 
             // but second is not good
-            StateRecord existing2 = ledger.findOrCreate(HashId.createRandom());
+            TestItem existingItem2 = new TestItem(false);
+            StateRecord existing2 = ledger.findOrCreate(existingItem2.getId());
             existing2.setState(badState).save();
 
-            main.addReferencedItems(existing1.getId(), existing2.getId());
+            main.addReferencedItems(existingItem1, existingItem2);
 
             Thread.sleep(300);
 
@@ -517,13 +515,13 @@ public class BaseNetworkTest extends TestCase {
 
         System.out.println("--------resister (bad) item " + existing1.getId() + " ---------");
         node.registerItem(existing1);
-        node.waitItem(existing1.getId(), 6000);
+        ItemResult ir = node.waitItem(existing1.getId(), 6000);
 
         System.out.println("--------resister (good) item " + existing2.getId() + " ---------");
         node.registerItem(existing2);
         node.waitItem(existing2.getId(), 6000);
 
-        main.addReferencedItems(existing1.getId(), existing2.getId());
+        main.addReferencedItems(existing1, existing2);
         main.addNewItems(new1, new2);
 
         System.out.println("--------resister (main) item " + main.getId() + " ---------");
@@ -559,12 +557,12 @@ public class BaseNetworkTest extends TestCase {
         @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 15000);
 
         // but second is missing
-        HashId missingId = HashId.createRandom();
+        TestItem missing = new TestItem(true);
 
-        main.addReferencedItems(existing.getId(), missingId);
+        main.addReferencedItems(existing, missing);
 
         // check that main is declined
-        System.out.println("--------- missind id: " + missingId);
+        System.out.println("--------- missind id: " + missing.getId());
         System.out.println("--------- existing id: " + existing.getId());
         node.registerItem(main);
         // need some time to resync missingId
@@ -574,9 +572,9 @@ public class BaseNetworkTest extends TestCase {
         // and the references are intact
         assertEquals(ItemState.APPROVED, existingItem.state);
 
-        System.out.println(node.getItem(missingId));
+        System.out.println(node.getItem(missing.getId()));
 
-        assertNull(node.getItem(missingId));
+        assertNull(node.getItem(missing.getId()));
     }
 
 
@@ -1379,53 +1377,13 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
 
-        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        ZonedDateTime datetime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC);
-
-        Binder data = new Binder();
-        data.set("name", "Token name");
-        data.set("currency_code", "TKN");
-        data.set("currency_name", "Token name");
-        data.set("description", "Token description");
-
-        Binder params = new Binder();
-        params.set("min_value", 0.01);
-        params.set("min_unit", 0.001);
-        params.set("field_name", "amount");
-        params.set("join_match_fields", "state.origin");
-
-        SimpleRole revokeRole = new SimpleRole("revoke_role");
-
-        SimpleRole issuerRole = new SimpleRole("issuer");
-        for (PrivateKey k : martyPrivateKeys) {
-            KeyRecord kr = new KeyRecord(k.getPublicKey());
-            issuerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
-        }
-
-        SimpleRole ownerRole = new SimpleRole("owner");
-        for (PublicKey k : stepaPublicKeys) {
-            KeyRecord kr = new KeyRecord(k);
-            ownerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
-        }
-
-        ChangeOwnerPermission co_perm = new ChangeOwnerPermission(ownerRole);
-        SplitJoinPermission sj_perm = new SplitJoinPermission(ownerRole, params);
-        RevokePermission rev_perm = new RevokePermission(revokeRole);
-
-        List<Permission> perms = new ArrayList<Permission>();
-        perms.add(co_perm);
-        perms.add(sj_perm);
-        perms.add(rev_perm);
-
-        Contract tokenContract = ContractsService.createBaseContract(
-                martyPrivateKeys, datetime, data, issuerRole, issuerRole, ownerRole, perms, "100000000000");
+        Contract tokenContract = ContractsService.createTokenContract(martyPrivateKeys,stepaPublicKeys,"100000000000");
 
         tokenContract.check();
         tokenContract.traceErrors();
@@ -1433,63 +1391,24 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test(timeout = 90000)
-    public void createSharesContractAllGood() throws Exception {
+    public void createShareContractAllGood() throws Exception {
 
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
 
-        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        ZonedDateTime datetime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC);
+        Contract shareContract = ContractsService.createShareContract(martyPrivateKeys,stepaPublicKeys,"100");
 
-        Binder data = new Binder();
-        data.set("name", "Share name");
-        data.set("currency_code", "SHN");
-        data.set("currency_name", "Share name");
-        data.set("description", "Share description");
+        shareContract.check();
+        shareContract.traceErrors();
+        registerAndCheckApproved(shareContract);
 
-        Binder params = new Binder();
-        params.set("min_value", 1);
-        params.set("min_unit", 1);
-        params.set("field_name", "amount");
-        params.set("join_match_fields", "state.origin");
-
-        SimpleRole revokeRole = new SimpleRole("revoke_role");
-
-        SimpleRole issuerRole = new SimpleRole("issuer");
-        for (PrivateKey k : martyPrivateKeys) {
-            KeyRecord kr = new KeyRecord(k.getPublicKey());
-            issuerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
-        }
-
-        SimpleRole ownerRole = new SimpleRole("owner");
-        for (PublicKey k : stepaPublicKeys) {
-            KeyRecord kr = new KeyRecord(k);
-            ownerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
-        }
-
-        ChangeOwnerPermission co_perm = new ChangeOwnerPermission(ownerRole);
-        SplitJoinPermission sj_perm = new SplitJoinPermission(ownerRole, params);
-        RevokePermission rev_perm = new RevokePermission(revokeRole);
-
-        List<Permission> perms = new ArrayList<Permission>();
-        perms.add(co_perm);
-        perms.add(sj_perm);
-        perms.add(rev_perm);
-
-        Contract sharesContract = ContractsService.createBaseContract(
-                martyPrivateKeys, datetime, data, issuerRole, issuerRole, ownerRole, perms, "100");
-
-        sharesContract.check();
-        sharesContract.traceErrors();
-        registerAndCheckApproved(sharesContract);
     }
 
     @Test(timeout = 90000)
@@ -1499,47 +1418,18 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
 
-        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        ZonedDateTime datetime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC);
-
-        Binder data = new Binder();
-        data.set("name", "Notary");
-        data.set("description", "This contract represents the notary.");
-
-        SimpleRole revokeRole = new SimpleRole("revoke_role");
-
-        SimpleRole issuerRole = new SimpleRole("issuer");
-        for (PrivateKey k : martyPrivateKeys) {
-            KeyRecord kr = new KeyRecord(k.getPublicKey());
-            issuerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
-        }
-
-        SimpleRole ownerRole = new SimpleRole("owner");
-        for (PublicKey k : stepaPublicKeys) {
-            KeyRecord kr = new KeyRecord(k);
-            ownerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
-        }
-
-        ChangeOwnerPermission co_perm = new ChangeOwnerPermission(ownerRole);
-        RevokePermission rev_perm = new RevokePermission(revokeRole);
-
-        List<Permission> perms = new ArrayList<Permission>();
-        perms.add(co_perm);
-        perms.add(rev_perm);
-
-        Contract notaryContract = ContractsService.createBaseContract(
-                martyPrivateKeys, datetime, data, issuerRole, issuerRole, ownerRole, perms, null);
+        Contract notaryContract = ContractsService.createNotaryContract(martyPrivateKeys,stepaPublicKeys);
 
         notaryContract.check();
         notaryContract.traceErrors();
         registerAndCheckApproved(notaryContract);
+
     }
 
 
@@ -2564,8 +2454,8 @@ public class BaseNetworkTest extends TestCase {
         }
         System.out.println(newDelorean.getTransactional().getId());
         System.out.println(newLamborghini.getTransactional().getId());
-        System.out.println(newDelorean.getReferencedItems().iterator().next().transactional_id);
-        System.out.println(newLamborghini.getReferencedItems().iterator().next().transactional_id);
+        System.out.println(newDelorean.getReferences().values().iterator().next().transactional_id);
+        System.out.println(newLamborghini.getReferences().values().iterator().next().transactional_id);
 
         System.out.println(newDelorean.getTransactional().getReferences().get(0));
         System.out.println(newLamborghini.getTransactional().getReferences().get(0));
@@ -3455,6 +3345,247 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, itemResult.state);
     }
 
+    @Test
+    public void referenceForChangeOwner() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
+        llcProperty2.setOwnerKeys(thirdPartyPublicKeys);
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addForeignReference(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        Contract tu = getApprovedTUContract();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        waitAndCheckApproved(parcel);
+    }
+
+    @Test
+    public void referenceForRevoke() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = ContractsService.createRevocation(llcProperty, stepaPrivateKeys.iterator().next());
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addForeignReference(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        Contract tu = getApprovedTUContract();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        waitAndCheckApproved(parcel);
+    }
+
+    @Test
+    public void referenceForSplitJoin() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "TokenWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100,
+                "amount", stepaPrivateKeys, true);
+//        llcProperty2.createRole("creator", llcProperty2.getRole("owner"));
+//        llcProperty2.getNew().get(0).createRole("creator", llcProperty2.getNew().get(0).getRole("owner"));
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addForeignReference(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        Contract tu = getApprovedTUContract();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        waitAndCheckApproved(parcel);
+    }
+
+    @Test
+    public void referenceForChangeNumber() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "AbonementWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
+        llcProperty2.getStateData().set("units",
+                llcProperty.getStateData().getIntOrThrow("units") - 1);
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addForeignReference(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        Contract tu = getApprovedTUContract();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        waitAndCheckApproved(parcel);
+    }
+
     @Ignore("Stress test")
     @Test(timeout = 900000)
     public void testLedgerLocks() throws Exception {
@@ -3584,9 +3715,12 @@ public class BaseNetworkTest extends TestCase {
     }
 
     private synchronized void registerAndCheckApproved(Contract c) throws Exception {
-        Parcel parcel = null;
+        Parcel parcel = registerWithNewParcel(c);
+        waitAndCheckApproved(parcel);
+    }
+
+    private synchronized void waitAndCheckApproved(Parcel parcel) throws Exception {
         try {
-            parcel = registerWithNewParcel(c);
 //            LogPrinter.showDebug(true);
             System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             node.waitParcel(parcel.getId(), 30000);
@@ -3597,15 +3731,6 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
         } catch (TimeoutException e) {
-
-            System.out.println("ping ");
-//            System.out.println(node.ping());
-////            System.out.println(node.traceTasksPool());
-//
-//            for (Node n : nodes) {
-//                System.out.println(n + " " + n.traceParcelProcessors());
-//                System.out.println(n + " " + n.traceItemProcessors());
-//            }
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {
@@ -4209,7 +4334,7 @@ public class BaseNetworkTest extends TestCase {
         HashMap<HashId, StateRecord> knownParts = new HashMap<>();
         if (baseCheckPassed) {
             // check the referenced items
-            for (Reference refModel : item.getReferencedItems()) {
+            for (Reference refModel : item.getReferences().values()) {
                 HashId id = refModel.contract_id;
                 if(refModel.type == Reference.TYPE_EXISTING && id != null) {
                     StateRecord r = node.getLedger().getRecord(id);
@@ -4248,7 +4373,7 @@ public class BaseNetworkTest extends TestCase {
 
     // check subitems of given item recursively (down for newItems line)
     private final void checkSubItemsOf(Approvable checkingItem, StateRecord record, List<StateRecord> lockedToCreate, List<StateRecord> lockedToRevoke) {
-        for (Reference refModel : checkingItem.getReferencedItems()) {
+        for (Reference refModel : checkingItem.getReferences().values()) {
             HashId id = refModel.contract_id;
             if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
                 if (!node.getLedger().isApproved(id)) {
@@ -4514,4 +4639,22 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(res);
     }
 
+    @Test
+    public void checkReferencesContracts() throws Exception {
+        Contract contract1 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract1.yml");
+        Contract contract2 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract2.yml");
+        Contract contract3 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract3.yml");
+        contract1.seal();
+        contract2.seal();
+        contract3.seal();
+
+        TransactionPack tp = new TransactionPack();
+        tp.setContract(contract1);
+        tp.addReference(contract2);
+        tp.addReference(contract3);
+
+        Contract refContract1 = new Contract(contract1.seal(), tp);
+        Contract refContract2 = new Contract(contract2.seal(), tp);
+        Contract refContract3 = new Contract(contract3.seal(), tp);
+    }
 }
