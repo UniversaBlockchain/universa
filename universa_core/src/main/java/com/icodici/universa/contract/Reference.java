@@ -258,7 +258,19 @@ public class Reference implements BiSerializable {
                                 ((leftOperandContract.get(leftOperand) == rightOperandContract.get(rightOperand)) ||
                                  (leftOperandContract.get(leftOperand).equals(rightOperandContract.get(rightOperand))))))
                                 ret = true;
-                        } else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {           //rightOperand is CONSTANT (null|number|true|false)
+                        } else if (leftOperandContract.get(leftOperand).getClass().getName().endsWith("Role")) {        //if role - compare with address
+                            try {
+                                KeyAddress ka = new KeyAddress(rightOperand);
+                                ret = ((Role) leftOperandContract.get(leftOperand)).isMatchingKeyAddress(ka);
+                            }
+                            catch (Exception e) {
+                                throw new IllegalArgumentException("Address compare error in condition: " + e.getMessage());
+                            }
+
+                            if (indxOperator == NOT_EQUAL)
+                                ret = !ret;
+                        }
+                        else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {           //rightOperand is CONSTANT (null|number|true|false)
                             if ((rightOperand != "null") && (rightOperand != "false") && (rightOperand != "true")) {
                                 if (((indxOperator == NOT_EQUAL) && ((int) leftOperandContract.get(leftOperand) != Integer.parseInt(rightOperand))) ||
                                     ((indxOperator == EQUAL) && ((int) leftOperandContract.get(leftOperand) == Integer.parseInt(rightOperand))))
@@ -275,15 +287,8 @@ public class Reference implements BiSerializable {
                                     ret = true;
                             }
                         } else if (typeOfRightOperand == compareOperandType.CONSTSTR) {          //rightOperand is CONSTANT (string)
-                            if (leftOperandContract.get(leftOperand).getClass().getName().endsWith("Role")) {
-                                KeyAddress ka = new KeyAddress(rightOperand);
-                                ret = ka.isMatchingKeyAddress((leftOperandContract.get(leftOperand)));
-                                // todo: here can be a role, may be here need comparision like this?
-//                                ret = ((Role) leftOperandContract.get(leftOperand)).isMatchingKeyAddress(ka);
-                                if (indxOperator == NOT_EQUAL)
-                                    ret = !ret;
-                            } else if (((indxOperator == NOT_EQUAL) && (!leftOperandContract.get(leftOperand).equals(rightOperand))) ||
-                                       ((indxOperator == EQUAL) && (leftOperandContract.get(leftOperand).equals(rightOperand))))
+                             if (((indxOperator == NOT_EQUAL) && (!leftOperandContract.get(leftOperand).equals(rightOperand))) ||
+                                 ((indxOperator == EQUAL) && (leftOperandContract.get(leftOperand).equals(rightOperand))))
                                 ret = true;
                         }
 
@@ -298,9 +303,9 @@ public class Reference implements BiSerializable {
                         throw new IllegalArgumentException("Invalid operator in condition");
                 }
             }
-            catch (Exception e) {
-                // todo: please, do not hide exceptions but process it correctly or throw
-//                e.printStackTrace();
+            catch (Exception e){
+                if (e.getMessage().equals("Address compare error in condition"))
+                    throw e;
             }
         }else{       //if rightOperand == null, then operation: defined / undefined
             if (indxOperator == DEFINED) {
@@ -427,10 +432,8 @@ public class Reference implements BiSerializable {
                     result = result || checkConditions((Binder) item, ref, contracts, iteration);
             }
         }
-        else {
-//            result = false;
+        else
             throw new IllegalArgumentException("Expected all_of or any_of");
-        }
 
         return result;
     }

@@ -49,6 +49,7 @@ definition:
      name: ref_cont
      where:
        all_of:
+       - this.definition.issuer == 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R
        - this.definition.issuer == ref.definition.issuer
        - ref.state.data.amount > 100
        - ref_cont2.state.data.description == "===Third contract==="
