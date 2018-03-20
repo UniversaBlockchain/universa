@@ -435,9 +435,6 @@ public class Reference implements BiSerializable {
      * @return true or false
      */
     public boolean isValid() {
-        if(matchingItems.size() == 0) {
-            System.err.println("bad ref: " + name + " " + baseContract.getId());
-        }
         return matchingItems.size() > 0;
     }
 

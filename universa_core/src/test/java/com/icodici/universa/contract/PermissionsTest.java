@@ -433,7 +433,7 @@ public class PermissionsTest extends ContractTestBase {
             stepaPublicKeys.add(pk.getPublicKey());
         }
         Set<String> references = new HashSet<>();
-        references.add("ceritfication_contract");
+        references.add("certification_contract");
 
         Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
@@ -481,8 +481,9 @@ public class PermissionsTest extends ContractTestBase {
         Contract c3 = c.createRevision(stepaPrivateKeys);
         c3.setOwnerKey(ownerKey3);
         Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
+        ref.name = "certification_contract";
         ref.type = Reference.TYPE_EXISTING;
+        ref.addMatchingItem(new Contract());
         c3.getReferences().put(ref.name, ref);
         assertEquals(c3, c3.getPermissions().getFirst("change_owner").getRole().getContract());
         assertNotEquals(c.getOwner(), c3.getOwner());
@@ -491,7 +492,7 @@ public class PermissionsTest extends ContractTestBase {
     }
 
     @Test
-    public void crevokeWithReference() throws Exception {
+    public void revokeWithReference() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
 
@@ -500,7 +501,7 @@ public class PermissionsTest extends ContractTestBase {
             stepaPublicKeys.add(pk.getPublicKey());
         }
         Set<String> references = new HashSet<>();
-        references.add("ceritfication_contract");
+        references.add("certification_contract");
 
         Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
@@ -544,8 +545,9 @@ public class PermissionsTest extends ContractTestBase {
 
         Contract c3 = ContractsService.createRevocation(c, stepaPrivateKeys.iterator().next());
         Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
+        ref.name = "certification_contract";
         ref.type = Reference.TYPE_EXISTING;
+        ref.addMatchingItem(new Contract());
         c3.getRevoking().get(0).getReferences().put(ref.name, ref);
 //        assertEquals(c3.getRevoking().get(0), c3.getPermissions().getFirst("revoke").getRole().getContract());
 
@@ -563,7 +565,7 @@ public class PermissionsTest extends ContractTestBase {
             stepaPublicKeys.add(pk.getPublicKey());
         }
         Set<String> references = new HashSet<>();
-        references.add("ceritfication_contract");
+        references.add("certification_contract");
 
         Contract c = Contract.fromDslFile(rootPath + "TokenWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
@@ -615,8 +617,9 @@ public class PermissionsTest extends ContractTestBase {
         c3.createRole("creator", c3.getRole("owner"));
         c3.getNew().get(0).createRole("creator", c3.getNew().get(0).getRole("owner"));
         Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
+        ref.name = "certification_contract";
         ref.type = Reference.TYPE_EXISTING;
+        ref.addMatchingItem(new Contract());
         c3.getReferences().put(ref.name, ref);
         c3.getNew().get(0).getReferences().put(ref.name, ref);
         assertEquals(c3, c3.getPermissions().getFirst("split_join").getRole().getContract());
@@ -635,7 +638,7 @@ public class PermissionsTest extends ContractTestBase {
             stepaPublicKeys.add(pk.getPublicKey());
         }
         Set<String> references = new HashSet<>();
-        references.add("ceritfication_contract");
+        references.add("certification_contract");
 
         Contract c = Contract.fromDslFile(rootPath + "AbonementWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
@@ -687,8 +690,9 @@ public class PermissionsTest extends ContractTestBase {
         Contract c3 = c.createRevision(stepaPrivateKeys);
         c3.getStateData().set("units", c.getStateData().getIntOrThrow("units") - 1);
         Reference ref = new Reference();
-        ref.name = "ceritfication_contract";
+        ref.name = "certification_contract";
         ref.type = Reference.TYPE_EXISTING;
+        ref.addMatchingItem(new Contract());
         c3.getReferences().put(ref.name, ref);
         assertEquals(c3, c3.getPermissions().getFirst("decrement_permission").getRole().getContract());
 
