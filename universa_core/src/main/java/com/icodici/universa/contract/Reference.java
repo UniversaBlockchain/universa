@@ -387,6 +387,9 @@ public class Reference implements BiSerializable {
 
         boolean result;
 
+        if ((conditions == null) || (conditions.size() == 0))
+            return true;
+
         if (conditions.containsKey(all_of.name()))
         {
             List<Object> condList = conditions.getList(all_of.name(), null);
