@@ -147,6 +147,12 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode(session);
+        if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+            return Binder.of(
+                    "itemResult",
+                    "approve ERROR: no payment");
+        }
+
         try {
             //System.out.println("Request to approve, package size: " + params.getBinaryOrThrow("packedItem").length);
             return Binder.of(
@@ -180,6 +186,10 @@ public class ClientHTTPServer extends BasicHttpServer {
     static AtomicInteger asyncStarts = new AtomicInteger();
 
     private Binder startApproval(final Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+        if(config == null || !config.getKeysWhiteList().contains(session.getPublicKey())) {
+            return new Binder();
+        }
+
         int n = asyncStarts.incrementAndGet();
         AtomicInteger k = new AtomicInteger();
         params.getListOrThrow("packedItems").forEach((item) ->

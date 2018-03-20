@@ -23,6 +23,7 @@ public class Config {
 
     public Config () {
         keysWhiteList.add(getTransactionUnitsIssuerKey());
+        keysWhiteList.add(getNetworkAdminKey());
     }
 
     public Config copy() {
