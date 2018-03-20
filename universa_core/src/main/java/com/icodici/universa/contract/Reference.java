@@ -423,8 +423,8 @@ public class Reference implements BiSerializable {
             }
         }
         else {
-            result = false;
-//            throw new IllegalArgumentException("Expected all_of or any_of");
+//            result = false;
+            throw new IllegalArgumentException("Expected all_of or any_of");
         }
 
         return result;
