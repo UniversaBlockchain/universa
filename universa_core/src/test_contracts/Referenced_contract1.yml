@@ -55,7 +55,8 @@ definition:
        - ref_cont2.state.data.description == "===Third contract==="
        - any_of:
          - ref.state.data.amount == 0
-         - ref.state.data.price <= 30
+         - ref.state.data.price <= 30.33
+         - this.state.data.price == ref_cont2.state.data.price
  - reference:
      name: ref_cont2
      where:
@@ -131,5 +132,5 @@ state:
  # required section. any application data that could be changed.
  data:
    amount: 1000
-   price: 20
+   price: 20.78
 

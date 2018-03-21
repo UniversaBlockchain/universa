@@ -4650,11 +4650,30 @@ public class BaseNetworkTest extends TestCase {
 
         TransactionPack tp = new TransactionPack();
         tp.setContract(contract1);
+        tp.addReference(contract1);
+        tp.addForeignReference(contract1);
         tp.addReference(contract2);
+        tp.addForeignReference(contract2);
         tp.addReference(contract3);
+        tp.addForeignReference(contract3);
 
         Contract refContract1 = new Contract(contract1.seal(), tp);
-        Contract refContract2 = new Contract(contract2.seal(), tp);
-        Contract refContract3 = new Contract(contract3.seal(), tp);
+        Contract refContract2 = new Contract(contract3.seal(), tp);
+
+        assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract1));
+        assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract2));
+        assertFalse(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract3));
+
+        assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract1));
+        assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract2));
+        assertTrue(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract3));
+
+        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract1));
+        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract2));
+        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract3));
+
+        assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract1));
+        assertFalse(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract2));
+        assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract3));
     }
 }
