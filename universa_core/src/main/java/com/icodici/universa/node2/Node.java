@@ -1612,6 +1612,23 @@ public class Node {
         private final synchronized void checkSubItemsOf(Approvable checkingItem) {
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
+
+                    // check referenced items
+                    checkReferencesOf(checkingItem);
+
+                    // check revoking items
+                    checkRevokesOf(checkingItem);
+
+                    // check new items
+                    checkNewsOf(checkingItem);
+                }
+            }
+        }
+
+        private final synchronized void checkReferencesOf(Approvable checkingItem) {
+
+            if(processingState.canContinue()) {
+                if (!processingState.isProcessedToConsensus()) {
                     for (Approvable ref : checkingItem.getReferencedItems()) {
                         HashId id = ref.getId();
 //                        if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
@@ -1620,8 +1637,19 @@ public class Node {
                         }
 //                        }
                     }
+                }
+            }
+        }
+
+        private final synchronized void checkRevokesOf(Approvable checkingItem) {
+
+            if(processingState.canContinue()) {
+                if (!processingState.isProcessedToConsensus()) {
                     // check revoking items
                     for (Approvable a : checkingItem.getRevokingItems()) {
+
+                        checkReferencesOf(a);
+
                         synchronized (mutex) {
                             StateRecord r = record.lockToRevoke(a.getId());
                             if (r == null) {
@@ -1631,7 +1659,19 @@ public class Node {
                                     lockedToRevoke.add(r);
                             }
                         }
+
+                        for (ErrorRecord er : a.getErrors()) {
+                            checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke: " + er);
+                        }
                     }
+                }
+            }
+        }
+
+        private final synchronized void checkNewsOf(Approvable checkingItem) {
+
+            if(processingState.canContinue()) {
+                if (!processingState.isProcessedToConsensus()) {
                     // check new items
                     for (Approvable newItem : checkingItem.getNewItems()) {
 
