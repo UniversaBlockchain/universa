@@ -161,6 +161,8 @@ public class Reference implements BiSerializable {
         boolean ret = false;
         Contract leftOperandContract = null;
         Contract rightOperandContract = null;
+        Object left = null;
+        Object right = null;
         int firstPointPos;
 
         if (leftOperand.startsWith("ref.")) {
@@ -224,30 +226,38 @@ public class Reference implements BiSerializable {
                     throw new IllegalArgumentException("Invalid format of right operand in condition: " + rightOperand + ". Missing contract field.");
             }
 
+            left = leftOperandContract.get(leftOperand);
+            if (rightOperandContract != null)
+                right = rightOperandContract.get(rightOperand);
+
             try {
                 switch (indxOperator) {
                     case LESS:
                     case MORE:
                     case LESS_OR_EQUAL:
                     case MORE_OR_EQUAL:
+                        if (left == null)
+                            break;
+
                         if (typeOfRightOperand == compareOperandType.FIELD) {               // rightOperand is FIELD
-                            if (((indxOperator == LESS) && ((double) leftOperandContract.get(leftOperand) < (double) rightOperandContract.get(rightOperand))) ||
-                                ((indxOperator == MORE) && ((double) leftOperandContract.get(leftOperand) > (double) rightOperandContract.get(rightOperand))) ||
-                                ((indxOperator == LESS_OR_EQUAL) && ((double) leftOperandContract.get(leftOperand) <= (double) rightOperandContract.get(rightOperand))) ||
-                                ((indxOperator == MORE_OR_EQUAL) && ((double) leftOperandContract.get(leftOperand) >= (double) rightOperandContract.get(rightOperand))))
+                            if ((right != null) &&
+                                (((indxOperator == LESS) && ((double) left < (double) right)) ||
+                                 ((indxOperator == MORE) && ((double) left > (double) right)) ||
+                                 ((indxOperator == LESS_OR_EQUAL) && ((double) left <= (double) right)) ||
+                                 ((indxOperator == MORE_OR_EQUAL) && ((double) left >= (double) right))))
                                 ret = true;
                         } else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {              //rightOperand is CONSTANT (null | number | true | false)
                             if ((rightOperand != "null") && (rightOperand != "false") && (rightOperand != "true"))
                                 if ((rightOperand.contains(".") &&
-                                    (((indxOperator == LESS) && ((double) leftOperandContract.get(leftOperand) < Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == MORE) && ((double) leftOperandContract.get(leftOperand) > Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == LESS_OR_EQUAL) && ((double) leftOperandContract.get(leftOperand) <= Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == MORE_OR_EQUAL) && ((double) leftOperandContract.get(leftOperand) >= Double.parseDouble(rightOperand))))) ||
+                                    (((indxOperator == LESS) && ((double) left < Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == MORE) && ((double) left > Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && ((double) left <= Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && ((double) left >= Double.parseDouble(rightOperand))))) ||
                                     (!rightOperand.contains(".") &&
-                                    (((indxOperator == LESS) && ((int) leftOperandContract.get(leftOperand) < Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == MORE) && ((int) leftOperandContract.get(leftOperand) > Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == LESS_OR_EQUAL) && ((int) leftOperandContract.get(leftOperand) <= Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == MORE_OR_EQUAL) && ((int) leftOperandContract.get(leftOperand) >= Integer.parseInt(rightOperand))))))
+                                    (((indxOperator == LESS) && ((int) left < Integer.parseInt(rightOperand))) ||
+                                    ((indxOperator == MORE) && ((int) left > Integer.parseInt(rightOperand))) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && ((int) left <= Integer.parseInt(rightOperand))) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && ((int) left >= Integer.parseInt(rightOperand))))))
                                     ret = true;
                         } else
                             throw new IllegalArgumentException("Invalid operator for string in condition: " + operators[indxOperator]);
@@ -256,18 +266,15 @@ public class Reference implements BiSerializable {
 
                     case NOT_EQUAL:
                     case EQUAL:
-                        if (typeOfRightOperand == compareOperandType.FIELD) {         // rightOperand is FIELD
-                            if (((indxOperator == NOT_EQUAL) &&
-                                ((leftOperandContract.get(leftOperand) != rightOperandContract.get(rightOperand)) ||
-                                 (!leftOperandContract.get(leftOperand).equals(rightOperandContract.get(rightOperand))))) ||
-                                ((indxOperator == EQUAL) &&
-                                ((leftOperandContract.get(leftOperand) == rightOperandContract.get(rightOperand)) ||
-                                 (leftOperandContract.get(leftOperand).equals(rightOperandContract.get(rightOperand))))))
+                        if (typeOfRightOperand == compareOperandType.FIELD) {       // rightOperand is FIELD
+                            if ((left != null) && (right != null) &&
+                                (((indxOperator == NOT_EQUAL) && !left.equals(right)) ||
+                                 ((indxOperator == EQUAL) && left.equals(right))))
                                 ret = true;
-                        } else if (leftOperandContract.get(leftOperand).getClass().getName().endsWith("Role")) {        //if role - compare with address
+                        } else if ((left != null) && left.getClass().getName().endsWith("Role")) {    //if role - compare with address
                             try {
                                 KeyAddress ka = new KeyAddress(rightOperand);
-                                ret = ((Role) leftOperandContract.get(leftOperand)).isMatchingKeyAddress(ka);
+                                ret = ((Role) left).isMatchingKeyAddress(ka);
                             }
                             catch (Exception e) {
                                 throw new IllegalArgumentException("Address compare error in condition: " + e.getMessage());
@@ -276,29 +283,30 @@ public class Reference implements BiSerializable {
                             if (indxOperator == NOT_EQUAL)
                                 ret = !ret;
                         }
-                        else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {           //rightOperand is CONSTANT (null|number|true|false)
+                        else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {         //rightOperand is CONSTANT (null|number|true|false)
                             if ((rightOperand != "null") && (rightOperand != "false") && (rightOperand != "true")) {
-                                if ((rightOperand.contains(".") &&
-                                    (((indxOperator == NOT_EQUAL) && ((double) leftOperandContract.get(leftOperand) != Double.parseDouble(rightOperand))) ||
-                                     ((indxOperator == EQUAL) && ((double) leftOperandContract.get(leftOperand) == Double.parseDouble(rightOperand))))) ||
+                                if ((left != null) && ((rightOperand.contains(".") &&
+                                    (((indxOperator == NOT_EQUAL) && ((double) left != Double.parseDouble(rightOperand))) ||
+                                     ((indxOperator == EQUAL) && ((double) left == Double.parseDouble(rightOperand))))) ||
                                     (!rightOperand.contains(".") &&
-                                     (((indxOperator == NOT_EQUAL) && ((int) leftOperandContract.get(leftOperand) != Integer.parseInt(rightOperand))) ||
-                                     ((indxOperator == EQUAL) && ((int) leftOperandContract.get(leftOperand) == Integer.parseInt(rightOperand))))))
+                                     (((indxOperator == NOT_EQUAL) && ((int) left != Integer.parseInt(rightOperand))) ||
+                                     ((indxOperator == EQUAL) && ((int) left == Integer.parseInt(rightOperand)))))))
                                     ret = true;
                             } else {          //if rightOperand : null|false|true
                                 if (((indxOperator == NOT_EQUAL) &&
-                                    (((rightOperand == "null") && (leftOperandContract.get(leftOperand) != null)) ||
-                                     ((rightOperand == "true") && ((boolean) leftOperandContract.get(leftOperand) != true)) ||
-                                     ((rightOperand == "false") && ((boolean) leftOperandContract.get(leftOperand) != false))))
+                                    (((rightOperand == "null") && (left != null)) ||
+                                     ((rightOperand == "true") && ((left != null) && !(boolean) left)) ||
+                                     ((rightOperand == "false") && ((left != null) && (boolean) left))))
                                     || ((indxOperator == EQUAL) &&
-                                    (((rightOperand == "null") && (leftOperandContract.get(leftOperand) == null)) ||
-                                     ((rightOperand == "true") && ((boolean) leftOperandContract.get(leftOperand) == true)) ||
-                                     ((rightOperand == "false") && ((boolean) leftOperandContract.get(leftOperand) == false)))))
+                                    (((rightOperand == "null") && (left == null)) ||
+                                     ((rightOperand == "true") && ((left != null) && (boolean) left)) ||
+                                     ((rightOperand == "false") && ((left != null) && !(boolean) left)))))
                                     ret = true;
                             }
                         } else if (typeOfRightOperand == compareOperandType.CONSTSTR) {          //rightOperand is CONSTANT (string)
-                             if (((indxOperator == NOT_EQUAL) && (!leftOperandContract.get(leftOperand).equals(rightOperand))) ||
-                                 ((indxOperator == EQUAL) && (leftOperandContract.get(leftOperand).equals(rightOperand))))
+                             if ((left != null) &&
+                                 (((indxOperator == NOT_EQUAL) && !left.equals(rightOperand)) ||
+                                  ((indxOperator == EQUAL) && left.equals(rightOperand))))
                                 ret = true;
                         }
 
