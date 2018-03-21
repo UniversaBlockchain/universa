@@ -55,7 +55,7 @@ definition:
      name: ref_cont4
      where:
        all_of:
-       - this.definition.issuer == ref.definition.issuer
+       - ref.state.data.price > 18.02
        #- ref_cont3.state.data.amount < 10000	#cycle ref
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.
@@ -128,6 +128,6 @@ state:
  # required section. any application data that could be changed.
  data:
    amount: 10
-   price: 20
+   price: 27.88
    description: ===Third contract===
 
