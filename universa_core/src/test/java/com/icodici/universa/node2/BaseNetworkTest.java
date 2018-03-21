@@ -11,6 +11,9 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.permissions.RevokePermission;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.DatagramAdapter;
@@ -3394,15 +3397,7 @@ public class BaseNetworkTest extends TestCase {
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
 
-        Contract tu = getApprovedTUContract();
-        // stepaPrivateKeys - is also U keys
-        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
-        System.out.println("-------------");
-        node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
-        }
-        waitAndCheckApproved(parcel);
+        registerAndCheckApproved(tp_after);
     }
 
     @Test
@@ -3453,15 +3448,7 @@ public class BaseNetworkTest extends TestCase {
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
 
-        Contract tu = getApprovedTUContract();
-        // stepaPrivateKeys - is also U keys
-        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
-        System.out.println("-------------");
-        node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
-        }
-        waitAndCheckApproved(parcel);
+        registerAndCheckApproved(tp_after);
     }
 
     @Test
@@ -3514,15 +3501,7 @@ public class BaseNetworkTest extends TestCase {
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
 
-        Contract tu = getApprovedTUContract();
-        // stepaPrivateKeys - is also U keys
-        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
-        System.out.println("-------------");
-        node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
-        }
-        waitAndCheckApproved(parcel);
+        registerAndCheckApproved(tp_after);
     }
 
     @Test
@@ -3575,15 +3554,191 @@ public class BaseNetworkTest extends TestCase {
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
 
-        Contract tu = getApprovedTUContract();
-        // stepaPrivateKeys - is also U keys
-        Parcel parcel =  ContractsService.createParcel(tp_after, tu, 150, stepaPrivateKeys);
-        System.out.println("-------------");
-        node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        registerAndCheckApproved(tp_after);
+    }
+
+    @Test
+    public void declineReferenceForChangeOwner() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
         }
-        waitAndCheckApproved(parcel);
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
+        llcProperty2.setOwnerKeys(thirdPartyPublicKeys);
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        // bad situations
+
+        TransactionPack tp_before;
+        TransactionPack tp_after;
+        Contract jobCertificate;
+
+        // missing data.issuer
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+//        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // missing data.type
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+//        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // not registered
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+//        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // missing reference
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+//        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // wrong issuer
+        jobCertificate = new Contract(stepaPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // wrong data.issuer
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Not Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // wrong data.type
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "Not chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // revoked reference
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.addPermission(new RevokePermission(jobCertificate.getOwner()));
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract revokingJobCertificate = ContractsService.createRevocation(jobCertificate, stepaPrivateKeys.iterator().next());
+        revokingJobCertificate.check();
+        revokingJobCertificate.traceErrors();
+        registerAndCheckApproved(revokingJobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
     }
 
     @Ignore("Stress test")
@@ -3714,8 +3869,30 @@ public class BaseNetworkTest extends TestCase {
         return parcel;
     }
 
+    protected synchronized Parcel registerWithNewParcel(TransactionPack tp) throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract tu = getApprovedTUContract();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+
+        return parcel;
+    }
+
     private synchronized void registerAndCheckApproved(Contract c) throws Exception {
         Parcel parcel = registerWithNewParcel(c);
+        waitAndCheckApproved(parcel);
+    }
+
+    private synchronized void registerAndCheckApproved(TransactionPack tp) throws Exception {
+        Parcel parcel = registerWithNewParcel(tp);
         waitAndCheckApproved(parcel);
     }
 
@@ -3740,10 +3917,17 @@ public class BaseNetworkTest extends TestCase {
     }
 
     private synchronized void registerAndCheckDeclined(Contract c) throws Exception {
-        Parcel parcel = null;
+        Parcel parcel = registerWithNewParcel(c);
+        waitAndCheckDeclined(parcel);
+    }
+
+    private synchronized void registerAndCheckDeclined(TransactionPack tp) throws Exception {
+        Parcel parcel = registerWithNewParcel(tp);
+        waitAndCheckDeclined(parcel);
+    }
+
+    private synchronized void waitAndCheckDeclined(Parcel parcel) throws Exception {
         try {
-            parcel = registerWithNewParcel(c);
-    //        LogPrinter.showDebug(true);
             System.out.println("registerAndCheckDeclined, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             node.waitParcel(parcel.getId(), 30000);
             System.out.println("registerAndCheckDeclined, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
@@ -3753,13 +3937,6 @@ public class BaseNetworkTest extends TestCase {
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
             assertEquals(ItemState.DECLINED, itemResult.state);
         } catch (TimeoutException e) {
-            System.out.println("ping ");
-//            System.out.println(node.ping());
-////            System.out.println(node.traceTasksPool());
-//            for (Node n : nodes) {
-//                System.out.println(n + " " + n.traceParcelProcessors());
-//                System.out.println(n + " " + n.traceItemProcessors());
-//            }
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             } else {
