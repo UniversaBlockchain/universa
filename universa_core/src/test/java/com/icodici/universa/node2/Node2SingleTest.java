@@ -9,6 +9,7 @@
 package com.icodici.universa.node2;
 
 import com.icodici.universa.node.*;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -42,8 +43,8 @@ public class Node2SingleTest extends BaseNetworkTest {
 
     @AfterClass
     public static void afterClass() throws Exception {
-        node_s.getLedger().close();
         node_s.shutdown();
+        node_s.getLedger().close();
 
         network_s = null;
         node_s = null;
@@ -108,6 +109,7 @@ public class Node2SingleTest extends BaseNetworkTest {
         TestItem item = new TestItem(true);
 
         System.out.println("noQuorumError " + item.getId());
+//        node.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         node.registerItem(item);
         try {
             System.out.println("noQuorumError wait " + item.getId());

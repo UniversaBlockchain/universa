@@ -75,6 +75,7 @@ public class Node {
     private final ItemInformer informer = new ItemInformer();
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
+    protected boolean isShuttingDown = false;
 
     private final ItemLock itemLock = new ItemLock();
     private final ParcelLock parcelLock = new ParcelLock();
@@ -168,7 +169,7 @@ public class Node {
 
     private void sanitateRecord(StateRecord r) {
         try {
-            if(executorService.isShutdown())
+            if(isShuttingDown)
                 return;
             resync(r.getId());
         } catch (Exception e) {
@@ -814,6 +815,7 @@ public class Node {
     }
 
     public void shutdown() {
+        isShuttingDown = true;
         System.out.println(toString() + "please wait, shutting down has started, num alive item processors: " + processors.size());
         for (ItemProcessor ip : processors.values()) {
             ip.emergencyBreak();
@@ -832,6 +834,7 @@ public class Node {
                 e.printStackTrace();
             }
         }
+        System.out.println(toString() + "please wait, executorService is shutting down");
         executorService.shutdown();
         lowPrioExecutorService.shutdown();
         try {
@@ -1424,7 +1427,12 @@ public class Node {
                 item = cache.get(itemId);
             this.item = item;
 
-            StateRecord recordWas = ledger.getRecord(itemId);
+            StateRecord recordWas = null;
+            try {
+                recordWas = ledger.getRecord(itemId);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             if (recordWas != null) {
                 stateWas = recordWas.getState();
             } else {
@@ -2383,6 +2391,13 @@ public class Node {
             stopPoller();
             stopConsensusReceivedChecker();
             stopResync();
+
+            for(ResyncingItem ri : resyncingItems.values()) {
+                if(!ri.isCommitFinished()) {
+                    ri.closeByTimeout();
+                }
+            }
+
             rollbackChanges(stateWas);
 
             processingState = ItemProcessingState.FINISHED;
