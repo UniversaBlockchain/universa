@@ -266,12 +266,14 @@ public class PostgresLedger implements Ledger {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("select count(id), state from ledger where created_at >= ? group by state",createdAfter != null ? createdAfter.getEpochSecond() : 0))) {
                 Map<ItemState,Integer> result = new HashMap<>();
-                do {
-                    int count = rs.getInt(1);
-                    ItemState state = ItemState.values()[rs.getInt(2)];
-                    result.put(state,count);
+                if(rs != null) {
+                    do {
+                        int count = rs.getInt(1);
+                        ItemState state = ItemState.values()[rs.getInt(2)];
+                        result.put(state, count);
 
-                } while (rs.next());
+                    } while (rs.next());
+                }
                 return result;
             }
         });
