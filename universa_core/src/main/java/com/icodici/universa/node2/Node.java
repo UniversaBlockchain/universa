@@ -168,6 +168,8 @@ public class Node {
 
     private void sanitateRecord(StateRecord r) {
         try {
+            if(executorService.isShutdown())
+                return;
             resync(r.getId());
         } catch (Exception e) {
             e.printStackTrace();
@@ -2916,6 +2918,7 @@ public class Node {
                         Node.this.toString() + " > item " + hashId + " :: resyncVote -> resyncAndCommit");
             } else if (undefinedConsenus) {
                 executorService.submit(() -> resyncAndCommit(ItemState.UNDEFINED),
+
                         Node.this.toString() + " > item " + hashId + " :: resyncVote -> resyncAndCommit");
             } else
                 throw new RuntimeException("error: resync consensus reported without consensus");
