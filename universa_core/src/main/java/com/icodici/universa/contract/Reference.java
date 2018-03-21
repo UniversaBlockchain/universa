@@ -231,17 +231,23 @@ public class Reference implements BiSerializable {
                     case LESS_OR_EQUAL:
                     case MORE_OR_EQUAL:
                         if (typeOfRightOperand == compareOperandType.FIELD) {               // rightOperand is FIELD
-                            if (((indxOperator == LESS) && ((int) leftOperandContract.get(leftOperand) < (int) rightOperandContract.get(rightOperand))) ||
-                                ((indxOperator == MORE) && ((int) leftOperandContract.get(leftOperand) > (int) rightOperandContract.get(rightOperand))) ||
-                                ((indxOperator == LESS_OR_EQUAL) && ((int) leftOperandContract.get(leftOperand) <= (int) rightOperandContract.get(rightOperand))) ||
-                                ((indxOperator == MORE_OR_EQUAL) && ((int) leftOperandContract.get(leftOperand) >= (int) rightOperandContract.get(rightOperand))))
+                            if (((indxOperator == LESS) && ((double) leftOperandContract.get(leftOperand) < (double) rightOperandContract.get(rightOperand))) ||
+                                ((indxOperator == MORE) && ((double) leftOperandContract.get(leftOperand) > (double) rightOperandContract.get(rightOperand))) ||
+                                ((indxOperator == LESS_OR_EQUAL) && ((double) leftOperandContract.get(leftOperand) <= (double) rightOperandContract.get(rightOperand))) ||
+                                ((indxOperator == MORE_OR_EQUAL) && ((double) leftOperandContract.get(leftOperand) >= (double) rightOperandContract.get(rightOperand))))
                                 ret = true;
                         } else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {              //rightOperand is CONSTANT (null | number | true | false)
                             if ((rightOperand != "null") && (rightOperand != "false") && (rightOperand != "true"))
-                                if (((indxOperator == LESS) && ((int) leftOperandContract.get(leftOperand) < Integer.parseInt(rightOperand))) ||
+                                if ((rightOperand.contains(".") &&
+                                    (((indxOperator == LESS) && ((double) leftOperandContract.get(leftOperand) < Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == MORE) && ((double) leftOperandContract.get(leftOperand) > Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && ((double) leftOperandContract.get(leftOperand) <= Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && ((double) leftOperandContract.get(leftOperand) >= Double.parseDouble(rightOperand))))) ||
+                                    (!rightOperand.contains(".") &&
+                                    (((indxOperator == LESS) && ((int) leftOperandContract.get(leftOperand) < Integer.parseInt(rightOperand))) ||
                                     ((indxOperator == MORE) && ((int) leftOperandContract.get(leftOperand) > Integer.parseInt(rightOperand))) ||
                                     ((indxOperator == LESS_OR_EQUAL) && ((int) leftOperandContract.get(leftOperand) <= Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == MORE_OR_EQUAL) && ((int) leftOperandContract.get(leftOperand) >= Integer.parseInt(rightOperand))))
+                                    ((indxOperator == MORE_OR_EQUAL) && ((int) leftOperandContract.get(leftOperand) >= Integer.parseInt(rightOperand))))))
                                     ret = true;
                         } else
                             throw new IllegalArgumentException("Invalid operator for string in condition: " + operators[indxOperator]);
@@ -272,8 +278,12 @@ public class Reference implements BiSerializable {
                         }
                         else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {           //rightOperand is CONSTANT (null|number|true|false)
                             if ((rightOperand != "null") && (rightOperand != "false") && (rightOperand != "true")) {
-                                if (((indxOperator == NOT_EQUAL) && ((int) leftOperandContract.get(leftOperand) != Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == EQUAL) && ((int) leftOperandContract.get(leftOperand) == Integer.parseInt(rightOperand))))
+                                if ((rightOperand.contains(".") &&
+                                    (((indxOperator == NOT_EQUAL) && ((double) leftOperandContract.get(leftOperand) != Double.parseDouble(rightOperand))) ||
+                                     ((indxOperator == EQUAL) && ((double) leftOperandContract.get(leftOperand) == Double.parseDouble(rightOperand))))) ||
+                                    (!rightOperand.contains(".") &&
+                                     (((indxOperator == NOT_EQUAL) && ((int) leftOperandContract.get(leftOperand) != Integer.parseInt(rightOperand))) ||
+                                     ((indxOperator == EQUAL) && ((int) leftOperandContract.get(leftOperand) == Integer.parseInt(rightOperand))))))
                                     ret = true;
                             } else {          //if rightOperand : null|false|true
                                 if (((indxOperator == NOT_EQUAL) &&
@@ -304,8 +314,8 @@ public class Reference implements BiSerializable {
                 }
             }
             catch (Exception e){
-                if (e.getMessage().equals("Address compare error in condition"))
-                    throw e;
+                e.printStackTrace();
+                throw new IllegalArgumentException("Error compare operands in condition: " + e.getMessage());
             }
         }else{       //if rightOperand == null, then operation: defined / undefined
             if (indxOperator == DEFINED) {
@@ -375,7 +385,11 @@ public class Reference implements BiSerializable {
             }
             else {
                 rightOperand = subStrR.replaceAll("\\s+", "");
-                if (rightOperand.contains("."))
+                int firstPointPos;
+                if (((firstPointPos = rightOperand.indexOf(".")) > 0) &&
+                    (rightOperand.length() > firstPointPos + 1) &&
+                    ((rightOperand.charAt(firstPointPos + 1) < '0') ||
+                    (rightOperand.charAt(firstPointPos + 1) > '9')))
                     typeRightOperand = compareOperandType.FIELD;
             }
 
