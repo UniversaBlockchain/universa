@@ -387,7 +387,7 @@ public class BasicHttpServer {
 //            } catch (ClientError error) {
 //                throw error;
             } catch (Exception e) {
-                e.printStackTrace();
+                //e.printStackTrace();
                 if (e instanceof ClientError)
                     throw (ClientError) e;
                 throw new ClientError(Errors.COMMAND_FAILED, cmd, e.getMessage());

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 
 public class ClientHTTPServer extends BasicHttpServer {
 
@@ -34,6 +35,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private ItemCache cache;
     private ParcelCache parcelCache;
     private NetConfig netConfig;
+    private Config config;
 
     private boolean localCors = false;
 
@@ -123,6 +125,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         });
 
+        addSecureEndpoint("getStats", this::getStats);
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
         addSecureEndpoint("approve", this::approve);
@@ -143,7 +146,13 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
-        checkNode();
+        checkNode(session);
+        if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+            return Binder.of(
+                    "itemResult",
+                    "approve ERROR: no payment");
+        }
+
         try {
             //System.out.println("Request to approve, package size: " + params.getBinaryOrThrow("packedItem").length);
             return Binder.of(
@@ -159,7 +168,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder approveParcel(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
-        checkNode();
+        checkNode(session);
         try {
     //        System.out.println("Request to approve parcel, package size: " + params.getBinaryOrThrow("packedItem").length);
             return Binder.of(
@@ -177,12 +186,16 @@ public class ClientHTTPServer extends BasicHttpServer {
     static AtomicInteger asyncStarts = new AtomicInteger();
 
     private Binder startApproval(final Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+        if(config == null || !config.getKeysWhiteList().contains(session.getPublicKey())) {
+            return new Binder();
+        }
+
         int n = asyncStarts.incrementAndGet();
         AtomicInteger k = new AtomicInteger();
         params.getListOrThrow("packedItems").forEach((item) ->
                 es.execute(() -> {
                     try {
-                        checkNode();
+                        checkNode(session);
                         System.out.println("Request to start registration #"+n+":"+k.incrementAndGet());
                         node.registerItem(Contract.fromPackedTransaction(((Bytes)item).toArray()));
                     } catch (Exception e) {
@@ -194,7 +207,8 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder getState(Binder params, Session session) throws CommandFailedException {
-        checkNode();
+
+        checkNode(session);
         try {
             return Binder.of("itemResult",
                     node.checkItem((HashId) params.get("itemId")));
@@ -206,8 +220,21 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
+    private Binder getStats(Binder params, Session session) throws CommandFailedException {
+
+        checkNode(session);
+
+        if(config == null || !config.getNetworkAdminKey().equals(session.getPublicKey())) {
+            return Binder.of(
+                    "error",
+                    "command needs admin key"
+            );
+        }
+        return node.provideStats();
+    }
+
     private Binder getParcelProcessingState(Binder params, Session session) throws CommandFailedException {
-        checkNode();
+        checkNode(session);
         try {
             return Binder.of("processingState",
                     node.checkParcelProcessingState((HashId) params.get("parcelId")));
@@ -219,10 +246,19 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
     }
 
-    private void checkNode() throws CommandFailedException {
+    private void checkNode(Session session) throws CommandFailedException {
         if (node == null) {
             throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
         }
+
+        if(node.isSanitating()) {
+            //WHILE NODE IS SANITATING IT COMMUNICATES WITH THE OTHER NODES ONLY
+            if(netConfig.toList().stream().anyMatch(nodeInfo -> nodeInfo.getPublicKey().equals(session.getPublicKey())))
+                return;
+
+            throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
+        }
+
     }
 
     static private Binder networkData = null;
@@ -273,6 +309,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setLocalCors(boolean localCors) {
         this.localCors = localCors;
+    }
+
+    public void setConfig(Config config) {
+        this.config = config;
     }
 
     //    @Override

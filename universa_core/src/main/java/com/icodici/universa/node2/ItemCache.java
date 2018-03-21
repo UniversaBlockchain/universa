@@ -20,28 +20,28 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ItemCache {
 
-    private final Timer cleanerTimer = new Timer();
+    private final Thread cleaner;
     private final Duration maxAge;
 
     public ItemCache(Duration maxAge) {
         this.maxAge = maxAge;
-        cleanerTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
+        cleaner = new Thread( ()-> {
+            try {
+                Thread.sleep(5000);
                 cleanUp();
+            } catch (InterruptedException e) {
             }
-        }, 5000, 5000);
+        });
+        cleaner.setName("item-cache-cleaner");
+        cleaner.setDaemon(true);
+        cleaner.setPriority(Thread.MIN_PRIORITY);
+        cleaner.start();
     }
 
     final void cleanUp() {
         // we should avoid creating an object for each check:
         Instant now = Instant.now();
         records.values().forEach(r->r.checkExpiration(now));
-    }
-
-    public void shutdown() {
-        cleanerTimer.cancel();
-        cleanerTimer.purge();
     }
 
     public @Nullable Approvable get(HashId itemId) {

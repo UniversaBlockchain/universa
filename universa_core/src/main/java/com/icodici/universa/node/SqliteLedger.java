@@ -9,6 +9,7 @@ package com.icodici.universa.node;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
@@ -19,6 +20,8 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.WeakHashMap;
@@ -156,6 +159,11 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public Map<ItemState, Integer> getLedgerSize(Instant createdAfter) {
+        return null;
+    }
+
+    @Override
     public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
 
     }
@@ -172,6 +180,21 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public void removeNode(NodeInfo nodeInfo) {
+
+    }
+
+    @Override
+    public Map<HashId,StateRecord> findUnfinished() {
+        return null;
+    }
+
+    @Override
+    public Approvable getItem(StateRecord record) {
+        return null;
+    }
+
+    @Override
+    public void putItem(StateRecord record, Approvable item, Instant keepTill) {
 
     }
 

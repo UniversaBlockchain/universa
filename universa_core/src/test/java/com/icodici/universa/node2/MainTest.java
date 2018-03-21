@@ -9,6 +9,8 @@ package com.icodici.universa.node2;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.db.DbPool;
+import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
@@ -39,6 +41,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.*;
 import java.nio.file.Path;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1779,8 +1785,11 @@ public class MainTest {
     }
 
 
-
     private TestSpace prepareTestSpace() throws Exception {
+        return prepareTestSpace(TestKeys.privateKey(3));
+    }
+
+    private TestSpace prepareTestSpace(PrivateKey key) throws Exception {
         TestSpace testSpace = new TestSpace();
         testSpace.nodes = new ArrayList<>();
         for (int i = 0; i < 4; i++)
@@ -1788,11 +1797,10 @@ public class MainTest {
         testSpace.node = testSpace.nodes.get(0);
         assertEquals("http://localhost:8080", testSpace.node.myInfo.internalUrlString());
         assertEquals("http://localhost:8080", testSpace.node.myInfo.publicUrlString());
-        testSpace.myKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+        testSpace.myKey = key;
         testSpace.client = new Client(testSpace.myKey, testSpace.node.myInfo, null);
         return testSpace;
     }
-    
 
 
 
@@ -1933,5 +1941,207 @@ public class MainTest {
             th.interrupt();
         }
         mm.forEach(x -> x.shutdown());
+    }
+
+
+
+
+    @Test
+    public void dbSanitationTest() throws Exception {
+        final int NODE_COUNT = 4;
+        PrivateKey myKey = TestKeys.privateKey(NODE_COUNT);
+
+
+        List<String> dbUrls = new ArrayList<>();
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+        List<Ledger> ledgers = new ArrayList<>();
+        dbUrls.stream().forEach(url -> {
+            try {
+                clearLedger(url);
+                PostgresLedger ledger = new PostgresLedger(url);
+                ledgers.add(ledger);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        Random random = new Random(123);
+
+        List<Contract> origins = new ArrayList<>();
+        List<Contract> newRevisions = new ArrayList<>();
+        List<Contract> newContracts = new ArrayList<>();
+
+        final int N = 10;
+        for(int i = 0; i < N; i++) {
+            Contract origin = new Contract(myKey);
+            origin.seal();
+            origins.add(origin);
+
+            Contract newRevision = origin.createRevision(myKey);
+
+            if(i < N/2) {
+                //ACCEPTED
+                newRevision.setOwnerKeys(TestKeys.privateKey(NODE_COUNT + 1).getPublicKey());
+            } else {
+                //DECLINED
+                //State is equal
+            }
+
+            Contract newContract = new Contract(myKey);
+            newRevision.addNewItems(newContract);
+            newRevision.seal();
+
+            newContracts.add(newContract);
+            newRevisions.add(newRevision);
+            int unfinishedNodesCount = random.nextInt(1)+1;
+            Set<Integer> unfinishedNodesNumbers = new HashSet<>();
+            while(unfinishedNodesCount > unfinishedNodesNumbers.size()) {
+                unfinishedNodesNumbers.add(random.nextInt(NODE_COUNT)+1);
+            }
+
+            System.out.println("item# "+ newRevision.getId().toBase64String().substring(0,6) + " nodes " + unfinishedNodesNumbers.toString());
+            int finalI = i;
+            for(int j = 0; j < NODE_COUNT;j++) {
+                boolean finished = !unfinishedNodesNumbers.contains(j+1);
+                Ledger ledger = ledgers.get(j);
+
+
+                StateRecord originRecord = ledger.findOrCreate(origin.getId());
+                originRecord.setExpiresAt(origin.getExpiresAt());
+                originRecord.setCreatedAt(origin.getCreatedAt());
+
+                StateRecord newRevisionRecord = ledger.findOrCreate(newRevision.getId());
+                newRevisionRecord.setExpiresAt(newRevision.getExpiresAt());
+                newRevisionRecord.setCreatedAt(newRevision.getCreatedAt());
+
+                StateRecord newContractRecord = ledger.findOrCreate(newContract.getId());
+                newContractRecord.setExpiresAt(newContract.getExpiresAt());
+                newContractRecord.setCreatedAt(newContract.getCreatedAt());
+
+                if(finished) {
+                    if(finalI < N/2) {
+                        originRecord.setState(ItemState.REVOKED);
+                        newContractRecord.setState(ItemState.APPROVED);
+                        newRevisionRecord.setState(ItemState.APPROVED);
+                    } else {
+                        originRecord.setState(ItemState.APPROVED);
+                        newContractRecord.setState(ItemState.UNDEFINED);
+                        newRevisionRecord.setState(ItemState.DECLINED);
+                    }
+                } else {
+                    originRecord.setState(ItemState.LOCKED);
+                    originRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
+                    newContractRecord.setState(ItemState.LOCKED_FOR_CREATION);
+                    newContractRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
+                    newRevisionRecord.setState(finalI < N/2 ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE);
+                }
+
+                originRecord.save();
+                ledger.putItem(originRecord,origin, Instant.now().plusSeconds(3600*24));
+                newRevisionRecord.save();
+                ledger.putItem(newRevisionRecord,newRevision, Instant.now().plusSeconds(3600*24));
+                if(newContractRecord.getState() == ItemState.UNDEFINED) {
+                    newContractRecord.destroy();
+                } else {
+                    newContractRecord.save();
+                }
+
+            }
+        }
+        ledgers.stream().forEach(ledger -> ledger.close());
+        ledgers.clear();
+
+
+        List<Main> mm = new ArrayList<>();
+        List<Client> clients = new ArrayList<>();
+
+        for (int i = 0; i < NODE_COUNT; i++) {
+            Main m = createMain("node" + (i + 1), false);
+            mm.add(m);
+            Client client = new Client(TestKeys.privateKey(i), m.myInfo, null);
+            clients.add(client);
+        }
+
+
+
+        while (true) {
+            try {
+                for(int i =0; i < NODE_COUNT; i++) {
+                    clients.get(i).getState(newRevisions.get(0));
+                }
+                break;
+            } catch (ClientError e) {
+                Thread.sleep(1000);
+                mm.stream().forEach( m -> System.out.println("node#" +m.myInfo.getNumber() + " is " +  (m.node.isSanitating() ? "" : "not ") + "sanitating"));
+            }
+
+        }
+
+
+        for(int i = 0; i < N; i++) {
+            ItemResult rr = clients.get(i%NODE_COUNT).getState(newRevisions.get(i).getId());
+            ItemState targetState = i < N/2 ? ItemState.APPROVED : ItemState.DECLINED;
+            assertEquals(rr.state,targetState);
+        }
+        Thread.sleep(1000);
+        mm.stream().forEach(m -> m.shutdown());
+        Thread.sleep(1000);
+
+        dbUrls.stream().forEach(url -> {
+            try {
+                PostgresLedger ledger = new PostgresLedger(url);
+                assertTrue(ledger.findUnfinished().isEmpty());
+                ledger.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+
+    private void clearLedger(String url) throws Exception {
+        Properties properties = new Properties();
+        try(DbPool dbPool = new DbPool(url, properties, 64)) {
+            try (PooledDb db = dbPool.db()) {
+                try (PreparedStatement statement = db.statement("delete from items;")
+                ) {
+                    statement.executeUpdate();
+                }
+
+                try (PreparedStatement statement = db.statement("delete from ledger;")
+                ) {
+                    statement.executeUpdate();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void nodeStatsTest() throws Exception {
+        PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
+        TestSpace testSpace = prepareTestSpace(issuerKey);
+        testSpace.nodes.get(0).config.setStatsIntervalSmall(Duration.ofSeconds(4));
+        testSpace.nodes.get(0).config.setStatsIntervalBig(Duration.ofSeconds(60));
+        testSpace.nodes.get(0).config.getKeysWhiteList().add(issuerKey.getPublicKey());
+
+        Binder binder = testSpace.client.getStats();
+        System.out.println(binder.toString());
+        Instant now;
+        for (int i = 0; i < 100; i++) {
+            now = Instant.now();
+            Contract contract = new Contract(issuerKey);
+            contract.seal();
+            testSpace.client.register(contract.getPackedTransaction(),1500);
+            contract = new Contract(issuerKey);
+            contract.seal();
+            testSpace.client.register(contract.getPackedTransaction(),1500);
+
+            Thread.sleep(4000-(Instant.now().toEpochMilli()-now.toEpochMilli()));
+            binder = testSpace.client.getStats();
+            System.out.println(binder.toString());
+        }
+
     }
 }

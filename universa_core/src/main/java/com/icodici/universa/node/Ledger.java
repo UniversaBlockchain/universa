@@ -9,11 +9,13 @@ package com.icodici.universa.node;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
-import java.util.List;
+import java.time.Instant;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
@@ -140,6 +142,8 @@ public interface Ledger {
         return getLockOwnerOf(getRecord(itemId));
     }
 
+    Map<ItemState,Integer> getLedgerSize(Instant createdAfter);
+
     public static class Rollback extends Db.RollbackException {
     }
 
@@ -165,5 +169,8 @@ public interface Ledger {
     Object[] loadConfig();
     void addNode(NodeInfo nodeInfo);
     void removeNode(NodeInfo nodeInfo);
+    Map<HashId,StateRecord> findUnfinished();
 
+    Approvable getItem(StateRecord record);
+    void putItem(StateRecord record, Approvable item, Instant keepTill);
 }

@@ -186,6 +186,9 @@ public class Main {
             int resyncBreak = (int) Math.ceil(n * 0.2);
             if (resyncBreak < 1)
                 resyncBreak = 1;
+            if( resyncBreak+positive == n)
+                resyncBreak += 1;
+
             log(myInfo.getNumber() + ": Network consensus is set to (negative/positive/resyncBreak): " + negative + " / " + positive + " / " + resyncBreak);
             config.setPositiveConsensus(positive);
             config.setNegativeConsensus(negative);
@@ -201,6 +204,7 @@ public class Main {
         if( r != null )
             r.destroy();
 
+        clientHTTPServer.setConfig(config);
         clientHTTPServer.setNode(node);
         clientHTTPServer.setCache(cache);
         clientHTTPServer.setParcelCache(parcelCache);
