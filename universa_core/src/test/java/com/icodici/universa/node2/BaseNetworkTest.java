@@ -3976,9 +3976,9 @@ public class BaseNetworkTest extends TestCase {
         tp_before.getForeignReferences().clear();
         tp_before.addForeignReference(jobCertificate);
         // here we "send" data and "got" it
-//        tp_after = TransactionPack.unpack(tp_before.pack());
-//
-//        registerAndCheckDeclined(tp_after);
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
 
         // missing data.type
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
@@ -3993,9 +3993,194 @@ public class BaseNetworkTest extends TestCase {
         tp_before.getForeignReferences().clear();
         tp_before.addForeignReference(jobCertificate);
         // here we "send" data and "got" it
-//        tp_after = TransactionPack.unpack(tp_before.pack());
-//
-//        registerAndCheckDeclined(tp_after);
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // not registered
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+//        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // missing reference
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+//        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // wrong issuer
+        jobCertificate = new Contract(stepaPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // wrong data.issuer
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Not Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // wrong data.type
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "Not chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // revoked reference
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.addPermission(new RevokePermission(jobCertificate.getOwner()));
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract revokingJobCertificate = ContractsService.createRevocation(jobCertificate, stepaPrivateKeys.iterator().next());
+        revokingJobCertificate.check();
+        revokingJobCertificate.traceErrors();
+        registerAndCheckApproved(revokingJobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+    }
+
+    @Test
+    public void declineReferenceForChangeNumber() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "AbonementWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
+        llcProperty2.getStateData().set("units",
+                llcProperty.getStateData().getIntOrThrow("units") - 1);
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        // bad situations
+
+        TransactionPack tp_before;
+        TransactionPack tp_after;
+        Contract jobCertificate;
+
+        // missing data.issuer
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+//        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
+
+        // missing data.type
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+//        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty2.getTransactionPack();
+        tp_before.getForeignReferences().clear();
+        tp_before.addForeignReference(jobCertificate);
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckDeclined(tp_after);
 
         // not registered
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
