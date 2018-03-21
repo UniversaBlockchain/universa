@@ -98,6 +98,13 @@ public class Node2SingleTest extends BaseNetworkTest {
     }
 
 
+    @Test
+    public void sanitationTest() throws Exception {
+        while (node.isSanitating()) {
+            System.out.println("Node sanitating " + node.getRecordsToSanitate().size());
+            Thread.sleep(2000);
+        }
+    }
 
     @Test
     public void noQuorumError() throws Exception {

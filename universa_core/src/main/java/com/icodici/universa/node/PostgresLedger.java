@@ -194,7 +194,11 @@ public class PostgresLedger implements Ledger {
                     if(rs != null) {
                         do {
                             StateRecord record = new StateRecord(this, rs);
-                            map.put(record.getId(),record);
+                            if (record.isExpired()) {
+                                record.destroy();
+                            } else {
+                                map.put(record.getId(), record);
+                            }
                         } while (rs.next());
                     }
                 }

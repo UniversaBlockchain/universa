@@ -45,6 +45,7 @@ import java.util.function.Supplier;
  */
 public class Node {
 
+    private static final int MAX_SANITATING_RECORDS = 10;
     private Instant nodeStartTime;
     private Map<ItemState, Integer> ledgerSize;
 
@@ -55,6 +56,7 @@ public class Node {
     private Integer smallIntervalApproved;
     private Integer bigIntervalApproved;
     private Integer uptimeApproved;
+    private ScheduledFuture<?> sanitator;
 
     public boolean isSanitating() {
         return !recordsToSanitate.isEmpty();
@@ -62,6 +64,9 @@ public class Node {
 
     private Map<HashId,StateRecord> recordsToSanitate;
 
+    public Map<HashId, StateRecord> getRecordsToSanitate() {
+        return recordsToSanitate;
+    }
 
     private static LogPrinter log = new LogPrinter("NODE");
 
@@ -123,7 +128,7 @@ public class Node {
 
         recordsToSanitate = ledger.findUnfinished();
         if(!recordsToSanitate.isEmpty())
-            executorService.schedule(() -> startSanitation(),2,TimeUnit.SECONDS);
+            pulseStartSanitation();
         else
             dbSanitationFinished();
     }
@@ -158,12 +163,61 @@ public class Node {
         lastStatsBuildTime = now;
     }
 
+    private void pulseStartSanitation() {
+        sanitator = lowPrioExecutorService.scheduleAtFixedRate(() -> startSanitation(),
+                2000,
+                2000,
+                TimeUnit.MILLISECONDS//,
+//                                        Node.this.toString() + toString() + " :: pulseStartPolling -> sendStartPollingNotification"
+        );
+    }
+
+    ArrayList<HashId> sanitatingIds = new ArrayList<>();
+
     private void startSanitation() {
-        recordsToSanitate.values().stream().forEach( r -> {
-            if(r.getState() != ItemState.LOCKED && r.getState() != ItemState.LOCKED_FOR_CREATION) {
-                sanitateRecord(r);
+        Thread.currentThread().setName("startSanitation" + new Date().getTime());
+        System.out.println("RTS " + recordsToSanitate.size() + " " + Thread.currentThread().getName());
+        if(recordsToSanitate.isEmpty()) {
+            sanitator.cancel(false);
+            dbSanitationFinished();
+            return;
+        }
+
+        for (int i = 0; i < sanitatingIds.size(); i++) {
+            if (!recordsToSanitate.containsKey(sanitatingIds.get(i))) {
+                sanitatingIds.remove(i);
+                --i;
             }
-        });
+        }
+
+        if (sanitatingIds.size() < MAX_SANITATING_RECORDS) {
+            synchronized (recordsToSanitate) {
+                System.out.println("SRTS1 ->");
+                for (StateRecord r : recordsToSanitate.values()) {
+                    if (r.getState() != ItemState.LOCKED && r.getState() != ItemState.LOCKED_FOR_CREATION && !sanitatingIds.contains(r.getId())) {
+                        sanitateRecord(r);
+                        sanitatingIds.add(r.getId());
+                        if (sanitatingIds.size() == MAX_SANITATING_RECORDS) {
+                            break;
+                        }
+                    }
+                }
+                System.out.println("SRTS1 <-");
+            }
+            if (sanitatingIds.size() == 0 && recordsToSanitate.size() > 0) {
+                //ONLY LOCKED LEFT -> RESYNC THEM
+                synchronized (recordsToSanitate) {
+                    System.out.println("SRTS2 ->");
+                    for (StateRecord r : recordsToSanitate.values()) {
+                        r.setState(ItemState.PENDING);
+                        r.save();
+                    }
+                    System.out.println("SRTS2 <-");
+                }
+            }
+        }
+
+
     }
 
     private void sanitateRecord(StateRecord r) {
@@ -2468,6 +2522,8 @@ public class Node {
     private void itemSanitationDone(StateRecord record) {
 
         synchronized (recordsToSanitate) {
+            Thread.currentThread().setName("SRTS3 " + new Date().getTime());
+            System.out.println("SRTS3 -> " + recordsToSanitate.size() + " " + Thread.currentThread().getName());
             if(recordsToSanitate.containsKey(record.getId())) {
 
 
@@ -2523,11 +2579,9 @@ public class Node {
 
                 idsToRemove.stream().forEach(id -> recordsToSanitate.remove(id));
 
-                if(recordsToSanitate.isEmpty())
-                    dbSanitationFinished();
-                //System.out.println("itemSanitationDone at " + myInfo.getNumber() + " item " + record.getId() + " " + recordsToSanitate.size());
-
             }
+            System.out.println("SRTS3 <- " + recordsToSanitate.size());
+
         }
     }
 
@@ -2552,6 +2606,7 @@ public class Node {
                 //Item not found in cache so we can't restart voting
                 //Nothing we can do here. Just throw item away and remove all locks
                 record.setState(ItemState.UNDEFINED);
+                record.destroy();
                 itemSanitationDone(record);
             }
         }
