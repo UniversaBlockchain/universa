@@ -44,6 +44,10 @@ public class ItemCache {
         records.values().forEach(r->r.checkExpiration(now));
     }
 
+    public void shutdown() {
+        cleaner.interrupt();
+    }
+
     public @Nullable Approvable get(HashId itemId) {
         Record i = records.get(itemId);
         if( i != null && i.item == null )
