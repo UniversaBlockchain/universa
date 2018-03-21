@@ -216,7 +216,8 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public void putItem(StateRecord record, Approvable item, Instant keepTill) {
-        try (PooledDb db = dbPool.db()) {
+        if(item instanceof Contract) {
+            try (PooledDb db = dbPool.db()) {
                 try (
                         PreparedStatement statement =
                                 db.statement(
@@ -228,8 +229,9 @@ public class PostgresLedger implements Ledger {
                     statement.setLong(3, keepTill.getEpochSecond());
                     statement.executeUpdate();
                 }
-        } catch (SQLException se) {
-            throw new Failure("item save failed:" + se);
+            } catch (SQLException se) {
+                throw new Failure("item save failed:" + se);
+            }
         }
     }
 
