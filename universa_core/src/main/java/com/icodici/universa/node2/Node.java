@@ -1783,6 +1783,10 @@ public class Node {
 
                         checkReferencesOf(a);
 
+                        for (ErrorRecord er : a.getErrors()) {
+                            checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke: " + er);
+                        }
+
                         synchronized (mutex) {
                             StateRecord r = record.lockToRevoke(a.getId());
                             if (r == null) {
@@ -1791,10 +1795,6 @@ public class Node {
                                 if (!lockedToRevoke.contains(r))
                                     lockedToRevoke.add(r);
                             }
-                        }
-
-                        for (ErrorRecord er : a.getErrors()) {
-                            checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke: " + er);
                         }
                     }
                 }
