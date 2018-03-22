@@ -1,14 +1,17 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.HashId;
+import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.DatagramSocket;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -296,6 +299,38 @@ public class PostgresLedgerTest extends TestCase {
         assertNull(r1);
 
 
+    }
+
+    @Test
+    public void saveOneRecordManyTimes() throws Exception {
+        HashId hashId = HashId.createRandom();
+        StateRecord r = ledger.findOrCreate(hashId);
+        class TestRunnable implements Runnable {
+
+            @Override
+            public void run() {
+                ledger.getRecord(r.getId());
+                r.setState(ItemState.APPROVED);
+                r.save();
+            }
+        }
+
+        List<Thread> threadsList = new ArrayList<>();
+        List<TestRunnable> runnableList = new ArrayList<>();
+        for(int j = 0; j < 700;j++) {
+
+            TestRunnable runnableSingle = new TestRunnable();
+            runnableList.add(runnableSingle);
+            threadsList.add(
+                    new Thread(() -> {
+                        runnableSingle.run();
+
+                    }));
+        }
+
+        for (Thread th : threadsList) {
+            th.start();
+        }
     }
 
 }

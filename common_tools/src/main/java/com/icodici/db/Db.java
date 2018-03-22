@@ -186,6 +186,7 @@ public class Db implements Cloneable, AutoCloseable {
             connection.commit();
             return result;
         } catch (RollbackException e) {
+            e.printStackTrace();
             connection.rollback();
         } catch (Exception e) {
             log.e("Exception in transaction: %s", e);
@@ -238,6 +239,7 @@ public class Db implements Cloneable, AutoCloseable {
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException("migrations failed", e);
         }
         log.d("Db migrated successfully");
@@ -326,6 +328,8 @@ public class Db implements Cloneable, AutoCloseable {
             if (rs.next()) {
                 return (T) rs.getObject(1);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return null;
     }
@@ -343,6 +347,8 @@ public class Db implements Cloneable, AutoCloseable {
     public void update(String sqlText, Object... args) throws SQLException {
         try (PreparedStatement s = statement(sqlText, args)) {
             s.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -377,8 +383,11 @@ public class Db implements Cloneable, AutoCloseable {
                             inFunction = false;
                     }
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         } catch (RuntimeException re) {
+            re.printStackTrace();
             throw re;
         } catch (Exception e) {
             e.printStackTrace();

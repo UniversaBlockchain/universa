@@ -224,7 +224,14 @@ public class Node {
                     System.out.println("SRTS2 ->");
                     for (StateRecord r : recordsToSanitate.values()) {
                         r.setState(ItemState.PENDING);
-                        r.save();
+                        try {
+                            itemLock.synchronize(r.getId(), lock -> {
+                                r.save();
+                                return null;
+                            });
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                     System.out.println("SRTS2 <-");
                 }
@@ -2060,7 +2067,14 @@ public class Node {
                         r.setState(ItemState.REVOKED);
                         r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
                         try {
-                            r.save();
+                            try {
+                                itemLock.synchronize(r.getId(), lock -> {
+                                    r.save();
+                                    return null;
+                                });
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         } catch (Ledger.Failure failure) {
                             emergencyBreak();
                             return;
@@ -2074,7 +2088,14 @@ public class Node {
                         r.setState(ItemState.APPROVED);
                         r.setExpiresAt(newItem.getExpiresAt());
                         try {
-                            r.save();
+                            try {
+                                itemLock.synchronize(r.getId(), lock -> {
+                                    r.save();
+                                    return null;
+                                });
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         } catch (Ledger.Failure failure) {
                             emergencyBreak();
                             return;
@@ -2125,7 +2146,14 @@ public class Node {
 
                 } catch (TimeoutException | InterruptedException e) {
                     setState(ItemState.UNDEFINED);
-                    record.destroy();
+                    try {
+                        itemLock.synchronize(record.getId(), lock -> {
+                            record.destroy();
+                            return null;
+                        });
+                    } catch (Exception ee) {
+                        ee.printStackTrace();
+                    }
                 }
                 close();
             }
@@ -2136,16 +2164,30 @@ public class Node {
                     itemId, " from parcel: ", parcelId,
                     " :: rollbackChanges, state ", processingState),
                     DatagramAdapter.VerboseLevel.BASE);
-            synchronized (ledgerRollbackLock) {
+//            synchronized (ledgerRollbackLock) {
                 ledger.transaction(() -> {
-                    synchronized (mutex) {
-                        for (StateRecord r : lockedToRevoke)
-                            r.unlock().save();
+                        for (StateRecord r : lockedToRevoke) {
+                            try {
+                                itemLock.synchronize(r.getId(), lock -> {
+                                    r.unlock().save();
+                                    return null;
+                                });
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
                         lockedToRevoke.clear();
 
                         // form created records, we touch only these that we have actually created
                         for (StateRecord r : lockedToCreate) {
-                            r.unlock().save();
+                            try {
+                                itemLock.synchronize(r.getId(), lock -> {
+                                    r.unlock().save();
+                                    return null;
+                                });
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         }
                         // todo: concurrent modification can happen here!
                         lockedToCreate.clear();
@@ -2156,16 +2198,17 @@ public class Node {
                                         config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
                         record.setExpiresAt(expiration);
                         try {
-                            record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+                            synchronized (mutex) {
+                                record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+                            }
                         } catch (Ledger.Failure failure) {
                             failure.printStackTrace();
                             log.e(failure.getMessage());
                         }
-                    }
                     return null;
                 });
                 close();
-            }
+//            }
         }
 
         private void stopPoller() {
@@ -2601,48 +2644,55 @@ public class Node {
                 Set<HashId> idsToRemove = new HashSet<>();
                 for (StateRecord r : recordsToSanitate.values()) {
                     if (r.getLockedByRecordId() == record.getRecordId()) {
-                        if (record.getState() == ItemState.APPROVED) {
-                            //ITEM ACCEPTED. LOCKED -> REVOKED, LOCKED_FOR_CREATION -> ACCEPTED
-                            if (r.getState() == ItemState.LOCKED) {
-                                r.setState(ItemState.REVOKED);
-                                r.save();
-                                idsToRemove.add(r.getId());
-                            } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                r.setState(ItemState.APPROVED);
-                                r.save();
-                                idsToRemove.add(r.getId());
-                            }
-                        } else if (record.getState() == ItemState.DECLINED) {
-                            //ITEM REJECTED. LOCKED -> ACCEPTED, LOCKED_FOR_CREATION -> REMOVE
-                            if (r.getState() == ItemState.LOCKED) {
-                                r.setState(ItemState.APPROVED);
-                                r.save();
-                                idsToRemove.add(r.getId());
-                            } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                r.unlock().save();
-                                idsToRemove.add(r.getId());
-                            }
-                        } else if (record.getState() == ItemState.REVOKED) {
-                            //ITEM ACCEPTED AND THEN REVOKED. LOCKED -> REVOKED, LOCKED_FOR_CREATION -> ACCEPTED
-                            if (r.getState() == ItemState.LOCKED) {
-                                r.setState(ItemState.REVOKED);
-                                r.save();
-                                idsToRemove.add(r.getId());
-                            } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                r.setState(ItemState.APPROVED);
-                                r.save();
-                                idsToRemove.add(r.getId());
-                            }
-                        } else if (record.getState() == ItemState.UNDEFINED) {
-                            //ITEM UNDEFINED. LOCKED -> ACCEPTED, LOCKED_FOR_CREATION -> REMOVE
-                            if (r.getState() == ItemState.LOCKED) {
-                                r.setState(ItemState.APPROVED);
-                                r.save();
-                                idsToRemove.add(r.getId());
-                            } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                r.unlock().save();
-                                idsToRemove.add(r.getId());
-                            }
+                        try {
+                            itemLock.synchronize(r.getId(), lock -> {
+                                if (record.getState() == ItemState.APPROVED) {
+                                    //ITEM ACCEPTED. LOCKED -> REVOKED, LOCKED_FOR_CREATION -> ACCEPTED
+                                    if (r.getState() == ItemState.LOCKED) {
+                                        r.setState(ItemState.REVOKED);
+                                        r.save();
+                                        idsToRemove.add(r.getId());
+                                    } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
+                                        r.setState(ItemState.APPROVED);
+                                        r.save();
+                                        idsToRemove.add(r.getId());
+                                    }
+                                } else if (record.getState() == ItemState.DECLINED) {
+                                    //ITEM REJECTED. LOCKED -> ACCEPTED, LOCKED_FOR_CREATION -> REMOVE
+                                    if (r.getState() == ItemState.LOCKED) {
+                                        r.setState(ItemState.APPROVED);
+                                        r.save();
+                                        idsToRemove.add(r.getId());
+                                    } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
+                                        r.unlock().save();
+                                        idsToRemove.add(r.getId());
+                                    }
+                                } else if (record.getState() == ItemState.REVOKED) {
+                                    //ITEM ACCEPTED AND THEN REVOKED. LOCKED -> REVOKED, LOCKED_FOR_CREATION -> ACCEPTED
+                                    if (r.getState() == ItemState.LOCKED) {
+                                        r.setState(ItemState.REVOKED);
+                                        r.save();
+                                        idsToRemove.add(r.getId());
+                                    } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
+                                        r.setState(ItemState.APPROVED);
+                                        r.save();
+                                        idsToRemove.add(r.getId());
+                                    }
+                                } else if (record.getState() == ItemState.UNDEFINED) {
+                                    //ITEM UNDEFINED. LOCKED -> ACCEPTED, LOCKED_FOR_CREATION -> REMOVE
+                                    if (r.getState() == ItemState.LOCKED) {
+                                        r.setState(ItemState.APPROVED);
+                                        r.save();
+                                        idsToRemove.add(r.getId());
+                                    } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
+                                        r.unlock().save();
+                                        idsToRemove.add(r.getId());
+                                    }
+                                }
+                                return null;
+                            });
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 }
@@ -2665,22 +2715,36 @@ public class Node {
             if (contract != null) {
                 // todo: looks like we need re-check and re-register items after sanitation will be finished
                 //Item found in disk cache. Restart voting.
-//                record.setState(ItemState.PENDING);
-//                record.save();
-//                Object x = checkItemInternal(contract.getId(),null,contract,true,true,true);
-//                if (x instanceof ItemProcessor) {
-//                    ((ItemProcessor)x).doneEvent.addConsumer(i -> executorService.schedule( () -> itemSanitationDone(record),0,TimeUnit.SECONDS));
-//                } else {
-//                    throw new IllegalStateException("should never happen because ommitItemResult is true");
-//                }
+                record.setState(ItemState.PENDING);
+                try {
+                    itemLock.synchronize(record.getId(), lock -> {
+                        record.save();
+                        return null;
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                Object x = checkItemInternal(contract.getId(),null,contract,true,true,true);
+                if (x instanceof ItemProcessor) {
+                    ((ItemProcessor)x).doneEvent.addConsumer(i -> executorService.schedule( () -> itemSanitationDone(record),0,TimeUnit.SECONDS));
+                } else {
+                    throw new IllegalStateException("should never happen because ommitItemResult is true");
+                }
 //                record.setState(ItemState.UNDEFINED);
 //                record.destroy();
-                itemSanitationDone(record);
+//                itemSanitationDone(record);
             } else {
                 //Item not found in cache so we can't restart voting
                 //Nothing we can do here. Just throw item away and remove all locks
                 record.setState(ItemState.UNDEFINED);
-                record.destroy();
+                try {
+                    itemLock.synchronize(record.getId(), lock -> {
+                        record.destroy();
+                        return null;
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 itemSanitationDone(record);
             }
         }
@@ -3085,10 +3149,17 @@ public class Node {
                                     ZonedDateTime expiresAt = ZonedDateTime.ofInstant(
                                             Instant.ofEpochSecond((long) expiresAtAvg.average()), ZoneId.systemDefault());
 
-                                    ledger.findOrCreate(hashId).setState(committingState)
-                                            .setCreatedAt(createdAt)
-                                            .setExpiresAt(expiresAt)
-                                            .save();
+                                    try {
+                                        itemLock.synchronize(hashId, lock -> {
+                                            ledger.findOrCreate(hashId).setState(committingState)
+                                                    .setCreatedAt(createdAt)
+                                                    .setExpiresAt(expiresAt)
+                                                    .save();
+                                            return null;
+                                        });
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
                                 }
                             } catch (IOException e) {
                             } catch (Exception e) {
