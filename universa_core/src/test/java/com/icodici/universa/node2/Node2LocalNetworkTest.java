@@ -156,6 +156,13 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         for (int i = 0; i < NODES; i++) {
             nodes_s.add(nodesMap_s.get(nc_s.getInfo(i)));
         }
+
+        System.out.println("waiting for sanitation... ");
+        for(Node n : nodes_s) {
+            if(n.isSanitating())
+                n.sanitationFinished.await();
+        }
+        System.out.println("sanitation finished!");
     }
 
 

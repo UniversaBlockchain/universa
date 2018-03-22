@@ -81,6 +81,7 @@ public class Node {
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
     protected boolean isShuttingDown = false;
+    protected AsyncEvent sanitationFinished = new AsyncEvent();
 
     private final ItemLock itemLock = new ItemLock();
     private final ParcelLock parcelLock = new ParcelLock();
@@ -128,13 +129,23 @@ public class Node {
         network.subscribe(myInfo, notification -> onNotification(notification));
 
         recordsToSanitate = ledger.findUnfinished();
-        if(!recordsToSanitate.isEmpty())
+
+        if(!recordsToSanitate.isEmpty()) {
             pulseStartSanitation();
-        else
+//            try {
+//                sanitationFinished.await();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+        } else {
             dbSanitationFinished();
+        }
     }
 
     private void dbSanitationFinished() {
+
+        sanitationFinished.fire();
+
         nodeStartTime = Instant.now();
         lastStatsBuildTime = nodeStartTime;
         ledgerSize = ledger.getLedgerSize(null);
@@ -201,6 +212,8 @@ public class Node {
                         if (sanitatingIds.size() == MAX_SANITATING_RECORDS) {
                             break;
                         }
+                    } else {
+                        System.out.println("SRTS1 ->> " + r.getState());
                     }
                 }
                 System.out.println("SRTS1 <-");
@@ -1571,8 +1584,10 @@ public class Node {
                     cache.put(item);
                 }
 
-                //save item in disk cache
-                ledger.putItem(record,item,Instant.now().plus(config.getMaxDiskCacheAge()));
+                synchronized (mutex) {
+                    //save item in disk cache
+                    ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
+                }
 
 
                 if(!processingState.isProcessedToConsensus()) {
@@ -2608,15 +2623,19 @@ public class Node {
             //item unknown to network we must restart voting
             Contract contract = (Contract) ledger.getItem(record);
             if (contract != null) {
+                // todo: looks like we need re-check and re-register items after sanitation will be finished
                 //Item found in disk cache. Restart voting.
-                record.setState(ItemState.PENDING);
-                record.save();
-                Object x = checkItemInternal(contract.getId(),null,contract,true,true,true);
-                if (x instanceof ItemProcessor) {
-                    ((ItemProcessor)x).doneEvent.addConsumer(i -> executorService.schedule( () -> itemSanitationDone(record),0,TimeUnit.SECONDS));
-                } else {
-                    throw new IllegalStateException("should never happen because ommitItemResult is true");
-                }
+//                record.setState(ItemState.PENDING);
+//                record.save();
+//                Object x = checkItemInternal(contract.getId(),null,contract,true,true,true);
+//                if (x instanceof ItemProcessor) {
+//                    ((ItemProcessor)x).doneEvent.addConsumer(i -> executorService.schedule( () -> itemSanitationDone(record),0,TimeUnit.SECONDS));
+//                } else {
+//                    throw new IllegalStateException("should never happen because ommitItemResult is true");
+//                }
+//                record.setState(ItemState.UNDEFINED);
+//                record.destroy();
+                itemSanitationDone(record);
             } else {
                 //Item not found in cache so we can't restart voting
                 //Nothing we can do here. Just throw item away and remove all locks

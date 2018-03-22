@@ -89,6 +89,13 @@ public class Node2SingleTest extends BaseNetworkTest {
 
         nodesMap_s = new HashMap<>();
         nodesMap_s.put(myInfo, node_s);
+
+        System.out.println("waiting for sanitation... ");
+        for(Node n : nodes_s) {
+            if(n.isSanitating())
+                n.sanitationFinished.await();
+        }
+        System.out.println("sanitation finished!");
     }
 
 

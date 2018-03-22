@@ -53,6 +53,10 @@ public class StateRecord implements HashIdentifiable {
         state = ItemState.values()[rs.getInt("state")];
         createdAt = getTime(rs.getLong("created_at"));
         expiresAt = getTime(rs.getLong("expires_at"));
+        if(expiresAt == null) {
+            // todo: what we should do with items without expiresAt?
+            expiresAt = createdAt.plusMonths(3);
+        }
         lockedByRecordId = rs.getInt("locked_by_id");
     }
 
