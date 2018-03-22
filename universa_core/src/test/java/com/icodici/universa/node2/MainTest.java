@@ -1953,7 +1953,7 @@ public class MainTest {
 
 
         List<String> dbUrls = new ArrayList<>();
-        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
@@ -1973,7 +1973,7 @@ public class MainTest {
         List<Contract> newRevisions = new ArrayList<>();
         List<Contract> newContracts = new ArrayList<>();
 
-        final int N = 10;
+        final int N = 1000;
         for(int i = 0; i < N; i++) {
             Contract origin = new Contract(myKey);
             origin.seal();
@@ -2053,6 +2053,8 @@ public class MainTest {
         ledgers.stream().forEach(ledger -> ledger.close());
         ledgers.clear();
 
+        if(1 > 0)
+            return;
 
         List<Main> mm = new ArrayList<>();
         List<Client> clients = new ArrayList<>();
