@@ -240,24 +240,30 @@ public class Reference implements BiSerializable {
                             break;
 
                         if (typeOfRightOperand == compareOperandType.FIELD) {               // rightOperand is FIELD
-                            if ((right != null) &&
-                                (((indxOperator == LESS) && ((double) left < (double) right)) ||
-                                 ((indxOperator == MORE) && ((double) left > (double) right)) ||
-                                 ((indxOperator == LESS_OR_EQUAL) && ((double) left <= (double) right)) ||
-                                 ((indxOperator == MORE_OR_EQUAL) && ((double) left >= (double) right))))
-                                ret = true;
+                            if (right != null)
+                            {
+                                double leftVal = (left.getClass().getName().endsWith("Integer")) ? (int) left : (double) left;
+                                double rightVal = (right.getClass().getName().endsWith("Integer")) ? (int) right : (double) right;
+                                if (((indxOperator == LESS) && (leftVal < rightVal)) ||
+                                    ((indxOperator == MORE) && (leftVal > rightVal)) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && (leftVal <= rightVal)) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && (leftVal >= rightVal)))
+                                    ret = true;
+                            }
+
                         } else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {              //rightOperand is CONSTANT (null | number | true | false)
+                            double leftVal = (left.getClass().getName().endsWith("Integer")) ? (int) left : (double) left;
                             if ((rightOperand != "null") && (rightOperand != "false") && (rightOperand != "true"))
                                 if ((rightOperand.contains(".") &&
-                                    (((indxOperator == LESS) && ((double) left < Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == MORE) && ((double) left > Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == LESS_OR_EQUAL) && ((double) left <= Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == MORE_OR_EQUAL) && ((double) left >= Double.parseDouble(rightOperand))))) ||
+                                    (((indxOperator == LESS) && (leftVal < Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == MORE) && (leftVal > Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && (leftVal <= Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && (leftVal >= Double.parseDouble(rightOperand))))) ||
                                     (!rightOperand.contains(".") &&
-                                    (((indxOperator == LESS) && ((int) left < Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == MORE) && ((int) left > Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == LESS_OR_EQUAL) && ((int) left <= Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == MORE_OR_EQUAL) && ((int) left >= Integer.parseInt(rightOperand))))))
+                                    (((indxOperator == LESS) && (leftVal < Integer.parseInt(rightOperand))) ||
+                                    ((indxOperator == MORE) && (leftVal > Integer.parseInt(rightOperand))) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && (leftVal <= Integer.parseInt(rightOperand))) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && (leftVal >= Integer.parseInt(rightOperand))))))
                                     ret = true;
                         } else
                             throw new IllegalArgumentException("Invalid operator for string in condition: " + operators[indxOperator]);
@@ -271,7 +277,9 @@ public class Reference implements BiSerializable {
                                 (((indxOperator == NOT_EQUAL) && !left.equals(right)) ||
                                  ((indxOperator == EQUAL) && left.equals(right))))
                                 ret = true;
-                        } else if ((left != null) && left.getClass().getName().endsWith("Role")) {    //if role - compare with address
+                        } else if ((left != null) &&
+                                   (left.getClass().getName().endsWith("Role") ||
+                                    left.getClass().getName().endsWith("RoleLink"))) {    //if role - compare with address
                             try {
                                 KeyAddress ka = new KeyAddress(rightOperand);
                                 ret = ((Role) left).isMatchingKeyAddress(ka);
@@ -284,23 +292,27 @@ public class Reference implements BiSerializable {
                                 ret = !ret;
                         }
                         else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {         //rightOperand is CONSTANT (null|number|true|false)
-                            if ((rightOperand != "null") && (rightOperand != "false") && (rightOperand != "true")) {
-                                if ((left != null) && ((rightOperand.contains(".") &&
-                                    (((indxOperator == NOT_EQUAL) && ((double) left != Double.parseDouble(rightOperand))) ||
-                                     ((indxOperator == EQUAL) && ((double) left == Double.parseDouble(rightOperand))))) ||
-                                    (!rightOperand.contains(".") &&
-                                     (((indxOperator == NOT_EQUAL) && ((int) left != Integer.parseInt(rightOperand))) ||
-                                     ((indxOperator == EQUAL) && ((int) left == Integer.parseInt(rightOperand)))))))
-                                    ret = true;
+                            if (!rightOperand.equals("null") && !rightOperand.equals("false") && !rightOperand.equals("true")) {
+                                if (left != null)
+                                {
+                                    double leftVal = (left.getClass().getName().endsWith("Integer")) ? (int) left : (double) left;
+                                    if (((rightOperand.contains(".") &&
+                                        (((indxOperator == NOT_EQUAL) && (leftVal != Double.parseDouble(rightOperand))) ||
+                                         ((indxOperator == EQUAL) && (leftVal == Double.parseDouble(rightOperand))))) ||
+                                        (!rightOperand.contains(".") &&
+                                         (((indxOperator == NOT_EQUAL) && (leftVal != Integer.parseInt(rightOperand))) ||
+                                          ((indxOperator == EQUAL) && (leftVal == Integer.parseInt(rightOperand)))))))
+                                        ret = true;
+                                }
                             } else {          //if rightOperand : null|false|true
                                 if (((indxOperator == NOT_EQUAL) &&
-                                    (((rightOperand == "null") && (left != null)) ||
-                                     ((rightOperand == "true") && ((left != null) && !(boolean) left)) ||
-                                     ((rightOperand == "false") && ((left != null) && (boolean) left))))
+                                    ((rightOperand.equals("null") && (left != null)) ||
+                                     (rightOperand.equals("true") && ((left != null) && !(boolean) left)) ||
+                                     (rightOperand.equals("false") && ((left != null) && (boolean) left))))
                                     || ((indxOperator == EQUAL) &&
-                                    (((rightOperand == "null") && (left == null)) ||
-                                     ((rightOperand == "true") && ((left != null) && (boolean) left)) ||
-                                     ((rightOperand == "false") && ((left != null) && !(boolean) left)))))
+                                    ((rightOperand.equals("null") && (left == null)) ||
+                                     (rightOperand.equals("true") && ((left != null) && (boolean) left)) ||
+                                     (rightOperand.equals("false") && ((left != null) && !(boolean) left)))))
                                     ret = true;
                             }
                         } else if (typeOfRightOperand == compareOperandType.CONSTSTR) {          //rightOperand is CONSTANT (string)
