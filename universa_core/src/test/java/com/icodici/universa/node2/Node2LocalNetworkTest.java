@@ -66,8 +66,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         Thread.sleep(200);
         networks_s.forEach(n->n.shutDown());
         nodesMap_s.forEach((i,n)-> {
-            n.getLedger().close();
             n.shutdown();
+            n.getLedger().close();
         });
 
         network_s = null;
@@ -87,6 +87,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
     }
 
     private static void initTestSet(int posCons, int negCons) throws Exception {
+        System.out.println("init test set... ");
         nodesMap_s = new HashMap<>();
         networks_s = new ArrayList<>();
 
@@ -136,6 +137,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         for (int i = 0; i < NODES; i++) {
 
             NodeInfo info = nc_s.getInfo(i);
+            System.out.println("set up node " + info);
 
             TestLocalNetwork ln = new TestLocalNetwork(nc_s, info, getNodeKey(i));
             ln.setNodes(nodesMap_s);
