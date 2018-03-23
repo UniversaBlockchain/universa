@@ -2062,47 +2062,45 @@ public class Node {
             if(processingState.canContinue()) {
                 for (Approvable revokingItem : commitingItem.getRevokingItems()) {
                     // The record may not exist due to ledger desync, so we create it if need
-                    synchronized (mutex) {
-                        StateRecord r = ledger.findOrCreate(revokingItem.getId());
-                        r.setState(ItemState.REVOKED);
-                        r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
-                        try {
+                    try {
+                        itemLock.synchronize(revokingItem.getId(), lock -> {
+                            StateRecord r = ledger.findOrCreate(revokingItem.getId());
+                            r.setState(ItemState.REVOKED);
+                            r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
                             try {
-                                itemLock.synchronize(r.getId(), lock -> {
-                                    r.save();
-                                    return null;
-                                });
-                            } catch (Exception e) {
-                                e.printStackTrace();
+                                r.save();
+                            } catch (Ledger.Failure failure) {
+                                emergencyBreak();
+                                return null;
                             }
-                        } catch (Ledger.Failure failure) {
-                            emergencyBreak();
-                            return;
-                        }
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                 }
+
                 for (Approvable newItem : commitingItem.getNewItems()) {
                     // The record may not exist due to ledger desync too, so we create it if need
-                    synchronized (mutex) {
-                        StateRecord r = ledger.findOrCreate(newItem.getId());
-                        r.setState(ItemState.APPROVED);
-                        r.setExpiresAt(newItem.getExpiresAt());
-                        try {
+                    try {
+                        itemLock.synchronize(newItem.getId(), lock -> {
+                            StateRecord r = ledger.findOrCreate(newItem.getId());
+                            r.setState(ItemState.APPROVED);
+                            r.setExpiresAt(newItem.getExpiresAt());
                             try {
-                                itemLock.synchronize(r.getId(), lock -> {
-                                    r.save();
-                                    return null;
-                                });
-                            } catch (Exception e) {
-                                e.printStackTrace();
+                                r.save();
+                            } catch (Ledger.Failure failure) {
+                                emergencyBreak();
+                                return null;
                             }
-                        } catch (Ledger.Failure failure) {
-                            emergencyBreak();
-                            return;
-                        }
-
-                        lowPrioExecutorService.schedule(() -> checkSpecialItem(newItem),100,TimeUnit.MILLISECONDS);
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
+
+                    lowPrioExecutorService.schedule(() -> checkSpecialItem(newItem),100,TimeUnit.MILLISECONDS);
+
 
                     downloadAndCommitSubItemsOf(newItem);
                 }

@@ -182,7 +182,7 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public StateRecord findOrCreate(HashId itemId) {
-        synchronized (mutex) {
+//        synchronized (mutex) {
             // This simple version requires that database is used exclusively by one localnode - the normal way. As nodes
             // are multithreaded, there is absolutely no use to share database between nodes.
             return protect(() -> {
@@ -198,7 +198,7 @@ public class PostgresLedger implements Ledger {
                 return record;
 
             });
-        }
+//        }
     }
 
     @Override
@@ -240,6 +240,7 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public void putItem(StateRecord record, Approvable item, Instant keepTill) {
+        synchronized (mutex) {
             if (item instanceof Contract) {
                 try (PooledDb db = dbPool.db()) {
                     try (
@@ -262,15 +263,18 @@ public class PostgresLedger implements Ledger {
                     e.printStackTrace();
                 }
             }
+        }
     }
 
     private <T> T protect(Callable<T> block) {
+        synchronized (mutex) {
             try {
                 return block.call();
             } catch (Exception ex) {
                 ex.printStackTrace();
                 throw new Failure("Ledger operation failed: " + ex.getMessage(), ex);
             }
+        }
     }
 
     @Override
@@ -333,7 +337,7 @@ public class PostgresLedger implements Ledger {
     public <T> T transaction(Callable<T> callable) {
 //        synchronized (mutex) {
             return protect(() -> {
-            synchronized (mutex) {
+//            synchronized (mutex) {
                 // as Rollback exception is instanceof Db.Rollback, it will work as supposed by default:
                 // rethrow unchecked exceotions and return null on rollback.
                 try (Db db = dbPool.db()) {
@@ -342,7 +346,7 @@ public class PostgresLedger implements Ledger {
                     e.printStackTrace();
                     return null;
                 }
-            }
+//            }
             });
 //        }
     }
@@ -360,7 +364,7 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public void destroy(StateRecord record) {
-        synchronized (mutex) {
+//        synchronized (mutex) {
             long recordId = record.getRecordId();
             if (recordId == 0) {
                 throw new IllegalStateException("can't destroy record without recordId");
@@ -376,7 +380,7 @@ public class PostgresLedger implements Ledger {
                 }
                 return null;
             });
-        }
+//        }
     }
 
     @Override
@@ -432,22 +436,24 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public void reload(StateRecord stateRecord) throws StateRecord.NotFoundException {
-        try {
-            try (
-                    PooledDb db = dbPool.db();
-                    ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1",
-                                               stateRecord.getId().getDigest()
-                    );
-            ) {
-                if (rs == null)
-                    throw new StateRecord.NotFoundException("record not found");
-                stateRecord.initFrom(rs);
+        synchronized (mutex) {
+            try {
+                try (
+                        PooledDb db = dbPool.db();
+                        ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1",
+                                stateRecord.getId().getDigest()
+                        );
+                ) {
+                    if (rs == null)
+                        throw new StateRecord.NotFoundException("record not found");
+                    stateRecord.initFrom(rs);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
+                throw new RuntimeException("Failed to reload RecordSet", e);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to reload RecordSet", e);
         }
     }
 
