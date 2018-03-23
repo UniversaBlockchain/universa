@@ -1973,7 +1973,7 @@ public class MainTest {
         List<Contract> newRevisions = new ArrayList<>();
         List<Contract> newContracts = new ArrayList<>();
 
-        final int N = 30;
+        final int N = 100;
         for(int i = 0; i < N; i++) {
             Contract origin = new Contract(myKey);
             origin.seal();
@@ -2065,6 +2065,9 @@ public class MainTest {
 
 
 
+
+
+
         while (true) {
             try {
                 for(int i =0; i < NODE_COUNT; i++) {
@@ -2077,6 +2080,11 @@ public class MainTest {
             }
 
         }
+
+        Contract contract = new Contract(TestKeys.privateKey(3));
+        contract.seal();
+        ItemResult ir = clients.get(0).register(contract.getPackedTransaction(), 10000);
+        ir.errors.toString();
 
 
         for(int i = 0; i < N; i++) {

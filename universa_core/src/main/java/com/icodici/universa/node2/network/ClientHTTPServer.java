@@ -8,10 +8,13 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.*;
 import net.sergeych.tools.Binder;
@@ -19,7 +22,10 @@ import net.sergeych.tools.BufferedLogger;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -145,27 +151,37 @@ public class ClientHTTPServer extends BasicHttpServer {
         throw new IOException("just a test");
     }
 
+    private ItemResult itemResultOfError(Errors error, String object, String message) {
+        Binder binder = new Binder();
+        binder.put("state",ItemState.UNDEFINED.name());
+        binder.put("haveCopy",false);
+        binder.put("createdAt", new Date());
+        binder.put("expiresAt", new Date());
+        ArrayList<ErrorRecord> errorRecords = new ArrayList<>();
+        errorRecords.add(new ErrorRecord(error,object,message));
+        binder.put("errors",errorRecords);
+        return new ItemResult(binder);
+    }
+
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode(session);
         if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
             System.out.println("approve ERROR: no payment");
+
             return Binder.of(
-                    "itemResult",
-                    "approve ERROR: no payment");
+                    "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"approve", "command needs client key from whitelist"));
         }
 
         try {
-            //System.out.println("Request to approve, package size: " + params.getBinaryOrThrow("packedItem").length);
             return Binder.of(
                     "itemResult",
                     node.registerItem(Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem")))
             );
         } catch (Exception e) {
             System.out.println("approve ERROR: " + e.getMessage());
+
             return Binder.of(
-                    "itemResult",
-                    "approve ERROR: " + e.getMessage()
-            );
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approve", e.getMessage()));
         }
     }
 
@@ -180,9 +196,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             System.out.println("approveParcel ERROR: " + e.getMessage());
             return Binder.of(
-                    "result",
-                    "approveParcel ERROR: " + e.getMessage()
-            );
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));
         }
     }
 
@@ -191,7 +205,9 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder startApproval(final Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         if(config == null || !config.getKeysWhiteList().contains(session.getPublicKey())) {
             System.out.println("startApproval ERROR: session key shoild be in the white list");
-            return new Binder();
+
+            return Binder.of(
+                    "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"startApproval", "command needs client key from whitelist"));
         }
 
         int n = asyncStarts.incrementAndGet();
@@ -207,6 +223,8 @@ public class ClientHTTPServer extends BasicHttpServer {
                     }
                 })
         );
+
+        //TODO: return ItemResult
         return new Binder();
     }
 
@@ -219,9 +237,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         } catch (Exception e) {
             System.out.println("getState ERROR: " + e.getMessage());
             return Binder.of(
-                    "itemResult",
-                    "getState ERROR: " + e.getMessage()
-            );
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));
         }
     }
 
@@ -232,9 +248,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         if(config == null || !config.getNetworkAdminKey().equals(session.getPublicKey())) {
             System.out.println("command needs admin key");
             return Binder.of(
-                    "error",
-                    "command needs admin key"
-            );
+                    "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"getStats", "command needs admin key"));
         }
         return node.provideStats();
     }
@@ -246,6 +260,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                     node.checkParcelProcessingState((HashId) params.get("parcelId")));
         } catch (Exception e) {
             System.out.println("getParcelProcessingState ERROR: " + e.getMessage());
+            //TODO: return processing state not String
             return Binder.of(
                     "processingState",
                     "getParcelProcessingState ERROR: " + e.getMessage()
