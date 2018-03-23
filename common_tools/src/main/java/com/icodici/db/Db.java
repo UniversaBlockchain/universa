@@ -154,6 +154,8 @@ public class Db implements Cloneable, AutoCloseable {
         }
         if (migrationsResource != null)
             setupDatabase(migrationsResource);
+
+        connection.setAutoCommit(false);
     }
 
     public Db clone() {
@@ -180,7 +182,7 @@ public class Db implements Cloneable, AutoCloseable {
 
 
     public <T> T transaction(Callable<T> worker) throws Exception {
-        connection.setAutoCommit(false);
+//        connection.setAutoCommit(false);
         try {
             T result = worker.call();
             connection.commit();
@@ -194,7 +196,7 @@ public class Db implements Cloneable, AutoCloseable {
             connection.rollback();
             throw (e);
         } finally {
-            connection.setAutoCommit(true);
+//            connection.setAutoCommit(true);
         }
         return null;
     }
@@ -301,6 +303,7 @@ public class Db implements Cloneable, AutoCloseable {
         PreparedStatement s = statement(sqlText, args);
         s.closeOnCompletion();
         ResultSet rs = s.executeQuery();
+        connection.commit();
         if (rs.next()) {
             return rs;
         } else {
@@ -325,6 +328,7 @@ public class Db implements Cloneable, AutoCloseable {
         try (PreparedStatement s = statement(sqlText, args);
              ResultSet rs = s.executeQuery();
         ) {
+            connection.commit();
             if (rs.next()) {
                 return (T) rs.getObject(1);
             }
@@ -347,6 +351,18 @@ public class Db implements Cloneable, AutoCloseable {
     public void update(String sqlText, Object... args) throws SQLException {
         try (PreparedStatement s = statement(sqlText, args)) {
             s.executeUpdate();
+            connection.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     */
+    public void updateWithStatement(PreparedStatement statement) throws SQLException {
+        try {
+            statement.executeUpdate();
+            connection.commit();
         } catch (Exception e) {
             e.printStackTrace();
         }

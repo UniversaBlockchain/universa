@@ -40,13 +40,9 @@ public class PostgresLedger implements Ledger {
     private final static int MAX_CONNECTIONS = 64;
 
     private final DbPool dbPool;
-    private final Object mutex = new Object();
-    private final Object transactionLock = new Object();
 
     private boolean sqlite = false;
 
-//    private Object writeLock = new Object();
-    //    private Object transactionLock = new Object();
     private Map<HashId, WeakReference<StateRecord>> cachedRecords = new WeakHashMap<>();
     private boolean useCache = true;
 
@@ -81,124 +77,122 @@ public class PostgresLedger implements Ledger {
      * @throws Exception if something went wrong
      */
     public final <T> T inPool(DbPool.DbConsumer<T> consumer) throws Exception {
-            return dbPool.execute(consumer);
+        return dbPool.execute(consumer);
     }
 
 
     @Override
     public StateRecord getRecord(HashId itemId) {
-            StateRecord sr = protect(() -> {
-                StateRecord cached = getFromCache(itemId);
-                if (cached != null)
-                    return cached;
-                try (ResultSet rs = inPool(db -> db.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1", itemId.getDigest()))) {
-                    if (rs != null) {
-                        StateRecord record = new StateRecord(this, rs);
-                        putToCache(record);
-                        return record;
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+        StateRecord sr = protect(() -> {
+            StateRecord cached = getFromCache(itemId);
+            if (cached != null)
+                return cached;
+            try (ResultSet rs = inPool(db -> db.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1", itemId.getDigest()))) {
+                if (rs != null) {
+                    StateRecord record = new StateRecord(this, rs);
+                    putToCache(record);
+                    return record;
                 }
-                return null;
-            });
-            if (sr != null && sr.isExpired()) {
-                sr.destroy();
-                return null;
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            return sr;
+            return null;
+        });
+        if (sr != null && sr.isExpired()) {
+            sr.destroy();
+            return null;
+        }
+        return sr;
     }
 
     private StateRecord getFromCache(HashId itemId) {
-            if (useCache) {
-                synchronized (cachedRecords) {
-                    WeakReference<StateRecord> ref = cachedRecords.get(itemId);
-                    if (ref == null)
-                        return null;
-                    StateRecord r = ref.get();
-                    if (r == null) {
-                        cachedRecords.remove(itemId);
-                        return null;
-                    }
-                    return r;
+        if (useCache) {
+            synchronized (cachedRecords) {
+                WeakReference<StateRecord> ref = cachedRecords.get(itemId);
+                if (ref == null)
+                    return null;
+                StateRecord r = ref.get();
+                if (r == null) {
+                    cachedRecords.remove(itemId);
+                    return null;
                 }
-            } else
-                return null;
+                return r;
+            }
+        } else
+            return null;
     }
 
     private void putToCache(StateRecord r) {
-            if (useCache) {
-                synchronized (cachedRecords) {
-                    cachedRecords.put(r.getId(), new WeakReference<StateRecord>(r));
-                }
+        if (useCache) {
+            synchronized (cachedRecords) {
+                cachedRecords.put(r.getId(), new WeakReference<StateRecord>(r));
             }
+        }
     }
 
 
     @Override
     public StateRecord createOutputLockRecord(long creatorRecordId, HashId newItemHashId) {
-            StateRecord r = new StateRecord(this);
-            r.setState(ItemState.LOCKED_FOR_CREATION);
-            r.setLockedByRecordId(creatorRecordId);
-            r.setId(newItemHashId);
-            try {
-                r.save();
-                return r;
-            } catch (Failure e) {
-                e.printStackTrace();
-                return null;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
+        StateRecord r = new StateRecord(this);
+        r.setState(ItemState.LOCKED_FOR_CREATION);
+        r.setLockedByRecordId(creatorRecordId);
+        r.setId(newItemHashId);
+        try {
+            r.save();
+            return r;
+        } catch (Failure e) {
+            e.printStackTrace();
+            return null;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override
     public StateRecord getLockOwnerOf(StateRecord rc) {
-            StateRecord cached = getFromCache(rc.getId());
-            if (cached != null) {
-                return cached;
-            }
-            StateRecord sr = protect(() ->
-                    dbPool.execute(db -> {
-                        try (ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE id = ? limit 1", rc.getLockedByRecordId())) {
-                            if (rs == null)
-                                return null;
-                            StateRecord r = new StateRecord(this, rs);
-                            putToCache(r);
-                            return r;
-                        } catch (Exception e) {
-                            e.printStackTrace();
+        StateRecord cached = getFromCache(rc.getId());
+        if (cached != null) {
+            return cached;
+        }
+        StateRecord sr = protect(() ->
+                dbPool.execute(db -> {
+                    try (ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE id = ? limit 1", rc.getLockedByRecordId())) {
+                        if (rs == null)
                             return null;
-                        }
-                    })
-            );
-            if (sr != null && sr.isExpired()) {
-                sr.destroy();
-                return null;
-            }
-            return sr;
+                        StateRecord r = new StateRecord(this, rs);
+                        putToCache(r);
+                        return r;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return null;
+                    }
+                })
+        );
+        if (sr != null && sr.isExpired()) {
+            sr.destroy();
+            return null;
+        }
+        return sr;
     }
 
     @Override
     public StateRecord findOrCreate(HashId itemId) {
-//        synchronized (mutex) {
-            // This simple version requires that database is used exclusively by one localnode - the normal way. As nodes
-            // are multithreaded, there is absolutely no use to share database between nodes.
-            return protect(() -> {
-                StateRecord record = getFromCache(itemId);
-                if (record == null) {
-                    try (ResultSet rs = inPool(db -> db.queryRow("select * from sr_find_or_create(?)", itemId.getDigest()))) {
-                        record = new StateRecord(this, rs);
-                        putToCache(record);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+        // This simple version requires that database is used exclusively by one localnode - the normal way. As nodes
+        // are multithreaded, there is absolutely no use to share database between nodes.
+        return protect(() -> {
+            StateRecord record = getFromCache(itemId);
+            if (record == null) {
+                try (ResultSet rs = inPool(db -> db.queryRow("select * from sr_find_or_create(?)", itemId.getDigest()))) {
+                    record = new StateRecord(this, rs);
+                    putToCache(record);
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-                return record;
+            }
+            return record;
 
-            });
-//        }
+        });
     }
 
     @Override
@@ -240,40 +234,36 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public void putItem(StateRecord record, Approvable item, Instant keepTill) {
-        synchronized (mutex) {
-            if (item instanceof Contract) {
-                try (PooledDb db = dbPool.db()) {
-                    try (
-                            PreparedStatement statement =
-                                    db.statement(
-                                            "insert into items(id,packed,keepTill) values(?,?,?);"
-                                    )
-                    ) {
-                        statement.setLong(1, record.getRecordId());
-                        statement.setBytes(2, ((Contract) item).getPackedTransaction());
-                        statement.setLong(3, keepTill.getEpochSecond());
-                        statement.executeUpdate();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                } catch (SQLException se) {
-                    se.printStackTrace();
-                    throw new Failure("item save failed:" + se);
+        if (item instanceof Contract) {
+            try (PooledDb db = dbPool.db()) {
+                try (
+                        PreparedStatement statement =
+                                db.statement(
+                                        "insert into items(id,packed,keepTill) values(?,?,?);"
+                                )
+                ) {
+                    statement.setLong(1, record.getRecordId());
+                    statement.setBytes(2, ((Contract) item).getPackedTransaction());
+                    statement.setLong(3, keepTill.getEpochSecond());
+                    db.updateWithStatement(statement);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+            } catch (SQLException se) {
+                se.printStackTrace();
+                throw new Failure("item save failed:" + se);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }
 
     private <T> T protect(Callable<T> block) {
-        synchronized (mutex) {
-            try {
-                return block.call();
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                throw new Failure("Ledger operation failed: " + ex.getMessage(), ex);
-            }
+        try {
+            return block.call();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw new Failure("Ledger operation failed: " + ex.getMessage(), ex);
         }
     }
 
@@ -335,20 +325,16 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public <T> T transaction(Callable<T> callable) {
-//        synchronized (mutex) {
-            return protect(() -> {
-//            synchronized (mutex) {
-                // as Rollback exception is instanceof Db.Rollback, it will work as supposed by default:
-                // rethrow unchecked exceotions and return null on rollback.
-                try (Db db = dbPool.db()) {
-                    return db.transaction(() -> callable.call());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return null;
-                }
-//            }
-            });
-//        }
+        return protect(() -> {
+            // as Rollback exception is instanceof Db.Rollback, it will work as supposed by default:
+            // rethrow unchecked exceotions and return null on rollback.
+            try (Db db = dbPool.db()) {
+                return db.transaction(() -> callable.call());
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        });
     }
 
     public void testClearLedger() {
@@ -364,96 +350,90 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public void destroy(StateRecord record) {
-//        synchronized (mutex) {
-            long recordId = record.getRecordId();
-            if (recordId == 0) {
-                throw new IllegalStateException("can't destroy record without recordId");
-            }
-            protect(() -> {
-                inPool(d -> {
-                    d.update("DELETE FROM items WHERE id = ?", recordId);
-                    d.update("DELETE FROM ledger WHERE id = ?", recordId);
-                    return null;
-                });
-                synchronized (cachedRecords) {
-                    cachedRecords.remove(record.getId());
-                }
+        long recordId = record.getRecordId();
+        if (recordId == 0) {
+            throw new IllegalStateException("can't destroy record without recordId");
+        }
+        protect(() -> {
+            inPool(d -> {
+                d.update("DELETE FROM items WHERE id = ?", recordId);
+                d.update("DELETE FROM ledger WHERE id = ?", recordId);
                 return null;
             });
-//        }
+            synchronized (cachedRecords) {
+                cachedRecords.remove(record.getId());
+            }
+            return null;
+        });
     }
 
     @Override
     public void save(StateRecord stateRecord) {
-        synchronized (mutex) {
-            if (stateRecord.getLedger() == null) {
-                stateRecord.setLedger(this);
-            } else if (stateRecord.getLedger() != this)
-                throw new IllegalStateException("can't save with a different ledger (make a copy!)");
+        if (stateRecord.getLedger() == null) {
+            stateRecord.setLedger(this);
+        } else if (stateRecord.getLedger() != this)
+            throw new IllegalStateException("can't save with a different ledger (make a copy!)");
 
-            // TODO: probably, it should take a PooledDb as an argument and reuse it
-            try (PooledDb db = dbPool.db()) {
-                if (stateRecord.getRecordId() == 0) {
-                    try (
-                            PreparedStatement statement =
-                                    db.statementReturningKeys(
-                                            "insert into ledger(hash,state,created_at, expires_at, locked_by_id) values(?,?,?,?,?);"
-                                    )
-                    ) {
-                        statement.setBytes(1, stateRecord.getId().getDigest());
-                        statement.setInt(2, stateRecord.getState().ordinal());
-                        statement.setLong(3, StateRecord.unixTime(stateRecord.getCreatedAt()));
-                        statement.setLong(4, StateRecord.unixTime(stateRecord.getExpiresAt()));
-                        statement.setLong(5, stateRecord.getLockedByRecordId());
-                        statement.executeUpdate();
-                        try (ResultSet keys = statement.getGeneratedKeys()) {
-                            if (!keys.next())
-                                throw new RuntimeException("generated keys are not supported");
-                            long id = keys.getLong(1);
-                            stateRecord.setRecordId(id);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
+        // TODO: probably, it should take a PooledDb as an argument and reuse it
+        try (PooledDb db = dbPool.db()) {
+            if (stateRecord.getRecordId() == 0) {
+                try (
+                        PreparedStatement statement =
+                                db.statementReturningKeys(
+                                        "insert into ledger(hash,state,created_at, expires_at, locked_by_id) values(?,?,?,?,?);"
+                                )
+                ) {
+                    statement.setBytes(1, stateRecord.getId().getDigest());
+                    statement.setInt(2, stateRecord.getState().ordinal());
+                    statement.setLong(3, StateRecord.unixTime(stateRecord.getCreatedAt()));
+                    statement.setLong(4, StateRecord.unixTime(stateRecord.getExpiresAt()));
+                    statement.setLong(5, stateRecord.getLockedByRecordId());
+                    db.updateWithStatement(statement);
+                    try (ResultSet keys = statement.getGeneratedKeys()) {
+                        if (!keys.next())
+                            throw new RuntimeException("generated keys are not supported");
+                        long id = keys.getLong(1);
+                        stateRecord.setRecordId(id);
                     }
-                    putToCache(stateRecord);
-                } else {
-                    db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
-                            stateRecord.getState().ordinal(),
-                            StateRecord.unixTime(stateRecord.getExpiresAt()),
-                            stateRecord.getLockedByRecordId(),
-                            stateRecord.getRecordId()
-                    );
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            } catch (SQLException se) {
-                se.printStackTrace();
-                throw new Failure("StateRecord save failed:" + se);
-            } catch (Exception e) {
-                e.printStackTrace();
+                putToCache(stateRecord);
+            } else {
+                db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
+                        stateRecord.getState().ordinal(),
+                        StateRecord.unixTime(stateRecord.getExpiresAt()),
+                        stateRecord.getLockedByRecordId(),
+                        stateRecord.getRecordId()
+                );
             }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("StateRecord save failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
 
     @Override
     public void reload(StateRecord stateRecord) throws StateRecord.NotFoundException {
-        synchronized (mutex) {
-            try {
-                try (
-                        PooledDb db = dbPool.db();
-                        ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1",
-                                stateRecord.getId().getDigest()
-                        );
-                ) {
-                    if (rs == null)
-                        throw new StateRecord.NotFoundException("record not found");
-                    stateRecord.initFrom(rs);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        try {
+            try (
+                    PooledDb db = dbPool.db();
+                    ResultSet rs = db.queryRow("SELECT * FROM ledger WHERE hash = ? limit 1",
+                            stateRecord.getId().getDigest()
+                    );
+            ) {
+                if (rs == null)
+                    throw new StateRecord.NotFoundException("record not found");
+                stateRecord.initFrom(rs);
             } catch (Exception e) {
                 e.printStackTrace();
-                throw new RuntimeException("Failed to reload RecordSet", e);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to reload RecordSet", e);
         }
     }
 
@@ -485,7 +465,7 @@ public class PostgresLedger implements Ledger {
                                     "delete from config;"
                             )
             ) {
-                statement.executeUpdate();
+                db.updateWithStatement(statement);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -515,7 +495,7 @@ public class PostgresLedger implements Ledger {
                         statement.setBytes(9, nodeKey.pack());
                     }
 
-                    statement.executeUpdate();
+                    db.updateWithStatement(statement);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -590,7 +570,7 @@ public class PostgresLedger implements Ledger {
                 statement.setString(7, nodeInfo.getClientAddress().getHostName());
                 statement.setBytes(8, nodeInfo.getPublicKey().pack());
 
-                statement.executeUpdate();
+                db.updateWithStatement(statement);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -612,7 +592,7 @@ public class PostgresLedger implements Ledger {
             try (
                     PreparedStatement statement = db.statementReturningKeys(sqlText, nodeInfo.getNumber())
             ) {
-                statement.executeUpdate();
+                db.updateWithStatement(statement);
             } catch (Exception e) {
                 e.printStackTrace();
             }

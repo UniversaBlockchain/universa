@@ -189,26 +189,32 @@ public class Client {
     }
 
     public ItemResult register(byte[] packed, long millisToWait) throws ClientError {
-        ItemResult lastResult = protect(() -> (ItemResult) httpClient.command("approve", "packedItem", packed)
+        Object binderResult = protect(() -> httpClient.command("approve", "packedItem", packed)
                 .get("itemResult"));
-        if (millisToWait > 0 && lastResult.state.isPending()) {
-            Instant end = Instant.now().plusMillis(millisToWait);
-            try {
-                Contract c = Contract.fromPackedTransaction(packed);
-                while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
-                    Thread.currentThread().sleep(100);
-                    lastResult = getState(c.getId());
-                    System.out.println("test: " + lastResult);
+        if(binderResult instanceof ItemResult) {
+            ItemResult lastResult = (ItemResult) binderResult;
+            if (millisToWait > 0 && lastResult.state.isPending()) {
+                Instant end = Instant.now().plusMillis(millisToWait);
+                try {
+                    Contract c = Contract.fromPackedTransaction(packed);
+                    while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
+                        Thread.currentThread().sleep(100);
+                        lastResult = getState(c.getId());
+                        System.out.println("test: " + lastResult);
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (Quantiser.QuantiserException e) {
+                    throw new ClientError(e);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (Quantiser.QuantiserException e) {
-                throw new ClientError(e);
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+            return lastResult;
         }
-        return lastResult;
+
+        System.err.println("test: " + binderResult);
+        return ItemResult.UNDEFINED;
     }
 
     public boolean registerParcel(byte[] packed) throws ClientError {
