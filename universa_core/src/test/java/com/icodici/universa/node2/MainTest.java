@@ -1953,7 +1953,7 @@ public class MainTest {
 
 
         List<String> dbUrls = new ArrayList<>();
-        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
@@ -1973,7 +1973,7 @@ public class MainTest {
         List<Contract> newRevisions = new ArrayList<>();
         List<Contract> newContracts = new ArrayList<>();
 
-        final int N = 1000;
+        final int N = 30;
         for(int i = 0; i < N; i++) {
             Contract origin = new Contract(myKey);
             origin.seal();
@@ -1995,7 +1995,7 @@ public class MainTest {
 
             newContracts.add(newContract);
             newRevisions.add(newRevision);
-            int unfinishedNodesCount = random.nextInt(1)+1;
+            int unfinishedNodesCount = random.nextInt(2)+1;
             Set<Integer> unfinishedNodesNumbers = new HashSet<>();
             while(unfinishedNodesCount > unfinishedNodesNumbers.size()) {
                 unfinishedNodesNumbers.add(random.nextInt(NODE_COUNT)+1);
@@ -2052,9 +2052,6 @@ public class MainTest {
         }
         ledgers.stream().forEach(ledger -> ledger.close());
         ledgers.clear();
-
-        if(1 > 0)
-            return;
 
         List<Main> mm = new ArrayList<>();
         List<Client> clients = new ArrayList<>();

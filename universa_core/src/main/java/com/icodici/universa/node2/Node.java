@@ -45,7 +45,7 @@ import java.util.function.Supplier;
  */
 public class Node {
 
-    private static final int MAX_SANITATING_RECORDS = 10;
+    private static final int MAX_SANITATING_RECORDS = 64;
     private Instant nodeStartTime;
     private Map<ItemState, Integer> ledgerSize;
 
@@ -178,7 +178,7 @@ public class Node {
     private void pulseStartSanitation() {
         sanitator = lowPrioExecutorService.scheduleAtFixedRate(() -> startSanitation(),
                 2000,
-                2000,
+                500,
                 TimeUnit.MILLISECONDS//,
 //                                        Node.this.toString() + toString() + " :: pulseStartPolling -> sendStartPollingNotification"
         );
@@ -187,8 +187,6 @@ public class Node {
     ArrayList<HashId> sanitatingIds = new ArrayList<>();
 
     private void startSanitation() {
-        Thread.currentThread().setName("startSanitation" + new Date().getTime());
-        System.out.println("RTS " + recordsToSanitate.size() + " " + Thread.currentThread().getName());
         if(recordsToSanitate.isEmpty()) {
             sanitator.cancel(false);
             dbSanitationFinished();
@@ -204,7 +202,6 @@ public class Node {
 
         if (sanitatingIds.size() < MAX_SANITATING_RECORDS) {
             synchronized (recordsToSanitate) {
-                System.out.println("SRTS1 ->");
                 for (StateRecord r : recordsToSanitate.values()) {
                     if (r.getState() != ItemState.LOCKED && r.getState() != ItemState.LOCKED_FOR_CREATION && !sanitatingIds.contains(r.getId())) {
                         sanitateRecord(r);
@@ -212,16 +209,12 @@ public class Node {
                         if (sanitatingIds.size() == MAX_SANITATING_RECORDS) {
                             break;
                         }
-                    } else {
-                        System.out.println("SRTS1 ->> " + r.getState());
                     }
                 }
-                System.out.println("SRTS1 <-");
             }
             if (sanitatingIds.size() == 0 && recordsToSanitate.size() > 0) {
                 //ONLY LOCKED LEFT -> RESYNC THEM
                 synchronized (recordsToSanitate) {
-                    System.out.println("SRTS2 ->");
                     for (StateRecord r : recordsToSanitate.values()) {
                         r.setState(ItemState.PENDING);
                         try {
@@ -233,7 +226,6 @@ public class Node {
                             e.printStackTrace();
                         }
                     }
-                    System.out.println("SRTS2 <-");
                 }
             }
         }
@@ -2633,8 +2625,6 @@ public class Node {
     private void itemSanitationDone(StateRecord record) {
 
         synchronized (recordsToSanitate) {
-            Thread.currentThread().setName("SRTS3 " + new Date().getTime());
-            System.out.println("SRTS3 -> " + recordsToSanitate.size() + " " + Thread.currentThread().getName());
             if(recordsToSanitate.containsKey(record.getId())) {
 
 
@@ -2662,7 +2652,7 @@ public class Node {
                                         r.save();
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                        r.unlock().save();
+                                        r.destroy();
                                         idsToRemove.add(r.getId());
                                     }
                                 } else if (record.getState() == ItemState.REVOKED) {
@@ -2683,7 +2673,7 @@ public class Node {
                                         r.save();
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
-                                        r.unlock().save();
+                                        r.destroy();
                                         idsToRemove.add(r.getId());
                                     }
                                 }
@@ -2698,7 +2688,6 @@ public class Node {
                 idsToRemove.stream().forEach(id -> recordsToSanitate.remove(id));
 
             }
-            System.out.println("SRTS3 <- " + recordsToSanitate.size());
 
         }
     }

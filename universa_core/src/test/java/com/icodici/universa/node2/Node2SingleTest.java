@@ -8,7 +8,10 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.utils.Bytes;
@@ -17,6 +20,7 @@ import org.junit.*;
 
 import java.io.File;
 import java.io.FileReader;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
@@ -108,6 +112,7 @@ public class Node2SingleTest extends BaseNetworkTest {
 
     @Test
     public void sanitationTest() throws Exception {
+        
         while (node.isSanitating()) {
             System.out.println("Node sanitating " + node.getRecordsToSanitate().size());
             Thread.sleep(2000);
