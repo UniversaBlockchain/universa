@@ -148,6 +148,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode(session);
         if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+            System.out.println("approve ERROR: no payment");
             return Binder.of(
                     "itemResult",
                     "approve ERROR: no payment");
@@ -160,6 +161,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                     node.registerItem(Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem")))
             );
         } catch (Exception e) {
+            System.out.println("approve ERROR: " + e.getMessage());
             return Binder.of(
                     "itemResult",
                     "approve ERROR: " + e.getMessage()
@@ -176,6 +178,7 @@ public class ClientHTTPServer extends BasicHttpServer {
                     node.registerParcel(Parcel.unpack(params.getBinaryOrThrow("packedItem")))
             );
         } catch (Exception e) {
+            System.out.println("approveParcel ERROR: " + e.getMessage());
             return Binder.of(
                     "result",
                     "approveParcel ERROR: " + e.getMessage()
@@ -187,6 +190,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder startApproval(final Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         if(config == null || !config.getKeysWhiteList().contains(session.getPublicKey())) {
+            System.out.println("startApproval ERROR: session key shoild be in the white list");
             return new Binder();
         }
 
@@ -213,6 +217,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             return Binder.of("itemResult",
                     node.checkItem((HashId) params.get("itemId")));
         } catch (Exception e) {
+            System.out.println("getState ERROR: " + e.getMessage());
             return Binder.of(
                     "itemResult",
                     "getState ERROR: " + e.getMessage()
@@ -225,6 +230,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session);
 
         if(config == null || !config.getNetworkAdminKey().equals(session.getPublicKey())) {
+            System.out.println("command needs admin key");
             return Binder.of(
                     "error",
                     "command needs admin key"
@@ -239,6 +245,7 @@ public class ClientHTTPServer extends BasicHttpServer {
             return Binder.of("processingState",
                     node.checkParcelProcessingState((HashId) params.get("parcelId")));
         } catch (Exception e) {
+            System.out.println("getParcelProcessingState ERROR: " + e.getMessage());
             return Binder.of(
                     "processingState",
                     "getParcelProcessingState ERROR: " + e.getMessage()
