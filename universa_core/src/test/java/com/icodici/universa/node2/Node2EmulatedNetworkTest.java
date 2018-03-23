@@ -36,6 +36,7 @@ import static org.hamcrest.core.Is.is;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
 
+@Ignore
 public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
     private static TestEmulatedNetwork network_s = null;

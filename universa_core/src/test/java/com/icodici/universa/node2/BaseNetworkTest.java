@@ -4453,9 +4453,11 @@ public class BaseNetworkTest extends TestCase {
             node.waitParcel(parcel.getId(), 30000);
             System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
+            parcel.getPaymentContract().traceErrors();
             assertEquals(ItemState.APPROVED, itemResult.state);
             System.out.println("registerAndCheckApproved, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
+            parcel.getPayloadContract().traceErrors();
             assertEquals(ItemState.APPROVED, itemResult.state);
         } catch (TimeoutException e) {
             if (parcel != null) {

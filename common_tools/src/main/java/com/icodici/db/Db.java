@@ -37,6 +37,7 @@ public class Db implements Cloneable, AutoCloseable {
     private boolean sqlite = false;
     protected String connectionString;
     private int currentDbVersion = 0;
+    private boolean isInTransaction = false;
 
     private Connection connection;
 
@@ -154,6 +155,8 @@ public class Db implements Cloneable, AutoCloseable {
         }
         if (migrationsResource != null)
             setupDatabase(migrationsResource);
+
+//        connection.setAutoCommit(false);
     }
 
     public Db clone() {
@@ -180,23 +183,28 @@ public class Db implements Cloneable, AutoCloseable {
 
 
     public <T> T transaction(Callable<T> worker) throws Exception {
-        connection.setAutoCommit(false);
-        try {
-            T result = worker.call();
-            connection.commit();
-            return result;
-        } catch (RollbackException e) {
-            e.printStackTrace();
-            connection.rollback();
-        } catch (Exception e) {
-            log.e("Exception in transaction: %s", e);
-            e.printStackTrace();
-            connection.rollback();
-            throw (e);
-        } finally {
-            connection.setAutoCommit(true);
+        synchronized (connection) {
+            connection.setAutoCommit(false);
+            isInTransaction = true;
+            try {
+                T result = worker.call();
+                connection.commit();
+                return result;
+            } catch (RollbackException e) {
+                e.printStackTrace();
+                connection.rollback();
+            } catch (Exception e) {
+                log.e("Exception in transaction: %s", e);
+                e.printStackTrace();
+                connection.rollback();
+                throw (e);
+            } finally {
+                connection.setAutoCommit(true);
+//            connection.commit();
+                isInTransaction = false;
+            }
+            return null;
         }
-        return null;
     }
 
     static public class RollbackException extends Exception {
@@ -273,7 +281,9 @@ public class Db implements Cloneable, AutoCloseable {
 //        PreparedStatement statement = cachedStatements.get(sqlText);
         PreparedStatement statement = null;
 //        if (statement == null) {
-        statement = connection.prepareStatement(sqlText);
+        synchronized (connection) {
+            statement = connection.prepareStatement(sqlText);
+        }
 //            cachedStatements.put(sqlText, statement);
 //        } else {
 //            statement.clearParameters();
@@ -288,7 +298,9 @@ public class Db implements Cloneable, AutoCloseable {
 
     public PreparedStatement statementReturningKeys(String sqlText, Object... args) throws SQLException {
         PreparedStatement statement = null;
-        statement = connection.prepareStatement(sqlText, Statement.RETURN_GENERATED_KEYS);
+        synchronized (connection) {
+            statement = connection.prepareStatement(sqlText, Statement.RETURN_GENERATED_KEYS);
+        }
         int index = 1;
         for (Object arg : args) {
             statement.setObject(index, arg);
@@ -301,6 +313,7 @@ public class Db implements Cloneable, AutoCloseable {
         PreparedStatement s = statement(sqlText, args);
         s.closeOnCompletion();
         ResultSet rs = s.executeQuery();
+//        if(!isInTransaction) connection.commit();
         if (rs.next()) {
             return rs;
         } else {
@@ -325,11 +338,13 @@ public class Db implements Cloneable, AutoCloseable {
         try (PreparedStatement s = statement(sqlText, args);
              ResultSet rs = s.executeQuery();
         ) {
+//            if(!isInTransaction) connection.commit();
             if (rs.next()) {
                 return (T) rs.getObject(1);
             }
         } catch (Exception e) {
             e.printStackTrace();
+            throw e;
         }
         return null;
     }
@@ -347,8 +362,24 @@ public class Db implements Cloneable, AutoCloseable {
     public void update(String sqlText, Object... args) throws SQLException {
         try (PreparedStatement s = statement(sqlText, args)) {
             s.executeUpdate();
+//            if(!isInTransaction) connection.commit();
         } catch (Exception e) {
             e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     */
+    public void updateWithStatement(PreparedStatement statement) throws SQLException {
+        try {
+            statement.executeUpdate();
+//            if(!isInTransaction) connection.commit();
+        } catch (Exception e) {
+//            log.e("Exception in update statement: %s", e);
+            e.printStackTrace();
+//            connection.rollback();
+            throw (e);
         }
     }
 
@@ -385,6 +416,7 @@ public class Db implements Cloneable, AutoCloseable {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                throw e;
             }
         } catch (RuntimeException re) {
             re.printStackTrace();

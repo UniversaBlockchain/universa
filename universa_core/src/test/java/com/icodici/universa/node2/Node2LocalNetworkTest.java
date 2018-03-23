@@ -413,6 +413,16 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         assertTrue(contract.check());
 
+        if(definedState == ItemState.LOCKED) {
+            for (Node n : nodesMap_s.values()) {
+                for (int i = 0; i < subContracts.size(); i++) {
+                    StateRecord sr = n.getLedger().getRecord(subContracts.get(i).getId());
+                    sr.setLockedByRecordId(sr.getRecordId());
+                    sr.save();
+                }
+            }
+        }
+
         LogPrinter.showDebug(true);
 
         Parcel parcel = registerWithNewParcel(contract);

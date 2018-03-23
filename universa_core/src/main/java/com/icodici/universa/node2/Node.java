@@ -2154,7 +2154,7 @@ public class Node {
                     itemId, " from parcel: ", parcelId,
                     " :: rollbackChanges, state ", processingState),
                     DatagramAdapter.VerboseLevel.BASE);
-//            synchronized (ledgerRollbackLock) {
+            synchronized (ledgerRollbackLock) {
                 ledger.transaction(() -> {
                         for (StateRecord r : lockedToRevoke) {
                             try {
@@ -2198,7 +2198,7 @@ public class Node {
                     return null;
                 });
                 close();
-//            }
+            }
         }
 
         private void stopPoller() {
