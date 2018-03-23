@@ -96,6 +96,7 @@ public class PostgresLedger implements Ledger {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                throw e;
             }
             return null;
         });
@@ -186,7 +187,7 @@ public class PostgresLedger implements Ledger {
                         return r;
                     } catch (Exception e) {
                         e.printStackTrace();
-                        return null;
+                        throw e;
                     }
                 })
         );
@@ -209,6 +210,7 @@ public class PostgresLedger implements Ledger {
                     putToCache(record);
                 } catch (Exception e) {
                     e.printStackTrace();
+                    throw e;
                 }
             }
             return record;
@@ -233,6 +235,7 @@ public class PostgresLedger implements Ledger {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
+                    throw e;
                 }
                 return map;
 
@@ -248,7 +251,7 @@ public class PostgresLedger implements Ledger {
                     return Contract.fromPackedTransaction(rs.getBytes("packed"));
                 } catch (Exception e) {
                     e.printStackTrace();
-                    return null;
+                    throw e;
                 }
             });
     }
@@ -325,7 +328,7 @@ public class PostgresLedger implements Ledger {
                     return result;
                 } catch (Exception e) {
                     e.printStackTrace();
-                    return null;
+                    throw e;
                 }
             });
     }
@@ -456,6 +459,7 @@ public class PostgresLedger implements Ledger {
                 stateRecord.initFrom(rs);
             } catch (Exception e) {
                 e.printStackTrace();
+                throw e;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -495,6 +499,7 @@ public class PostgresLedger implements Ledger {
                 db.updateWithStatement(statement);
             } catch (Exception e) {
                 e.printStackTrace();
+                throw e;
             }
 
 
@@ -525,6 +530,7 @@ public class PostgresLedger implements Ledger {
                     db.updateWithStatement(statement);
                 } catch (Exception e) {
                     e.printStackTrace();
+                    throw e;
                 }
             }
 
@@ -571,7 +577,7 @@ public class PostgresLedger implements Ledger {
                 return result;
             } catch (Exception e) {
                 e.printStackTrace();
-                return null;
+                throw e;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -600,6 +606,7 @@ public class PostgresLedger implements Ledger {
                 db.updateWithStatement(statement);
             } catch (Exception e) {
                 e.printStackTrace();
+                throw e;
             }
 
         } catch (SQLException se) {
@@ -622,6 +629,7 @@ public class PostgresLedger implements Ledger {
                 db.updateWithStatement(statement);
             } catch (Exception e) {
                 e.printStackTrace();
+                throw e;
             }
 
         } catch (SQLException se) {
