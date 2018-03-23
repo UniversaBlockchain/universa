@@ -138,6 +138,44 @@ public class Reference implements BiSerializable {
         CONSTOTHER
     }
 
+    private boolean isObjectMayCastToDouble(Object obj) throws Exception {
+        return obj.getClass().getName().endsWith("Float") || obj.getClass().getName().endsWith("Double");
+    }
+
+    private boolean isObjectMayCastToLong(Object obj) throws Exception {
+        return obj.getClass().getName().endsWith("Byte") || obj.getClass().getName().endsWith("Short") ||
+               obj.getClass().getName().endsWith("Integer") || obj.getClass().getName().endsWith("Long");
+    }
+
+    private double objectCastToDouble(Object obj) throws Exception {
+        double val;
+
+        if (obj.getClass().getName().endsWith("Float") ||
+            obj.getClass().getName().endsWith("Double"))
+            val = (double) obj;
+        else
+            throw new IllegalArgumentException("Expected floating point number operand in condition.");
+
+        return val;
+    }
+
+    private long objectCastToLong(Object obj) throws Exception {
+        long val;
+
+        if (obj.getClass().getName().endsWith("Byte"))
+            val = (byte) obj;
+        else if (obj.getClass().getName().endsWith("Short"))
+            val = (short) obj;
+        else if (obj.getClass().getName().endsWith("Integer"))
+            val = (int) obj;
+        else if (obj.getClass().getName().endsWith("Long"))
+            val = (long) obj;
+        else
+            throw new IllegalArgumentException("Expected number operand in condition.");
+
+        return val;
+    }
+
     /**
      *The comparison method for finding reference contract
      *
@@ -163,6 +201,12 @@ public class Reference implements BiSerializable {
         Contract rightOperandContract = null;
         Object left = null;
         Object right = null;
+        double leftValD = 0;
+        double rightValD = 0;
+        long leftValL = 0;
+        long rightValL = 0;
+        boolean isLeftDouble = false;
+        boolean isRightDouble = false;
         int firstPointPos;
 
         if (leftOperand.startsWith("ref.")) {
@@ -242,28 +286,40 @@ public class Reference implements BiSerializable {
                         if (typeOfRightOperand == compareOperandType.FIELD) {               // rightOperand is FIELD
                             if (right != null)
                             {
-                                double leftVal = (left.getClass().getName().endsWith("Integer")) ? (int) left : (double) left;
-                                double rightVal = (right.getClass().getName().endsWith("Integer")) ? (int) right : (double) right;
-                                if (((indxOperator == LESS) && (leftVal < rightVal)) ||
-                                    ((indxOperator == MORE) && (leftVal > rightVal)) ||
-                                    ((indxOperator == LESS_OR_EQUAL) && (leftVal <= rightVal)) ||
-                                    ((indxOperator == MORE_OR_EQUAL) && (leftVal >= rightVal)))
+                                if (isLeftDouble = isObjectMayCastToDouble(left))
+                                    leftValD = objectCastToDouble(left);
+                                else
+                                    leftValL = objectCastToLong(left);
+
+                                if (isRightDouble = isObjectMayCastToDouble(right))
+                                    rightValD = objectCastToDouble(right);
+                                else
+                                    rightValL = objectCastToLong(right);
+
+                                if (((indxOperator == LESS) && ((isLeftDouble ? leftValD : leftValL) < (isRightDouble ? rightValD : rightValL))) ||
+                                    ((indxOperator == MORE) && ((isLeftDouble ? leftValD : leftValL) > (isRightDouble ? rightValD : rightValL))) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && ((isLeftDouble ? leftValD : leftValL) <= (isRightDouble ? rightValD : rightValL))) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && ((isLeftDouble ? leftValD : leftValL) >= (isRightDouble ? rightValD : rightValL))))
                                     ret = true;
                             }
 
                         } else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {              //rightOperand is CONSTANT (null | number | true | false)
-                            double leftVal = (left.getClass().getName().endsWith("Integer")) ? (int) left : (double) left;
+                            if (isLeftDouble = isObjectMayCastToDouble(left))
+                                leftValD = objectCastToDouble(left);
+                            else
+                                leftValL = objectCastToLong(left);
+
                             if ((rightOperand != "null") && (rightOperand != "false") && (rightOperand != "true"))
                                 if ((rightOperand.contains(".") &&
-                                    (((indxOperator == LESS) && (leftVal < Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == MORE) && (leftVal > Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == LESS_OR_EQUAL) && (leftVal <= Double.parseDouble(rightOperand))) ||
-                                    ((indxOperator == MORE_OR_EQUAL) && (leftVal >= Double.parseDouble(rightOperand))))) ||
+                                    (((indxOperator == LESS) && ((isLeftDouble ? leftValD : leftValL) < Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == MORE) && ((isLeftDouble ? leftValD : leftValL) > Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && ((isLeftDouble ? leftValD : leftValL) <= Double.parseDouble(rightOperand))) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && ((isLeftDouble ? leftValD : leftValL) >= Double.parseDouble(rightOperand))))) ||
                                     (!rightOperand.contains(".") &&
-                                    (((indxOperator == LESS) && (leftVal < Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == MORE) && (leftVal > Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == LESS_OR_EQUAL) && (leftVal <= Integer.parseInt(rightOperand))) ||
-                                    ((indxOperator == MORE_OR_EQUAL) && (leftVal >= Integer.parseInt(rightOperand))))))
+                                    (((indxOperator == LESS) && ((isLeftDouble ? leftValD : leftValL) < Long.parseLong(rightOperand))) ||
+                                    ((indxOperator == MORE) && ((isLeftDouble ? leftValD : leftValL) > Long.parseLong(rightOperand))) ||
+                                    ((indxOperator == LESS_OR_EQUAL) && ((isLeftDouble ? leftValD : leftValL) <= Long.parseLong(rightOperand))) ||
+                                    ((indxOperator == MORE_OR_EQUAL) && ((isLeftDouble ? leftValD : leftValL) >= Long.parseLong(rightOperand))))))
                                     ret = true;
                         } else
                             throw new IllegalArgumentException("Invalid operator for string in condition: " + operators[indxOperator]);
@@ -272,11 +328,35 @@ public class Reference implements BiSerializable {
 
                     case NOT_EQUAL:
                     case EQUAL:
-                        if (typeOfRightOperand == compareOperandType.FIELD) {       // rightOperand is FIELD
-                            if ((left != null) && (right != null) &&
-                                (((indxOperator == NOT_EQUAL) && !left.equals(right)) ||
-                                 ((indxOperator == EQUAL) && left.equals(right))))
-                                ret = true;
+                        if (typeOfRightOperand == compareOperandType.FIELD) {   // rightOperand is FIELD
+                            if ((left != null) && (right != null)) {
+                                boolean isNumbers = true;
+
+                                if (isLeftDouble = isObjectMayCastToDouble(left))
+                                    leftValD = objectCastToDouble(left);
+                                else if (isObjectMayCastToLong(left))
+                                    leftValL = objectCastToLong(left);
+                                else
+                                    isNumbers = false;
+
+                                if (isNumbers) {
+                                    if (isRightDouble = isObjectMayCastToDouble(right))
+                                        rightValD = objectCastToDouble(right);
+                                    else if (isObjectMayCastToLong(right))
+                                        rightValL = objectCastToLong(right);
+                                    else
+                                        isNumbers = false;
+                                }
+
+                                if (isNumbers && ((isLeftDouble && !isRightDouble) || (!isLeftDouble && isRightDouble))) {
+                                    if (((indxOperator == NOT_EQUAL) && ((isLeftDouble ? leftValD : leftValL) != (isRightDouble ? rightValD : rightValL))) ||
+                                            ((indxOperator == EQUAL) && ((isLeftDouble ? leftValD : leftValL) == (isRightDouble ? rightValD : rightValL))))
+                                        ret = true;
+                                }
+                                else if (((indxOperator == NOT_EQUAL) && !left.equals(right)) ||
+                                         ((indxOperator == EQUAL) && left.equals(right)))
+                                    ret = true;
+                            }
                         } else if ((left != null) &&
                                    (left.getClass().getName().endsWith("Role") ||
                                     left.getClass().getName().endsWith("RoleLink"))) {    //if role - compare with address
@@ -295,14 +375,29 @@ public class Reference implements BiSerializable {
                             if (!rightOperand.equals("null") && !rightOperand.equals("false") && !rightOperand.equals("true")) {
                                 if (left != null)
                                 {
-                                    double leftVal = (left.getClass().getName().endsWith("Integer")) ? (int) left : (double) left;
-                                    if (((rightOperand.contains(".") &&
-                                        (((indxOperator == NOT_EQUAL) && (leftVal != Double.parseDouble(rightOperand))) ||
-                                         ((indxOperator == EQUAL) && (leftVal == Double.parseDouble(rightOperand))))) ||
-                                        (!rightOperand.contains(".") &&
-                                         (((indxOperator == NOT_EQUAL) && (leftVal != Integer.parseInt(rightOperand))) ||
-                                          ((indxOperator == EQUAL) && (leftVal == Integer.parseInt(rightOperand)))))))
-                                        ret = true;
+                                    if (isObjectMayCastToDouble(left)) {
+                                        leftValD = objectCastToDouble(left);
+                                        Double leftDouble = new Double(leftValD);
+
+                                        if ((rightOperand.contains(".") &&
+                                            (((indxOperator == NOT_EQUAL) && !leftDouble.equals(Double.parseDouble(rightOperand))) ||
+                                             ((indxOperator == EQUAL) && leftDouble.equals(Double.parseDouble(rightOperand))))) ||
+                                            (!rightOperand.contains(".") &&
+                                             (((indxOperator == NOT_EQUAL) && (leftValD != Long.parseLong(rightOperand))) ||
+                                              ((indxOperator == EQUAL) && (leftValD == Long.parseLong(rightOperand))))))
+                                            ret = true;
+                                    } else {
+                                        leftValL = objectCastToLong(left);
+                                        Long leftLong = new Long(leftValL);
+
+                                        if ((!rightOperand.contains(".") &&
+                                            (((indxOperator == NOT_EQUAL) && !leftLong.equals(Long.parseLong(rightOperand))) ||
+                                             ((indxOperator == EQUAL) && leftLong.equals(Long.parseLong(rightOperand))))) ||
+                                            (rightOperand.contains(".") &&
+                                             (((indxOperator == NOT_EQUAL) && (leftValL != Double.parseDouble(rightOperand))) ||
+                                              ((indxOperator == EQUAL) && (leftValL == Double.parseDouble(rightOperand))))))
+                                            ret = true;
+                                    }
                                 }
                             } else {          //if rightOperand : null|false|true
                                 if (((indxOperator == NOT_EQUAL) &&

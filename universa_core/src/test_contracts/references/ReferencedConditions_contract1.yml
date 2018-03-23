@@ -95,7 +95,7 @@ definition:
          - ref.state.data.int4 defined
          - ref.state.data.int3 != null
          - ref.state.data.int2 undefined
-         - this.definition.data.int2 != ref.definition.data.float2
+         - this.definition.data.int2 == ref.definition.data.float2
          - this.state.data.int3 > ref.definition.data.float1
          - this.definition.data.int2 < ref.state.data.float3
          - this.state.data.int3 <= ref.state.data.float4
@@ -106,6 +106,17 @@ definition:
          - ref.state.data.int3 <= 777
          - ref.definition.data.int2 == 77.0
          - ref.state.data.int4 != 1000
+         - this.state.data.long1 == ref.state.data.long1
+         - this.state.data.long1 != ref.state.data.long2
+         - ref.state.data.long1 == 540809613457836009
+         - ref.state.data.long2 == 1434344332300905480.0
+         - ref.state.data.long2 != 1434344332300905481
+         - ref.state.data.long1 != ref.state.data.float3
+         - ref.state.data.long2 != -3902932093200002020
+         - this.state.data.long2 > ref.state.data.long1
+         - ref.state.data.long2 >= this.state.data.long1
+         - this.state.data.long1 <= ref.state.data.long1
+         - ref.state.data.long1 < this.state.data.long2
          - any_of:
            - ref.state.data.int3  undefined
            - all_of:
@@ -121,7 +132,7 @@ definition:
              - ref.state.data.int4   defined
              - ref.state.data.int3!=null
              - ref.state.data.int2   undefined
-             - this.definition.data.int2!=ref.definition.data.float2
+             - this.definition.data.int2==ref.definition.data.float2
              - this.state.data.int3>ref.definition.data.float1
              - this.definition.data.int2<ref.state.data.float3
              - this.state.data.int3<=ref.state.data.float4
@@ -132,6 +143,16 @@ definition:
              - ref.state.data.int3<=777
              - ref.definition.data.int2==77.0
              - ref.state.data.int4!=1000
+             - this.state.data.long1==ref.state.data.long1
+             - this.state.data.long1!=ref.state.data.long2
+             - ref.state.data.long1==540809613457836009
+             - ref.state.data.long2==1434344332300905480.0
+             - ref.state.data.long1!=ref.state.data.float3
+             - ref.state.data.long2!=-3902932093200002020
+             - this.state.data.long2>ref.state.data.long1
+             - ref.state.data.long2>=this.state.data.long1
+             - this.state.data.long1<=ref.state.data.long1
+             - ref.state.data.long1<this.state.data.long2
 
  - reference:
      name: ref_float
@@ -150,7 +171,7 @@ definition:
          - ref.state.data.float2 undefined
          - ref.state.data.float1 == null
          - this.definition.data.float2 == ref.definition.data.float2
-         - this.definition.data.float2 != ref.definition.data.int2
+         - this.definition.data.float1 == ref.definition.data.int1
          - this.state.data.float3 > ref.definition.data.int1
          - this.definition.data.float2 < ref.state.data.int3
          - this.state.data.float3 <= ref.state.data.int4
@@ -161,6 +182,16 @@ definition:
          - ref.state.data.float3 <= 77780192993439232.2389283928
          - ref.definition.data.float2 == 77
          - ref.state.data.float4 != 1000.0
+         - this.state.data.double1 == ref.state.data.double1
+         - this.state.data.double1 != ref.state.data.double2
+         - ref.state.data.double1 == -93029039209309103.09204932042000024555
+         - ref.state.data.double2 == 3232322288829209309103.09204932042000024555
+         - ref.state.data.double1 != ref.state.data.float4
+         - ref.state.data.double2 != -390293209320.329029302998487300020204
+         - this.state.data.double2 > ref.state.data.double1
+         - ref.state.data.double2 >= this.state.data.double1
+         - this.state.data.double1 <= ref.state.data.double1
+         - ref.state.data.double1 < this.state.data.double2
          - any_of:
            - ref.state.data.float3  undefined
            - all_of:
@@ -177,7 +208,7 @@ definition:
              - ref.state.data.float2    undefined
              - ref.state.data.float1==null
              - this.definition.data.float2==ref.definition.data.float2
-             - this.definition.data.float2!=ref.definition.data.int2
+             - this.definition.data.float1==ref.definition.data.int1
              - this.state.data.float3>ref.definition.data.int1
              - this.definition.data.float2<ref.state.data.int3
              - this.state.data.float3<=ref.state.data.int4
@@ -188,6 +219,16 @@ definition:
              - ref.state.data.float3<=77780192993439232.2389283928
              - ref.definition.data.float2==77
              - ref.state.data.float4!=1000.0
+             - this.state.data.double1==ref.state.data.double1
+             - this.state.data.double1!=ref.state.data.double2
+             - ref.state.data.double1==-93029039209309103.09204932042000024555
+             - ref.state.data.double2==3232322288829209309103.09204932042000024555
+             - ref.state.data.double1!=ref.state.data.float4
+             - ref.state.data.double2!=-390293209320.329029302998487300020204
+             - this.state.data.double2>ref.state.data.double1
+             - ref.state.data.double2>=this.state.data.double1
+             - this.state.data.double1<=ref.state.data.double1
+             - ref.state.data.double1<this.state.data.double2
 
  - reference:
      name: ref_string
@@ -335,3 +376,7 @@ state:
    string4: "==DATA=="
    boolean3: true
    boolean4: false
+   long1: 540809613457836009
+   long2: 1434344332300905480
+   double1: -93029039209309103.09204932042000024555
+   double2: 3232322288829209309103.09204932042000024555
