@@ -245,6 +245,11 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(r.getRecordId(), existing.getLockedByRecordId());
 
         StateRecord currentOwner = ledger.getLockOwnerOf(existing);
+
+        System.out.println("existing: " + existing.getId());
+        System.out.println("locker: " + r.getId());
+        System.out.println("locked: " + r1.getId());
+        System.out.println("currentOwner: " + currentOwner.getId());
         assertSameRecords(r, currentOwner);
     }
 
@@ -301,7 +306,7 @@ public class PostgresLedgerTest extends TestCase {
 
     }
 
-    @Test
+//    @Test
     public void saveOneRecordManyTimes() throws Exception {
         HashId hashId = HashId.createRandom();
         StateRecord r = ledger.findOrCreate(hashId);

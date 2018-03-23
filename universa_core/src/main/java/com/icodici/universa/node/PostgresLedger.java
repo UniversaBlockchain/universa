@@ -44,6 +44,7 @@ public class PostgresLedger implements Ledger {
     private boolean sqlite = false;
 
     private Map<HashId, WeakReference<StateRecord>> cachedRecords = new WeakHashMap<>();
+    private Map<Long, WeakReference<StateRecord>> cachedRecordsById = new WeakHashMap<>();
     private boolean useCache = true;
 
     public PostgresLedger(String connectionString, Properties properties) throws SQLException {
@@ -122,10 +123,30 @@ public class PostgresLedger implements Ledger {
             return null;
     }
 
+    private StateRecord getFromCacheById(long recordId) {
+        if (useCache) {
+            synchronized (cachedRecordsById) {
+                WeakReference<StateRecord> ref = cachedRecordsById.get(recordId);
+                if (ref == null)
+                    return null;
+                StateRecord r = ref.get();
+                if (r == null) {
+                    cachedRecordsById.remove(recordId);
+                    return null;
+                }
+                return r;
+            }
+        } else
+            return null;
+    }
+
     private void putToCache(StateRecord r) {
         if (useCache) {
             synchronized (cachedRecords) {
                 cachedRecords.put(r.getId(), new WeakReference<StateRecord>(r));
+            }
+            synchronized (cachedRecordsById) {
+                cachedRecordsById.put(r.getRecordId(), new WeakReference<StateRecord>(r));
             }
         }
     }
@@ -151,7 +172,7 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public StateRecord getLockOwnerOf(StateRecord rc) {
-        StateRecord cached = getFromCache(rc.getId());
+        StateRecord cached = getFromCacheById(rc.getLockedByRecordId());
         if (cached != null) {
             return cached;
         }
@@ -248,6 +269,7 @@ public class PostgresLedger implements Ledger {
                     db.updateWithStatement(statement);
                 } catch (Exception e) {
                     e.printStackTrace();
+                    throw e;
                 }
             } catch (SQLException se) {
                 se.printStackTrace();
@@ -332,7 +354,7 @@ public class PostgresLedger implements Ledger {
                 return db.transaction(() -> callable.call());
             } catch (Exception e) {
                 e.printStackTrace();
-                return null;
+                throw e;
             }
         });
     }
@@ -362,6 +384,9 @@ public class PostgresLedger implements Ledger {
             });
             synchronized (cachedRecords) {
                 cachedRecords.remove(record.getId());
+            }
+            synchronized (cachedRecordsById) {
+                cachedRecordsById.remove(record.getRecordId());
             }
             return null;
         });
@@ -397,6 +422,7 @@ public class PostgresLedger implements Ledger {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
+                    throw e;
                 }
                 putToCache(stateRecord);
             } else {
@@ -448,6 +474,7 @@ public class PostgresLedger implements Ledger {
         } else {
             this.useCache = false;
             cachedRecords.clear();
+            cachedRecordsById.clear();
         }
     }
 
