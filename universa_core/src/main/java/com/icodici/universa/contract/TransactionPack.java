@@ -124,7 +124,7 @@ public class TransactionPack implements BiSerializable {
     protected synchronized void putAllSubitemsToReferencesRecursively(Contract c) {
         for (Contract r : c.getRevoking()) {
             putReference(r);
-            putAllSubitemsToReferencesRecursively(r);
+//            putAllSubitemsToReferencesRecursively(r);
         }
         for (Contract n : c.getNew()) {
             putReference(n);
