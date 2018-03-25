@@ -11,14 +11,17 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
-import com.icodici.universa.contract.permissions.Permission;
-import com.icodici.universa.contract.permissions.RevokePermission;
+import com.icodici.universa.contract.permissions.*;
+import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.boss.Boss;
+import net.sergeych.collections.Multimap;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -5402,5 +5405,320 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract1));
         assertFalse(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract2));
         assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract3));
+    }
+
+    @Test
+    public void referenceForChangeOwnerWithCreateContract() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();//manager -
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>(); //issuer
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+        registerAndCheckApproved(jobCertificate);
+
+        Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
+
+        List <String> listConditions = new ArrayList<>();
+        listConditions.add("ref.definition.issuer == \"26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R\"");
+        listConditions.add("ref.definition.data.issuer == \"Roga & Kopita\"");
+        listConditions.add("ref.definition.data.type == \"chief accountant assignment\"");
+
+        Reference reference = new Reference(llcProperty);
+        reference.name="certification_contract";
+
+        Binder conditions = new Binder();
+        conditions.set("all_of", listConditions);
+        reference.setConditions(conditions);
+
+        llcProperty.getDefinition().getReferences().add(reference);
+
+        ListRole listRole = new ListRole("list_role");
+        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        listRole.addRole(ownerRole);
+        listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
+
+        llcProperty.getPermissions().remove("change_owner");
+        llcProperty.getPermissions().remove("revoke");
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(listRole);
+        llcProperty.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm = new RevokePermission(listRole);
+        llcProperty.addPermission(revokePerm);
+
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
+        llcProperty2.setOwnerKeys(thirdPartyPublicKeys);
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addForeignReference(jobCertificate);
+        byte[] data = tp_before.pack();
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+    }
+
+    @Test
+    public void referenceForRevokeWithCreateContract() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
+
+        List <String> listConditions = new ArrayList<>();
+        listConditions.add("ref.definition.issuer == \"26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R\"");
+        listConditions.add("ref.definition.data.issuer == \"Roga & Kopita\"");
+        listConditions.add("ref.definition.data.type == \"chief accountant assignment\"");
+
+        Reference reference = new Reference(llcProperty);
+        reference.name="certification_contract";
+
+        Binder conditions = new Binder();
+        conditions.set("all_of", listConditions);
+        reference.setConditions(conditions);
+
+        llcProperty.getDefinition().getReferences().add(reference);
+
+        ListRole listRole = new ListRole("list_role");
+        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        listRole.addRole(ownerRole);
+        listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
+
+        llcProperty.getPermissions().remove("change_owner");
+        llcProperty.getPermissions().remove("revoke");
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(listRole);
+        llcProperty.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm = new RevokePermission(listRole);
+        llcProperty.addPermission(revokePerm);
+
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = ContractsService.createRevocation(llcProperty, stepaPrivateKeys.iterator().next());
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addForeignReference(jobCertificate);
+        byte[] data = tp_before.pack();
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+    }
+
+    @Test
+    public void referenceForChangeNumberWithCreateContract() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
+
+        llcProperty.getDefinition().getData().remove("name");
+        llcProperty.getDefinition().getData().remove("description");
+
+        Binder binderdata = new Binder();
+        binderdata.set("name", "Abonement");
+        binderdata.set("description", "Abonement.");
+        llcProperty.getDefinition().setData(binderdata);
+
+        List <String> listConditions = new ArrayList<>();
+        listConditions.add("ref.definition.issuer == \"26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R\"");
+        listConditions.add("ref.definition.data.issuer == \"Roga & Kopita\"");
+        listConditions.add("ref.definition.data.type == \"chief accountant assignment\"");
+
+        Reference reference = new Reference(llcProperty);
+        reference.name="certification_contract";
+
+        Binder conditions = new Binder();
+        conditions.set("all_of", listConditions);
+        reference.setConditions(conditions);
+
+        llcProperty.getDefinition().getReferences().add(reference);
+
+        ListRole listRole = new ListRole("list_role");
+        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        listRole.addRole(ownerRole);
+        listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
+
+        Binder params = new Binder();
+        params.set("min_value", 1);
+        params.set("max_step", -1);
+        params.set("field_name", "units");
+
+        ChangeNumberPermission ChangeNumberPerm = new ChangeNumberPermission(listRole, params);
+        llcProperty.addPermission(ChangeNumberPerm);
+        llcProperty.getStateData().set("units", 1000000);
+
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
+        llcProperty2.getStateData().set("units",
+                llcProperty.getStateData().getIntOrThrow("units") - 1);
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addForeignReference(jobCertificate);
+        byte[] data = tp_before.pack();
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+    }
+
+    @Test
+    public void referenceForSplitJoinWithCreateContract() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, "100000000000");
+
+        List <String> listConditions = new ArrayList<>();
+        listConditions.add("ref.definition.issuer == \"26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R\"");
+        listConditions.add("ref.definition.data.issuer == \"Roga & Kopita\"");
+        listConditions.add("ref.definition.data.type == \"chief accountant assignment\"");
+
+        Reference reference = new Reference(llcProperty);
+        reference.name="certification_contract";
+
+        Binder conditions = new Binder();
+        conditions.set("all_of", listConditions);
+        reference.setConditions(conditions);
+
+        llcProperty.getDefinition().getReferences().add(reference);
+
+        ListRole listRole = new ListRole("list_role");
+        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        listRole.setMode(ListRole.Mode.ALL);
+        listRole.addRole(ownerRole);
+        listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
+
+        llcProperty.getPermissions().remove("split_join");
+        llcProperty.getPermissions().remove("change_owner");
+        llcProperty.getPermissions().remove("revoke");
+
+        Binder params = new Binder();
+        params.set("min_value", 0.01);
+        params.set("min_unit", 0.001);
+        params.set("field_name", "amount");
+        List <String> listFields = new ArrayList<>();
+        listFields.add("state.origin");
+        params.set("join_match_fields", listFields);
+
+        SplitJoinPermission splitJoinPerm = new SplitJoinPermission(listRole, params);
+        llcProperty.addPermission(splitJoinPerm);
+
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100, "amount", stepaPrivateKeys, true);
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before.addForeignReference(jobCertificate);
+        byte[] data = tp_before.pack();
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
     }
 }

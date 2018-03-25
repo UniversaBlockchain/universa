@@ -203,7 +203,7 @@ public class ListRole extends Role {
     /**
      * Mode of combining roles
      */
-    enum Mode {
+    public enum Mode {
         /**
          * Role could be performed only if set of keys could play all sub-roles
          */

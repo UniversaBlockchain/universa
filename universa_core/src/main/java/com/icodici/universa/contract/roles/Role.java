@@ -36,7 +36,7 @@ import static com.icodici.universa.contract.roles.Role.RequiredMode.ANY_OF;
 @BiType(name = "Role")
 public abstract class Role implements BiSerializable {
 
-    enum RequiredMode {
+    public enum RequiredMode {
         ALL_OF,
         ANY_OF
     }
