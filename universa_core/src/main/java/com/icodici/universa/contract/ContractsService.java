@@ -596,7 +596,9 @@ public class ContractsService {
         params.set("min_value", 0.01);
         params.set("min_unit", 0.001);
         params.set("field_name", "amount");
-        params.set("join_match_fields", "state.origin");
+        List <String> listFields = new ArrayList<>();
+        listFields.add("state.origin");
+        params.set("join_match_fields", listFields);
 
         SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerRole, params);
         tokenContract.addPermission(splitJoinPerm);
@@ -665,7 +667,9 @@ public class ContractsService {
         params.set("min_value", 1);
         params.set("min_unit", 1);
         params.set("field_name", "amount");
-        params.set("join_match_fields", "state.origin");
+        List <String> listFields = new ArrayList<>();
+        listFields.add("state.origin");
+        params.set("join_match_fields", listFields);
 
         SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerRole, params);
         shareContract.addPermission(splitJoinPerm);
