@@ -130,6 +130,8 @@ public class Node {
 
         recordsToSanitate = ledger.findUnfinished();
 
+        System.out.println(label + " " + recordsToSanitate.size());
+
         if(!recordsToSanitate.isEmpty()) {
             pulseStartSanitation();
 //            try {

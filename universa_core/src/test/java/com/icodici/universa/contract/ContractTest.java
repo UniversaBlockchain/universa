@@ -631,13 +631,10 @@ public class ContractTest extends ContractTestBase {
         // Register splittedChanges (20) +
         // x6 Register revoking item a version (20*6=120) +
         // Register revoking from forJoin (20) +
-        // Check forJoin change owner permission (1) +
-        // Check forJoin change split join permission (1+2) +
-        // Check forJoin change revoke permission (1) +
         // Check splittedChanges change owner permission (1) +
         // Check splittedChanges change split join permission (1+2) +
         // Check splittedChanges change revoke permission (1) +
-        int costShouldBeForSplit = 199;
+        int costShouldBeForSplit = 194;
         assertEquals(costShouldBeForSplit, processingContract.getProcessedCost());
     }
 
@@ -652,13 +649,10 @@ public class ContractTest extends ContractTestBase {
         // Register splittedChanges (20) +
         // x6 Register revoking item a version (20*6=120) +
         // Register revoking from forJoin (20) +
-        // Check forJoin change owner permission (1) +
-        // Check forJoin change split join permission (1+2) +
-        // Check forJoin change revoke permission (1) +
         // Check splittedChanges change owner permission (1) +
         // Check splittedChanges change split join permission (1+2) +
         // Check splittedChanges change revoke permission (1) +
-        int costShouldBeForSplit = 262;
+        int costShouldBeForSplit = 257;
         assertEquals(costShouldBeForSplit, processingContract.getProcessedCost());
     }
 

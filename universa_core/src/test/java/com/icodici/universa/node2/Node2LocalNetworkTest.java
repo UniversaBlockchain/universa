@@ -352,22 +352,22 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         }
     }
 
-    @Test
+    @Test(timeout = 90000)
     public void shouldNotResyncWithLessKnownContracts_APPROVED() throws Exception {
         shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.APPROVED);
     }
 
-    @Test
+    @Test(timeout = 90000)
     public void shouldNotResyncWithLessKnownContracts_LOCKED() throws Exception {
         shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.LOCKED);
     }
 
-    @Test
+    @Test(timeout = 90000)
     public void shouldNotResyncWithLessKnownContracts_DECLINED() throws Exception {
         shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.DECLINED);
     }
 
-    @Test
+    @Test(timeout = 90000)
     public void shouldNotResyncWithLessKnownContracts_REVOKED() throws Exception {
         shouldNotResyncWithLessKnownContractsEx(ItemState.UNDEFINED, ItemState.REVOKED);
     }
@@ -434,22 +434,22 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         assertEquals(expectedState, r.state);
     }
 
-    @Test
+    @Test(timeout = 90000)
     public void shouldNotResyncWithLessUnknownContracts_APPROVED() throws Exception {
         shouldNotResyncWithLessUnknownContractsEx(ItemState.APPROVED, ItemState.UNDEFINED);
     }
 
-    @Test
+    @Test(timeout = 90000)
     public void shouldNotResyncWithLessUnknownContracts_LOCKED() throws Exception {
         shouldNotResyncWithLessUnknownContractsEx(ItemState.LOCKED, ItemState.UNDEFINED);
     }
 
-    @Test
+    @Test(timeout = 90000)
     public void shouldNotResyncWithLessUnknownContracts_DECLINED() throws Exception {
         shouldNotResyncWithLessUnknownContractsEx(ItemState.DECLINED, ItemState.UNDEFINED);
     }
 
-    @Test
+    @Test(timeout = 90000)
     public void shouldNotResyncWithLessUnknownContracts_REVOKED() throws Exception {
         shouldNotResyncWithLessUnknownContractsEx(ItemState.REVOKED, ItemState.UNDEFINED);
     }
