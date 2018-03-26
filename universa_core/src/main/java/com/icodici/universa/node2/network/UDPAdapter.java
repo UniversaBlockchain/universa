@@ -22,11 +22,10 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 import static java.util.Arrays.asList;
@@ -45,12 +44,18 @@ public class UDPAdapter extends DatagramAdapter {
     private ConcurrentHashMap<Integer, Session> sessionsById = new ConcurrentHashMap<>();
 
     private Timer timer = new Timer();
+    private Timer timerCleanup = new Timer();
+    private Timer heartBeatTimer = new Timer();
 
     /**
      * Time between beats showed adapter health, in milliseconds
      */
     static public final int HEART_BEAT_TIME = 20000;
-    private Timer heartBeatTimer = new Timer();
+
+    /**
+     * Time between internal calls of cleanup function.
+     */
+    static public final int CLEANUP_TIME = 15000;
 
     private boolean isShuttingDown = false;
 
@@ -83,6 +88,12 @@ public class UDPAdapter extends DatagramAdapter {
                 checkUnsent();
             }
         }, RETRANSMIT_TIME, RETRANSMIT_TIME);
+        timerCleanup.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                socketListenThread.cleanObtainedBlocks();
+            }
+        }, CLEANUP_TIME, CLEANUP_TIME);
 
         heartBeatTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -162,6 +173,8 @@ public class UDPAdapter extends DatagramAdapter {
         timer.purge();
         heartBeatTimer.cancel();
         heartBeatTimer.purge();
+        timerCleanup.cancel();
+        timerCleanup.purge();
 
         try {
             while (socket.isConnected()) {
@@ -662,15 +675,38 @@ public class UDPAdapter extends DatagramAdapter {
 
         private ConcurrentHashMap<Integer, Block> waitingBlocks = new ConcurrentHashMap<>();
 
-        private ConcurrentHashMap<Integer, Block> obtainedBlocks = new ConcurrentHashMap<>();
+        private ConcurrentHashMap<Integer, Instant> obtainedBlocks = new ConcurrentHashMap<>();
+        private ConcurrentLinkedQueue<BlockTime> obtainedBlocksQueue = new ConcurrentLinkedQueue<>();
+        private Duration maxObtainedBlockAge = Duration.ofMinutes(5);
 
         protected String label = null;
+
+        private class BlockTime {
+            Integer blockId;
+            Instant expiresAt;
+            public BlockTime(Integer blockId, Instant expiresAt) {this.blockId=blockId; this.expiresAt=expiresAt;}
+        };
 
         public SocketListenThread(DatagramSocket socket){
 
             byte[] buf = new byte[DatagramAdapter.MAX_PACKET_SIZE];
             receivedDatagram = new DatagramPacket(buf, buf.length);
             this.threadSocket = socket;
+        }
+
+        public void cleanObtainedBlocks() {
+            // important: makes poll from obtainedBlocksQueue only here
+            final Instant now = Instant.now();
+            BlockTime blockTime = obtainedBlocksQueue.peek();
+            while(blockTime != null) {
+                if (blockTime.expiresAt.isBefore(now)) {
+                    obtainedBlocks.remove(blockTime.blockId);
+                    obtainedBlocksQueue.poll();
+                    blockTime = obtainedBlocksQueue.peek();
+                } else {
+                    break;
+                }
+            }
         }
 
         @Override
@@ -1160,7 +1196,9 @@ public class UDPAdapter extends DatagramAdapter {
 
         public void moveWaitingBlockToObtained(Block block) {
             waitingBlocks.remove(block.blockId);
-            obtainedBlocks.put(block.blockId, block);
+            Instant blockExpiresAt = Instant.now().plus(maxObtainedBlockAge);
+            obtainedBlocks.put(block.blockId, blockExpiresAt);
+            obtainedBlocksQueue.add(new BlockTime(block.blockId, blockExpiresAt));
         }
 
 
