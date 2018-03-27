@@ -124,6 +124,10 @@ public class Client {
         httpClient.start(clientPrivateKey, nodePublicKey, session);
     }
 
+    public void restart() throws IOException {
+        httpClient.restart();
+    }
+
     public String getUrl() {
         return httpClient.getUrl();
     }
