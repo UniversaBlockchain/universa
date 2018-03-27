@@ -639,4 +639,24 @@ public class PostgresLedger implements Ledger {
             e.printStackTrace();
         }
     }
+
+    public void cleanup() {
+        try (PooledDb db = dbPool.db()) {
+
+            long now = Instant.now().getEpochSecond();
+            String sqlText = "delete from items where id in (select id from ledger where expires_at < ?);";
+            db.update(sqlText, now);
+
+            sqlText = "delete from ledger where expires_at < ?;";
+            db.update(sqlText, now);
+
+            sqlText = "delete from items where keepTill < ?;";
+            db.update(sqlText, now);
+
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("cleanup failed:" + se);
+        }
+    }
 }

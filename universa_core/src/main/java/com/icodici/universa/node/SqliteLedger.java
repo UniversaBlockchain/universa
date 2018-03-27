@@ -304,4 +304,9 @@ public class SqliteLedger implements Ledger {
     public Db getDb() {
         return db;
     }
+
+    public void cleanup() {
+
+    }
+
 }

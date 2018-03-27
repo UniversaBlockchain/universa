@@ -173,4 +173,7 @@ public interface Ledger {
 
     Approvable getItem(StateRecord record);
     void putItem(StateRecord record, Approvable item, Instant keepTill);
+
+
+    void cleanup();
 }

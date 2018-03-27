@@ -142,6 +142,13 @@ public class Node {
         } else {
             dbSanitationFinished();
         }
+
+        pulseStartCleanup();
+
+    }
+
+    private void pulseStartCleanup() {
+        lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.cleanup(),1,config.getMaxDiskCacheAge().getSeconds(),TimeUnit.SECONDS);
     }
 
     private void dbSanitationFinished() {

@@ -1,6 +1,8 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.Contract;
+import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
@@ -8,6 +10,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.net.DatagramSocket;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -335,6 +340,53 @@ public class PostgresLedgerTest extends TestCase {
 
         for (Thread th : threadsList) {
             th.start();
+        }
+    }
+
+
+    @Test
+    public void ledgerCleanupTest() throws Exception{
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        StateRecord r = ledger.findOrCreate(contract.getId());
+        r.setExpiresAt(ZonedDateTime.now().minusSeconds(1));
+        r.save();
+        ledger.putItem(r,contract,Instant.now().plusSeconds(300));
+
+        HashId hash1 = contract.getId();
+
+        contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        r = ledger.findOrCreate(contract.getId());
+        r.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+        r.save();
+        ledger.putItem(r,contract,Instant.now().minusSeconds(1));
+
+        HashId hash2 = contract.getId();
+
+        ledger.cleanup();
+
+
+        PreparedStatement st = ledger.getDb().statement("select count(*) from ledger where hash = ?", hash1.getDigest());
+
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(rs.getInt(1),0);
+        }
+
+
+        st = ledger.getDb().statement("select count(*) from ledger where hash = ?", hash2.getDigest());
+
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(rs.getInt(1),1);
+        }
+
+        st = ledger.getDb().statement("select count(*) from items where id in (select id from ledger where hash = ?)", hash2.getDigest());
+
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(rs.getInt(1),0);
         }
     }
 
