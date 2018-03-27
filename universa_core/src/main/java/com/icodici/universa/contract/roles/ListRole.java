@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @BiType(name = "ListRole")
 public class ListRole extends Role {
 
-    private Mode mode;
+    private Mode mode = Mode.ALL;
 
     private Set<Role> roles = new HashSet<>();
 
