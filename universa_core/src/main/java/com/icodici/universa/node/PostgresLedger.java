@@ -333,6 +333,7 @@ public class PostgresLedger implements Ledger {
             });
     }
 
+
 //    @Override
 //    public List<StateRecord> getAllByState(ItemState is) {
 //        try {
@@ -394,6 +395,22 @@ public class PostgresLedger implements Ledger {
             return null;
         });
     }
+
+    @Override
+    public void moveToTestLedger(StateRecord stateRecord) {
+        protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("select * from sr_move_to_testnet(?)", stateRecord.getId().getDigest()))) {
+                    stateRecord.initFrom(rs);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+
+            return stateRecord;
+        });
+
+    }
+
 
     @Override
     public void save(StateRecord stateRecord) {

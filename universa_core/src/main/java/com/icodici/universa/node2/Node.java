@@ -1520,9 +1520,13 @@ public class Node {
                     " :: created, state ", processingState),
                     DatagramAdapter.VerboseLevel.BASE);
 
-            if (this.item != null)
+            if (this.item != null) {
                 executorService.submit(() -> itemDownloaded(),
                         Node.this.toString() + toString() + " :: ItemProcessor -> itemDownloaded");
+            } else {
+                int a = 0;
+                a++;
+            }
         }
 
         //////////// download section /////////////
@@ -1585,11 +1589,17 @@ public class Node {
                     cache.put(item);
                 }
 
-                synchronized (mutex) {
-                    //save item in disk cache
-                    ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
-                }
 
+                if(item instanceof Contract) {
+                    if(((Contract)item).isLimitedForTestnet()) {
+                        record.moveToTestLedger();
+                    } else {
+                        synchronized (mutex) {
+                            //save item in disk cache
+                            ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
+                        }
+                    }
+                }
 
                 if(!processingState.isProcessedToConsensus()) {
                     processingState = ItemProcessingState.DOWNLOADED;

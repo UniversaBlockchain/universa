@@ -107,7 +107,7 @@ public class Config {
 
     private Duration declinedItemExpiration = Duration.ofDays(10);
     private Duration maxCacheAge = Duration.ofMinutes(20);
-    private Duration maxDiskCacheAge = Duration.ofDays(2);
+    private Duration maxDiskCacheAge = Duration.ofMinutes(40);
     private Duration statsIntervalSmall = Duration.ofSeconds(30);
     private Duration statsIntervalBig = Duration.ofSeconds(3600);
     private Duration maxGetItemTime = Duration.ofSeconds(30);

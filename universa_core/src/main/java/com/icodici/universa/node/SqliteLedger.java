@@ -164,6 +164,11 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public void moveToTestLedger(StateRecord record) {
+
+    }
+
+    @Override
     public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
 
     }
