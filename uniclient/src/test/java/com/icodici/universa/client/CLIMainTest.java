@@ -1401,7 +1401,7 @@ public class CLIMainTest {
 
         CLIMain.registerContract(tc);
 
-        Thread.sleep(1500);
+        Thread.sleep(2500);
         System.out.println("---");
         System.out.println("check revoking contract");
         System.out.println("---");
