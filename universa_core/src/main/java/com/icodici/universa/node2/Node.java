@@ -1032,6 +1032,23 @@ public class Node {
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
 
 
+        /**
+         * Processor for parcel that should be processed.
+         *
+         * Parcel's processor download parcel or get it from constructor params;
+         * then run {@link Node#checkItemInternal(HashId, HashId, Approvable, boolean, boolean, boolean)} for both
+         * payment and payload items, but with isCheckingForce param set to false for payload: payload checking wait
+         * for payment item will be processed (goes through {@link ParcelProcessingState#PREPARING},
+         * {@link ParcelProcessingState#PAYMENT_CHECKING}, {@link ParcelProcessingState#PAYMENT_POLLING} processing states);
+         * after payment have been processed payload is start checking (goes through
+         * {@link ParcelProcessingState#PAYLOAD_CHECKING}, {@link ParcelProcessingState#PAYLOAD_POLLING}); finally
+         * parcel's processor removing (goes through  {@link ParcelProcessingState#FINISHED},
+         * {@link ParcelProcessingState#NOT_EXIST} processing states).
+         *
+         * @param parcelId is parcel's id to processing
+         * @param parcel is {@link Parcel} if exists. Will download if not exists.
+         * @param lock is lock object for parcel.
+         */
         public ParcelProcessor(HashId parcelId, Parcel parcel, Object lock) {
             mutex = lock;
 
@@ -1480,13 +1497,51 @@ public class Node {
         private RunnableWithDynamicPeriod resyncer;
 
         /**
+         * Processor for item that will be processed from check to poll and other processes.
+         *
+         * Lifecycle of the item processor is:
+         * - download
+         * - check
+         * - resync subitems (optinal)
+         * - polling
+         * - send consensus
+         * - remove
+         *
+         * First of all item should be downloaded from other node or get from param of a constructor.
+         *
+         * Then item will be checked. Immediately after download if {@link ItemProcessor#isCheckingForce} is true
+         * or after {@link ItemProcessor#forceChecking(boolean)} call. Will call {@link Approvable#check()}
+         * or {@link Approvable#paymentCheck(PublicKey)} if item is payment ({@link Approvable#shouldBeTU()}).
+         * Then subitems will be checked: {@link Approvable#getReferencedItems()} will checked if exists in the ledger;
+         * {@link Approvable#getRevokingItems()} will checked if exists in the ledger and its
+         * own {@link Approvable#getReferencedItems()} will recursively checked and will get {@link ItemState#LOCKED};
+         * {@link Approvable#getNewItems()} will checked if errors exists (after {@link Approvable#check()} -
+         * it recursively call check() for new items) and recursively checked for own references, revokes and new items,
+         * if all is ok - item will get {@link ItemState#LOCKED_FOR_CREATION} state.
+         *
+         * While checking, after item itself checking but before subitems checking {@link ItemProcessor#isNeedToResync(boolean)}
+         * calling. If return value is true item processor will go to resync subitems. Resync calls to nodes
+         * about states of subitems and update consensus states. After resync back to check subitems.
+         *
+         * After checking item processor run polling. It set {@link ItemState#PENDING_POSITIVE} or {@link ItemState#PENDING_NEGATIVE}
+         * state for processing item, send state to the network via {@link ItemProcessor#broadcastMyState()} and run polling.
+         * While polling item processing wait for votes from other nodes and collect it
+         * using {@link ItemProcessor#vote(NodeInfo, ItemState)}. When consensus is got item processor save item
+         * to the ledger with consensus state via {@link ItemProcessor#approveAndCommit()} if consensus is positive or
+         * via {@link ItemProcessor#rollbackChanges(ItemState)} if consensus is negative.
+         *
+         * Then item processor looking for nodes that not answered with for polling and send them new consensus until
+         * they will have answered.
+         *
+         * And finally, if node got answers from all  other nodes - item processor removing via {@link ItemProcessor#removeSelf()}
+         *
+         * Look at {@link ItemProcessor#processingState} to know what happend with processing at calling time.
          *
          *
-         *
-         * @param itemId item id to be process
-         * @param parcelId parcel id that item belongs to.
-         * @param item item object if exist
-         * @param lock lock for synchronization (it is object from {@link ItemLock} that points to item's hashId)
+         * @param itemId is item's id to be process.
+         * @param parcelId is parcel's id that item belongs to.
+         * @param item is item object if exist.
+         * @param lock is object for synchronization (it is object from {@link ItemLock} that points to item's hashId)
          * @param isCheckingForce if true checking item processing without delays.
          *                        If false checking item wait until forceChecking() will be called.
          */
