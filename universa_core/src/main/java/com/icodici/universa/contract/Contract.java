@@ -128,19 +128,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             for (Object packed : payload.getList("revoking", Collections.EMPTY_LIST)) {
                 Contract c = new Contract(((Bytes) packed).toArray(), pack);
                 revokingItems.add(c);
-                pack.addReference(c);
+                pack.addSubItem(c);
             }
 
             for (Object packed : payload.getList("new", Collections.EMPTY_LIST)) {
                 Contract c = new Contract(((Bytes) packed).toArray(), pack);
                 newItems.add(c);
-                pack.addReference(c);
+                pack.addSubItem(c);
             }
         } else {
             // new format: only references are included
             for (Binder b : (List<Binder>) payload.getList("revoking", Collections.EMPTY_LIST)) {
                 HashId hid = HashId.withDigest(b.getBinaryOrThrow("composite3"));
-                Contract r = pack.getReference(hid);
+                Contract r = pack.getSubItem(hid);
                 if (r != null) {
                     revokingItems.add(r);
                 } else {
@@ -150,7 +150,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
             for (Binder b : (List<Binder>) payload.getList("new", Collections.EMPTY_LIST)) {
                 HashId hid = HashId.withDigest(b.getBinaryOrThrow("composite3"));
-                Contract n = pack.getReference(hid);
+                Contract n = pack.getSubItem(hid);
                 if (n != null) {
                     newItems.add(n);
                 }else {
@@ -182,8 +182,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         for(Reference ref : getReferences().values()) {
-            for(Contract c : pack.getForeignReferences().values()) {
-                if(ref.isMatchingWith(c, pack.getForeignReferences().values())) {
+            for(Contract c : pack.getReferencedItems().values()) {
+                if(ref.isMatchingWith(c, pack.getReferencedItems().values())) {
                     ref.addMatchingItem(c);
                 }
             }
@@ -275,13 +275,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         for (Object r : payload.getList("revoking", Collections.EMPTY_LIST)) {
             Contract c = new Contract(((Bytes) r).toArray(), pack);
             revokingItems.add(c);
-            pack.addReference(c);
+            pack.addSubItem(c);
         }
 
         for (Object r : payload.getList("new", Collections.EMPTY_LIST)) {
             Contract c = new Contract(((Bytes) r).toArray(), pack);
             newItems.add(c);
-            pack.addReference(c);
+            pack.addSubItem(c);
         }
 
         // if exist siblings for contract (more then itself)
@@ -306,8 +306,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         for(Reference ref : getReferences().values()) {
-            for(Contract c : pack.getForeignReferences().values()) {
-                if(ref.isMatchingWith(c, pack.getForeignReferences().values())) {
+            for(Contract c : pack.getReferencedItems().values()) {
+                if(ref.isMatchingWith(c, pack.getReferencedItems().values())) {
                     ref.addMatchingItem(c);
                 }
             }
@@ -1227,6 +1227,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         keys.forEach(k -> keysToSignWith.add(k));
     }
 
+    public void addReference(Reference reference) {
+        if(reference.type == Reference.TYPE_TRANSACTIONAL) {
+            transactional.addReference(reference);
+        } else if(reference.type == Reference.TYPE_EXISTING) {
+            definition.addReference(reference);
+        }
+
+        references.put(reference.name, reference);
+    }
+
     /**
      * Important. This method should be invoked after {@link #check()}.
      *
@@ -1805,7 +1815,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 //    private boolean isValidReference(Contract contract) {
 //        boolean resultWrap = true;
 //
-//        List<Reference> referencesList = this.getDefinition().getReferences();
+//        List<Reference> referencesList = this.getDefinition().getSubItems();
 //
 //        for (Reference references: referencesList) {
 //            boolean result = true;
@@ -1937,6 +1947,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public List<? extends Contract> getNew() {
         return new ArrayList<Contract>((Collection) getNewItems());
+    }
+
+    public List<? extends Contract> getReferenced() {
+        return new ArrayList<Contract>((Collection) getReferencedItems());
     }
 
     /**
@@ -2214,6 +2228,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
 
             return this;
+        }
+
+        public void addReference(Reference reference) {
+            if(references == null) {
+                references = new ArrayList<>();
+            }
+
+            references.add(reference);
         }
 
         public List<Reference> getReferences() {

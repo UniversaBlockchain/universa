@@ -17,8 +17,8 @@ public class ReferenceConditionsTest {
 
         TransactionPack tp = new TransactionPack();
         tp.setContract(contract1);
-        tp.addReference(contract2);
-        tp.addForeignReference(contract2);
+        tp.addSubItem(contract2);
+        tp.addReferencedItem(contract2);
 
         Contract refContract = new Contract(contract1.seal(), tp);
 

@@ -97,8 +97,8 @@ public class ParcelTest  {
         assertEquals(equal1.getPayload().getContract().getExpiresAt().getDayOfYear(), equal2.getPayload().getContract().getExpiresAt().getDayOfYear());
         assertEquals(equal1.getPayment().getContract().getExpiresAt().getDayOfYear(), equal2.getPayment().getContract().getExpiresAt().getDayOfYear());
 
-        assertEquals(equal1.getPayload().getReferences(), equal2.getPayload().getReferences());
-        assertEquals(equal1.getPayment().getReferences(), equal2.getPayment().getReferences());
+        assertEquals(equal1.getPayload().getSubItems(), equal2.getPayload().getSubItems());
+        assertEquals(equal1.getPayment().getSubItems(), equal2.getPayment().getSubItems());
     }
 
 

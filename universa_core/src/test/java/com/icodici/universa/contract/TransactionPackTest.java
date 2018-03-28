@@ -12,12 +12,8 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.network.TestKeys;
-import com.icodici.universa.node2.Main;
 import com.icodici.universa.node2.Quantiser;
-import com.icodici.universa.node2.network.Client;
-import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.utils.Base64;
 import org.junit.Before;
 import org.junit.Test;
@@ -115,7 +111,7 @@ public class TransactionPackTest {
     public void packAndUnpackWithKeys() throws Exception {
         TransactionPack tp = new TransactionPack();
         tp.setContract(c);
-        tp.addKeys(publicKey);
+//        tp.addKeys(publicKey);
         checkPackWithKeys(tp);
 
         assertSame(tp,c.getTransactionPack());
@@ -127,7 +123,7 @@ public class TransactionPackTest {
     }
 
     public void checkSimplePack(TransactionPack tp) {
-        assertEquals(3, tp.getReferences().size());
+        assertEquals(3, tp.getSubItems().size());
         assertEquals(c.getId(), tp.getContract().getId());
 
         Set<HashId> rids = c.getRevokingItems().stream().map(x->x.getId()).collect(Collectors.toSet());

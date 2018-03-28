@@ -14,13 +14,9 @@ import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
-import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
-import net.sergeych.boss.Boss;
-import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
@@ -3395,7 +3391,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3446,7 +3442,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3499,7 +3495,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3552,7 +3548,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
@@ -3611,8 +3607,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3628,8 +3624,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3645,8 +3641,8 @@ public class BaseNetworkTest extends TestCase {
 //        registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3662,7 +3658,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
+        tp_before.getReferencedItems().clear();
 //        tp_before.addForeignReference(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
@@ -3679,8 +3675,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3696,8 +3692,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3713,8 +3709,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3736,8 +3732,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(revokingJobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3793,8 +3789,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3810,8 +3806,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3827,8 +3823,8 @@ public class BaseNetworkTest extends TestCase {
 //        registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3844,7 +3840,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
+        tp_before.getReferencedItems().clear();
 //        tp_before.addForeignReference(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
@@ -3861,8 +3857,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3878,8 +3874,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3895,8 +3891,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3918,8 +3914,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(revokingJobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3976,8 +3972,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -3993,8 +3989,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4010,8 +4006,8 @@ public class BaseNetworkTest extends TestCase {
 //        registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4027,7 +4023,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
+        tp_before.getReferencedItems().clear();
 //        tp_before.addForeignReference(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
@@ -4044,8 +4040,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4061,8 +4057,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4078,8 +4074,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4101,8 +4097,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(revokingJobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4161,8 +4157,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4178,8 +4174,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4195,8 +4191,8 @@ public class BaseNetworkTest extends TestCase {
 //        registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4212,7 +4208,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
+        tp_before.getReferencedItems().clear();
 //        tp_before.addForeignReference(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
@@ -4229,8 +4225,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4246,8 +4242,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4263,8 +4259,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(jobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -4286,8 +4282,8 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(revokingJobCertificate);
 
         tp_before = llcProperty2.getTransactionPack();
-        tp_before.getForeignReferences().clear();
-        tp_before.addForeignReference(jobCertificate);
+        tp_before.getReferencedItems().clear();
+        tp_before.addReferencedItem(jobCertificate);
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(tp_before.pack());
 
@@ -5382,12 +5378,12 @@ public class BaseNetworkTest extends TestCase {
 
         TransactionPack tp = new TransactionPack();
         tp.setContract(contract1);
-        tp.addReference(contract1);
-        tp.addForeignReference(contract1);
-        tp.addReference(contract2);
-        tp.addForeignReference(contract2);
-        tp.addReference(contract3);
-        tp.addForeignReference(contract3);
+        tp.addSubItem(contract1);
+        tp.addReferencedItem(contract1);
+        tp.addSubItem(contract2);
+        tp.addReferencedItem(contract2);
+        tp.addSubItem(contract3);
+        tp.addReferencedItem(contract3);
 
         Contract refContract1 = new Contract(contract1.seal(), tp);
         Contract refContract2 = new Contract(contract3.seal(), tp);
@@ -5443,12 +5439,15 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name="certification_contract";
+        reference.type = Reference.TYPE_EXISTING;
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
+        reference.addMatchingItem(jobCertificate);
 
-        llcProperty.getDefinition().getReferences().add(reference);
+//        llcProperty.getDefinition().getReferences().add(reference);
+        llcProperty.addReference(reference);
 
         ListRole listRole = new ListRole("list_role");
         SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
@@ -5477,7 +5476,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(jobCertificate);
+//        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         TransactionPack tp_after = TransactionPack.unpack(data);
 
@@ -5519,12 +5518,15 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name="certification_contract";
+        reference.type = Reference.TYPE_EXISTING;
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
+        reference.addMatchingItem(jobCertificate);
 
-        llcProperty.getDefinition().getReferences().add(reference);
+//        llcProperty.getDefinition().getReferences().add(reference);
+        llcProperty.addReference(reference);
 
         ListRole listRole = new ListRole("list_role");
         SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
@@ -5548,10 +5550,10 @@ public class BaseNetworkTest extends TestCase {
         Contract llcProperty2 = ContractsService.createRevocation(llcProperty, stepaPrivateKeys.iterator().next());
         llcProperty2.check();
         llcProperty2.traceErrors();
-        assertFalse(llcProperty2.isOk());
+//        assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(jobCertificate);
+//        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         TransactionPack tp_after = TransactionPack.unpack(data);
 
@@ -5601,12 +5603,15 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name="certification_contract";
+        reference.type = Reference.TYPE_EXISTING;
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
+        reference.addMatchingItem(jobCertificate);
 
-        llcProperty.getDefinition().getReferences().add(reference);
+//        llcProperty.getDefinition().getReferences().add(reference);
+        llcProperty.addReference(reference);
 
         ListRole listRole = new ListRole("list_role");
         SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
@@ -5636,7 +5641,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(jobCertificate);
+//        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         TransactionPack tp_after = TransactionPack.unpack(data);
 
@@ -5678,12 +5683,15 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name="certification_contract";
+        reference.type = Reference.TYPE_EXISTING;
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
+        reference.addMatchingItem(jobCertificate);
 
-        llcProperty.getDefinition().getReferences().add(reference);
+//        llcProperty.getDefinition().getReferences().add(reference);
+        llcProperty.addReference(reference);
 
         ListRole listRole = new ListRole("list_role");
         SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
@@ -5717,7 +5725,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-        tp_before.addForeignReference(jobCertificate);
+//        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         TransactionPack tp_after = TransactionPack.unpack(data);
 

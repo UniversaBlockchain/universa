@@ -23,17 +23,19 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * The main contract and its counterparts needed for registration submission bundled together. The main contract is
- * specified in constructor or with {@link #setContract(Contract)}, and obtained by {@link #getContract()}. The
- * counterparts are: possible siblings (for example, of split operation), and revoking contracts (when creating new
- * revision, joining contracts and so on). All of these should be presented the the Network in the form of sealed
- * binaries, that is when {@link TransactionPack} is used.
+ * The main contract and its subItems and referenced contracts needed for registration submission bundled together.
+ * The main contract is specified in constructor or with {@link #setContract(Contract)},
+ * and obtained by {@link #getContract()}. The subItems are: new items (f. e. from split operation),
+ * revoking contracts (f. e. from creating new revision, joining contracts and so on), all of them stores
+ * in the {@link TransactionPack#subItems}. Referenced contracts needed for main contract stores
+ * in the {@link TransactionPack#referencedItems}. Also you may need to store keys in the transaction pack
+ * (f. e. when using addresses or anonymous ids), use {@link TransactionPack#keysForPack} for it.
  * <p>
  * Packed format of transaction pack could be very well used instead of {@link Contract#seal()} binaries as it holds
  * together the window around the contract graph (parent and siblings) needed to approve its state. It is advised to use
  * {@link Contract#getPackedTransaction()} to save the Contract and {@link Contract#fromPackedTransaction(byte[])} to
  * restore, respectively, as it holds together all relevant data. The file extension for it should be .unicon, as the
- * latter function is able to read and reconstruct lefacy v2 sealed contracts, current v3 seald contracts and packed
+ * latter function is able to read and reconstruct legacy v2 sealed contracts, current v3 sealed contracts and packed
  * TransactionPack instances, it is a universal format and a universal routine to load it. See {@link
  * Contract#fromPackedTransaction(byte[])} for more.
  * <p>
@@ -42,23 +44,27 @@ import java.util.stream.Collectors;
  * <p>
  * The legacy v2 self-contained format is no more in use as the size of the hashed binary constantly grows.
  * <p>
+ * Using {@link Contract#getTransactionPack()} will create transaction pack with needed subItems, referencedItems and keys.
+ * <br>
+ * But if you need to add some objects manually use {@link TransactionPack#addSubItem(Contract)} to add subItem,
+ * use {@link TransactionPack#addReferencedItem(Contract)} to add referenced contracts
+ * and {@link TransactionPack#addKeys(PublicKey...)} to add needed keys manually.
+ * <p>
  * A word of terminology.
  * <p>
  * We name as the <i>transaction contract</i> any contract that is going to be passed to the network for verification
  * and approval; it could and should contain other contracts as revoking as well as new items (siblings) to create.
- * These <i>referenced</i> contracts do not need to be addded separately.
+ * These <i>subItems</i> do not need to be added separately.
  * <p>
  * Note. To put several operations in an atomic transaction, put iy all into a single top-level contract.
- * <p>
- * This implementation is not thread safe. Synchronize your access if need.
  */
 @BiType(name = "TransactionPack")
 public class TransactionPack implements BiSerializable {
 
     private byte[] packedBinary;
     private boolean reconstructed = false;
-    private Map<HashId, Contract> references = new HashMap<>();
-    private Map<HashId, Contract> foreignReferences = new HashMap<>();
+    private Map<HashId, Contract> subItems = new HashMap<>();
+    private Map<HashId, Contract> referencedItems = new HashMap<>();
     private Set<PublicKey> keysForPack = new HashSet<>();
     private Contract contract;
 
@@ -71,8 +77,6 @@ public class TransactionPack implements BiSerializable {
     public TransactionPack(Contract contract) {
         this();
         setContract(contract);
-        for (PrivateKey key : contract.getKeysToSignWith())
-            addKeys(key.getPublicKey());
     }
 
     /**
@@ -84,12 +88,12 @@ public class TransactionPack implements BiSerializable {
         return contract;
     }
 
-    public Contract getReference(HashId id) {
-        return references.get(id);
+    public Contract getSubItem(HashId id) {
+        return subItems.get(id);
     }
 
-    public Contract getReference(HashIdentifiable hid) {
-        return getReference(hid.getId());
+    public Contract getSubItem(HashIdentifiable hid) {
+        return getSubItem(hid.getId());
     }
 
     public Set<PublicKey> getKeysForPack() {
@@ -100,15 +104,15 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * Add contract that already includes all its references. It will be added as a contract per transactions, while its
-     * references will be added to references if not already included.
+     * Add contract that already includes all its subItems, referenced items and keys. It will be added as a contract
+     * per transaction, while its subItems will be added to subItems if not already included and refrenced items and keys too.
      * <p>
-     * This is extremely important that the contract is properly sealed as well as its possibly new items, and revoking
-     * items have binary image attached. <b>Do not ever seal the approved contract</b>: it will break it's id and cancel
-     * the approval blockchain, so the new state will not be approved. If it was done by mistake, reload the packed
-     * contract to continue.
+     * This is extremely important that the contract is properly sealed as well as its possibly new items, revoking
+     * items and referenced items have binary image attached. <b>Do not ever seal the approved contract</b>:
+     * it will break it's id and cancel the approval blockchain, so the new state will not be approved.
+     * If it was done by mistake, reload the packed contract to continue.
      *
-     * @param c contract to append to the list of transactions.
+     * @param c is a contract to append to the list of transactions.
      */
     public void setContract(Contract c) {
         if (contract != null)
@@ -116,55 +120,65 @@ public class TransactionPack implements BiSerializable {
         contract = c;
         packedBinary = null;
 
-        putAllSubitemsToReferencesRecursively(c);
+        extractAllSubItemsAndReferenced(c);
+
         c.setTransactionPack(this);
+
+        for (PrivateKey key : c.getKeysToSignWith())
+            addKeys(key.getPublicKey());
     }
 
 
-    protected synchronized void putAllSubitemsToReferencesRecursively(Contract c) {
+    protected synchronized void extractAllSubItemsAndReferenced(Contract c) {
         for (Contract r : c.getRevoking()) {
-            putReference(r);
-//            putAllSubitemsToReferencesRecursively(r);
+            putSubItem(r);
+            for (Contract ref : r.getReferenced()) {
+                addReferencedItem(ref);
+            }
         }
         for (Contract n : c.getNew()) {
-            putReference(n);
-            putAllSubitemsToReferencesRecursively(n);
+            putSubItem(n);
+            extractAllSubItemsAndReferenced(n);
         }
 
+        for (Contract ref : c.getReferenced()) {
+            addReferencedItem(ref);
+        }
     }
 
+
     /**
-     * Direct add the reference. Not recommended as {@link #setContract(Contract)} already does it for all referenced
-     * contracts. Use it to add references not mentioned in the added contracts.
+     * Direct add the subItem. Not recommended as {@link #setContract(Contract)} already does it for all subItems.
+     * Use it to add subItems not mentioned in the added contracts.
      *
-     * @param reference is {@link Contract} for adding
+     * @param subItem is {@link Contract} for adding
      */
-    public void addReference(Contract reference) {
-        if (!references.containsKey(reference.getId())) {
+    public void addSubItem(Contract subItem) {
+        if (!subItems.containsKey(subItem.getId())) {
             packedBinary = null;
-            references.put(reference.getId(), reference);
+            subItems.put(subItem.getId(), subItem);
         }
     }
 
     /**
-     * Direct add the reference. Not recommended as {@link #setContract(Contract)} already does it for all referenced
-     * contracts. Use it to add references not mentioned in the added contracts.
+     * Direct add the referenced items. Use it to add references not mentioned in the added contracts.
      *
-     * @param reference is {@link Contract} for adding
+     * @param referencedItem is {@link Contract} for adding
      */
-    public void addForeignReference(Contract reference) {
-        if (!foreignReferences.containsKey(reference.getId())) {
+    public void addReferencedItem(Contract referencedItem) {
+        if (!referencedItems.containsKey(referencedItem.getId())) {
             packedBinary = null;
-            foreignReferences.put(reference.getId(), reference);
+            referencedItems.put(referencedItem.getId(), referencedItem);
         }
     }
 
     /**
-     * Add public key to {@link TransactionPack} that will match with anonimous ids in the {@link Contract} roles.
+     * Add public key to {@link TransactionPack} that will match with anonymous ids or addresses in the {@link Contract} roles.
      *
-     * @param keys is {@link PublicKey} that will be compare with anonimous ids.
+     * @param keys is {@link PublicKey} that will be compare with anonymous ids or addresses.
      */
     public void addKeys(PublicKey... keys) {
+        packedBinary = null;
         for (PublicKey key : keys) {
             if (!keysForPack.contains(key)) {
                 keysForPack.add(key);
@@ -173,16 +187,16 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * store the referenced contract. Called by the {@link #setContract(Contract)} and only useful if the latter is
-     * overriden. Referenced contracts are not processed by themselves but only as parts of the contracts add with
+     * Store the subItem. Called by the {@link #setContract(Contract)} and only useful if the latter is
+     * overriden. SubItems are not processed by themselves but only as parts of the contracts add with
      * {@link #setContract(Contract)}
      *
-     * @param contract is {@link Contract} for putting
+     * @param subItem is {@link Contract} for putting
      */
-    protected synchronized void putReference(Contract contract) {
+    protected synchronized void putSubItem(Contract subItem) {
 //        if (!contract.isOk())
-//            throw new IllegalArgumentException("referenced contract has errors");
-        references.put(contract.getId(), contract);
+//            throw new IllegalArgumentException("subItem has errors");
+        subItems.put(subItem.getId(), subItem);
     }
 
     @Override
@@ -210,42 +224,42 @@ public class TransactionPack implements BiSerializable {
             }
 
             List<Bytes> foreignReferenceBytesList = deserializer.deserializeCollection(
-                    data.getList("foreignReferences", new ArrayList<>())
+                    data.getList("referencedItems", new ArrayList<>())
             );
             if(foreignReferenceBytesList != null) {
                 for (Bytes b : foreignReferenceBytesList) {
                     Contract frc = new Contract(b.toArray(), this);
                     quantiser.addWorkCostFrom(frc.getQuantiser());
-                    foreignReferences.put(frc.getId(), frc);
+                    referencedItems.put(frc.getId(), frc);
                 }
             }
             
 
-            List<Bytes> referenceBytesList = deserializer.deserializeCollection(
-                    data.getListOrThrow("references")
+            List<Bytes> subItemsBytesList = deserializer.deserializeCollection(
+                    data.getListOrThrow("subItems")
             );
 
             HashMap<ContractDependencies, Bytes> allContractsTrees = new HashMap<>();
             List<HashId> allContractsHids = new ArrayList<>();
-            ArrayList<Bytes> sortedReferenceBytesList = new ArrayList<>();
+            ArrayList<Bytes> sortedSubItemsBytesList = new ArrayList<>();
 
-            if (referenceBytesList != null) {
-                // First of all extract contracts dependencies from references
-                for (Bytes b : referenceBytesList) {
+            if (subItemsBytesList != null) {
+                // First of all extract contracts dependencies from subItems
+                for (Bytes b : subItemsBytesList) {
                     ContractDependencies ct = new ContractDependencies(b.toArray());
                     allContractsTrees.put(ct, b);
                     allContractsHids.add(ct.id);
                 }
 
                 // then recursively from ends of dependencies tree to top go throw it level by level
-                // and add items to references on the each level of tree's hierarchy
+                // and add items to subItems on the each level of tree's hierarchy
                 do {
                     // first add contract from ends of trees, means without own subitems
-                    sortedReferenceBytesList = new ArrayList<>();
+                    sortedSubItemsBytesList = new ArrayList<>();
                     List<ContractDependencies> removingContractDependencies = new ArrayList<>();
                     for (ContractDependencies ct : allContractsTrees.keySet()) {
                         if (ct.dependencies.size() == 0) {
-                            sortedReferenceBytesList.add(allContractsTrees.get(ct));
+                            sortedSubItemsBytesList.add(allContractsTrees.get(ct));
                             removingContractDependencies.add(ct);
                         }
                     }
@@ -255,17 +269,17 @@ public class TransactionPack implements BiSerializable {
                         allContractsTrees.remove(ct);
                     }
 
-                    // then add contract with already exist subitems in the references or will never find in the tree
+                    // then add contract with already exist subitems in the subItems or will never find in the tree
                     removingContractDependencies = new ArrayList<>();
                     for (ContractDependencies ct : allContractsTrees.keySet()) {
                         boolean allDependenciesSafe = true;
                         for (HashId hid : ct.dependencies) {
-                            if (!references.containsKey(hid) && allContractsHids.contains(hid)) {
+                            if (!subItems.containsKey(hid) && allContractsHids.contains(hid)) {
                                 allDependenciesSafe = false;
                             }
                         }
                         if (allDependenciesSafe) {
-                            sortedReferenceBytesList.add(allContractsTrees.get(ct));
+                            sortedSubItemsBytesList.add(allContractsTrees.get(ct));
                             removingContractDependencies.add(ct);
                         }
                     }
@@ -275,21 +289,21 @@ public class TransactionPack implements BiSerializable {
                         allContractsTrees.remove(ct);
                     }
 
-                    // add found binaries on the hierarchy level to references
-                    for (int i = 0; i < sortedReferenceBytesList.size(); i++) {
-                        Contract c = new Contract(sortedReferenceBytesList.get(i).toArray(), this);
+                    // add found binaries on the hierarchy level to subItems
+                    for (int i = 0; i < sortedSubItemsBytesList.size(); i++) {
+                        Contract c = new Contract(sortedSubItemsBytesList.get(i).toArray(), this);
                         quantiser.addWorkCostFrom(c.getQuantiser());
-                        references.put(c.getId(), c);
+                        subItems.put(c.getId(), c);
                     }
 
                     // then repeat until we can find hierarchy
-                } while (sortedReferenceBytesList.size() != 0);
+                } while (sortedSubItemsBytesList.size() != 0);
 
-                // finally add not found binaries on the hierarchy levels to references
+                // finally add not found binaries on the hierarchy levels to subItems
                 for (Bytes b : allContractsTrees.values()) {
                     Contract c = new Contract(b.toArray(), this);
                     quantiser.addWorkCostFrom(c.getQuantiser());
-                    references.put(c.getId(), c);
+                    subItems.put(c.getId(), c);
                 }
             }
 
@@ -305,17 +319,17 @@ public class TransactionPack implements BiSerializable {
 
             Binder of = Binder.of(
                     "contract", contract.getLastSealedBinary(),
-                    "references",
+                    "subItems",
                     serializer.serialize(
-                            references.values().stream()
+                            subItems.values().stream()
                                     .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
                     )
 
             );
-            if(foreignReferences.size() > 0) {
-                of.set("foreignReferences",
+            if(referencedItems.size() > 0) {
+                of.set("referencedItems",
                         serializer.serialize(
-                                foreignReferences.values().stream()
+                                referencedItems.values().stream()
                                         .map(x -> x.getLastSealedBinary()).collect(Collectors.toList())
                         ));
             }
@@ -337,8 +351,8 @@ public class TransactionPack implements BiSerializable {
      * Unpack either old contract binary (all included), or newer transaction pack. Could be used to load old contracts
      * to perform a transaction.
      *
-     * @param packOrContractBytes binary that was packed by {@link TransactionPack#pack()}
-     * @param allowNonTransactions if false, non-trasnaction pack data will cause IOException.
+     * @param packOrContractBytes is binary that was packed by {@link TransactionPack#pack()}
+     * @param allowNonTransactions if false, non-transaction pack data will cause IOException.
      *
      * @return transaction, either unpacked or reconstructed from the self-contained v2 contract
      * @throws IOException if something went wrong
@@ -388,17 +402,17 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * @return map of referenced from new and revoke contracts
+     * @return map of subItems from new and revoke contracts
      */
-    public Map<HashId, Contract> getReferences() {
-        return references;
+    public Map<HashId, Contract> getSubItems() {
+        return subItems;
     }
 
     /**
-     * @return map of referenced from definition contracts
+     * @return map of referenced items
      */
-    public Map<HashId, Contract> getForeignReferences() {
-        return foreignReferences;
+    public Map<HashId, Contract> getReferencedItems() {
+        return referencedItems;
     }
 
     static {
@@ -406,7 +420,7 @@ public class TransactionPack implements BiSerializable {
     }
 
     /**
-     * Trace the tree of contracts references on the stdout.
+     * Trace the tree of contracts subItems on the stdout.
      */
     public void trace() {
         System.out.println("Transaction pack");
@@ -414,12 +428,12 @@ public class TransactionPack implements BiSerializable {
         System.out.println("\t\t" + contract.getId());
         contract.getNewItems().forEach(x -> System.out.println("\t\t\tnew: " + x.getId()));
         contract.getRevokingItems().forEach(x -> System.out.println("\t\t\trevoke: " + x.getId()));
-        System.out.println("\tReferences:");
-        references.forEach((hashId, contract) -> System.out.println("\t\t" + hashId + " -> " + contract.getId()));
+        System.out.println("\tSubItems:");
+        subItems.forEach((hashId, contract) -> System.out.println("\t\t" + hashId + " -> " + contract.getId()));
     }
 
     /**
-     * Class that extracts subitems from given contract bytes and build dependencies. But do not do anything more.
+     * Class that extracts subItems from given contract bytes and build dependencies. But do not do anything more.
      */
     public class ContractDependencies {
         private final Set<HashId> dependencies = new HashSet<>();
@@ -438,9 +452,9 @@ public class TransactionPack implements BiSerializable {
             int apiLevel = data.getIntOrThrow("version");
 
             if (apiLevel < 3) {
-                // no need to build tree - subitems will be reconstructed from binary, not from references
+                // no need to build tree - subitems will be reconstructed from binary, not from subItems
             } else {
-                // new format: only references are included
+                // new format: only subItems are included
                 for (Binder b : (List<Binder>) payload.getList("revoking", Collections.EMPTY_LIST)) {
                     HashId hid = HashId.withDigest(b.getBinaryOrThrow("composite3"));
                     dependencies.add(hid);
