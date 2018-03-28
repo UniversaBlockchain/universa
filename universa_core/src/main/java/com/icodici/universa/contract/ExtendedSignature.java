@@ -63,8 +63,9 @@ public class ExtendedSignature {
     /**
      * Sign the data with a given key.
      *
-     * @param key is {@link PrivateKey} to sign with
-     * @param data to be sign with key
+     * @param key is {@link PrivateKey} to sign with.
+     * @param data to be sign with key.
+     * @param savePublicKey if true key will stored in the {@link ExtendedSignature}.
      *
      * @return binary signature
      */

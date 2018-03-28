@@ -215,6 +215,7 @@ public class NetworkV2 extends Network {
 
     /**
      * Restart {@link  UDPAdapter}
+     * @throws IOException if something went wrong
      */
     public void restartUDPAdapter() throws IOException {
         if(adapter != null)

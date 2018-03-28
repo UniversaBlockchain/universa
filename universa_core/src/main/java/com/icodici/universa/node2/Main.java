@@ -257,6 +257,9 @@ public class Main {
 
     /**
      * Set verbose level via {@link  DatagramAdapter.VerboseLevel}
+     *
+     * @param level is {@link DatagramAdapter.VerboseLevel#NOTHING}, {@link DatagramAdapter.VerboseLevel#BASE} or
+     * {@link DatagramAdapter.VerboseLevel#DETAILED}
      */
     public void setVerboseLevel(int level) {
         network.setVerboseLevel(level);
@@ -265,6 +268,9 @@ public class Main {
 
     /**
      * Set UDP verbose level via {@link  DatagramAdapter.VerboseLevel}
+     *
+     * @param level is {@link DatagramAdapter.VerboseLevel#NOTHING}, {@link DatagramAdapter.VerboseLevel#BASE} or
+     * {@link DatagramAdapter.VerboseLevel#DETAILED}
      */
     public void setUDPVerboseLevel(int level) {
         network.setUDPVerboseLevel(level);
