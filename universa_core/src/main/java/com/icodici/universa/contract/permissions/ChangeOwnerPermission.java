@@ -41,7 +41,7 @@ public class ChangeOwnerPermission extends Permission {
             else {
                 ChangedItem<Role, Role> ci = (ChangedItem<Role, Role>) x;
                 if( !(ci.newValue() instanceof Role) )
-                    contract.addError(Errors.BAD_VALUE, "state.owner", "improper change");
+                    contract.addError(Errors.BAD_VALUE, "state.owner", "improper change (new value not a role)");
             }
         }
     }

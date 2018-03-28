@@ -1481,10 +1481,12 @@ public class Node {
 
         /**
          *
+         *
+         *
          * @param itemId item id to be process
          * @param parcelId parcel id that item belongs to.
          * @param item item object if exist
-         * @param lock lock for synchronization
+         * @param lock lock for synchronization (it is object from {@link ItemLock} that points to item's hashId)
          * @param isCheckingForce if true checking item processing without delays.
          *                        If false checking item wait until forceChecking() will be called.
          */
@@ -1683,63 +1685,6 @@ public class Node {
             }
         }
 
-        private final void pulseCheckIfItemsResynced() {
-            if(processingState.canContinue()) {
-                synchronized (resyncMutex) {
-                    for (HashId hid : resyncingItems.keySet()) {
-                        resyncingItems.get(hid).finishEvent.addConsumer(i -> onResyncItemFinished(i));
-                    }
-                }
-            }
-        }
-
-        private final void onResyncItemFinished(ResyncingItem ri) {
-            if(processingState.canContinue()) {
-
-                if (!processingState.isProcessedToConsensus()) {
-                    int numFinished = 0;
-                    synchronized (resyncMutex) {
-                        for (ResyncingItem rit : resyncingItems.values()) {
-                            if (rit.isCommitFinished())
-                                numFinished++;
-                        }
-                    }
-                    if (resyncingItems.size() == numFinished && processingState.isGotResyncedState()) {
-
-                        if(!processingState.isProcessedToConsensus()) {
-                            processingState = ItemProcessingState.CHECKING;
-                        }
-
-                        // if we was resyncing itself (not own subitems) and state from network was undefined - rollback state
-                        if (resyncItselfOnly) {
-                            if (itemId.equals(ri.hashId)) {
-                                if (ri.getResyncingState() == ResyncingItemProcessingState.COMMIT_FAILED) {
-                                    rollbackChanges(stateWas);
-
-                                    //resync failed we need to restart sanitated item
-                                    executorService.schedule(() -> itemSanitationFailed(ri.record),0,TimeUnit.SECONDS);
-                                    return;
-                                }
-                            }
-
-                            processingState = ItemProcessingState.FINISHED;
-                            close();
-
-                            //item successfully sanitated
-                            executorService.schedule(() -> itemSanitationDone(ri.record),0,TimeUnit.SECONDS);
-                        } else {
-                            try {
-                                checkSubItems();
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                            commitCheckedAndStartPolling();
-                        }
-                    }
-                }
-            }
-        }
-
         // check subitems of main item and lock subitems in the ledger
         private final void checkSubItems() {
             if(processingState.canContinue()) {
@@ -1796,12 +1741,19 @@ public class Node {
                         }
 
                         synchronized (mutex) {
-                            StateRecord r = record.lockToRevoke(a.getId());
-                            if (r == null) {
-                                checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
-                            } else {
-                                if (!lockedToRevoke.contains(r))
-                                    lockedToRevoke.add(r);
+                            try {
+                                itemLock.synchronize(a.getId(), lock -> {
+                                    StateRecord r = record.lockToRevoke(a.getId());
+                                    if (r == null) {
+                                        checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
+                                    } else {
+                                        if (!lockedToRevoke.contains(r))
+                                            lockedToRevoke.add(r);
+                                    }
+                                    return null;
+                                });
+                            } catch (Exception e) {
+                                e.printStackTrace();
                             }
                         }
                     }
@@ -1822,12 +1774,19 @@ public class Node {
                             checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
                         } else {
                             synchronized (mutex) {
-                                StateRecord r = record.createOutputLockRecord(newItem.getId());
-                                if (r == null) {
-                                    checkingItem.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
-                                } else {
-                                    if (!lockedToCreate.contains(r))
-                                        lockedToCreate.add(r);
+                                try {
+                                    itemLock.synchronize(newItem.getId(), lock -> {
+                                        StateRecord r = record.createOutputLockRecord(newItem.getId());
+                                        if (r == null) {
+                                            checkingItem.addError(Errors.NEW_ITEM_EXISTS, newItem.getId().toString(), "new item exists in ledger");
+                                        } else {
+                                            if (!lockedToCreate.contains(r))
+                                                lockedToCreate.add(r);
+                                        }
+                                        return null;
+                                    });
+                                } catch (Exception e) {
+                                    e.printStackTrace();
                                 }
                             }
                         }
@@ -1925,6 +1884,25 @@ public class Node {
         }
 
         //////////// polling section /////////////
+
+        private final void broadcastMyState() {
+            report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                    itemId, " from parcel: ", parcelId,
+                    " :: broadcastMyState, state ", processingState),
+                    DatagramAdapter.VerboseLevel.BASE);
+            if(processingState.canContinue()) {
+                Notification notification;
+
+                ParcelNotification.ParcelNotificationType notificationType;
+                if(item.shouldBeTU()) {
+                    notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
+                } else {
+                    notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
+                }
+                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
+                network.broadcast(myInfo, notification);
+            }
+        }
 
         private final void pulseStartPolling() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
@@ -2420,6 +2398,64 @@ public class Node {
             }
         }
 
+
+        private final void pulseCheckIfItemsResynced() {
+            if(processingState.canContinue()) {
+                synchronized (resyncMutex) {
+                    for (HashId hid : resyncingItems.keySet()) {
+                        resyncingItems.get(hid).finishEvent.addConsumer(i -> onResyncItemFinished(i));
+                    }
+                }
+            }
+        }
+
+        private final void onResyncItemFinished(ResyncingItem ri) {
+            if(processingState.canContinue()) {
+
+                if (!processingState.isProcessedToConsensus()) {
+                    int numFinished = 0;
+                    synchronized (resyncMutex) {
+                        for (ResyncingItem rit : resyncingItems.values()) {
+                            if (rit.isCommitFinished())
+                                numFinished++;
+                        }
+                    }
+                    if (resyncingItems.size() == numFinished && processingState.isGotResyncedState()) {
+
+                        if(!processingState.isProcessedToConsensus()) {
+                            processingState = ItemProcessingState.CHECKING;
+                        }
+
+                        // if we was resyncing itself (not own subitems) and state from network was undefined - rollback state
+                        if (resyncItselfOnly) {
+                            if (itemId.equals(ri.hashId)) {
+                                if (ri.getResyncingState() == ResyncingItemProcessingState.COMMIT_FAILED) {
+                                    rollbackChanges(stateWas);
+
+                                    //resync failed we need to restart sanitated item
+                                    executorService.schedule(() -> itemSanitationFailed(ri.record),0,TimeUnit.SECONDS);
+                                    return;
+                                }
+                            }
+
+                            processingState = ItemProcessingState.FINISHED;
+                            close();
+
+                            //item successfully sanitated
+                            executorService.schedule(() -> itemSanitationDone(ri.record),0,TimeUnit.SECONDS);
+                        } else {
+                            try {
+                                checkSubItems();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            commitCheckedAndStartPolling();
+                        }
+                    }
+                }
+            }
+        }
+
         private boolean isResyncExpired() {
             return resyncExpiresAt.isBefore(Instant.now());
         }
@@ -2447,25 +2483,6 @@ public class Node {
 
         private long getMillisLeft() {
             return pollingExpiresAt.toEpochMilli() - Instant.now().toEpochMilli();
-        }
-
-        private final void broadcastMyState() {
-            report(getLabel(), () -> concatReportMessage("item processor for item: ",
-                    itemId, " from parcel: ", parcelId,
-                    " :: broadcastMyState, state ", processingState),
-                    DatagramAdapter.VerboseLevel.BASE);
-            if(processingState.canContinue()) {
-                Notification notification;
-
-                ParcelNotification.ParcelNotificationType notificationType;
-                if(item.shouldBeTU()) {
-                    notificationType = ParcelNotification.ParcelNotificationType.PAYMENT;
-                } else {
-                    notificationType = ParcelNotification.ParcelNotificationType.PAYLOAD;
-                }
-                notification = new ParcelNotification(myInfo, itemId, parcelId, getResult(), true, notificationType);
-                network.broadcast(myInfo, notification);
-            }
         }
 
         /**
