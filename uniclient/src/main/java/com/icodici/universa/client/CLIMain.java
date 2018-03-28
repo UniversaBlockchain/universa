@@ -1216,6 +1216,8 @@ public class CLIMain {
                 reporter.verbose("Loading session from " + keyFileName);
                 try {
                     session = BasicHttpClientSession.reconstructSession(Boss.unpack(Do.read(keyFileName)));
+                } catch(FileNotFoundException e) {
+                    // it is ok - session is not reconstructed
                 } catch (Exception e) {
                     reporter.warning("can't read session file: " + keyFileName);
                     e.printStackTrace();
@@ -1254,7 +1256,7 @@ public class CLIMain {
         final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
         Files.setPosixFilePermissions(sessionFile, perms);
         prefs.put("session_" + nodeNumber, sessionFile.toString());
-        report("Broken session has been stored to the " + keysDir + "/" + sessionFile);
+        reporter.verbose("Broken session has been stored to the " + keysDir + "/" + sessionFile);
     }
 
     static public void clearSession() {
