@@ -312,4 +312,60 @@ public class ContractsServiceTest extends ContractTestBase {
         assertTrue(notaryContract.isPermitted("split_join", stepaPublicKeys));
         assertFalse(notaryContract.isPermitted("split_join", martyPublicKeys));
     }
+
+    @Test
+    public void goodShare() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        for (PrivateKey pk : martyPrivateKeys)
+            martyPublicKeys.add(pk.getPublicKey());
+
+        Contract notaryContract = ContractsService.createShareContract(martyPrivateKeys, stepaPublicKeys, "100");
+
+        notaryContract.check();
+        notaryContract.traceErrors();
+        assertTrue(notaryContract.isOk());
+
+        assertTrue(notaryContract.getOwner().isAllowedForKeys(stepaPublicKeys));
+        assertTrue(notaryContract.getIssuer().isAllowedForKeys(martyPrivateKeys));
+        assertTrue(notaryContract.getCreator().isAllowedForKeys(martyPrivateKeys));
+
+        assertFalse(notaryContract.getOwner().isAllowedForKeys(martyPrivateKeys));
+        assertFalse(notaryContract.getIssuer().isAllowedForKeys(stepaPublicKeys));
+        assertFalse(notaryContract.getCreator().isAllowedForKeys(stepaPublicKeys));
+
+        assertTrue(notaryContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(notaryContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+
+        assertEquals(InnerContractsService.getDecimalField(notaryContract, "amount"), new Decimal(100));
+
+        assertEquals(notaryContract.getPermissions().get("split_join").size(), 1);
+
+        Binder splitJoinParams = notaryContract.getPermissions().get("split_join").iterator().next().getParams();
+        assertEquals(splitJoinParams.get("min_value"), 1);
+        assertEquals(splitJoinParams.get("min_unit"), 1);
+        assertEquals(splitJoinParams.get("field_name"), "amount");
+        assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
+        assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
+
+
+        assertTrue(notaryContract.isPermitted("revoke", stepaPublicKeys));
+        assertTrue(notaryContract.isPermitted("revoke", martyPublicKeys));
+
+        assertTrue(notaryContract.isPermitted("change_owner", stepaPublicKeys));
+        assertFalse(notaryContract.isPermitted("change_owner", martyPublicKeys));
+
+        assertTrue(notaryContract.isPermitted("split_join", stepaPublicKeys));
+        assertFalse(notaryContract.isPermitted("split_join", martyPublicKeys));
+    }
 }

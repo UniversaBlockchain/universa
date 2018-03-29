@@ -554,7 +554,7 @@ public class ContractsService {
      * "state.origin" for join_match_fields.
      * By default expires at time is set to 60 months from now.
      * @param ownerKeys is owner public keys.
-     * @param amount is amount transaction units.
+     * @param amount is maximum token number.
      * @return signed and sealed contract, ready for register.
      */
     public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount){
@@ -620,13 +620,17 @@ public class ContractsService {
 
 
     /**
-     * Creates a share contract.
+     * Creates a share contract for given keys.
      *<br><br>
-     * The service creates a share contract.
+     * The service creates a simple share contract with issuer, creator and owner roles;
+     * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
+     * Split_join permission has by default following params: 1 for min_value, 1 for min_unit, "amount" for field_name,
+     * "state.origin" for join_match_fields.
+     * By default expires at time is set to 60 months from now.
      *<br><br>
      * @param issuerKeys is issuer private keys.
      * @param ownerKeys is owner public keys.
-     * @param amount is amount transaction units.
+     * @param amount is maximum shares number.
      * @return signed and sealed contract, ready for register.
      */
     public synchronized static Contract createShareContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount){
@@ -634,34 +638,34 @@ public class ContractsService {
         shareContract.setApiLevel(3);
 
         Contract.Definition cd = shareContract.getDefinition();
-        cd.setExpiresAt(ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC));
+        cd.setExpiresAt(ZonedDateTime.now().plusMonths(60));
 
         Binder data = new Binder();
-        data.set("name", "Share name");
-        data.set("currency_code", "SHN");
-        data.set("currency_name", "Share name");
-        data.set("description", "Share description.");
+        data.set("name", "Default share name");
+        data.set("currency_code", "DSH");
+        data.set("currency_name", "Default share name");
+        data.set("description", "Default share description.");
         cd.setData(data);
-
-        SimpleRole revokeRole = new SimpleRole("revoke_role");
 
         SimpleRole issuerRole = new SimpleRole("issuer");
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
         }
 
         SimpleRole ownerRole = new SimpleRole("owner");
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
         }
 
         shareContract.registerRole(issuerRole);
         shareContract.createRole("issuer", issuerRole);
         shareContract.createRole("creator", issuerRole);
+
+        shareContract.registerRole(ownerRole);
+        shareContract.createRole("owner", ownerRole);
+
         shareContract.getStateData().set("amount", amount);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
@@ -678,10 +682,11 @@ public class ContractsService {
         SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerRole, params);
         shareContract.addPermission(splitJoinPerm);
 
-        RevokePermission revokePerm = new RevokePermission(revokeRole);
-        shareContract.addPermission(revokePerm);
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        shareContract.addPermission(revokePerm1);
 
-        shareContract.setOwnerKeys(ownerKeys);
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        shareContract.addPermission(revokePerm2);
 
         shareContract.seal();
         shareContract.addSignatureToSeal(issuerKeys);
@@ -709,8 +714,8 @@ public class ContractsService {
         cd.setExpiresAt(ZonedDateTime.now().plusMonths(60));
 
         Binder data = new Binder();
-        data.set("name", "Notary");
-        data.set("description", "This contract represents the notary.");
+        data.set("name", "Default notary");
+        data.set("description", "Default notary description.");
         cd.setData(data);
 
         SimpleRole issuerRole = new SimpleRole("issuer");
