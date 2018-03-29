@@ -6,6 +6,7 @@ Release notes
 ### 3.2.4b2 (27.03.2018)
 
 * Added support for references.
+* Added support for addresses and anonymous ids.
 * Added sanitation procedure while node is starting.
 * Added statistic collection for the Node.
 * Fixed memory leaks and optimisation made.
