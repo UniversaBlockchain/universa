@@ -9,6 +9,7 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.db.Db;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.*;
@@ -29,6 +30,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -2842,6 +2845,27 @@ public class BaseNetworkTest extends TestCase {
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
+        if(ledger instanceof PostgresLedger) {
+            PostgresLedger pl = (PostgresLedger) ledger;
+
+            try(Db db = pl.getDb()) {
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPayloadContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 0);
+                    }
+                }
+
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPaymentContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 0);
+                    }
+                }
+
+            }
+        }
     }
 
     @Test(timeout = 90000)
@@ -2899,6 +2923,27 @@ public class BaseNetworkTest extends TestCase {
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
+        if(ledger instanceof PostgresLedger) {
+            PostgresLedger pl = (PostgresLedger) ledger;
+
+            try(Db db = pl.getDb()) {
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPayloadContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 1);
+                    }
+                }
+
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPaymentContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 1);
+                    }
+                }
+
+            }
+        }
     }
 
 //    @Test(timeout = 90000)

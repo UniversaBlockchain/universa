@@ -144,7 +144,7 @@ public interface Ledger {
 
     Map<ItemState,Integer> getLedgerSize(Instant createdAfter);
 
-    void moveToTestLedger(StateRecord record);
+    void markTestRecord(StateRecord record);
 
     public static class Rollback extends Db.RollbackException {
     }

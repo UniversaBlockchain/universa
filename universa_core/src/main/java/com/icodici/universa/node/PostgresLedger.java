@@ -397,17 +397,29 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void moveToTestLedger(StateRecord stateRecord) {
-        protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("select * from sr_move_to_testnet(?)", stateRecord.getId().getDigest()))) {
-                    stateRecord.initFrom(rs);
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
-            }
+    public void markTestRecord(StateRecord stateRecord) {
+        if (stateRecord.getLedger() == null) {
+            stateRecord.setLedger(this);
+        } else if (stateRecord.getLedger() != this)
+            throw new IllegalStateException("can't save with a different ledger (make a copy!)");
 
-            return stateRecord;
-        });
+        try (PooledDb db = dbPool.db()) {
+                try (
+                        PreparedStatement statement =
+                                db.statement(
+                                        "insert into ledger_testrecords(hash) values(?) on conflict do nothing;"
+                                )
+                ) {
+                    statement.setBytes(1, stateRecord.getId().getDigest());
+                    db.updateWithStatement(statement);
+                }
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("StateRecord markTest failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
     }
 

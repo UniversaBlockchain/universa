@@ -164,7 +164,7 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public void moveToTestLedger(StateRecord record) {
+    public void markTestRecord(StateRecord record) {
 
     }
 

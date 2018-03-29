@@ -11,7 +11,6 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -1590,14 +1589,14 @@ public class Node {
                 }
 
 
+                synchronized (mutex) {
+                    //save item in disk cache
+                    ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
+                }
+
                 if(item instanceof Contract) {
                     if(((Contract)item).isLimitedForTestnet()) {
-                        record.moveToTestLedger();
-                    } else {
-                        synchronized (mutex) {
-                            //save item in disk cache
-                            ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
-                        }
+                        record.markTestRecord();
                     }
                 }
 

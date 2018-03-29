@@ -1,19 +1,16 @@
 package com.icodici.universa.node;
 
 import com.icodici.universa.HashId;
-import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.net.DatagramSocket;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -346,29 +343,25 @@ public class PostgresLedgerTest extends TestCase {
         StateRecord r = ledger.findOrCreate(hashId);
         r.save();
 
-        
-        PreparedStatement ps =  ledger.getDb().statement("select count(*) from ledger_testnet where hash = ?",hashId.getDigest());
+        PreparedStatement ps =  ledger.getDb().statement("select count(*) from ledger_testrecords where hash = ?",hashId.getDigest());
         ResultSet rs = ps.executeQuery();
         assertTrue(rs.next());
         assertEquals(rs.getInt(1), 0);
 
-        ps =  ledger.getDb().statement("select count(*) from ledger where hash = ?",hashId.getDigest());
+        r.markTestRecord();
+
+        ps =  ledger.getDb().statement("select count(*) from ledger_testrecords where hash = ?",hashId.getDigest());
         rs = ps.executeQuery();
         assertTrue(rs.next());
         assertEquals(rs.getInt(1), 1);
 
-        r.moveToTestLedger();
+        r.markTestRecord();
 
-        ps =  ledger.getDb().statement("select count(*) from ledger_testnet where hash = ?",hashId.getDigest());
+        ps =  ledger.getDb().statement("select count(*) from ledger_testrecords where hash = ?",hashId.getDigest());
         rs = ps.executeQuery();
         assertTrue(rs.next());
         assertEquals(rs.getInt(1), 1);
 
-
-        ps =  ledger.getDb().statement("select count(*) from ledger where hash = ?",hashId.getDigest());
-        rs = ps.executeQuery();
-        assertTrue(rs.next());
-        assertEquals(rs.getInt(1), 1);
 
     }
 
