@@ -386,6 +386,22 @@ If you want to anonymize all roles in the contract just ommit `-role` key:
     
 **Important.** You public keys still will be packed to transaction pack for signed contract. So send or publish anonymous contracts without transaction pack, as sealed binary. Or do not sign it until send to Universa for registering. 
     
+#### Work with addresses 
+
+You can generate address for any key using command `--address` (long address by default, add `-short` option for short address generation):
+
+    uniclient --address any_key.private.unikey
+    
+Of cause, you can check any address with any key if both is matching, use `--address-match` (option `-keyfile` point to key matching with):
+    
+    uniclient --address-match 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R -keyfile any_key.public.unikey
+    
+If you have a folder with multiple keys you can know which keys is matching with address using command `--folder-match` (option `-addr` point to address for checking);
+    
+    uniclient --folder-match folder_with_keys -addr 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R
+    
+And as result matching keys will printed to the console.
+
 #### Output control
 
 It is possible to format all uniclient output in the JSON format for easy parsing and further processing. Use `--json` key.

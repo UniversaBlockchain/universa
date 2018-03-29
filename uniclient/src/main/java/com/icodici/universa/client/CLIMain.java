@@ -255,7 +255,7 @@ public class CLIMain {
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("file");
-                accepts("short", "Generate short key.");
+                accepts("short", "Generate short addres.");
                 accepts("address-match", "Matching address with key from file. Address define in parameter -address-match." +
                         "Path to key define in parameter -keyfile.")
                         .withRequiredArg()
