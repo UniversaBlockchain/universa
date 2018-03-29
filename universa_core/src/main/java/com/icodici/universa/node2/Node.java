@@ -1789,6 +1789,9 @@ public class Node {
                     // check revoking items
                     for (Approvable a : checkingItem.getRevokingItems()) {
 
+                        if (a instanceof Contract)
+                            ((Contract)a).getErrors().clear();
+
                         checkReferencesOf(a);
 
                         for (ErrorRecord er : a.getErrors()) {

@@ -14,6 +14,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
+import net.sergeych.diff.MapDelta;
 
 import java.util.Map;
 
@@ -36,10 +37,10 @@ public class ChangeOwnerPermission extends Permission {
         Object x = stateChanges.get("owner");
         if( x != null ) {
             stateChanges.remove("owner");
-            if( !(x instanceof ChangedItem) )
+            if( !(x instanceof MapDelta) )
                 contract.addError(Errors.BAD_VALUE, "state.owner", "improper change");
             else {
-                ChangedItem<Role, Role> ci = (ChangedItem<Role, Role>) x;
+                Delta<Role, Role> ci = (Delta<Role, Role>) x;
                 if( !(ci.newValue() instanceof Role) )
                     contract.addError(Errors.BAD_VALUE, "state.owner", "improper change (new value not a role)");
             }
