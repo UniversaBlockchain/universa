@@ -44,7 +44,7 @@ public class Main {
     private AsyncEvent eventReady = new AsyncEvent();
     public final BufferedLogger logger = new BufferedLogger(4096);
     private String configRoot;
-
+    private Thread hookThread;
 
     public static void main(String[] args) {
         new Main(args);
@@ -56,6 +56,8 @@ public class Main {
 
         Config.forceInit(Contract.class);
         Config.forceInit(ItemNotification.class);
+
+        Runtime.getRuntime().addShutdownHook(hookThread = new Thread(() -> shutdown()));
 //        LogPrinter.showDebug(true);
 
         parser = new OptionParser() {
@@ -71,6 +73,10 @@ public class Main {
                 accepts("test", "intended to be used in integration tests");
                 accepts("nolog", "do not buffer log messages (good fot testing)");
                 accepts("verbose", "sets verbose level to nothing, base or detail")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("level");
+                accepts("udp-verbose", "sets udp-verbose level to nothing, base or detail")
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("level");
@@ -238,6 +244,8 @@ public class Main {
      */
     public void shutdown() {
         try {
+            if (hookThread != null)
+                Runtime.getRuntime().removeShutdownHook(hookThread);
 //            network.close();
             log("shutting down");
             network.shutdown();

@@ -1375,9 +1375,23 @@ public class MainTest {
         stepaTU.check();
         //stepaTU.setIsTU(true);
         stepaTU.traceErrors();
+
+        PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
+        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+        client.getSession().setPrivateKey(newPrivateKey);
+        client.restart();
+
+        Thread.sleep(2000);
+
         ItemResult itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
 //        node.registerItem(stepaTU);
 //        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+
+        client.getSession().setPrivateKey(clientPrivateKey);
+        client.restart();
+
+        Thread.sleep(2000);
+
         assertEquals(ItemState.APPROVED, itemResult.state);
         Set<PrivateKey> keySet = new HashSet<>();
         keySet.addAll(keys);
