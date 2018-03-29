@@ -211,4 +211,46 @@ public class ContractsServiceTest extends ContractTestBase {
         badKeys.add(manufacturePrivateKey.getPublicKey());
         assertEquals(false, tu.getRole("owner").isAllowedForKeys(badKeys));
     }
+
+    @Test
+    public void goodNotary() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        for (PrivateKey pk : martyPrivateKeys)
+            martyPublicKeys.add(pk.getPublicKey());
+
+        Contract notaryContract = ContractsService.createNotaryContract(martyPrivateKeys, stepaPublicKeys);
+
+        notaryContract.check();
+        notaryContract.traceErrors();
+        assertTrue(notaryContract.isOk());
+
+        assertTrue(notaryContract.getOwner().isAllowedForKeys(stepaPublicKeys));
+        assertTrue(notaryContract.getIssuer().isAllowedForKeys(martyPrivateKeys));
+        assertTrue(notaryContract.getCreator().isAllowedForKeys(martyPrivateKeys));
+
+        assertFalse(notaryContract.getOwner().isAllowedForKeys(martyPrivateKeys));
+        assertFalse(notaryContract.getIssuer().isAllowedForKeys(stepaPublicKeys));
+        assertFalse(notaryContract.getCreator().isAllowedForKeys(stepaPublicKeys));
+
+        assertTrue(notaryContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(notaryContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+
+
+        assertTrue(notaryContract.isPermitted("revoke", stepaPublicKeys));
+        assertTrue(notaryContract.isPermitted("revoke", martyPublicKeys));
+
+        assertTrue(notaryContract.isPermitted("change_owner", stepaPublicKeys));
+        assertFalse(notaryContract.isPermitted("change_owner", martyPublicKeys));
+    }
 }

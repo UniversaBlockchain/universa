@@ -1426,7 +1426,7 @@ public class BaseNetworkTest extends TestCase {
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        Contract notaryContract = ContractsService.createNotaryContract(martyPrivateKeys,stepaPublicKeys);
+        Contract notaryContract = ContractsService.createNotaryContract(martyPrivateKeys, stepaPublicKeys);
 
         notaryContract.check();
         notaryContract.traceErrors();

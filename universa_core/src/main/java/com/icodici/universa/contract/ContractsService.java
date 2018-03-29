@@ -13,6 +13,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
@@ -687,9 +688,11 @@ public class ContractsService {
 
 
     /**
-     * Creates a notary contract.
+     * Creates a simple notary contract for given keys.
      *<br><br>
-     * The service creates a notary contract.
+     * The service creates a notary contract with issuer, creator and owner roles;
+     * with change_owner permission for owner and revoke permissions for owner and issuer.
+     * By default expires at time is set to 60 months from now.
      *<br><br>
      * @param issuerKeys is issuer private keys.
      * @param ownerKeys is owner public keys.
@@ -700,40 +703,40 @@ public class ContractsService {
         notaryContract.setApiLevel(3);
 
         Contract.Definition cd = notaryContract.getDefinition();
-        cd.setExpiresAt(ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC));
+        cd.setExpiresAt(ZonedDateTime.now().plusMonths(60));
 
         Binder data = new Binder();
         data.set("name", "Notary");
         data.set("description", "This contract represents the notary.");
         cd.setData(data);
 
-        SimpleRole revokeRole = new SimpleRole("revoke_role");
-
         SimpleRole issuerRole = new SimpleRole("issuer");
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
         }
 
         SimpleRole ownerRole = new SimpleRole("owner");
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
         }
 
         notaryContract.registerRole(issuerRole);
         notaryContract.createRole("issuer", issuerRole);
         notaryContract.createRole("creator", issuerRole);
 
+        notaryContract.registerRole(ownerRole);
+        notaryContract.createRole("owner", ownerRole);
+
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
         notaryContract.addPermission(changeOwnerPerm);
 
-        RevokePermission revokePerm = new RevokePermission(revokeRole);
-        notaryContract.addPermission(revokePerm);
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        notaryContract.addPermission(revokePerm1);
 
-        notaryContract.setOwnerKeys(ownerKeys);
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        notaryContract.addPermission(revokePerm2);
 
         notaryContract.seal();
         notaryContract.addSignatureToSeal(issuerKeys);
