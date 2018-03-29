@@ -2,6 +2,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Config;
 import net.sergeych.tools.Do;
@@ -73,5 +74,26 @@ public class InnerContractsService {
         tu.seal();
 
         return tu;
+    }
+
+
+    /**
+     * Return field from given contract as Decimal if it possible.
+     *<br><br>
+     * @param contract is contract from which field should be got.
+     * @param fieldName is name of the field to got
+     * @return field as Decimal or null.
+     */
+    public static Decimal getDecimalField(Contract contract, String fieldName) {
+
+        Object valueObject = contract.getStateData().get(fieldName);
+        if(valueObject instanceof String) {
+            return new Decimal(Integer.valueOf((String) valueObject));
+        }
+
+        if(valueObject instanceof Decimal) {
+            return (Decimal) valueObject;
+        }
+        return null;
     }
 }

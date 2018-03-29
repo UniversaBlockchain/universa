@@ -9,10 +9,12 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -21,6 +23,7 @@ import org.junit.rules.ExpectedException;
 
 import java.time.ZonedDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.*;
@@ -252,5 +255,61 @@ public class ContractsServiceTest extends ContractTestBase {
 
         assertTrue(notaryContract.isPermitted("change_owner", stepaPublicKeys));
         assertFalse(notaryContract.isPermitted("change_owner", martyPublicKeys));
+    }
+
+    @Test
+    public void goodToken() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        for (PrivateKey pk : martyPrivateKeys)
+            martyPublicKeys.add(pk.getPublicKey());
+
+        Contract notaryContract = ContractsService.createTokenContract(martyPrivateKeys, stepaPublicKeys, "100");
+
+        notaryContract.check();
+        notaryContract.traceErrors();
+        assertTrue(notaryContract.isOk());
+
+        assertTrue(notaryContract.getOwner().isAllowedForKeys(stepaPublicKeys));
+        assertTrue(notaryContract.getIssuer().isAllowedForKeys(martyPrivateKeys));
+        assertTrue(notaryContract.getCreator().isAllowedForKeys(martyPrivateKeys));
+
+        assertFalse(notaryContract.getOwner().isAllowedForKeys(martyPrivateKeys));
+        assertFalse(notaryContract.getIssuer().isAllowedForKeys(stepaPublicKeys));
+        assertFalse(notaryContract.getCreator().isAllowedForKeys(stepaPublicKeys));
+
+        assertTrue(notaryContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(notaryContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+
+        assertEquals(InnerContractsService.getDecimalField(notaryContract, "amount"), new Decimal(100));
+
+        assertEquals(notaryContract.getPermissions().get("split_join").size(), 1);
+
+        Binder splitJoinParams = notaryContract.getPermissions().get("split_join").iterator().next().getParams();
+        assertEquals(splitJoinParams.get("min_value"), 0.01);
+        assertEquals(splitJoinParams.get("min_unit"), 0.01);
+        assertEquals(splitJoinParams.get("field_name"), "amount");
+        assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
+        assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
+
+
+        assertTrue(notaryContract.isPermitted("revoke", stepaPublicKeys));
+        assertTrue(notaryContract.isPermitted("revoke", martyPublicKeys));
+
+        assertTrue(notaryContract.isPermitted("change_owner", stepaPublicKeys));
+        assertFalse(notaryContract.isPermitted("change_owner", martyPublicKeys));
+
+        assertTrue(notaryContract.isPermitted("split_join", stepaPublicKeys));
+        assertFalse(notaryContract.isPermitted("split_join", martyPublicKeys));
     }
 }

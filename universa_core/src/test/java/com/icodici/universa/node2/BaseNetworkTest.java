@@ -1385,7 +1385,7 @@ public class BaseNetworkTest extends TestCase {
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        Contract tokenContract = ContractsService.createTokenContract(martyPrivateKeys,stepaPublicKeys,"100000000000");
+        Contract tokenContract = ContractsService.createTokenContract(martyPrivateKeys,stepaPublicKeys, "100000000000");
 
         tokenContract.check();
         tokenContract.traceErrors();

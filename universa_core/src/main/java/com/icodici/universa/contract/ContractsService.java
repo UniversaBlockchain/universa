@@ -140,7 +140,7 @@ public class ContractsService {
 
         joinTo.getStateData().set(
                 fieldName,
-                getDecimalField(contract1, fieldName).add(getDecimalField(contract2, fieldName))
+                InnerContractsService.getDecimalField(contract1, fieldName).add(InnerContractsService.getDecimalField(contract2, fieldName))
         );
 
         for (PrivateKey key : keys) {
@@ -546,11 +546,13 @@ public class ContractsService {
     }
 
     /**
-     * Creates a token contract.
+     * Creates a token contract for given keys.
      *<br><br>
-     * The service creates a token contract.
-     *<br><br>
-     * @param issuerKeys is issuer private keys.
+     * The service creates a simple token contract with issuer, creator and owner roles;
+     * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
+     * Split_join permission has by default following params: 0.01 for min_value, 0.01 for min_unit, "amount" for field_name,
+     * "state.origin" for join_match_fields.
+     * By default expires at time is set to 60 months from now.
      * @param ownerKeys is owner public keys.
      * @param amount is amount transaction units.
      * @return signed and sealed contract, ready for register.
@@ -560,34 +562,34 @@ public class ContractsService {
         tokenContract.setApiLevel(3);
 
         Contract.Definition cd = tokenContract.getDefinition();
-        cd.setExpiresAt(ZonedDateTime.ofInstant(Instant.ofEpochSecond(1659720337), ZoneOffset.UTC));
+        cd.setExpiresAt(ZonedDateTime.now().plusMonths(60));
 
         Binder data = new Binder();
-        data.set("name", "Token name");
-        data.set("currency_code", "TKN");
-        data.set("currency_name", "Token name");
-        data.set("description", "Token description.");
+        data.set("name", "Default token name");
+        data.set("currency_code", "DT");
+        data.set("currency_name", "Default token name");
+        data.set("description", "Default token description.");
         cd.setData(data);
-
-        SimpleRole revokeRole = new SimpleRole("revoke_role");
 
         SimpleRole issuerRole = new SimpleRole("issuer");
         for (PrivateKey k : issuerKeys) {
             KeyRecord kr = new KeyRecord(k.getPublicKey());
             issuerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
         }
 
         SimpleRole ownerRole = new SimpleRole("owner");
         for (PublicKey k : ownerKeys) {
             KeyRecord kr = new KeyRecord(k);
             ownerRole.addKeyRecord(kr);
-            revokeRole.addKeyRecord(kr);
         }
 
         tokenContract.registerRole(issuerRole);
         tokenContract.createRole("issuer", issuerRole);
         tokenContract.createRole("creator", issuerRole);
+
+        tokenContract.registerRole(ownerRole);
+        tokenContract.createRole("owner", ownerRole);
+
         tokenContract.getStateData().set("amount", amount);
 
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
@@ -595,7 +597,7 @@ public class ContractsService {
 
         Binder params = new Binder();
         params.set("min_value", 0.01);
-        params.set("min_unit", 0.001);
+        params.set("min_unit", 0.01);
         params.set("field_name", "amount");
         List <String> listFields = new ArrayList<>();
         listFields.add("state.origin");
@@ -604,10 +606,11 @@ public class ContractsService {
         SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerRole, params);
         tokenContract.addPermission(splitJoinPerm);
 
-        RevokePermission revokePerm = new RevokePermission(revokeRole);
-        tokenContract.addPermission(revokePerm);
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        tokenContract.addPermission(revokePerm1);
 
-        tokenContract.setOwnerKeys(ownerKeys);
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        tokenContract.addPermission(revokePerm2);
 
         tokenContract.seal();
         tokenContract.addSignatureToSeal(issuerKeys);
@@ -834,26 +837,5 @@ public class ContractsService {
         Parcel parcel = new Parcel(payload, paymentDecreased.getTransactionPack());
 
         return parcel;
-    }
-
-
-    /**
-     * Return field from given contract as Decimal if it possible.
-     *<br><br>
-     * @param contract is contract from which field should be got.
-     * @param fieldName is name of the field to got
-     * @return field as Decimal or null.
-     */
-    private static Decimal getDecimalField(Contract contract, String fieldName) {
-
-        Object valueObject = contract.getStateData().get(fieldName);
-        if(valueObject instanceof String) {
-            return new Decimal(Integer.valueOf((String) valueObject));
-        }
-
-        if(valueObject instanceof Decimal) {
-            return (Decimal) valueObject;
-        }
-        return null;
     }
 }
