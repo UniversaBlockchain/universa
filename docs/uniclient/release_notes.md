@@ -13,7 +13,7 @@ Bulk operations for import, export, register and check.
 
 Probe files, not only ids.
 
-### 3.2.4b2 (29.03.2018)
+### 3.2.4b2 (27.03.2018)
 * Added `--address` command that generates address from key. Has option `-short`.
 * Added `--address-match` command that check matching address with key from file. Path to key define in parameter `-keyfile`.
 * Added `--folder-match` command that associates the entered address with the key file in the specified directory. Address define in parameter `-addr`.
