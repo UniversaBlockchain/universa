@@ -40,7 +40,8 @@ public class ContractDelta {
         this.changed = changed;
     }
 
-    public void check() throws Quantiser.QuantiserException {
+    //todo: need to test this synchronized attribute, should not affects overall node's concurrency
+    synchronized public void check() throws Quantiser.QuantiserException {
         try {
             BiMapper mapper = BossBiMapper.getInstance();
             MapDelta rootDelta = Delta.between(mapper.serialize(existing), mapper.serialize(changed));
