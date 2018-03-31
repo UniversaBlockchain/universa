@@ -2831,13 +2831,37 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
 
+        node.nodeStats.collect(ledger,config);
+        int todayPaidAmount = node.nodeStats.todayPaidAmount;
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
+
+        node.nodeStats.collect(ledger,config);
+        assertEquals(node.nodeStats.todayPaidAmount-todayPaidAmount,1);
+
+
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
+
+        Contract contract = new Contract(stepaPrivateKeys.iterator().next());
+        contract.seal();
+        contract.check();
+        contract.traceErrors();
+        parcel = new Parcel(contract.getTransactionPack(), parcel.getPayment());
+
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+
+        assertNotEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
+        node.nodeStats.collect(ledger,config);
+        assertEquals(node.nodeStats.todayPaidAmount-todayPaidAmount,1);
+
     }
 
     @Test(timeout = 90000)
@@ -2888,10 +2912,17 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
 
+
+        node.nodeStats.collect(ledger,config);
+        int todayPaidAmount = node.nodeStats.todayPaidAmount;
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
+
+        node.nodeStats.collect(ledger,config);
+        assertEquals(node.nodeStats.todayPaidAmount-todayPaidAmount,0);
+
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
