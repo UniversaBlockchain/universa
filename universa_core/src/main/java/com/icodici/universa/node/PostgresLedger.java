@@ -397,12 +397,7 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void markTestRecord(StateRecord stateRecord) {
-        if (stateRecord.getLedger() == null) {
-            stateRecord.setLedger(this);
-        } else if (stateRecord.getLedger() != this)
-            throw new IllegalStateException("can't save with a different ledger (make a copy!)");
-
+    public void markTestRecord(HashId hash) {
         try (PooledDb db = dbPool.db()) {
                 try (
                         PreparedStatement statement =
@@ -410,7 +405,7 @@ public class PostgresLedger implements Ledger {
                                         "insert into ledger_testrecords(hash) values(?) on conflict do nothing;"
                                 )
                 ) {
-                    statement.setBytes(1, stateRecord.getId().getDigest());
+                    statement.setBytes(1, hash.getDigest());
                     db.updateWithStatement(statement);
                 }
 

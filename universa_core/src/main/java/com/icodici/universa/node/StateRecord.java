@@ -386,7 +386,7 @@ public class StateRecord implements HashIdentifiable {
 
     public void markTestRecord() {
         if(ledger != null) {
-            ledger.markTestRecord(this);
+            ledger.markTestRecord(this.getId());
         }
     }
 

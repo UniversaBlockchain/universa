@@ -1594,8 +1594,6 @@ public class Node {
                     ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
                 }
 
-                //TODO: many records created here. So 1 test U payment could process this and create 10000000000 records in DB
-                //TODO: on the other hand, if we don't mark it here it won't be marked in case of sanitation.
                 if(item instanceof Contract) {
                     if(((Contract)item).isLimitedForTestnet()) {
                         markContractTest((Contract) item);
@@ -1613,7 +1611,7 @@ public class Node {
         }
 
         private void markContractTest(Contract contract) {
-            ledger.findOrCreate(contract.getId()).markTestRecord();
+            ledger.markTestRecord(contract.getId());
             contract.getNew().forEach(c -> markContractTest(c));
         }
 
