@@ -16,6 +16,7 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
@@ -2838,6 +2839,18 @@ public class BaseNetworkTest extends TestCase {
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
+
+        //reuse payment for another contract
+        Contract contract = new Contract(TestKeys.privateKey(12));
+        contract.seal();
+        parcel = new Parcel(contract.getTransactionPack(),parcel.getPayment());
+
+        node.registerParcel(parcel);
+        node.waitParcel(parcel.getId(), 8000);
+
+        assertNotEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
     }
 
     @Test(timeout = 90000)
