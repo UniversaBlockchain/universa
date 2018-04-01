@@ -1262,6 +1262,7 @@ public class Node {
 
                 // create item processors or get results for payment and payload
                 synchronized (mutex) {
+
                     Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
                     if (x instanceof ItemProcessor) {
                         paymentProcessor = ((ItemProcessor) x);
@@ -1270,6 +1271,11 @@ public class Node {
                                 paymentProcessor.processingState, ", parcel processing state ", processingState,
                                 ", item state ", paymentProcessor.getState()),
                                 DatagramAdapter.VerboseLevel.BASE);
+
+                        // if current item processor for payment was inited by another parcel we should decline this payment
+                        if(!parcelId.equals(paymentProcessor.parcelId)) {
+                            paymentResult = ItemResult.UNDEFINED;
+                        }
                     } else {
                         paymentResult = (ItemResult) x;
                         report(getLabel(), () -> concatReportMessage("parcel processor for: ",
