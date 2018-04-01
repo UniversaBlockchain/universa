@@ -1,5 +1,6 @@
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.Role;
@@ -9,6 +10,7 @@ import net.sergeych.biserializer.BiSerializable;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 
 import java.util.*;
@@ -361,17 +363,27 @@ public class Reference implements BiSerializable {
                                    (left.getClass().getName().endsWith("Role") ||
                                     left.getClass().getName().endsWith("RoleLink"))) {    //if role - compare with address
                             try {
-                                KeyAddress ka = new KeyAddress(rightOperand);
-                                ret = ((Role) left).isMatchingKeyAddress(ka);
+                                rightOperand = rightOperand.replaceAll("\\s+", "");       //for key in quotes
+
+                                if (rightOperand.length() > 72) {
+                                    //Key
+                                    PublicKey publicKey = new PublicKey(Base64u.decodeCompactString(rightOperand));
+                                    Set<PublicKey> keys = new HashSet();
+                                    keys.add(publicKey);
+                                    ret = ((Role) left).isAllowedForKeys(keys);
+                                } else {
+                                    //Address
+                                    KeyAddress ka = new KeyAddress(rightOperand);
+                                    ret = ((Role) left).isMatchingKeyAddress(ka);
+                                }
                             }
                             catch (Exception e) {
-                                throw new IllegalArgumentException("Address compare error in condition: " + e.getMessage());
+                                throw new IllegalArgumentException("Key or address compare error in condition: " + e.getMessage());
                             }
 
                             if (indxOperator == NOT_EQUAL)
                                 ret = !ret;
-                        }
-                        else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {         //rightOperand is CONSTANT (null|number|true|false)
+                        } else if (typeOfRightOperand == compareOperandType.CONSTOTHER) {         //rightOperand is CONSTANT (null|number|true|false)
                             if (!rightOperand.equals("null") && !rightOperand.equals("false") && !rightOperand.equals("true")) {
                                 if (left != null)
                                 {
