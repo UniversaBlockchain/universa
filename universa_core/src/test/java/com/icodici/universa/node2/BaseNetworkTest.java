@@ -2832,23 +2832,19 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
         System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
 
-//        LogPrinter.showDebug(true);
-        node.registerParcel(parcel);
-        // wait parcel
-        node.waitParcel(parcel.getId(), 8000);
-        // check payment and payload contracts
-        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
-
-
         //reuse payment for another contract
         Contract contract = new Contract(TestKeys.privateKey(12));
         contract.seal();
-        parcel = new Parcel(contract.getTransactionPack(), parcel.getPayment());
+        Parcel parcel2 = new Parcel(contract.getTransactionPack(), parcel.getPayment());
 
         node.registerParcel(parcel);
+        node.registerParcel(parcel2);
         node.waitParcel(parcel.getId(), 8000);
+        node.waitParcel(parcel2.getId(), 8000);
 
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
         assertNotEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
 
     }
