@@ -1277,6 +1277,14 @@ public class Node {
                                 processingState,
                                 ", item state ", paymentResult.state),
                                 DatagramAdapter.VerboseLevel.BASE);
+
+                        // if ledger already have approved state for payment it means onw of two:
+                        // 1. payment was already processed and cannot be used as payment for current parcel
+                        // 2. payment having been processing but this node starts too old and consensus already got.
+                        // So, in both ways we can answer undefined
+                        if (paymentResult.state == ItemState.APPROVED) {
+                            paymentResult = ItemResult.UNDEFINED;
+                        }
                     }
                     // we freeze payload checking until payment will be approved
                     x = checkItemInternal(payload.getId(), parcelId, payload, true, false);

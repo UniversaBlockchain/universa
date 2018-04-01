@@ -2844,7 +2844,7 @@ public class BaseNetworkTest extends TestCase {
         //reuse payment for another contract
         Contract contract = new Contract(TestKeys.privateKey(12));
         contract.seal();
-        parcel = new Parcel(contract.getTransactionPack(),parcel.getPayment());
+        parcel = new Parcel(contract.getTransactionPack(), parcel.getPayment());
 
         node.registerParcel(parcel);
         node.waitParcel(parcel.getId(), 8000);
