@@ -34,6 +34,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.Executors;
@@ -2942,6 +2943,284 @@ public class BaseNetworkTest extends TestCase {
                     }
                 }
 
+            }
+        }
+    }
+
+    @Test(timeout = 90000)
+    public void registerParcelWithTestAndRealRevisionPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        Set<PublicKey> keys = new HashSet();
+        keys.add(ownerKey.getPublicKey());
+        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
+        stepaTU.check();
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, true);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
+
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        ItemResult itemResultPayment = node.waitItem(parcel.getPayment().getContract().getId(), 8000);
+        ItemResult itemResultPayload = node.waitItem(parcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResultPayment.state);
+        assertEquals(ItemState.APPROVED, itemResultPayload.state);
+
+        if(ledger instanceof PostgresLedger) {
+            PostgresLedger pl = (PostgresLedger) ledger;
+
+            try(Db db = pl.getDb()) {
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPayloadContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 1);
+                    }
+                }
+
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPaymentContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 1);
+                    }
+                }
+            }
+        }
+
+        stepaTU = InnerContractsService.createFreshTU(100, keys, true);
+        stepaTU.check();
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        stepaCoins = stepaCoins.createRevision();
+        PrivateKey newOwnerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.setOwnerKey(newOwnerKey);
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, false);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertEquals(100 - 1 , parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
+
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        itemResultPayment = node.waitItem(parcel.getPayment().getContract().getId(), 8000);
+        itemResultPayload = node.waitItem(parcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResultPayment.state);
+        assertEquals(ItemState.APPROVED, itemResultPayload.state);
+
+        if(ledger instanceof PostgresLedger) {
+            PostgresLedger pl = (PostgresLedger) ledger;
+
+            try(Db db = pl.getDb()) {
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPayloadContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 0);
+                    }
+                }
+
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPaymentContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 0);
+                    }
+                }
+            }
+        }
+    }
+
+    @Test(timeout = 90000)
+    public void registerParcelWithRealAndTestRevisionPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.setExpiresAt(ZonedDateTime.now().plusMonths(1));
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        Set<PublicKey> keys = new HashSet();
+        keys.add(ownerKey.getPublicKey());
+        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
+        stepaTU.check();
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, false);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertEquals(100 - 1 , parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
+
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        ItemResult itemResultPayment = node.waitItem(parcel.getPayment().getContract().getId(), 8000);
+        ItemResult itemResultPayload = node.waitItem(parcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResultPayment.state);
+        assertEquals(ItemState.APPROVED, itemResultPayload.state);
+
+        if(ledger instanceof PostgresLedger) {
+            PostgresLedger pl = (PostgresLedger) ledger;
+
+            try(Db db = pl.getDb()) {
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPayloadContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 0);
+                    }
+                }
+
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPaymentContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 0);
+                    }
+                }
+            }
+        }
+
+        stepaTU = InnerContractsService.createFreshTU(100, keys, true);
+        stepaTU.check();
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        stepaCoins = stepaCoins.createRevision();
+        PrivateKey newOwnerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.setOwnerKey(newOwnerKey);
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, true);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName()));
+
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        itemResultPayment = node.waitItem(parcel.getPayment().getContract().getId(), 8000);
+        itemResultPayload = node.waitItem(parcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResultPayment.state);
+        assertEquals(ItemState.APPROVED, itemResultPayload.state);
+
+        if(ledger instanceof PostgresLedger) {
+            PostgresLedger pl = (PostgresLedger) ledger;
+
+            try(Db db = pl.getDb()) {
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPayloadContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 1);
+                    }
+                }
+
+                try(PreparedStatement ps =  db.statement("select count(*) from ledger_testrecords where hash = ?",parcel.getPaymentContract().getId().getDigest());) {
+                    try(ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next());
+                        assertEquals(rs.getInt(1), 1);
+                    }
+                }
             }
         }
     }
