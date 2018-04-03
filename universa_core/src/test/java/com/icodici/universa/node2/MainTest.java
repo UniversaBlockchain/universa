@@ -1960,7 +1960,7 @@ public class MainTest {
         List<Ledger> ledgers = new ArrayList<>();
         dbUrls.stream().forEach(url -> {
             try {
-                clearLedger(url);
+//                clearLedger(url);
                 PostgresLedger ledger = new PostgresLedger(url);
                 ledgers.add(ledger);
             } catch (Exception e) {
