@@ -5,15 +5,18 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.ItemLock;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.DatagramSocket;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -373,6 +376,7 @@ public class PostgresLedgerTest extends TestCase {
         }
     }
 
+    @Ignore("deadlock test")
     @Test
     public void ledgerDeadlock() throws Exception {
         List<Contract> origins = new ArrayList<>();
@@ -380,7 +384,7 @@ public class PostgresLedgerTest extends TestCase {
         List<Contract> newContracts = new ArrayList<>();
         PrivateKey myKey = TestKeys.privateKey(4);
 
-        final int N = 100;
+        final int N = 500;
         for(int i = 0; i < N; i++) {
             Contract origin = new Contract(myKey);
             origin.seal();
@@ -449,37 +453,68 @@ public class PostgresLedgerTest extends TestCase {
 
 
         Map<HashId,StateRecord> recordsToSanitate = ledger.findUnfinished();
+        Map<HashId,StateRecord> finished = new HashMap<>();
+        Map<HashId,StateRecord> failed = new HashMap<>();
+        ItemLock itemLock = new ItemLock();
+        Map<HashId,StateRecord> nullContarcts = new HashMap<>();
+        System.out.println(">> " + recordsToSanitate.size());
 
-        for (StateRecord sr : recordsToSanitate.values()) {
-            Contract contract = (Contract) ledger.getItem(sr);
-            if (contract != null) {
-                sr.setState(ItemState.PENDING);
-                sr.save();
 
-                if(new Random().nextBoolean()) {
-                    sr.setState(ItemState.APPROVED);
+        class TransactionRunnable implements Runnable {
+
+            StateRecord sr;
+
+            @Override
+            public void run() {
+                    sr.setState(ItemState.PENDING);
+
                     sr.save();
-                } else {
-                    ledger.transaction(() -> {
-                        for (Approvable a : contract.getRevokingItems()) {
 
-                            StateRecord r = sr.lockToRevoke(a.getId());
-                            if (r != null) r.unlock().save();
-                        }
-                        for (Approvable a : contract.getNewItems()) {
+                    try {
+                        ledger.transaction(() -> {
 
-                            StateRecord r = sr.createOutputLockRecord(a.getId());
-                            if (r != null) r.unlock().save();
-                        }
+                            sr.setState(ItemState.UNDEFINED);
 
-                        sr.setState(ItemState.UNDEFINED);
-                        sr.save();
+                            sr.save();
 
-                        return null;
-                    });
-                }
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                finished.put(sr.getId(), sr);
             }
         }
+
+        List<Thread> threadsList = new ArrayList<>();
+        List<Runnable> runnableList = new ArrayList<>();
+        for (StateRecord sr : recordsToSanitate.values()) {
+
+                TransactionRunnable transactionRunnable = new TransactionRunnable();
+                runnableList.add(transactionRunnable);
+                threadsList.add(
+                        new Thread(() -> {
+                            transactionRunnable.sr = sr;
+                            transactionRunnable.run();
+
+                        }));
+        }
+
+        int numStarted = 0;
+        for (Thread th : threadsList) {
+            numStarted++;
+            th.start();
+            if(numStarted == 64) {
+                numStarted = 0;
+                Thread.sleep(500);
+            }
+        }
+
+        while(finished.size() != recordsToSanitate.size()) {
+            System.out.println(">>> " + nullContarcts.size() + " " + finished.size() + " " + recordsToSanitate.size());
+            Thread.sleep(500);
+        }
+        System.out.println(">>>> " + nullContarcts.size());
     }
 
 

@@ -112,6 +112,86 @@ public class Node2SingleTest extends BaseNetworkTest {
 
     @Test
     public void sanitationTest() throws Exception {
+        afterClass();
+
+        Thread.sleep(2000);
+
+        List<Contract> origins = new ArrayList<>();
+        List<Contract> newRevisions = new ArrayList<>();
+        List<Contract> newContracts = new ArrayList<>();
+        PrivateKey myKey = TestKeys.privateKey(4);
+
+        final int N = 100;
+        for(int i = 0; i < N; i++) {
+            Contract origin = new Contract(myKey);
+            origin.seal();
+            origins.add(origin);
+
+            Contract newRevision = origin.createRevision(myKey);
+
+            if(i < N/2) {
+                //ACCEPTED
+                newRevision.setOwnerKeys(TestKeys.privateKey(1).getPublicKey());
+            } else {
+                //DECLINED
+                //State is equal
+            }
+
+            Contract newContract = new Contract(myKey);
+            newRevision.addNewItems(newContract);
+            newRevision.seal();
+
+            newContracts.add(newContract);
+            newRevisions.add(newRevision);
+
+            System.out.println("item# "+ newRevision.getId().toBase64String().substring(0,6));
+            int finalI = i;
+
+            StateRecord originRecord = ledger.findOrCreate(origin.getId());
+            originRecord.setExpiresAt(origin.getExpiresAt());
+            originRecord.setCreatedAt(origin.getCreatedAt());
+
+            StateRecord newRevisionRecord = ledger.findOrCreate(newRevision.getId());
+            newRevisionRecord.setExpiresAt(newRevision.getExpiresAt());
+            newRevisionRecord.setCreatedAt(newRevision.getCreatedAt());
+
+            StateRecord newContractRecord = ledger.findOrCreate(newContract.getId());
+            newContractRecord.setExpiresAt(newContract.getExpiresAt());
+            newContractRecord.setCreatedAt(newContract.getCreatedAt());
+
+            if(new Random().nextBoolean()) {
+                if(finalI < N/2) {
+                    originRecord.setState(ItemState.REVOKED);
+                    newContractRecord.setState(ItemState.APPROVED);
+                    newRevisionRecord.setState(ItemState.APPROVED);
+                } else {
+                    originRecord.setState(ItemState.APPROVED);
+                    newContractRecord.setState(ItemState.UNDEFINED);
+                    newRevisionRecord.setState(ItemState.DECLINED);
+                }
+            } else {
+                originRecord.setState(ItemState.LOCKED);
+                originRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
+                newContractRecord.setState(ItemState.LOCKED_FOR_CREATION);
+                newContractRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
+                newRevisionRecord.setState(finalI < N/2 ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE);
+            }
+
+            originRecord.save();
+            ledger.putItem(originRecord,origin, Instant.now().plusSeconds(3600*24));
+            newRevisionRecord.save();
+            ledger.putItem(newRevisionRecord,newRevision, Instant.now().plusSeconds(3600*24));
+            if(newContractRecord.getState() == ItemState.UNDEFINED) {
+                newContractRecord.destroy();
+            } else {
+                newContractRecord.save();
+            }
+        }
+
+        Thread.sleep(2000);
+
+        initTestSet();
+        setUp();
 
         while (node.isSanitating()) {
             System.out.println("Node sanitating " + node.getRecordsToSanitate().size());
