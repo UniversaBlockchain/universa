@@ -101,6 +101,28 @@ task fatJar(type: Jar) {
     with jar
 }
 
+
+task fatJarTestConfig(type: Task) {
+
+    doFirst {
+        copy {
+            from configFilePath
+            into "$buildDir/" + configBackupFilePath
+            include configFileName
+        }
+
+        copy {
+            from configTestFilePath
+            into configFilePath
+            include configFileName
+        }
+    }
+
+    finalizedBy fatJar
+    fatJar.finalizedBy testConfigRestore
+}
+
+
 task contractsServiceJavadoc(type: Javadoc) {
     source = sourceSets.main.allJava
     include("**/ContractsService.java")
