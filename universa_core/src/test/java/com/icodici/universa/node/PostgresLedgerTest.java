@@ -1,6 +1,7 @@
 package com.icodici.universa.node;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
@@ -16,6 +17,7 @@ import org.junit.Test;
 import java.net.DatagramSocket;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -466,16 +468,36 @@ public class PostgresLedgerTest extends TestCase {
 
             @Override
             public void run() {
-                    sr.setState(ItemState.PENDING);
-
-                    sr.save();
+                try (PooledDb db = (PooledDb) ledger.getDb()) {
+                    db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
+                            ItemState.APPROVED.ordinal(),
+                            StateRecord.unixTime(sr.getExpiresAt()),
+                            0,
+                            sr.getRecordId()
+                    );
+                } catch (SQLException se) {
+                    se.printStackTrace();
+                    throw new Ledger.Failure("StateRecord save failed:" + se);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
                     try {
                         ledger.transaction(() -> {
 
-                            sr.setState(ItemState.UNDEFINED);
-
-                            sr.save();
+                            try (PooledDb db = (PooledDb) ledger.getDb()) {
+                                db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
+                                        ItemState.APPROVED.ordinal(),
+                                        StateRecord.unixTime(sr.getExpiresAt()),
+                                        0,
+                                        sr.getRecordId()
+                                );
+                            } catch (SQLException se) {
+                                se.printStackTrace();
+//                                throw new Ledger.Failure("StateRecord save failed:" + se);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
 
                             return null;
                         });
