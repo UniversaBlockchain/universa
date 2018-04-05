@@ -48,7 +48,43 @@ task buildMultiJar(type: Copy) {
     from configurations.runtime
     from jar
 }
-//build.dependsOn(buildMultiJar)
+
+
+def configFilePath = "src/main/java/com/icodici/universa/node2"
+def configTestFilePath = "src/test_config"
+def configBackupFilePath = "config_backup"
+def configFileName = "Config.java"
+
+
+task testConfigRestore(type: Copy) {
+    from "$buildDir/" + configBackupFilePath
+    into configFilePath
+    include configFileName
+}
+
+task buildMultiJarTestConfig(type: Task) {
+
+    doFirst {
+        copy {
+            from configFilePath
+            into "$buildDir/" + configBackupFilePath
+            include configFileName
+        }
+
+        copy {
+            from configTestFilePath
+            into configFilePath
+            include configFileName
+        }
+    }
+
+    finalizedBy buildMultiJar
+    buildMultiJar.finalizedBy testConfigRestore
+}
+
+
+
+
 
 task fatJar(type: Jar) {
     manifest {
