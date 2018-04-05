@@ -41,6 +41,12 @@ public class Reference implements BiSerializable {
 
     public Reference() {}
 
+
+    /**
+     *adds a basic contract for reference
+     *
+     *@param contract basic contract.
+     */
     public Reference(Contract contract) {
         baseContract = contract;
     }
@@ -188,7 +194,7 @@ public class Reference implements BiSerializable {
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
-    public boolean compareOperands(Contract refContract,
+    private boolean compareOperands(Contract refContract,
                                    String leftOperand,
                                    String rightOperand,
                                    compareOperandType typeOfRightOperand,
@@ -461,7 +467,7 @@ public class Reference implements BiSerializable {
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
-    public boolean checkCondition(String condition, Contract ref, Collection<Contract> contracts, int iteration) {
+    private boolean checkCondition(String condition, Contract ref, Collection<Contract> contracts, int iteration) {
 
         for (int i = 0; i < 2; i++) {
             int operPos = condition.lastIndexOf(operators[i]);
@@ -515,14 +521,14 @@ public class Reference implements BiSerializable {
     }
 
     /**
-     * Check conditions of reference
+     * Check conditions of references
      * @param conditions binder with conditions to check for matching
      * @param ref contract to check for matching
      * @param contracts contract list to check for matching
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
-    public boolean checkConditions(Binder conditions, Contract ref, Collection<Contract> contracts, int iteration) {
+    private boolean checkConditions(Binder conditions, Contract ref, Collection<Contract> contracts, int iteration) {
 
         boolean result;
 
