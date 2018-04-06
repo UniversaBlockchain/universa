@@ -111,6 +111,7 @@ public class Config {
     private Duration statsIntervalSmall = Duration.ofSeconds(30);
     private Duration statsIntervalBig = Duration.ofSeconds(3600);
     private Duration maxGetItemTime = Duration.ofSeconds(30);
+    private int getItemRetryCount = 10;
     private int negativeConsensus;
     private int positiveConsensus;
     private int resyncBreakConsensus;
@@ -209,6 +210,10 @@ public class Config {
 
     public Duration getMaxGetItemTime() {
         return maxGetItemTime;
+    }
+
+    public int getGetItemRetryCount() {
+        return getItemRetryCount;
     }
 
     public void setMaxGetItemTime(Duration maxGetItemTime) {

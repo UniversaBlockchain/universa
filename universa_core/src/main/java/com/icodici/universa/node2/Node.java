@@ -1220,6 +1220,7 @@ public class Node {
         private void download() {
             if(processingState.canContinue()) {
 
+                int retryCounter = config.getGetItemRetryCount();
                 while (!isPayloadPollingExpired() && parcel == null) {
                     if (sources.isEmpty()) {
 //                        log.e("empty sources for download tasks, stopping");
@@ -1237,12 +1238,15 @@ public class Node {
                                 parcelDownloaded();
                                 return;
                             } else {
-                                Thread.sleep(100);
+                                Thread.sleep(1000);
+                                retryCounter -= 1;
                             }
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
                     }
+                    if (retryCounter <= 0)
+                        return;
                 }
             }
         }
