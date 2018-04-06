@@ -80,7 +80,7 @@ definition:
             all_of:
               - certification_contract
         fields:
-          references:
+          /references:
             - ~
 
   references:

@@ -18,6 +18,8 @@ import net.sergeych.tools.Binder;
 
 import java.util.*;
 
+import static java.util.Arrays.asList;
+
 
 @BiType(name = "ModifyDataPermission")
 public class ModifyDataPermission extends Permission {
@@ -25,6 +27,8 @@ public class ModifyDataPermission extends Permission {
     public static final String FIELD_NAME = "modify_data";
 
     private Map<String, List<String>> fields = new HashMap<>();
+
+    private Set<String> rootFields = new HashSet<>(asList("references"));
 
     public ModifyDataPermission() {
     }
@@ -77,28 +81,39 @@ public class ModifyDataPermission extends Permission {
             });
         }
 
-        // check references modify
-        // TODO: this is hack, shouldn't access directly to references
+        // check root fields modifies
 
-        boolean containsField = this.fields.containsKey("references");
-        List<String> foundField = this.fields.get("references");
+        for (String rootField : rootFields) {
+            boolean containsField = this.fields.containsKey("/" + rootField);
+            List<String> foundField = this.fields.get("/" + rootField);
 
-        Delta references = stateChanges.get("references");
-        if (references != null && references instanceof ListDelta) {
-            Map mapChanges = ((ListDelta) references).getChanges();
-            mapChanges.keySet().removeIf(key -> {
-                Object changed = mapChanges.get(key);
+            Delta rootFieldChanges = stateChanges.get(rootField);
+            if (rootFieldChanges != null) {
+                Map mapChanges;
 
-                Object value = "";
-
-                if (changed != null && changed instanceof ChangedItem) {
-                    value = ((ChangedItem) mapChanges.get(key)).newValue();
+                if(rootFieldChanges instanceof ListDelta) {
+                    mapChanges = ((ListDelta) rootFieldChanges).getChanges();
+                } else if(rootFieldChanges instanceof MapDelta) {
+                    mapChanges = ((MapDelta) data).getChanges();
+                } else {
+                    mapChanges = null;
                 }
+                if(mapChanges!= null) {
+                    mapChanges.keySet().removeIf(key -> {
+                        Object changed = mapChanges.get(key);
+
+                        Object value = "";
+
+                        if (changed != null && changed instanceof ChangedItem) {
+                            value = ((ChangedItem) mapChanges.get(key)).newValue();
+                        }
 
 
-                return (containsField && foundField == null) ||
-                        (foundField != null && foundField.contains(value) || isEmptyOrNull(foundField, value));
-            });
+                        return (containsField && foundField == null) ||
+                                (foundField != null && foundField.contains(value) || isEmptyOrNull(foundField, value));
+                    });
+                }
+            }
         }
     }
 

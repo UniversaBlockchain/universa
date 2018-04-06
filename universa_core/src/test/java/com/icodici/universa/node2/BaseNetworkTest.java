@@ -3601,13 +3601,23 @@ public class BaseNetworkTest extends TestCase {
 
         // contract for reference from state
 
-        Contract tempJobCertificate = new Contract(llcPrivateKeys.iterator().next());
-        tempJobCertificate.setOwnerKeys(stepaPublicKeys);
-        tempJobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
-        tempJobCertificate.getDefinition().getData().set("type", "temp job certificate");
-        tempJobCertificate.seal();
+        Contract oldJobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        oldJobCertificate.setOwnerKeys(stepaPublicKeys);
+        oldJobCertificate.getDefinition().getData().set("type", "old job certificate");
+        oldJobCertificate.seal();
 
-        registerAndCheckApproved(tempJobCertificate);
+        registerAndCheckApproved(oldJobCertificate);
+
+
+        // contract for reference from state
+
+        Contract newJobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        newJobCertificate.setOwnerKeys(stepaPublicKeys);
+        newJobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        newJobCertificate.getDefinition().getData().set("type", "new job certificate");
+        newJobCertificate.seal();
+
+        registerAndCheckApproved(newJobCertificate);
 
 
         // 1 revision: main contract
@@ -3625,9 +3635,7 @@ public class BaseNetworkTest extends TestCase {
         Contract llcProperty2 = llcProperty.createRevision(llcPrivateKeys.iterator().next());
 
         List <String> listConditions = new ArrayList<>();
-        listConditions.add("ref.definition.issuer == \"26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R\"");
-        listConditions.add("ref.definition.data.issuer == \"Roga & Kopita\"");
-        listConditions.add("ref.definition.data.type == \"temp job certificate\"");
+        listConditions.add("ref.definition.data.type == \"old job certificate\"");
 
         Reference reference = new Reference(llcProperty);
         reference.name = "temp_certification_contract";
@@ -3636,6 +3644,7 @@ public class BaseNetworkTest extends TestCase {
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
+        reference.addMatchingItem(oldJobCertificate);
 
         llcProperty2.addReferenceToState(reference);
 
@@ -3647,18 +3656,37 @@ public class BaseNetworkTest extends TestCase {
         TransactionPack tp_before = llcProperty2.getTransactionPack();
         // don't forget add all contracts needed for all references
         tp_before.addReferencedItem(jobCertificate);
-        tp_before.addReferencedItem(tempJobCertificate);
+        tp_before.addReferencedItem(oldJobCertificate);
         byte[] data = tp_before.pack();
         // here we "send" data and "got" it
         TransactionPack tp_after = TransactionPack.unpack(data);
 
         registerAndCheckApproved(tp_after);
 
-        // 3 revision: finally change owner
-        // it do owner with reference "temp_certification_contract"
+        // 3 revision: change existing reference
+        // it do issuer with reference "certification_contract"
 
-        Contract llcProperty3 = llcProperty2.createRevision(stepaPrivateKeys);
-        llcProperty3.setOwnerKeys(thirdPartyPublicKeys);
+        List <String> newListConditions = new ArrayList<>();
+        newListConditions.add("ref.definition.issuer == \"26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R\"");
+        newListConditions.add("ref.definition.data.issuer == \"Roga & Kopita\"");
+        newListConditions.add("ref.definition.data.type == \"new job certificate\"");
+
+        Binder newConditions = new Binder();
+        newConditions.set("all_of", listConditions);
+
+        Reference newReference = new Reference(llcProperty);
+        newReference.name = "temp_certification_contract";
+        newReference.type = Reference.TYPE_EXISTING;
+
+        Contract llcProperty3 = llcProperty2.createRevision(llcPrivateKeys.iterator().next());
+
+//        llcProperty3.getReferences().get("temp_certification_contract").setConditions(newConditions);
+//        llcProperty3.getState().getReferences().get(0).setConditions(newConditions);
+
+        llcProperty3.getState().getReferences().remove(llcProperty3.getReferences().get("temp_certification_contract"));
+        llcProperty3.getReferences().remove("temp_certification_contract");
+        llcProperty3.addReferenceToState(newReference);
+
         llcProperty3.seal();
         llcProperty3.check();
         llcProperty3.traceErrors();
@@ -3667,7 +3695,27 @@ public class BaseNetworkTest extends TestCase {
         tp_before = llcProperty3.getTransactionPack();
         // don't forget add all contracts needed for all references
         tp_before.addReferencedItem(jobCertificate);
-        tp_before.addReferencedItem(tempJobCertificate);
+        tp_before.addReferencedItem(newJobCertificate);
+        data = tp_before.pack();
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+
+        // 4 revision: finally change owner
+        // it do owner with reference "temp_certification_contract"
+
+        Contract llcProperty4 = llcProperty3.createRevision(stepaPrivateKeys);
+        llcProperty4.setOwnerKeys(thirdPartyPublicKeys);
+        llcProperty4.seal();
+        llcProperty4.check();
+        llcProperty4.traceErrors();
+        assertFalse(llcProperty4.isOk());
+
+        tp_before = llcProperty4.getTransactionPack();
+        // don't forget add all contracts needed for all references
+        tp_before.addReferencedItem(jobCertificate);
+        tp_before.addReferencedItem(newJobCertificate);
         data = tp_before.pack();
         // here we "send" data and "got" it
         tp_after = TransactionPack.unpack(data);
