@@ -2784,6 +2784,59 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
+    @Test(timeout = 90000)
+    public void imNotGonnaPayForIt() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract paidContract = new Contract(stepaPrivateKeys.iterator().next());
+        paidContract.seal();
+        paidContract.check();
+        paidContract.traceErrors();
+
+        PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
+        Set<PublicKey> keys = new HashSet();
+        keys.add(ownerKey.getPublicKey());
+        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createParcel(paidContract, stepaTU, 1, stepaPrivateKeys, false);
+        Contract payment = parcel.getPaymentContract();
+        Contract payload = parcel.getPayloadContract();
+
+        Contract imNotGonnaPayForIt = new Contract(TestKeys.privateKey(5));
+
+        payment.addNewItems(imNotGonnaPayForIt);
+        payment.seal();
+        parcel = new Parcel(payload.getTransactionPack(),payment.getTransactionPack());
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKey());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+
+
+        node.registerParcel(parcel);
+        node.waitParcel(parcel.getId(), 8000);
+
+        // check payment and payload contracts
+        assertNotEquals(ItemState.APPROVED, node.waitItem(imNotGonnaPayForIt.getId(), 8000).state);
+
+    }
+
+
 
     @Test(timeout = 90000)
     public void registerParcelWithRealPayment() throws Exception {
