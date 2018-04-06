@@ -10,7 +10,6 @@ public class DbPool implements AutoCloseable {
     private final Properties properties;
     private final int maximumConnections;
     private volatile int total = 0;
-    private int cached = 0;
 
     /**
      * This the per-thread cache of the DB connection.
@@ -44,27 +43,26 @@ public class DbPool implements AutoCloseable {
 
     public PooledDb db() throws SQLException {
         try {
-//            PooledDb db = threadDb.get();
+            PooledDb db = threadDb.get();
             // One thread - one connection, e.g. transactions work with the same db and
             // all other calls in the same thread use same pooled instance
-//            if( db != null ) {
-//                // TODO: uncomment the next assert line to spot every transaction-inside-transaction.
-//                // This will definitely break some unit tests until the code is change to never cause
-//                // transaction-inside-transaction DB access!
-//                // assert !db.isInTransaction;
-//                System.out.println("get cached " + db.index + " pool " + this + " left " + pool.size() + " total " + total);
-//                cached++;
-//                return db;
-//            }
+            if( db != null ) {
+                // TODO: uncomment the next assert line to spot every transaction-inside-transaction.
+                // This will definitely break some unit tests until the code is change to never cause
+                // transaction-inside-transaction DB access!
+                // assert !db.isInTransaction;
+                return db;
+            }
 
             PooledDb pdb = total >= maximumConnections ? pool.take() : pool.poll();
             if( pdb != null ) {
 //                System.out.println("take left " + pool.size() + " total " + total + " cached " + cached);
             } else {
                 pdb = new PooledDb(this, connectionString, properties);
+                total++;
 //                System.out.println("new  left " + pool.size() + " total " + total + " cached " + cached);
             }
-//            threadDb.set(pdb);
+            threadDb.set(pdb);
             return pdb;
         } catch (InterruptedException e) {
             throw new SQLException("Pooled operation interrupted");
@@ -74,9 +72,10 @@ public class DbPool implements AutoCloseable {
     }
 
     void returnToPool(PooledDb db) {
-//        System.out.println("return " + db.index + " left " + pool.size() + " total " + total + " cached " + cached);
-//      threadDb.set(null);
-        pool.add(db);
+        if(db.equals(threadDb.get())) {
+            threadDb.set(null);
+            pool.add(db);
+        }
     }
 
 

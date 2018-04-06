@@ -378,8 +378,7 @@ public class PostgresLedgerTest extends TestCase {
         }
     }
 
-    @Ignore("deadlock test")
-    @Test
+    @Test(timeout = 30000)
     public void ledgerDeadlock() throws Exception {
         List<Contract> origins = new ArrayList<>();
         List<Contract> newRevisions = new ArrayList<>();

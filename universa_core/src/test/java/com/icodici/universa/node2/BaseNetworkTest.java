@@ -3356,7 +3356,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, itemResult.state);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void referenceForChangeOwner() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -3408,7 +3408,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void referenceForRevoke() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -3459,7 +3459,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void referenceForSplitJoin() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -3512,7 +3512,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void referenceForChangeNumber() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -3565,7 +3565,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void declineReferenceForChangeOwner() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -3749,7 +3749,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckDeclined(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void declineReferenceForRevoke() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -3931,7 +3931,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckDeclined(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void declineReferenceForSplitJoin() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -4114,7 +4114,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckDeclined(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void declineReferenceForChangeNumber() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -5376,7 +5376,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(res);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void checkReferencesContracts() throws Exception {
         Contract contract1 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract1.yml");
         Contract contract2 = Contract.fromDslFile(ROOT_PATH + "Referenced_contract2.yml");
@@ -5414,7 +5414,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract3));
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void referenceForChangeOwnerWithCreateContract() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();//manager -
         Set<PrivateKey>  llcPrivateKeys = new HashSet<>(); //issuer
@@ -5492,7 +5492,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void referenceForRevokeWithCreateContract() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
@@ -5569,7 +5569,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void referenceForChangeNumberWithCreateContract() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
@@ -5657,7 +5657,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(tp_after);
     }
 
-    @Test
+    @Test(timeout = 30000)
     public void referenceForSplitJoinWithCreateContract() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
