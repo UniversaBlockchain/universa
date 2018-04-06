@@ -12,6 +12,7 @@ import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
+import net.sergeych.diff.ListDelta;
 import net.sergeych.diff.MapDelta;
 import net.sergeych.tools.Binder;
 
@@ -69,6 +70,30 @@ public class ModifyDataPermission extends Permission {
                 boolean containsField = this.fields.containsKey(key);
 
                 List<String> foundField = this.fields.get(key);
+
+
+                return (containsField && foundField == null) ||
+                        (foundField != null && foundField.contains(value) || isEmptyOrNull(foundField, value));
+            });
+        }
+
+        // check references modify
+        // TODO: this is hack, shouldn't access directly to references
+
+        boolean containsField = this.fields.containsKey("references");
+        List<String> foundField = this.fields.get("references");
+
+        Delta references = stateChanges.get("references");
+        if (references != null && references instanceof ListDelta) {
+            Map mapChanges = ((ListDelta) references).getChanges();
+            mapChanges.keySet().removeIf(key -> {
+                Object changed = mapChanges.get(key);
+
+                Object value = "";
+
+                if (changed != null && changed instanceof ChangedItem) {
+                    value = ((ChangedItem) mapChanges.get(key)).newValue();
+                }
 
 
                 return (containsField && foundField == null) ||

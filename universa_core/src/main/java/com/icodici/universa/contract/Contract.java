@@ -180,6 +180,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 references.put(ref.name, ref);
             }
         }
+        if (state != null && state.references != null){
+            for(Reference ref : state.references) {
+                ref.setContract(this);
+                references.put(ref.name, ref);
+            }
+        }
 
         for(Reference ref : getReferences().values()) {
             for(Contract c : pack.getReferencedItems().values()) {
@@ -300,6 +306,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         if (definition != null && definition.references != null) {
             for(Reference ref : definition.references) {
+                ref.setContract(this);
+                references.put(ref.name, ref);
+            }
+        }
+        if (state != null && state.references != null){
+            for(Reference ref : state.references) {
                 ref.setContract(this);
                 references.put(ref.name, ref);
             }
@@ -450,6 +462,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 referencedItems.addAll(r.matchingItems);
             }
         }
+        if (state != null && state.getReferences() != null) {
+            for (Reference r : state.getReferences()) {
+                referencedItems.addAll(r.matchingItems);
+            }
+        }
         return referencedItems;
     }
 
@@ -586,6 +603,23 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         }
                 }
             } else if(rm.type == Reference.TYPE_EXISTING) {
+
+//                for (String key : getPermissions().keySet()) {
+//                    Collection<Permission> permissions = getPermissions().get(key);
+//                    boolean permissionQuantized = false;
+//                    // TODO: hack - is exist another way to filter references that is use for validness checking
+//                    for (Permission permission : permissions) {
+//                        if (permission.isAllowedFor(getSealedByKeys(), asList(rm.name))) {
+//                            System.out.println(">> " + rm.name + " >> " + rm.matchingItems.size());
+//                            rm_check = rm.isValid();
+//                        } else {
+//                            System.out.println(">>> " + rm.name + " >>> " + rm.matchingItems.size());
+//                            // this reference do not need for contract
+//                            // or need but will fail on checking permitted changes
+//                            rm_check = true;
+//                        }
+//                    }
+//                }
                 rm_check = rm.isValid();
             }
 
@@ -1232,6 +1266,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             transactional.addReference(reference);
         } else if(reference.type == Reference.TYPE_EXISTING) {
             definition.addReference(reference);
+        }
+
+        references.put(reference.name, reference);
+    }
+
+    public void addReferenceToState(Reference reference) {
+        if(reference.type == Reference.TYPE_TRANSACTIONAL) {
+            transactional.addReference(reference);
+        } else if(reference.type == Reference.TYPE_EXISTING) {
+            state.addReference(reference);
         }
 
         references.put(reference.name, reference);
@@ -2043,6 +2087,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private HashId parent;
         private Binder data = new Binder();
         private String branchId;
+        private List<Reference> references = new ArrayList<>();
 
         private State() {
             createdAt = definition.createdAt;
@@ -2094,6 +2139,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (expiresAt != null)
                 of.set("expires_at", expiresAt);
 
+            if (references != null)
+                of.set("references", references);
+
             return serializer.serialize(
                     of
             );
@@ -2110,6 +2158,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             expiresAt = data.getZonedDateTime("expires_at", null);
 
             revision = data.getIntOrThrow("revision");
+
+            this.references = d.deserialize(data.getList("references", null));
 
             if (revision <= 0)
                 throw new IllegalArgumentException("illegal revision number: " + revision);
@@ -2150,6 +2200,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         public void setBranchNumber(int number) {
             branchId = revision + ":" + number;
             branchRevision = number;
+        }
+
+        public void addReference(Reference reference) {
+            if(references == null) {
+                references = new ArrayList<>();
+            }
+
+            references.add(reference);
+        }
+
+        public List<Reference> getReferences() {
+            return this.references;
         }
     }
 

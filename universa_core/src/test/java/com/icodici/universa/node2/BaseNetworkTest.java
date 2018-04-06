@@ -3566,6 +3566,116 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test
+    public void referenceFromStateForChangeOwner() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        // contract for reference from definition
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+
+        // contract for reference from state
+
+        Contract tempJobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        tempJobCertificate.setOwnerKeys(stepaPublicKeys);
+        tempJobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        tempJobCertificate.getDefinition().getData().set("type", "temp job certificate");
+        tempJobCertificate.seal();
+
+        registerAndCheckApproved(tempJobCertificate);
+
+
+        // 1 revision: main contract
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithStateReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+
+        // 2 revision: change reference in state
+        // it do issuer with reference "certification_contract"
+
+        Contract llcProperty2 = llcProperty.createRevision(llcPrivateKeys.iterator().next());
+
+        List <String> listConditions = new ArrayList<>();
+        listConditions.add("ref.definition.issuer == \"26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R\"");
+        listConditions.add("ref.definition.data.issuer == \"Roga & Kopita\"");
+        listConditions.add("ref.definition.data.type == \"temp job certificate\"");
+
+        Reference reference = new Reference(llcProperty);
+        reference.name = "temp_certification_contract";
+        reference.type = Reference.TYPE_EXISTING;
+
+        Binder conditions = new Binder();
+        conditions.set("all_of", listConditions);
+        reference.setConditions(conditions);
+
+        llcProperty2.addReferenceToState(reference);
+
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        // don't forget add all contracts needed for all references
+        tp_before.addReferencedItem(jobCertificate);
+        tp_before.addReferencedItem(tempJobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+
+        // 3 revision: finally change owner
+        // it do owner with reference "temp_certification_contract"
+
+        Contract llcProperty3 = llcProperty2.createRevision(stepaPrivateKeys);
+        llcProperty3.setOwnerKeys(thirdPartyPublicKeys);
+        llcProperty3.seal();
+        llcProperty3.check();
+        llcProperty3.traceErrors();
+        assertFalse(llcProperty3.isOk());
+
+        tp_before = llcProperty3.getTransactionPack();
+        // don't forget add all contracts needed for all references
+        tp_before.addReferencedItem(jobCertificate);
+        tp_before.addReferencedItem(tempJobCertificate);
+        data = tp_before.pack();
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+    }
+
+    @Test
     public void declineReferenceForChangeOwner() throws Exception {
 
         // You have a notary dsl with llc's property
