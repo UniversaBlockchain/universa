@@ -790,6 +790,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return res;
         }
 
+        // The U shouldn't have any new items
+        if (newItems.size() > 0) {
+            res = false;
+            addError(Errors.BAD_NEW_ITEM, "payment contract can not have any new items");
+        }
+
+        // If the check is failed, checking process is aborting
+        if (!res) {
+            return res;
+        }
+
         // check if payment contract not origin itself, means has revision more then 1
         // don't make this check for initial transaction_units' contract
         if ((getRevision() != 1) || (getParent()!=null)) {
