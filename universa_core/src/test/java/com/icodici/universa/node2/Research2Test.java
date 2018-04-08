@@ -645,7 +645,7 @@ public class Research2Test {
     }
 
     @Ignore
-    @Test //OK no assert
+    @Test
     public void testContractCheck() throws Exception {
         PrivateKey key = TestKeys.privateKey(3);
         testSomeWork(() ->  {
@@ -665,7 +665,7 @@ public class Research2Test {
     }
 
     @Ignore
-    @Test //OK, no assert
+    @Test
     public void testIdealConcurrentWork() throws Exception {
         testSomeWork(() -> {
             for (int i = 0; i < 100; ++i)
@@ -674,7 +674,7 @@ public class Research2Test {
     }
 
     @Ignore
-    @Test // OK, no assert
+    @Test
     public void testNewContractSeal() throws Exception {
         testSomeWork(() -> {
             for (int i = 0; i < 10; ++i) {
@@ -695,7 +695,7 @@ public class Research2Test {
     }
 
     @Ignore
-    @Test //OK, no assert
+    @Test
     public void testHashId() throws Exception {
         testSomeWork(() -> {
             byte[] randBytes = Do.randomBytes(1*1024*1024);

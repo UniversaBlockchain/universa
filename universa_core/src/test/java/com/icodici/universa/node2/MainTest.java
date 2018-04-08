@@ -201,8 +201,7 @@ public class MainTest {
         return mm.get(0);
     }
 
-    @Ignore
-    @Test //fail
+    @Test
     public void networkReconfigurationTestSerial() throws Exception {
 
         //create 4 nodes from config file. 3 know each other. 4th knows everyone. nobody knows 4th
@@ -238,8 +237,10 @@ public class MainTest {
 
         //registering with UNKNOWN node. Shouldn't succeed
         int attempts = 3;
-        Client client = new Client(myKey, main.myInfo, null);
-        ItemResult rr = client.register(contract.getPackedTransaction(), 15000);
+
+        Client client = new Client(universaKey, main.myInfo, null);
+
+        ItemResult rr = client.register(contract.getPackedTransaction(), 5000);
         while (attempts-- > 0) {
             rr = client.getState(contract.getId());
             System.out.println(rr);
@@ -254,7 +255,7 @@ public class MainTest {
         assertTrue(contract.isOk());
 
         //registering with KNOWN node. Should succeed
-        Client clientKnown = new Client(myKey, mm.get(0).myInfo, null);
+        Client clientKnown = new Client(universaKey, mm.get(0).myInfo, null);
         clientKnown.register(contract.getPackedTransaction(), 15000);
         while (true) {
             rr = clientKnown.getState(contract.getId());
@@ -326,10 +327,8 @@ public class MainTest {
         }
     }
 
-    @Ignore
     @Test // no asserts
     public void networkReconfigurationTestParallel() throws Exception {
-
         //create 4 nodes from config file. 3 know each other. 4th knows everyone. nobody knows 4th
         List<Main> mm = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
@@ -435,6 +434,8 @@ public class MainTest {
             th.start();
         }
 
+        Thread.sleep(5000);
+
         if (!semaphore.tryAcquire(15, TimeUnit.SECONDS)) {
             for (int i = 0; i < contractsApproved.size(); i++) {
                 if (!contractsApproved.get(i)) {
@@ -465,11 +466,6 @@ public class MainTest {
 
     @Test
     public void reconfigurationContractTest() throws Exception {
-
-//     PrivateKey reconfigKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
-//     String string = new Bytes(reconfigKey.getPublicKey().pack()).toHex();
-//     System.out.println(string);
-
         PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
 
         List<Main> mm = new ArrayList<>();
@@ -851,7 +847,6 @@ public class MainTest {
         keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
         Contract stepaTU = InnerContractsService.createFreshTU(100000000, ownerKeys);
         stepaTU.check();
-        //stepaTU.setIsTU(true);
         stepaTU.traceErrors();
 
         PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
@@ -860,8 +855,6 @@ public class MainTest {
         client.restart();
 
         ItemResult itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
-//        node.registerItem(stepaTU);
-//        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
 
         client.getSession().setPrivateKey(clientPrivateKey);
         client.restart();
@@ -872,13 +865,12 @@ public class MainTest {
         return ContractsService.createParcel(c, stepaTU, 150, keySet);
     }
 
-    @Ignore //fail
     @Test
     public void registerContractWithAnonymousId() throws Exception {
         TestSpace ts = prepareTestSpace();
-        PrivateKey myPrivKey = TestKeys.privateKey(1);
-        PublicKey myPubKey = myPrivKey.getPublicKey();
-        byte[] myAnonId = myPrivKey.createAnonymousId();
+        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+
+        byte[] myAnonId = newPrivateKey.createAnonymousId();
 
         Contract contract = new Contract();
         contract.setExpiresAt(ZonedDateTime.now().plusDays(90));
@@ -886,18 +878,21 @@ public class MainTest {
         contract.registerRole(new RoleLink("owner", "issuer"));
         contract.registerRole(new RoleLink("creator", "issuer"));
         contract.addPermission(new ChangeOwnerPermission(r));
-
-        contract.addSignerKey(myPrivKey);
+        contract.addSignerKey(newPrivateKey);
         contract.seal();
 
+        assertTrue(contract.isOk());
         System.out.println("contract.check(): " + contract.check());
         contract.traceErrors();
 
-        //ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);
-        ItemResult itemResult0 = ts.node.node.registerItem(contract);
-        //Thread.sleep(1000000000);
-        ItemResult itemResult = ts.node.node.waitItem(contract.getId(), 100);
+        ts.client.getSession().setPrivateKey(newPrivateKey);
+        ts.client.restart();
+
+        ItemResult itemResult = ts.client.register(contract.getPackedTransaction(), 5000);
+
         assertEquals(ItemState.APPROVED, itemResult.state);
+
+        ts.node.shutdown();
     }
 
     private TestSpace prepareTestSpace() throws Exception {
@@ -944,8 +939,7 @@ public class MainTest {
     }
 
     protected void sendHello(NodeInfo myNodeInfo, NodeInfo destination, UDPAdapter udpAdapter, DatagramSocket socket) throws InterruptedException {
-
-//        System.out.println(">> send froud from " + myNodeInfo.getNumber() + " to " + destination.getNumber());
+//      System.out.println(">> send froud from " + myNodeInfo.getNumber() + " to " + destination.getNumber());
         Binder binder = Binder.fromKeysValues(
                 "data", myNodeInfo.getNumber()
         );
@@ -956,7 +950,7 @@ public class MainTest {
         sendBlock(block, socket);
     }
 
-    @Ignore //fail
+    @Ignore
     @Test
     public void udpDisruptionTest() throws Exception{
         List<Main> mm = new ArrayList<>();
@@ -1014,13 +1008,14 @@ public class MainTest {
         for (Thread th : threadsList) {
             th.start();
         }
-        Thread.sleep(1000);
+        Thread.sleep(5000);
 
         PrivateKey myKey = TestKeys.privateKey(0);
         Client client = new Client(myKey,mm.get(0).myInfo,null);
 
         Contract contract = new Contract(myKey);
         contract.seal();
+
         Parcel parcel = createParcelWithFreshTU(client,contract,Do.listOf(myKey));
         client.registerParcel(parcel.pack(),60000);
         ItemResult rr;
@@ -1042,11 +1037,10 @@ public class MainTest {
     }
 
     @Ignore
-    @Test //fail 53
+    @Test
     public void dbSanitationTest() throws Exception {
         final int NODE_COUNT = 4;
         PrivateKey myKey = TestKeys.privateKey(NODE_COUNT);
-
 
         List<String> dbUrls = new ArrayList<>();
         dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
@@ -1212,7 +1206,7 @@ public class MainTest {
         }
     }
 
-    @Ignore //fail
+    @Ignore
     @Test
     public void nodeStatsTest() throws Exception {
         PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
@@ -1237,6 +1231,6 @@ public class MainTest {
             binder = testSpace.client.getStats();
             System.out.println(binder.toString());
         }
-
     }
+
 }
