@@ -26,6 +26,7 @@ public class Config {
         System.out.println("USING TEST CONFIG");
         keysWhiteList.add(getTransactionUnitsIssuerKey());
         keysWhiteList.add(getNetworkAdminKey());
+        try{keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABzD/Kgn3Nn2F/nhZOVspa7LEwiHYnr6PGID4+6itQcag5eY6lRgpg/MGMT0J3SyKREFo0vrE0q8OHOe8pqBEv+m24Vo3dRT1tTOSoWPpGc8xXYj9Y0jeeMyxVzx2uvtXM3SHzS7YaP4Y1yhi1LnVq1MpQ9cls9KL+f8AJCuqZ8meCc2Zxo/CgEue24v7z+UvB9eq8jiCJM3BW6hDPW4bxYp9nbZib2AuMqzVK/DP21R5oVdxfWYKd0+9E7VfAk++J1/JtUbO4Q185ic2QEvhgqYnw4JJTTxeglqXkx6Ge5iaEJ+GqiwnQ/+K1huX33vMRMvC0BbpwtTrvKHCOKa+hwQ==").getData()));}catch (Exception e){System.out.println("error in test config");}
     }
 
     public Config copy() {
