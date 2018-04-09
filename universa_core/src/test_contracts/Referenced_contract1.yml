@@ -102,6 +102,12 @@ definition:
      name: ref_cont2
      where:
        - ref.state.data.amount < 100
+ - reference:
+     name: ref_cont_inherit
+     where:
+       all_of:
+       - this.definition.references.ref_cont defined
+       - inherit this.definition.references.ref_cont
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.
  permissions:

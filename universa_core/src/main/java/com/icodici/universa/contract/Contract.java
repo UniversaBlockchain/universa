@@ -1783,6 +1783,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 default:
                     if (name.startsWith("data."))
                         return definition.data.getOrNull(name.substring(5));
+                    if (name.startsWith("references."))
+                        return (T) findReferenceByName(name.substring(11), "definition");
             }
         } else if (name.startsWith("state.")) {
             name = name.substring(6);
@@ -1794,6 +1796,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 default:
                     if (name.startsWith("data."))
                         return state.data.getOrNull(name.substring(5));
+                    if (name.startsWith("references."))
+                        return (T) findReferenceByName(name.substring(11), "state");
             }
         } else switch (name) {
             case "id":
@@ -2089,6 +2093,42 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return null;
 
         return getReferences().get(name);
+    }
+
+    public Reference findReferenceByName(String name, String section) {
+        if (section.equals("definition")) {
+            if (definition.getReferences() == null)
+                return null;
+
+            List<Reference> listRefs = definition.getReferences();
+            for (Reference ref: listRefs)
+                if (ref.getName().equals(name))
+                    return ref;
+
+            return null;
+        } else if (section.equals("state")) {
+            if (state.getReferences() == null)
+                return null;
+
+            List<Reference> listRefs = state.getReferences();
+            for (Reference ref: listRefs)
+                if (ref.getName().equals(name))
+                    return ref;
+
+            return null;
+        } else if (section.equals("transactional")) {
+            if (transactional.getReferences() == null)
+                return null;
+
+            List<Reference> listRefs = transactional.getReferences();
+            for (Reference ref: listRefs)
+                if (ref.getName().equals(name))
+                    return ref;
+
+            return null;
+        }
+        
+        return null;
     }
 
     public class State {

@@ -3798,8 +3798,8 @@ public class BaseNetworkTest extends TestCase {
 
         List <String> listConditionsForDefinition = new ArrayList<>();
         listConditionsForDefinition.add("ref.definition.data.type == \"Good Bank\"");
-        listConditionsForDefinition.add("state.references.account_in_bank_certificate defined");
-        listConditionsForDefinition.add("state.references.account_in_bank_certificate is_inherit definition.references.bank_certificate");
+        listConditionsForDefinition.add("this.state.references.account_in_bank_certificate defined");
+        listConditionsForDefinition.add("this.state.references.account_in_bank_certificate is_inherit this.definition.references.bank_certificate");
 
         Binder conditionsForDefinition = new Binder();
         conditionsForDefinition.set("all_of", listConditionsForDefinition);
@@ -3816,7 +3816,7 @@ public class BaseNetworkTest extends TestCase {
 
         List <String> listConditionsForState = new ArrayList<>();
         listConditionsForState.add("ref.state.origin == \"" + oldAccountCertificate.getOrigin().toBase64String() + "\"");
-        listConditionsForState.add("inherit definition.references.bank_certificate");
+        listConditionsForState.add("inherit this.definition.references.bank_certificate");
 
         Binder conditionsForState = new Binder();
         conditionsForState.set("all_of", listConditionsForState);
@@ -3843,7 +3843,7 @@ public class BaseNetworkTest extends TestCase {
 
         List <String> newListConditions = new ArrayList<>();
         newListConditions.add("ref.state.origin == \"" + newAccountCertificate.getOrigin().toBase64String() + "\"");
-        newListConditions.add("inherit definition.references.bank_certificate");
+        newListConditions.add("inherit this.definition.references.bank_certificate");
 
         Binder newConditions = new Binder();
         newConditions.set("all_of", newListConditions);
@@ -5734,6 +5734,10 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract1));
         assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract2));
         assertTrue(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract3));
+
+        assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract1));
+        assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract2));
+        assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract3));
 
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract1));
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract2));
