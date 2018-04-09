@@ -60,8 +60,8 @@ public class ResearchTest extends TestCase {
 //
 //        Thread.sleep(2000);
 
-        //String nodeUrl = "http://node-1-pro.universa.io:8080";
-        String nodeUrl = "http://localhost:8080";
+        String nodeUrl = "http://node-1-pro.universa.io:8080";
+        //String nodeUrl = "http://localhost:8080";
         nodeClientKey = TestKeys.privateKey(0);
         //System.out.println("test key: " + nodeClientKey.getPublicKey().packToBase64String());
         nodeClient = new Client(nodeUrl, nodeClientKey, null, false);
