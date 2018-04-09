@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
 
@@ -29,6 +30,7 @@ public class ResearchTest extends TestCase {
 
     private static PrivateKey nodeClientKey = new PrivateKey(2048);
     private static Client nodeClient = null;
+    private static List<Client> clients = null;
 
 
 
@@ -60,11 +62,16 @@ public class ResearchTest extends TestCase {
 //
 //        Thread.sleep(2000);
 
-        String nodeUrl = "http://node-1-pro.universa.io:8080";
-        //String nodeUrl = "http://localhost:8080";
-        nodeClientKey = TestKeys.privateKey(0);
-        //System.out.println("test key: " + nodeClientKey.getPublicKey().packToBase64String());
-        nodeClient = new Client(nodeUrl, nodeClientKey, null, false);
+        clients = new ArrayList<>();
+        for (int i = 0; i < 10; ++i) {
+            int n = i+1;
+            String nodeUrl = "http://node-"+n+"-pro.universa.io:8080";
+            PrivateKey clientKey = TestKeys.privateKey(i);
+            Client client = new Client(nodeUrl, clientKey, null, false);
+            clients.add(client);
+        }
+
+        nodeClient = clients.get(0);
         Thread.sleep(100);
     }
 
@@ -162,14 +169,61 @@ public class ResearchTest extends TestCase {
         Contract whiteContract = new Contract(TestKeys.privateKey(0));
         whiteContract.seal();
 
-        System.out.println("nodeClient.register(stepaCoins)...");
+        System.out.println("nodeClient.register(whiteContract)...");
         //ItemResult itemResult = nodeClient.register(whiteContract.getLastSealedBinary(), 5000);
         ItemResult itemResult = nodeClient.register(whiteContract.getPackedTransaction(), 5000);
-        System.out.println("nodeClient.register(stepaCoins)... done! itemResult: " + itemResult.state);
+        System.out.println("nodeClient.register(whiteContract)... done! itemResult: " + itemResult.state);
 
         itemResult = nodeClient.getState(whiteContract.getId());
-        System.out.println("nodeClient.getState(stepaCoins): " + itemResult.state);
+        System.out.println("nodeClient.getState(whiteContract): " + itemResult.state);
         assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+
+    interface RunnablePrm {
+        void run(int threadIndex);
+    }
+
+    @Test
+    public void registerManySimpleContractsWhite() throws Exception {
+        int CONTRACTS_PER_THREAD = 1000;
+        int THREADS_COUNT = 10; // max 10
+        AtomicLong totalCounter = new AtomicLong(0);
+        RunnablePrm r = (threadIndex) -> {
+            try {
+                Client cln = clients.get(threadIndex);
+                for (int i = 0; i < CONTRACTS_PER_THREAD; ++i) {
+                    Contract whiteContract = new Contract(TestKeys.privateKey(threadIndex));
+                    whiteContract.seal();
+                    ItemResult itemResult = cln.register(whiteContract.getPackedTransaction(), 15000);
+                    assertEquals(ItemState.APPROVED, itemResult.state);
+                    totalCounter.incrementAndGet();
+                }
+            } catch (Exception e) {
+                System.out.println("error: " + e.toString());
+            }
+        };
+        List<Thread> threadList = new ArrayList<>();
+        for (int i = 0; i < THREADS_COUNT; ++i) {
+            final int threadIndex = i;
+            Thread t = new Thread(() -> r.run(threadIndex));
+            t.start();
+            threadList.add(t);
+        }
+        Thread heartbeat = new Thread(() -> {
+            try {
+                while (true) {
+                    Thread.sleep(1000);
+                    System.out.println("totalCounter: " + totalCounter.get());
+                }
+            } catch (Exception e) {
+                System.out.println("error: " + e.toString());
+            }
+        });
+        heartbeat.start();
+        for (Thread t : threadList)
+            t.join();
+        heartbeat.interrupt();
     }
 
 

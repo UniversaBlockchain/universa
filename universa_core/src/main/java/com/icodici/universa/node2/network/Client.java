@@ -200,7 +200,7 @@ public class Client {
                     while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
                         Thread.currentThread().sleep(100);
                         lastResult = getState(c.getId());
-                        System.out.println("test: " + lastResult);
+                        //System.out.println("test: " + lastResult);
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
