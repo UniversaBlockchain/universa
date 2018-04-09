@@ -43,8 +43,8 @@ public abstract class Role implements BiSerializable {
 
     private String name;
     private Contract contract;
-    private Set<String> requiredAllReferences = new HashSet<>();
-    private Set<String> requiredAnyReferences = new HashSet<>();
+    protected Set<String> requiredAllReferences = new HashSet<>();
+    protected Set<String> requiredAnyReferences = new HashSet<>();
 
 
 

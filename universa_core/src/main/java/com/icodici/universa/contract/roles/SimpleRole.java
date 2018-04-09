@@ -258,7 +258,8 @@ public class SimpleRole extends Role {
 
     @Override
     public String toString() {
-        return "SimpleRole<" + System.identityHashCode(this) + ":" + getName() + ":anyOf:" + keyRecords.keySet() + "|" + anonymousIds + ">";
+        return "SimpleRole<" + System.identityHashCode(this) + ":" + getName() + ":anyOf:" + keyRecords.keySet() + "|" +
+                anonymousIds +  ":requiredAll:" + requiredAllReferences + ":requiredAny:" + requiredAnyReferences + ">";
     }
 
     public boolean isAllowedForKeys(SimpleRole anotherRole) {
