@@ -757,6 +757,29 @@ definition:
              - ref.definition.data.boolean2==false
              - ref.state.data.boolean3!=false
              - ref.state.data.boolean4!=true
+ - reference:
+     name: ref_inherited
+     where:
+       all_of:
+         - inherit this.definition.references.ref_roles
+         - inherit this.definition.references.ref_float
+         - inherit this.definition.references.ref_string
+         - inherit this.definition.references.ref_boolean
+         - this.definition.references.ref_roles defined
+         - ref.state.references.ref_roles undefined
+         - this.definition.references.ref_inherited is_inherit this.definition.references.ref_float
+         - this.definition.references.ref_inherited is_inherit this.definition.references.ref_boolean
+         - any_of:
+           - this.definition.references.ref_inherited is_inherit this.definition.references.ref_integer
+           - all_of:
+             -  inherit   this.definition.references.ref_roles
+             -  inherit   this.definition.references.ref_float
+             -  inherit  this.definition.references.ref_string
+             -  inherit  this.definition.references.ref_boolean
+             -  this.definition.references.ref_roles   defined
+             -  ref.state.references.ref_roles   undefined
+             -  this.definition.references.ref_inherited  is_inherit   this.definition.references.ref_float
+             -  this.definition.references.ref_inherited is_inherit   this.definition.references.ref_boolean
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.
  permissions:

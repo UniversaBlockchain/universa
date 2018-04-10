@@ -32,5 +32,7 @@ public class ReferenceConditionsTest {
         assertTrue(refContract.getReferences().get("ref_string").matchingItems.contains(contract2));
         System.out.println("Check boolean conditions");
         assertTrue(refContract.getReferences().get("ref_boolean").matchingItems.contains(contract2));
+        System.out.println("Check inherited conditions");
+        assertTrue(refContract.getReferences().get("ref_inherited").matchingItems.contains(contract2));
      }
 }

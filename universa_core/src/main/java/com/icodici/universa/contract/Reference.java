@@ -128,7 +128,7 @@ public class Reference implements BiSerializable {
         return dataThis.equals(dataA);
     }
 
-    final String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches "};
+    final String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches "," is_inherit ","inherit "};
 
     final int DEFINED = 0;
     final int UNDEFINED = 1;
@@ -139,6 +139,8 @@ public class Reference implements BiSerializable {
     final int NOT_EQUAL = 6;
     final int EQUAL = 7;
     final int MATCHES = 8;
+    final int IS_INHERIT = 9;
+    final int INHERIT = 10;
 
     enum compareOperandType {
         FIELD,
@@ -217,34 +219,35 @@ public class Reference implements BiSerializable {
         boolean isRightDouble = false;
         int firstPointPos;
 
-        if (leftOperand.startsWith("ref.")) {
-            leftOperand = leftOperand.substring(4);
-            leftOperandContract = refContract;
-        } else if (leftOperand.startsWith("this.")) {
-            if (baseContract == null)
-                throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
+        if (leftOperand != null) {
+            if (leftOperand.startsWith("ref.")) {
+                leftOperand = leftOperand.substring(4);
+                leftOperandContract = refContract;
+            } else if (leftOperand.startsWith("this.")) {
+                if (baseContract == null)
+                    throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
 
-            leftOperand = leftOperand.substring(5);
-            leftOperandContract = baseContract;
-        } else if ((firstPointPos = leftOperand.indexOf(".")) > 0) {
-            if (baseContract == null)
-                throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
+                leftOperand = leftOperand.substring(5);
+                leftOperandContract = baseContract;
+            } else if ((firstPointPos = leftOperand.indexOf(".")) > 0) {
+                if (baseContract == null)
+                    throw new IllegalArgumentException("Use left operand in condition: " + leftOperand + ". But this contract not initialized.");
 
-            Reference ref = baseContract.findReferenceByName(leftOperand.substring(0, firstPointPos));
-            if (ref == null)
-                throw new IllegalArgumentException("Not found reference: " + leftOperand.substring(0, firstPointPos));
+                Reference ref = baseContract.findReferenceByName(leftOperand.substring(0, firstPointPos));
+                if (ref == null)
+                    throw new IllegalArgumentException("Not found reference: " + leftOperand.substring(0, firstPointPos));
 
-            for (Contract checkedContract: contracts)
-                if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
-                    leftOperandContract = checkedContract;
+                for (Contract checkedContract : contracts)
+                    if (ref.isMatchingWith(checkedContract, contracts, iteration + 1))
+                        leftOperandContract = checkedContract;
 
-            if (leftOperandContract == null)
-                return false;
+                if (leftOperandContract == null)
+                    return false;
 
-            leftOperand = leftOperand.substring(firstPointPos + 1);
+                leftOperand = leftOperand.substring(firstPointPos + 1);
+            } else
+                throw new IllegalArgumentException("Invalid format of left operand in condition: " + leftOperand + ". Missing contract field.");
         }
-        else
-            throw new IllegalArgumentException("Invalid format of left operand in condition: " + leftOperand + ". Missing contract field.");
 
         if (rightOperand != null) {     // if != null, rightOperand then FIELD or CONSTANT
             if (typeOfRightOperand == compareOperandType.FIELD) {     // if typeOfRightOperand - FIELD
@@ -278,7 +281,8 @@ public class Reference implements BiSerializable {
                     throw new IllegalArgumentException("Invalid format of right operand in condition: " + rightOperand + ". Missing contract field.");
             }
 
-            left = leftOperandContract.get(leftOperand);
+            if (leftOperandContract != null)
+                left = leftOperandContract.get(leftOperand);
             if (rightOperandContract != null)
                 right = rightOperandContract.get(rightOperand);
 
@@ -336,7 +340,17 @@ public class Reference implements BiSerializable {
 
                     case NOT_EQUAL:
                     case EQUAL:
-                        if (typeOfRightOperand == compareOperandType.FIELD) {   // rightOperand is FIELD
+                        if ((left != null) && left.getClass().getName().endsWith("HashId")) {    //if HashId - compare with HashId string
+                            if ((right != null) && right.getClass().getName().endsWith("HashId"))
+                                ret = ((HashId) left).toBase64String().equals(((HashId) right).toBase64String());
+                            else if ((right != null) && right.getClass().getName().endsWith("String"))
+                                ret = ((HashId) left).toBase64String().equals((String) right);
+                            else
+                                ret = ((HashId) left).toBase64String().equals(rightOperand);
+
+                            if (indxOperator == NOT_EQUAL)
+                                ret = !ret;
+                        } else if (typeOfRightOperand == compareOperandType.FIELD) {   // rightOperand is FIELD
                             if ((left != null) && (right != null)) {
                                 boolean isNumbers = true;
 
@@ -439,9 +453,24 @@ public class Reference implements BiSerializable {
 
                     case MATCHES:
 
+                        break;
+                    case IS_INHERIT:
+                        if ((left == null) || !left.getClass().getName().endsWith("Reference"))
+                            throw new IllegalArgumentException("Expected reference in condition in left operand: " + leftOperand);
+
+                        if ((right == null) || !right.getClass().getName().endsWith("Reference"))
+                            throw new IllegalArgumentException("Expected reference in condition in right operand: " + rightOperand);
+
+                        ret = ((Reference) left).isInherited((Reference) right, refContract, contracts, iteration + 1);
 
                         break;
+                    case INHERIT:
+                        if ((right == null) || !right.getClass().getName().endsWith("Reference"))
+                            throw new IllegalArgumentException("Expected reference in condition in right operand: " + rightOperand);
 
+                        ret = ((Reference) right).isMatchingWith(refContract, contracts, iteration + 1);
+
+                        break;
                     default:
                         throw new IllegalArgumentException("Invalid operator in condition");
                 }
@@ -490,7 +519,7 @@ public class Reference implements BiSerializable {
             }
         }
 
-        for (int i = 2; i < 9; i++) {
+        for (int i = 2; i < 10; i++) {
             int operPos = condition.indexOf(operators[i]);
             int markPos = condition.indexOf("\"");
 
@@ -527,6 +556,19 @@ public class Reference implements BiSerializable {
             }
 
             return compareOperands(ref, leftOperand, rightOperand, typeRightOperand, i, contracts, iteration);
+        }
+
+        int operPos = condition.indexOf(operators[INHERIT]);
+
+        if ((operPos == 0) || ((operPos > 0) && (condition.charAt(operPos - 1) != '_')))
+        {
+            String subStrR = condition.substring(operPos + operators[INHERIT].length());
+            if (subStrR.length() == 0)
+                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing right operand.");
+
+            String rightOperand = subStrR.replaceAll("\\s+", "");
+
+            return compareOperands(ref, null, rightOperand, compareOperandType.FIELD, INHERIT, contracts, iteration);
         }
 
         throw new IllegalArgumentException("Invalid format of condition: " + condition);
@@ -647,10 +689,95 @@ public class Reference implements BiSerializable {
         return result;
     }
 
+    private boolean isInherited(Reference ref, Contract refContract, Collection<Contract> contracts, int iteration) {
+        return isInherited(conditions, ref, refContract, contracts, iteration);
+    }
 
+    private boolean isInherited(Binder conditions, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration) {
+        if ((conditions == null) || (conditions.size() == 0))
+            return false;
 
+        List<Object> condList = null;
 
+        if (conditions.containsKey(all_of.name()))
+        {
+            condList = conditions.getList(all_of.name(), null);
+            if (condList == null)
+                throw new IllegalArgumentException("Expected all_of conditions");
+        }
+        else if (conditions.containsKey(any_of.name()))
+        {
+            condList = conditions.getList(any_of.name(), null);
+            if (condList == null)
+                throw new IllegalArgumentException("Expected any_of conditions");
+        }
+        else
+            throw new IllegalArgumentException("Expected all_of or any_of");
 
+        if (condList != null)
+            for (Object item: condList)
+                if ((item.getClass().getName().endsWith("String") && isInherited((String) item, ref, refContract, contracts, iteration)) ||
+                    (item.getClass().getName().endsWith("Binder") && isInherited((Binder) item, ref, refContract, contracts, iteration)))
+                    return true;
+
+        return false;
+    }
+
+    private boolean isInherited(String condition, Reference ref, Contract refContract, Collection<Contract> contracts, int iteration) {
+        int operPos = condition.indexOf(operators[INHERIT]);
+        int firstPointPos;
+
+        if ((operPos == 0) || ((operPos > 0) && (condition.charAt(operPos - 1) != '_')))
+        {
+            String subStrR = condition.substring(operPos + operators[INHERIT].length());
+            if (subStrR.length() == 0)
+                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing right operand.");
+
+            String rightOperand = subStrR.replaceAll("\\s+", "");
+            Contract rightOperandContract = null;
+            Object right = null;
+
+            if (rightOperand.startsWith("ref.")) {
+                rightOperand = rightOperand.substring(4);
+                rightOperandContract = refContract;
+            } else if (rightOperand.startsWith("this.")) {
+                if (baseContract == null)
+                    throw new IllegalArgumentException("Use right operand in condition: " + rightOperand + ". But this contract not initialized.");
+
+                rightOperand = rightOperand.substring(5);
+                rightOperandContract = baseContract;
+            } else if ((firstPointPos = rightOperand.indexOf(".")) > 0) {
+                if (baseContract == null)
+                    throw new IllegalArgumentException("Use right operand in condition: " + rightOperand + ". But this contract not initialized.");
+
+                Reference refLink = baseContract.findReferenceByName(rightOperand.substring(0, firstPointPos));
+                if (refLink == null)
+                    throw new IllegalArgumentException("Not found reference: " + rightOperand.substring(0, firstPointPos));
+
+                for (Contract checkedContract: contracts)
+                    if (refLink.isMatchingWith(checkedContract, contracts, iteration + 1))
+                        rightOperandContract = checkedContract;
+
+                if (rightOperandContract == null)
+                    return false;
+
+                rightOperand = rightOperand.substring(firstPointPos + 1);
+            }
+            else
+                throw new IllegalArgumentException("Invalid format of right operand in condition: " + rightOperand + ". Missing contract field.");
+
+            if (rightOperandContract != null)
+                right = rightOperandContract.get(rightOperand);
+
+            if ((right == null) || !right.getClass().getName().endsWith("Reference"))
+                throw new IllegalArgumentException("Expected reference in condition in right operand: " + rightOperand);
+
+            if (((Reference) right).equals(ref))
+                return true;
+        }
+
+        return false;
+    }
 
     public String getName() {
         return name;

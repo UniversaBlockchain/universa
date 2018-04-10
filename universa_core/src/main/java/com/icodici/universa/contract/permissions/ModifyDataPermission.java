@@ -12,10 +12,13 @@ import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
+import net.sergeych.diff.ListDelta;
 import net.sergeych.diff.MapDelta;
 import net.sergeych.tools.Binder;
 
 import java.util.*;
+
+import static java.util.Arrays.asList;
 
 
 @BiType(name = "ModifyDataPermission")
@@ -24,6 +27,8 @@ public class ModifyDataPermission extends Permission {
     public static final String FIELD_NAME = "modify_data";
 
     private Map<String, List<String>> fields = new HashMap<>();
+
+    private Set<String> rootFields = new HashSet<>(asList("references"));
 
     public ModifyDataPermission() {
     }
@@ -74,6 +79,41 @@ public class ModifyDataPermission extends Permission {
                 return (containsField && foundField == null) ||
                         (foundField != null && foundField.contains(value) || isEmptyOrNull(foundField, value));
             });
+        }
+
+        // check root fields modifies
+
+        for (String rootField : rootFields) {
+            boolean containsField = this.fields.containsKey("/" + rootField);
+            List<String> foundField = this.fields.get("/" + rootField);
+
+            Delta rootFieldChanges = stateChanges.get(rootField);
+            if (rootFieldChanges != null) {
+                Map mapChanges;
+
+                if(rootFieldChanges instanceof ListDelta) {
+                    mapChanges = ((ListDelta) rootFieldChanges).getChanges();
+                } else if(rootFieldChanges instanceof MapDelta) {
+                    mapChanges = ((MapDelta) data).getChanges();
+                } else {
+                    mapChanges = null;
+                }
+                if(mapChanges!= null) {
+                    mapChanges.keySet().removeIf(key -> {
+                        Object changed = mapChanges.get(key);
+
+                        Object value = "";
+
+                        if (changed != null && changed instanceof ChangedItem) {
+                            value = ((ChangedItem) mapChanges.get(key)).newValue();
+                        }
+
+
+                        return (containsField && foundField == null) ||
+                                (foundField != null && foundField.contains(value) || isEmptyOrNull(foundField, value));
+                    });
+                }
+            }
         }
     }
 
