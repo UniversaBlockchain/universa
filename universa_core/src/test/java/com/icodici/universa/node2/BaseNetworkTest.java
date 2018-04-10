@@ -3896,6 +3896,141 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test
+    public void alphaReference() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        // contract for reference from state
+
+        Contract oldAccountCertificate = new Contract(llcPrivateKeys.iterator().next());
+        oldAccountCertificate.setOwnerKeys(stepaPublicKeys);
+        oldAccountCertificate.getDefinition().getData().set("type", "Good Bank");
+        oldAccountCertificate.seal();
+
+        registerAndCheckApproved(oldAccountCertificate);
+
+
+        // contract for reference from state
+
+        Contract newAccountCertificate = new Contract(llcPrivateKeys.iterator().next());
+        newAccountCertificate.setOwnerKeys(stepaPublicKeys);
+        newAccountCertificate.getDefinition().getData().set("type", "Good Bank");
+        newAccountCertificate.seal();
+
+        registerAndCheckApproved(newAccountCertificate);
+
+        // ---------------------------------------------------------------------------
+
+        // 1 revision: main contract with two references:
+        // - first in the definition
+        // - second in the state
+        // - second inherits conditions from the first
+
+        Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
+
+        // update change_owner permission for use required reference
+
+        Collection<Permission> permissions = llcProperty.getPermissions().get("change_owner");
+        for (Permission permission : permissions) {
+            permission.getRole().addRequiredReference("bank_certificate", Role.RequiredMode.ALL_OF);
+        }
+
+        // add modify_data permission
+
+        RoleLink ownerLink = new RoleLink("issuer_link", "issuer");
+        llcProperty.registerRole(ownerLink);
+        HashMap<String,Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("account_origin", null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        llcProperty.addPermission(modifyDataPermission);
+
+        // not alterable reference
+
+        List <String> listConditionsForDefinition = new ArrayList<>();
+        listConditionsForDefinition.add("ref.definition.data.type == \"Good Bank\"");
+        listConditionsForDefinition.add("ref.state.origin == this.state.data.account_origin");
+
+        Binder conditionsForDefinition = new Binder();
+        conditionsForDefinition.set("all_of", listConditionsForDefinition);
+
+        Reference refForDefinition = new Reference(llcProperty);
+        refForDefinition.name = "bank_certificate";
+        refForDefinition.type = Reference.TYPE_EXISTING;
+        refForDefinition.setConditions(conditionsForDefinition);
+        refForDefinition.addMatchingItem(oldAccountCertificate);
+
+        llcProperty.addReference(refForDefinition);
+
+        llcProperty.getStateData().set("account_origin", oldAccountCertificate.getOrigin().toBase64String());
+
+        // seal
+
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        //--------------------------------------------------------------------
+
+        // 2 revision: change existing reference (change origin from oldAccountCertificate to newAccountCertificate)
+
+        Contract llcProperty2 = llcProperty.createRevision(llcPrivateKeys.iterator().next());
+
+        llcProperty2.getStateData().set("account_origin", newAccountCertificate.getOrigin().toBase64String());
+
+        llcProperty2.seal();
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        // don't forget add all contracts needed for all references
+        tp_before.addReferencedItem(newAccountCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+
+        // 3 revision: finally change owner
+        // it do owner with reference "account_in_bank_certificate"
+
+        Contract llcProperty3 = llcProperty2.createRevision(stepaPrivateKeys);
+        llcProperty3.setOwnerKeys(thirdPartyPublicKeys);
+        llcProperty3.seal();
+        llcProperty3.check();
+        llcProperty3.traceErrors();
+        assertFalse(llcProperty3.isOk());
+
+        tp_before = llcProperty3.getTransactionPack();
+        // don't forget add all contracts needed for all references
+        tp_before.addReferencedItem(newAccountCertificate);
+        data = tp_before.pack();
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+    }
+
+    @Test
     public void declineReferenceForChangeOwner() throws Exception {
 
         // You have a notary dsl with llc's property
