@@ -146,6 +146,8 @@ public interface Ledger {
 
     void markTestRecord(HashId hash);
 
+    boolean isTestnet(HashId itemId);
+
     public static class Rollback extends Db.RollbackException {
     }
 

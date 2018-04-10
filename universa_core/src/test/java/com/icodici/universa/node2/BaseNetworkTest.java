@@ -2847,6 +2847,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
 
+        assertTrue(!node.checkItem(parcel.getPayload().getContract().getId()).isTestnet);
+
         if(ledger instanceof PostgresLedger) {
             PostgresLedger pl = (PostgresLedger) ledger;
 
@@ -2924,6 +2926,8 @@ public class BaseNetworkTest extends TestCase {
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
+        assertTrue(node.checkItem(parcel.getPayload().getContract().getId()).isTestnet);
 
         if(ledger instanceof PostgresLedger) {
             PostgresLedger pl = (PostgresLedger) ledger;

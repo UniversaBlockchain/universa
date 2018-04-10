@@ -418,6 +418,16 @@ public class PostgresLedger implements Ledger {
 
     }
 
+    @Override
+    public boolean isTestnet(HashId itemId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("select exists(select 1 from ledger_testrecords where hash=?)", itemId.getDigest()))) {
+                return rs.getBoolean(1);
+            }
+        });
+
+    }
+
 
     @Override
     public void save(StateRecord stateRecord) {

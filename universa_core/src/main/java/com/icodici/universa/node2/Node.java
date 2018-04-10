@@ -342,6 +342,9 @@ public class Node {
         ItemInformer.Record record = informer.takeFor(itemId);
         if (record != null)
             ir.errors = record.errorRecords;
+
+        ir.isTestnet = ledger.isTestnet(itemId);
+
         return ir;
     }
 

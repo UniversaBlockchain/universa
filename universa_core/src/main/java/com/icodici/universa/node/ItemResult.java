@@ -59,6 +59,8 @@ public class ItemResult {
 
     public transient final Binder meta = new Binder();
 
+    public boolean isTestnet;
+
     /**
      * Initialize from a record and posession flag
      *
@@ -99,6 +101,7 @@ public class ItemResult {
         fields.getList("errors", Collections.EMPTY_LIST).forEach(x -> {
             errors.add( x instanceof Binder ? new ErrorRecord((Binder)x) : (ErrorRecord) x);
         });
+        isTestnet = fields.getBoolean("isTestnet",false);
         lockedById = (HashId) fields.get("lockedById");
     }
 
@@ -123,6 +126,7 @@ public class ItemResult {
                 "createdAt", createdAt,
                 "expiresAt", expiresAt,
                 "errors", DefaultBiMapper.serialize(errors),
+                "isTestnet", isTestnet,
                 "lockedById", lockedById
         );
     }
@@ -150,7 +154,7 @@ public class ItemResult {
     public boolean equals(Object obj) {
         if (obj instanceof ItemResult) {
             ItemResult result2 = (ItemResult) obj;
-            if (result2.state == state && result2.haveCopy == haveCopy &&
+            if (result2.isTestnet == isTestnet && result2.state == state && result2.haveCopy == haveCopy &&
                     createdAt.truncatedTo(ChronoUnit.SECONDS).equals(result2.createdAt.truncatedTo(ChronoUnit.SECONDS))) {
                 return expiresAt.truncatedTo(ChronoUnit.SECONDS).equals(result2.expiresAt.truncatedTo(ChronoUnit.SECONDS));
             }

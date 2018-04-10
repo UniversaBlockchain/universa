@@ -169,6 +169,11 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public boolean isTestnet(HashId itemId) {
+        return false;
+    }
+
+    @Override
     public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
 
     }
