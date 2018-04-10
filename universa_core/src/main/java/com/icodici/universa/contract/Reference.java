@@ -340,7 +340,21 @@ public class Reference implements BiSerializable {
 
                     case NOT_EQUAL:
                     case EQUAL:
-                        if (typeOfRightOperand == compareOperandType.FIELD) {   // rightOperand is FIELD
+                        if ((left != null) && left.getClass().getName().endsWith("HashId")) {    //if HashId - compare with HashId string
+                            if ((right != null) && right.getClass().getName().endsWith("HashId"))
+                                ret = ((HashId) left).toBase64String().equals(((HashId) right).toBase64String());
+                            else if ((right!= null) && right.getClass().getName().endsWith("String"))
+                                ret = ((HashId) left).toBase64String().equals(rightOperand);
+                                else
+                                    ret = ((HashId) left).toBase64String().equals(rightOperand);
+
+                        ret = ((HashId) left).toBase64String().equals(rightOperand);
+
+                        if (indxOperator == NOT_EQUAL)
+                            ret = !ret;
+
+                    }
+                        else if (typeOfRightOperand == compareOperandType.FIELD) {   // rightOperand is FIELD
                             if ((left != null) && (right != null)) {
                                 boolean isNumbers = true;
 
@@ -390,11 +404,6 @@ public class Reference implements BiSerializable {
                             catch (Exception e) {
                                 throw new IllegalArgumentException("Key or address compare error in condition: " + e.getMessage());
                             }
-
-                            if (indxOperator == NOT_EQUAL)
-                                ret = !ret;
-                        } else if ((left != null) && left.getClass().getName().endsWith("HashId")) {    //if HashId - compare with HashId string
-                            ret = ((HashId) left).toBase64String().equals(rightOperand);
 
                             if (indxOperator == NOT_EQUAL)
                                 ret = !ret;
