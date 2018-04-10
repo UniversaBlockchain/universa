@@ -148,6 +148,10 @@ public interface Ledger {
     public void savePayment(int amount, ZonedDateTime date);
     public Map<Integer,Integer> getPayments( ZonedDateTime fromDate);
 
+    void markTestRecord(HashId hash);
+
+    boolean isTestnet(HashId itemId);
+
     public static class Rollback extends Db.RollbackException {
     }
 

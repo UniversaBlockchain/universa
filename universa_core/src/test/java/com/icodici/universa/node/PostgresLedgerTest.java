@@ -16,7 +16,8 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.net.DatagramSocket;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -26,6 +27,8 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -380,6 +383,34 @@ public class PostgresLedgerTest extends TestCase {
         for (Thread th : threadsList) {
             th.start();
         }
+    }
+    @Test
+    public void moveToTestnet() throws Exception {
+
+        HashId hashId = HashId.createRandom();
+        StateRecord r = ledger.findOrCreate(hashId);
+        r.save();
+
+        PreparedStatement ps =  ledger.getDb().statement("select count(*) from ledger_testrecords where hash = ?",hashId.getDigest());
+        ResultSet rs = ps.executeQuery();
+        assertTrue(rs.next());
+        assertEquals(rs.getInt(1), 0);
+
+        r.markTestRecord();
+
+        ps =  ledger.getDb().statement("select count(*) from ledger_testrecords where hash = ?",hashId.getDigest());
+        rs = ps.executeQuery();
+        assertTrue(rs.next());
+        assertEquals(rs.getInt(1), 1);
+
+        r.markTestRecord();
+
+        ps =  ledger.getDb().statement("select count(*) from ledger_testrecords where hash = ?",hashId.getDigest());
+        rs = ps.executeQuery();
+        assertTrue(rs.next());
+        assertEquals(rs.getInt(1), 1);
+
+
     }
 
     @Test(timeout = 30000)

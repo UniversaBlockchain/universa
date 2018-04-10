@@ -33,6 +33,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.chrono.ChronoZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
@@ -2159,7 +2160,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         public void setExpiresAt(ZonedDateTime expiresAt) {
-            this.expiresAt = expiresAt;
+            this.expiresAt = expiresAt.truncatedTo(ChronoUnit.SECONDS);
         }
 
 

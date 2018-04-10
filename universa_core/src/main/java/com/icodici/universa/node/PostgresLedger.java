@@ -335,6 +335,7 @@ public class PostgresLedger implements Ledger {
             });
     }
 
+
 //    @Override
 //    public List<StateRecord> getAllByState(ItemState is) {
 //        try {
@@ -396,6 +397,39 @@ public class PostgresLedger implements Ledger {
             return null;
         });
     }
+
+    @Override
+    public void markTestRecord(HashId hash) {
+        try (PooledDb db = dbPool.db()) {
+                try (
+                        PreparedStatement statement =
+                                db.statement(
+                                        "insert into ledger_testrecords(hash) values(?) on conflict do nothing;"
+                                )
+                ) {
+                    statement.setBytes(1, hash.getDigest());
+                    db.updateWithStatement(statement);
+                }
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("StateRecord markTest failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    @Override
+    public boolean isTestnet(HashId itemId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("select exists(select 1 from ledger_testrecords where hash=?)", itemId.getDigest()))) {
+                return rs.getBoolean(1);
+            }
+        });
+
+    }
+
 
     @Override
     public void save(StateRecord stateRecord) {

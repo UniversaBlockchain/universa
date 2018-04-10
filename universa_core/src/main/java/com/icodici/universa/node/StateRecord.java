@@ -384,6 +384,12 @@ public class StateRecord implements HashIdentifiable {
         return this;
     }
 
+    public void markTestRecord() {
+        if(ledger != null) {
+            ledger.markTestRecord(this.getId());
+        }
+    }
+
     static public class NotFoundException extends IOException {
         public NotFoundException() {
         }
