@@ -3851,6 +3851,7 @@ public class BaseNetworkTest extends TestCase {
         Reference newReference = new Reference(llcProperty2);
         newReference.name = "account_in_bank_certificate";
         newReference.type = Reference.TYPE_EXISTING;
+        newReference.setConditions(newConditions);
         newReference.addMatchingItem(newAccountCertificate);
 
 //        llcProperty2.getReferences().get("account_in_bank_certificate").setConditions(newConditions);
@@ -5893,7 +5894,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract3));
 
         assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract1));
-        assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract2));
+        assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract2));
         assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract3));
 
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract1));

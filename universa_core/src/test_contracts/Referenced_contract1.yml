@@ -94,6 +94,7 @@ definition:
        - this.definition.issuer == ref.definition.issuer
        - ref.state.data.amount > 100
        - ref_cont2.state.data.description == "===Third contract==="
+       - this.definition.origin == this.definition.origin
        - any_of:
          - ref.state.data.amount == 0
          - ref.state.data.price <= 30.33
@@ -108,6 +109,7 @@ definition:
        all_of:
        - this.definition.references.ref_cont defined
        - inherit this.definition.references.ref_cont
+       - this.definition.origin == ref.definition.origin
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.
  permissions:
