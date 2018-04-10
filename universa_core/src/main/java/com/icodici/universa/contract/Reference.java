@@ -344,11 +344,9 @@ public class Reference implements BiSerializable {
                             if ((right != null) && right.getClass().getName().endsWith("HashId"))
                                 ret = ((HashId) left).toBase64String().equals(((HashId) right).toBase64String());
                             else if ((right!= null) && right.getClass().getName().endsWith("String"))
-                                ret = ((HashId) left).toBase64String().equals(rightOperand);
+                                ret = ((HashId) left).toBase64String().equals((String) right);
                                 else
                                     ret = ((HashId) left).toBase64String().equals(rightOperand);
-
-                        ret = ((HashId) left).toBase64String().equals(rightOperand);
 
                         if (indxOperator == NOT_EQUAL)
                             ret = !ret;
