@@ -3944,11 +3944,11 @@ public class BaseNetworkTest extends TestCase {
         // - second in the state
         // - second inherits conditions from the first
 
-        Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
+        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, "100");
 
         // update change_owner permission for use required reference
 
-        Collection<Permission> permissions = llcProperty.getPermissions().get("change_owner");
+        Collection<Permission> permissions = llcProperty.getPermissions().get("split_join");
         for (Permission permission : permissions) {
             permission.getRole().addRequiredReference("bank_certificate", Role.RequiredMode.ALL_OF);
         }
@@ -4010,17 +4010,30 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(tp_after);
 
-        // 3 revision: finally change owner
-        // it do owner with reference "account_in_bank_certificate"
+        // 3 revision: split
 
-        Contract llcProperty3 = llcProperty2.createRevision(stepaPrivateKeys);
-        llcProperty3.setOwnerKeys(thirdPartyPublicKeys);
-        llcProperty3.seal();
+        Contract llcProperty3 = ContractsService.createSplit(llcProperty2, 80, "amount", stepaPrivateKeys, true);
         llcProperty3.check();
         llcProperty3.traceErrors();
         assertFalse(llcProperty3.isOk());
 
         tp_before = llcProperty3.getTransactionPack();
+        // don't forget add all contracts needed for all references
+        tp_before.addReferencedItem(newAccountCertificate);
+        data = tp_before.pack();
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+
+        // 4 revision: join
+
+        Contract llcProperty4 = ContractsService.createJoin(llcProperty3, llcProperty3.getNew().get(0), "amount", stepaPrivateKeys);
+        llcProperty4.check();
+        llcProperty4.traceErrors();
+        assertFalse(llcProperty4.isOk());
+
+        tp_before = llcProperty4.getTransactionPack();
         // don't forget add all contracts needed for all references
         tp_before.addReferencedItem(newAccountCertificate);
         data = tp_before.pack();
