@@ -1,22 +1,27 @@
 package com.icodici.universa.node;
 
+import com.icodici.crypto.PrivateKey;
+import com.icodici.db.PooledDb;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.ItemLock;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.DatagramSocket;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -311,36 +316,226 @@ public class PostgresLedgerTest extends TestCase {
 
     }
 
-//    @Test
+    @Test
     public void saveOneRecordManyTimes() throws Exception {
         HashId hashId = HashId.createRandom();
         StateRecord r = ledger.findOrCreate(hashId);
+        StateRecord r1 = ledger.findOrCreate(HashId.createRandom());
+        StateRecord r2 = ledger.findOrCreate(HashId.createRandom());
         class TestRunnable implements Runnable {
 
             @Override
             public void run() {
+                ledger.findOrCreate(HashId.createRandom());
                 ledger.getRecord(r.getId());
                 r.setState(ItemState.APPROVED);
                 r.save();
+                ledger.findOrCreate(HashId.createRandom());
+            }
+        }
+        class TransactionRunnable implements Runnable {
+
+            @Override
+            public void run() {
+                ledger.findOrCreate(HashId.createRandom());
+                ledger.transaction(() -> {
+                    r1.setState(ItemState.REVOKED);
+                    r2.setState(ItemState.DISCARDED);
+                    r1.save();
+                    r2.save();
+
+                    return true;
+                });
+                ledger.findOrCreate(HashId.createRandom());
             }
         }
 
         List<Thread> threadsList = new ArrayList<>();
-        List<TestRunnable> runnableList = new ArrayList<>();
-        for(int j = 0; j < 700;j++) {
+        List<Runnable> runnableList = new ArrayList<>();
+        for(int j = 0; j < 7000;j++) {
 
-            TestRunnable runnableSingle = new TestRunnable();
-            runnableList.add(runnableSingle);
-            threadsList.add(
-                    new Thread(() -> {
-                        runnableSingle.run();
+            if(new Random().nextBoolean()) {
+                TestRunnable runnableSingle = new TestRunnable();
+                runnableList.add(runnableSingle);
+                threadsList.add(
+                        new Thread(() -> {
+                            runnableSingle.run();
 
-                    }));
+                        }));
+            } else {
+                TransactionRunnable transactionRunnable = new TransactionRunnable();
+                runnableList.add(transactionRunnable);
+                threadsList.add(
+                        new Thread(() -> {
+                            transactionRunnable.run();
+
+                        }));
+            }
         }
 
         for (Thread th : threadsList) {
             th.start();
         }
+    }
+
+    @Test(timeout = 30000)
+    public void ledgerDeadlock() throws Exception {
+        List<Contract> origins = new ArrayList<>();
+        List<Contract> newRevisions = new ArrayList<>();
+        List<Contract> newContracts = new ArrayList<>();
+        PrivateKey myKey = TestKeys.privateKey(4);
+
+        final int N = 500;
+        for(int i = 0; i < N; i++) {
+            Contract origin = new Contract(myKey);
+            origin.seal();
+            origins.add(origin);
+
+            Contract newRevision = origin.createRevision(myKey);
+
+            if(i < N/2) {
+                //ACCEPTED
+                newRevision.setOwnerKeys(TestKeys.privateKey(1).getPublicKey());
+            } else {
+                //DECLINED
+                //State is equal
+            }
+
+            Contract newContract = new Contract(myKey);
+            newRevision.addNewItems(newContract);
+            newRevision.seal();
+
+            newContracts.add(newContract);
+            newRevisions.add(newRevision);
+
+            System.out.println("item# "+ newRevision.getId().toBase64String().substring(0,6));
+            int finalI = i;
+
+            StateRecord originRecord = ledger.findOrCreate(origin.getId());
+            originRecord.setExpiresAt(origin.getExpiresAt());
+            originRecord.setCreatedAt(origin.getCreatedAt());
+
+            StateRecord newRevisionRecord = ledger.findOrCreate(newRevision.getId());
+            newRevisionRecord.setExpiresAt(newRevision.getExpiresAt());
+            newRevisionRecord.setCreatedAt(newRevision.getCreatedAt());
+
+            StateRecord newContractRecord = ledger.findOrCreate(newContract.getId());
+            newContractRecord.setExpiresAt(newContract.getExpiresAt());
+            newContractRecord.setCreatedAt(newContract.getCreatedAt());
+
+            if(new Random().nextBoolean()) {
+                if(finalI < N/2) {
+                    originRecord.setState(ItemState.REVOKED);
+                    newContractRecord.setState(ItemState.APPROVED);
+                    newRevisionRecord.setState(ItemState.APPROVED);
+                } else {
+                    originRecord.setState(ItemState.APPROVED);
+                    newContractRecord.setState(ItemState.UNDEFINED);
+                    newRevisionRecord.setState(ItemState.DECLINED);
+                }
+            } else {
+                originRecord.setState(ItemState.LOCKED);
+                originRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
+                newContractRecord.setState(ItemState.LOCKED_FOR_CREATION);
+                newContractRecord.setLockedByRecordId(newRevisionRecord.getRecordId());
+                newRevisionRecord.setState(finalI < N/2 ? ItemState.PENDING_POSITIVE : ItemState.PENDING_NEGATIVE);
+            }
+
+            originRecord.save();
+            ledger.putItem(originRecord,origin, Instant.now().plusSeconds(3600*24));
+            newRevisionRecord.save();
+            ledger.putItem(newRevisionRecord,newRevision, Instant.now().plusSeconds(3600*24));
+            if(newContractRecord.getState() == ItemState.UNDEFINED) {
+                newContractRecord.destroy();
+            } else {
+                newContractRecord.save();
+            }
+        }
+
+
+        Map<HashId,StateRecord> recordsToSanitate = ledger.findUnfinished();
+        Map<HashId,StateRecord> finished = new HashMap<>();
+        Map<HashId,StateRecord> failed = new HashMap<>();
+        ItemLock itemLock = new ItemLock();
+        Map<HashId,StateRecord> nullContarcts = new HashMap<>();
+        System.out.println(">> " + recordsToSanitate.size());
+
+
+        class TransactionRunnable implements Runnable {
+
+            StateRecord sr;
+
+            @Override
+            public void run() {
+                try (PooledDb db = (PooledDb) ledger.getDb()) {
+                    db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
+                            ItemState.APPROVED.ordinal(),
+                            StateRecord.unixTime(sr.getExpiresAt()),
+                            0,
+                            sr.getRecordId()
+                    );
+                } catch (SQLException se) {
+                    se.printStackTrace();
+                    throw new Ledger.Failure("StateRecord save failed:" + se);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                    try {
+                        ledger.transaction(() -> {
+
+                            try (PooledDb db = (PooledDb) ledger.getDb()) {
+                                db.update("update ledger set state=?, expires_at=?, locked_by_id=? where id=?",
+                                        ItemState.APPROVED.ordinal(),
+                                        StateRecord.unixTime(sr.getExpiresAt()),
+                                        0,
+                                        sr.getRecordId()
+                                );
+                            } catch (SQLException se) {
+                                se.printStackTrace();
+//                                throw new Ledger.Failure("StateRecord save failed:" + se);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                finished.put(sr.getId(), sr);
+            }
+        }
+
+        List<Thread> threadsList = new ArrayList<>();
+        List<Runnable> runnableList = new ArrayList<>();
+        for (StateRecord sr : recordsToSanitate.values()) {
+
+                TransactionRunnable transactionRunnable = new TransactionRunnable();
+                runnableList.add(transactionRunnable);
+                threadsList.add(
+                        new Thread(() -> {
+                            transactionRunnable.sr = sr;
+                            transactionRunnable.run();
+
+                        }));
+        }
+
+        int numStarted = 0;
+        for (Thread th : threadsList) {
+            numStarted++;
+            th.start();
+            if(numStarted == 64) {
+                numStarted = 0;
+                Thread.sleep(500);
+            }
+        }
+
+        while(finished.size() != recordsToSanitate.size()) {
+            System.out.println(">>> " + nullContarcts.size() + " " + finished.size() + " " + recordsToSanitate.size());
+            Thread.sleep(500);
+        }
+        System.out.println(">>>> " + nullContarcts.size());
     }
 
 

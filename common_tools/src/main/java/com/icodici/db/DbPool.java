@@ -56,22 +56,26 @@ public class DbPool implements AutoCloseable {
 
             PooledDb pdb = total >= maximumConnections ? pool.take() : pool.poll();
             if( pdb != null ) {
-//                System.out.println("take " + pdb + " pool " + this + " left " + pool.maximumConnections);
+//                System.out.println("take left " + pool.size() + " total " + total + " cached " + cached);
             } else {
                 pdb = new PooledDb(this, connectionString, properties);
                 total++;
-//                System.out.println("new  " + pdb + " pool " + this + " left " + pool.size()+" total "+total);
+//                System.out.println("new  left " + pool.size() + " total " + total + " cached " + cached);
             }
             threadDb.set(pdb);
             return pdb;
         } catch (InterruptedException e) {
             throw new SQLException("Pooled operation interrupted");
+        } catch (Exception e) {
+            throw new SQLException("Pooled operation interrupted: " + e.getMessage());
         }
     }
 
     void returnToPool(PooledDb db) {
-        threadDb.set(null);
-        pool.add(db);
+        if(db.equals(threadDb.get())) {
+            threadDb.set(null);
+            pool.add(db);
+        }
     }
 
 
