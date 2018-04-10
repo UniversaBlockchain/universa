@@ -782,7 +782,6 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Ignore
     @Test
     public void checkRestartUDP() throws Exception {
         List<Main> mm = new ArrayList<>();
@@ -834,6 +833,8 @@ public class MainTest {
             itemResult = client.getState(parcel.getPayloadContract().getId());
             System.out.println(">> wait result: " + itemResult);
         }
+
+        Thread.sleep(5000);
         itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
 
         assertEquals (ItemState.APPROVED, itemResult.state);
