@@ -183,7 +183,7 @@ public class Db implements Cloneable, AutoCloseable {
 
 
     public <T> T transaction(Callable<T> worker) throws Exception {
-//        synchronized (connection) {
+        synchronized (connection) {
             connection.setAutoCommit(false);
             isInTransaction = true;
             try {
@@ -204,7 +204,7 @@ public class Db implements Cloneable, AutoCloseable {
                 isInTransaction = false;
             }
             return null;
-//        }
+        }
     }
 
     static public class RollbackException extends Exception {
@@ -281,9 +281,9 @@ public class Db implements Cloneable, AutoCloseable {
 //        PreparedStatement statement = cachedStatements.get(sqlText);
         PreparedStatement statement = null;
 //        if (statement == null) {
-//        synchronized (connection) {
+        synchronized (connection) {
             statement = connection.prepareStatement(sqlText);
-//        }
+        }
 //            cachedStatements.put(sqlText, statement);
 //        } else {
 //            statement.clearParameters();
@@ -298,9 +298,9 @@ public class Db implements Cloneable, AutoCloseable {
 
     public PreparedStatement statementReturningKeys(String sqlText, Object... args) throws SQLException {
         PreparedStatement statement = null;
-//        synchronized (connection) {
+        synchronized (connection) {
             statement = connection.prepareStatement(sqlText, Statement.RETURN_GENERATED_KEYS);
-//        }
+        }
         int index = 1;
         for (Object arg : args) {
             statement.setObject(index, arg);
