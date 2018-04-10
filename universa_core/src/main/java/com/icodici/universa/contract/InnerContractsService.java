@@ -87,13 +87,11 @@ public class InnerContractsService {
     public static Decimal getDecimalField(Contract contract, String fieldName) {
 
         Object valueObject = contract.getStateData().get(fieldName);
-        if(valueObject instanceof String) {
-            return new Decimal(Integer.valueOf((String) valueObject));
-        }
 
         if(valueObject instanceof Decimal) {
             return (Decimal) valueObject;
         }
-        return null;
+
+        return new Decimal(valueObject.toString());
     }
 }
