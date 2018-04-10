@@ -7,7 +7,9 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.ItemLock;
+import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeInfo;
+import com.icodici.universa.node2.NodeStats;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;
@@ -20,7 +22,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -583,6 +587,37 @@ public class PostgresLedgerTest extends TestCase {
             assertTrue(rs.next());
             assertEquals(rs.getInt(1),0);
         }
+    }
+
+
+    @Test
+    public void paymentSaveTest() throws Exception {
+        try (PooledDb db = (PooledDb) ledger.getDb()) {
+            try (PreparedStatement statement = db.statement("delete from payments_summary;")
+            ) {
+                statement.executeUpdate();
+            }
+        }
+
+        NodeStats stats = new NodeStats();
+        stats.init(ledger);
+        ZonedDateTime now  = ZonedDateTime.now();
+        ZonedDateTime dateTime = now.minusDays(now.getDayOfMonth()-1).minusMonths(1);
+        while (dateTime.isBefore(ZonedDateTime.now().plusSeconds(1))) {
+            ledger.savePayment(100,dateTime);
+            ledger.savePayment(100,dateTime);
+            dateTime = dateTime.plusDays(1);
+        }
+
+        Config config = new Config();
+        stats.collect(ledger,config);
+
+
+        assertEquals(stats.todayPaidAmount,200);
+        assertEquals(stats.yesterdayPaidAmount,200);
+        assertEquals(stats.thisMonthPaidAmount,200*now.getDayOfMonth());
+        assertEquals(stats.lastMonthPaidAmount,200*now.minusMonths(1).getMonth().length(now.getYear() % 4 == 0));
+
     }
 
 }

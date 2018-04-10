@@ -21,6 +21,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -159,7 +160,17 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
-    public Map<ItemState, Integer> getLedgerSize(Instant createdAfter) {
+    public Map<ItemState, Integer> getLedgerSize(ZonedDateTime createdAfter) {
+        return null;
+    }
+
+    @Override
+    public void savePayment(int amount, ZonedDateTime date) {
+
+    }
+
+    @Override
+    public Map<Integer, Integer> getPayments(ZonedDateTime fromDate) {
         return null;
     }
 

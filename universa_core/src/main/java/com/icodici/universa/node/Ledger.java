@@ -15,6 +15,7 @@ import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -142,7 +143,10 @@ public interface Ledger {
         return getLockOwnerOf(getRecord(itemId));
     }
 
-    Map<ItemState,Integer> getLedgerSize(Instant createdAfter);
+    Map<ItemState,Integer> getLedgerSize(ZonedDateTime createdAfter);
+
+    public void savePayment(int amount, ZonedDateTime date);
+    public Map<Integer,Integer> getPayments( ZonedDateTime fromDate);
 
     public static class Rollback extends Db.RollbackException {
     }

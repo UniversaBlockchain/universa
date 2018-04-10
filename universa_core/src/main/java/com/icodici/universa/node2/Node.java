@@ -11,7 +11,6 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -34,6 +33,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
@@ -46,16 +46,9 @@ import java.util.function.Supplier;
 public class Node {
 
     private static final int MAX_SANITATING_RECORDS = 64;
-    private Instant nodeStartTime;
-    private Map<ItemState, Integer> ledgerSize;
 
-    private Instant lastStatsBuildTime;
-    private LinkedList<Map<ItemState,Integer>> ledgerStatsHistory = new LinkedList<>();
-    private LinkedList<Instant> ledgerHistoryTimestamps = new LinkedList<>();
+    NodeStats nodeStats = new NodeStats();
 
-    private Integer smallIntervalApproved;
-    private Integer bigIntervalApproved;
-    private Integer uptimeApproved;
     private ScheduledFuture<?> sanitator;
 
     public boolean isSanitating() {
@@ -155,34 +148,12 @@ public class Node {
 
         sanitationFinished.fire();
 
-        nodeStartTime = Instant.now();
-        lastStatsBuildTime = nodeStartTime;
-        ledgerSize = ledger.getLedgerSize(null);
-        executorService.scheduleAtFixedRate(() -> collectStats(),config.getStatsIntervalSmall().getSeconds(),config.getStatsIntervalSmall().getSeconds(),TimeUnit.SECONDS);
-        bigIntervalApproved = 0;
-        smallIntervalApproved = 0;
-        uptimeApproved = 0;
+        nodeStats.init(ledger);
+
+        executorService.scheduleAtFixedRate(() -> nodeStats.collect(ledger,config),config.getStatsIntervalSmall().getSeconds(),config.getStatsIntervalSmall().getSeconds(),TimeUnit.SECONDS);
+
     }
 
-    private void collectStats() {
-        Instant now = Instant.now();
-        Map<ItemState, Integer> lastIntervalStats = ledger.getLedgerSize(lastStatsBuildTime);
-        ledgerStatsHistory.addLast(lastIntervalStats);
-        ledgerHistoryTimestamps.addLast(lastStatsBuildTime);
-
-        smallIntervalApproved = lastIntervalStats.getOrDefault(ItemState.APPROVED,0)+lastIntervalStats.getOrDefault(ItemState.REVOKED,0);
-        bigIntervalApproved += smallIntervalApproved;
-        uptimeApproved += smallIntervalApproved;
-
-        lastIntervalStats.keySet().forEach(is -> ledgerSize.put(is, ledgerSize.getOrDefault(is,0) + lastIntervalStats.get(is)));
-
-        while (ledgerHistoryTimestamps.getFirst().plus(config.getStatsIntervalBig()).isBefore(now)) {
-            ledgerHistoryTimestamps.removeFirst();
-            bigIntervalApproved -= ledgerStatsHistory.removeFirst().get(ItemState.APPROVED);
-        }
-
-        lastStatsBuildTime = now;
-    }
 
     private void pulseStartSanitation() {
         sanitator = lowPrioExecutorService.scheduleAtFixedRate(() -> startSanitation(),
@@ -997,11 +968,15 @@ public class Node {
 
     public Binder provideStats() {
         return Binder.of(
-                "uptime", Instant.now().getEpochSecond() - nodeStartTime.getEpochSecond(),
-                "ledgerSize", ledgerSize.values().stream().reduce((i1, i2) -> i1+i2).get(),
-                "smallIntervalApproved", smallIntervalApproved,
-                "bigIntervalApproved", bigIntervalApproved,
-                "uptimeApproved", uptimeApproved
+                "uptime", Instant.now().getEpochSecond() - nodeStats.nodeStartTime.toEpochSecond(),
+                "ledgerSize", nodeStats.ledgerSize.values().stream().reduce((i1, i2) -> i1+i2).get(),
+                "smallIntervalApproved", nodeStats.smallIntervalApproved,
+                "bigIntervalApproved", nodeStats.bigIntervalApproved,
+                "uptimeApproved", nodeStats.uptimeApproved,
+                "lastMonthPaidAmount", nodeStats.lastMonthPaidAmount,
+                "thisMonthPaidAmount", nodeStats.thisMonthPaidAmount,
+                "yesterdayPaidAmount", nodeStats.yesterdayPaidAmount,
+                "todayPaidAmount", nodeStats.todayPaidAmount
         );
     }
 
@@ -1125,6 +1100,8 @@ public class Node {
                             DatagramAdapter.VerboseLevel.BASE);
                     // if payment is ok, wait payload
                     if (paymentResult.state.isApproved()) {
+                        if(!payment.isLimitedForTestnet())
+                            ledger.savePayment(parcel.getQuantasLimit()/Quantiser.quantaPerUTN, paymentProcessor != null ? paymentProcessor.record.getCreatedAt() : ledger.getRecord(payment.getId()).getCreatedAt());
 
                         report(getLabel(), () -> concatReportMessage("parcel processor for: ",
                                 parcelId, " :: check payload, state ", processingState),

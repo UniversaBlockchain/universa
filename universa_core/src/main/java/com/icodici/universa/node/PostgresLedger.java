@@ -25,6 +25,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Callable;
 
@@ -313,9 +315,9 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public Map<ItemState, Integer> getLedgerSize(Instant createdAfter) {
+    public Map<ItemState, Integer> getLedgerSize(ZonedDateTime createdAfter) {
             return protect(() -> {
-                try (ResultSet rs = inPool(db -> db.queryRow("select count(id), state from ledger where created_at >= ? group by state", createdAfter != null ? createdAfter.getEpochSecond() : 0))) {
+                try (ResultSet rs = inPool(db -> db.queryRow("select count(id), state from ledger where created_at >= ? group by state", createdAfter != null ? createdAfter.toEpochSecond() : 0))) {
                     Map<ItemState, Integer> result = new HashMap<>();
                     if (rs != null) {
                         do {
@@ -657,6 +659,51 @@ public class PostgresLedger implements Ledger {
         } catch (SQLException se) {
             se.printStackTrace();
             throw new Failure("cleanup failed:" + se);
+
+        }
+    }
+
+    public void savePayment(int amount, ZonedDateTime date) {
+
+
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "insert into payments_summary (amount,date) VALUES (?,?) ON CONFLICT (date) DO UPDATE SET amount = payments_summary.amount + excluded.amount"
+                            )
+            ) {
+                statement.setInt(1, amount);
+                statement.setInt(2, (int) date.truncatedTo(ChronoUnit.DAYS).toEpochSecond());
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("payment save failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Map<Integer,Integer> getPayments(ZonedDateTime fromDate) {
+
+        try (
+                PooledDb db = dbPool.db();
+                ResultSet rs = db.queryRow("SELECT * FROM payments_summary where date >= ?;",fromDate.truncatedTo(ChronoUnit.DAYS).toEpochSecond())
+        ) {
+            Map<Integer,Integer> payments = new HashMap<>();
+            if (rs == null)
+                return payments;
+
+
+            do {
+                payments.put(rs.getInt("date"),rs.getInt("amount"));
+            } while (rs.next());
+
+            return payments;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }
