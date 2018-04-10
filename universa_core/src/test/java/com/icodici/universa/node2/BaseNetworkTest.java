@@ -4026,6 +4026,9 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(tp_after);
 
+        ItemResult itemResult = node.waitItem(llcProperty2.getId(), 8000);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
         // 4 revision: join
 
         Contract llcProperty4 = ContractsService.createJoin(llcProperty3, llcProperty3.getNew().get(0), "amount", stepaPrivateKeys);
@@ -4041,6 +4044,12 @@ public class BaseNetworkTest extends TestCase {
         tp_after = TransactionPack.unpack(data);
 
         registerAndCheckApproved(tp_after);
+
+        itemResult = node.waitItem(llcProperty3.getId(), 8000);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        itemResult = node.waitItem(llcProperty3.getNew().get(0).getId(), 8000);
+        assertEquals(ItemState.REVOKED, itemResult.state);
     }
 
     @Test
