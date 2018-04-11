@@ -82,8 +82,12 @@ public class SplitJoinPermissionTest extends ContractTestBase {
     @Test
     public void overSpending() throws Exception {
         Contract root = createCoinWithAmount("200", FIELD_NAME);
+        root = root.createRevision();
+        root.addSignerKeyFromFile(PRIVATE_KEY_PATH);
 
         Contract c1 = root.splitValue(FIELD_NAME, new Decimal(100));
+        root.addSignerKey(ownerKey2);
+        c1.addSignerKey(ownerKey2);
         sealCheckTrace(c1, true);
 
         // c1 == 100
