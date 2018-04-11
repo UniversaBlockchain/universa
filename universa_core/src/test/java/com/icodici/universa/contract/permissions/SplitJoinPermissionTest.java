@@ -99,6 +99,19 @@ public class SplitJoinPermissionTest extends ContractTestBase {
     }
 
     @Test
+    public void splitLessThanMinValue() throws Exception {
+        Contract root = createCoinWithAmount("200", FIELD_NAME);
+        root = root.createRevision();
+        root.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+
+        Contract c1 = root.splitValue(FIELD_NAME, new Decimal("0.00001"));
+        root.addSignerKey(ownerKey2);
+        c1.addSignerKey(ownerKey2);
+        sealCheckTrace(c1, false);
+        sealCheckTrace(root, false);
+    }
+
+    @Test
     public void shouldSplitJoinHasEnoughSumRevoking() throws Exception {
         // 2 coins: 1st v: 50 (r: 50 and 50), 2nd v: 50 (r: 50 and 50)
         Contract root = createCoinWithAmount("200", FIELD_NAME);
