@@ -89,6 +89,7 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         root.addSignerKey(ownerKey2);
         c1.addSignerKey(ownerKey2);
         sealCheckTrace(c1, true);
+        sealCheckTrace(root, true);
 
         // c1 == 100
         // now reset root to 200:
