@@ -1110,25 +1110,34 @@ public class Node {
                                 parcelId, " :: check payload, state ", processingState),
                                 DatagramAdapter.VerboseLevel.BASE);
 
-                        if (payloadResult == null) {
 
-                            processingState = ParcelProcessingState.PAYLOAD_CHECKING;
+                        if (payment.getOrigin().equals(payload.getOrigin())) {
+                            payload.addError(Errors.BADSTATE, payload.getId().toString(), "can't register contract with same origin as payment contract ");
 
-                            payload.getQuantiser().reset(parcel.getQuantasLimit());
-
-                            // force payload checking (we've freeze it at processor start)
-                            payloadProcessor.forceChecking(true);
-
-                            for (NodeInfo ni : payloadDelayedVotes.keySet())
-                                payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
-                            payloadDelayedVotes.clear();
-
-                            processingState = ParcelProcessingState.PAYLOAD_POLLING;
-                            if(!payloadProcessor.isDone()) {
-                                payloadProcessor.doneEvent.await();
-                            }
-                            payloadResult = payloadProcessor.getResult();
+                            payloadProcessor.emergencyBreak();
+                            payloadProcessor.doneEvent.await();
                         } else {
+
+                            if (payloadResult == null) {
+
+                                processingState = ParcelProcessingState.PAYLOAD_CHECKING;
+
+                                payload.getQuantiser().reset(parcel.getQuantasLimit());
+
+                                // force payload checking (we've freeze it at processor start)
+                                payloadProcessor.forceChecking(true);
+
+                                for (NodeInfo ni : payloadDelayedVotes.keySet())
+                                    payloadProcessor.vote(ni, payloadDelayedVotes.get(ni));
+                                payloadDelayedVotes.clear();
+
+                                processingState = ParcelProcessingState.PAYLOAD_POLLING;
+                                if (!payloadProcessor.isDone()) {
+                                    payloadProcessor.doneEvent.await();
+                                }
+                                payloadResult = payloadProcessor.getResult();
+                            } else {
+                            }
                         }
                         report(getLabel(), () -> concatReportMessage("parcel processor for: ",
                                 parcelId, " :: payload checked, state ", processingState),

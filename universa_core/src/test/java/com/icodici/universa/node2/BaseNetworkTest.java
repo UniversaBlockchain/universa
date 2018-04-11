@@ -5433,25 +5433,8 @@ public class BaseNetworkTest extends TestCase {
     }
 
     private synchronized void waitAndCheckApproved(Parcel parcel) throws Exception {
-        try {
-//            LogPrinter.showDebug(true);
-            System.out.println("registerAndCheckApproved, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-            node.waitParcel(parcel.getId(), 30000);
-            System.out.println("registerAndCheckApproved, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-            ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
-            parcel.getPaymentContract().traceErrors();
-            assertEquals(ItemState.APPROVED, itemResult.state);
-            System.out.println("registerAndCheckApproved, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-            itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
-            parcel.getPayloadContract().traceErrors();
-            assertEquals(ItemState.APPROVED, itemResult.state);
-        } catch (TimeoutException e) {
-            if (parcel != null) {
-                fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
-            } else {
-                fail("timeout,  " + node);
-            }
-        }
+
+        waitAndCheckState(parcel, ItemState.APPROVED);
     }
 
     private synchronized void registerAndCheckDeclined(Contract c) throws Exception {
@@ -5465,15 +5448,21 @@ public class BaseNetworkTest extends TestCase {
     }
 
     private synchronized void waitAndCheckDeclined(Parcel parcel) throws Exception {
+
+        waitAndCheckState(parcel, ItemState.DECLINED);
+    }
+
+    private synchronized void waitAndCheckState(Parcel parcel, ItemState waitState) throws Exception {
         try {
-            System.out.println("registerAndCheckDeclined, wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            System.out.println("wait parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             node.waitParcel(parcel.getId(), 30000);
-            System.out.println("registerAndCheckDeclined, wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            System.out.println("wait payment: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             ItemResult itemResult = node.waitItem(parcel.getPaymentContract().getId(), 8000);
             assertEquals(ItemState.APPROVED, itemResult.state);
-            System.out.println("registerAndCheckDeclined, wait payload: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
+            System.out.println("wait payload with state: " + waitState + " " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
             itemResult = node.waitItem(parcel.getPayloadContract().getId(), 8000);
-            assertEquals(ItemState.DECLINED, itemResult.state);
+            parcel.getPayloadContract().traceErrors();
+            assertEquals(waitState, itemResult.state);
         } catch (TimeoutException e) {
             if (parcel != null) {
                 fail("timeout,  " + node + " parcel " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
@@ -6352,6 +6341,79 @@ public class BaseNetworkTest extends TestCase {
         boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKey());
         payment.traceErrors();
         assertFalse(res);
+    }
+
+
+
+    @Test(timeout = 90000)
+    public void declinePaymentAndPaymentWithRemovedPermissions() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract uContract = getApprovedTUContract();
+        Contract modifiedU = uContract.createRevision(stepaPrivateKeys);
+        modifiedU.getPermissions().remove("revoke");
+        modifiedU.seal();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(modifiedU, uContract, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+
+        waitAndCheckState(parcel, ItemState.UNDEFINED);
+    }
+
+    @Test(timeout = 90000)
+    public void declinePaymentAndPaymentWithChangedData() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract uContract = getApprovedTUContract();
+        Contract modifiedU = uContract.createRevision(stepaPrivateKeys);
+        modifiedU.getStateData().set("transaction_units", modifiedU.getStateData().getIntOrThrow("transaction_units") - 1);
+        modifiedU.seal();
+        // stepaPrivateKeys - is also U keys
+        Parcel parcel =  ContractsService.createParcel(modifiedU, uContract, 150, stepaPrivateKeys);
+        System.out.println("-------------");
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+
+
+        waitAndCheckState(parcel, ItemState.UNDEFINED);
+    }
+
+    @Test(timeout = 90000)
+    public void declinePaymentAndPaymentWithChangedData2() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract uContract = getApprovedTUContract();
+
+        // stepaPrivateKeys - is also U keys
+        Contract paymentDecreased = uContract.createRevision(stepaPrivateKeys);
+        paymentDecreased.getStateData().set("transaction_units", uContract.getStateData().getIntOrThrow("transaction_units") - 5);
+        paymentDecreased.seal();
+
+        Contract modifiedU = paymentDecreased.createRevision(stepaPrivateKeys);
+        modifiedU.getStateData().set("transaction_units", modifiedU.getStateData().getIntOrThrow("transaction_units") - 1);
+        modifiedU.seal();
+
+        Parcel parcel = new Parcel(modifiedU.getTransactionPack(), paymentDecreased.getTransactionPack());
+        System.out.println("-------------");
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+
+
+        waitAndCheckState(parcel, ItemState.UNDEFINED);
     }
 
     @Test(timeout = 30000)

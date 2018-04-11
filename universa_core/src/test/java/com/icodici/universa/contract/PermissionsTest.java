@@ -29,8 +29,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static junit.framework.TestCase.assertTrue;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 public class PermissionsTest extends ContractTestBase {
@@ -459,9 +458,10 @@ public class PermissionsTest extends ContractTestBase {
         c1.seal();
         c1.check();
         c1.traceErrors();
-        assertEquals(1, c1.getErrors().size());
-        ErrorRecord error = c1.getErrors().get(0);
-        assertEquals(Errors.FORBIDDEN, error.getError());
+        assertEquals(2, c1.getErrors().size());
+        for(ErrorRecord error : c1.getErrors()) {
+            assertThat(error.getError(), anyOf(equalTo(Errors.FORBIDDEN), equalTo(Errors.FAILED_CHECK)));
+        }
 
         // bad contract change: good key but bad reference
 
@@ -473,8 +473,9 @@ public class PermissionsTest extends ContractTestBase {
         c2.check();
         c2.traceErrors();
         assertEquals(1, c2.getErrors().size());
-        error = c2.getErrors().get(0);
-        assertEquals(Errors.FORBIDDEN, error.getError());
+        for(ErrorRecord error : c1.getErrors()) {
+            assertThat(error.getError(), anyOf(equalTo(Errors.FORBIDDEN), equalTo(Errors.FAILED_CHECK)));
+        }
 
         // good contract change: creator is an owner
 
@@ -526,9 +527,10 @@ public class PermissionsTest extends ContractTestBase {
         c1.seal();
         c1.check();
         c1.traceErrors();
-        assertEquals(1, c1.getErrors().size());
-        ErrorRecord error = c1.getErrors().get(0);
-        assertEquals(Errors.FORBIDDEN, error.getError());
+        assertEquals(2, c1.getErrors().size());
+        for(ErrorRecord error : c1.getErrors()) {
+            assertThat(error.getError(), anyOf(equalTo(Errors.FORBIDDEN), equalTo(Errors.FAILED_CHECK)));
+        }
 
         // bad contract change: good key but bad reference
 
@@ -538,8 +540,9 @@ public class PermissionsTest extends ContractTestBase {
         c2.check();
         c2.traceErrors();
         assertEquals(1, c2.getErrors().size());
-        error = c2.getErrors().get(0);
-        assertEquals(Errors.FORBIDDEN, error.getError());
+        for(ErrorRecord error : c1.getErrors()) {
+            assertThat(error.getError(), anyOf(equalTo(Errors.FORBIDDEN), equalTo(Errors.FAILED_CHECK)));
+        }
 
         // good contract change: creator is an owner
 
