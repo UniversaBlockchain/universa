@@ -80,6 +80,20 @@ public class SplitJoinPermissionTest extends ContractTestBase {
     }
 
     @Test
+    public void overSpending() throws Exception {
+        Contract root = createCoinWithAmount("200", FIELD_NAME);
+
+        Contract c1 = root.splitValue(FIELD_NAME, new Decimal(100));
+        sealCheckTrace(c1, true);
+
+        // c1 == 100
+        // now reset root to 200:
+        root.getStateData().set(FIELD_NAME, new Decimal(200));
+        // total now is 300 (200 + 100) - and must be rejected
+        sealCheckTrace(root, false);
+    }
+
+    @Test
     public void shouldSplitJoinHasEnoughSumRevoking() throws Exception {
         // 2 coins: 1st v: 50 (r: 50 and 50), 2nd v: 50 (r: 50 and 50)
         Contract root = createCoinWithAmount("200", FIELD_NAME);
