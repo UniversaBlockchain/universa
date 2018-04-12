@@ -686,8 +686,9 @@ public class CLIMain {
                         saveContract(parcel.getPaymentContract(), tuSource,true, false);
                     }
                 } else {
-                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
-                    registerContract(contract, (int) options.valueOf("wait"));
+//                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
+//                    registerContract(contract, (int) options.valueOf("wait"));
+                    addError(Errors.COMMAND_FAILED.name(), tuSource, "payment contract or private keys for payment contract is missing");
                 }
             }
         }
