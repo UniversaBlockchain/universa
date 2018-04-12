@@ -57,7 +57,7 @@ public class ExtendedSignature {
      * @return binary signature
      */
     static public byte[] sign(PrivateKey key, byte[] data) {
-        return sign(key, data, false);
+        return sign(key, data, true);
     }
 
     /**
@@ -120,6 +120,29 @@ public class ExtendedSignature {
     public static Bytes extractKeyId(byte[] signature) {
         Binder src = Boss.unpack(signature);
         return Boss.unpack(src.getBinaryOrThrow("exts")).getBytesOrThrow("key");
+    }
+
+    /**
+     * Get the keyId (see {@link #keyId}) from a packed binary signature. This method can be used to find proper public
+     * key when signing with several keys.
+     *
+     * @param signature to extrack keyId from
+     *
+     * @return the keyId instance as {@link Bytes}
+     */
+    public static PublicKey extractPublicKey(byte[] signature) throws EncryptionError {
+        Binder src = Boss.unpack(signature);
+        PublicKey publicKey = null;
+        byte[] exts = src.getBinaryOrThrow("exts");
+        Binder b = Boss.unpack(exts);
+        try {
+            byte[] publicKeyBytes = b.getBinaryOrThrow("pub_key");
+            publicKey = new PublicKey(publicKeyBytes);
+        } catch (IllegalArgumentException e) {
+            publicKey = null;
+        }
+
+        return publicKey;
     }
 
 

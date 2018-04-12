@@ -200,40 +200,43 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
-        roles.values().forEach(role -> {
-            role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
-            role.getAnonymousIds().forEach(anonId -> {
-                transactionPack.getKeysForPack().forEach(
-                        key -> {
-                            try {
-                                if(key.matchAnonymousId(anonId.getBytes())) {
-                                    keys.put(ExtendedSignature.keyId(key), key);
-                                }
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                );
-            });
-            role.getKeyAddresses().forEach(keyAddr -> {
-                transactionPack.getKeysForPack().forEach(
-                        key -> {
-                            try {
-                                if(key.isMatchingKeyAddress(keyAddr)) {
-                                    keys.put(ExtendedSignature.keyId(key), key);
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                );
-            });
-        });
+//        roles.values().forEach(role -> {
+//            role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+//            role.getAnonymousIds().forEach(anonId -> {
+//                transactionPack.getKeysForPack().forEach(
+//                        key -> {
+//                            try {
+//                                if(key.matchAnonymousId(anonId.getBytes())) {
+//                                    keys.put(ExtendedSignature.keyId(key), key);
+//                                }
+//                            } catch (IOException e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                );
+//            });
+//            role.getKeyAddresses().forEach(keyAddr -> {
+//                transactionPack.getKeysForPack().forEach(
+//                        key -> {
+//                            try {
+//                                if(key.isMatchingKeyAddress(keyAddr)) {
+//                                    keys.put(ExtendedSignature.keyId(key), key);
+//                                }
+//                            } catch (Exception e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                );
+//            });
+//        });
 
         for (Object signature : (List) data.getOrThrow("signatures")) {
             byte[] s = ((Bytes) signature).toArray();
             Bytes keyId = ExtendedSignature.extractKeyId(s);
             PublicKey key = keys.get(keyId);
+            if (key == null) {
+                key = ExtendedSignature.extractPublicKey(s);
+            }
             if (key != null) {
                 verifySignatureQuantized(key);
                 ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
@@ -330,40 +333,43 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
 
-        roles.values().forEach(role -> {
-            role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
-            role.getAnonymousIds().forEach(anonId -> {
-                transactionPack.getKeysForPack().forEach(
-                        key -> {
-                            try {
-                                if(key.matchAnonymousId(anonId.getBytes())) {
-                                    keys.put(ExtendedSignature.keyId(key), key);
-                                }
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                );
-            });
-            role.getKeyAddresses().forEach(keyAddr -> {
-                transactionPack.getKeysForPack().forEach(
-                        key -> {
-                            try {
-                                if(key.isMatchingKeyAddress(keyAddr)) {
-                                    keys.put(ExtendedSignature.keyId(key), key);
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                );
-            });
-        });
+//        roles.values().forEach(role -> {
+//            role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+//            role.getAnonymousIds().forEach(anonId -> {
+//                transactionPack.getKeysForPack().forEach(
+//                        key -> {
+//                            try {
+//                                if(key.matchAnonymousId(anonId.getBytes())) {
+//                                    keys.put(ExtendedSignature.keyId(key), key);
+//                                }
+//                            } catch (IOException e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                );
+//            });
+//            role.getKeyAddresses().forEach(keyAddr -> {
+//                transactionPack.getKeysForPack().forEach(
+//                        key -> {
+//                            try {
+//                                if(key.isMatchingKeyAddress(keyAddr)) {
+//                                    keys.put(ExtendedSignature.keyId(key), key);
+//                                }
+//                            } catch (Exception e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                );
+//            });
+//        });
 
         for (Object signature : (List) data.getOrThrow("signatures")) {
             byte[] s = ((Bytes) signature).toArray();
             Bytes keyId = ExtendedSignature.extractKeyId(s);
             PublicKey key = keys.get(keyId);
+            if (key == null) {
+                key = ExtendedSignature.extractPublicKey(s);
+            }
             if (key != null) {
                 verifySignatureQuantized(key);
                 ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);

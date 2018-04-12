@@ -110,7 +110,7 @@ public class Node2SingleTest extends BaseNetworkTest {
     }
 
 
-    @Test
+//    @Test
     public void sanitationTest() throws Exception {
         afterClass();
 
