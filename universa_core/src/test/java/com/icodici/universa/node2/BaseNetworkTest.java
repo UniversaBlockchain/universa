@@ -1500,7 +1500,7 @@ public class BaseNetworkTest extends TestCase {
         Contract anonPublishedContract = new Contract(anonSignedContract.getLastSealedBinary());
         ItemResult itemResult = node.waitItem(anonPublishedContract.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
-        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+//        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
     }
 
     @Test(timeout = 90000)
@@ -1561,7 +1561,7 @@ public class BaseNetworkTest extends TestCase {
         Contract anonPublishedContract = new Contract(anonSignedContract.getLastSealedBinary());
         ItemResult itemResult = node.waitItem(anonPublishedContract.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
-        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+//        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
     }
 
     @Test(timeout = 90000)
@@ -1625,7 +1625,8 @@ public class BaseNetworkTest extends TestCase {
         Contract anonPublishedContract = new Contract(anonSignedContract.getLastSealedBinary());
         ItemResult itemResult = node.waitItem(anonPublishedContract.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
-        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+//        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+        assertTrue(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
     }
 
     @Test(timeout = 90000)
@@ -1686,7 +1687,8 @@ public class BaseNetworkTest extends TestCase {
         Contract anonPublishedContract = new Contract(anonSignedContract.getLastSealedBinary());
         ItemResult itemResult = node.waitItem(anonPublishedContract.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
-        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+//        assertFalse(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
+        assertTrue(anonPublishedContract.getSealedByKeys().contains(stepaPublicKeys.iterator().next()));
     }
 
 
