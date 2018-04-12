@@ -124,8 +124,8 @@ public class TransactionPack implements BiSerializable {
 
         c.setTransactionPack(this);
 
-//        for (PrivateKey key : c.getKeysToSignWith())
-//            addKeys(key.getPublicKey());
+        for (PrivateKey key : c.getKeysToSignWith())
+            addKeys(key.getPublicKey());
     }
 
 
