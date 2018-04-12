@@ -2832,19 +2832,31 @@ public class CLIMainTest {
 
     @Test
     public void fireRegister() throws Exception {
-        // try to register without payment
-        callMain2("--register",
-                rootPath + "root5.unicon",
-                "-wait", "15000", "-v");
 
-        // try to register with payment
-        callMain("--register",
+//        // try to register with payment
+        callMain2("--register",
                 rootPath + "root5.unicon",
                 "--tu", rootPath + "UUP.unicon",
                 "-k", rootPath + "UKey.private.unikey",
 //                "-tutest",
                 "-wait", "15000", "-v");
+
+        // try to register without payment
+        callMain("--register",
+                rootPath + "root5.unicon",
+                "-wait", "15000", "-v");
         System.out.println(output);
+        assertTrue (output.indexOf("payment contract or private keys for payment contract is missing") >= 0);
+    }
+
+    @Test
+    public void checkNoUKeys() throws Exception {
+        // try to register without payment
+        callMain("--register",
+                basePath + "packedContract.unicon",
+                "-wait", "15000", "-v");
+        System.out.println(output);
+        assertTrue (output.indexOf("payment contract or private keys for payment contract is missing") >= 0);
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
