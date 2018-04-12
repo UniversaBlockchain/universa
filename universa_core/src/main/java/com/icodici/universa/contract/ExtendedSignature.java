@@ -130,7 +130,7 @@ public class ExtendedSignature {
      *
      * @return the keyId instance as {@link Bytes}
      */
-    public static PublicKey extractPublicKey(byte[] signature) throws EncryptionError {
+    public static PublicKey extractPublicKey(byte[] signature) {
         Binder src = Boss.unpack(signature);
         PublicKey publicKey = null;
         byte[] exts = src.getBinaryOrThrow("exts");
@@ -138,6 +138,8 @@ public class ExtendedSignature {
         try {
             byte[] publicKeyBytes = b.getBinaryOrThrow("pub_key");
             publicKey = new PublicKey(publicKeyBytes);
+        } catch (EncryptionError e) {
+            publicKey = null;
         } catch (IllegalArgumentException e) {
             publicKey = null;
         }
