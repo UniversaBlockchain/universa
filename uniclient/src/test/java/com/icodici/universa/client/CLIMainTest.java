@@ -2169,7 +2169,7 @@ public class CLIMainTest {
                 stepaTU.traceErrors();
                 CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
                 System.out.println("--- register new tu --- " + stepaTU.getId());
-                callMain2("--register", basePath + "stepaTU.unicon", "--cost", "-wait", "2000");
+                callMain2("--register", basePath + "stepaTU.unicon", "-v", "-wait", "5000");
                 tuContract = stepaTU;
             }
             return basePath + "stepaTU.unicon";
@@ -2828,6 +2828,23 @@ public class CLIMainTest {
 //        callMain("--probe", "Ep6jLga8ALShUq/I2nO1dIshmw+7FkjHXs8JI2wQ6nZwXd66uC1c37w2asD9sR8O548qvU2sTfXlRMiNE24XkA", "-v");
         System.out.println(output);
 
+    }
+
+    @Test
+    public void fireRegister() throws Exception {
+        // try to register without payment
+        callMain2("--register",
+                rootPath + "root5.unicon",
+                "-wait", "15000", "-v");
+
+        // try to register with payment
+        callMain("--register",
+                rootPath + "root5.unicon",
+                "--tu", rootPath + "UUP.unicon",
+                "-k", rootPath + "UKey.private.unikey",
+//                "-tutest",
+                "-wait", "15000", "-v");
+        System.out.println(output);
     }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
