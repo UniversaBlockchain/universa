@@ -247,20 +247,20 @@ public class Node {
 
         report(getLabel(), () -> concatReportMessage("register item: ", item.getId()),
                 DatagramAdapter.VerboseLevel.BASE);
-        if (item.isInWhiteList(config.getKeysWhiteList())) {
-            Object x = checkItemInternal(item.getId(), null, item, true, true);
+//        if (item.isInWhiteList(config.getKeysWhiteList())) {
+        Object x = checkItemInternal(item.getId(), null, item, true, true);
 
-            ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
-            report(getLabel(), () -> concatReportMessage("item processor for: ", item.getId(),
-                    " was created, state is ", ir.state),
-                    DatagramAdapter.VerboseLevel.BASE);
-            return ir;
-        }
-
-        report(getLabel(), () -> concatReportMessage("item: ", item.getId(), " not belongs to whitelist"),
+        ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+        report(getLabel(), () -> concatReportMessage("item processor for: ", item.getId(),
+                " was created, state is ", ir.state),
                 DatagramAdapter.VerboseLevel.BASE);
-
-        return ItemResult.UNDEFINED;
+        return ir;
+//        }
+//
+//        report(getLabel(), () -> concatReportMessage("item: ", item.getId(), " not belongs to whitelist"),
+//                DatagramAdapter.VerboseLevel.BASE);
+//
+//        return ItemResult.UNDEFINED;
     }
 
     /**
