@@ -1112,7 +1112,7 @@ public class ContractTest extends ContractTestBase {
         Contract anonPublishedContract = new Contract(contract.getLastSealedBinary());
 
         assertFalse(anonPublishedContract.getIssuer().getKeys().contains(key.getPublicKey()));
-        assertFalse(anonPublishedContract.getSealedByKeys().contains(key.getPublicKey()));
+//        assertFalse(anonPublishedContract.getSealedByKeys().contains(key.getPublicKey()));
     }
 
     /**

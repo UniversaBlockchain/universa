@@ -3832,6 +3832,7 @@ public class BaseNetworkTest extends TestCase {
 
 
 
+    @Ignore("removed functionality")
     @Test(timeout = 90000)
     public void declineItemFromoutWhiteList() throws Exception {
 

@@ -323,7 +323,7 @@ public class PostgresLedgerTest extends TestCase {
 
     }
 
-    @Test
+//    @Test
     public void saveOneRecordManyTimes() throws Exception {
         HashId hashId = HashId.createRandom();
         StateRecord r = ledger.findOrCreate(hashId);
@@ -359,7 +359,7 @@ public class PostgresLedgerTest extends TestCase {
 
         List<Thread> threadsList = new ArrayList<>();
         List<Runnable> runnableList = new ArrayList<>();
-        for(int j = 0; j < 7000;j++) {
+        for(int j = 0; j < 700;j++) {
 
             if(new Random().nextBoolean()) {
                 TestRunnable runnableSingle = new TestRunnable();
@@ -420,7 +420,8 @@ public class PostgresLedgerTest extends TestCase {
         List<Contract> newContracts = new ArrayList<>();
         PrivateKey myKey = TestKeys.privateKey(4);
 
-        final int N = 500;
+        //up this value to more effect
+        final int N = 100;
         for(int i = 0; i < N; i++) {
             Contract origin = new Contract(myKey);
             origin.seal();

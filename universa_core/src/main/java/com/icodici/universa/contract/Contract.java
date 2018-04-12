@@ -232,10 +232,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         for (Object signature : (List) data.getOrThrow("signatures")) {
             byte[] s = ((Bytes) signature).toArray();
-            Bytes keyId = ExtendedSignature.extractKeyId(s);
-            PublicKey key = keys.get(keyId);
+            PublicKey key = ExtendedSignature.extractPublicKey(s);
             if (key == null) {
-                key = ExtendedSignature.extractPublicKey(s);
+                Bytes keyId = ExtendedSignature.extractKeyId(s);
+                key = keys.get(keyId);
             }
             if (key != null) {
                 verifySignatureQuantized(key);
@@ -365,10 +365,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         for (Object signature : (List) data.getOrThrow("signatures")) {
             byte[] s = ((Bytes) signature).toArray();
-            Bytes keyId = ExtendedSignature.extractKeyId(s);
-            PublicKey key = keys.get(keyId);
+            PublicKey key = ExtendedSignature.extractPublicKey(s);
             if (key == null) {
-                key = ExtendedSignature.extractPublicKey(s);
+                Bytes keyId = ExtendedSignature.extractKeyId(s);
+                key = keys.get(keyId);
             }
             if (key != null) {
                 verifySignatureQuantized(key);

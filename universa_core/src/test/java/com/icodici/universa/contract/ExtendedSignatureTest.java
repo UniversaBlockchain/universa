@@ -138,7 +138,7 @@ public class ExtendedSignatureTest extends TestCase{
         assertAlmostSame(es.getCreatedAt(), ZonedDateTime.now());
         assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.keyId(pubKey));
         assertEquals(ExtendedSignature.keyId(k), ExtendedSignature.extractKeyId(signature));
-        assertEquals(null, es.getPublicKey());
+        assertEquals(pubKey, es.getPublicKey());
     }
 
     public static double parallelize(ExecutorService es,int nThreads,Runnable r) throws ExecutionException, InterruptedException {
