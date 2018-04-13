@@ -2548,8 +2548,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public void traceErrors() {
-        for(ErrorRecord er : errors) {
-            System.out.println("Error: " + er);
+        try {
+            for (ErrorRecord er : errors) {
+                System.out.println("Error: " + er);
+            }
+        } catch (ConcurrentModificationException e) {
+            e.printStackTrace();
         }
     }
 

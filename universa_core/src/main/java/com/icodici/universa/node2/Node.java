@@ -2264,7 +2264,7 @@ public class Node {
                             if (newState != ItemState.UNDEFINED) {
                                 record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
                             } else {
-                                log.e("Can not rollback to ItemState.UNDEFINED, will destroy item");
+//                                log.e("Can not rollback to ItemState.UNDEFINED, will destroy item");
                                 record.destroy();
                             }
                         }
