@@ -4546,6 +4546,132 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, itemResult.state);
     }
 
+
+    @Test
+    public void originReference() throws Exception {
+
+        // You have a notary dsl with llc's property
+        // and only owner of trusted manager's contract can chamge the owner of property
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        // contract for reference
+
+        Contract oldAccountCertificate = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
+        oldAccountCertificate.getDefinition().getData().set("type", "Good Bank");
+        oldAccountCertificate.getDefinition().getData().set("is_really_good", true);
+        oldAccountCertificate.seal();
+
+        registerAndCheckApproved(oldAccountCertificate);
+
+        // ---------------------------------------------------------------------------
+
+        // 1 revision: main contract with reference in the definition
+
+        Contract llcProperty = ContractsService.createTokenContract(llcPrivateKeys, stepaPublicKeys, "100");
+
+        // update split_join permission for use required reference
+
+        Collection<Permission> permissions = llcProperty.getPermissions().get("split_join");
+        for (Permission permission : permissions) {
+            permission.getRole().addRequiredReference("bank_certificate", Role.RequiredMode.ALL_OF);
+        }
+
+        // not alterable reference
+
+        List <String> listConditionsForDefinition = new ArrayList<>();
+        listConditionsForDefinition.add("ref.definition.data.type == \"Good Bank\"");
+        listConditionsForDefinition.add("ref.definition.data.is_really_good == true");
+        listConditionsForDefinition.add("ref.state.origin == this.state.data.account_origin");
+
+        Binder conditionsForDefinition = new Binder();
+        conditionsForDefinition.set("all_of", listConditionsForDefinition);
+
+        Reference refForDefinition = new Reference(llcProperty);
+        refForDefinition.name = "bank_certificate";
+        refForDefinition.type = Reference.TYPE_EXISTING;
+        refForDefinition.setConditions(conditionsForDefinition);
+        refForDefinition.addMatchingItem(oldAccountCertificate);
+
+        llcProperty.addReference(refForDefinition);
+
+        llcProperty.getStateData().set("account_origin", oldAccountCertificate.getOrigin().toBase64String());
+
+        // seal
+
+        llcProperty.seal();
+
+        registerAndCheckApproved(llcProperty);
+
+        //--------------------------------------------------------------------
+
+        // second revisions for referenced contract and contract with reference
+
+        Contract newAccountCertificate = oldAccountCertificate.createRevision(stepaPrivateKeys.iterator().next());
+        newAccountCertificate.setOwnerKeys(thirdPartyPublicKeys);
+        newAccountCertificate.seal();
+        newAccountCertificate.check();
+        newAccountCertificate.traceErrors();
+
+        registerAndCheckApproved(newAccountCertificate);
+
+
+        // IMPORTANT! need to clear old referenced contract from all references from all subitems
+        llcProperty.getReferences().get("bank_certificate").matchingItems.clear();
+        llcProperty.getDefinition().getReferences().get(0).matchingItems.clear();
+
+        // wrong (old) referenced contract
+
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 80, "amount", stepaPrivateKeys, true);
+
+        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        // don't forget add all contracts needed for all references
+        tp_before.addReferencedItem(oldAccountCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckDeclined(tp_after);
+
+        // good (new) referenced contract
+
+        System.out.println("------");
+
+        llcProperty2 = ContractsService.createSplit(llcProperty, 80, "amount", stepaPrivateKeys, true);
+
+        // and seal all again
+        llcProperty2.getNew().get(0).seal();
+        llcProperty2.seal();
+
+        llcProperty2.check();
+        llcProperty2.traceErrors();
+        assertFalse(llcProperty2.isOk());
+
+        tp_before = llcProperty2.getTransactionPack();
+        // don't forget add all contracts needed for all references
+        tp_before.addReferencedItem(newAccountCertificate);
+        data = tp_before.pack();
+        // here we "send" data and "got" it
+        tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
+    }
+
     @Test(timeout = 30000)
     public void declineReferenceForChangeOwner() throws Exception {
 

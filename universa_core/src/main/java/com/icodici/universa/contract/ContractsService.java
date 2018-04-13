@@ -22,6 +22,7 @@ import net.sergeych.tools.Do;
 import com.icodici.universa.contract.permissions.*;
 import java.time.Instant;
 import java.io.IOException;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -562,7 +563,7 @@ public class ContractsService {
         tokenContract.setApiLevel(3);
 
         Contract.Definition cd = tokenContract.getDefinition();
-        cd.setExpiresAt(ZonedDateTime.now().plusMonths(60));
+        cd.setExpiresAt(tokenContract.getCreatedAt().plusMonths(60));
 
         Binder data = new Binder();
         data.set("name", "Default token name");
@@ -638,7 +639,7 @@ public class ContractsService {
         shareContract.setApiLevel(3);
 
         Contract.Definition cd = shareContract.getDefinition();
-        cd.setExpiresAt(ZonedDateTime.now().plusMonths(60));
+        cd.setExpiresAt(shareContract.getCreatedAt().plusMonths(60));
 
         Binder data = new Binder();
         data.set("name", "Default share name");
@@ -711,7 +712,7 @@ public class ContractsService {
         notaryContract.setApiLevel(3);
 
         Contract.Definition cd = notaryContract.getDefinition();
-        cd.setExpiresAt(ZonedDateTime.now().plusMonths(60));
+        cd.setExpiresAt(notaryContract.getCreatedAt().plusMonths(60));
 
         Binder data = new Binder();
         data.set("name", "Default notary");

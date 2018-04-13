@@ -2311,7 +2311,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
 
         private Definition() {
-            createdAt = ZonedDateTime.now();
+            createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         }
 
         private Definition initializeWithDsl(Binder definition) {
