@@ -14,6 +14,7 @@ import com.icodici.universa.node.network.TestKeys;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.Bytes;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
@@ -116,7 +117,7 @@ public class ExtendedSignatureTest extends TestCase{
     public void extractPublicKey() throws Exception {
         byte[] data = "Hello world".getBytes();
         PrivateKey k = TestKeys.privateKey(3);
-        byte [] signature = ExtendedSignature.sign(k, data, true);
+        byte [] signature = ExtendedSignature.sign(k, data);
         PublicKey pubKey = k.getPublicKey();
         ExtendedSignature es = ExtendedSignature.verify(pubKey, signature, data);
         assertNotNull(es);
@@ -127,6 +128,7 @@ public class ExtendedSignatureTest extends TestCase{
         assertEquals(pubKey, es.getPublicKey());
     }
 
+    @Ignore("removed functionality")
     @Test
     public void extractPublicKeyNull() throws Exception {
         byte[] data = "Hello world".getBytes();

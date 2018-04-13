@@ -1900,7 +1900,12 @@ public class Node {
 
                         record.setExpiresAt(item.getExpiresAt());
                         try {
-                            record.save();
+                            if (record.getState() != ItemState.UNDEFINED) {
+                                record.save();
+                            } else {
+                                log.e("Checked item with state ItemState.UNDEFINED (should be ItemState.PENDING)");
+                                emergencyBreak();
+                            }
                         } catch (Ledger.Failure failure) {
                             emergencyBreak();
                             return;
@@ -2048,7 +2053,7 @@ public class Node {
             if(processingState.canContinue()) {
                 boolean positiveConsensus = false;
                 boolean negativeConsensus = false;
-                ItemProcessingState stateWas;
+//                ItemProcessingState processingStateWas;
                 // check if vote already count
                 if((state.isPositive() && positiveNodes.contains(node)) ||
                         (!state.isPositive() && negativeNodes.contains(node))) {
@@ -2071,7 +2076,7 @@ public class Node {
                     add.add(node);
                     remove.remove(node);
 
-                    stateWas = processingState;
+//                    processingStateWas = processingState;
 
                     if (processingState.isProcessedToConsensus()) {
                         if(processingState.isDone()) {
@@ -2220,47 +2225,53 @@ public class Node {
                     itemId, " from parcel: ", parcelId,
                     " :: rollbackChanges, state ", processingState),
                     DatagramAdapter.VerboseLevel.BASE);
+
             synchronized (ledgerRollbackLock) {
                 ledger.transaction(() -> {
-                        for (StateRecord r : lockedToRevoke) {
-                            try {
-                                itemLock.synchronize(r.getId(), lock -> {
-                                    r.unlock().save();
-                                    return null;
-                                });
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        lockedToRevoke.clear();
-
-                        // form created records, we touch only these that we have actually created
-                        for (StateRecord r : lockedToCreate) {
-                            try {
-                                itemLock.synchronize(r.getId(), lock -> {
-                                    r.unlock().save();
-                                    return null;
-                                });
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        // todo: concurrent modification can happen here!
-                        lockedToCreate.clear();
-
-                        setState(newState);
-                        ZonedDateTime expiration = ZonedDateTime.now()
-                                .plus(newState == ItemState.REVOKED ?
-                                        config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
-                        record.setExpiresAt(expiration);
+                    for (StateRecord r : lockedToRevoke) {
                         try {
-                            synchronized (mutex) {
-                                record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
-                            }
-                        } catch (Ledger.Failure failure) {
-                            failure.printStackTrace();
-                            log.e(failure.getMessage());
+                            itemLock.synchronize(r.getId(), lock -> {
+                                r.unlock().save();
+                                return null;
+                            });
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
+                    }
+                    lockedToRevoke.clear();
+
+                    // form created records, we touch only these that we have actually created
+                    for (StateRecord r : lockedToCreate) {
+                        try {
+                            itemLock.synchronize(r.getId(), lock -> {
+                                r.unlock().save();
+                                return null;
+                            });
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    // todo: concurrent modification can happen here!
+                    lockedToCreate.clear();
+
+                    setState(newState);
+                    ZonedDateTime expiration = ZonedDateTime.now()
+                            .plus(newState == ItemState.REVOKED ?
+                                    config.getRevokedItemExpiration() : config.getDeclinedItemExpiration());
+                    record.setExpiresAt(expiration);
+                    try {
+                        synchronized (mutex) {
+                            if (newState != ItemState.UNDEFINED) {
+                                record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+                            } else {
+                                log.e("Can not rollback to ItemState.UNDEFINED, will destroy item");
+                                record.destroy();
+                            }
+                        }
+                    } catch (Ledger.Failure failure) {
+                        failure.printStackTrace();
+                        log.e(failure.getMessage());
+                    }
                     return null;
                 });
                 close();

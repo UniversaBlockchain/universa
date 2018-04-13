@@ -166,7 +166,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode(session);
         if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
-            System.out.println("approve ERROR: no payment");
+            System.out.println("approve ERROR: command needs client key from whitelist");
 
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"approve", "command needs client key from whitelist"));

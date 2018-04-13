@@ -2548,9 +2548,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public void traceErrors() {
-        errors.forEach(e -> {
-            System.out.println("Error: " + e);
-        });
+        for(ErrorRecord er : errors) {
+            System.out.println("Error: " + er);
+        }
     }
 
     public String getErrorsString() {

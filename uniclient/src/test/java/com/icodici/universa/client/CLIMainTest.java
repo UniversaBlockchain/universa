@@ -29,6 +29,7 @@ import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -2830,6 +2831,7 @@ public class CLIMainTest {
 
     }
 
+    @Ignore("use with real network and own U")
     @Test
     public void fireRegister() throws Exception {
 
@@ -2858,6 +2860,28 @@ public class CLIMainTest {
         System.out.println(output);
         assertTrue (output.indexOf("payment contract or private keys for payment contract is missing") >= 0);
     }
+
+//    @Test
+//    public void specialCheck() throws Exception {
+//
+//        Contract c = CLIMain.loadContract(rootPath + "root.unicon", true);
+//
+//        System.out.println(c.getId());
+//        callMain2("--probe", c.getId().toBase64String());
+//
+//        for (Main m : localNodes) {
+//            m.node.getLedger().getRecord(c.getId()).destroy();
+//        }
+//
+//        String tuContract = getApprovedTUContract();
+//
+//        callMain("--register", rootPath + "root.unicon",
+//                "--tu", tuContract,
+//                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+//                "--wait", "3000", "-v");
+//        System.out.println(output);
+////        assertTrue (output.indexOf("payment contract or private keys for payment contract is missing") >= 0);
+//    }
 
     private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
         List<Contract> contracts = new ArrayList<>();

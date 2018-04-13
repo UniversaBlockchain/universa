@@ -413,6 +413,7 @@ public class PostgresLedgerTest extends TestCase {
 
     }
 
+    @Ignore("Stress test")
     @Test(timeout = 30000)
     public void ledgerDeadlock() throws Exception {
         List<Contract> origins = new ArrayList<>();
@@ -421,7 +422,7 @@ public class PostgresLedgerTest extends TestCase {
         PrivateKey myKey = TestKeys.privateKey(4);
 
         //up this value to more effect
-        final int N = 100;
+        final int N = 700;
         for(int i = 0; i < N; i++) {
             Contract origin = new Contract(myKey);
             origin.seal();
