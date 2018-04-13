@@ -12,6 +12,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
+import com.icodici.universa.Core;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
@@ -2151,4 +2152,59 @@ public class MainTest {
         }
 
     }
+
+
+
+    @Test(timeout = 30000)
+    public void freeRegistrationsAllowedFromCoreVersion() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        ItemState expectedState = ItemState.UNDEFINED;
+        if (Core.VERSION.contains("private"))
+            expectedState = ItemState.APPROVED;
+        System.out.println("Core.VERSION: " + Core.VERSION);
+        System.out.println("expectedState: " + expectedState);
+        ItemResult itemResult = client.register(contract.getPackedTransaction(), 5000);
+        System.out.println("itemResult: " + itemResult);
+        assertEquals(expectedState, itemResult.state);
+    }
+
+
+
+    @Test(timeout = 30000)
+    public void freeRegistrationsAllowedFromConfigOrVersion() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        ItemState expectedState = ItemState.APPROVED;
+        System.out.println("expectedState: " + expectedState);
+        ItemResult itemResult = client.register(contract.getPackedTransaction(), 5000);
+        System.out.println("itemResult: " + itemResult);
+        assertEquals(expectedState, itemResult.state);
+
+        main.config.setIsFreeRegistrationsAllowedFromYaml(false);
+        contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        expectedState = ItemState.UNDEFINED;
+        if (Core.VERSION.contains("private"))
+            expectedState = ItemState.APPROVED;
+        System.out.println("Core.VERSION: " + Core.VERSION);
+        System.out.println("expectedState: " + expectedState);
+        itemResult = client.register(contract.getPackedTransaction(), 5000);
+        System.out.println("itemResult: " + itemResult);
+        assertEquals(expectedState, itemResult.state);
+    }
+
 }

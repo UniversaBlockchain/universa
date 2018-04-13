@@ -165,12 +165,13 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode(session);
-        if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
-            System.out.println("approve ERROR: command needs client key from whitelist");
+        if (config.limitFreeRegistrations())
+            if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+                System.out.println("approve ERROR: command needs client key from whitelist");
 
-            return Binder.of(
-                    "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"approve", "command needs client key from whitelist"));
-        }
+                return Binder.of(
+                        "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"approve", "command needs client key from whitelist"));
+            }
 
         try {
             return Binder.of(
@@ -203,12 +204,13 @@ public class ClientHTTPServer extends BasicHttpServer {
     static AtomicInteger asyncStarts = new AtomicInteger();
 
     private Binder startApproval(final Binder params, Session session) throws IOException, Quantiser.QuantiserException {
-        if(config == null || !config.getKeysWhiteList().contains(session.getPublicKey())) {
-            System.out.println("startApproval ERROR: session key shoild be in the white list");
+        if (config == null || config.limitFreeRegistrations())
+            if(config == null || !config.getKeysWhiteList().contains(session.getPublicKey())) {
+                System.out.println("startApproval ERROR: session key shoild be in the white list");
 
-            return Binder.of(
-                    "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"startApproval", "command needs client key from whitelist"));
-        }
+                return Binder.of(
+                        "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"startApproval", "command needs client key from whitelist"));
+            }
 
         int n = asyncStarts.incrementAndGet();
         AtomicInteger k = new AtomicInteger();

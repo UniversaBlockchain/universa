@@ -317,6 +317,8 @@ public class Main {
                               settings.getIntOrThrow("http_server_port")
         );
 
+        config.setIsFreeRegistrationsAllowedFromYaml(settings.getBoolean("allow_free_registrations", false));
+
         ledger = new PostgresLedger(settings.getStringOrThrow("database"));
         log("ledger constructed");
 

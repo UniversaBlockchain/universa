@@ -10,6 +10,7 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
+import com.icodici.universa.Core;
 import com.icodici.universa.HashId;
 import net.sergeych.utils.Bytes;
 
@@ -123,6 +124,9 @@ public class Config {
     private List<Integer> resyncTime = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
+
+    private Boolean isFreeRegistrationsLimited = null;
+    private boolean isFreeRegistrationsAllowedFromYaml = false;
 
     public void setTransactionUnitsIssuerKeyData(Bytes transactionUnitsIssuerKeyData) {
         this.transactionUnitsIssuerKeyData = transactionUnitsIssuerKeyData;
@@ -318,5 +322,22 @@ public class Config {
             }
             return false;
         }
+    }
+
+    public void setIsFreeRegistrationsAllowedFromYaml(boolean val) {
+        isFreeRegistrationsAllowedFromYaml = val;
+        isFreeRegistrationsLimited = null;
+    }
+
+    public Boolean limitFreeRegistrations() {
+        if (isFreeRegistrationsLimited == null) {
+            isFreeRegistrationsLimited = new Boolean(true);
+
+            if (Core.VERSION.contains("private"))
+                isFreeRegistrationsLimited = new Boolean(false);
+            else if (isFreeRegistrationsAllowedFromYaml)
+                isFreeRegistrationsLimited = new Boolean(false);
+        }
+        return isFreeRegistrationsLimited;
     }
 }
