@@ -7,6 +7,7 @@
 
 package com.icodici.universa;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.node2.Quantiser;
@@ -83,7 +84,7 @@ public interface Approvable extends HashIdentifiable {
         return check("");
     }
 
-    default boolean paymentCheck(PublicKey issuerKey) throws Quantiser.QuantiserException {
+    default boolean paymentCheck(Set<KeyAddress> issuerKeys) throws Quantiser.QuantiserException {
         return false;
     }
 
@@ -104,7 +105,7 @@ public interface Approvable extends HashIdentifiable {
 
     default ZonedDateTime getExpiresAt() { return ZonedDateTime.now().plusHours(5);}
 
-    default boolean isTU(PublicKey issuerKey, String issuerName) {
+    default boolean isTU(Set<KeyAddress> issuerKeys, String issuerName) {
         return false;
     }
 

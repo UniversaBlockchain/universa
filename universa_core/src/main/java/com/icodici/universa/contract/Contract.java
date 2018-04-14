@@ -747,7 +747,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return res;
     }
 
-    public boolean paymentCheck(PublicKey issuerKey) throws Quantiser.QuantiserException {
+    @Override
+    public boolean paymentCheck(Set<KeyAddress> issuerKeys) throws Quantiser.QuantiserException {
         boolean res = true;
 
         boolean hasTestTU = getStateData().get("test_transaction_units") != null;
@@ -821,7 +822,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // The TU contract is checked to have valid issuer key (one of preset URS keys)
-        if (!getIssuer().getKeys().equals(new HashSet<>(Arrays.asList(issuerKey)))) {
+        Set<KeyAddress> thisIssuerAddresses = new HashSet<>(getIssuer().getKeyAddresses());
+        for (PublicKey publicKey : getIssuer().getKeys())
+            thisIssuerAddresses.add(publicKey.getShortAddress());
+        if (!Collections.disjoint(issuerKeys, thisIssuerAddresses)) {
             res = false;
             addError(Errors.BAD_VALUE, "issuerKeys is not valid");
         }
@@ -2589,8 +2593,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public boolean isTU(PublicKey issuerKey, String issuerName) {
-        if (!getIssuer().getKeys().equals(new HashSet<>(Arrays.asList(issuerKey))))
+    public boolean isTU(Set<KeyAddress> issuerKeys, String issuerName) {
+        Set<KeyAddress> thisIssuerAddresses = new HashSet<>(getIssuer().getKeyAddresses());
+        for (PublicKey publicKey : getIssuer().getKeys())
+            thisIssuerAddresses.add(publicKey.getShortAddress());
+        if (!Collections.disjoint(issuerKeys, thisIssuerAddresses))
             return false;
         if ( !issuerName.equals(getDefinition().getData().get("issuerName")))
             return false;

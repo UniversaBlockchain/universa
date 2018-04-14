@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
@@ -136,7 +137,7 @@ public class TestItem implements Approvable {
     }
 
     @Override
-    public boolean isTU(PublicKey issuerKey, String issuerName) {
+    public boolean isTU(Set<KeyAddress> issuerKeys, String issuerName) {
         return true;
     }
 

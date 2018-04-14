@@ -1722,8 +1722,8 @@ public class Node {
                         boolean checkPassed = false;
 
                         if(item.shouldBeTU()) {
-                            if(item.isTU(config.getTransactionUnitsIssuerKey(), config.getTUIssuerName())) {
-                                checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKey());
+                            if(item.isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName())) {
+                                checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKeys());
                             } else {
                                 checkPassed = false;
                                 item.addError(Errors.BADSTATE, item.getId().toString(),
