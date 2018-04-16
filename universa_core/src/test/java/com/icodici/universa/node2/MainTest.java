@@ -60,6 +60,72 @@ import static org.junit.Assert.*;
 @Ignore("start it manually")
 public class MainTest {
 
+    @Ignore
+    @Test
+    public void checkMemoryLeaks() throws Exception {
+
+        List<String> dbUrls = new ArrayList<>();
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+        List<Ledger> ledgers = new ArrayList<>();
+
+        for (int it = 0; it < 100; it++) {
+            if (it % 10 == 0)
+                System.out.println("Iteration " + it);
+            dbUrls.stream().forEach(url -> {
+                try {
+                    clearLedger(url);
+                    PostgresLedger ledger = new PostgresLedger(url);
+                    ledgers.add(ledger);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+
+            TestSpace ts = prepareTestSpace();
+
+            ts.node.config.getKeysWhiteList().add(TestKeys.publicKey(3));
+            Contract testContract = new Contract(ts.myKey);
+            testContract.seal();
+            assertTrue(testContract.isOk());
+            Parcel parcel = createParcelWithFreshTU(ts.client, testContract, Do.listOf(ts.myKey));
+            ts.client.registerParcel(parcel.pack(), 18000);
+
+            Contract testContract2 = new Contract(ts.myKey);
+            testContract2.seal();
+            assertTrue(testContract2.isOk());
+            ts.client.register(testContract2.getPackedTransaction(), 18000);
+
+            ts.nodes.forEach(x -> x.shutdown());
+
+            ts.myKey = null;
+            ts.nodes.clear();
+            ts.node = null;
+            ts.nodes = null;
+            ts.client = null;
+            ts = null;
+
+            ledgers.stream().forEach(ledger -> ledger.close());
+            ledgers.clear();
+            System.gc();
+            Thread.sleep(2000);
+        }
+    }
+
+    @Ignore
+    @Test
+    public void checkPublicKeyMemoryLeak() throws Exception {
+
+        byte[] bytes = Do.read("./src/test_contracts/keys/tu_key.public.unikey");
+
+        for (int it = 0; it < 10000; it++) {
+            PublicKey pk = new PublicKey(bytes);
+            pk = null;
+            System.gc();
+        }
+    }
 
     @After
     public void tearDown() throws Exception {
