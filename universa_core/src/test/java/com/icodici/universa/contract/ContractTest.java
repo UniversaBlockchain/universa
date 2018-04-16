@@ -38,6 +38,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 
@@ -1218,7 +1219,7 @@ public class ContractTest extends ContractTestBase {
 
         Contract oldContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         oldContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-        oldContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN, ZoneOffset.UTC));
+        oldContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
 
         oldContract.check();
         oldContract.traceErrors();
@@ -1242,7 +1243,7 @@ public class ContractTest extends ContractTestBase {
 
         Contract futureContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         futureContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-        futureContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MAX, ZoneOffset.UTC));
+        futureContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MAX.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
 
         assertTrue(futureContract.check());
         System.out.println("Contract is valid: " + futureContract.isOk());

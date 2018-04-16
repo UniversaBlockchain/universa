@@ -31,10 +31,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.Executors;
@@ -5760,7 +5758,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract oldContract = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
         oldContract.addSignerKeyFromFile(ROOT_PATH+"_xer0yfe2nn1xthc.private.unikey");
-        oldContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN, ZoneOffset.UTC));
+        oldContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
 
         oldContract.seal();
         oldContract.check();
@@ -5787,7 +5785,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract futureContract = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
         futureContract.addSignerKeyFromFile(ROOT_PATH+"_xer0yfe2nn1xthc.private.unikey");
-        futureContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MAX, ZoneOffset.UTC));
+        futureContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MAX.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
 
         futureContract.seal();
         assertTrue(futureContract.check());
@@ -6020,7 +6018,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(baseContract);
 
         Contract revContract  = baseContract.createRevision(ownerPrivateKey);
-        revContract.setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN, ZoneOffset.UTC));
+        revContract.setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
         revContract.seal();
 
         revContract.check();
@@ -6070,7 +6068,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(baseContract);
 
         Contract revContract  = baseContract.createRevision(ownerPrivateKey);
-        revContract.setExpiresAt(ZonedDateTime.of(LocalDateTime.MAX, ZoneOffset.UTC));
+        revContract.setExpiresAt(ZonedDateTime.of(LocalDateTime.MAX.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
         revContract.seal();
 
         revContract.check();
