@@ -23,10 +23,13 @@ public class Config {
 
 
     public Config () {
-        System.out.println("USING REAL CONFIG");
-        //keysWhiteList.add(getTransactionUnitsIssuerKey());
-        keysWhiteList.add(getNetworkAdminKey());
+        System.out.println("USING TEST CONFIG");
         try {
+            keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABxSSWfXW20wGsRn9khVZDtvcCtUqP/scN3oVPU3r0152Fu62pfx9Mjc1cmQnRYSkeZzWA50RYQTU3FlXC5iIN7w+Lm6TGPQxWe+uYGMgKLCbAmyMXPWupvzeB5SEMtylQ5ml12iwFQkamqOiFE2KWMYz/UGhW87/ELPckmpoanZUa8OGCACUfFGALAZV0G+rQ/8xiW3hkGHmOFP0kejZaCZGPO/XGVay+2q0V2cw6CHar+D9F9FomXYA4bAInlY3zOLHdG8ddUTzhHQWOKmzoF9eIW67U9rd9qIR04U9ls9wGLQchqlG/kxHHfR4Js86mwYNgUKW49fQRppig+SsrjQ==").getData())); //transactionUnitsIssuerKey
+            keysWhiteList.add(getNetworkAdminKey());
+            //transactionUnitsIssuerKeys.add(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
+            transactionUnitsIssuerKeys.add(new KeyAddress("ZNuBikFEZbw71QQAFkNQtjfkmxFAdMgveTVPMGrFwo9vQwwPVE"));
+
             keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABzD/Kgn3Nn2F/nhZOVspa7LEwiHYnr6PGID4+6itQcag5eY6lRgpg/MGMT0J3SyKREFo0vrE0q8OHOe8pqBEv+m24Vo3dRT1tTOSoWPpGc8xXYj9Y0jeeMyxVzx2uvtXM3SHzS7YaP4Y1yhi1LnVq1MpQ9cls9KL+f8AJCuqZ8meCc2Zxo/CgEue24v7z+UvB9eq8jiCJM3BW6hDPW4bxYp9nbZib2AuMqzVK/DP21R5oVdxfWYKd0+9E7VfAk++J1/JtUbO4Q185ic2QEvhgqYnw4JJTTxeglqXkx6Ge5iaEJ+GqiwnQ/+K1huX33vMRMvC0BbpwtTrvKHCOKa+hwQ==").getData())); //TestKeys.publicKey(0)
             keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABt4ri+JZn6f1RDUaymNkuMfc7dHaeYk4rr8RawGu7h6XVfRahSDqEcud1ht+oqJqm2TYmrO2ZEP8zjENQi92PiJ89yh3mzzD9BjtEcstBkDgE30i4jiYqPpkWORq51uR6xPMAI6qVO8sXoPRANCIyXejszh0meYCCrwl2uJDqKrOGYP010FKjkDy9AyC4Vep/6rppgKqsUukydzTX/laYj0179w5hR2BiPPJuY/uAef6AsdRXfdQm0McsmV9lcu0b9svEBfu6vDA9jmMlz68KNSXBpX6VrMBgp+fMWcs1D/hzwZZh3tCMUbPQiInPtiLY5DSlZ1MUEPqGNGcbRYPEPQ==").getData())); //TestKeys.publicKey(1)
             keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABp+gb/K7GyhtNNfLYbc4geKyInuNsoIw5mSZOarqnwx3rqFwKzJKyIQ6C9XyzyJWl9y7jO8VtmbWqvbG/puAhSmC2Gizl012fZr72so1YkEDJSLghOld9s0L/SZ2SIsJmS1Dq4jKaiXRkVuV2+7P8yhhVY/8J2HGwEi1veBqzqFPQGC39F2nMtdAh03UNGDAfImprIdyEFy6gyeDPNY4tklFHfJJb/xk7Tt8oaUuQbW18iK0Az4IGXK//tYguAwQTqslbi/qz919aJgtubQlM8pOu7LAQPHsYhjnKRiml217G/C2yy/cgGXb+eEHbtTWHsjoEBGPnaV9HQQK0PQ+WfQ==").getData())); //TestKeys.publicKey(2)
@@ -37,13 +40,7 @@ public class Config {
             keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABgcoWwUfPcbGvFAIw6bKRNgVmJ624eBR7AqYeWHXeqf2jHnJV8N9yFQLX+YJa0hUEjsEt5zVCnB77leVdyfppv80JMlGrp8bcXFEGhmcQOrB4V/6ZsT3RFo5QLoFXj4mJTaClbtB7Py0PhJ8bvgbhOyBLM1NzcWfNTxQHCjXEedhJuolOkL2zXg0VVLCyLR6EsKewEXe299MGP59/+ZdhJzQI8qEYN2sTw+SHj5XXvaBqCbAucWjA76HjDkylkfBfnP9kKZFl2rtudqdaUFoSN9axiQBdwwCz2x8n3XBdBoPtv7QUuRD7CSYx7O6cWaixgmVxRrmJ3hyt+D8+qTnp0w==").getData())); //TestKeys.publicKey(7)
             keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAAB6F24Fr7LIs10ngX7/ZH+WMch1Ml7diRARe3lFkesB0HAhdSiS+fDHVOuT8tTVwgGNp++2dnWxFgHwNxdV5Us0ODkEtTqIHivoQzr0Mm1Q4zNoXSTs82lnvqFRArkh7Jg6V+a07ESm8khIEykX817ip8E40t+7TdQSrCk9SbRwOguQvupU77X0arT4ntDHvSFC1nyEaLiSyqI5vLQWjIxBqj7yqM4SnwSpFQtR6dzB6hhtW7HI1o82k9pBANVgEa5mNhlNVMXy4cKxm/fGlDC72VuEIT9E6Otsz8zptxK6nZSj7fG+PG9CoI5wlgLWXlSq0YjPSTZJpq5VJ3sqceW2Q==").getData())); //TestKeys.publicKey(8)
             keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABrnHlqtQQSQX7VxYzxTE6HI/sm1odbK19+IvJJ0KDR/SHxUJ/sy9qURBKeLwfKsu3NTef/gwizitAVvdSizFa3EUBNnT/VrMWlLKSWJJMwhh0c7c4tz+3Elag0RznYnMV4VE7LWUj4mONZPTIyT8YubyBZu6I7wn7b5pDHK6SVJcfYEA4VvipoPRHqFgJ3Devqe+iqlqffbPyekZd/B9kwnKWME4+/ez+I2IiVCHU6xtY3ucirQxMQ892t7topZHWJXliga2vOc7tRVRJYqC64Yj19Ujr787dWlWR7IoIIa/KnN4PCp5FiaDp4UVHeG6RfYIHCWNpv+Kc2/UWApIJhQ==").getData())); //TestKeys.publicKey(9)
-        }catch (Exception e) {
-            System.out.println("error in test config");
-        }
-        try {
-            //transactionUnitsIssuerKeys.add(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-            transactionUnitsIssuerKeys.add(new KeyAddress("ZNuBikFEZbw71QQAFkNQtjfkmxFAdMgveTVPMGrFwo9vQwwPVE"));
-        } catch (KeyAddress.IllegalAddressException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
