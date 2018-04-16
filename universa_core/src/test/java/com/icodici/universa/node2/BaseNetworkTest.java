@@ -2796,6 +2796,280 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
+
+    @Test(timeout = 90000)
+    public void registerPayingParcelGood() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+
+        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys.iterator().next());
+        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        paymentDecreased.seal();
+
+        Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
+        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
+        secondPayment.seal();
+
+        stepaCoins.addNewItems(secondPayment);
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = new Parcel(stepaCoins.getTransactionPack(), paymentDecreased.getTransactionPack());
+
+        secondPayment.check();
+        secondPayment.traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertTrue(secondPayment.isOk());
+
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+
+//        LogPrinter.showDebug(true);
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(secondPayment.getId(), 8000).state);
+    }
+
+
+
+    @Test(timeout = 90000)
+    public void registerPayingParcelBadFirstPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+
+        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys.iterator().next());
+        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        paymentDecreased.getDefinition().getData().set("wrong_value", false);
+        paymentDecreased.seal();
+
+        Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
+        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
+        secondPayment.seal();
+
+        stepaCoins.addNewItems(secondPayment);
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = new Parcel(stepaCoins.getTransactionPack(), paymentDecreased.getTransactionPack());
+
+        parcel.getPayloadContract().check();
+        parcel.getPayloadContract().traceErrors();
+        secondPayment.check();
+        secondPayment.traceErrors();
+        parcel.getPaymentContract().check();
+        parcel.getPaymentContract().traceErrors();
+
+        assertFalse(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertTrue(secondPayment.isOk());
+
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+
+//        LogPrinter.showDebug(true);
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(secondPayment.getId(), 8000).state);
+    }
+
+
+
+    @Test(timeout = 90000)
+    public void registerPayingParcelBadSecondPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+
+        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys.iterator().next());
+        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        paymentDecreased.seal();
+
+        Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
+        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
+        secondPayment.getDefinition().getData().set("wrong_value", false);
+        secondPayment.seal();
+
+        stepaCoins.addNewItems(secondPayment);
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = new Parcel(stepaCoins.getTransactionPack(), paymentDecreased.getTransactionPack());
+
+        parcel.getPayloadContract().check();
+        parcel.getPayloadContract().traceErrors();
+//        secondPayment.check();
+        secondPayment.traceErrors();
+        parcel.getPaymentContract().check();
+        parcel.getPaymentContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPayloadContract().isOk());
+        assertFalse(secondPayment.isOk());
+
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+
+//        LogPrinter.showDebug(true);
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(secondPayment.getId(), 8000).state);
+    }
+
+
+
+    @Test(timeout = 90000)
+    public void registerPayingParcelBadPayload() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+
+        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
+        stepaTU.check();
+        //stepaTU.setIsTU(true);
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys.iterator().next());
+        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        paymentDecreased.seal();
+
+        Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
+        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
+        secondPayment.seal();
+
+        stepaCoins.addNewItems(secondPayment);
+        Contract.Definition cd = stepaCoins.getDefinition();
+        cd.setExpiresAt(stepaCoins.getCreatedAt().minusDays(1));
+        Contract.State cs = stepaCoins.getState();
+        cs.setExpiresAt(stepaCoins.getCreatedAt().minusDays(1));
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = new Parcel(stepaCoins.getTransactionPack(), paymentDecreased.getTransactionPack());
+
+        parcel.getPayloadContract().check();
+        parcel.getPayloadContract().traceErrors();
+        secondPayment.check();
+        secondPayment.traceErrors();
+        parcel.getPaymentContract().check();
+        parcel.getPaymentContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPayloadContract().isOk());
+        assertTrue(secondPayment.isOk());
+
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+
+//        LogPrinter.showDebug(true);
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(secondPayment.getId(), 8000).state);
+    }
+
+
     @Test(timeout = 90000)
     public void imNotGonnaPayForIt() throws Exception {
 
