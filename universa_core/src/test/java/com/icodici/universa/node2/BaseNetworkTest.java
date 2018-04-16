@@ -2838,8 +2838,8 @@ public class BaseNetworkTest extends TestCase {
         secondPayment.traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
-        parcel.getPayload().getContract().check();
-        parcel.getPayload().getContract().traceErrors();
+        parcel.getPayment().getContract().check();
+        parcel.getPayment().getContract().traceErrors();
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
