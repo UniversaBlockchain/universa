@@ -3071,6 +3071,106 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
+    public void registerPayingParcelGoodWithContractService() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+
+        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
+        stepaTU.check();
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createPayingParcel(stepaCoins.getTransactionPack(), stepaTU, 3, 7, stepaPrivateKeys, false);
+
+        stepaCoins.getNew().get(0).check();
+        stepaCoins.getNew().get(0).traceErrors();
+        parcel.getPaymentContract().check();
+        parcel.getPaymentContract().traceErrors();
+        parcel.getPayloadContract().check();
+        parcel.getPayloadContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertTrue(stepaCoins.getNew().get(0).isOk());
+
+        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 10, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("transaction_units"));
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(stepaCoins.getNew().get(0).getId(), 8000).state);
+    }
+
+
+    @Test(timeout = 90000)
+    public void registerPayingParcelGoodWithContractServiceWithTestPayment() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        stepaCoins.setExpiresAt(stepaCoins.getCreatedAt().plusMonths(6));
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+
+        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys, true);
+        stepaTU.setExpiresAt(stepaTU.getCreatedAt().plusMonths(6));
+        stepaTU.check();
+        stepaTU.traceErrors();
+        node.registerItem(stepaTU);
+        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createPayingParcel(stepaCoins.getTransactionPack(), stepaTU, 20, 60, stepaPrivateKeys, true);
+
+        stepaCoins.getNew().get(0).check();
+        stepaCoins.getNew().get(0).traceErrors();
+        parcel.getPaymentContract().check();
+        parcel.getPaymentContract().traceErrors();
+        parcel.getPayloadContract().check();
+        parcel.getPayloadContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertTrue(stepaCoins.getNew().get(0).isOk());
+
+        assertEquals(stepaTU.getStateData().getIntOrThrow("test_transaction_units") - 80, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("test_transaction_units"));
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(stepaCoins.getNew().get(0).getId(), 8000).state);
+    }
+
+
+    @Test(timeout = 90000)
     public void imNotGonnaPayForIt() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
