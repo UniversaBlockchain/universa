@@ -5785,7 +5785,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract futureContract = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
         futureContract.addSignerKeyFromFile(ROOT_PATH+"_xer0yfe2nn1xthc.private.unikey");
-        futureContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MAX.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
+        futureContract.getDefinition().setExpiresAt(futureContract.getCreatedAt().plusYears(50));
 
         futureContract.seal();
         assertTrue(futureContract.check());
