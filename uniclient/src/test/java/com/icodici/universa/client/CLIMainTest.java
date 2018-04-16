@@ -21,6 +21,7 @@ import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Main;
 import com.icodici.universa.node2.Quantiser;
+import com.icodici.universa.node2.network.Client;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Do;
@@ -1373,6 +1374,13 @@ public class CLIMainTest {
         ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
         c.seal();
 
+        System.out.println("--- restart client session with key in while list --- ");
+        Client client = CLIMain.getClientNetwork().client;
+        PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
+        client.getSession().setPrivateKey(manufacturePrivateKey);
+        client.restart();
+
         System.out.println("---");
         System.out.println("register contract");
         System.out.println("---");
@@ -1402,7 +1410,11 @@ public class CLIMainTest {
 
         CLIMain.registerContract(tc);
 
-        Thread.sleep(2500);
+        System.out.println("--- restart client session with client key --- ");
+        client.getSession().setPrivateKey(clientPrivateKey);
+        client.restart();
+
+        Thread.sleep(1500);
         System.out.println("---");
         System.out.println("check revoking contract");
         System.out.println("---");
@@ -2169,9 +2181,20 @@ public class CLIMainTest {
                 //stepaTU.setIsTU(true);
                 stepaTU.traceErrors();
                 CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
+
+                System.out.println("--- restart client session with key in while list --- ");
+                Client client = CLIMain.getClientNetwork().client;
+                PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
+                client.getSession().setPrivateKey(manufacturePrivateKey);
+                client.restart();
+
                 System.out.println("--- register new tu --- " + stepaTU.getId());
                 callMain2("--register", basePath + "stepaTU.unicon", "-v", "-wait", "5000");
                 tuContract = stepaTU;
+
+                System.out.println("--- restart client session with client key --- ");
+                client.getSession().setPrivateKey(clientPrivateKey);
+                client.restart();
             }
             return basePath + "stepaTU.unicon";
         }

@@ -21,6 +21,10 @@ import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.boss.Boss;
+import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
@@ -31,8 +35,8 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Semaphore;
@@ -6944,6 +6948,356 @@ public class BaseNetworkTest extends TestCase {
         TransactionPack tp_after = TransactionPack.unpack(data);
 
         registerAndCheckApproved(tp_after);
+    }
+
+    @Test
+    public void checkRegisterContractCreatedAtFutureTime() throws Exception{
+
+        Contract futureContract = Contract.fromDslFile(ROOT_PATH + "simple_root_contract_future.yml");
+        futureContract.addSignerKeyFromFile(ROOT_PATH+"_xer0yfe2nn1xthc.private.unikey");
+
+        futureContract.seal();
+        futureContract.check();
+        futureContract.traceErrors();
+        System.out.println("Contract is valid: " + futureContract.isOk());
+        assertFalse(futureContract.isOk());
+    }
+
+    @Test
+    public void checkRegisterContractExpiresAtReсentPastTime() throws Exception{
+
+        Contract oldContract = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
+        oldContract.addSignerKeyFromFile(ROOT_PATH+"_xer0yfe2nn1xthc.private.unikey");
+        oldContract.getDefinition().setExpiresAt(oldContract.getCreatedAt().minusMinutes(1));
+
+        oldContract.seal();
+        oldContract.check();
+        oldContract.traceErrors();
+        System.out.println("Contract is valid: " + oldContract.isOk());
+        assertFalse(oldContract.isOk());
+    }
+
+    @Test
+    public void checkRegisterContractExpiresAtDistantPastTime() throws Exception{
+
+        Contract oldContract = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
+        oldContract.addSignerKeyFromFile(ROOT_PATH+"_xer0yfe2nn1xthc.private.unikey");
+        oldContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
+
+        oldContract.seal();
+        oldContract.check();
+        oldContract.traceErrors();
+        System.out.println("Contract is valid: " + oldContract.isOk());
+        assertFalse(oldContract.isOk());
+    }
+
+    @Test
+    public void checkRegisterContractExpiresAtReсentFutureTime() throws Exception{
+
+        Contract futureContract = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
+        futureContract.addSignerKeyFromFile(ROOT_PATH+"_xer0yfe2nn1xthc.private.unikey");
+        futureContract.getDefinition().setExpiresAt(futureContract.getCreatedAt().plusMinutes(1));
+
+        futureContract.seal();
+        assertTrue(futureContract.check());
+        System.out.println("Contract is valid: " + futureContract.isOk());
+        registerAndCheckApproved(futureContract);
+    }
+
+    @Test
+    public void checkContractExpiresAtDistantFutureTime() throws Exception{
+
+        Contract futureContract = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
+        futureContract.addSignerKeyFromFile(ROOT_PATH+"_xer0yfe2nn1xthc.private.unikey");
+        futureContract.getDefinition().setExpiresAt(futureContract.getCreatedAt().plusYears(50));
+
+        futureContract.seal();
+        assertTrue(futureContract.check());
+        System.out.println("Contract is valid: " + futureContract.isOk());
+        registerAndCheckApproved(futureContract);
+    }
+
+    @Test
+    public void checkRegisterRevisionCreatedAtPastTimeValid() throws Exception{
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+
+        Binder b = contract.serialize(new BiSerializer());
+
+        long seconds = ZonedDateTime.now().minusDays(4).toEpochSecond();
+        b.getBinder("definition").getBinder("created_at").set("seconds", seconds);
+        b.getBinder("state").getBinder("created_at").set("seconds", seconds);
+
+        Contract baseContract = new Contract();
+        baseContract.deserialize(b, new BiDeserializer());
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        System.out.println("Base contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Contract revTemp = baseContract.createRevision(ownerPrivateKey);
+        b = revTemp.serialize(new BiSerializer());
+
+        seconds = ZonedDateTime.now().minusDays(4).plusMinutes(1).toEpochSecond();
+        b.getBinder("state").getBinder("created_at").set("seconds", seconds);
+
+        Contract revContract = new Contract();
+        revContract.deserialize(b, new BiDeserializer());
+
+        revContract.addRevokingItems(baseContract);
+        revContract.setOwnerKey(manufacturePrivateKey);
+        revContract.addSignerKey(manufacturePrivateKey);
+        revContract.addSignerKey(ownerPrivateKey);
+
+        revContract.seal();
+        revContract.check();
+        revContract.traceErrors();
+        System.out.println("Revision contract is valid: " + revContract.isOk());
+        registerAndCheckApproved(revContract);
+    }
+
+    @Test
+    public void checkRegisterRevisionCreatedAtPastTimeInvalid() throws Exception{
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+
+        Binder b = contract.serialize(new BiSerializer());
+
+        long seconds = ZonedDateTime.now().minusDays(4).toEpochSecond();
+        b.getBinder("definition").getBinder("created_at").set("seconds", seconds);
+        b.getBinder("state").getBinder("created_at").set("seconds", seconds);
+
+        Contract baseContract = new Contract();
+        baseContract.deserialize(b, new BiDeserializer());
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        System.out.println("Base contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Contract revTemp = baseContract.createRevision(ownerPrivateKey);
+        b = revTemp.serialize(new BiSerializer());
+
+        seconds = ZonedDateTime.now().minusDays(4).minusMinutes(1).toEpochSecond();
+        b.getBinder("state").getBinder("created_at").set("seconds", seconds);
+
+        Contract revContract = new Contract();
+        revContract.deserialize(b, new BiDeserializer());
+
+        revContract.addRevokingItems(baseContract);
+        revContract.setOwnerKey(manufacturePrivateKey);
+        revContract.addSignerKey(manufacturePrivateKey);
+        revContract.addSignerKey(ownerPrivateKey);
+
+        revContract.seal();
+        revContract.check();
+        revContract.traceErrors();
+        System.out.println("Revision contract is valid: " + revContract.isOk());
+        assertFalse(revContract.isOk());
+    }
+
+    @Test
+    public void checkRegisterRevisionCreatedAtFutureTimeInvalid() throws Exception{
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+
+        Binder b = contract.serialize(new BiSerializer());
+
+        long seconds = ZonedDateTime.now().minusDays(4).toEpochSecond();
+        b.getBinder("definition").getBinder("created_at").set("seconds", seconds);
+        b.getBinder("state").getBinder("created_at").set("seconds", seconds);
+
+        Contract baseContract = new Contract();
+        baseContract.deserialize(b, new BiDeserializer());
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        System.out.println("Base contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Contract revTemp = baseContract.createRevision(ownerPrivateKey);
+        b = revTemp.serialize(new BiSerializer());
+
+        seconds = ZonedDateTime.now().plusMinutes(1).toEpochSecond();
+        b.getBinder("state").getBinder("created_at").set("seconds", seconds);
+
+        Contract revContract = new Contract();
+        revContract.deserialize(b, new BiDeserializer());
+
+        revContract.addRevokingItems(baseContract);
+        revContract.setOwnerKey(manufacturePrivateKey);
+        revContract.addSignerKey(manufacturePrivateKey);
+        revContract.addSignerKey(ownerPrivateKey);
+
+        revContract.seal();
+        revContract.check();
+        revContract.traceErrors();
+        System.out.println("Revision contract is valid: " + revContract.isOk());
+        assertFalse(revContract.isOk());
+    }
+
+    @Test
+    public void checkRevisionsInvalidDefinitionCreatedAt() throws Exception{
+
+        Contract contract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+
+        Binder b = contract.serialize(new BiSerializer());
+
+        long seconds = ZonedDateTime.now().minusDays(5).plusSeconds(3).toEpochSecond();
+        b.getBinder("definition").getBinder("created_at").set("seconds", seconds);
+        b.getBinder("state").getBinder("created_at").set("seconds", seconds);
+
+        Contract baseContract = new Contract();
+        baseContract.deserialize(b, new BiDeserializer());
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        System.out.println("Base contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Thread.sleep(4000);
+
+        Contract revContract  = baseContract.createRevision(ownerPrivateKey);
+
+        revContract.setOwnerKey(manufacturePrivateKey);
+        revContract.addSignerKey(manufacturePrivateKey);
+
+        revContract.seal();
+        revContract.check();
+        revContract.traceErrors();
+        System.out.println("Revision 1 contract is valid: " + revContract.isOk());
+        registerAndCheckApproved(revContract);
+
+        Contract rev2Contract  = revContract.createRevision(manufacturePrivateKey);
+
+        rev2Contract.setOwnerKey(ownerPrivateKey);
+
+        rev2Contract.seal();
+        rev2Contract.check();
+        rev2Contract.traceErrors();
+        System.out.println("Revision 2 contract is valid: " + rev2Contract.isOk());
+        registerAndCheckApproved(rev2Contract);
+    }
+
+    @Ignore
+    @Test
+    public void checkRevisionExpiresAtReсentPastTime() throws Exception{
+
+        Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        System.out.println("Base contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Contract revContract  = baseContract.createRevision(ownerPrivateKey);
+        revContract.setExpiresAt(revContract.getCreatedAt().minusMinutes(1));
+        revContract.seal();
+
+        revContract.check();
+        revContract.traceErrors();
+        assertTrue(revContract.isOk());
+    }
+
+    @Ignore
+    @Test
+    public void checkRevisionExpiresAtDistantPastTime() throws Exception{
+
+        Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        System.out.println("Base contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Contract revContract  = baseContract.createRevision(ownerPrivateKey);
+        revContract.setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
+        revContract.seal();
+
+        revContract.check();
+        revContract.traceErrors();
+        assertTrue(revContract.isOk());
+    }
+
+    @Ignore
+    @Test
+    public void checkRevisionExpiresAtReсentFutureTime() throws Exception{
+
+        Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        System.out.println("Base contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Contract revContract  = baseContract.createRevision(ownerPrivateKey);
+        revContract.setExpiresAt(revContract.getCreatedAt().plusMinutes(1));
+        revContract.seal();
+
+        revContract.check();
+        revContract.traceErrors();
+        assertTrue(revContract.isOk());
+    }
+
+    @Ignore
+    @Test
+    public void checkRevisionExpiresAtDistantFutureTime() throws Exception{
+
+        Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        PrivateKey ownerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey"));
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        System.out.println("Base contract is valid: " + baseContract.isOk());
+        registerAndCheckApproved(baseContract);
+
+        Contract revContract  = baseContract.createRevision(ownerPrivateKey);
+        revContract.setExpiresAt(ZonedDateTime.of(LocalDateTime.MAX.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
+        revContract.seal();
+
+        revContract.check();
+        revContract.traceErrors();
+        assertTrue(revContract.isOk());
     }
 
     @Test(timeout = 90000)

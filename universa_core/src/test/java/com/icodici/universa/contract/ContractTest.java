@@ -35,7 +35,10 @@ import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 
@@ -1172,6 +1175,78 @@ public class ContractTest extends ContractTestBase {
             assertTrue(desRef != null);
             assertEquals(ref.getConditions(), desRef.getConditions());
         }
+    }
+
+    @Test
+    public void checkContractCreatedAtPastTime() throws Exception{
+
+        Contract oldContract = Contract.fromDslFile(rootPath + "simple_root_contract_past.yml");
+        oldContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+
+        oldContract.check();
+        oldContract.traceErrors();
+        System.out.println("Contract is valid: " + oldContract.isOk());
+        assertFalse(oldContract.isOk());
+    }
+
+    @Test
+    public void checkContractCreatedAtFutureTime() throws Exception{
+
+        Contract futureContract = Contract.fromDslFile(rootPath + "simple_root_contract_future.yml");
+        futureContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+
+        futureContract.check();
+        futureContract.traceErrors();
+        System.out.println("Contract is valid: " + futureContract.isOk());
+        assertFalse(futureContract.isOk());
+    }
+
+    @Test
+    public void checkContractExpiresAtResentPastTime() throws Exception{
+
+        Contract oldContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        oldContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        oldContract.getDefinition().setExpiresAt(oldContract.getCreatedAt().minusMinutes(1));
+
+        oldContract.check();
+        oldContract.traceErrors();
+        System.out.println("Contract is valid: " + oldContract.isOk());
+        assertFalse(oldContract.isOk());
+    }
+
+    @Test
+    public void checkContractExpiresAtDistantPastTime() throws Exception{
+
+        Contract oldContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        oldContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        oldContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
+
+        oldContract.check();
+        oldContract.traceErrors();
+        System.out.println("Contract is valid: " + oldContract.isOk());
+        assertFalse(oldContract.isOk());
+    }
+
+    @Test
+    public void checkContractExpiresAtResentFutureTime() throws Exception{
+
+        Contract futureContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        futureContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        futureContract.getDefinition().setExpiresAt(futureContract.getCreatedAt().plusMinutes(1));
+
+        assertTrue(futureContract.check());
+        System.out.println("Contract is valid: " + futureContract.isOk());
+    }
+
+    @Test
+    public void checkContractExpiresAtDistantFutureTime() throws Exception{
+
+        Contract futureContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        futureContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        futureContract.getDefinition().setExpiresAt(futureContract.getCreatedAt().plusYears(50));
+
+        assertTrue(futureContract.check());
+        System.out.println("Contract is valid: " + futureContract.isOk());
     }
 
 //    @Test
