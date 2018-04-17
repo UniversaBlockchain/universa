@@ -1257,7 +1257,7 @@ public class CLIMain {
         final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
         Files.setPosixFilePermissions(sessionFile, perms);
         prefs.put("session_" + nodeNumber, sessionFile.toString());
-        reporter.verbose("Broken session has been stored to the " + keysDir + "/" + sessionFile);
+//        reporter.verbose("Broken session has been stored to the " + keysDir + "/" + sessionFile);
     }
 
     static public void clearSession() {
@@ -1304,7 +1304,7 @@ public class CLIMain {
                 // fucking windows :( have no idea what to do with it
             }
             prefs.put("session_" + nodeNumber, sessionFile.toString());
-            report("Session has been stored to the " + keysDir + "/" + sessionFile);
+//            report("Session has been stored to the " + keysDir + "/" + sessionFile);
         }
     }
 

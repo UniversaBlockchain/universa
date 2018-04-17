@@ -27,7 +27,7 @@ import java.util.Arrays;
  * bytes [1..48]:{@link com.icodici.crypto.digest.Sha3_384} digest of the key in question
  * <p>
  * bytes [49..53]: {@link com.icodici.crypto.digest.Crc32} control code of all previous bytes
- *
+ * <p>
  * Packed to string the long address takes 72 characters, short version only 51.
  */
 public class KeyAddress implements KeyMatcher {
@@ -82,6 +82,7 @@ public class KeyAddress implements KeyMatcher {
      *
      * @param packedSource
      *         binary data holding the address
+     *
      * @throws IllegalAddressException
      *         if the adress is malformed (control code does not match or wrong type code)
      */
@@ -111,6 +112,7 @@ public class KeyAddress implements KeyMatcher {
      *
      * @param packedString
      *         string with encoded address, use {@link #toString()} to obtain packed string representation
+     *
      * @throws IllegalAddressException
      *         if the address is malformed (control code is not valid or bad type code)
      */
@@ -128,7 +130,9 @@ public class KeyAddress implements KeyMatcher {
      * Check that the key matches this address, e.g. has of the same type and the digest of its components is the same.
      * The key components digest is calculated by the key self in the {@link AbstractKey#updateDigestWithKeyComponents(Digest)}
      *
-     * @param key to check
+     * @param key
+     *         to check
+     *
      * @return true if the key matches (what means, it is the key corresponding to this address)
      */
     @Override
@@ -146,11 +150,12 @@ public class KeyAddress implements KeyMatcher {
      * type mark is important, check it by hand.
      *
      * @param other
+     *
      * @return
      */
     @Override
     public boolean isMatchingKeyAddress(KeyAddress other) {
-        if( _isLong != other._isLong )
+        if (_isLong != other._isLong)
             throw new IllegalArgumentException("can't match addresses of different length");
         return other.keyMask == keyMask && Arrays.equals(keyDigest, other.keyDigest);
     }
@@ -176,6 +181,7 @@ public class KeyAddress implements KeyMatcher {
 
     /**
      * Get the packed string representaion. Uses {@link Safe58} to encode data provided by the {@link #getPacked()}
+     *
      * @return
      */
     @Override
@@ -184,10 +190,12 @@ public class KeyAddress implements KeyMatcher {
     }
 
     /**
-     * Each supported key has a mask that represents its type. The key that has no known mask can't be processed
-     * bt the address.
+     * Each supported key has a mask that represents its type. The key that has no known mask can't be processed bt the
+     * address.
      *
-     * @param k key to calculate mask of.
+     * @param k
+     *         key to calculate mask of.
+     *
      * @return
      */
     protected static int mask(AbstractKey k) {
@@ -195,7 +203,7 @@ public class KeyAddress implements KeyMatcher {
         switch (i.getAlgorythm()) {
             case RSAPublic:
             case RSAPrivate:
-                if( ((PublicKey)k).getPublicExponent() == 0x10001) {
+                if (((PublicKey) k).getPublicExponent() == 0x10001) {
                     int l = i.getKeyLength();
                     if (l == 2048 / 8)
                         return 0x01;
@@ -234,7 +242,7 @@ public class KeyAddress implements KeyMatcher {
         DefaultBiMapper.registerAdapter(KeyAddress.class, new BiAdapter() {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
-                return Binder.of("uaddress", serializer.serialize(((KeyAddress)object).getPacked())); //TODO: serialization is necessary
+                return Binder.of("uaddress", serializer.serialize(((KeyAddress) object).getPacked())); //TODO: serialization is necessary
             }
 
             @Override
