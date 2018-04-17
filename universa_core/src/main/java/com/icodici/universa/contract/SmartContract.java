@@ -12,6 +12,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
@@ -19,7 +20,6 @@ import java.util.Map;
 import static com.icodici.universa.Errors.BAD_VALUE;
 import static com.icodici.universa.Errors.FAILED_CHECK;
 
-@BiType(name = "UniversaSmartContract")
 public class SmartContract extends Contract implements NodeSmartContract {
 
 
