@@ -7200,6 +7200,22 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(rev2Contract);
     }
 
+    @Test
+    public void goodSmartContract() throws Exception {
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract smartContract = new SmartContract(key);
+        smartContract.seal();
+        smartContract.check();
+        smartContract.traceErrors();
+        assertTrue(smartContract.isOk());
+
+        registerAndCheckApproved(smartContract);
+
+        ItemResult itemResult = node.waitItem(smartContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+    }
+
     @Ignore
     @Test
     public void checkRevisionExpiresAtReсentPastTime() throws Exception{
