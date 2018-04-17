@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.icodici.universa.Errors.BAD_VALUE;
+
 /**
  * The main contract and its subItems and referenced contracts needed for registration submission bundled together.
  * The main contract is specified in constructor or with {@link #setContract(Contract)},
@@ -308,7 +310,24 @@ public class TransactionPack implements BiSerializable {
             }
 
             byte[] bb = data.getBinaryOrThrow("contract");
-            contract = new Contract(bb, this);
+            String extendedType = data.getString("extended_type");
+            boolean isSmart = false;
+            if(extendedType != null) {
+                SmartContract.SmartContractType scType = null;
+                try {
+                    scType = SmartContract.SmartContractType.valueOf(extendedType);
+                    if(scType != null) {
+                        isSmart = true;
+                    }
+
+                } catch (IllegalArgumentException e) {
+                }
+            }
+            if(isSmart) {
+                contract = new SmartContract(bb, this);
+            } else {
+                contract = new Contract(bb, this);
+            }
             quantiser.addWorkCostFrom(contract.getQuantiser());
         }
     }
@@ -338,6 +357,10 @@ public class TransactionPack implements BiSerializable {
                         keysForPack.stream()
                                 .map(x -> x.pack()).collect(Collectors.toList())
                 ));
+            }
+
+            if(contract instanceof SmartContract) {
+                of.set("extended_type", ((SmartContract) contract).getExtendedType());
             }
             return of;
         }
