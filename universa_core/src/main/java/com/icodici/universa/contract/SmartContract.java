@@ -22,7 +22,6 @@ import java.util.Map;
 import static com.icodici.universa.Errors.BAD_VALUE;
 import static com.icodici.universa.Errors.FAILED_CHECK;
 
-@BiType(name = "UniversaSmartContract")
 public class SmartContract extends Contract implements NodeContract {
 
 
