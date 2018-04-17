@@ -7308,6 +7308,28 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
     }
 
+
+    @Test
+    public void goodSmartContractFromDSLWithSending() throws Exception {
+        Contract smartContract = SmartContract.fromDslFile(ROOT_PATH + "NotarySmartDSLTemplate.yml");
+        smartContract.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
+        smartContract.seal();
+        smartContract.check();
+        smartContract.traceErrors();
+        assertTrue(smartContract.isOk());
+
+        Contract gotContract = imitateSendingTransactionToPartner(smartContract);
+
+        assertTrue(gotContract instanceof SmartContract);
+        assertTrue(gotContract instanceof NodeSmartContract);
+
+        registerAndCheckApproved(gotContract);
+
+        ItemResult itemResult = node.waitItem(gotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+    }
+
     @Ignore
     @Test
     public void checkRevisionExpiresAtReсentPastTime() throws Exception{
