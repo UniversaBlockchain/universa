@@ -21,11 +21,15 @@ public class ItemResultTest extends TestCase {
     @Test
     public void toBinder() throws Exception {
         ItemResult r1 = new ItemResult(REVOKED, false, ZonedDateTime.now(), inFuture(300));
+        r1.extraDataBinder.set("someString", "90314tughiouqehmtcy34ntcn8341tgfesgfwerh");
+        r1.extraDataBinder.set("someInteger", 42);
         ItemResult r2 = new ItemResult(r1.toBinder());
         assertEquals(r1.state, r2.state);
         assertEquals(r1.haveCopy, r2.haveCopy);
         assertEquals(r1.createdAt, r2.createdAt);
         assertEquals(r1.expiresAt, r2.expiresAt);
+        assertEquals(r1.extraDataBinder.getStringOrThrow("someString"), r2.extraDataBinder.getStringOrThrow("someString"));
+        assertEquals(r1.extraDataBinder.getIntOrThrow("someInteger"), r2.extraDataBinder.getIntOrThrow("someInteger"));
         assertEquals(r1, r2);
     }
 

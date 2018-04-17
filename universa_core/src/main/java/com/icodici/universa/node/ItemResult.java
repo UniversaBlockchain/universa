@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * The exported state of the item. This object is used to return data for the external (e.g. network) queries. We do not
  * expose local data in direct mode. It is a "structure" of final members, to simplify access and avoid getters.
  */
-public class ItemResult {
+public class ItemResult implements IExtDataBinder {
     public static final ItemResult DISCARDED = new ItemResult(ItemState.DISCARDED, false, null, null);
     public static final ItemResult UNDEFINED = new ItemResult(ItemState.UNDEFINED, false, null, null);
     /**
@@ -60,6 +60,8 @@ public class ItemResult {
     public transient final Binder meta = new Binder();
 
     public boolean isTestnet;
+
+    public Binder extraDataBinder = new Binder();
 
     /**
      * Initialize from a record and posession flag
@@ -103,6 +105,7 @@ public class ItemResult {
         });
         isTestnet = fields.getBoolean("isTestnet",false);
         lockedById = (HashId) fields.get("lockedById");
+        extraDataBinder = fields.getBinder("extra", new Binder());
     }
 
     public ItemResult(ItemState state, boolean haveCopy, @NonNull ZonedDateTime createdAt, @NonNull ZonedDateTime expiresAt) {
@@ -127,7 +130,8 @@ public class ItemResult {
                 "expiresAt", expiresAt,
                 "errors", DefaultBiMapper.serialize(errors),
                 "isTestnet", isTestnet,
-                "lockedById", lockedById
+                "lockedById", lockedById,
+                "extra", extraDataBinder
         );
     }
 
@@ -161,7 +165,13 @@ public class ItemResult {
         }
         return false;
     }
-    
+
+    @Override
+    public Binder getExtraBinder() {
+        if (extraDataBinder == null)
+            extraDataBinder = new Binder();
+        return extraDataBinder;
+    }
 
     static {
         DefaultBiMapper.registerAdapter(ItemResult.class, new BiAdapter() {
