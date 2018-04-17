@@ -310,7 +310,7 @@ public class TransactionPack implements BiSerializable {
             }
 
             byte[] bb = data.getBinaryOrThrow("contract");
-            String extendedType = data.getString("extended_type");
+            String extendedType = data.getString("extended_type", null);
             boolean isSmart = false;
             if(extendedType != null) {
                 SmartContract.SmartContractType scType = null;
