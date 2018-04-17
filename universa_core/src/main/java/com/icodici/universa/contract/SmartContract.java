@@ -1,5 +1,6 @@
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.node2.Config;
@@ -9,14 +10,16 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.yaml.snakeyaml.Yaml;
 
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 
 import static com.icodici.universa.Errors.BAD_VALUE;
 import static com.icodici.universa.Errors.FAILED_CHECK;
 
-@BiType(name = "UniversaSmartContract")
 public class SmartContract extends Contract implements NodeSmartContract {
 
 
@@ -161,6 +164,19 @@ public class SmartContract extends Contract implements NodeSmartContract {
         }
 
         return checkResult;
+    }
+
+    protected SmartContract initializeWithDsl(Binder root) throws EncryptionError {
+        super.initializeWithDsl(root);
+        return this;
+    }
+
+    public static SmartContract fromDslFile(String fileName) throws IOException {
+        Yaml yaml = new Yaml();
+        try (FileReader r = new FileReader(fileName)) {
+            Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(r)));
+            return new SmartContract().initializeWithDsl(binder);
+        }
     }
 
 

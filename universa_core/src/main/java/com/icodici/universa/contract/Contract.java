@@ -420,7 +420,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private final List<ErrorRecord> errors = new ArrayList<>();
 
-    private Contract initializeWithDsl(Binder root) throws EncryptionError {
+    protected Contract initializeWithDsl(Binder root) throws EncryptionError {
         apiLevel = root.getIntOrThrow("api_level");
         definition = new Definition().initializeWithDsl(root.getBinder("definition"));
         state = new State().initializeWithDsl(root.getBinder("state"));
@@ -2338,6 +2338,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 expiresAt = decodeDslTime(t);
             registerRole(issuer);
             data = definition.getBinder("data");
+
+            extendedType = definition.getString("extended_type", null);
 
             List<LinkedHashMap<String, Binder>> refList = definition.getList("references", null);
             if (refList != null) {
