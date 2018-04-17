@@ -723,7 +723,22 @@ public class Node {
                         report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
                                 "found item result, and state is: ", r.getState()),
                                 DatagramAdapter.VerboseLevel.BASE);
-                        return new ItemResult(r, cache.get(itemId) != null);
+
+                        Approvable cachedItem = cache.get(itemId);
+                        ItemResult result = new ItemResult(r, cachedItem != null);
+                        try {
+                            if(cachedItem instanceof NodeSmartContract) {
+                                Binder er;
+                                er = ((NodeSmartContract) cachedItem).onCreated(null);
+                                result.extraDataBinder.set("onCreatedResult", er);
+                                er = ((NodeSmartContract) cachedItem).onUpdate(null);
+                                result.extraDataBinder.set("onUpdateResult", er);
+                                ((NodeSmartContract) cachedItem).onRevoke(null);
+                            }
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                        return result;
                     }
 
                     // we have no consensus on it. We might need to find one, after some precheck.
@@ -1491,6 +1506,8 @@ public class Node {
         private boolean alreadyChecked;
         private boolean isCheckingForce = false;
 
+        private Binder extraResult = new Binder();
+
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> pollingReadyEvent = new AsyncEvent<>();
@@ -2205,10 +2222,17 @@ public class Node {
                         }
                     }
 
-                    if(item instanceof NodeSmartContract) {
-                        ((NodeSmartContract) item).onCreated(null);
-                        ((NodeSmartContract) item).onUpdate(null);
-                        ((NodeSmartContract) item).onRevoke(null);
+                    try {
+                        if(item instanceof NodeSmartContract) {
+                            Binder er;
+                            er = ((NodeSmartContract) item).onCreated(null);
+                            extraResult.set("onCreatedResult", er);
+                            er = ((NodeSmartContract) item).onUpdate(null);
+                            extraResult.set("onUpdateResult", er);
+                            ((NodeSmartContract) item).onRevoke(null);
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                     }
 
                     lowPrioExecutorService.schedule(() -> checkSpecialItem(item),100,TimeUnit.MILLISECONDS);
@@ -2705,7 +2729,9 @@ public class Node {
 
 
         public @NonNull ItemResult getResult() {
-            return new ItemResult(record, item != null);
+            ItemResult result = new ItemResult(record, item != null);
+            result.extraDataBinder = extraResult;
+            return result;
         }
 
         /**
