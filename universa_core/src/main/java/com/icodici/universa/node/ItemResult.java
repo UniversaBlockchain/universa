@@ -161,6 +161,7 @@ public class ItemResult {
         }
         return false;
     }
+    
 
     static {
         DefaultBiMapper.registerAdapter(ItemResult.class, new BiAdapter() {
