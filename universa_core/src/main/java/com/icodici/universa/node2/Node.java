@@ -10,6 +10,7 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.NodeSmartContract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -1518,7 +1519,7 @@ public class Node {
          *
          * Then item will be checked. Immediately after download if {@link ItemProcessor#isCheckingForce} is true
          * or after {@link ItemProcessor#forceChecking(boolean)} call. Will call {@link Approvable#check()}
-         * or {@link Approvable#paymentCheck(PublicKey)} if item is payment ({@link Approvable#shouldBeTU()}).
+         * or {@link Approvable#paymentCheck(Set)} if item is payment ({@link Approvable#shouldBeTU()}).
          * Then subitems will be checked: {@link Approvable#getReferencedItems()} will checked if exists in the ledger;
          * {@link Approvable#getRevokingItems()} will checked if exists in the ledger and its
          * own {@link Approvable#getReferencedItems()} will recursively checked and will get {@link ItemState#LOCKED};
@@ -2203,6 +2204,13 @@ public class Node {
                             log.e("record is not approved " + record.getState());
                         }
                     }
+
+                    if(item instanceof NodeSmartContract) {
+                        ((NodeSmartContract) item).onCreated(null);
+                        ((NodeSmartContract) item).onUpdate(null);
+                        ((NodeSmartContract) item).onRevoke(null);
+                    }
+
                     lowPrioExecutorService.schedule(() -> checkSpecialItem(item),100,TimeUnit.MILLISECONDS);
 
                 } catch (TimeoutException | InterruptedException e) {
