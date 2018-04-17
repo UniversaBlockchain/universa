@@ -110,6 +110,59 @@ public class ContractTestBase extends TestCase {
         }
     }
 
+    protected void assertSameContracts(Contract originContract, Contract checkingContract) {
+
+        // check issuer
+        KeyRecord originIssuer = originContract.getIssuer().getKeyRecords().iterator().next();
+        KeyRecord checkingIssuer = checkingContract.getIssuer().getKeyRecords().iterator().next();
+        assertNotNull(checkingIssuer);
+        assertThat(checkingIssuer.getPublicKey(), is(instanceOf(PublicKey.class)));
+        assertEquals(checkingIssuer, originIssuer);
+
+        // check creator
+        KeyRecord originCreator = originContract.getCreator().getKeyRecords().iterator().next();
+        KeyRecord checkingCreator = checkingContract.getCreator().getKeyRecords().iterator().next();
+        assertNotNull(checkingCreator);
+        assertThat(checkingCreator.getPublicKey(), is(instanceOf(PublicKey.class)));
+        assertEquals(checkingCreator, originCreator);
+
+        // check owner
+        KeyRecord originOwner = originContract.getOwner().getKeyRecords().iterator().next();
+        KeyRecord checkingOwner = checkingContract.getOwner().getKeyRecords().iterator().next();
+        assertNotNull(checkingOwner);
+        assertThat(checkingOwner.getPublicKey(), is(instanceOf(PublicKey.class)));
+        assertEquals(checkingOwner, originOwner);
+
+        // --- times
+        assertAlmostSame(ZonedDateTime.now(), checkingContract.getCreatedAt());
+        assertEquals(originContract.getCreatedAt(), checkingContract.getCreatedAt());
+        assertEquals(originContract.getExpiresAt(), checkingContract.getExpiresAt());
+
+        // -- data
+        assertEquals(originContract.getStateData(), checkingContract.getStateData());
+        assertEquals(originContract.getDefinition().getData(), checkingContract.getDefinition().getData());
+
+        // -- definition
+        Contract.Definition originDefinition = originContract.getDefinition();
+        Contract.Definition checkingDefinition = checkingContract.getDefinition();
+        assertEquals(originDefinition.getExtendedType(), checkingDefinition.getExtendedType());
+
+        // -- state
+        Contract.State originState = originContract.getState();
+        Contract.State checkingState = checkingContract.getState();
+        assertEquals(originState.getRevision(), checkingState.getRevision());
+        assertEquals(originState.getBranchId(), checkingState.getBranchId());
+        assertEquals(originState.getBranchRevision(), checkingState.getBranchRevision());
+
+        // -- references
+        for (Reference ref: originContract.getReferences().values()) {
+            Reference desRef = checkingContract.findReferenceByName(ref.getName());
+            assertTrue(desRef != null);
+            assertEquals(ref.getConditions(), desRef.getConditions());
+        }
+
+    }
+
     protected void sealCheckTrace(Contract c, boolean isOk) {
         c.seal();
         try {

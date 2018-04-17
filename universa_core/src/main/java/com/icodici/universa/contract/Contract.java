@@ -1798,6 +1798,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     return (T) state.expiresAt;
                 case "created_at":
                     return (T) definition.createdAt;
+                case "extended_type":
+                    return (T) definition.extendedType;
                 case "issuer":
                     return (T) getRole("issuer");
                 case "origin":
@@ -2313,6 +2315,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private Binder data;
         private List<Reference> references = new ArrayList<>();
 
+        private String extendedType;
+        public void setExtendedType(String extendedType) {
+            this.extendedType = extendedType;
+            if(definition != null)
+                definition.set("extended_type", extendedType);
+        }
+        public String getExtendedType() {
+            return extendedType;
+        }
 
         private Definition() {
             createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -2468,18 +2479,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (references != null)
                 of.set("references", references);
 
+            if (extendedType != null)
+                of.set("extended_type", extendedType);
 
-            return serializer.serialize(
-                    of
-            );
+            return serializer.serialize(of);
         }
 
         public void deserializeWith(Binder data, BiDeserializer d) {
             registerRole(d.deserialize(data.getBinderOrThrow("issuer")));
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTime("expires_at", null);
+            extendedType = data.getString("extended_type", null);
             this.data = d.deserialize(data.getBinder("data", Binder.EMPTY));
-            this.references = d.deserialize(data.getList("references", null));
+            references = d.deserialize(data.getList("references", null));
             Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
             perms.forEach((id, perm) -> {
                 perm.setId(id);
