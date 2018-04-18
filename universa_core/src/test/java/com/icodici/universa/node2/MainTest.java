@@ -58,6 +58,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
+@Ignore("start it manually")
 public class MainTest {
 
     @Ignore
@@ -184,7 +185,7 @@ public class MainTest {
         Contract c1 = new Contract(sealed);
         assertArrayEquals(c.getLastSealedBinary(), c1.getLastSealedBinary());
 
-        main.cache.put(c, ItemResult.UNDEFINED);
+        main.cache.put(c, null);
         assertNotNull(main.cache.get(c.getId()));
 
         URL url = new URL("http://localhost:8080/contracts/" + c.getId().toBase64String());

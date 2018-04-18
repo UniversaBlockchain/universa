@@ -2151,6 +2151,14 @@ public class Node {
                             r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
                             try {
                                 r.save();
+                                synchronized (cache) {
+                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+                                    if(cr != null) {
+                                        rr.extraDataBinder = cr.extraDataBinder;
+                                    }
+                                    cache.update(r.getId(), rr);
+                                }
                             } catch (Ledger.Failure failure) {
                                 emergencyBreak();
                                 return null;
@@ -2171,6 +2179,14 @@ public class Node {
                             r.setExpiresAt(newItem.getExpiresAt());
                             try {
                                 r.save();
+                                synchronized (cache) {
+                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+                                    if(cr != null) {
+                                        rr.extraDataBinder = cr.extraDataBinder;
+                                    }
+                                    cache.update(r.getId(), rr);
+                                }
                             } catch (Ledger.Failure failure) {
                                 emergencyBreak();
                                 return null;
@@ -2283,6 +2299,14 @@ public class Node {
                         try {
                             itemLock.synchronize(r.getId(), lock -> {
                                 r.unlock().save();
+                                synchronized (cache) {
+                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+                                    if(cr != null) {
+                                        rr.extraDataBinder = cr.extraDataBinder;
+                                    }
+                                    cache.update(r.getId(), rr);
+                                }
                                 return null;
                             });
                         } catch (Exception e) {
@@ -2296,6 +2320,14 @@ public class Node {
                         try {
                             itemLock.synchronize(r.getId(), lock -> {
                                 r.unlock().save();
+                                synchronized (cache) {
+                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+                                    if(cr != null) {
+                                        rr.extraDataBinder = cr.extraDataBinder;
+                                    }
+                                    cache.update(r.getId(), rr);
+                                }
                                 return null;
                             });
                         } catch (Exception e) {
