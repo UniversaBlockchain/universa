@@ -201,6 +201,9 @@ public class Node {
                         try {
                             itemLock.synchronize(r.getId(), lock -> {
                                 r.save();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), new ItemResult(r));
+                                }
                                 return null;
                             });
                         } catch (Exception e) {
@@ -725,19 +728,11 @@ public class Node {
                                 DatagramAdapter.VerboseLevel.BASE);
 
                         Approvable cachedItem = cache.get(itemId);
-                        ItemResult result = new ItemResult(r, cachedItem != null);
-                        try {
-                            if(cachedItem instanceof NodeSmartContract) {
-                                Binder er;
-                                er = ((NodeSmartContract) cachedItem).onCreated(null);
-                                result.extraDataBinder.set("onCreatedResult", er);
-                                er = ((NodeSmartContract) cachedItem).onUpdate(null);
-                                result.extraDataBinder.set("onUpdateResult", er);
-                                ((NodeSmartContract) cachedItem).onRevoke(null);
-                            }
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
+                        ItemResult result = cache.getResult(itemId);
+                        if(result == null) {
+                            result = new ItemResult(r, cachedItem != null);
                         }
+
                         return result;
                     }
 
@@ -758,7 +753,7 @@ public class Node {
                 if (autoStart) {
                     if (item != null) {
                         synchronized (cache) {
-                            cache.put(item);
+                            cache.put(item, ItemResult.UNDEFINED);
                         }
                     }
                     report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
@@ -1675,7 +1670,7 @@ public class Node {
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 synchronized (cache) {
-                    cache.put(item);
+                    cache.put(item, getResult());
                 }
 
 
@@ -1920,6 +1915,12 @@ public class Node {
                         try {
                             if (record.getState() != ItemState.UNDEFINED) {
                                 record.save();
+
+                                if (item != null) {
+                                    synchronized (cache) {
+                                        cache.update(itemId, getResult());
+                                    }
+                                }
                             } else {
                                 log.e("Checked item with state ItemState.UNDEFINED (should be ItemState.PENDING)");
                                 emergencyBreak();
@@ -2212,6 +2213,12 @@ public class Node {
 
                         try {
                             record.save();
+
+                            if (item != null) {
+                                synchronized (cache) {
+                                    cache.update(itemId, getResult());
+                                }
+                            }
                         } catch (Ledger.Failure failure) {
                             emergencyBreak();
                             return;
@@ -2230,6 +2237,12 @@ public class Node {
                             er = ((NodeSmartContract) item).onUpdate(null);
                             extraResult.set("onUpdateResult", er);
                             ((NodeSmartContract) item).onRevoke(null);
+
+                            if (item != null) {
+                                synchronized (cache) {
+                                    cache.update(itemId, getResult());
+                                }
+                            }
                         }
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -2242,6 +2255,12 @@ public class Node {
                     try {
                         itemLock.synchronize(record.getId(), lock -> {
                             record.destroy();
+
+                            if (item != null) {
+                                synchronized (cache) {
+                                    cache.update(itemId, null);
+                                }
+                            }
                             return null;
                         });
                     } catch (Exception ee) {
@@ -2295,6 +2314,12 @@ public class Node {
                         synchronized (mutex) {
                             if (newState != ItemState.UNDEFINED) {
                                 record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+
+                                if (item != null) {
+                                    synchronized (cache) {
+                                        cache.update(itemId, getResult());
+                                    }
+                                }
                             } else {
 //                                log.e("Can not rollback to ItemState.UNDEFINED, will destroy item");
                                 record.destroy();
@@ -2787,10 +2812,16 @@ public class Node {
                                     if (r.getState() == ItemState.LOCKED) {
                                         r.setState(ItemState.REVOKED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
                                         r.setState(ItemState.APPROVED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     }
                                 } else if (record.getState() == ItemState.DECLINED) {
@@ -2798,9 +2829,15 @@ public class Node {
                                     if (r.getState() == ItemState.LOCKED) {
                                         r.setState(ItemState.APPROVED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
                                         r.destroy();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), null);
+                                        }
                                         idsToRemove.add(r.getId());
                                     }
                                 } else if (record.getState() == ItemState.REVOKED) {
@@ -2808,10 +2845,16 @@ public class Node {
                                     if (r.getState() == ItemState.LOCKED) {
                                         r.setState(ItemState.REVOKED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
                                         r.setState(ItemState.APPROVED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     }
                                 } else if (record.getState() == ItemState.UNDEFINED) {
@@ -2819,9 +2862,15 @@ public class Node {
                                     if (r.getState() == ItemState.LOCKED) {
                                         r.setState(ItemState.APPROVED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
                                         r.destroy();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), null);
+                                        }
                                         idsToRemove.add(r.getId());
                                     }
                                 }
@@ -2854,6 +2903,9 @@ public class Node {
                 try {
                     itemLock.synchronize(record.getId(), lock -> {
                         record.save();
+                        synchronized (cache) {
+                            cache.update(record.getId(), new ItemResult(record));
+                        }
                         return null;
                     });
                 } catch (Exception e) {
@@ -3286,10 +3338,14 @@ public class Node {
 
                                     try {
                                         itemLock.synchronize(hashId, lock -> {
-                                            ledger.findOrCreate(hashId).setState(committingState)
+                                            StateRecord newRecord = ledger.findOrCreate(hashId);
+                                            newRecord.setState(committingState)
                                                     .setCreatedAt(createdAt)
                                                     .setExpiresAt(expiresAt)
                                                     .save();
+                                            synchronized (cache) {
+                                                cache.update(newRecord.getId(), new ItemResult(newRecord));
+                                            }
                                             return null;
                                         });
                                     } catch (Exception e) {
