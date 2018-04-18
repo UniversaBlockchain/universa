@@ -184,7 +184,7 @@ public class MainTest {
         Contract c1 = new Contract(sealed);
         assertArrayEquals(c.getLastSealedBinary(), c1.getLastSealedBinary());
 
-        main.cache.put(c);
+        main.cache.put(c, ItemResult.UNDEFINED);
         assertNotNull(main.cache.get(c.getId()));
 
         URL url = new URL("http://localhost:8080/contracts/" + c.getId().toBase64String());
