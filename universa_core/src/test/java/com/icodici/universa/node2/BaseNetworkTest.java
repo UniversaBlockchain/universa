@@ -7210,7 +7210,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(smartContract.isOk());
 
         assertTrue(smartContract instanceof SmartContract);
-        assertTrue(smartContract instanceof NodeSmartContract);
+        assertTrue(smartContract instanceof NodeContract);
 
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
@@ -7232,7 +7232,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(smartContract.isOk());
 
         assertTrue(smartContract instanceof SmartContract);
-        assertTrue(smartContract instanceof NodeSmartContract);
+        assertTrue(smartContract instanceof NodeContract);
 
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
@@ -7256,7 +7256,7 @@ public class BaseNetworkTest extends TestCase {
         Contract gotContract = imitateSendingTransactionToPartner(smartContract);
 
         assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeSmartContract);
+        assertTrue(gotContract instanceof NodeContract);
 
         registerAndCheckApproved(gotContract);
 
@@ -7278,7 +7278,7 @@ public class BaseNetworkTest extends TestCase {
         Contract gotContract = imitateSendingTransactionToPartner(smartContract);
 
         assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeSmartContract);
+        assertTrue(gotContract instanceof NodeContract);
 
         registerAndCheckApproved(gotContract);
 
