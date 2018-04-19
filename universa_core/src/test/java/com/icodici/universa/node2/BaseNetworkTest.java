@@ -7343,7 +7343,7 @@ public class BaseNetworkTest extends TestCase {
         Contract gotContract = imitateSendingTransactionToPartner(smartContract);
 
         assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeSmartContract);
+        assertTrue(gotContract instanceof NodeContract);
 
         registerAndCheckApproved(gotContract);
 
@@ -7365,7 +7365,7 @@ public class BaseNetworkTest extends TestCase {
         Contract gotContract = imitateSendingTransactionToPartner(smartContract);
 
         assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeSmartContract);
+        assertTrue(gotContract instanceof NodeContract);
 
         registerAndCheckApproved(gotContract);
 
