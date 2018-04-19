@@ -3,6 +3,8 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.ErrorRecord;
+import com.icodici.universa.contract.services.ImmutableEnvironment;
+import com.icodici.universa.contract.services.MutableEnvironment;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiType;
@@ -21,7 +23,7 @@ import static com.icodici.universa.Errors.BAD_VALUE;
 import static com.icodici.universa.Errors.FAILED_CHECK;
 
 @BiType(name = "UniversaSmartContract")
-public class SmartContract extends Contract implements NodeSmartContract {
+public class SmartContract extends Contract implements NodeContract {
 
 
     /**
@@ -71,37 +73,37 @@ public class SmartContract extends Contract implements NodeSmartContract {
     }
 
     @Override
-    public boolean beforeCreate(Contract c) {
+    public boolean beforeCreate(ImmutableEnvironment c) {
         return true;
     }
 
     @Override
-    public boolean beforeUpdate(Contract c) {
+    public boolean beforeUpdate(ImmutableEnvironment c) {
         return true;
     }
 
     @Override
-    public boolean beforeRevoke(Contract c) {
+    public boolean beforeRevoke(ImmutableEnvironment c) {
         return true;
     }
 
     @Override
-    public @Nullable Binder onCreated(Contract c) {
+    public @Nullable Binder onCreated(MutableEnvironment c) {
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
-    public @Nullable Binder onUpdate(Contract c) {
+    public @Nullable Binder onUpdate(MutableEnvironment c) {
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
-    public void onRevoke(Contract c) {
+    public void onRevoke(ImmutableEnvironment c) {
 
     }
 
     @Override
-    public @NonNull Binder query(String methodName, Binder params) {
+    public @NonNull Binder query(ImmutableEnvironment e, String methodName, Binder params) {
         return null;
     }
 

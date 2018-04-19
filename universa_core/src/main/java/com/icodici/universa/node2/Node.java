@@ -10,7 +10,7 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.NodeSmartContract;
+import com.icodici.universa.contract.NodeContract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -2246,13 +2246,13 @@ public class Node {
                     }
 
                     try {
-                        if(item instanceof NodeSmartContract) {
+                        if(item instanceof NodeContract) {
                             Binder er;
-                            er = ((NodeSmartContract) item).onCreated(null);
+                            er = ((NodeContract) item).onCreated(null);
                             extraResult.set("onCreatedResult", er);
-                            er = ((NodeSmartContract) item).onUpdate(null);
+                            er = ((NodeContract) item).onUpdate(null);
                             extraResult.set("onUpdateResult", er);
-                            ((NodeSmartContract) item).onRevoke(null);
+                            ((NodeContract) item).onRevoke(null);
 
                             if (item != null) {
                                 synchronized (cache) {

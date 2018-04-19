@@ -25,7 +25,7 @@ public class SmartContractTest extends ContractTestBase {
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
 
         assertTrue(smartContract instanceof SmartContract);
-        assertTrue(smartContract instanceof NodeSmartContract);
+        assertTrue(smartContract instanceof NodeContract);
     }
 
     @Test
@@ -41,7 +41,7 @@ public class SmartContractTest extends ContractTestBase {
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
 
         assertTrue(smartContract instanceof SmartContract);
-        assertTrue(smartContract instanceof NodeSmartContract);
+        assertTrue(smartContract instanceof NodeContract);
     }
 
     @Test
@@ -59,13 +59,13 @@ public class SmartContractTest extends ContractTestBase {
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), desContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), desContract.get("definition.extended_type"));
         assertTrue(desContract instanceof SmartContract);
-        assertTrue(desContract instanceof NodeSmartContract);
+        assertTrue(desContract instanceof NodeContract);
 
         Contract copiedContract = smartContract.copy();
         assertSameContracts(smartContract, copiedContract);
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), copiedContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), copiedContract.get("definition.extended_type"));
         assertTrue(copiedContract instanceof SmartContract);
-        assertTrue(copiedContract instanceof NodeSmartContract);
+        assertTrue(copiedContract instanceof NodeContract);
     }
 }
