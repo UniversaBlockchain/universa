@@ -7210,7 +7210,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(smartContract.isOk());
 
         assertTrue(smartContract instanceof SmartContract);
-        assertTrue(smartContract instanceof NodeContract);
+        assertTrue(smartContract instanceof NodeSmartContract);
 
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
@@ -7232,7 +7232,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(smartContract.isOk());
 
         assertTrue(smartContract instanceof SmartContract);
-        assertTrue(smartContract instanceof NodeContract);
+        assertTrue(smartContract instanceof NodeSmartContract);
 
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
@@ -7243,7 +7243,6 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
     }
-
 
     @Test
     public void goodSmartContractWithSending() throws Exception {
@@ -7257,7 +7256,7 @@ public class BaseNetworkTest extends TestCase {
         Contract gotContract = imitateSendingTransactionToPartner(smartContract);
 
         assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeContract);
+        assertTrue(gotContract instanceof NodeSmartContract);
 
         registerAndCheckApproved(gotContract);
 
@@ -7279,7 +7278,7 @@ public class BaseNetworkTest extends TestCase {
         Contract gotContract = imitateSendingTransactionToPartner(smartContract);
 
         assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeContract);
+        assertTrue(gotContract instanceof NodeSmartContract);
 
         registerAndCheckApproved(gotContract);
 
