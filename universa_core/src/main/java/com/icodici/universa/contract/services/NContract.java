@@ -1,0 +1,81 @@
+package com.icodici.universa.contract.services;
+
+import net.sergeych.tools.Binder;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+/**
+ * Node-side smart contract handler.
+ * <p>
+ * Used to implement node-side smart contract functionality (e.g. slot contract and other incoming types)
+ */
+public interface NContract {
+
+    /**
+     * This is a string tag which is used to find the proper {@link NContract}
+     * implementation.
+     *
+     * @return string tag, e.g. "SLOT1"
+     */
+    @NonNull String getExtendedType();
+
+    /**
+     * Check the smartcontract could be created
+     *
+     * @return true it if can be created
+     */
+    boolean beforeCreate(ImmutableEnvironment e);
+
+    /**
+     * Check the smartcontract could be updated (e.g. new revision could be registered)
+     *
+     * @return true it if can be created
+     */
+    boolean beforeUpdate(ImmutableEnvironment e);
+
+    /**
+     * Check the smartcontract could be revoked
+     *
+     * @return true it if can be created
+     */
+    boolean beforeRevoke(ImmutableEnvironment e);
+
+
+    /**
+     * Called after the new contract is approved by the network.
+     *
+     * @return extra data to pass to the calling client or null
+     */
+    @Nullable Binder onCreated(MutableEnvironment me);
+
+    /**
+     * Called after the new contract revision is approved by the network.
+     *
+     * @return extra data to pass to the calling client or null
+     */
+    @Nullable Binder onUpdated(MutableEnvironment me);
+
+    /**
+     * Called when the contract is just revoked by the network
+     */
+    void onRevoke(ImmutableEnvironment me);
+
+    /**
+     * Call the readonly method (query) that does not change the contract inner state (neither the contract nor
+     * any associated data) and return the result
+     *
+     * @param methodName
+     * @param params or null
+     * @return the results
+     */
+    @NonNull Binder query(ImmutableEnvironment e, String methodName, Binder params);
+
+    /**
+     * For the {@link ContractStorageSubscription} to which {@link ContractStorageSubscription#receiveEvents(boolean)}
+     * is called, the instance will receive event notifications with this callback
+     *
+     * @param event
+     */
+    default void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
+    }
+}
