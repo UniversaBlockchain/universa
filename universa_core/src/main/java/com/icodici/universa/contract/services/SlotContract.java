@@ -4,6 +4,8 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.permissions.ModifyDataPermission;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
@@ -13,6 +15,7 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.FileReader;
 import java.io.IOException;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.icodici.universa.Errors.FAILED_CHECK;
@@ -39,11 +42,31 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
     public SlotContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
         getDefinition().setExtendedType(SmartContractType.SLOT1.name());
+
+        // add modify_data permission
+
+        RoleLink ownerLink = new RoleLink("owner_link", "owner");
+        registerRole(ownerLink);
+        HashMap<String,Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("action", null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        addPermission(modifyDataPermission);
     }
 
     public SlotContract() {
         super();
         getDefinition().setExtendedType(SmartContractType.SLOT1.name());
+
+        // add modify_data permission
+
+        RoleLink ownerLink = new RoleLink("owner_link", "owner");
+        registerRole(ownerLink);
+        HashMap<String,Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("action", null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        addPermission(modifyDataPermission);
     }
 
     /**
@@ -59,10 +82,23 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
     public SlotContract(PrivateKey key) {
         super(key);
         getDefinition().setExtendedType(SmartContractType.SLOT1.name());
+
+        // add modify_data permission
+
+        RoleLink ownerLink = new RoleLink("owner_link", "owner");
+        registerRole(ownerLink);
+        HashMap<String,Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("action", null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        addPermission(modifyDataPermission);
     }
 
     protected SlotContract initializeWithDsl(Binder root) throws EncryptionError {
         super.initializeWithDsl(root);
+        int numRevisions = root.getBinder("state").getBinder("data").getInt("keep_revisions", -1);
+        if(numRevisions > 0)
+            keepRevisions = numRevisions;
         return this;
     }
 
@@ -104,6 +140,10 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
         trackingContract = c;
     }
 
+    public int getKeepRevisions() {
+        return keepRevisions;
+    }
+
     @Override
     public void receiveEvents(boolean doRecevie) {
 
@@ -124,29 +164,31 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
         return additionallySlotCheck(c);
     }
 
-    public boolean additionallySlotCheck(ImmutableEnvironment c) {
+    private boolean additionallySlotCheck(ImmutableEnvironment c) {
 
-        boolean checkResult = false;
+//        boolean checkResult = false;
+//
+//        checkResult = c != null && c.getContract() != null;
+//        if(!checkResult) {
+//            addError(FAILED_CHECK, "Environment should be not null and should have contract");
+//            return checkResult;
+//        }
+//
+//        checkResult = getExtendedType().equals(SmartContractType.SLOT1.name());
+//        if(!checkResult) {
+//            addError(FAILED_CHECK, "definition.extended_type", "illegal value, should be " + SmartContractType.SLOT1.name());
+//            return checkResult;
+//        }
+//
+//        checkResult = c.getContract().getOwner().isAllowedForKeys(getCreator().getKeys());
+//        if(!checkResult) {
+//            addError(FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
+//            return checkResult;
+//        }
+//
+//        return checkResult;
 
-        checkResult = c != null && c.getContract() != null;
-        if(!checkResult) {
-            addError(FAILED_CHECK, "Environment should be not null and should have contract");
-            return checkResult;
-        }
-
-        checkResult = getExtendedType().equals(SmartContractType.SLOT1.name());
-        if(!checkResult) {
-            addError(FAILED_CHECK, "beforeCreate returns false");
-            return checkResult;
-        }
-
-        checkResult = c.getContract().getOwner().isAllowedForKeys(getCreator().getKeys());
-        if(!checkResult) {
-            addError(FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
-            return checkResult;
-        }
-
-        return checkResult;
+        return true;
     }
 
     static {
