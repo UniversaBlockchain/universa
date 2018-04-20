@@ -24,8 +24,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.icodici.universa.Errors.BAD_VALUE;
-
 /**
  * The main contract and its subItems and referenced contracts needed for registration submission bundled together.
  * The main contract is specified in constructor or with {@link #setContract(Contract)},
@@ -330,7 +328,7 @@ public class TransactionPack implements BiSerializable {
                         contract = new NSmartContract(bb, this);
                         break;
 
-                    case SLOT_CONTRACT:
+                    case SLOT1:
                         contract = new SlotContract(bb, this);
                         break;
                 }

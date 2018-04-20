@@ -1,8 +1,6 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.contract.services.NContract;
-import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -24,8 +22,8 @@ public class SlotContractTest extends ContractTestBase {
         smartContract.traceErrors();
         assertTrue(smartContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), smartContract.get("definition.extended_type"));
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), smartContract.get("definition.extended_type"));
 
         assertTrue(smartContract instanceof SlotContract);
     }
@@ -39,8 +37,8 @@ public class SlotContractTest extends ContractTestBase {
         smartContract.traceErrors();
         assertTrue(smartContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), smartContract.get("definition.extended_type"));
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), smartContract.get("definition.extended_type"));
 
         assertTrue(smartContract instanceof SlotContract);
     }
@@ -57,14 +55,14 @@ public class SlotContractTest extends ContractTestBase {
         Binder b = BossBiMapper.serialize(smartContract);
         Contract desContract = DefaultBiMapper.deserialize(b);
         assertSameContracts(smartContract, desContract);
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), desContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), desContract.get("definition.extended_type"));
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), desContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), desContract.get("definition.extended_type"));
         assertTrue(desContract instanceof SlotContract);
 
         Contract copiedContract = smartContract.copy();
         assertSameContracts(smartContract, copiedContract);
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), copiedContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), copiedContract.get("definition.extended_type"));
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), copiedContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), copiedContract.get("definition.extended_type"));
         assertTrue(copiedContract instanceof SlotContract);
     }
 }
