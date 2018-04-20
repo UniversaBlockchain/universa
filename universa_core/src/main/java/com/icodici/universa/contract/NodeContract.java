@@ -56,12 +56,12 @@ public interface NodeContract {
      *
      * @return extra data to pass to the calling client or null
      */
-    @Nullable Binder onUpdate(MutableEnvironment me);
+    @Nullable Binder onUpdated(MutableEnvironment me);
 
     /**
      * Called when the contract is just revoked by the network
      */
-    void onRevoke(ImmutableEnvironment me);
+    void onRevoked(ImmutableEnvironment me);
 
     /**
      * Call the readonly method (query) that does not change the contract inner state (neither the contract nor

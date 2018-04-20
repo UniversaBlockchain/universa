@@ -12,6 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
@@ -311,20 +312,23 @@ public class TransactionPack implements BiSerializable {
 
             byte[] bb = data.getBinaryOrThrow("contract");
             String extendedType = data.getString("extended_type", null);
-            boolean isSmart = false;
+            SmartContract.SmartContractType scType = null;
             if(extendedType != null) {
-                SmartContract.SmartContractType scType = null;
                 try {
                     scType = SmartContract.SmartContractType.valueOf(extendedType);
-                    if(scType != null) {
-                        isSmart = true;
-                    }
-
                 } catch (IllegalArgumentException e) {
                 }
             }
-            if(isSmart) {
-                contract = new SmartContract(bb, this);
+            if(scType != null) {
+                switch(scType) {
+                    case DEFAULT_SMART_CONTRACT:
+                        contract = new SmartContract(bb, this);
+                        break;
+
+                    case N_SMART_CONTRACT:
+                        contract = new NSmartContract(bb, this);
+                        break;
+                }
             } else {
                 contract = new Contract(bb, this);
             }

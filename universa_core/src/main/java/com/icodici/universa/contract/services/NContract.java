@@ -58,7 +58,7 @@ public interface NContract {
     /**
      * Called when the contract is just revoked by the network
      */
-    void onRevoke(ImmutableEnvironment me);
+    void onRevoked(ImmutableEnvironment me);
 
     /**
      * Call the readonly method (query) that does not change the contract inner state (neither the contract nor
