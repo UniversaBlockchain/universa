@@ -740,4 +740,75 @@ public class PostgresLedger implements Ledger {
             return null;
         }
     }
+
+    @Override
+    public void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin) {
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(forTimeInSecs);
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "WITH contract_storage AS (" +
+                                           "  INSERT INTO contract_storage (hash_id,bin_data) VALUES (?,?) RETURNING contract_storage.*" +
+                                           ")" +
+                                           "INSERT INTO contract_subscription (contract_storage_id,expires_at,origin)" +
+                                           "SELECT contract_storage.id, ?, ? FROM contract_storage"
+                            )
+            ) {
+                statement.setBytes(1, contractId.getDigest());
+                statement.setBytes(2, binData);
+                statement.setLong(3, StateRecord.unixTime(expiresAt));
+                statement.setBytes(4, origin.getDigest());
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addContractToStorage failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void clearExpiredStorageSubscriptions() {
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime now = ZonedDateTime.now();
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM contract_subscription WHERE expires_at<?"
+                            )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(now));
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("clearExpiredStorageSubscriptions failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void clearExpiredStorageContracts() {
+        //TODO: add trigger for delete expired contracts after deleting all subscriptions, and remove this function
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime now = ZonedDateTime.now();
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM contract_storage WHERE id IN (SELECT contract_storage.id FROM contract_storage LEFT OUTER JOIN contract_subscription ON (contract_storage.id=contract_subscription.contract_storage_id) WHERE contract_subscription.id IS NULL)"
+                            )
+            ) {
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("clearExpiredStorageContracts failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 }
