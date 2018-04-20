@@ -653,4 +653,81 @@ public class PostgresLedgerTest extends TestCase {
 
     }
 
+
+    @Test
+    public void addContractToStorage() throws Exception {
+
+        HashId originId = HashId.createRandom();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        ledger.addContractToStorage(contract.getId(), contract.getPackedTransaction(), 50, originId);
+
+        PreparedStatement st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+        st = ledger.getDb().statement("select count(*) from contract_subscription where origin = ?", originId.getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+    }
+
+
+    @Test
+    public void clearExpiredStorage() throws Exception {
+
+        HashId originId = HashId.createRandom();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        ledger.addContractToStorage(contract.getId(), contract.getPackedTransaction(), 5, originId);
+
+        PreparedStatement st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+        st = ledger.getDb().statement("select count(*) from contract_subscription where origin = ?", originId.getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+        ledger.clearExpiredStorageSubscriptions();
+        ledger.clearExpiredStorageContracts();
+
+        st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+        st = ledger.getDb().statement("select count(*) from contract_subscription where origin = ?", originId.getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+        Thread.sleep(10000);
+        ledger.clearExpiredStorageSubscriptions();
+        ledger.clearExpiredStorageContracts();
+
+        st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(0, rs.getInt(1));
+        }
+
+        st = ledger.getDb().statement("select count(*) from contract_subscription where origin = ?", originId.getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(0, rs.getInt(1));
+        }
+
+    }
+
 }
