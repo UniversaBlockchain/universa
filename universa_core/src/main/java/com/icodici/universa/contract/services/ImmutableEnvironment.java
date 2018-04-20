@@ -9,7 +9,7 @@ import java.time.ZonedDateTime;
 
 /**
  * The environment accessible to readonly {@link NodeContract} methods, e.g. {@link
- * NContract#query(ImmutableEnvironment, String, Binder)} and {@link NContract#onRevoke(ImmutableEnvironment)} and like.
+ * NContract#query(ImmutableEnvironment, String, Binder)} and {@link NContract#onRevoked(ImmutableEnvironment)} and like.
  *
  * Note tha the envidonment associated with {@link NContract} must be destroyed when the NContract is revoked.
  */

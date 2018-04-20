@@ -17,6 +17,8 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.services.NContract;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.DatagramAdapter;
@@ -7366,6 +7368,93 @@ public class BaseNetworkTest extends TestCase {
 
         assertTrue(gotContract instanceof SmartContract);
         assertTrue(gotContract instanceof NodeContract);
+
+        registerAndCheckApproved(gotContract);
+
+        ItemResult itemResult = node.waitItem(gotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+    }
+
+    @Test
+    public void goodNSmartContract() throws Exception {
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract smartContract = new NSmartContract(key);
+        smartContract.seal();
+        smartContract.check();
+        smartContract.traceErrors();
+        assertTrue(smartContract.isOk());
+
+        assertTrue(smartContract instanceof NSmartContract);
+        assertTrue(smartContract instanceof NContract);
+
+        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
+
+        registerAndCheckApproved(smartContract);
+
+        ItemResult itemResult = node.waitItem(smartContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+    }
+
+    @Test
+    public void goodNSmartContractFromDSL() throws Exception {
+        Contract smartContract = NSmartContract.fromDslFile(ROOT_PATH + "NotaryNSmartDSLTemplate.yml");
+        smartContract.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
+        smartContract.seal();
+        smartContract.check();
+        smartContract.traceErrors();
+        assertTrue(smartContract.isOk());
+
+        assertTrue(smartContract instanceof NSmartContract);
+        assertTrue(smartContract instanceof NContract);
+
+        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
+
+        registerAndCheckApproved(smartContract);
+
+        ItemResult itemResult = node.waitItem(smartContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+    }
+
+    @Test
+    public void goodNSmartContractWithSending() throws Exception {
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Contract smartContract = new NSmartContract(key);
+        smartContract.seal();
+        smartContract.check();
+        smartContract.traceErrors();
+        assertTrue(smartContract.isOk());
+
+        Contract gotContract = imitateSendingTransactionToPartner(smartContract);
+
+        assertTrue(gotContract instanceof NSmartContract);
+        assertTrue(gotContract instanceof NContract);
+
+        registerAndCheckApproved(gotContract);
+
+        ItemResult itemResult = node.waitItem(gotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+    }
+
+
+    @Test
+    public void goodNSmartContractFromDSLWithSending() throws Exception {
+        Contract smartContract = NSmartContract.fromDslFile(ROOT_PATH + "NotaryNSmartDSLTemplate.yml");
+        smartContract.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
+        smartContract.seal();
+        smartContract.check();
+        smartContract.traceErrors();
+        assertTrue(smartContract.isOk());
+
+        Contract gotContract = imitateSendingTransactionToPartner(smartContract);
+
+        assertTrue(gotContract instanceof NSmartContract);
+        assertTrue(gotContract instanceof NContract);
 
         registerAndCheckApproved(gotContract);
 

@@ -34,7 +34,6 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
@@ -2264,9 +2263,9 @@ public class Node {
                             Binder er;
                             er = ((NodeContract) item).onCreated(null);
                             extraResult.set("onCreatedResult", er);
-                            er = ((NodeContract) item).onUpdate(null);
+                            er = ((NodeContract) item).onUpdated(null);
                             extraResult.set("onUpdateResult", er);
-                            ((NodeContract) item).onRevoke(null);
+                            ((NodeContract) item).onRevoked(null);
 
                             if (item != null) {
                                 synchronized (cache) {

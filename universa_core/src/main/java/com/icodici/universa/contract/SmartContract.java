@@ -16,7 +16,6 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 
 import static com.icodici.universa.Errors.BAD_VALUE;
@@ -93,12 +92,12 @@ public class SmartContract extends Contract implements NodeContract {
     }
 
     @Override
-    public @Nullable Binder onUpdate(MutableEnvironment c) {
+    public Binder onUpdated(MutableEnvironment c) {
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
-    public void onRevoke(ImmutableEnvironment c) {
+    public void onRevoked(ImmutableEnvironment c) {
 
     }
 
@@ -184,7 +183,8 @@ public class SmartContract extends Contract implements NodeContract {
 
 
     public enum SmartContractType {
-        DEFAULT_SMART_CONTRACT
+        DEFAULT_SMART_CONTRACT,
+        N_SMART_CONTRACT
     }
 
     static {
