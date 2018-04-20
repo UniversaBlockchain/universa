@@ -2,7 +2,7 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.contract.SmartContract;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -12,9 +12,16 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.Map;
 
-public class SlotContract extends NSmartContract {
+import static com.icodici.universa.Errors.FAILED_CHECK;
+
+public class SlotContract extends NSmartContract implements ContractStorageSubscription {
+
+    private byte[] packedTrackingContract;
+    private Contract trackingContract;
+    private int keepRevisions = 1;
 
 
     /**
@@ -31,12 +38,12 @@ public class SlotContract extends NSmartContract {
      */
     public SlotContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
-        getDefinition().setExtendedType(SmartContractType.SLOT_CONTRACT.name());
+        getDefinition().setExtendedType(SmartContractType.SLOT1.name());
     }
 
     public SlotContract() {
         super();
-        getDefinition().setExtendedType(SmartContractType.SLOT_CONTRACT.name());
+        getDefinition().setExtendedType(SmartContractType.SLOT1.name());
     }
 
     /**
@@ -51,7 +58,7 @@ public class SlotContract extends NSmartContract {
      */
     public SlotContract(PrivateKey key) {
         super(key);
-        getDefinition().setExtendedType(SmartContractType.SLOT_CONTRACT.name());
+        getDefinition().setExtendedType(SmartContractType.SLOT1.name());
     }
 
     protected SlotContract initializeWithDsl(Binder root) throws EncryptionError {
@@ -65,6 +72,81 @@ public class SlotContract extends NSmartContract {
             Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(r)));
             return new SlotContract().initializeWithDsl(binder);
         }
+    }
+
+    @Override
+    public ZonedDateTime expiresAt() {
+        return null;
+    }
+
+    @Override
+    public void destroy() {
+
+    }
+
+    @Override
+    public byte[] getPackedContract() {
+        return packedTrackingContract;
+    }
+
+    @Override
+    public Contract getContract() {
+        return trackingContract;
+    }
+
+    public void setPackedContract(byte[] packed) throws IOException {
+        trackingContract = TransactionPack.unpack(packed).getContract();
+        packedTrackingContract = packed;
+    }
+
+    public void setContract(Contract c) {
+        packedTrackingContract = c.getPackedTransaction();
+        trackingContract = c;
+    }
+
+    @Override
+    public void receiveEvents(boolean doRecevie) {
+
+    }
+
+    @Override
+    public boolean beforeCreate(ImmutableEnvironment c) {
+        return additionallySlotCheck(c);
+    }
+
+    @Override
+    public boolean beforeUpdate(ImmutableEnvironment c) {
+        return additionallySlotCheck(c);
+    }
+
+    @Override
+    public boolean beforeRevoke(ImmutableEnvironment c) {
+        return additionallySlotCheck(c);
+    }
+
+    public boolean additionallySlotCheck(ImmutableEnvironment c) {
+
+        boolean checkResult = false;
+
+        checkResult = c != null && c.getContract() != null;
+        if(!checkResult) {
+            addError(FAILED_CHECK, "Environment should be not null and should have contract");
+            return checkResult;
+        }
+
+        checkResult = getExtendedType().equals(SmartContractType.SLOT1.name());
+        if(!checkResult) {
+            addError(FAILED_CHECK, "beforeCreate returns false");
+            return checkResult;
+        }
+
+        checkResult = c.getContract().getOwner().isAllowedForKeys(getCreator().getKeys());
+        if(!checkResult) {
+            addError(FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
+            return checkResult;
+        }
+
+        return checkResult;
     }
 
     static {

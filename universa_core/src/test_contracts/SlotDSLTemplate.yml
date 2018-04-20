@@ -55,7 +55,7 @@ definition:
 
 
   # not required section. If exist should point to one of known by node smart contract types.
-  extended_type: SLOT_CONTRACT
+  extended_type: SLOT1
 
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract

@@ -17,17 +17,12 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
-import com.icodici.universa.contract.services.NContract;
-import com.icodici.universa.contract.services.NSmartContract;
-import com.icodici.universa.contract.services.SlotContract;
+import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
-import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.boss.Boss;
-import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
@@ -39,7 +34,6 @@ import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.*;
-import java.time.temporal.ChronoUnit;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Semaphore;
@@ -7445,31 +7439,42 @@ public class BaseNetworkTest extends TestCase {
     @Test
     public void registerSlotContract() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract smartContract = new SlotContract(key);
-        smartContract.seal();
-        smartContract.check();
-        smartContract.traceErrors();
-        assertTrue(smartContract.isOk());
-
-        assertTrue(smartContract instanceof SlotContract);
-
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT_CONTRACT.name(), smartContract.get("definition.extended_type"));
-
-        registerAndCheckApproved(smartContract);
-
-        ItemResult itemResult = node.waitItem(smartContract.getId(), 8000);
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
-
 
         Contract simpleContract = new Contract(key);
         simpleContract.seal();
         simpleContract.check();
         simpleContract.traceErrors();
         assertTrue(simpleContract.isOk());
-        
+
         registerAndCheckApproved(simpleContract);
+
+
+        SlotContract slotContract = new SlotContract(key);
+        slotContract.setContract(simpleContract);
+        slotContract.seal();
+        slotContract.check();
+        slotContract.traceErrors();
+        assertTrue(slotContract.isOk());
+
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+
+        registerAndCheckApproved(slotContract);
+
+        ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+
+        ImmutableEnvironment ime = new NImmutableEnvironment(simpleContract);
+        MutableEnvironment me = new NMutableEnviroment(simpleContract);
+
+        slotContract.beforeCreate(ime);
+        slotContract.beforeUpdate(ime);
+        slotContract.beforeRevoke(ime);
+        slotContract.onCreated(me);
+        slotContract.onUpdated(me);
+        slotContract.onRevoked(ime);
     }
 
 
