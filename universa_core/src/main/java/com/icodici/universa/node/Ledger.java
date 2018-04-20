@@ -183,5 +183,10 @@ public interface Ledger {
     void putItem(StateRecord record, Approvable item, Instant keepTill);
 
 
+    void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin);
+    void clearExpiredStorageSubscriptions();
+    void clearExpiredStorageContracts();
+
+
     void cleanup();
 }

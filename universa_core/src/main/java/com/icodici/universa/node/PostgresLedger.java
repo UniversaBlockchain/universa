@@ -741,6 +741,7 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
     public void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin) {
         try (PooledDb db = dbPool.db()) {
             ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(forTimeInSecs);
@@ -768,6 +769,7 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
     public void clearExpiredStorageSubscriptions() {
         try (PooledDb db = dbPool.db()) {
             ZonedDateTime now = ZonedDateTime.now();
@@ -788,6 +790,7 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
     public void clearExpiredStorageContracts() {
         //TODO: add trigger for delete expired contracts after deleting all subscriptions, and remove this function
         try (PooledDb db = dbPool.db()) {
