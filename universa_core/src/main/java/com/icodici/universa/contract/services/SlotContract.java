@@ -7,6 +7,8 @@ import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -133,11 +135,13 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
     public void setPackedContract(byte[] packed) throws IOException {
         trackingContract = TransactionPack.unpack(packed).getContract();
         packedTrackingContract = packed;
+        getStateData().set("tracking_contract", getPackedContract());
     }
 
     public void setContract(Contract c) {
         packedTrackingContract = c.getPackedTransaction();
         trackingContract = c;
+        getStateData().set("tracking_contract", getPackedContract());
     }
 
     public int getKeepRevisions() {
@@ -147,6 +151,21 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
     @Override
     public void receiveEvents(boolean doRecevie) {
 
+    }
+
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) {
+        super.deserialize(data, deserializer);
+
+        int numRevisions = data.getBinder("state").getBinder("data").getInt("keep_revisions", -1);
+        if(numRevisions > 0)
+            keepRevisions = numRevisions;
+
+        try {
+            setPackedContract(data.getBinder("state").getBinder("data").getBinary("tracking_contract"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

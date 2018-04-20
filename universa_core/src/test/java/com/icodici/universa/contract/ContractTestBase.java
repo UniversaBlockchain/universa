@@ -139,8 +139,20 @@ public class ContractTestBase extends TestCase {
         assertEquals(originContract.getExpiresAt(), checkingContract.getExpiresAt());
 
         // -- data
-        assertEquals(originContract.getStateData(), checkingContract.getStateData());
-        assertEquals(originContract.getDefinition().getData(), checkingContract.getDefinition().getData());
+        for(Object k : originContract.getStateData().keySet()) {
+            if(originContract.getStateData().get(k) instanceof byte[]) {
+                assertArrayEquals((byte[]) originContract.getStateData().get(k), (byte[]) checkingContract.getStateData().get(k));
+            } else {
+                assertEquals(originContract.getStateData().get(k), checkingContract.getStateData().get(k));
+            }
+        }
+        for(Object k : originContract.getDefinition().getData().keySet()) {
+            if(originContract.getDefinition().getData().get(k) instanceof byte[]) {
+                assertArrayEquals((byte[]) originContract.getDefinition().getData().get(k), (byte[]) checkingContract.getDefinition().getData().get(k));
+            } else {
+                assertEquals(originContract.getDefinition().getData().get(k), checkingContract.getDefinition().getData().get(k));
+            }
+        }
 
         // -- definition
         Contract.Definition originDefinition = originContract.getDefinition();
