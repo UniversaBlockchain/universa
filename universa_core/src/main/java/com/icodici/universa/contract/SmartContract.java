@@ -184,7 +184,8 @@ public class SmartContract extends Contract implements NodeContract {
 
     public enum SmartContractType {
         DEFAULT_SMART_CONTRACT,
-        N_SMART_CONTRACT
+        N_SMART_CONTRACT,
+        SLOT_CONTRACT
     }
 
     static {
