@@ -13,6 +13,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
 import com.icodici.universa.contract.services.NSmartContract;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
@@ -327,6 +328,10 @@ public class TransactionPack implements BiSerializable {
 
                     case N_SMART_CONTRACT:
                         contract = new NSmartContract(bb, this);
+                        break;
+
+                    case SLOT_CONTRACT:
+                        contract = new SlotContract(bb, this);
                         break;
                 }
             } else {
