@@ -811,4 +811,40 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
+    public void addEnvironmentToStorage(HashId contractId, byte[] binData, HashId nContractId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "INSERT INTO environment_storage (hash_id,bin_data,ncontract_hash_id) VALUES (?,?,?)"
+                            )
+            ) {
+                statement.setBytes(1, contractId.getDigest());
+                statement.setBytes(2, binData);
+                statement.setBytes(3, nContractId.getDigest());
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addEnvironmentToStorage failed:" + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public byte[] getEnvironmentFromStorage(HashId contractId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("SELECT bin_data FROM environment_storage WHERE hash_id=?", contractId.getDigest()))) {
+                if (rs == null)
+                    return null;
+                return rs.getBytes("bin_data");
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
 }

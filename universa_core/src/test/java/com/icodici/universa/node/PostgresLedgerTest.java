@@ -10,6 +10,9 @@ import com.icodici.universa.node2.ItemLock;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeInfo;
 import com.icodici.universa.node2.NodeStats;
+import net.sergeych.biserializer.BossBiMapper;
+import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;
@@ -673,6 +676,26 @@ public class PostgresLedgerTest extends TestCase {
             assertTrue(rs.next());
             assertEquals(1, rs.getInt(1));
         }
+
+    }
+
+
+    @Test
+    public void addAndGetEnvironment() throws Exception {
+
+        long now = StateRecord.unixTime(ZonedDateTime.now());
+        Binder someBinder = Binder.of("balance", "12.345", "expires_at", now);
+        HashId contractId = HashId.createRandom();
+        HashId nContractId = HashId.createRandom();
+
+        ledger.addEnvironmentToStorage(contractId, Boss.pack(someBinder), nContractId);
+
+        byte[] readedBytes = ledger.getEnvironmentFromStorage(contractId);
+        assertNotEquals(null, readedBytes);
+        Binder readedBinder = Boss.unpack(readedBytes);
+
+        assertEquals(someBinder.getStringOrThrow("balance"), readedBinder.getStringOrThrow("balance"));
+        assertEquals(someBinder.getLongOrThrow("expires_at"), readedBinder.getLongOrThrow("expires_at"));
 
     }
 

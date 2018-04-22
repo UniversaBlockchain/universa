@@ -317,6 +317,12 @@ public class SqliteLedger implements Ledger {
     @Override
     public void clearExpiredStorageContracts() {}
 
+    @Override
+    public void addEnvironmentToStorage(HashId contractId, byte[] binData, HashId nContractId) {}
+
+    @Override
+    public byte[] getEnvironmentFromStorage(HashId contractId) {return null;}
+
     /**
      * Enable or disable records caching. USe it in tests only, in production it should always be enabled
      *
