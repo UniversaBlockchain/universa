@@ -186,6 +186,8 @@ public interface Ledger {
     void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin);
     void clearExpiredStorageSubscriptions();
     void clearExpiredStorageContracts();
+    void addEnvironmentToStorage(HashId contractId, byte[] binData, HashId nContractId);
+    byte[] getEnvironmentFromStorage(HashId contractId);
 
 
     void cleanup();
