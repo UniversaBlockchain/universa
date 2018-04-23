@@ -1288,15 +1288,20 @@ public class MainTest {
     public void nodeStatsTest() throws Exception {
         PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
         TestSpace testSpace = prepareTestSpace(issuerKey);
+
+        Thread.sleep(2000);
+        int uptime = testSpace.client.getStats().getIntOrThrow("uptime");
+
         testSpace.nodes.get(0).config.setStatsIntervalSmall(Duration.ofSeconds(4));
         testSpace.nodes.get(0).config.setStatsIntervalBig(Duration.ofSeconds(60));
         testSpace.nodes.get(0).config.getKeysWhiteList().add(issuerKey.getPublicKey());
 
-        Binder binder = testSpace.client.getStats();
-        System.out.println(binder.toString());
-        Instant now;
-        for (int i = 0; i < 100; i++) {
-            now = Instant.now();
+        while(testSpace.client.getStats().getIntOrThrow("uptime") >= uptime) {
+            Thread.sleep(500);
+        }
+
+        for (int i = 0; i < 30; i++) {
+            Instant now = Instant.now();
             Contract contract = new Contract(issuerKey);
             contract.seal();
             testSpace.client.register(contract.getPackedTransaction(),1500);
@@ -1305,8 +1310,10 @@ public class MainTest {
             testSpace.client.register(contract.getPackedTransaction(),1500);
 
             Thread.sleep(4000-(Instant.now().toEpochMilli()-now.toEpochMilli()));
-            binder = testSpace.client.getStats();
-            System.out.println(binder.toString());
+            Binder binder = testSpace.client.getStats();
+            assertEquals(binder.getIntOrThrow("smallIntervalApproved"),2);
+            int target = i < 15 ? (i+1)*2 : 30;
+            assertTrue(binder.getIntOrThrow("bigIntervalApproved") <= target && binder.getIntOrThrow("bigIntervalApproved") >= target-2);
         }
     }
 
