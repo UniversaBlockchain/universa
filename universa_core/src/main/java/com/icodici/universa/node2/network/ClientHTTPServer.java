@@ -22,15 +22,12 @@ import net.sergeych.tools.BufferedLogger;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
 
 public class ClientHTTPServer extends BasicHttpServer {
 
@@ -135,6 +132,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getState", this::getState);
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
         addSecureEndpoint("approve", this::approve);
+        addSecureEndpoint("resyncItem", this::resyncItem);
         addSecureEndpoint("approveParcel", this::approveParcel);
         addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
@@ -240,6 +238,30 @@ public class ClientHTTPServer extends BasicHttpServer {
             System.out.println("getState ERROR: " + e.getMessage());
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"approveParcel", e.getMessage()));
+        }
+    }
+
+    private Binder resyncItem(Binder params, Session session) throws CommandFailedException {
+
+        checkNode(session);
+
+        if (config.limitFreeRegistrations())
+            if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+                System.out.println("approve ERROR: command needs client key from whitelist");
+
+                return Binder.of(
+                        "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"resyncItem", "command needs client key from whitelist"));
+            }
+
+        try {
+            Binder result = Binder.of("itemResult",
+                    node.checkItem((HashId) params.get("itemId")));
+            node.resync((HashId) params.get("itemId"));
+            return result;
+        } catch (Exception e) {
+            System.out.println("getState ERROR: " + e.getMessage());
+            return Binder.of(
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"resyncItem", e.getMessage()));
         }
     }
 

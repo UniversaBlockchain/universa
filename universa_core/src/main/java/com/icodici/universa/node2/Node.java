@@ -50,6 +50,7 @@ public class Node {
     NodeStats nodeStats = new NodeStats();
 
     private ScheduledFuture<?> sanitator;
+    private ScheduledFuture<?> statsCollector;
 
     public boolean isSanitating() {
         return !recordsToSanitate.isEmpty();
@@ -148,10 +149,20 @@ public class Node {
 
         sanitationFinished.fire();
 
-        nodeStats.init(ledger);
+        nodeStats.init(ledger,config);
 
-        executorService.scheduleAtFixedRate(() -> nodeStats.collect(ledger,config),config.getStatsIntervalSmall().getSeconds(),config.getStatsIntervalSmall().getSeconds(),TimeUnit.SECONDS);
+        pulseCollectStats();
+    }
 
+    private void pulseCollectStats() {
+        statsCollector = executorService.scheduleAtFixedRate(() -> {
+            if(!nodeStats.collect(ledger,config)) {
+                //config changed. stats aren't collected and being reset
+                statsCollector.cancel(false);
+                statsCollector = null;
+                pulseCollectStats();
+            }
+        },config.getStatsIntervalSmall().getSeconds(),config.getStatsIntervalSmall().getSeconds(),TimeUnit.SECONDS);
     }
 
 
@@ -970,9 +981,12 @@ public class Node {
     }
 
     public Binder provideStats() {
+        if(nodeStats.nodeStartTime == null)
+            throw new IllegalStateException("node state are not initialized. wait for node initialization to finish.");
+
         return Binder.of(
                 "uptime", Instant.now().getEpochSecond() - nodeStats.nodeStartTime.toEpochSecond(),
-                "ledgerSize", nodeStats.ledgerSize.values().stream().reduce((i1, i2) -> i1+i2).get(),
+                "ledgerSize", nodeStats.ledgerSize.isEmpty() ? 0 : nodeStats.ledgerSize.values().stream().reduce((i1, i2) -> i1+i2).get(),
                 "smallIntervalApproved", nodeStats.smallIntervalApproved,
                 "bigIntervalApproved", nodeStats.bigIntervalApproved,
                 "uptimeApproved", nodeStats.uptimeApproved,
@@ -2641,6 +2655,8 @@ public class Node {
                     " :: emergencyBreak, state ", processingState),
                     DatagramAdapter.VerboseLevel.BASE);
 
+            boolean doRollback = !processingState.isDone();
+
             processingState = ItemProcessingState.EMERGENCY_BREAK;
 
             stopDownloader();
@@ -2654,7 +2670,10 @@ public class Node {
                 }
             }
 
-            rollbackChanges(stateWas);
+            if(doRollback)
+                rollbackChanges(stateWas);
+            else
+                close();
 
             processingState = ItemProcessingState.FINISHED;
         }

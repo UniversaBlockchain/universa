@@ -3,6 +3,7 @@ package com.icodici.universa.node2;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.Ledger;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedList;
@@ -16,15 +17,23 @@ public class NodeStats {
     private LinkedList<Map<ItemState,Integer>> ledgerStatsHistory = new LinkedList<>();
     private LinkedList<ZonedDateTime> ledgerHistoryTimestamps = new LinkedList<>();
 
-    public Integer smallIntervalApproved = 0;
-    public Integer bigIntervalApproved = 0;
-    public Integer uptimeApproved = 0;
+    public int smallIntervalApproved;
+    public int bigIntervalApproved;
+    public int uptimeApproved;
     public int lastMonthPaidAmount;
     public int thisMonthPaidAmount;
     public int yesterdayPaidAmount;
     public int todayPaidAmount;
+    private Duration bigInterval;
+    private Duration smallInterval;
 
-    public void collect(Ledger ledger, Config config) {
+    public boolean collect(Ledger ledger, Config config) {
+        if(!config.getStatsIntervalSmall().equals(smallInterval) || !config.getStatsIntervalBig().equals(bigInterval)) {
+            //intervals changed. need to reset node
+            init(ledger,config);
+            return false;
+        }
+
         ZonedDateTime now = ZonedDateTime.now();
         Map<ItemState, Integer> lastIntervalStats = ledger.getLedgerSize(lastStatsBuildTime);
         ledgerStatsHistory.addLast(lastIntervalStats);
@@ -36,9 +45,9 @@ public class NodeStats {
 
         lastIntervalStats.keySet().forEach(is -> ledgerSize.put(is, ledgerSize.getOrDefault(is,0) + lastIntervalStats.get(is)));
 
-        while (ledgerHistoryTimestamps.getFirst().plus(config.getStatsIntervalBig()).isBefore(now)) {
+        while (ledgerHistoryTimestamps.getFirst().plus(bigInterval).isBefore(now)) {
             ledgerHistoryTimestamps.removeFirst();
-            bigIntervalApproved -= ledgerStatsHistory.removeFirst().get(ItemState.APPROVED);
+            bigIntervalApproved -= ledgerStatsHistory.removeFirst().get(ItemState.APPROVED) + lastIntervalStats.getOrDefault(ItemState.REVOKED,0);
         }
 
         lastStatsBuildTime = now;
@@ -67,9 +76,23 @@ public class NodeStats {
                 todayPaidAmount += payments.get(day);
             }
         });
+        return true;
     }
 
-    public void init(Ledger ledger) {
+    public void init(Ledger ledger, Config config) {
+        ledgerStatsHistory.clear();
+        ledgerHistoryTimestamps.clear();
+
+        smallIntervalApproved = 0;
+        bigIntervalApproved = 0;
+        uptimeApproved = 0;
+        lastMonthPaidAmount = 0;
+        thisMonthPaidAmount = 0;
+        yesterdayPaidAmount = 0;
+        todayPaidAmount = 0;
+
+        bigInterval = config.getStatsIntervalBig();
+        smallInterval = config.getStatsIntervalSmall();
         nodeStartTime = ZonedDateTime.now();
         lastStatsBuildTime = nodeStartTime;
         ledgerSize = ledger.getLedgerSize(null);

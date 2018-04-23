@@ -633,7 +633,8 @@ public class PostgresLedgerTest extends TestCase {
         }
 
         NodeStats stats = new NodeStats();
-        stats.init(ledger);
+        Config config = new Config();
+        stats.init(ledger,config);
         ZonedDateTime now  = ZonedDateTime.now();
         ZonedDateTime dateTime = now.minusDays(now.getDayOfMonth()-1).minusMonths(1);
         while (dateTime.isBefore(ZonedDateTime.now().plusSeconds(1))) {
@@ -642,7 +643,6 @@ public class PostgresLedgerTest extends TestCase {
             dateTime = dateTime.plusDays(1);
         }
 
-        Config config = new Config();
         stats.collect(ledger,config);
 
 
