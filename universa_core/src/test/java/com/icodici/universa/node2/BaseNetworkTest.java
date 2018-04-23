@@ -7241,93 +7241,6 @@ public class BaseNetworkTest extends TestCase {
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
     }
 
-
-    @Test
-    public void goodSmartContractWithSending() throws Exception {
-        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract smartContract = new SmartContract(key);
-        smartContract.seal();
-        smartContract.check();
-        smartContract.traceErrors();
-        assertTrue(smartContract.isOk());
-
-        Contract gotContract = imitateSendingTransactionToPartner(smartContract);
-
-        assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeContract);
-
-        registerAndCheckApproved(gotContract);
-
-        ItemResult itemResult = node.waitItem(gotContract.getId(), 8000);
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
-    }
-
-
-    @Test
-    public void goodSmartContractFromDSLWithSending() throws Exception {
-        Contract smartContract = SmartContract.fromDslFile(ROOT_PATH + "NotarySmartDSLTemplate.yml");
-        smartContract.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
-        smartContract.seal();
-        smartContract.check();
-        smartContract.traceErrors();
-        assertTrue(smartContract.isOk());
-
-        Contract gotContract = imitateSendingTransactionToPartner(smartContract);
-
-        assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeContract);
-
-        registerAndCheckApproved(gotContract);
-
-        ItemResult itemResult = node.waitItem(gotContract.getId(), 8000);
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
-    }
-
-    @Test
-    public void goodSmartContractWithSending() throws Exception {
-        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract smartContract = new SmartContract(key);
-        smartContract.seal();
-        smartContract.check();
-        smartContract.traceErrors();
-        assertTrue(smartContract.isOk());
-
-        Contract gotContract = imitateSendingTransactionToPartner(smartContract);
-
-        assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeSmartContract);
-
-        registerAndCheckApproved(gotContract);
-
-        ItemResult itemResult = node.waitItem(gotContract.getId(), 8000);
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
-    }
-
-
-    @Test
-    public void goodSmartContractFromDSLWithSending() throws Exception {
-        Contract smartContract = SmartContract.fromDslFile(ROOT_PATH + "NotarySmartDSLTemplate.yml");
-        smartContract.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
-        smartContract.seal();
-        smartContract.check();
-        smartContract.traceErrors();
-        assertTrue(smartContract.isOk());
-
-        Contract gotContract = imitateSendingTransactionToPartner(smartContract);
-
-        assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeSmartContract);
-
-        registerAndCheckApproved(gotContract);
-
-        ItemResult itemResult = node.waitItem(gotContract.getId(), 8000);
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
-    }
-
     @Test
     public void goodSmartContractWithSending() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
@@ -7467,7 +7380,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         ImmutableEnvironment ime = new NImmutableEnvironment(simpleContract);
-        MutableEnvironment me = new NMutableEnvironment(simpleContract);
+        MutableEnvironment me = new NMutableEnviroment(simpleContract);
 
         slotContract.beforeCreate(ime);
         slotContract.beforeUpdate(ime);
