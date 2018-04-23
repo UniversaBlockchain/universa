@@ -1318,6 +1318,54 @@ public class MainTest {
     }
 
 
+    @Test
+    public void resynItemTest() throws Exception {
+        PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
+        TestSpace testSpace = prepareTestSpace(issuerKey);
+
+        //shutdown one of nodes
+        int absentNode = testSpace.nodes.size()-1;
+        testSpace.nodes.get(absentNode).shutdown();
+        testSpace.nodes.remove(absentNode);
+
+        //register contract in non full network
+        Contract contract = new Contract(issuerKey);
+        contract.seal();
+        testSpace.client.register(contract.getPackedTransaction(),1500);
+        assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
+
+
+        //recreate network and make sure contract is still APPROVED
+        testSpace.nodes.forEach(n->n.shutdown());
+        Thread.sleep(1000);
+        testSpace = prepareTestSpace(issuerKey);
+        assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
+
+
+        //create client with absent node and check the contract
+        Client absentNodeClient = new Client(testSpace.myKey,testSpace.nodes.get(absentNode).myInfo,null);
+        assertEquals(absentNodeClient.getState(contract.getId()).state,ItemState.UNDEFINED);
+
+        //start resync with a command
+        absentNodeClient.resyncItem(contract.getId());
+
+        //make sure resync didn't affect others
+        assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
+
+
+        //wait for new status
+        ItemResult rr;
+        while(true) {
+            rr = absentNodeClient.getState(contract.getId());
+            if(!rr.state.isPending())
+                break;
+            Thread.sleep(100);
+        }
+        assertEquals(rr.state,ItemState.APPROVED);
+
+    }
+
+
 
     @Test(timeout = 30000)
     public void freeRegistrationsAllowedFromCoreVersion() throws Exception {

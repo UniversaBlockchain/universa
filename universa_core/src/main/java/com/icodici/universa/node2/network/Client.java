@@ -289,6 +289,22 @@ public class Client {
         });
     }
 
+    public ItemResult resyncItem(HashId itemId) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("resyncItem",
+                    "itemId", itemId);
+
+            Object ir = result.getOrThrow("itemResult");
+            if (ir instanceof ItemResult)
+                return (ItemResult) ir;
+
+            if (ir instanceof String)
+                System.out.println(">> " + ir);
+
+            return ItemResult.UNDEFINED;
+        });
+    }
+
 
     public Binder getStats() throws ClientError {
         return protect(() -> httpClient.command("getStats"));

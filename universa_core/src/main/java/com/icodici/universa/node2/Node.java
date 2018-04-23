@@ -2655,6 +2655,8 @@ public class Node {
                     " :: emergencyBreak, state ", processingState),
                     DatagramAdapter.VerboseLevel.BASE);
 
+            boolean doRollback = !processingState.isDone();
+
             processingState = ItemProcessingState.EMERGENCY_BREAK;
 
             stopDownloader();
@@ -2668,7 +2670,10 @@ public class Node {
                 }
             }
 
-            rollbackChanges(stateWas);
+            if(doRollback)
+                rollbackChanges(stateWas);
+            else
+                close();
 
             processingState = ItemProcessingState.FINISHED;
         }
