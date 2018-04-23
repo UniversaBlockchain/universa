@@ -34,31 +34,34 @@ public interface ContractStorageSubscription {
     byte[] getPackedContract();
 
     /**
-     * The subscription event
+     * The subscription event base interface. Real events are either {@link ApprovedEvent} or {@link RevokedEvent}
+     * implementations.
      */
     interface Event {
+        ContractStorageSubscription getSubscription();
+    }
+
+    interface ApprovedEvent extends Event {
         /**
-         * New revision of the stored contract is just approved. Subscriber must decide to drop subscription and
-         * subscribe to the new revision
-         * @param subscription
-         * @param newRevision
-         * @param newPackedRevision
+         * @return new revision just approved as the Contract
          */
-        void onApproved(ContractStorageSubscription subscription,Contract newRevision,byte[] newPackedRevision);
+        Contract getNewRevision();
 
         /**
-         * The subscribed contract is revoked. It is possible to keep stored also revoked revisions, though
-         * subscriber might often find dropping revoked items more appropriate.
-         * @param subscription
+         * @return Packed transaction of the new revision just approved
          */
-        void onRevoked(ContractStorageSubscription subscription);
+        byte[] getPackedTransaction();
+    }
+
+    interface RevokedEvent extends Event {
     }
 
     /**
      * Allow {@link NContract} to receive (or not) events with {@link Event}, with {@link
      * NContract#onContractStorageSubscriptionEvent(Event)}
      *
-     * @param doRecevie true to receive events, false to stop
+     * @param doRecevie
+     *         true to receive events, false to stop
      */
     void receiveEvents(boolean doRecevie);
 }
