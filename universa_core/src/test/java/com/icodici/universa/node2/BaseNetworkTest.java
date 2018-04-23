@@ -7380,7 +7380,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         ImmutableEnvironment ime = new NImmutableEnvironment(simpleContract);
-        MutableEnvironment me = new NMutableEnviroment(simpleContract);
+        MutableEnvironment me = new NMutableEnvironment(simpleContract);
 
         slotContract.beforeCreate(ime);
         slotContract.beforeUpdate(ime);

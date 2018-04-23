@@ -9,6 +9,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
@@ -21,12 +22,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class SlotContract extends NSmartContract implements ContractStorageSubscription {
+public class SlotContract extends NSmartContract {
 
     private byte[] packedTrackingContract;
     private Contract trackingContract;
     private int keepRevisions = 1;
-    private Set<Event> storageEvents = new HashSet<>();
 
 
     /**
@@ -112,17 +112,6 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
         }
     }
 
-    @Override
-    public ZonedDateTime expiresAt() {
-        return null;
-    }
-
-    @Override
-    public void destroy() {
-
-    }
-
-    @Override
     public byte[] getPackedContract() {
         return packedTrackingContract;
     }
@@ -149,13 +138,23 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
     }
 
     @Override
-    public void receiveEvents(boolean doReceive) {
-
-    }
-
-    @Override
     public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
-        storageEvents.add(event);
+        MutableEnvironment me;
+        if(event instanceof ContractStorageSubscription.ApprovedEvent) {
+            Contract newStoredItem = ((ContractStorageSubscription.ApprovedEvent)event).getNewRevision();
+            me = new NMutableEnvironment(this);
+            ContractStorageSubscription css = me.createStorageSubscription(newStoredItem.getId(), getExpiresAt());
+            css.receiveEvents(true);
+//            ledger.addEnvironmentToStorage(newStoredItem.getId(), Boss.pack(me), getId());
+            // todo: update this to 'environments'
+            // todo: save css to 'subscriptions'
+            // todo: save link me -> css to 'environment_subscriptions'
+            // todo: save newStoredItem to 'storages'
+        } else if(event instanceof ContractStorageSubscription.RevokedEvent) {
+
+        }
+
+        event.getSubscription().destroy();
     }
 
     @Override
