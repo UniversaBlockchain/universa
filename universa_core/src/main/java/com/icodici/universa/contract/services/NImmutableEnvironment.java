@@ -2,7 +2,9 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.NodeContract;
 import com.icodici.universa.contract.SmartContract;
+import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.Instant;
@@ -11,7 +13,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Set;
 
-public class NImmutableEnvironment extends HashMap implements ImmutableEnvironment {
+public class NImmutableEnvironment extends Binder implements ImmutableEnvironment {
 
     protected Contract contract;
     protected ZonedDateTime createdAt;

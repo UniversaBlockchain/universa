@@ -60,8 +60,7 @@ public interface ContractStorageSubscription {
      * Allow {@link NContract} to receive (or not) events with {@link Event}, with {@link
      * NContract#onContractStorageSubscriptionEvent(Event)}
      *
-     * @param doRecevie
-     *         true to receive events, false to stop
+     * @param doReceive true to receive events, false to stop
      */
-    void receiveEvents(boolean doRecevie);
+    void receiveEvents(boolean doReceive);
 }

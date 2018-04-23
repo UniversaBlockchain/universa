@@ -8,7 +8,6 @@ import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -18,15 +17,16 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
-
-import static com.icodici.universa.Errors.FAILED_CHECK;
+import java.util.Set;
 
 public class SlotContract extends NSmartContract implements ContractStorageSubscription {
 
     private byte[] packedTrackingContract;
     private Contract trackingContract;
     private int keepRevisions = 1;
+    private Set<Event> storageEvents = new HashSet<>();
 
 
     /**
@@ -149,8 +149,13 @@ public class SlotContract extends NSmartContract implements ContractStorageSubsc
     }
 
     @Override
-    public void receiveEvents(boolean doRecevie) {
+    public void receiveEvents(boolean doReceive) {
 
+    }
+
+    @Override
+    public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
+        storageEvents.add(event);
     }
 
     @Override

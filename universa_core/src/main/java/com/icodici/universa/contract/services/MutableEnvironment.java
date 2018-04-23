@@ -29,7 +29,7 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      *
      * @return
      */
-    <T> MutableEnvironment set(String key, T value);
+    <T extends Object> T set(String key, T value);
 
     /**
      * Reset the KV store to the initial state

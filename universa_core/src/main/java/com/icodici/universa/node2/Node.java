@@ -17,6 +17,7 @@ import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
@@ -24,6 +25,7 @@ import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -2259,17 +2261,39 @@ public class Node {
                     }
 
                     try {
-                        if(item instanceof NodeContract) {
-                            Binder er;
-                            er = ((NodeContract) item).onCreated(null);
-                            extraResult.set("onCreatedResult", er);
-                            er = ((NodeContract) item).onUpdated(null);
-                            extraResult.set("onUpdateResult", er);
-                            ((NodeContract) item).onRevoked(null);
+                        if(item instanceof SlotContract) {
+                            MutableEnvironment me;
+                            if(((SlotContract) item).getRevision() == 1) {
+                                me = new NMutableEnvironment(((SlotContract) item).getContract());
+                                ContractStorageSubscription css = me.createStorageSubscription(item.getId(), ((SlotContract) item).expiresAt());
+                                css.receiveEvents(true);
+                                ledger.addEnvironmentToStorage(me.getContract().getId(), Boss.pack(me), item.getId());
+                            }
+//                            Binder er;
+//                            er = ((NodeContract) item).onCreated(null);
+//                            extraResult.set("onCreatedResult", er);
+//                            er = ((NodeContract) item).onUpdated(null);
+//                            extraResult.set("onUpdateResult", er);
+//                            ((NodeContract) item).onRevoked(null);
+//
+//                            if (item != null) {
+//                                synchronized (cache) {
+//                                    cache.update(itemId, getResult());
+//                                }
+//                            }
+                        }
 
-                            if (item != null) {
-                                synchronized (cache) {
-                                    cache.update(itemId, getResult());
+                        byte[] readedBytes = ledger.getEnvironmentFromStorage(item.getId());
+                        Binder readedBinder = Boss.unpack(readedBytes);
+                        if(readedBinder instanceof ImmutableEnvironment) {
+                            for(ContractStorageSubscription css : ((ImmutableEnvironment) readedBinder).storageSubscriptions()) {
+                                if(getState() == ItemState.APPROVED) {
+//                                    css.onApproved(css, item, ((SlotContract) item).getPackedTransaction());
+                                }
+                            }
+                            for(ContractStorageSubscription css : ((ImmutableEnvironment) readedBinder).storageSubscriptions()) {
+                                if(getState() == ItemState.REVOKED) {
+//                                    css.onRevoked(css);
                                 }
                             }
                         }
