@@ -25,7 +25,7 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
 
     @Override
     public <T extends Contract> @NonNull T getContract() {
-        return null;
+        return (T) contract;
     }
 
     @Override
