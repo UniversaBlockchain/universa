@@ -1374,13 +1374,6 @@ public class CLIMainTest {
         ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
         c.seal();
 
-        System.out.println("--- restart client session with key in while list --- ");
-        Client client = CLIMain.getClientNetwork().client;
-        PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
-        client.getSession().setPrivateKey(manufacturePrivateKey);
-        client.restart();
-
         System.out.println("---");
         System.out.println("register contract");
         System.out.println("---");
@@ -1409,10 +1402,6 @@ public class CLIMainTest {
         System.out.println("---");
 
         CLIMain.registerContract(tc);
-
-        System.out.println("--- restart client session with client key --- ");
-        client.getSession().setPrivateKey(clientPrivateKey);
-        client.restart();
 
         Thread.sleep(1500);
         System.out.println("---");
@@ -1788,15 +1777,11 @@ public class CLIMainTest {
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
 
-
-
         tuContract = getApprovedTUContract();
         callMain2("-revoke", contractFileName,
                 "-k", PRIVATE_KEY_PATH, "-v",
                 "--tu", tuContract,
                 "--k", rootPath + "keys/stepan_mamontov.private.unikey");
-
-
 
         Thread.sleep(1500);
         System.out.println("---");
@@ -2182,19 +2167,12 @@ public class CLIMainTest {
                 stepaTU.traceErrors();
                 CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
 
-                System.out.println("--- restart client session with key in while list --- ");
-                Client client = CLIMain.getClientNetwork().client;
-                PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
-                client.getSession().setPrivateKey(manufacturePrivateKey);
-                client.restart();
-
                 System.out.println("--- register new tu --- " + stepaTU.getId());
-                callMain2("--register", basePath + "stepaTU.unicon", "-v", "-wait", "5000");
+                Client client = CLIMain.getClientNetwork().client;
+                client.register(stepaTU.getPackedTransaction(), 5000);
+                //callMain2("--register", basePath + "stepaTU.unicon", "-v", "-wait", "5000");
                 tuContract = stepaTU;
 
-                System.out.println("--- restart client session with client key --- ");
-                client.getSession().setPrivateKey(clientPrivateKey);
-                client.restart();
             }
             return basePath + "stepaTU.unicon";
         }
@@ -2988,6 +2966,12 @@ public class CLIMainTest {
         try {
             main.config.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
         } catch (KeyAddress.IllegalAddressException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            main.config.getKeysWhiteList().add(CLIMain.getPrivateKey().getPublicKey());
+        } catch (IOException e) {
             e.printStackTrace();
         }
         //main.config.getKeysWhiteList().add(main.config.getTransactionUnitsIssuerKey());
