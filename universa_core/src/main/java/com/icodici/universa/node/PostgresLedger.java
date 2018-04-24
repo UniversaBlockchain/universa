@@ -1031,7 +1031,7 @@ public class PostgresLedger implements Ledger {
                     "WHERE hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
                     return null;
-                return rs.getBytes(0);
+                return rs.getBytes(1);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
