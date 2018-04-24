@@ -7,10 +7,11 @@ import java.time.ZonedDateTime;
 public class NContractStorageSubscription implements ContractStorageSubscription {
 
     private long id = 0;
+    private ZonedDateTime expiresAt_ = ZonedDateTime.now().plusMonths(1);
 
     @Override
     public ZonedDateTime expiresAt() {
-        return null;
+        return expiresAt_;
     }
 
     @Override

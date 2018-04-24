@@ -806,10 +806,10 @@ public class PostgresLedger implements Ledger {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
-                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at) RETURNING id")
+                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at) VALUES(?,?) RETURNING id")
             ) {
                 statement.setLong(1, contractStorageId);
-                statement.setLong(4, StateRecord.unixTime(expiresAt));
+                statement.setLong(2, StateRecord.unixTime(expiresAt));
                 //db.updateWithStatement(statement);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
