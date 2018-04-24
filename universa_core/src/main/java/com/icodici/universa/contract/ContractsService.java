@@ -844,4 +844,48 @@ public class ContractsService {
 
         return parcel;
     }
+
+    /**
+     * Create paid transaction, which consist from prepared TransactionPack you want to register
+     * and payment contract that will be spend to process transaction.
+     * Included second payment.
+     *<br><br>
+     * @param payload is prepared TransactionPack you want to register in the Universa.
+     * @param payment is approved contract with transaction units belongs to you.
+     * @param amount is number of transaction units you want to spend to register payload contract.
+     * @param amountSecond is number of transaction units you want to spend from second payment.
+     * @param keys is own private keys, which are set as owner of payment contract
+     * @param withTestPayment if true {@link Parcel} will be created with test payment
+     * @return parcel, it ready to send to the Universa.
+     */
+    public synchronized static Parcel createPayingParcel(TransactionPack payload, Contract payment, int amount, int amountSecond,
+                                                         Set<PrivateKey> keys, boolean withTestPayment) {
+
+        Contract paymentDecreased = payment.createRevision(keys);
+
+        if(withTestPayment) {
+            paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
+        } else {
+            paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
+        }
+
+        paymentDecreased.seal();
+
+        Contract paymentDecreasedSecond = paymentDecreased.createRevision(keys);
+
+        if(withTestPayment) {
+            paymentDecreasedSecond.getStateData().set("test_transaction_units", paymentDecreased.getStateData().getIntOrThrow("test_transaction_units") - amountSecond);
+        } else {
+            paymentDecreasedSecond.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - amountSecond);
+        }
+
+        paymentDecreasedSecond.seal();
+
+        payload.getContract().addNewItems(paymentDecreasedSecond);
+        payload.getContract().seal();
+
+        Parcel parcel = new Parcel(payload, paymentDecreased.getTransactionPack());
+
+        return parcel;
+    }
 }
