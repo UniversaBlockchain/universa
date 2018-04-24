@@ -942,10 +942,10 @@ public class PostgresLedger implements Ledger {
     public Set<byte[]> getEnvironmentsForContractId(HashId contractId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT environments.kv_storage FROM contract_storage" +
-                    "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id" +
-                    "LEFT JOIN environment_subscription ON contract_subscription.id=environment_subscription.subscription_id" +
-                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id" +
+                    "SELECT environments.kv_storage FROM contract_storage " +
+                    "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id " +
+                    "LEFT JOIN environment_subscription ON contract_subscription.id=environment_subscription.subscription_id " +
+                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id " +
                     "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
                     return null;
