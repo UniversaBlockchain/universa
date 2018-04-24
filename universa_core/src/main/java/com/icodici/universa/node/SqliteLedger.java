@@ -343,6 +343,9 @@ public class SqliteLedger implements Ledger {
     @Override
     public byte[] getSlotContractByEnvironmentId(long environmentId) {return null;}
 
+    @Override
+    public byte[] getContractInStorage(HashId contractId) {return null;}
+
     /**
      * Enable or disable records caching. USe it in tests only, in production it should always be enabled
      *

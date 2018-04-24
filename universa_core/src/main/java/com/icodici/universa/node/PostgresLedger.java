@@ -965,9 +965,9 @@ public class PostgresLedger implements Ledger {
     public Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT environments.kv_storage FROM contract_subscription" +
-                    "LEFT JOIN environment_subscription ON contract_subscription.id=environment_subscription.subscription_id" +
-                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id" +
+                    "SELECT environments.kv_storage FROM contract_subscription " +
+                    "LEFT JOIN environment_subscription ON contract_subscription.id=environment_subscription.subscription_id " +
+                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id " +
                     "WHERE contract_subscription.id=?", subscriptionStorageId))) {
                 if (rs == null)
                     return null;
@@ -1011,8 +1011,24 @@ public class PostgresLedger implements Ledger {
     public byte[] getSlotContractByEnvironmentId(long environmentId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT transaction_pack FROM environments" +
+                    "SELECT transaction_pack FROM environments " +
                     "WHERE id=?", environmentId))) {
+                if (rs == null)
+                    return null;
+                return rs.getBytes(0);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
+    public byte[] getContractInStorage(HashId contractId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT bin_data FROM contract_storage " +
+                    "WHERE hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
                     return null;
                 return rs.getBytes(0);
