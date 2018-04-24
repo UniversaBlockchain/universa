@@ -986,8 +986,8 @@ public class PostgresLedger implements Ledger {
     public Set<NContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT contract_subscription.id, contract_subscription.expires_at FROM contract_storage" +
-                    "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id" +
+                    "SELECT contract_subscription.id, contract_subscription.expires_at FROM contract_storage " +
+                    "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id " +
                     "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
                     return null;
