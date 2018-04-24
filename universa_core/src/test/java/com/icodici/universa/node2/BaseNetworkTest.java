@@ -7779,6 +7779,7 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
+//        node.getLedger().get
 
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);

@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.services.ContractStorageSubscription;
 import com.icodici.universa.contract.services.NContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
@@ -195,7 +196,7 @@ public interface Ledger {
     void saveEnvironmentSubscription(long subscriptionId, long environmentId);
     Set<byte[]> getEnvironmentsForContractId(HashId contractId);
     Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId);
-    Set<NContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId);
+    Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId);
     byte[] getSlotContractByEnvironmentId(long environmentId);
 
     void cleanup();

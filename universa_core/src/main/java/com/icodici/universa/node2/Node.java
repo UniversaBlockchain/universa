@@ -2305,16 +2305,24 @@ public class Node {
                                     er = ((NodeContract) item).onCreated(me);
                                     extraResult.set("onCreatedResult", er);
                                 } else {
-                                    // check: find in the ledger MutableEnvironment by item.getId()
-                                    Set<byte[]> envs = ledger.getEnvironmentsForContractId(item.getId());
-                                    if (envs != null) {
-                                        for (byte[] ebytes : envs) {
-                                            Binder binder = Boss.unpack(ebytes);
-                                            //todo: cast binder to environment and call onUpdated
-                                            me = new NMutableEnvironment((SlotContract) item);
-                                            er = ((NodeContract) item).onUpdated(me);
-                                            extraResult.set("onUpdateResult", er);
+                                    try{
+                                        // check: find in the ledger MutableEnvironment by item.getId()
+                                        Set<byte[]> envs = ledger.getEnvironmentsForContractId(item.getId());
+                                        if (envs != null) {
+                                            for (byte[] ebytes : envs) {
+                                                Binder binder = Boss.unpack(ebytes);
+                                                //todo: cast binder to environment and call onUpdated
+                                                me = new NMutableEnvironment((SlotContract) item);
+                                                er = ((NodeContract) item).onUpdated(me);
+                                                extraResult.set("onUpdateResult", er);
+                                            }
                                         }
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        // todo: remove after exception will be fixed
+                                        me = new NMutableEnvironment((SlotContract) item);
+                                        er = ((NodeContract) item).onUpdated(me);
+                                        extraResult.set("onUpdateResult", er);
                                     }
                                 }
                             }
@@ -2339,39 +2347,43 @@ public class Node {
                         }
                         // or we found in the ledger slot for stored contract
                         // check: find in the ledger ContractStorageSubscription by item.getId()
-                        ContractStorageSubscription foundCss = ledger.getStorageSubscriptionsForContractId(item.getId()).iterator().next();
-                        // check: find in the ledger MutableEnvironment (or ImmutableEnvironment) by ContractStorageSubscription.id
-                        Set<byte[]> envs = ledger.getEnvironmentsForSubscriptionStorageId(((NContractStorageSubscription)foundCss).getId());
-                        //todo: cast byte[] to environment
-                        // todo: find in the ledger SlotContract by ImmutableEnvironment.id
-                        //byte[] foundSlotPack = ledger.getSlotContractByEnvironmentId(env.getId());
-                        SlotContract foundSlot = new SlotContract(new PrivateKey(Do.read("./src/test_contracts/keys/stepan_mamontov.private.unikey")));
+                        Set<ContractStorageSubscription> foundCssSet = ledger.getStorageSubscriptionsForContractId(item.getId());
+                        if(foundCssSet != null) {
+                            for (ContractStorageSubscription foundCss : foundCssSet) {
+                                // check: find in the ledger MutableEnvironment (or ImmutableEnvironment) by ContractStorageSubscription.id
+                                Set<byte[]> envs = ledger.getEnvironmentsForSubscriptionStorageId(((NContractStorageSubscription) foundCss).getId());
+                                //todo: cast byte[] to environment
+                                // todo: find in the ledger SlotContract by ImmutableEnvironment.id
+                                //byte[] foundSlotPack = ledger.getSlotContractByEnvironmentId(env.getId());
+                                SlotContract foundSlot = new SlotContract(new PrivateKey(Do.read("./src/test_contracts/keys/stepan_mamontov.private.unikey")));
 
-                        if(getState() == ItemState.APPROVED) {
-                            foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
-                                @Override
-                                public Contract getNewRevision() {
-                                    return (Contract) item;
-                                }
+                                if (getState() == ItemState.APPROVED) {
+                                    foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
+                                        @Override
+                                        public Contract getNewRevision() {
+                                            return (Contract) item;
+                                        }
 
-                                @Override
-                                public byte[] getPackedTransaction() {
-                                    return ((Contract) item).getPackedTransaction();
-                                }
+                                        @Override
+                                        public byte[] getPackedTransaction() {
+                                            return ((Contract) item).getPackedTransaction();
+                                        }
 
-                                @Override
-                                public ContractStorageSubscription getSubscription() {
-                                    return foundCss;
+                                        @Override
+                                        public ContractStorageSubscription getSubscription() {
+                                            return foundCss;
+                                        }
+                                    });
                                 }
-                            });
-                        }
-                        if(getState() == ItemState.REVOKED) {
-                            foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.RevokedEvent() {
-                                @Override
-                                public ContractStorageSubscription getSubscription() {
-                                    return foundCss;
+                                if (getState() == ItemState.REVOKED) {
+                                    foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.RevokedEvent() {
+                                        @Override
+                                        public ContractStorageSubscription getSubscription() {
+                                            return foundCss;
+                                        }
+                                    });
                                 }
-                            });
+                            }
                         }
 
 //                        byte[] readedBytes = ledger.getEnvironmentFromStorage(item.getId());

@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.services.ContractStorageSubscription;
 import com.icodici.universa.contract.services.NContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
@@ -334,7 +335,7 @@ public class SqliteLedger implements Ledger {
     public Set<byte[]> getEnvironmentsForContractId(HashId contractId) {return null;}
 
     @Override
-    public Set<NContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {return null;}
+    public Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {return null;}
 
     @Override
     public Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId) {return null;}

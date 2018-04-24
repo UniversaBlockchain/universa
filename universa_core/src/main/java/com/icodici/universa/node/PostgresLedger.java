@@ -14,6 +14,7 @@ import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.services.ContractStorageSubscription;
 import com.icodici.universa.contract.services.NContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
@@ -983,7 +984,7 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public Set<NContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {
+    public Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
                     "SELECT contract_subscription.id, contract_subscription.expires_at FROM contract_storage " +
@@ -991,7 +992,7 @@ public class PostgresLedger implements Ledger {
                     "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
                     return null;
-                HashSet<NContractStorageSubscription> res = new HashSet<>();
+                HashSet<ContractStorageSubscription> res = new HashSet<>();
                 do {
                     NContractStorageSubscription css = new NContractStorageSubscription();
                     css.setId(rs.getLong(0));
