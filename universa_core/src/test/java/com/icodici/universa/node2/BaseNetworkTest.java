@@ -7779,7 +7779,14 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
-//        node.getLedger().get
+        assertEquals(simpleContract.getId(), slotContract.getContract().getId());
+        assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getContract().getId());
+
+        byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        Contract restoredContarct = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContarct);
+        assertEquals(simpleContract.getId(), restoredContarct.getId());
 
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
