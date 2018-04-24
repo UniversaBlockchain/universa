@@ -671,12 +671,6 @@ public class PostgresLedgerTest extends TestCase {
             assertEquals(1, rs.getInt(1));
         }
 
-        st = ledger.getDb().statement("select count(*) from contract_subscription where origin = ?", originId.getDigest());
-        try(ResultSet rs = st.executeQuery()) {
-            assertTrue(rs.next());
-            assertEquals(1, rs.getInt(1));
-        }
-
     }
 
 
@@ -714,22 +708,10 @@ public class PostgresLedgerTest extends TestCase {
             assertEquals(1, rs.getInt(1));
         }
 
-        st = ledger.getDb().statement("select count(*) from contract_subscription where origin = ?", originId.getDigest());
-        try(ResultSet rs = st.executeQuery()) {
-            assertTrue(rs.next());
-            assertEquals(1, rs.getInt(1));
-        }
-
         ledger.clearExpiredStorageSubscriptions();
         ledger.clearExpiredStorageContracts();
 
         st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
-        try(ResultSet rs = st.executeQuery()) {
-            assertTrue(rs.next());
-            assertEquals(1, rs.getInt(1));
-        }
-
-        st = ledger.getDb().statement("select count(*) from contract_subscription where origin = ?", originId.getDigest());
         try(ResultSet rs = st.executeQuery()) {
             assertTrue(rs.next());
             assertEquals(1, rs.getInt(1));
@@ -740,12 +722,6 @@ public class PostgresLedgerTest extends TestCase {
         ledger.clearExpiredStorageContracts();
 
         st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
-        try(ResultSet rs = st.executeQuery()) {
-            assertTrue(rs.next());
-            assertEquals(0, rs.getInt(1));
-        }
-
-        st = ledger.getDb().statement("select count(*) from contract_subscription where origin = ?", originId.getDigest());
         try(ResultSet rs = st.executeQuery()) {
             assertTrue(rs.next());
             assertEquals(0, rs.getInt(1));
