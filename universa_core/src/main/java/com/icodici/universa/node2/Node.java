@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
@@ -66,6 +67,9 @@ public class Node {
 
     private static LogPrinter log = new LogPrinter("NODE");
 
+    public Config getConfig() {
+        return config;
+    }
     private final Config config;
     private final NodeInfo myInfo;
     private final Ledger ledger;
@@ -1759,6 +1763,22 @@ public class Node {
                             }
                         } else {
                             checkPassed = item.check();
+
+                            if(item instanceof NodeContract) {
+                                ImmutableEnvironment ime;
+                                // todo: find in the ledger ImmutableEnvironment by item.getId()
+                                ime = new NImmutableEnvironment((SlotContract) item);
+                                if (getState() == ItemState.APPROVED) {
+                                    if (((Contract) item).getRevision() == 1) {
+                                        ((NodeContract) item).beforeCreate(ime);
+                                    } else {
+                                        ((NodeContract) item).beforeUpdate(ime);
+                                    }
+                                }
+                                if (getState() == ItemState.REVOKED) {
+                                    ((NodeContract) item).beforeRevoke(ime);
+                                }
+                            }
                         }
 
                         if (checkPassed) {
@@ -2268,16 +2288,20 @@ public class Node {
                             if(getState() == ItemState.APPROVED) {
                                 if (((SlotContract) item).getRevision() == 1) {
                                     me = new NMutableEnvironment((SlotContract) item);
-                                    ContractStorageSubscription css = me.createStorageSubscription(((SlotContract) item).getContract().getId(), ((SlotContract) item).getExpiresAt());
-                                    css.receiveEvents(true);
-                                    // check: save ((SlotContract) item) to 'environments'
-                                    long environmentId = ledger.addEnvironmentToStorage("SLOT1", ((SlotContract) item).getContract().getId(), Boss.pack(me), ((SlotContract) item).getPackedContract());
-                                    // check: save ((SlotContract) item).getContract() to 'storages'
-                                    long contractStorageId = ledger.saveContractInStorage(((SlotContract) item).getContract().getId(), ((SlotContract) item).getContract().getPackedTransaction(), css.expiresAt(), ((SlotContract) item).getContract().getOrigin());
-                                    // check: save css to 'subscriptions'
-                                    long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-                                    // check: save link me -> css to 'environment_subscriptions'
-                                    ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+                                    try {
+                                        ContractStorageSubscription css = me.createStorageSubscription(((SlotContract) item).getContract().getId(), ((SlotContract) item).getExpiresAt());
+                                        css.receiveEvents(true);
+                                        // check: save ((SlotContract) item) to 'environments'
+                                        long environmentId = ledger.addEnvironmentToStorage("SLOT1", ((SlotContract) item).getContract().getId(), Boss.pack(me), ((SlotContract) item).getPackedContract());
+                                        // check: save ((SlotContract) item).getContract() to 'storages'
+                                        long contractStorageId = ledger.saveContractInStorage(((SlotContract) item).getContract().getId(), ((SlotContract) item).getContract().getPackedTransaction(), css.expiresAt(), ((SlotContract) item).getContract().getOrigin());
+                                        // check: save css to 'subscriptions'
+                                        long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
+                                        // check: save link me -> css to 'environment_subscriptions'
+                                        ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
                                     er = ((NodeContract) item).onCreated(me);
                                     extraResult.set("onCreatedResult", er);
                                 } else {
@@ -2304,7 +2328,7 @@ public class Node {
                         ContractStorageSubscription foundCss = new NContractStorageSubscription();
                         // todo: find in the ledger MutableEnvironment (or ImmutableEnvironment) by ContractStorageSubscription.id
                         // todo: find in the ledger SlotContract by ImmutableEnvironment.id
-                        SlotContract foundSlot = new SlotContract(null);
+                        SlotContract foundSlot = new SlotContract(new PrivateKey(Do.read("./src/test_contracts/keys/stepan_mamontov.private.unikey")));
 
                         if(getState() == ItemState.APPROVED) {
                             foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {

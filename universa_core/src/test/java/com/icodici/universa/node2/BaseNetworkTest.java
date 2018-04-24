@@ -7727,6 +7727,8 @@ public class BaseNetworkTest extends TestCase {
     public void registerSlotContract() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
 
+        // contract for storing
+
         Contract simpleContract = new Contract(key);
         simpleContract.seal();
         simpleContract.check();
@@ -7735,33 +7737,59 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(simpleContract);
 
+        // slot contract that storing
 
         SlotContract slotContract = new SlotContract(key);
+        slotContract.setNodeConfig(node.getConfig());
         slotContract.setContract(simpleContract);
-        slotContract.seal();
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
         slotContract.check();
         slotContract.traceErrors();
         assertTrue(slotContract.isOk());
 
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays());
+        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
+        System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
+        System.out.println(">> " + 100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
+        assertEquals(now.plusDays(100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), slotContract.getExpiresAt());
 
-        registerAndCheckApproved(slotContract);
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
 
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
-
-
-        ImmutableEnvironment ime = new NImmutableEnvironment(simpleContract);
-        MutableEnvironment me = new NMutableEnvironment(simpleContract);
-
-        slotContract.beforeCreate(ime);
-        slotContract.beforeUpdate(ime);
-        slotContract.beforeRevoke(ime);
-        slotContract.onCreated(me);
-        slotContract.onUpdated(me);
-        slotContract.onRevoked(ime);
+//        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+//
+//
+//        ImmutableEnvironment ime = new NImmutableEnvironment(simpleContract);
+//        MutableEnvironment me = new NMutableEnvironment(simpleContract);
+//
+//        slotContract.beforeCreate(ime);
+//        slotContract.beforeUpdate(ime);
+//        slotContract.beforeRevoke(ime);
+//        slotContract.onCreated(me);
+//        slotContract.onUpdated(me);
+//        slotContract.onRevoked(ime);
     }
 
 

@@ -2,6 +2,7 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -9,18 +10,17 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public class SlotContract extends NSmartContract {
 
@@ -28,16 +28,26 @@ public class SlotContract extends NSmartContract {
     private Contract trackingContract;
     private int keepRevisions = 1;
 
+    private int prepaidU = 0;
+    private int prepaidKilobytesForDays = 0;
+
+    public Config getNodeConfig() {
+        return nodeConfig;
+    }
+    public void setNodeConfig(Config nodeConfig) {
+        this.nodeConfig = nodeConfig;
+    }
+    private Config nodeConfig;
 
     /**
-     * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
-     * the transaction pack fails to resove a link, no error will be reported - not sure it's a good idea. If need, the
+     * Extract contract from v2 or v3 sealed form, getting revoking and new items from the transaction pack supplied. If
+     * the transaction pack fails to resolve a link, no error will be reported - not sure it's a good idea. If need, the
      * exception could be generated with the transaction pack.
      * <p>
      * It is recommended to call {@link #check()} after construction to see the errors.
      *
      * @param sealed binary sealed contract.
-     * @param pack   the transaction pack to resolve dependeincise agains.
+     * @param pack   the transaction pack to resolve dependencies again.
      *
      * @throws IOException on the various format errors
      */
@@ -54,6 +64,8 @@ public class SlotContract extends NSmartContract {
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
         addPermission(modifyDataPermission);
+
+        calculatePrepaidKilobytesForDays();
     }
 
     public SlotContract() {
@@ -69,6 +81,8 @@ public class SlotContract extends NSmartContract {
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
         addPermission(modifyDataPermission);
+
+        calculatePrepaidKilobytesForDays();
     }
 
     /**
@@ -94,6 +108,8 @@ public class SlotContract extends NSmartContract {
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
         addPermission(modifyDataPermission);
+
+        calculatePrepaidKilobytesForDays();
     }
 
     protected SlotContract initializeWithDsl(Binder root) throws EncryptionError {
@@ -125,16 +141,71 @@ public class SlotContract extends NSmartContract {
         trackingContract = TransactionPack.unpack(packed).getContract();
         packedTrackingContract = packed;
         getStateData().set("tracking_contract", getPackedContract());
+
+        calculatePrepaidKilobytesForDays();
     }
 
     public void setContract(Contract c) {
         packedTrackingContract = c.getPackedTransaction();
         trackingContract = c;
         getStateData().set("tracking_contract", getPackedContract());
+
+        calculatePrepaidKilobytesForDays();
     }
 
     public int getKeepRevisions() {
         return keepRevisions;
+    }
+
+    public int calculatePrepaidKilobytesForDays() {
+
+        for (Contract nc : getNew()) {
+            if (nc.isTU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
+                int calculatedPayment = 0;
+                boolean isTestPayment = false;
+                Contract parent = null;
+                for (Contract nrc : nc.getContract().getRevoking()) {
+                    if (nrc.getId().equals(nc.getContract().getParent())) {
+                        parent = nrc;
+                        break;
+                    }
+                }
+                if (parent != null) {
+                    boolean hasTestTU = nc.getContract().getStateData().get("test_transaction_units") != null;
+                    if (hasTestTU) {
+                        isTestPayment = true;
+                        calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
+                                - nc.getContract().getStateData().getIntOrThrow("test_transaction_units");
+
+                        if (calculatedPayment <= 0) {
+                            isTestPayment = false;
+                            calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
+                                    - nc.getContract().getStateData().getIntOrThrow("transaction_units");
+                        }
+                    } else {
+                        isTestPayment = false;
+                        calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
+                                - nc.getContract().getStateData().getIntOrThrow("transaction_units");
+                    }
+                }
+
+                if(!isTestPayment) {
+                    prepaidU = calculatedPayment;
+                }
+            }
+        }
+        prepaidKilobytesForDays = prepaidU * Config.kilobytesAndDaysPerU;
+        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        if(packedTrackingContract != null) {
+            setExpiresAt(now.plusDays(prepaidKilobytesForDays / (packedTrackingContract.length / 1024)));
+        } else {
+            setExpiresAt(now);
+        }
+        return prepaidKilobytesForDays;
+    }
+
+    public int getPrepaidKilobytesForDays() {
+        return prepaidKilobytesForDays;
     }
 
     @Override
@@ -158,6 +229,13 @@ public class SlotContract extends NSmartContract {
     }
 
     @Override
+    public byte[] seal() {
+        calculatePrepaidKilobytesForDays();
+
+        return super.seal();
+    }
+
+    @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
         super.deserialize(data, deserializer);
 
@@ -174,7 +252,59 @@ public class SlotContract extends NSmartContract {
 
     @Override
     public boolean beforeCreate(ImmutableEnvironment c) {
-        return additionallySlotCheck(c);
+
+        boolean checkResult = false;
+
+        boolean hasPayment = false;
+        for (Contract nc : getNew()) {
+            if(nc.isTU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
+                hasPayment = true;
+
+                int calculatedPayment = 0;
+                boolean isTestPayment = false;
+                Contract parent = null;
+                for(Contract nrc : nc.getContract().getRevoking()) {
+                    if(nrc.getId().equals(nc.getContract().getParent())) {
+                        parent = nrc;
+                        break;
+                    }
+                }
+                if(parent != null) {
+                    boolean hasTestTU = nc.getContract().getStateData().get("test_transaction_units") != null;
+                    if (hasTestTU) {
+                        isTestPayment = true;
+                        if (calculatedPayment <= 0) {
+                            isTestPayment = false;
+                        }
+                    } else {
+                        isTestPayment = false;
+                    }
+
+                    if(isTestPayment) {
+                        hasPayment = false;
+                        addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing contracts in slots");
+                    }
+
+                    if(prepaidU < nodeConfig.getMinSlotPayment()) {
+                        hasPayment = false;
+                        addError(Errors.FAILED_CHECK, "Payment for slot contract is below minimum level of " + nodeConfig.getMinSlotPayment() + "U");
+                    }
+                } else {
+                    hasPayment = false;
+                    addError(Errors.FAILED_CHECK, "Payment contract is missing parent contarct");
+                }
+            }
+        }
+
+        checkResult = hasPayment;
+        if(!checkResult) {
+            addError(Errors.FAILED_CHECK, "Slot contract hasn't valid payment");
+            return checkResult;
+        }
+
+        checkResult = additionallySlotCheck(c);
+
+        return checkResult;
     }
 
     @Override

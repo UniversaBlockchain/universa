@@ -147,23 +147,23 @@ public class SmartContract extends Contract implements NodeContract {
             return checkResult;
         }
 
-        checkResult = beforeCreate(null);
-        if(!checkResult) {
-            addError(FAILED_CHECK, "beforeCreate returns false");
-            return checkResult;
-        }
-
-        checkResult = beforeUpdate(null);
-        if(!checkResult) {
-            addError(FAILED_CHECK, "beforeUpdate returns false");
-            return checkResult;
-        }
-
-        checkResult = beforeRevoke(null);
-        if(!checkResult) {
-            addError(FAILED_CHECK, "beforeRevoke returns false");
-            return checkResult;
-        }
+//        checkResult = beforeCreate(null);
+//        if(!checkResult) {
+//            addError(FAILED_CHECK, "beforeCreate returns false");
+//            return checkResult;
+//        }
+//
+//        checkResult = beforeUpdate(null);
+//        if(!checkResult) {
+//            addError(FAILED_CHECK, "beforeUpdate returns false");
+//            return checkResult;
+//        }
+//
+//        checkResult = beforeRevoke(null);
+//        if(!checkResult) {
+//            addError(FAILED_CHECK, "beforeRevoke returns false");
+//            return checkResult;
+//        }
 
         return checkResult;
     }

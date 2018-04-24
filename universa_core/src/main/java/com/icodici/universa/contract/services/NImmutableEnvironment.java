@@ -10,13 +10,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 public class NImmutableEnvironment extends Binder implements ImmutableEnvironment {
 
     protected Contract contract;
     protected ZonedDateTime createdAt;
-    protected Set<ContractStorageSubscription> storageSubscriptionsSet;
+    protected Set<ContractStorageSubscription> storageSubscriptionsSet = new HashSet<>();
 
     public NImmutableEnvironment(Contract contract) {
         this.contract = contract;
