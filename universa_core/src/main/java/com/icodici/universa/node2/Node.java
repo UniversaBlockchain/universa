@@ -2305,16 +2305,30 @@ public class Node {
                                     er = ((NodeContract) item).onCreated(me);
                                     extraResult.set("onCreatedResult", er);
                                 } else {
-                                    // todo: find in the ledger MutableEnvironment by item.getId()
-                                    me = new NMutableEnvironment((SlotContract) item);
-                                    er = ((NodeContract) item).onUpdated(me);
-                                    extraResult.set("onUpdateResult", er);
+                                    // check: find in the ledger MutableEnvironment by item.getId()
+                                    Set<byte[]> envs = ledger.getEnvironmentsForContractId(item.getId());
+                                    if (envs != null) {
+                                        for (byte[] ebytes : envs) {
+                                            Binder binder = Boss.unpack(ebytes);
+                                            //todo: cast binder to environment and call onUpdated
+                                            me = new NMutableEnvironment((SlotContract) item);
+                                            er = ((NodeContract) item).onUpdated(me);
+                                            extraResult.set("onUpdateResult", er);
+                                        }
+                                    }
                                 }
                             }
                             if(getState() == ItemState.REVOKED) {
-                                // todo: find in the ledger ImutableEnvironment by item.getId()
-                                ime = new NImmutableEnvironment((SlotContract) item);
-                                ((NodeContract) item).onRevoked(ime);
+                                // check: find in the ledger ImutableEnvironment by item.getId()
+                                Set<byte[]> envs = ledger.getEnvironmentsForContractId(item.getId());
+                                if (envs != null) {
+                                    for (byte[] ebytes : envs) {
+                                        Binder binder = Boss.unpack(ebytes);
+                                        //todo: cast binder to environment and call onRevoked
+                                        ime = new NImmutableEnvironment((SlotContract) item);
+                                        ((NodeContract) item).onRevoked(ime);
+                                    }
+                                }
                             }
 
                             if (item != null) {

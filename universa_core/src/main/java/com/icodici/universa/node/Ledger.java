@@ -17,6 +17,7 @@ import com.icodici.universa.node2.NodeInfo;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -191,6 +192,7 @@ public interface Ledger {
     long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin);
     long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt);
     void saveEnvironmentSubscription(long subscriptionId, long environmentId);
+    Set<byte[]> getEnvironmentsForContractId(HashId contractId);
 
 
     void cleanup();

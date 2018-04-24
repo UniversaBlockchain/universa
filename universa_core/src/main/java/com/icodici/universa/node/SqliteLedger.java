@@ -22,10 +22,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 /**
@@ -331,6 +328,9 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {}
+
+    @Override
+    public Set<byte[]> getEnvironmentsForContractId(HashId contractId) {return null;}
 
     /**
      * Enable or disable records caching. USe it in tests only, in production it should always be enabled
