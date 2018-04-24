@@ -749,23 +749,76 @@ public class PostgresLedger implements Ledger {
                     PreparedStatement statement =
                             db.statement(
                                     "WITH contract_storage AS (" +
-                                           "  INSERT INTO contract_storage (hash_id,bin_data) VALUES (?,?) RETURNING contract_storage.*" +
+                                           "  INSERT INTO contract_storage (hash_id,bin_data,origin,expires_at) VALUES (?,?,?,?) RETURNING contract_storage.*" +
                                            ")" +
-                                           "INSERT INTO contract_subscription (contract_storage_id,expires_at,origin)" +
-                                           "SELECT contract_storage.id, ?, ? FROM contract_storage"
+                                           "INSERT INTO contract_subscription (contract_storage_id,expires_at)" +
+                                           "SELECT contract_storage.id, ? FROM contract_storage"
                             )
             ) {
                 statement.setBytes(1, contractId.getDigest());
                 statement.setBytes(2, binData);
-                statement.setLong(3, StateRecord.unixTime(expiresAt));
-                statement.setBytes(4, origin.getDigest());
+                statement.setBytes(3, origin.getDigest());
+                statement.setLong(4, StateRecord.unixTime(expiresAt));
+                statement.setLong(5, StateRecord.unixTime(expiresAt));
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("addContractToStorage failed:" + se);
+            throw new Failure("addContractToStorage failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement("INSERT INTO contract_storage (hash_id,bin_data,origin,expires_at) VALUES (?,?,?,?) RETURNING id")
+            ) {
+                statement.setBytes(1, contractId.getDigest());
+                statement.setBytes(2, binData);
+                statement.setBytes(3, origin.getDigest());
+                statement.setLong(4, StateRecord.unixTime(expiresAt));
+                //db.updateWithStatement(statement);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("saveContractInStorage failed: returning null");
+                return rs.getLong(0);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveContractInStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    @Override
+    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at) RETURNING id")
+            ) {
+                statement.setLong(1, contractStorageId);
+                statement.setLong(4, StateRecord.unixTime(expiresAt));
+                //db.updateWithStatement(statement);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("saveSubscriptionInStorage failed: returning null");
+                return rs.getLong(0);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveSubscriptionInStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
         }
     }
 
@@ -784,7 +837,7 @@ public class PostgresLedger implements Ledger {
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("clearExpiredStorageSubscriptions failed:" + se);
+            throw new Failure("clearExpiredStorageSubscriptions failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -805,29 +858,55 @@ public class PostgresLedger implements Ledger {
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("clearExpiredStorageContracts failed:" + se);
+            throw new Failure("clearExpiredStorageContracts failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void addEnvironmentToStorage(HashId contractId, byte[] binData, HashId nContractId) {
+    public long addEnvironmentToStorage(HashId contractId, byte[] binData, HashId nContractId) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "INSERT INTO environment_storage (hash_id,bin_data,ncontract_hash_id) VALUES (?,?,?)"
+                                    "INSERT INTO environments (hash_id,bin_data,ncontract_hash_id) VALUES (?,?,?)"
                             )
             ) {
                 statement.setBytes(1, contractId.getDigest());
                 statement.setBytes(2, binData);
                 statement.setBytes(3, nContractId.getDigest());
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("addEnvironmentToStorage failed: returning null");
+                return rs.getLong(0);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addEnvironmentToStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    @Override
+    public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "INSERT INTO environment_subscription (subscription_id,environemtn_id) VALUES (?,?)"
+                            )
+            ) {
+                statement.setLong(1, subscriptionId);
+                statement.setLong(2, environmentId);
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("addEnvironmentToStorage failed:" + se);
+            throw new Failure("addEnvironmentToStorage failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
         }

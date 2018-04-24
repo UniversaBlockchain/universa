@@ -2270,11 +2270,15 @@ public class Node {
                                     me = new NMutableEnvironment((SlotContract) item);
                                     ContractStorageSubscription css = me.createStorageSubscription(((SlotContract) item).getContract().getId(), ((SlotContract) item).getExpiresAt());
                                     css.receiveEvents(true);
-                                    ledger.addEnvironmentToStorage(((SlotContract) item).getContract().getId(), Boss.pack(me), item.getId());
-                                    // todo: save ((SlotContract) item) to 'environments'
-                                    // todo: save css to 'subscriptions'
-                                    // todo: save link me -> css to 'environment_subscriptions'
-                                    // todo: save ((SlotContract) item).getContract() to 'storages'
+                                    long environmentId = ledger.addEnvironmentToStorage(((SlotContract) item).getContract().getId(), Boss.pack(me), item.getId());
+                                    // check: save ((SlotContract) item) to 'environments'
+                                    long contractStorageId = ledger.saveContractInStorage(item.getId(), ((SlotContract) item).getPackedContract(), css.expiresAt(), ((SlotContract) item).getOrigin());
+                                    // check: save css to 'subscriptions'
+                                    long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
+                                    // check: save link me -> css to 'environment_subscriptions'
+                                    ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+                                    // check: save ((SlotContract) item).getContract() to 'storages'
+                                    ledger.saveContractInStorage(((SlotContract) item).getContract().getId(), ((SlotContract) item).getContract().getPackedTransaction(), css.expiresAt(), ((SlotContract) item).getContract().getOrigin());
                                     er = ((NodeContract) item).onCreated(me);
                                     extraResult.set("onCreatedResult", er);
                                 } else {
