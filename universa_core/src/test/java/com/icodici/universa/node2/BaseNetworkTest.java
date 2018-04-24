@@ -7778,7 +7778,45 @@ public class BaseNetworkTest extends TestCase {
 
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
-//        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+
+
+        SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
+        refilledSlotContract.setNodeConfig(node.getConfig());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedTUContract();
+
+        payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+
+        refilledSlotContract.check();
+        refilledSlotContract.traceErrors();
+        assertTrue(refilledSlotContract.isOk());
+
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
+        assertEquals(300 * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays());
+        now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
+        System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
+        System.out.println(">> " + 300 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
+        assertEquals(now.plusDays(300 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), refilledSlotContract.getExpiresAt());
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
 //
 //
 //        ImmutableEnvironment ime = new NImmutableEnvironment(simpleContract);

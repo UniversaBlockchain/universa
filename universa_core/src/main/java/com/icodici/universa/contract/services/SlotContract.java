@@ -6,6 +6,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
+import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
@@ -19,6 +20,8 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -53,34 +56,16 @@ public class SlotContract extends NSmartContract {
      */
     public SlotContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
-        getDefinition().setExtendedType(SmartContractType.SLOT1.name());
 
-        // add modify_data permission
-
-        RoleLink ownerLink = new RoleLink("owner_link", "owner");
-        registerRole(ownerLink);
-        HashMap<String,Object> fieldsMap = new HashMap<>();
-        fieldsMap.put("action", null);
-        Binder modifyDataParams = Binder.of("fields", fieldsMap);
-        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
-        addPermission(modifyDataPermission);
+        createSlotSpecific();
 
         calculatePrepaidKilobytesForDays();
     }
 
     public SlotContract() {
         super();
-        getDefinition().setExtendedType(SmartContractType.SLOT1.name());
 
-        // add modify_data permission
-
-        RoleLink ownerLink = new RoleLink("owner_link", "owner");
-        registerRole(ownerLink);
-        HashMap<String,Object> fieldsMap = new HashMap<>();
-        fieldsMap.put("action", null);
-        Binder modifyDataParams = Binder.of("fields", fieldsMap);
-        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
-        addPermission(modifyDataPermission);
+//        createSlotSpecific();
 
         calculatePrepaidKilobytesForDays();
     }
@@ -97,19 +82,42 @@ public class SlotContract extends NSmartContract {
      */
     public SlotContract(PrivateKey key) {
         super(key);
-        getDefinition().setExtendedType(SmartContractType.SLOT1.name());
+
+        createSlotSpecific();
+
+        calculatePrepaidKilobytesForDays();
+    }
+
+    private void createSlotSpecific() {
+        if(!getDefinition().getExtendedType().equals(SmartContractType.SLOT1.name()))
+            getDefinition().setExtendedType(SmartContractType.SLOT1.name());
 
         // add modify_data permission
 
-        RoleLink ownerLink = new RoleLink("owner_link", "owner");
-        registerRole(ownerLink);
-        HashMap<String,Object> fieldsMap = new HashMap<>();
-        fieldsMap.put("action", null);
-        Binder modifyDataParams = Binder.of("fields", fieldsMap);
-        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
-        addPermission(modifyDataPermission);
+        boolean permExist = false;
+        Collection<Permission> mdps = getPermissions().get(ModifyDataPermission.FIELD_NAME);
+        if(mdps != null) {
+            for (Permission perm : mdps) {
+                if (perm.getName() == ModifyDataPermission.FIELD_NAME) {
+                    System.out.println(perm.getName() + " " + perm.isAllowedForKeys(getOwner().getKeys()));
+                    if (perm.isAllowedForKeys(getOwner().getKeys())) {
+                        permExist = true;
+                        break;
+                    }
+                }
+            }
+        }
 
-        calculatePrepaidKilobytesForDays();
+        if(!permExist) {
+            RoleLink ownerLink = new RoleLink("owner_link", "owner");
+            registerRole(ownerLink);
+            HashMap<String, Object> fieldsMap = new HashMap<>();
+            fieldsMap.put("action", null);
+            fieldsMap.put("/expires_at", null);
+            Binder modifyDataParams = Binder.of("fields", fieldsMap);
+            ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+            addPermission(modifyDataPermission);
+        }
     }
 
     protected SlotContract initializeWithDsl(Binder root) throws EncryptionError {

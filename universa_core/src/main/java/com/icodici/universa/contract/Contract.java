@@ -2312,7 +2312,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         private ZonedDateTime expiresAt;
         private Binder definition;
-        private Binder data;
+        private Binder data = new Binder();
         private List<Reference> references = new ArrayList<>();
 
         private String extendedType;
