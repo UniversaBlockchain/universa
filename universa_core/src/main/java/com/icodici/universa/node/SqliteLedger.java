@@ -318,7 +318,7 @@ public class SqliteLedger implements Ledger {
     public void clearExpiredStorageContracts() {}
 
     @Override
-    public long addEnvironmentToStorage(HashId contractId, byte[] binData, HashId nContractId) {return 0;}
+    public long addEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {return 0;}
 
     @Override
     public byte[] getEnvironmentFromStorage(HashId contractId) {return null;}

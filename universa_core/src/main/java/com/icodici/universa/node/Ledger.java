@@ -186,7 +186,7 @@ public interface Ledger {
     void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin);
     void clearExpiredStorageSubscriptions();
     void clearExpiredStorageContracts();
-    long addEnvironmentToStorage(HashId contractId, byte[] binData, HashId nContractId);
+    long addEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack);
     byte[] getEnvironmentFromStorage(HashId contractId);
     long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin);
     long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt);

@@ -680,9 +680,10 @@ public class PostgresLedgerTest extends TestCase {
         long now = StateRecord.unixTime(ZonedDateTime.now());
         Binder someBinder = Binder.of("balance", "12.345", "expires_at", now);
         HashId contractId = HashId.createRandom();
-        HashId nContractId = HashId.createRandom();
+        Contract someContract = new Contract(TestKeys.privateKey(0));
+        someContract.seal();
 
-        ledger.addEnvironmentToStorage(contractId, Boss.pack(someBinder), nContractId);
+        ledger.addEnvironmentToStorage("SLOT0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
 
         byte[] readedBytes = ledger.getEnvironmentFromStorage(contractId);
         assertNotEquals(null, readedBytes);

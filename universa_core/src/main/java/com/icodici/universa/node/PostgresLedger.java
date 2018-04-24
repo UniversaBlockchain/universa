@@ -786,7 +786,10 @@ public class PostgresLedger implements Ledger {
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("saveContractInStorage failed: returning null");
-                return rs.getLong(0);
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
             }
         } catch (SQLException se) {
             se.printStackTrace();
@@ -811,7 +814,10 @@ public class PostgresLedger implements Ledger {
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("saveSubscriptionInStorage failed: returning null");
-                return rs.getLong(0);
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
             }
         } catch (SQLException se) {
             se.printStackTrace();
@@ -865,22 +871,26 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public long addEnvironmentToStorage(HashId contractId, byte[] binData, HashId nContractId) {
+    public long addEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "INSERT INTO environments (hash_id,bin_data,ncontract_hash_id) VALUES (?,?,?)"
+                                    "INSERT INTO environments (ncontract_type,ncontract_hash_id,kv_storage,transaction_pack) VALUES (?,?,?,?) RETURNING id"
                             )
             ) {
-                statement.setBytes(1, contractId.getDigest());
-                statement.setBytes(2, binData);
-                statement.setBytes(3, nContractId.getDigest());
+                statement.setString(1, ncontractType);
+                statement.setBytes(2, ncontractHashId.getDigest());
+                statement.setBytes(3, kvStorage);
+                statement.setBytes(4, transactionPack);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("addEnvironmentToStorage failed: returning null");
-                return rs.getLong(0);
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
             }
         } catch (SQLException se) {
             se.printStackTrace();
@@ -913,12 +923,12 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public byte[] getEnvironmentFromStorage(HashId contractId) {
+    public byte[] getEnvironmentFromStorage(HashId ncontractHashId) {
         return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("SELECT bin_data FROM environment_storage WHERE hash_id=?", contractId.getDigest()))) {
+            try (ResultSet rs = inPool(db -> db.queryRow("SELECT kv_storage FROM environments WHERE ncontract_hash_id=?", ncontractHashId.getDigest()))) {
                 if (rs == null)
                     return null;
-                return rs.getBytes("bin_data");
+                return rs.getBytes("kv_storage");
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
