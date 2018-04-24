@@ -2316,13 +2316,13 @@ public class Node {
                                                 er = ((NodeContract) item).onUpdated(me);
                                                 extraResult.set("onUpdateResult", er);
                                             }
+                                        } else {
+                                            me = new NMutableEnvironment((SlotContract) item);
+                                            er = ((NodeContract) item).onUpdated(me);
+                                            extraResult.set("onUpdateResult", er);
                                         }
                                     } catch (Exception e) {
                                         e.printStackTrace();
-                                        // todo: remove after exception will be fixed
-                                        me = new NMutableEnvironment((SlotContract) item);
-                                        er = ((NodeContract) item).onUpdated(me);
-                                        extraResult.set("onUpdateResult", er);
                                     }
                                 }
                             }
