@@ -14,6 +14,7 @@ import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.services.NContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.biserializer.BiSerializer;
@@ -952,6 +953,68 @@ public class PostgresLedger implements Ledger {
                     res.add(rs.getBytes(0));
                 } while (rs.next());
                 return res;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
+    public Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT environments.kv_storage FROM contract_subscription" +
+                    "LEFT JOIN environment_subscription ON contract_subscription.id=environment_subscription.subscription_id" +
+                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id" +
+                    "WHERE contract_subscription.id=?", subscriptionStorageId))) {
+                if (rs == null)
+                    return null;
+                HashSet<byte[]> res = new HashSet<>();
+                do {
+                    res.add(rs.getBytes(0));
+                } while (rs.next());
+                return res;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
+    public Set<NContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT contract_subscription.id, contract_subscription.expires_at FROM contract_storage" +
+                    "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id" +
+                    "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
+                if (rs == null)
+                    return null;
+                HashSet<NContractStorageSubscription> res = new HashSet<>();
+                do {
+                    NContractStorageSubscription css = new NContractStorageSubscription();
+                    css.setId(rs.getLong(0));
+                    css.setExpiresAt(StateRecord.getTime(rs.getLong(1)));
+                    res.add(css);
+                } while (rs.next());
+                return res;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
+    public byte[] getSlotContractByEnvironmentId(long environmentId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT transaction_pack FROM environments" +
+                    "WHERE id=?", environmentId))) {
+                if (rs == null)
+                    return null;
+                return rs.getBytes(0);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;

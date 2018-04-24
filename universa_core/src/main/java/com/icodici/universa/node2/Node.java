@@ -2338,10 +2338,13 @@ public class Node {
                             }
                         }
                         // or we found in the ledger slot for stored contract
-                        // todo: find in the ledger ContractStorageSubscription by item.getId()
-                        ContractStorageSubscription foundCss = new NContractStorageSubscription();
-                        // todo: find in the ledger MutableEnvironment (or ImmutableEnvironment) by ContractStorageSubscription.id
+                        // check: find in the ledger ContractStorageSubscription by item.getId()
+                        ContractStorageSubscription foundCss = ledger.getStorageSubscriptionsForContractId(item.getId()).iterator().next();
+                        // check: find in the ledger MutableEnvironment (or ImmutableEnvironment) by ContractStorageSubscription.id
+                        Set<byte[]> envs = ledger.getEnvironmentsForSubscriptionStorageId(((NContractStorageSubscription)foundCss).getId());
+                        //todo: cast byte[] to environment
                         // todo: find in the ledger SlotContract by ImmutableEnvironment.id
+                        //byte[] foundSlotPack = ledger.getSlotContractByEnvironmentId(env.getId());
                         SlotContract foundSlot = new SlotContract(new PrivateKey(Do.read("./src/test_contracts/keys/stepan_mamontov.private.unikey")));
 
                         if(getState() == ItemState.APPROVED) {

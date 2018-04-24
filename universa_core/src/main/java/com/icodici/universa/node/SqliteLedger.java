@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.services.NContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import org.sqlite.SQLiteConfig;
@@ -331,6 +332,15 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public Set<byte[]> getEnvironmentsForContractId(HashId contractId) {return null;}
+
+    @Override
+    public Set<NContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {return null;}
+
+    @Override
+    public Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId) {return null;}
+
+    @Override
+    public byte[] getSlotContractByEnvironmentId(long environmentId) {return null;}
 
     /**
      * Enable or disable records caching. USe it in tests only, in production it should always be enabled
