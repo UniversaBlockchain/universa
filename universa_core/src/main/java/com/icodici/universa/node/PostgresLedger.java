@@ -1055,4 +1055,46 @@ public class PostgresLedger implements Ledger {
         });
     }
 
+    @Override
+    public void removeEnvironmentSubscription(long subscriptionId) {
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime now = ZonedDateTime.now();
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                "DELETE FROM environment_subscription WHERE subscription_id=?"
+                    )
+            ) {
+                statement.setLong(1, subscriptionId);
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("removeContractFromStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void removeEnvironment(HashId ncontractHashId) {
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime now = ZonedDateTime.now();
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM environments WHERE ncontract_hash_id=?"
+                            )
+            ) {
+                statement.setBytes(1, ncontractHashId.getDigest());
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("removeContractFromStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 }

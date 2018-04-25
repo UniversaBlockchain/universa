@@ -348,6 +348,12 @@ public class SqliteLedger implements Ledger {
     @Override
     public byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId) {return null;}
 
+    @Override
+    public void removeEnvironmentSubscription(long subscriptionId) {}
+
+    @Override
+    public void removeEnvironment(HashId ncontractHashId) {}
+
     /**
      * Enable or disable records caching. USe it in tests only, in production it should always be enabled
      *
