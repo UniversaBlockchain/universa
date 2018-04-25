@@ -2186,12 +2186,20 @@ public class Node {
                             r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
                             try {
                                 r.save();
-                                synchronized (cache) {
-                                    ItemResult cr = cache.getResult(r.getId());
-                                    ItemResult rr = new ItemResult(r);
-                                    if(cr != null) {
-                                        rr.extraDataBinder = cr.extraDataBinder;
+                                if(revokingItem instanceof SlotContract) {
+                                    ImmutableEnvironment ime;
+                                    byte[] ebytes = ledger.getEnvironmentFromStorage(revokingItem.getId());
+                                    if (ebytes != null) {
+                                        Binder binder = Boss.unpack(ebytes);
+                                        ime = new SlotImmutableEnvironment((SlotContract) revokingItem, binder);
+                                        ((SlotContract) revokingItem).setLedger(ledger);
+//                                        ((SlotContract) revokingItem).onRevoked(ime);
                                     }
+                                }
+                                synchronized (cache) {
+//                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+                                    rr.extraDataBinder = null;
                                     cache.update(r.getId(), rr);
                                 }
                             } catch (Ledger.Failure failure) {
@@ -2288,17 +2296,8 @@ public class Node {
                             if(getState() == ItemState.APPROVED) {
                                 if (((SlotContract) item).getRevision() == 1) {
                                     me = new SlotMutableEnvironment((SlotContract) item);
-                                    try {
-                                        ContractStorageSubscription css = me.createStorageSubscription(((SlotContract) item).getTrackingContract().getId(), ((SlotContract) item).getExpiresAt());
-                                        css.receiveEvents(true);
-                                        long environmentId = ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
-                                        long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
-                                        long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-                                        ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                    er = ((NodeContract) item).onCreated(me);
+                                    ((SlotContract) item).setLedger(ledger);
+                                    er = ((SlotContract) item).onCreated(me);
                                     extraResult.set("onCreatedResult", er);
                                 } else {
                                     try{
@@ -2306,12 +2305,13 @@ public class Node {
                                         if (ebytes != null) {
                                             Binder binder = Boss.unpack(ebytes);
                                             me = new SlotMutableEnvironment((SlotContract) item, binder);
-                                            er = ((NodeContract) item).onUpdated(me);
+                                            ((SlotContract) item).setLedger(ledger);
+                                            er = ((SlotContract) item).onUpdated(me);
                                             extraResult.set("onUpdateResult", er);
-                                            ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
                                         } else {
                                             me = new SlotMutableEnvironment((SlotContract) item);
-                                            er = ((NodeContract) item).onUpdated(me);
+                                            ((SlotContract) item).setLedger(ledger);
+                                            er = ((SlotContract) item).onUpdated(me);
                                             extraResult.set("onUpdateResult", er);
                                         }
                                     } catch (Exception e) {
@@ -2324,8 +2324,8 @@ public class Node {
                                 if (ebytes != null) {
                                     Binder binder = Boss.unpack(ebytes);
                                     ime = new SlotImmutableEnvironment((SlotContract) item, binder);
-                                    ((NodeContract) item).onRevoked(ime);
-                                    ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(ime), ((SlotContract) item).getPackedTransaction());
+                                    ((SlotContract) item).setLedger(ledger);
+                                    ((SlotContract) item).onRevoked(ime);
                                 }
                             }
 
@@ -2341,7 +2341,7 @@ public class Node {
                                 if(foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
                                     byte[] foundSlotPack = ledger.getSlotForSubscriptionStorageId(((SlotContractStorageSubscription) foundCss).getId());
                                     SlotContract foundSlot = (SlotContract) Contract.fromPackedTransaction(foundSlotPack);
-
+                                    foundSlot.setLedger(ledger);
                                     if (getState() == ItemState.APPROVED) {
                                         foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
                                             @Override

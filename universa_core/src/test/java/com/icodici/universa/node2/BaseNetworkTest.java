@@ -23,6 +23,7 @@ import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
@@ -7794,6 +7795,13 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract.getId(), restoredContract.getId());
 
+        // check if we store environment
+
+        byte[] ebytes = ledger.getEnvironmentFromStorage(slotContract.getId());
+        assertNotNull(ebytes);
+        Binder binder = Boss.unpack(ebytes);
+        assertNotNull(binder);
+
 
         // refill slot contract with U (means add storing days)
 
@@ -7834,6 +7842,17 @@ public class BaseNetworkTest extends TestCase {
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
 
+        // check if we updated environment and subscriptions (remove old, create new)
+
+        assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
+        ebytes = ledger.getEnvironmentFromStorage(slotContract.getId());
+        assertNull(ebytes);
+
+        ebytes = ledger.getEnvironmentFromStorage(refilledSlotContract.getId());
+        assertNotNull(ebytes);
+        binder = Boss.unpack(ebytes);
+        assertNotNull(binder);
+
 
         // revoke slot contract, means remove stored contract from storage
 
@@ -7848,6 +7867,11 @@ public class BaseNetworkTest extends TestCase {
 
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNull(restoredPackedData);
+
+        // check if we updated environment and subscriptions
+
+        ebytes = ledger.getEnvironmentFromStorage(refilledSlotContract.getId());
+        assertNull(ebytes);
     }
 
 

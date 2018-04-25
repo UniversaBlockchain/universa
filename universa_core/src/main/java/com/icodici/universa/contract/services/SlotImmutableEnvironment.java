@@ -25,8 +25,13 @@ public class SlotImmutableEnvironment extends Binder implements ImmutableEnviron
         this(contract);
 
         for(String key : kvBinder.keySet()) {
-            set(key, kvBinder.get(key));
+            super.set(key, kvBinder.get(key));
         }
+    }
+
+    @Override
+    public <T extends Object> T set(String key, T value) {
+        return null;
     }
 
     @Override

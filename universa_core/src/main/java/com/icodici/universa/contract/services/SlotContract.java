@@ -15,6 +15,7 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
@@ -359,6 +360,41 @@ public class SlotContract extends NSmartContract {
 //        return checkResult;
 
         return true;
+    }
+
+    @Override
+    public @Nullable Binder onCreated(MutableEnvironment me) {
+        try {
+            ContractStorageSubscription css = me.createStorageSubscription(getTrackingContract().getId(), getExpiresAt());
+            css.receiveEvents(true);
+            long environmentId = ledger.saveEnvironmentToStorage("SLOT1", getId(), Boss.pack(me), getPackedTransaction());
+            long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
+            long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
+            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return Binder.fromKeysValues("status", "ok");
+    }
+
+    @Override
+    public Binder onUpdated(MutableEnvironment me) {
+
+        ledger.saveEnvironmentToStorage("SLOT1", getId(), Boss.pack(me), getPackedTransaction());
+        return Binder.fromKeysValues("status", "ok");
+    }
+
+    @Override
+    public void onRevoked(ImmutableEnvironment ime) {
+        ledger.saveEnvironmentToStorage("SLOT1", getId(), Boss.pack(ime), getPackedTransaction());
+
+        for (ContractStorageSubscription css : ime.storageSubscriptions()) {
+            // todo: may be here we can remove subscriptions by set of ids?
+            ledger.removeEnvironmentSubscription(((SlotContractStorageSubscription) css).getId());
+        }
+
+        ledger.removeEnvironment(getId());
     }
 
     static {

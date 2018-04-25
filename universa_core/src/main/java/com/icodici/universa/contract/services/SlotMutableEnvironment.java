@@ -17,10 +17,10 @@ public class SlotMutableEnvironment extends SlotImmutableEnvironment implements 
         super(contract, kvBinder);
     }
 
-//    @Override
-//    public <T> MutableEnvironment set(String key, T value) {
-//        return (MutableEnvironment) put(key, value);
-//    }
+    @Override
+    public <T extends Object> T set(String key, T value) {
+        return (T) put(key, value);
+    }
 
     @Override
     public void rollback() {
