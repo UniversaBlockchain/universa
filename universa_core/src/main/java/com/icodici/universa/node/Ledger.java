@@ -198,6 +198,7 @@ public interface Ledger {
     Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId);
     byte[] getSlotContractByEnvironmentId(long environmentId);
     byte[] getContractInStorage(HashId contractId);
+    byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId);
 
     void cleanup();
 }

@@ -1,0 +1,1 @@
+create unique index ix_environment_subscription_subscription_id on environment_subscription(subscription_id);

@@ -983,6 +983,23 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT environments.transaction_pack FROM environment_subscription " +
+                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id " +
+                    "WHERE environment_subscription.subscription_id=?", subscriptionStorageId))) {
+                if (rs == null)
+                    return null;
+                return rs.getBytes(0);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
     public Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
