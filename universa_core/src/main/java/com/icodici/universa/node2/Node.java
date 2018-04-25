@@ -2345,16 +2345,12 @@ public class Node {
                                 }
                             }
                         }
-                        // or we found in the ledger slot for stored contract
-                        // check: find in the ledger ContractStorageSubscription by item.getId()
                         Set<ContractStorageSubscription> foundCssSet = ledger.getStorageSubscriptionsForContractId(item.getId());
                         if(foundCssSet != null) {
                             for (ContractStorageSubscription foundCss : foundCssSet) {
-                                // check: find in the ledger MutableEnvironment (or ImmutableEnvironment) by ContractStorageSubscription.id
-                                Set<byte[]> envs = ledger.getEnvironmentsForSubscriptionStorageId(((NContractStorageSubscription) foundCss).getId());
-                                //todo: cast byte[] to environment
-                                // todo: find in the ledger SlotContract by ImmutableEnvironment.id
-                                //byte[] foundSlotPack = ledger.getSlotContractByEnvironmentId(env.getId());
+                                // todo: need following method (see below)
+                                // byte[] foundSlotPack = ledger.getSlotContractByStorageSubscriptionId(foundCss.getId());
+                                // SlotContract foundSlot = Contract.fromPackedTransaction(foundSlotPack);
                                 SlotContract foundSlot = new SlotContract(new PrivateKey(Do.read("./src/test_contracts/keys/stepan_mamontov.private.unikey")));
 
                                 if (getState() == ItemState.APPROVED) {
@@ -2385,21 +2381,6 @@ public class Node {
                                 }
                             }
                         }
-
-//                        byte[] readedBytes = ledger.getEnvironmentFromStorage(item.getId());
-//                        Binder readedBinder = Boss.unpack(readedBytes);
-//                        if(readedBinder instanceof ImmutableEnvironment) {
-//                            for(ContractStorageSubscription css : ((ImmutableEnvironment) readedBinder).storageSubscriptions()) {
-//                                if(getState() == ItemState.APPROVED) {
-////                                    css.onApproved(css, item, ((SlotContract) item).getPackedTransaction());
-//                                }
-//                            }
-//                            for(ContractStorageSubscription css : ((ImmutableEnvironment) readedBinder).storageSubscriptions()) {
-//                                if(getState() == ItemState.REVOKED) {
-////                                    css.onRevoked(css);
-//                                }
-//                            }
-//                        }
                     } catch (Exception ex) {
                         ex.printStackTrace();
                     }

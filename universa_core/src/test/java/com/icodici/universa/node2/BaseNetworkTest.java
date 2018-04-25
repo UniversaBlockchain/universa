@@ -7763,7 +7763,7 @@ public class BaseNetworkTest extends TestCase {
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
         System.out.println(">> " + 100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
-        assertEquals(now.plusDays(100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), slotContract.getExpiresAt());
+        assertAlmostSame(now.plusDays(100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), slotContract.getExpiresAt());
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -7782,12 +7782,16 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract.getId(), slotContract.getContract().getId());
         assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getContract().getId());
 
+        // check if we store same contract as want
+
         byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNotNull(restoredPackedData);
         Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
         assertNotNull(restoredContract);
         assertEquals(simpleContract.getId(), restoredContract.getId());
 
+
+        // refill slot contrtac with U (means add storing days)
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
         refilledSlotContract.setNodeConfig(node.getConfig());
@@ -7810,7 +7814,7 @@ public class BaseNetworkTest extends TestCase {
         System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
         System.out.println(">> " + 300 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
-        assertEquals(now.plusDays(300 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), refilledSlotContract.getExpiresAt());
+        assertAlmostSame(now.plusDays(300 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), refilledSlotContract.getExpiresAt());
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -7825,17 +7829,6 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
-//
-//
-//        ImmutableEnvironment ime = new NImmutableEnvironment(simpleContract);
-//        MutableEnvironment me = new NMutableEnvironment(simpleContract);
-//
-//        slotContract.beforeCreate(ime);
-//        slotContract.beforeUpdate(ime);
-//        slotContract.beforeRevoke(ime);
-//        slotContract.onCreated(me);
-//        slotContract.onUpdated(me);
-//        slotContract.onRevoked(ime);
     }
 
 
