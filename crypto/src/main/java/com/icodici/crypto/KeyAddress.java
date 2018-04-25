@@ -147,16 +147,16 @@ public class KeyAddress implements KeyMatcher {
 
     /**
      * Check that the address matches key information. It DOES NOT check the typeMark {@link #getTypeMark()}! If the
-     * type mark is important, check it by hand.
+     * type mark is important, check it by hand. If teh address sizes are different always retuen false, in this case it
+     * is not possible to perform the real check.
      *
      * @param other
-     *
-     * @return
      */
     @Override
     public boolean isMatchingKeyAddress(KeyAddress other) {
         if (_isLong != other._isLong)
-            throw new IllegalArgumentException("can't match addresses of different length");
+            return false;
+//            throw new IllegalArgumentException("can't match addresses of different length");
         return other.keyMask == keyMask && Arrays.equals(keyDigest, other.keyDigest);
     }
 
