@@ -7726,6 +7726,10 @@ public class BaseNetworkTest extends TestCase {
     @Test
     public void registerSlotContract() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
 
         // contract for storing
 
@@ -7739,7 +7743,7 @@ public class BaseNetworkTest extends TestCase {
 
         // slot contract that storing
 
-        SlotContract slotContract = new SlotContract(key);
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
         slotContract.setNodeConfig(node.getConfig());
         slotContract.setContract(simpleContract);
 
@@ -7791,7 +7795,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract.getId(), restoredContract.getId());
 
 
-        // refill slot contrtac with U (means add storing days)
+        // refill slot contract with U (means add storing days)
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
         refilledSlotContract.setNodeConfig(node.getConfig());
@@ -7829,6 +7833,21 @@ public class BaseNetworkTest extends TestCase {
 
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+
+        // revoke slot contract, means remove stored contract from storage
+
+        Contract revokingSlotContract = ContractsService.createRevocation(refilledSlotContract, key);
+
+        registerAndCheckApproved(revokingSlotContract);
+
+        itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        // check if we remove stored contract from storage
+
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNull(restoredPackedData);
     }
 
 

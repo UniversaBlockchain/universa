@@ -15,6 +15,7 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
@@ -751,6 +752,56 @@ public class ContractsService {
         notaryContract.addSignatureToSeal(issuerKeys);
 
         return notaryContract;
+    }
+
+
+
+    public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys){
+        SlotContract slotContract = new SlotContract();
+        slotContract.setApiLevel(3);
+
+        Contract.Definition cd = slotContract.getDefinition();
+        cd.setExpiresAt(slotContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default notary");
+        data.set("description", "Default notary description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        slotContract.registerRole(issuerRole);
+        slotContract.createRole("issuer", issuerRole);
+        slotContract.createRole("creator", issuerRole);
+
+        slotContract.registerRole(ownerRole);
+        slotContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        slotContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        slotContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        slotContract.addPermission(revokePerm2);
+
+        slotContract.addSlotSpecific();
+
+        slotContract.seal();
+        slotContract.addSignatureToSeal(issuerKeys);
+
+        return slotContract;
     }
 
 

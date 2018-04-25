@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,7 +56,7 @@ public class SlotContract extends NSmartContract {
     public SlotContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
 
-        createSlotSpecific();
+//        createSlotSpecific();
 
         calculatePrepaidKilobytesForDays();
     }
@@ -83,12 +82,12 @@ public class SlotContract extends NSmartContract {
     public SlotContract(PrivateKey key) {
         super(key);
 
-        createSlotSpecific();
+        addSlotSpecific();
 
         calculatePrepaidKilobytesForDays();
     }
 
-    private void createSlotSpecific() {
+    public void addSlotSpecific() {
         if(!getDefinition().getExtendedType().equals(SmartContractType.SLOT1.name()))
             getDefinition().setExtendedType(SmartContractType.SLOT1.name());
 
