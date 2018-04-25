@@ -2302,7 +2302,6 @@ public class Node {
                                     extraResult.set("onCreatedResult", er);
                                 } else {
                                     try{
-                                        // check: getEnvironmentsForContractId should return single binder
                                         byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
                                         if (ebytes != null) {
                                             Binder binder = Boss.unpack(ebytes);
@@ -2321,7 +2320,6 @@ public class Node {
                                 }
                             }
                             if(getState() == ItemState.REVOKED) {
-                                // check: getEnvironmentsForContractId should return single binder
                                 byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
                                 if (ebytes != null) {
                                     Binder binder = Boss.unpack(ebytes);
@@ -2341,10 +2339,8 @@ public class Node {
                         if(foundCssSet != null) {
                             for (ContractStorageSubscription foundCss : foundCssSet) {
                                 if(foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
-                                    // todo: need following method (see below)
-                                    // byte[] foundSlotPack = ledger.getSlotContractByStorageSubscriptionId(foundCss.getId());
-                                    // SlotContract foundSlot = Contract.fromPackedTransaction(foundSlotPack);
-                                    SlotContract foundSlot = new SlotContract(new PrivateKey(Do.read("./src/test_contracts/keys/stepan_mamontov.private.unikey")));
+                                    byte[] foundSlotPack = ledger.getSlotForSubscriptionStorageId(((SlotContractStorageSubscription) foundCss).getId());
+                                    SlotContract foundSlot = (SlotContract) Contract.fromPackedTransaction(foundSlotPack);
 
                                     if (getState() == ItemState.APPROVED) {
                                         foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
