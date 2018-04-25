@@ -878,7 +878,9 @@ public class PostgresLedger implements Ledger {
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "INSERT INTO environments (ncontract_type,ncontract_hash_id,kv_storage,transaction_pack) VALUES (?,?,?,?) RETURNING id"
+                                    "INSERT INTO environments (ncontract_type,ncontract_hash_id,kv_storage,transaction_pack) VALUES (?,?,?,?) " +
+                                           "ON CONFLICT (ncontract_hash_id) DO UPDATE SET ncontract_type=EXCLUDED.ncontract_type, kv_storage=EXCLUDED.kv_storage, transaction_pack=EXCLUDED.transaction_pack " +
+                                           "RETURNING id"
                             )
             ) {
                 statement.setString(1, ncontractType);
