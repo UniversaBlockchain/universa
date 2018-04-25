@@ -2321,17 +2321,13 @@ public class Node {
                                 }
                             }
                             if(getState() == ItemState.REVOKED) {
-                                // todo: getEnvironmentsForContractId should return single binder
-                                // todo: environmentId should have single link to (SlotContract)item.getId() and single link back
-                                Set<byte[]> envs = ledger.getEnvironmentsForContractId(item.getId());
-                                if (envs != null) {
-                                    for (byte[] ebytes : envs) {
-                                        Binder binder = Boss.unpack(ebytes);
-                                        ime = new NImmutableEnvironment((SlotContract) item, binder);
-                                        ((NodeContract) item).onRevoked(ime);
-                                        // todo: addEnvironmentToStorage should update record (shouldn't change environmentId)
-                                        ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(ime), ((SlotContract) item).getPackedTransaction());
-                                    }
+                                // check: getEnvironmentsForContractId should return single binder
+                                byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
+                                if (ebytes != null) {
+                                    Binder binder = Boss.unpack(ebytes);
+                                    ime = new NImmutableEnvironment((SlotContract) item, binder);
+                                    ((NodeContract) item).onRevoked(ime);
+                                    ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(ime), ((SlotContract) item).getPackedTransaction());
                                 }
                             }
 
