@@ -18,9 +18,6 @@ import com.icodici.universa.contract.services.ContractStorageSubscription;
 import com.icodici.universa.contract.services.NContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
-import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.biserializer.DefaultBiMapper;
-import net.sergeych.tools.Binder;
 
 import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
@@ -873,7 +870,7 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public long addEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
+    public long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =

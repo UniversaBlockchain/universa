@@ -12,7 +12,6 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.ContractStorageSubscription;
-import com.icodici.universa.contract.services.NContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import org.sqlite.SQLiteConfig;
@@ -317,7 +316,7 @@ public class SqliteLedger implements Ledger {
     public void clearExpiredStorageContracts() {}
 
     @Override
-    public long addEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {return 0;}
+    public long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {return 0;}
 
     @Override
     public byte[] getEnvironmentFromStorage(HashId contractId) {return null;}

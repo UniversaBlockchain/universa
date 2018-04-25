@@ -2291,7 +2291,7 @@ public class Node {
                                     try {
                                         ContractStorageSubscription css = me.createStorageSubscription(((SlotContract) item).getContract().getId(), ((SlotContract) item).getExpiresAt());
                                         css.receiveEvents(true);
-                                        long environmentId = ledger.addEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
+                                        long environmentId = ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
                                         long contractStorageId = ledger.saveContractInStorage(((SlotContract) item).getContract().getId(), ((SlotContract) item).getContract().getPackedTransaction(), css.expiresAt(), ((SlotContract) item).getContract().getOrigin());
                                         long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
                                         ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
@@ -2312,7 +2312,7 @@ public class Node {
                                                 er = ((NodeContract) item).onUpdated(me);
                                                 extraResult.set("onUpdateResult", er);
                                                 // todo: addEnvironmentToStorage should update record (shouldn't change environmentId)
-                                                ledger.addEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
+                                                ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
                                             }
                                         } else {
                                             me = new NMutableEnvironment((SlotContract) item);
@@ -2334,7 +2334,7 @@ public class Node {
                                         ime = new NImmutableEnvironment((SlotContract) item, binder);
                                         ((NodeContract) item).onRevoked(ime);
                                         // todo: addEnvironmentToStorage should update record (shouldn't change environmentId)
-                                        ledger.addEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(ime), ((SlotContract) item).getPackedTransaction());
+                                        ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(ime), ((SlotContract) item).getPackedTransaction());
                                     }
                                 }
                             }

@@ -12,7 +12,6 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.ContractStorageSubscription;
-import com.icodici.universa.contract.services.NContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
@@ -189,7 +188,7 @@ public interface Ledger {
     void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin);
     void clearExpiredStorageSubscriptions();
     void clearExpiredStorageContracts();
-    long addEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack);
+    long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack);
     byte[] getEnvironmentFromStorage(HashId contractId);
     long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin);
     long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt);
