@@ -7784,9 +7784,9 @@ public class BaseNetworkTest extends TestCase {
 
         byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNotNull(restoredPackedData);
-        Contract restoredContarct = Contract.fromPackedTransaction(restoredPackedData);
-        assertNotNull(restoredContarct);
-        assertEquals(simpleContract.getId(), restoredContarct.getId());
+        Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
 
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);

@@ -3,6 +3,7 @@ package com.icodici.universa.contract.services;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.NodeContract;
+import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -12,6 +13,10 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
 
     public NMutableEnvironment(Contract contract) {
         super(contract);
+    }
+
+    public NMutableEnvironment(Contract contract, Binder kvBinder) {
+        super(contract, kvBinder);
     }
 
 //    @Override

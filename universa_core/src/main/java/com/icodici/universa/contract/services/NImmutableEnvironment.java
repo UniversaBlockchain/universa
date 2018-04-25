@@ -24,6 +24,14 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
         createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
     }
 
+    public NImmutableEnvironment(Contract contract, Binder kvBinder) {
+        this(contract);
+
+        for(String key : kvBinder.keySet()) {
+            set(key, kvBinder.get(key));
+        }
+    }
+
     @Override
     public <T extends Contract> @NonNull T getContract() {
         return (T) contract;

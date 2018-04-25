@@ -2292,7 +2292,7 @@ public class Node {
                                         ContractStorageSubscription css = me.createStorageSubscription(((SlotContract) item).getContract().getId(), ((SlotContract) item).getExpiresAt());
                                         css.receiveEvents(true);
                                         // check: save ((SlotContract) item) to 'environments'
-                                        long environmentId = ledger.addEnvironmentToStorage("SLOT1", ((SlotContract) item).getContract().getId(), Boss.pack(me), ((SlotContract) item).getPackedContract());
+                                        long environmentId = ledger.addEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
                                         // check: save ((SlotContract) item).getContract() to 'storages'
                                         long contractStorageId = ledger.saveContractInStorage(((SlotContract) item).getContract().getId(), ((SlotContract) item).getContract().getPackedTransaction(), css.expiresAt(), ((SlotContract) item).getContract().getOrigin());
                                         // check: save css to 'subscriptions'
@@ -2311,8 +2311,7 @@ public class Node {
                                         if (envs != null) {
                                             for (byte[] ebytes : envs) {
                                                 Binder binder = Boss.unpack(ebytes);
-                                                //todo: cast binder to environment and call onUpdated
-                                                me = new NMutableEnvironment((SlotContract) item);
+                                                me = new NMutableEnvironment((SlotContract) item, binder);
                                                 er = ((NodeContract) item).onUpdated(me);
                                                 extraResult.set("onUpdateResult", er);
                                             }
