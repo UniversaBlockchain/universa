@@ -683,7 +683,8 @@ public class PostgresLedgerTest extends TestCase {
         Contract someContract = new Contract(TestKeys.privateKey(0));
         someContract.seal();
 
-        ledger.addEnvironmentToStorage("SLOT0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
+        long id1 = ledger.addEnvironmentToStorage("SLOT0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
+        System.out.println("id1: " + id1);
 
         byte[] readedBytes = ledger.getEnvironmentFromStorage(contractId);
         assertNotEquals(null, readedBytes);
@@ -692,6 +693,20 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(someBinder.getStringOrThrow("balance"), readedBinder.getStringOrThrow("balance"));
         assertEquals(someBinder.getLongOrThrow("expires_at"), readedBinder.getLongOrThrow("expires_at"));
 
+        Binder updatedBinder = new Binder(readedBinder);
+        updatedBinder.set("balance", "23.456");
+        updatedBinder.set("expires_at", 33);
+
+        long id2 = ledger.addEnvironmentToStorage("SLOT0test", contractId, Boss.pack(updatedBinder), someContract.getPackedTransaction());
+        System.out.println("id2: " + id2);
+
+        byte[] readedBytes2 = ledger.getEnvironmentFromStorage(contractId);
+        assertNotEquals(null, readedBytes2);
+        Binder readedBinder2 = Boss.unpack(readedBytes2);
+
+        assertEquals(updatedBinder.getStringOrThrow("balance"), readedBinder2.getStringOrThrow("balance"));
+        assertEquals(updatedBinder.getLongOrThrow("expires_at"), readedBinder2.getLongOrThrow("expires_at"));
+        assertEquals(id1, id2);
     }
 
 
