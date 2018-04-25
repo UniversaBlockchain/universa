@@ -8,9 +8,11 @@ import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
@@ -41,6 +43,14 @@ public class SlotContract extends NSmartContract {
     }
     private Config nodeConfig;
 
+    public Ledger getLedger() {
+        return ledger;
+    }
+    public void setLedger(Ledger ledger) {
+        this.ledger = ledger;
+    }
+    private Ledger ledger;
+
     /**
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from the transaction pack supplied. If
      * the transaction pack fails to resolve a link, no error will be reported - not sure it's a good idea. If need, the
@@ -58,7 +68,7 @@ public class SlotContract extends NSmartContract {
 
 //        createSlotSpecific();
 
-        calculatePrepaidKilobytesForDays();
+//        calculatePrepaidKilobytesForDays();
     }
 
     public SlotContract() {
@@ -66,7 +76,7 @@ public class SlotContract extends NSmartContract {
 
 //        createSlotSpecific();
 
-        calculatePrepaidKilobytesForDays();
+//        calculatePrepaidKilobytesForDays();
     }
 
     /**
@@ -84,7 +94,7 @@ public class SlotContract extends NSmartContract {
 
         addSlotSpecific();
 
-        calculatePrepaidKilobytesForDays();
+//        calculatePrepaidKilobytesForDays();
     }
 
     public void addSlotSpecific() {
@@ -135,29 +145,28 @@ public class SlotContract extends NSmartContract {
         }
     }
 
-    public byte[] getPackedContract() {
+    public byte[] getPackedTrackingContract() {
         return packedTrackingContract;
     }
 
-    @Override
-    public Contract getContract() {
+    public Contract getTrackingContract() {
         return trackingContract;
     }
 
-    public void setPackedContract(byte[] packed) throws IOException {
+    public void setPackedTrackingContract(byte[] packed) throws IOException {
         trackingContract = TransactionPack.unpack(packed).getContract();
         packedTrackingContract = packed;
-        getStateData().set("tracking_contract", getPackedContract());
+        getStateData().set("tracking_contract", getPackedTrackingContract());
 
-        calculatePrepaidKilobytesForDays();
+//        calculatePrepaidKilobytesForDays();
     }
 
-    public void setContract(Contract c) {
+    public void setTrackingContract(Contract c) {
         packedTrackingContract = c.getPackedTransaction();
         trackingContract = c;
-        getStateData().set("tracking_contract", getPackedContract());
+        getStateData().set("tracking_contract", getPackedTrackingContract());
 
-        calculatePrepaidKilobytesForDays();
+//        calculatePrepaidKilobytesForDays();
     }
 
     public int getKeepRevisions() {
@@ -171,28 +180,28 @@ public class SlotContract extends NSmartContract {
                 int calculatedPayment = 0;
                 boolean isTestPayment = false;
                 Contract parent = null;
-                for (Contract nrc : nc.getContract().getRevoking()) {
-                    if (nrc.getId().equals(nc.getContract().getParent())) {
+                for (Contract nrc : nc.getRevoking()) {
+                    if (nrc.getId().equals(nc.getParent())) {
                         parent = nrc;
                         break;
                     }
                 }
                 if (parent != null) {
-                    boolean hasTestTU = nc.getContract().getStateData().get("test_transaction_units") != null;
+                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
                     if (hasTestTU) {
                         isTestPayment = true;
                         calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
-                                - nc.getContract().getStateData().getIntOrThrow("test_transaction_units");
+                                - nc.getStateData().getIntOrThrow("test_transaction_units");
 
                         if (calculatedPayment <= 0) {
                             isTestPayment = false;
                             calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                    - nc.getContract().getStateData().getIntOrThrow("transaction_units");
+                                    - nc.getStateData().getIntOrThrow("transaction_units");
                         }
                     } else {
                         isTestPayment = false;
                         calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                - nc.getContract().getStateData().getIntOrThrow("transaction_units");
+                                - nc.getStateData().getIntOrThrow("transaction_units");
                     }
                 }
 
@@ -219,17 +228,18 @@ public class SlotContract extends NSmartContract {
     public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
         MutableEnvironment me;
         if(event instanceof ContractStorageSubscription.ApprovedEvent) {
+
+            // recreate subscription:
             Contract newStoredItem = ((ContractStorageSubscription.ApprovedEvent)event).getNewRevision();
-            me = new NMutableEnvironment(this);
+            me = new SlotMutableEnvironment(this);
             ContractStorageSubscription css = me.createStorageSubscription(newStoredItem.getId(), getExpiresAt());
             css.receiveEvents(true);
-//            ledger.addEnvironmentToStorage(newStoredItem.getId(), Boss.pack(me), getId());
-            // todo: update this to 'environments'
-            // todo: save css to 'subscriptions'
-            // todo: save link me -> css to 'environment_subscriptions'
-            // todo: save newStoredItem to 'storages'
+            long environmentId = ledger.saveEnvironmentToStorage("SLOT1", getId(), Boss.pack(me), getPackedTransaction());
+            long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
+            long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
+            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
         } else if(event instanceof ContractStorageSubscription.RevokedEvent) {
-
+            // remove subscription
         }
 
         event.getSubscription().destroy();
@@ -251,7 +261,7 @@ public class SlotContract extends NSmartContract {
             keepRevisions = numRevisions;
 
         try {
-            setPackedContract(data.getBinder("state").getBinder("data").getBinary("tracking_contract"));
+            setPackedTrackingContract(data.getBinder("state").getBinder("data").getBinary("tracking_contract"));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -270,14 +280,14 @@ public class SlotContract extends NSmartContract {
                 int calculatedPayment = 0;
                 boolean isTestPayment = false;
                 Contract parent = null;
-                for(Contract nrc : nc.getContract().getRevoking()) {
-                    if(nrc.getId().equals(nc.getContract().getParent())) {
+                for(Contract nrc : nc.getRevoking()) {
+                    if(nrc.getId().equals(nc.getParent())) {
                         parent = nrc;
                         break;
                     }
                 }
                 if(parent != null) {
-                    boolean hasTestTU = nc.getContract().getStateData().get("test_transaction_units") != null;
+                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
                     if (hasTestTU) {
                         isTestPayment = true;
                         if (calculatedPayment <= 0) {
@@ -328,7 +338,7 @@ public class SlotContract extends NSmartContract {
 
 //        boolean checkResult = false;
 //
-//        checkResult = c != null && c.getContract() != null;
+//        checkResult = c != null && c != null;
 //        if(!checkResult) {
 //            addError(FAILED_CHECK, "Environment should be not null and should have contract");
 //            return checkResult;
@@ -340,7 +350,7 @@ public class SlotContract extends NSmartContract {
 //            return checkResult;
 //        }
 //
-//        checkResult = c.getContract().getOwner().isAllowedForKeys(getCreator().getKeys());
+//        checkResult = c.getOwner().isAllowedForKeys(getCreator().getKeys());
 //        if(!checkResult) {
 //            addError(FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
 //            return checkResult;

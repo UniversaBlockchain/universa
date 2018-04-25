@@ -1,30 +1,27 @@
 package com.icodici.universa.contract.services;
 
-import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.SmartContract;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
-public class NImmutableEnvironment extends Binder implements ImmutableEnvironment {
+public class SlotImmutableEnvironment extends Binder implements ImmutableEnvironment {
 
-    protected Contract contract;
+    protected SlotContract contract;
     protected ZonedDateTime createdAt;
     protected Set<ContractStorageSubscription> storageSubscriptionsSet = new HashSet<>();
 
-    public NImmutableEnvironment(Contract contract) {
+    public SlotImmutableEnvironment(SlotContract contract) {
         this.contract = contract;
         createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
     }
 
-    public NImmutableEnvironment(Contract contract, Binder kvBinder) {
+    public SlotImmutableEnvironment(SlotContract contract, Binder kvBinder) {
         this(contract);
 
         for(String key : kvBinder.keySet()) {

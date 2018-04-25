@@ -7745,7 +7745,7 @@ public class BaseNetworkTest extends TestCase {
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
         slotContract.setNodeConfig(node.getConfig());
-        slotContract.setContract(simpleContract);
+        slotContract.setTrackingContract(simpleContract);
 
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
@@ -7783,8 +7783,8 @@ public class BaseNetworkTest extends TestCase {
         ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
 
-        assertEquals(simpleContract.getId(), slotContract.getContract().getId());
-        assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getContract().getId());
+        assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
+        assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
 
         // check if we store same contract as want
 

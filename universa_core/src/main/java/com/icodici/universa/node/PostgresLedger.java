@@ -15,7 +15,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.ContractStorageSubscription;
-import com.icodici.universa.contract.services.NContractStorageSubscription;
+import com.icodici.universa.contract.services.SlotContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
@@ -1010,7 +1010,7 @@ public class PostgresLedger implements Ledger {
                     return null;
                 HashSet<ContractStorageSubscription> res = new HashSet<>();
                 do {
-                    NContractStorageSubscription css = new NContractStorageSubscription();
+                    SlotContractStorageSubscription css = new SlotContractStorageSubscription();
                     css.setId(rs.getLong(0));
                     css.setExpiresAt(StateRecord.getTime(rs.getLong(1)));
                     res.add(css);
