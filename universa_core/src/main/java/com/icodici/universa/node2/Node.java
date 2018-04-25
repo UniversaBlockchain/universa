@@ -2302,18 +2302,14 @@ public class Node {
                                     extraResult.set("onCreatedResult", er);
                                 } else {
                                     try{
-                                        // todo: getEnvironmentsForContractId should return single binder
-                                        // todo: environmentId should have single link to (SlotContract)item.getId() and single link back
-                                        Set<byte[]> envs = ledger.getEnvironmentsForContractId(item.getId());
-                                        if (envs != null) {
-                                            for (byte[] ebytes : envs) {
-                                                Binder binder = Boss.unpack(ebytes);
-                                                me = new NMutableEnvironment((SlotContract) item, binder);
-                                                er = ((NodeContract) item).onUpdated(me);
-                                                extraResult.set("onUpdateResult", er);
-                                                // todo: addEnvironmentToStorage should update record (shouldn't change environmentId)
-                                                ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
-                                            }
+                                        // check: getEnvironmentsForContractId should return single binder
+                                        byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
+                                        if (ebytes != null) {
+                                            Binder binder = Boss.unpack(ebytes);
+                                            me = new NMutableEnvironment((SlotContract) item, binder);
+                                            er = ((NodeContract) item).onUpdated(me);
+                                            extraResult.set("onUpdateResult", er);
+                                            ledger.saveEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
                                         } else {
                                             me = new NMutableEnvironment((SlotContract) item);
                                             er = ((NodeContract) item).onUpdated(me);
