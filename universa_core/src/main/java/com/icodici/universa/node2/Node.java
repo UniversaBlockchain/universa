@@ -2291,13 +2291,9 @@ public class Node {
                                     try {
                                         ContractStorageSubscription css = me.createStorageSubscription(((SlotContract) item).getContract().getId(), ((SlotContract) item).getExpiresAt());
                                         css.receiveEvents(true);
-                                        // check: save ((SlotContract) item) to 'environments'
                                         long environmentId = ledger.addEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
-                                        // check: save ((SlotContract) item).getContract() to 'storages'
                                         long contractStorageId = ledger.saveContractInStorage(((SlotContract) item).getContract().getId(), ((SlotContract) item).getContract().getPackedTransaction(), css.expiresAt(), ((SlotContract) item).getContract().getOrigin());
-                                        // check: save css to 'subscriptions'
                                         long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-                                        // check: save link me -> css to 'environment_subscriptions'
                                         ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
                                     } catch (Exception e) {
                                         e.printStackTrace();
@@ -2306,7 +2302,8 @@ public class Node {
                                     extraResult.set("onCreatedResult", er);
                                 } else {
                                     try{
-                                        // check: find in the ledger MutableEnvironment by item.getId()
+                                        // todo: getEnvironmentsForContractId should return single binder
+                                        // todo: environmentId should have single link to (SlotContract)item.getId() and single link back
                                         Set<byte[]> envs = ledger.getEnvironmentsForContractId(item.getId());
                                         if (envs != null) {
                                             for (byte[] ebytes : envs) {
@@ -2314,6 +2311,8 @@ public class Node {
                                                 me = new NMutableEnvironment((SlotContract) item, binder);
                                                 er = ((NodeContract) item).onUpdated(me);
                                                 extraResult.set("onUpdateResult", er);
+                                                // todo: addEnvironmentToStorage should update record (shouldn't change environmentId)
+                                                ledger.addEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(me), ((SlotContract) item).getPackedTransaction());
                                             }
                                         } else {
                                             me = new NMutableEnvironment((SlotContract) item);
@@ -2326,14 +2325,16 @@ public class Node {
                                 }
                             }
                             if(getState() == ItemState.REVOKED) {
-                                // check: find in the ledger ImutableEnvironment by item.getId()
+                                // todo: getEnvironmentsForContractId should return single binder
+                                // todo: environmentId should have single link to (SlotContract)item.getId() and single link back
                                 Set<byte[]> envs = ledger.getEnvironmentsForContractId(item.getId());
                                 if (envs != null) {
                                     for (byte[] ebytes : envs) {
                                         Binder binder = Boss.unpack(ebytes);
-                                        //todo: cast binder to environment and call onRevoked
-                                        ime = new NImmutableEnvironment((SlotContract) item);
+                                        ime = new NImmutableEnvironment((SlotContract) item, binder);
                                         ((NodeContract) item).onRevoked(ime);
+                                        // todo: addEnvironmentToStorage should update record (shouldn't change environmentId)
+                                        ledger.addEnvironmentToStorage("SLOT1", item.getId(), Boss.pack(ime), ((SlotContract) item).getPackedTransaction());
                                     }
                                 }
                             }
