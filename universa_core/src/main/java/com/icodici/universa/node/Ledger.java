@@ -17,6 +17,7 @@ import com.icodici.universa.node2.NodeInfo;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -200,7 +201,9 @@ public interface Ledger {
     byte[] getContractInStorage(HashId contractId);
     byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId);
     void removeEnvironmentSubscription(long subscriptionId);
-    void removeEnvironment(HashId ncontractHashId);
+    List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId);
+    long removeEnvironment(HashId ncontractHashId);
+    void removeSlotContractWithAllSubscriptions(HashId slotHashId);
 
     void cleanup();
 }

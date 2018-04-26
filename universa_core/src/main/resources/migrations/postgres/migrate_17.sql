@@ -1,0 +1,1 @@
+create index ix_environment_subscription_environment_id on environment_subscription(environemtn_id);

@@ -352,13 +352,20 @@ public class SqliteLedger implements Ledger {
     public void removeEnvironmentSubscription(long subscriptionId) {}
 
     @Override
-    public void removeEnvironment(HashId ncontractHashId) {}
+    public long removeEnvironment(HashId ncontractHashId) {return 0;}
 
-    /**
-     * Enable or disable records caching. USe it in tests only, in production it should always be enabled
-     *
-     * @param enable, if true it is enabling cache
-     */
+    @Override
+    public List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId) {return null;}
+
+    @Override
+    public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {}
+
+
+        /**
+         * Enable or disable records caching. USe it in tests only, in production it should always be enabled
+         *
+         * @param enable, if true it is enabling cache
+         */
     public void enableCache(boolean enable) {
         if (enable) {
             this.useCache = true;

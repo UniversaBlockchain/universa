@@ -1058,7 +1058,6 @@ public class PostgresLedger implements Ledger {
     @Override
     public void removeEnvironmentSubscription(long subscriptionId) {
         try (PooledDb db = dbPool.db()) {
-            ZonedDateTime now = ZonedDateTime.now();
             try (
                 PreparedStatement statement =
                     db.statement(
@@ -1070,30 +1069,137 @@ public class PostgresLedger implements Ledger {
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("removeContractFromStorage failed: " + se);
+            throw new Failure("removeEnvironmentSubscription failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void removeEnvironment(HashId ncontractHashId) {
+    public List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
-            ZonedDateTime now = ZonedDateTime.now();
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "DELETE FROM environments WHERE ncontract_hash_id=?"
+                                    "DELETE FROM environment_subscription WHERE environemtn_id=? RETURNING subscription_id"
                             )
             ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("removeEnvironmentSubscriptionsByEnvId failed: returning null");
+                List<Long> resList = new ArrayList<>();
+                while (rs.next())
+                    resList.add(rs.getLong(1));
+                rs.close();
+                return resList;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("removeEnvironmentSubscriptionsByEnvId failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public long removeEnvironment(HashId ncontractHashId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                PreparedStatement statement =
+                    db.statement(
+                    "DELETE FROM environments WHERE ncontract_hash_id=? RETURNING id"
+                    )
+            ) {
                 statement.setBytes(1, ncontractHashId.getDigest());
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("removeEnvironment failed: returning null");
+                long resId = 0;
+                if (rs.next())
+                    resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("removeEnvironment failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public List<Long> removeStorageSubscriptionsByIds(List<Long> subscriptionIds) {
+        try (PooledDb db = dbPool.db()) {
+            List<String> queryPatterns = new ArrayList<>();
+            for (int i = 0; i < subscriptionIds.size(); ++i)
+                queryPatterns.add("?");
+            String queryPatternStr = String.join(",", queryPatterns);
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM contract_subscription WHERE id IN ("+queryPatternStr+") RETURNING contract_storage_id"
+                            )
+            ) {
+                for (int i = 0; i < subscriptionIds.size(); ++i)
+                    statement.setLong(i+1, subscriptionIds.get(i));
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("removeStorageSubscriptionsByIds failed: returning null");
+                List<Long> resList = new ArrayList<>();
+                while (rs.next())
+                    resList.add(rs.getLong(1));
+                rs.close();
+                return resList;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("removeStorageSubscriptionsByIds failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public void removeStorageContractsForIds(List<Long> contracts) {
+        try (PooledDb db = dbPool.db()) {
+            List<String> queryPatterns = new ArrayList<>();
+            for (int i = 0; i < contracts.size(); ++i)
+                queryPatterns.add("?");
+            String queryPatternStr = String.join(",", queryPatterns);
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM contract_storage WHERE id IN ("+queryPatternStr+") AND (SELECT COUNT(*) FROM contract_subscription WHERE contract_storage_id=contract_storage.id)=0"
+                            )
+            ) {
+                for (int i = 0; i < contracts.size(); ++i)
+                    statement.setLong(i+1, contracts.get(i));
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
             se.printStackTrace();
-            throw new Failure("removeContractFromStorage failed: " + se);
+            throw new Failure("removeStorageContractsForIds failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {
+        long environmentId = removeEnvironment(slotHashId);
+        if (environmentId != 0) {
+            List<Long> subscriptionIdList = removeEnvironmentSubscriptionsByEnvId(environmentId);
+            if ((subscriptionIdList != null) && (subscriptionIdList.size() > 0)) {
+                List<Long> contracts = removeStorageSubscriptionsByIds(subscriptionIdList);
+                if ((contracts != null) && (contracts.size() > 0))
+                    removeStorageContractsForIds(contracts);
+            }
         }
     }
 
