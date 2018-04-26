@@ -2234,14 +2234,17 @@ public class Node {
                             try {
                                 r.save();
                                 if(revokingItem instanceof SlotContract) {
+                                    Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) revokingItem).getTrackingContract().getId());
                                     ImmutableEnvironment ime;
                                     byte[] ebytes = ledger.getEnvironmentFromStorage(revokingItem.getId());
                                     if (ebytes != null) {
                                         Binder binder = Boss.unpack(ebytes);
-                                        ime = new SlotImmutableEnvironment((SlotContract) revokingItem, binder);
-                                        ((SlotContract) revokingItem).setLedger(ledger);
-//                                        ((SlotContract) revokingItem).onRevoked(ime);
+                                        ime = new SlotImmutableEnvironment((SlotContract) revokingItem, binder, trackingCssSet);
+                                    } else {
+                                        ime = new SlotImmutableEnvironment((SlotContract) revokingItem, null, trackingCssSet);
                                     }
+                                    ((SlotContract) revokingItem).setLedger(ledger);
+                                    ((SlotContract) revokingItem).onRevoked(ime);
                                 }
                                 synchronized (cache) {
 //                                    ItemResult cr = cache.getResult(r.getId());
@@ -2269,12 +2272,43 @@ public class Node {
                             r.setExpiresAt(newItem.getExpiresAt());
                             try {
                                 r.save();
-                                synchronized (cache) {
-                                    ItemResult cr = cache.getResult(r.getId());
-                                    ItemResult rr = new ItemResult(r);
-                                    if(cr != null) {
-                                        rr.extraDataBinder = cr.extraDataBinder;
+                                Binder newExtraResult = new Binder();
+                                if(newItem instanceof SlotContract) {
+                                    Binder er;
+                                    Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) newItem).getTrackingContract().getId());
+                                    MutableEnvironment me;
+
+                                    if (((SlotContract) newItem).getRevision() == 1) {
+                                        me = new SlotMutableEnvironment((SlotContract) newItem);
+                                        ((SlotContract) newItem).setLedger(ledger);
+                                        er = ((SlotContract) newItem).onCreated(me);
+                                        newExtraResult.set("onCreatedResult", er);
+                                    } else {
+                                        try{
+                                            byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
+                                            if (ebytes != null) {
+                                                Binder binder = Boss.unpack(ebytes);
+                                                me = new SlotMutableEnvironment((SlotContract) newItem, binder, trackingCssSet);
+                                                ((SlotContract) newItem).setLedger(ledger);
+                                                er = ((SlotContract) newItem).onUpdated(me);
+                                                newExtraResult.set("onUpdateResult", er);
+                                            } else {
+                                                me = new SlotMutableEnvironment((SlotContract) newItem, null, trackingCssSet);
+                                                ((SlotContract) newItem).setLedger(ledger);
+                                                er = ((SlotContract) newItem).onUpdated(me);
+                                                newExtraResult.set("onUpdateResult", er);
+                                            }
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
                                     }
+                                }
+                                synchronized (cache) {
+//                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+//                                    if(cr != null) {
+                                        rr.extraDataBinder = newExtraResult;
+//                                    }
                                     cache.update(r.getId(), rr);
                                 }
                             } catch (Ledger.Failure failure) {
@@ -2370,6 +2404,7 @@ public class Node {
                             }
                             if(getState() == ItemState.REVOKED) {
                                 byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
+                                System.out.println(">>onRevoked " + ebytes);
                                 if (ebytes != null) {
                                     Binder binder = Boss.unpack(ebytes);
                                     ime = new SlotImmutableEnvironment((SlotContract) item, binder, trackingCssSet);

@@ -444,14 +444,16 @@ public class SlotContract extends NSmartContract {
 
     @Override
     public void onRevoked(ImmutableEnvironment ime) {
-        ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(ime), getPackedTransaction());
-
-        for (ContractStorageSubscription css : ime.storageSubscriptions()) {
-            // todo: may be here we can remove subscriptions by set of ids?
-            ledger.removeEnvironmentSubscription(((SlotContractStorageSubscription) css).getId());
-        }
-
-        ledger.removeEnvironment(getId());
+        ledger.removeSlotContractWithAllSubscriptions(getId());
+        System.out.println("onRevoked ");
+//        ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(ime), getPackedTransaction());
+//
+//        for (ContractStorageSubscription css : ime.storageSubscriptions()) {
+//            // todo: may be here we can remove subscriptions by set of ids?
+//            ledger.removeEnvironmentSubscription(((SlotContractStorageSubscription) css).getId());
+//        }
+//
+//        ledger.removeEnvironment(getId());
     }
 
     static {
