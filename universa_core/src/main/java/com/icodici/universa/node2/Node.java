@@ -1766,18 +1766,23 @@ public class Node {
 
                             if(item instanceof NodeContract) {
                                 ImmutableEnvironment ime;
-                                // todo: find in the ledger ImmutableEnvironment by item.getId()
-                                ime = new SlotImmutableEnvironment((SlotContract) item);
-                                if (getState() == ItemState.APPROVED) {
+                                byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
+                                if (ebytes != null) {
+                                    Binder binder = Boss.unpack(ebytes);
+                                    ime = new SlotImmutableEnvironment((SlotContract) item, binder);
+                                } else {
+                                    ime = new SlotImmutableEnvironment((SlotContract) item);
+                                }
+//                                if (getState() == ItemState.APPROVED) {
                                     if (((Contract) item).getRevision() == 1) {
                                         ((NodeContract) item).beforeCreate(ime);
                                     } else {
                                         ((NodeContract) item).beforeUpdate(ime);
                                     }
-                                }
-                                if (getState() == ItemState.REVOKED) {
-                                    ((NodeContract) item).beforeRevoke(ime);
-                                }
+//                                }
+//                                if (getState() == ItemState.REVOKED) {
+//                                    ((NodeContract) item).beforeRevoke(ime);
+//                                }
                             }
                         }
 
@@ -1857,23 +1862,44 @@ public class Node {
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
                     // check revoking items
-                    for (Approvable a : checkingItem.getRevokingItems()) {
+                    for (Approvable revokingItem : checkingItem.getRevokingItems()) {
 
-                        if (a instanceof Contract)
-                            ((Contract)a).getErrors().clear();
+                        if (revokingItem instanceof Contract)
+                            ((Contract)revokingItem).getErrors().clear();
 
-                        checkReferencesOf(a);
+                        checkReferencesOf(revokingItem);
 
-                        for (ErrorRecord er : a.getErrors()) {
-                            checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke: " + er);
+                        if(revokingItem instanceof NodeContract) {
+                            ImmutableEnvironment ime;
+                            byte[] ebytes = ledger.getEnvironmentFromStorage(revokingItem.getId());
+                            if (ebytes != null) {
+                                Binder binder = Boss.unpack(ebytes);
+                                ime = new SlotImmutableEnvironment((SlotContract) revokingItem, binder);
+                            } else {
+                                ime = new SlotImmutableEnvironment((SlotContract) revokingItem);
+                            }
+//                                if (getState() == ItemState.APPROVED) {
+//                            if (((Contract) newItem).getRevision() == 1) {
+//                                ((NodeContract) newItem).beforeCreate(ime);
+//                            } else {
+//                                ((NodeContract) newItem).beforeUpdate(ime);
+//                            }
+//                                }
+//                                if (getState() == ItemState.REVOKED) {
+                                    ((NodeContract) revokingItem).beforeRevoke(ime);
+//                                }
+                        }
+
+                        for (ErrorRecord er : revokingItem.getErrors()) {
+                            checkingItem.addError(Errors.BAD_REVOKE, revokingItem.getId().toString(), "can't revoke: " + er);
                         }
 
                         synchronized (mutex) {
                             try {
-                                itemLock.synchronize(a.getId(), lock -> {
-                                    StateRecord r = record.lockToRevoke(a.getId());
+                                itemLock.synchronize(revokingItem.getId(), lock -> {
+                                    StateRecord r = record.lockToRevoke(revokingItem.getId());
                                     if (r == null) {
-                                        checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
+                                        checkingItem.addError(Errors.BAD_REVOKE, revokingItem.getId().toString(), "can't revoke");
                                     } else {
                                         if (!lockedToRevoke.contains(r))
                                             lockedToRevoke.add(r);
@@ -1897,6 +1923,27 @@ public class Node {
                     for (Approvable newItem : checkingItem.getNewItems()) {
 
                         checkSubItemsOf(newItem);
+
+                        if(newItem instanceof NodeContract) {
+                            ImmutableEnvironment ime;
+                            byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
+                            if (ebytes != null) {
+                                Binder binder = Boss.unpack(ebytes);
+                                ime = new SlotImmutableEnvironment((SlotContract) newItem, binder);
+                            } else {
+                                ime = new SlotImmutableEnvironment((SlotContract) newItem);
+                            }
+//                                if (getState() == ItemState.APPROVED) {
+                            if (((Contract) newItem).getRevision() == 1) {
+                                ((NodeContract) newItem).beforeCreate(ime);
+                            } else {
+                                ((NodeContract) newItem).beforeUpdate(ime);
+                            }
+//                                }
+//                                if (getState() == ItemState.REVOKED) {
+//                                    ((NodeContract) item).beforeRevoke(ime);
+//                                }
+                        }
 
                         if (!newItem.getErrors().isEmpty()) {
                             checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
