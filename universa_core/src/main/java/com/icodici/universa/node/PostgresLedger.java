@@ -828,23 +828,32 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public void clearExpiredStorageSubscriptions() {
+    public List<Long> clearExpiredStorageSubscriptions() {
         try (PooledDb db = dbPool.db()) {
             ZonedDateTime now = ZonedDateTime.now();
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "DELETE FROM contract_subscription WHERE expires_at<?"
+                                    "DELETE FROM contract_subscription WHERE expires_at<? RETURNING contract_storage_id"
                             )
             ) {
                 statement.setLong(1, StateRecord.unixTime(now));
-                db.updateWithStatement(statement);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("clearExpiredStorageSubscriptions failed: returning null");
+                List<Long> resList = new ArrayList<>();
+                while (rs.next())
+                    resList.add(rs.getLong(1));
+                rs.close();
+                return resList;
             }
         } catch (SQLException se) {
             se.printStackTrace();
             throw new Failure("clearExpiredStorageSubscriptions failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
         }
     }
 
@@ -1201,6 +1210,13 @@ public class PostgresLedger implements Ledger {
                     removeStorageContractsForIds(contracts);
             }
         }
+    }
+
+    @Override
+    public void removeExpiredStorageSubscriptionsCascade() {
+        List<Long> contracts = clearExpiredStorageSubscriptions();
+        if ((contracts != null) && (contracts.size() > 0))
+            removeStorageContractsForIds(contracts);
     }
 
 }

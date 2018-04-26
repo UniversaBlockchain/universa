@@ -187,7 +187,7 @@ public interface Ledger {
 
 
     void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin);
-    void clearExpiredStorageSubscriptions();
+    List<Long> clearExpiredStorageSubscriptions();
     void clearExpiredStorageContracts();
     long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack);
     byte[] getEnvironmentFromStorage(HashId contractId);
@@ -204,6 +204,7 @@ public interface Ledger {
     List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId);
     long removeEnvironment(HashId ncontractHashId);
     void removeSlotContractWithAllSubscriptions(HashId slotHashId);
+    void removeExpiredStorageSubscriptionsCascade();
 
     void cleanup();
 }

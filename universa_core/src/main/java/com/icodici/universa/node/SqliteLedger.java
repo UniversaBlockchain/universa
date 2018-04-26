@@ -310,7 +310,7 @@ public class SqliteLedger implements Ledger {
     public void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin) {}
 
     @Override
-    public void clearExpiredStorageSubscriptions() {}
+    public List<Long> clearExpiredStorageSubscriptions() {return null;}
 
     @Override
     public void clearExpiredStorageContracts() {}
@@ -359,6 +359,9 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {}
+
+    @Override
+    public void removeExpiredStorageSubscriptionsCascade() {}
 
 
         /**
