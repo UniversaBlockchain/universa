@@ -129,6 +129,9 @@ public class SlotContract extends NSmartContract {
             HashMap<String, Object> fieldsMap = new HashMap<>();
             fieldsMap.put("action", null);
             fieldsMap.put("/expires_at", null);
+            fieldsMap.put(KEEP_REVISIONS_FIELD_NAME, null);
+            fieldsMap.put(PREPAID_KD_FIELD_NAME, null);
+            fieldsMap.put(TRACKING_CONTRACT_FIELD_NAME, null);
             Binder modifyDataParams = Binder.of("fields", fieldsMap);
             ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
             addPermission(modifyDataPermission);
@@ -231,12 +234,12 @@ public class SlotContract extends NSmartContract {
         if(withSaveToState) {
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
         }
-        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        if(packedTrackingContract != null) {
-            setExpiresAt(now.plusDays(prepaidKilobytesForDays / (packedTrackingContract.length / 1024)));
-        } else {
-            setExpiresAt(now);
-        }
+//        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+//        if(packedTrackingContract != null) {
+//            setExpiresAt(now.plusDays(prepaidKilobytesForDays / (packedTrackingContract.length / 1024)));
+//        } else {
+//            setExpiresAt(now);
+//        }
         return prepaidKilobytesForDays;
     }
 
@@ -406,12 +409,17 @@ public class SlotContract extends NSmartContract {
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
         try {
-            ContractStorageSubscription css = me.createStorageSubscription(getTrackingContract().getId(), getExpiresAt());
+            ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+            newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+            ContractStorageSubscription css = me.createStorageSubscription(getTrackingContract().getId(), newExpires);
             css.receiveEvents(true);
             long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
             long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
             long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
             ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+            System.out.println("onCreated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+            System.out.println("onCreated " + subscriptionId + " " + contractStorageId);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -422,7 +430,15 @@ public class SlotContract extends NSmartContract {
     @Override
     public Binder onUpdated(MutableEnvironment me) {
 
-        ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
+        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
+        for(ContractStorageSubscription css : me.storageSubscriptions()) {
+            ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+            newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+            long subscriptionId = ledger.saveSubscriptionInStorage(((SlotContractStorageSubscription)css).getId(), newExpires);
+            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+            System.out.println("onUpdated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+            System.out.println("onUpdated " + subscriptionId + " " + ((SlotContractStorageSubscription)css).getId());
+        }
         return Binder.fromKeysValues("status", "ok");
     }
 

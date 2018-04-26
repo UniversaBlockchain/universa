@@ -2340,6 +2340,8 @@ public class Node {
                             Binder er;
                             MutableEnvironment me;
                             ImmutableEnvironment ime;
+                            Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) item).getTrackingContract().getId());
+
                             if(getState() == ItemState.APPROVED) {
                                 if (((SlotContract) item).getRevision() == 1) {
                                     me = new SlotMutableEnvironment((SlotContract) item);
@@ -2351,12 +2353,12 @@ public class Node {
                                         byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
                                         if (ebytes != null) {
                                             Binder binder = Boss.unpack(ebytes);
-                                            me = new SlotMutableEnvironment((SlotContract) item, binder);
+                                            me = new SlotMutableEnvironment((SlotContract) item, binder, trackingCssSet);
                                             ((SlotContract) item).setLedger(ledger);
                                             er = ((SlotContract) item).onUpdated(me);
                                             extraResult.set("onUpdateResult", er);
                                         } else {
-                                            me = new SlotMutableEnvironment((SlotContract) item);
+                                            me = new SlotMutableEnvironment((SlotContract) item, null, trackingCssSet);
                                             ((SlotContract) item).setLedger(ledger);
                                             er = ((SlotContract) item).onUpdated(me);
                                             extraResult.set("onUpdateResult", er);
@@ -2370,7 +2372,7 @@ public class Node {
                                 byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
                                 if (ebytes != null) {
                                     Binder binder = Boss.unpack(ebytes);
-                                    ime = new SlotImmutableEnvironment((SlotContract) item, binder);
+                                    ime = new SlotImmutableEnvironment((SlotContract) item, binder, trackingCssSet);
                                     ((SlotContract) item).setLedger(ledger);
                                     ((SlotContract) item).onRevoked(ime);
                                 }

@@ -24,8 +24,20 @@ public class SlotImmutableEnvironment extends Binder implements ImmutableEnviron
     public SlotImmutableEnvironment(SlotContract contract, Binder kvBinder) {
         this(contract);
 
-        for(String key : kvBinder.keySet()) {
-            super.set(key, kvBinder.get(key));
+        if(kvBinder!= null) {
+            for (String key : kvBinder.keySet()) {
+                super.set(key, kvBinder.get(key));
+            }
+        }
+    }
+
+    public SlotImmutableEnvironment(SlotContract contract, Binder kvBinder, Set<ContractStorageSubscription> storageSubscriptionsSet) {
+        this(contract, kvBinder);
+
+        if(storageSubscriptionsSet != null) {
+            this.storageSubscriptionsSet = storageSubscriptionsSet;
+        } else {
+            this.storageSubscriptionsSet = new HashSet<>();
         }
     }
 

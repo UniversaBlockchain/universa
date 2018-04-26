@@ -802,6 +802,7 @@ public class PostgresLedger implements Ledger {
     @Override
     public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt) {
         try (PooledDb db = dbPool.db()) {
+            // todo: here upsert is need (if record with contractStorageId already exist, just update expires_at field)
             try (
                     PreparedStatement statement =
                             db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at) VALUES(?,?) RETURNING id")
@@ -1020,8 +1021,8 @@ public class PostgresLedger implements Ledger {
                 HashSet<ContractStorageSubscription> res = new HashSet<>();
                 do {
                     SlotContractStorageSubscription css = new SlotContractStorageSubscription();
-                    css.setId(rs.getLong(0));
-                    css.setExpiresAt(StateRecord.getTime(rs.getLong(1)));
+                    css.setId(rs.getLong(1));
+                    css.setExpiresAt(StateRecord.getTime(rs.getLong(2)));
                     res.add(css);
                 } while (rs.next());
                 return res;
