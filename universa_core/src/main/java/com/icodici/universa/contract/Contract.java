@@ -1010,7 +1010,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return matching Contract instance or null if not found.
      */
-    private Contract getRevokingItem(HashId id) {
+    protected Contract getRevokingItem(HashId id) {
         for (Approvable a : revokingItems) {
             if (a.getId().equals(id) && a instanceof Contract)
                 return (Contract) a;
