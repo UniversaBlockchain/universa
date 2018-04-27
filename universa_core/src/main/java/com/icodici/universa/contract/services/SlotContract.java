@@ -164,11 +164,17 @@ public class SlotContract extends NSmartContract {
     }
 
     public byte[] getPackedTrackingContract() {
-        return packedTrackingContracts.getFirst();
+        if(packedTrackingContracts != null && packedTrackingContracts.size() > 0)
+            return packedTrackingContracts.getFirst();
+
+        return null;
     }
 
     public Contract getTrackingContract() {
-        return trackingContracts.getFirst();
+        if(trackingContracts != null && trackingContracts.size() > 0)
+            return trackingContracts.getFirst();
+
+        return null;
     }
 
     public void putPackedTrackingContract(byte[] packed) throws IOException {
@@ -348,7 +354,9 @@ public class SlotContract extends NSmartContract {
 
         Binder trackingHashesAsBase64 = data.getBinder("state").getBinder("data").getBinder(TRACKING_CONTRACT_FIELD_NAME);
         for (String k : trackingHashesAsBase64.keySet()) {
-            trackingHashes.set(k, HashId.withDigest(trackingHashesAsBase64.getString(k)));
+            if(trackingHashesAsBase64.getString(k) != null) {
+                trackingHashes.set(k, HashId.withDigest(trackingHashesAsBase64.getString(k)));
+            }
         }
     }
 
@@ -435,10 +443,18 @@ public class SlotContract extends NSmartContract {
             return checkResult;
         }
 
-        checkResult = getTrackingContract().getOwner().isAllowedForKeys(getCreator().getKeys());
+        checkResult = trackingHashes.size() == 0 || getTrackingContract() != null;
         if(!checkResult) {
-            addError(Errors.FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
+            addError(Errors.FAILED_CHECK, "Tracking contract is missed");
             return checkResult;
+        }
+
+        if(getTrackingContract() != null) {
+            checkResult = getTrackingContract().getOwner().isAllowedForKeys(getCreator().getKeys());
+            if (!checkResult) {
+                addError(Errors.FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
+                return checkResult;
+            }
         }
 
         calculatePrepaidKilobytesForDays(false);
