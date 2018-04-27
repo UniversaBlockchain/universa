@@ -146,5 +146,79 @@ public class ModifyDataPermissionTest extends TestCase {
         assertTrue(!changed.isOk());
     }
 
-    
+    @Test
+    public void modifyReferencesAllowed() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"),new Binder());
+        modifyDataPermission.addField("/references", null);
+        contract.addPermission(modifyDataPermission);
+        contract.seal();
+
+        Contract referencedContract = new Contract(TestKeys.privateKey(1));
+        referencedContract.seal();
+        Contract changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        Reference ref = new Reference(referencedContract);
+        ref.addMatchingItem(referencedContract);
+        changed.addReferenceToState(ref);
+        changed.seal();
+        changed.check();
+        assertTrue(changed.isOk());
+
+    }
+
+    @Test
+    public void modifyReferencesDeclined() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"),new Binder());
+        modifyDataPermission.addField("references", null);
+        contract.addPermission(modifyDataPermission);
+        contract.seal();
+
+        Contract referencedContract = new Contract(TestKeys.privateKey(1));
+        Contract changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        Reference ref = new Reference(referencedContract);
+        ref.addMatchingItem(referencedContract);
+        changed.addReferenceToState(ref);
+        changed.seal();
+        changed.check();
+        assertTrue(!changed.isOk());
+
+    }
+
+    @Test
+    public void modifyReferencesWhiteList() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"),new Binder());
+        Contract referencedContract = new Contract(TestKeys.privateKey(1));
+        Reference ref = new Reference(referencedContract);
+        ref.addMatchingItem(referencedContract);
+
+        modifyDataPermission.addField("/references", Do.listOf(ref));
+        contract.addPermission(modifyDataPermission);
+        contract.seal();
+
+        Contract changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.addReferenceToState(ref);
+        changed.seal();
+        changed.check();
+        assertTrue(changed.isOk());
+
+
+        referencedContract = new Contract(TestKeys.privateKey(2));
+        ref = new Reference(referencedContract);
+        ref.addMatchingItem(referencedContract);
+
+        changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.addReferenceToState(ref);
+        changed.seal();
+        changed.check();
+        assertTrue(!changed.isOk());
+
+    }
+
+
 }
