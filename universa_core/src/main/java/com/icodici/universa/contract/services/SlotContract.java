@@ -3,6 +3,7 @@ package com.icodici.universa.contract.services;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -31,8 +32,19 @@ public class SlotContract extends NSmartContract {
     public static final String KEEP_REVISIONS_FIELD_NAME = "keep_revisions";
     public static final String TRACKING_CONTRACT_FIELD_NAME = "tracking_contract";
 
-    private byte[] packedTrackingContract;
-    private Contract trackingContract;
+    public Queue<byte[]> getPackedTrackingContracts() {
+        return packedTrackingContracts;
+    }
+
+    public Queue<Contract> getTrackingContracts() {
+        return trackingContracts;
+    }
+
+    //    private byte[] packedTrackingContract;
+//    private Contract trackingContract;
+    private LinkedList<byte[]> packedTrackingContracts = new LinkedList<>();
+    private LinkedList<Contract> trackingContracts = new LinkedList<>();
+    private Binder trackingHashes = new Binder();
     private int keepRevisions = 1;
 
     private int paidU = 0;
@@ -152,25 +164,58 @@ public class SlotContract extends NSmartContract {
     }
 
     public byte[] getPackedTrackingContract() {
-        return packedTrackingContract;
+        return packedTrackingContracts.getFirst();
     }
 
     public Contract getTrackingContract() {
-        return trackingContract;
+        return trackingContracts.getFirst();
     }
 
-    public void setPackedTrackingContract(byte[] packed) throws IOException {
-        trackingContract = TransactionPack.unpack(packed).getContract();
-        packedTrackingContract = packed;
-        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, getPackedTrackingContract());
+    public void putPackedTrackingContract(byte[] packed) throws IOException {
+//        trackingContract = TransactionPack.unpack(packed).getContract();
+//        packedTrackingContract = packed;
+
+        Contract c = TransactionPack.unpack(packed).getContract();
+        trackingContracts.addFirst(c);
+        packedTrackingContracts.addFirst(packed);
+        trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
+
+        Binder trackingHashesAsBase64 = new Binder();
+        for (String k : trackingHashes.keySet()) {
+            trackingHashesAsBase64.set(k, ((HashId) trackingHashes.get(k)).toBase64String());
+        }
+        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, trackingHashesAsBase64);
+
+        if(trackingContracts.size() > keepRevisions) {
+            trackingContracts.removeLast();
+        }
+        if(packedTrackingContracts.size() > keepRevisions) {
+            packedTrackingContracts.removeLast();
+        }
 
 //        calculatePrepaidKilobytesForDays();
     }
 
-    public void setTrackingContract(Contract c) {
-        packedTrackingContract = c.getPackedTransaction();
-        trackingContract = c;
-        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, getPackedTrackingContract());
+    public void putTrackingContract(Contract c) {
+//        packedTrackingContract = c.getPackedTransaction();
+//        trackingContract = c;
+
+        trackingContracts.addFirst(c);
+        packedTrackingContracts.addFirst(c.getPackedTransaction());
+        trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
+
+        Binder trackingHashesAsBase64 = new Binder();
+        for (String k : trackingHashes.keySet()) {
+            trackingHashesAsBase64.set(k, ((HashId) trackingHashes.get(k)).toBase64String());
+        }
+        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, trackingHashesAsBase64);
+
+        if(trackingContracts.size() > keepRevisions) {
+            trackingContracts.removeLast();
+        }
+        if(packedTrackingContracts.size() > keepRevisions) {
+            packedTrackingContracts.removeLast();
+        }
 
 //        calculatePrepaidKilobytesForDays();
     }
@@ -252,7 +297,7 @@ public class SlotContract extends NSmartContract {
             // recreate subscription:
             Contract newStoredItem = ((ContractStorageSubscription.ApprovedEvent)event).getNewRevision();
 
-            setTrackingContract(newStoredItem);
+            putTrackingContract(newStoredItem);
 
             byte[] ebytes = ledger.getEnvironmentFromStorage(getId());
             if (ebytes != null) {
@@ -295,10 +340,15 @@ public class SlotContract extends NSmartContract {
 
         prepaidKilobytesForDays = data.getBinder("state").getBinder("data").getInt(PREPAID_KD_FIELD_NAME, 0);
 
-        try {
-            setPackedTrackingContract(data.getBinder("state").getBinder("data").getBinary(TRACKING_CONTRACT_FIELD_NAME));
-        } catch (IOException e) {
-            e.printStackTrace();
+//        try {
+//            putPackedTrackingContract(data.getBinder("state").getBinder("data").getBinary(TRACKING_CONTRACT_FIELD_NAME));
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+        Binder trackingHashesAsBase64 = data.getBinder("state").getBinder("data").getBinder(TRACKING_CONTRACT_FIELD_NAME);
+        for (String k : trackingHashesAsBase64.keySet()) {
+            trackingHashes.set(k, HashId.withDigest(trackingHashesAsBase64.getString(k)));
         }
     }
 

@@ -7746,8 +7746,7 @@ public class BaseNetworkTest extends TestCase {
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
         slotContract.setNodeConfig(node.getConfig());
-        slotContract.setKeepRevisions(2);
-        slotContract.setTrackingContract(simpleContract);
+        slotContract.putTrackingContract(simpleContract);
 
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
@@ -7816,7 +7815,7 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(binder);
 
 
-        // refill slot contract with U (means add storing days). check if two revisions is kept
+        // refill slot contract with U (means add storing days).
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
         refilledSlotContract.setNodeConfig(node.getConfig());
@@ -7869,9 +7868,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
         ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
-//        assertNotNull(ebytes);
-//        binder = Boss.unpack(ebytes);
-//        assertNotNull(binder);
+        assertNull(ebytes);
 
         ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract.getId());
         assertNotNull(ebytes);
