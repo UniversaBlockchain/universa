@@ -487,23 +487,42 @@ public class SlotContract extends NSmartContract {
 
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
-        try {
-            ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-            newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-            ContractStorageSubscription css = me.createStorageSubscription(getTrackingContract().getId(), newExpires);
-            css.receiveEvents(true);
-            //todo: it seems that ledger is not initialized at this point, so sleep
-            Thread.sleep(100);
-            long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
-            long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
-            long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
-            System.out.println("onCreated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-            System.out.println("onCreated " + subscriptionId + " " + contractStorageId);
+        ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
+        for(Contract tc : trackingContracts) {
+            try {
+                ContractStorageSubscription css = me.createStorageSubscription(tc.getId(), newExpires);
+                css.receiveEvents(true);
+                //todo: it seems that ledger is not initialized at this point, so sleep
+                Thread.sleep(100);
+                long contractStorageId = ledger.saveContractInStorage(tc.getId(), tc.getPackedTransaction(), css.expiresAt(), tc.getOrigin());
+                long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
+                ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            System.out.println("onCreated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
         }
+//        try {
+//            ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+//            newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+//            ContractStorageSubscription css = me.createStorageSubscription(getTrackingContract().getId(), newExpires);
+//            css.receiveEvents(true);
+//            //todo: it seems that ledger is not initialized at this point, so sleep
+//            Thread.sleep(100);
+//            long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
+//            long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
+//            long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
+//            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+//            System.out.println("onCreated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+//            System.out.println("onCreated " + subscriptionId + " " + contractStorageId);
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
 
         return Binder.fromKeysValues("status", "ok");
     }
@@ -511,15 +530,35 @@ public class SlotContract extends NSmartContract {
     @Override
     public Binder onUpdated(MutableEnvironment me) {
 
+        ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
-        for(ContractStorageSubscription css : me.storageSubscriptions()) {
-            ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-            newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-            long subscriptionId = ledger.saveSubscriptionInStorage(((SlotContractStorageSubscription)css).getContractStorageId(), newExpires);
-            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+        for(Contract tc : trackingContracts) {
+            try {
+                ContractStorageSubscription css = me.createStorageSubscription(tc.getId(), newExpires);
+                css.receiveEvents(true);
+                //todo: it seems that ledger is not initialized at this point, so sleep
+                Thread.sleep(100);
+                long contractStorageId = ledger.saveContractInStorage(tc.getId(), tc.getPackedTransaction(), css.expiresAt(), tc.getOrigin());
+                long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
+                ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             System.out.println("onUpdated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-            System.out.println("onUpdated " + subscriptionId + " " + ((SlotContractStorageSubscription)css).getId());
         }
+
+//        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
+//        for(ContractStorageSubscription css : me.storageSubscriptions()) {
+//            ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+//            newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+//            long subscriptionId = ledger.saveSubscriptionInStorage(((SlotContractStorageSubscription)css).getContractStorageId(), newExpires);
+//            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+//            System.out.println("onUpdated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
+//            System.out.println("onUpdated " + subscriptionId + " " + ((SlotContractStorageSubscription)css).getId());
+//        }
         return Binder.fromKeysValues("status", "ok");
     }
 
