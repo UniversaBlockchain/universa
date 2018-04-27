@@ -1118,6 +1118,34 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    public List<Long> getEnvironmentSubscriptionsByEnvId(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "SELECT subscription_id FROM environment_subscription WHERE environemtn_id=?"
+                            )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getEnvironmentSubscriptionsByEnvId failed: returning null");
+                List<Long> resList = new ArrayList<>();
+                while (rs.next())
+                    resList.add(rs.getLong(1));
+                rs.close();
+                return resList;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getEnvironmentSubscriptionsByEnvId failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     @Override
     public long removeEnvironment(HashId ncontractHashId) {
         try (PooledDb db = dbPool.db()) {
@@ -1141,6 +1169,34 @@ public class PostgresLedger implements Ledger {
         } catch (SQLException se) {
             se.printStackTrace();
             throw new Failure("removeEnvironment failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public long getEnvironmentId(HashId ncontractHashId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "SELECT id FROM environments WHERE ncontract_hash_id=?"
+                            )
+            ) {
+                statement.setBytes(1, ncontractHashId.getDigest());
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getEnvironmentId failed: returning null");
+                long resId = 0;
+                if (rs.next())
+                    resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getEnvironmentId failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
             return 0;
@@ -1206,9 +1262,10 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {
-        long environmentId = removeEnvironment(slotHashId);
+        long environmentId = getEnvironmentId(slotHashId);
+        List<Long> subscriptionIdList = getEnvironmentSubscriptionsByEnvId(environmentId);
+        removeEnvironment(slotHashId);
         if (environmentId != 0) {
-            List<Long> subscriptionIdList = removeEnvironmentSubscriptionsByEnvId(environmentId);
             if ((subscriptionIdList != null) && (subscriptionIdList.size() > 0)) {
                 List<Long> contracts = removeStorageSubscriptionsByIds(subscriptionIdList);
                 if ((contracts != null) && (contracts.size() > 0))
