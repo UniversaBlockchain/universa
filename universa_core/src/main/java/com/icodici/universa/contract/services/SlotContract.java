@@ -416,6 +416,7 @@ public class SlotContract extends NSmartContract {
             long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
             long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
             long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
+            System.out.println("--------------------- " + subscriptionId + ", " + environmentId);
             ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
             System.out.println("onCreated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
             System.out.println("onCreated " + subscriptionId + " " + contractStorageId);
@@ -434,7 +435,7 @@ public class SlotContract extends NSmartContract {
         for(ContractStorageSubscription css : me.storageSubscriptions()) {
             ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
             newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-            long subscriptionId = ledger.saveSubscriptionInStorage(((SlotContractStorageSubscription)css).getId(), newExpires);
+            long subscriptionId = ledger.saveSubscriptionInStorage(((SlotContractStorageSubscription)css).getContractStorageId(), newExpires);
             ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
             System.out.println("onUpdated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
             System.out.println("onUpdated " + subscriptionId + " " + ((SlotContractStorageSubscription)css).getId());

@@ -774,7 +774,10 @@ public class PostgresLedger implements Ledger {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =
-                    db.statement("INSERT INTO contract_storage (hash_id,bin_data,origin,expires_at) VALUES (?,?,?,?) RETURNING id")
+                    db.statement("" +
+                            "INSERT INTO contract_storage (hash_id,bin_data,origin,expires_at) VALUES (?,?,?,?) " +
+                            "ON CONFLICT(hash_id) DO UPDATE SET hash_id=EXCLUDED.hash_id " +
+                            "RETURNING id")
             ) {
                 statement.setBytes(1, contractId.getDigest());
                 statement.setBytes(2, binData);
@@ -802,7 +805,6 @@ public class PostgresLedger implements Ledger {
     @Override
     public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt) {
         try (PooledDb db = dbPool.db()) {
-            // todo: here upsert is need (if record with contractStorageId already exist, just update expires_at field)
             try (
                     PreparedStatement statement =
                             db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at) VALUES(?,?) RETURNING id")
@@ -960,7 +962,7 @@ public class PostgresLedger implements Ledger {
                     return null;
                 HashSet<byte[]> res = new HashSet<>();
                 do {
-                    res.add(rs.getBytes(0));
+                    res.add(rs.getBytes(1));
                 } while (rs.next());
                 return res;
             } catch (Exception e) {
@@ -982,7 +984,7 @@ public class PostgresLedger implements Ledger {
                     return null;
                 HashSet<byte[]> res = new HashSet<>();
                 do {
-                    res.add(rs.getBytes(0));
+                    res.add(rs.getBytes(1));
                 } while (rs.next());
                 return res;
             } catch (Exception e) {
@@ -1001,7 +1003,7 @@ public class PostgresLedger implements Ledger {
                     "WHERE environment_subscription.subscription_id=?", subscriptionStorageId))) {
                 if (rs == null)
                     return null;
-                return rs.getBytes(0);
+                return rs.getBytes(1);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
@@ -1013,7 +1015,7 @@ public class PostgresLedger implements Ledger {
     public Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT contract_subscription.id, contract_subscription.expires_at FROM contract_storage " +
+                    "SELECT contract_subscription.id, contract_subscription.expires_at, contract_subscription.contract_storage_id FROM contract_storage " +
                     "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id " +
                     "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
@@ -1023,6 +1025,7 @@ public class PostgresLedger implements Ledger {
                     SlotContractStorageSubscription css = new SlotContractStorageSubscription();
                     css.setId(rs.getLong(1));
                     css.setExpiresAt(StateRecord.getTime(rs.getLong(2)));
+                    css.setContractStorageId(rs.getLong(3));
                     res.add(css);
                 } while (rs.next());
                 return res;
@@ -1041,7 +1044,7 @@ public class PostgresLedger implements Ledger {
                     "WHERE id=?", environmentId))) {
                 if (rs == null)
                     return null;
-                return rs.getBytes(0);
+                return rs.getBytes(1);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;

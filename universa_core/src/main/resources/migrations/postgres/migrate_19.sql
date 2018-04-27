@@ -1,0 +1,6 @@
+alter table environment_subscription drop constraint environment_subscription_environemtn_id_fkey;
+
+alter table environment_subscription add constraint environment_subscription_environemtn_id_fkey
+foreign key(environemtn_id)
+references environments(id)
+on delete cascade;

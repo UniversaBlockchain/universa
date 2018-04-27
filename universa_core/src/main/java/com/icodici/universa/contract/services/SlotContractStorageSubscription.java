@@ -7,6 +7,7 @@ import java.time.ZonedDateTime;
 public class SlotContractStorageSubscription implements ContractStorageSubscription {
 
     private long id = 0;
+    private long contractStorageId = 0;
     private ZonedDateTime expiresAt_ = ZonedDateTime.now().plusMonths(1);
     private boolean isReceiveEvents = false;
 
@@ -44,6 +45,13 @@ public class SlotContractStorageSubscription implements ContractStorageSubscript
     }
     public long getId() {
         return id;
+    }
+
+    public void setContractStorageId(long value) {
+        contractStorageId = value;
+    }
+    public long getContractStorageId() {
+        return contractStorageId;
     }
 
     @Override
