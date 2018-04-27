@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class SlotContract extends NSmartContract {
 
@@ -413,10 +410,11 @@ public class SlotContract extends NSmartContract {
             newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
             ContractStorageSubscription css = me.createStorageSubscription(getTrackingContract().getId(), newExpires);
             css.receiveEvents(true);
+            //todo: it seems that ledger is not initialized at this point, so sleep
+            Thread.sleep(100);
             long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
             long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
             long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-            System.out.println("--------------------- " + subscriptionId + ", " + environmentId);
             ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
             System.out.println("onCreated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
             System.out.println("onCreated " + subscriptionId + " " + contractStorageId);

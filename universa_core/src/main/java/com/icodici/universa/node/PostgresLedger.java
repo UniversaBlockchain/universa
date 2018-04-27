@@ -919,8 +919,9 @@ public class PostgresLedger implements Ledger {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
-                            db.statement(
-                                    "INSERT INTO environment_subscription (subscription_id,environemtn_id) VALUES (?,?)"
+                            db.statement("" +
+                                    "INSERT INTO environment_subscription (subscription_id,environemtn_id) VALUES (?,?) " +
+                                    "ON CONFLICT(subscription_id) DO UPDATE SET environemtn_id=EXCLUDED.environemtn_id "
                             )
             ) {
                 statement.setLong(1, subscriptionId);
