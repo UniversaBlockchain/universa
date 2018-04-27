@@ -932,8 +932,11 @@ public class ContractsService {
 
         paymentDecreasedSecond.seal();
 
-        payload.getContract().addNewItems(paymentDecreasedSecond);
-        payload.getContract().seal();
+        // we add new item to the contract, so we need to recreate transaction pack
+        Contract mainContract = payload.getContract();
+        mainContract.addNewItems(paymentDecreasedSecond);
+        mainContract.seal();
+        payload = mainContract.getTransactionPack();
 
         Parcel parcel = new Parcel(payload, paymentDecreased.getTransactionPack());
 

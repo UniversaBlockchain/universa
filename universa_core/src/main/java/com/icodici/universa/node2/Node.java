@@ -13,6 +13,7 @@ import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.NodeContract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.SmartContract;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -1764,7 +1765,15 @@ public class Node {
                         } else {
                             checkPassed = item.check();
 
-                            if(item instanceof NodeContract) {
+                            if(item instanceof SmartContract) {
+                                System.err.println(item.getId() + "?check> " + ((SlotContract) item).getTrackingContract());
+                                System.err.println(item.getId() + "?check> " + ((SlotContract) item).getTrackingContracts().size());
+                                Binder trackingHashesAsBase64 = ((SlotContract) item).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
+
+                                System.err.println(item.getId() + " ?check> " + trackingHashesAsBase64.size());
+                                ((SlotContract) item).setNodeInfo(myInfo);
+                                ((SlotContract) item).setNodeConfig(config);
+                                ((SlotContract) item).setLedger(ledger);
                                 ImmutableEnvironment ime;
                                 byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
                                 if (ebytes != null) {
@@ -1774,14 +1783,14 @@ public class Node {
                                     ime = new SlotImmutableEnvironment((SlotContract) item);
                                 }
 //                                if (getState() == ItemState.APPROVED) {
-                                    if (((Contract) item).getRevision() == 1) {
-                                        ((NodeContract) item).beforeCreate(ime);
+                                    if (((SmartContract) item).getRevision() == 1) {
+                                        ((SmartContract) item).beforeCreate(ime);
                                     } else {
-                                        ((NodeContract) item).beforeUpdate(ime);
+                                        ((SmartContract) item).beforeUpdate(ime);
                                     }
 //                                }
 //                                if (getState() == ItemState.REVOKED) {
-//                                    ((NodeContract) item).beforeRevoke(ime);
+//                                    ((SmartContract) item).beforeRevoke(ime);
 //                                }
                             }
                         }
@@ -1799,6 +1808,8 @@ public class Node {
                     } catch (Quantiser.QuantiserException e) {
                         emergencyBreak();
                         return;
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                     alreadyChecked = true;
 
@@ -1869,7 +1880,10 @@ public class Node {
 
                         checkReferencesOf(revokingItem);
 
-                        if(revokingItem instanceof NodeContract) {
+                        if(revokingItem instanceof SlotContract) {
+                            ((SlotContract) revokingItem).setNodeInfo(myInfo);
+                            ((SlotContract) revokingItem).setNodeConfig(config);
+                            ((SlotContract) revokingItem).setLedger(ledger);
                             ImmutableEnvironment ime;
                             byte[] ebytes = ledger.getEnvironmentFromStorage(revokingItem.getId());
                             if (ebytes != null) {
@@ -1886,7 +1900,7 @@ public class Node {
 //                            }
 //                                }
 //                                if (getState() == ItemState.REVOKED) {
-                                    ((NodeContract) revokingItem).beforeRevoke(ime);
+                                    ((SlotContract) revokingItem).beforeRevoke(ime);
 //                                }
                         }
 
@@ -1924,7 +1938,10 @@ public class Node {
 
                         checkSubItemsOf(newItem);
 
-                        if(newItem instanceof NodeContract) {
+                        if(newItem instanceof SlotContract) {
+                            ((SlotContract) newItem).setNodeInfo(myInfo);
+                            ((SlotContract) newItem).setNodeConfig(config);
+                            ((SlotContract) newItem).setLedger(ledger);
                             ImmutableEnvironment ime;
                             byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
                             if (ebytes != null) {
@@ -1935,9 +1952,9 @@ public class Node {
                             }
 //                                if (getState() == ItemState.APPROVED) {
                             if (((Contract) newItem).getRevision() == 1) {
-                                ((NodeContract) newItem).beforeCreate(ime);
+                                ((SlotContract) newItem).beforeCreate(ime);
                             } else {
-                                ((NodeContract) newItem).beforeUpdate(ime);
+                                ((SlotContract) newItem).beforeUpdate(ime);
                             }
 //                                }
 //                                if (getState() == ItemState.REVOKED) {
@@ -2016,6 +2033,9 @@ public class Node {
                     if(!processingState.isProcessedToConsensus()) {
                         processingState = ItemProcessingState.POLLING;
                     }
+
+                    ((Contract) item).traceErrors();
+
                     vote(myInfo, record.getState());
                     broadcastMyState();
                     pulseStartPolling();
@@ -2074,7 +2094,8 @@ public class Node {
         private final void broadcastMyState() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: broadcastMyState, state ", processingState),
+                    " :: broadcastMyState, state ", processingState,
+                    " :: itemState ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 Notification notification;
@@ -2152,6 +2173,11 @@ public class Node {
 
         private final void vote(NodeInfo node, ItemState state) {
             if(processingState.canContinue()) {
+                report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                        itemId, " from parcel: ", parcelId,
+                        " :: vote " + state + " from " + node + ", state ", processingState,
+                        " :: itemState ", getState()),
+                        DatagramAdapter.VerboseLevel.BASE);
                 boolean positiveConsensus = false;
                 boolean negativeConsensus = false;
 //                ItemProcessingState processingStateWas;
@@ -2243,6 +2269,8 @@ public class Node {
                                     } else {
                                         ime = new SlotImmutableEnvironment((SlotContract) revokingItem, null, trackingCssSet);
                                     }
+                                    ((SlotContract) revokingItem).setNodeInfo(myInfo);
+                                    ((SlotContract) revokingItem).setNodeConfig(config);
                                     ((SlotContract) revokingItem).setLedger(ledger);
                                     ((SlotContract) revokingItem).onRevoked(ime);
                                 }
@@ -2278,9 +2306,12 @@ public class Node {
                                     Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) newItem).getTrackingContract().getId());
                                     MutableEnvironment me;
 
+                                    ((SlotContract) newItem).setNodeInfo(myInfo);
+                                    ((SlotContract) newItem).setNodeConfig(config);
+                                    ((SlotContract) newItem).setLedger(ledger);
+
                                     if (((SlotContract) newItem).getRevision() == 1) {
                                         me = new SlotMutableEnvironment((SlotContract) newItem);
-                                        ((SlotContract) newItem).setLedger(ledger);
                                         er = ((SlotContract) newItem).onCreated(me);
                                         newExtraResult.set("onCreatedResult", er);
                                     } else {
@@ -2289,12 +2320,10 @@ public class Node {
                                             if (ebytes != null) {
                                                 Binder binder = Boss.unpack(ebytes);
                                                 me = new SlotMutableEnvironment((SlotContract) newItem, binder, trackingCssSet);
-                                                ((SlotContract) newItem).setLedger(ledger);
                                                 er = ((SlotContract) newItem).onUpdated(me);
                                                 newExtraResult.set("onUpdateResult", er);
                                             } else {
                                                 me = new SlotMutableEnvironment((SlotContract) newItem, null, trackingCssSet);
-                                                ((SlotContract) newItem).setLedger(ledger);
                                                 er = ((SlotContract) newItem).onUpdated(me);
                                                 newExtraResult.set("onUpdateResult", er);
                                             }
@@ -2371,6 +2400,14 @@ public class Node {
 
                     try {
                         if(item instanceof SlotContract) {
+                            System.err.println(item.getId() + "??>>> " + ((SlotContract) item).getTrackingContract());
+                            System.err.println(item.getId() + "??>>> " + ((SlotContract) item).getTrackingContracts().size());
+                            Binder trackingHashesAsBase64 = ((SlotContract) item).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
+
+                            System.err.println(item.getId() + " ??>>> " + trackingHashesAsBase64.size());
+                            ((SlotContract) item).setNodeInfo(myInfo);
+                            ((SlotContract) item).setNodeConfig(config);
+                            ((SlotContract) item).setLedger(ledger);
                             Binder er;
                             MutableEnvironment me;
                             ImmutableEnvironment ime;
@@ -2379,7 +2416,6 @@ public class Node {
                             if(getState() == ItemState.APPROVED) {
                                 if (((SlotContract) item).getRevision() == 1) {
                                     me = new SlotMutableEnvironment((SlotContract) item);
-                                    ((SlotContract) item).setLedger(ledger);
                                     er = ((SlotContract) item).onCreated(me);
                                     extraResult.set("onCreatedResult", er);
                                 } else {
@@ -2388,12 +2424,10 @@ public class Node {
                                         if (ebytes != null) {
                                             Binder binder = Boss.unpack(ebytes);
                                             me = new SlotMutableEnvironment((SlotContract) item, binder, trackingCssSet);
-                                            ((SlotContract) item).setLedger(ledger);
                                             er = ((SlotContract) item).onUpdated(me);
                                             extraResult.set("onUpdateResult", er);
                                         } else {
                                             me = new SlotMutableEnvironment((SlotContract) item, null, trackingCssSet);
-                                            ((SlotContract) item).setLedger(ledger);
                                             er = ((SlotContract) item).onUpdated(me);
                                             extraResult.set("onUpdateResult", er);
                                         }
@@ -2404,11 +2438,9 @@ public class Node {
                             }
                             if(getState() == ItemState.REVOKED) {
                                 byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
-                                System.out.println(">>onRevoked " + ebytes);
                                 if (ebytes != null) {
                                     Binder binder = Boss.unpack(ebytes);
                                     ime = new SlotImmutableEnvironment((SlotContract) item, binder, trackingCssSet);
-                                    ((SlotContract) item).setLedger(ledger);
                                     ((SlotContract) item).onRevoked(ime);
                                 }
                             }
@@ -2425,6 +2457,9 @@ public class Node {
                                 if(foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
                                     byte[] foundSlotPack = ledger.getSlotForSubscriptionStorageId(((SlotContractStorageSubscription) foundCss).getId());
                                     SlotContract foundSlot = (SlotContract) Contract.fromPackedTransaction(foundSlotPack);
+
+                                    foundSlot.setNodeInfo(myInfo);
+                                    foundSlot.setNodeConfig(config);
                                     foundSlot.setLedger(ledger);
                                     if (getState() == ItemState.APPROVED) {
                                         foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
@@ -2456,6 +2491,7 @@ public class Node {
                             }
                         }
                     } catch (Exception ex) {
+                        System.err.println(myInfo);
                         ex.printStackTrace();
                     }
 

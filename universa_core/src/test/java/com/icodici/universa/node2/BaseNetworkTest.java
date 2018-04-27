@@ -20,6 +20,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -7768,6 +7769,9 @@ public class BaseNetworkTest extends TestCase {
         System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
         System.out.println(">> " + 100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
 
+//        for(Node n : nodes) {
+//            n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        }
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
             tuContract = payingParcel.getPayloadContract().getNew().get(0);
@@ -7775,6 +7779,9 @@ public class BaseNetworkTest extends TestCase {
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
+        System.out.println("wait parcel " + payingParcel.getId());
+        System.out.println("wait parcel " + slotContract.getId() + " " + slotContract.getSealedByKeys().size());
+        slotContract.traceErrors();
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);

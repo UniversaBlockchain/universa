@@ -14,6 +14,7 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
@@ -123,7 +124,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Binder payload = Boss.load(contractBytes, null);
         BiDeserializer bm = BossBiMapper.newDeserializer();
         deserialize(payload.getBinderOrThrow("contract"), bm);
+        if(this instanceof SmartContract) {
+            System.err.println(getId() + "?this> " + ((SlotContract) this).getTrackingContract());
+            System.err.println(getId() + "?this> " + ((SlotContract) this).getTrackingContracts().size());
+            Binder trackingHashesAsBase64 = ((SlotContract) this).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
 
+            System.err.println(getId() + " ?this> " + trackingHashesAsBase64.size());
+        }
         if (apiLevel < 3) {
             // Legacy format: revoking and new items are included (so the contract pack grows)
             for (Object packed : payload.getList("revoking", Collections.EMPTY_LIST)) {
@@ -245,6 +252,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 } else
                     addError(Errors.BAD_SIGNATURE, "keytag:" + key.info().getBase64Tag(), "the signature is broken");
             }
+        }
+        System.err.println(getId() + " " + getSealedByKeys().size() + " " + ((List) data.getOrThrow("signatures")).size());
+        if(this instanceof SmartContract) {
+            System.err.println(getId() + "?this2> " + ((SlotContract) this).getTrackingContract());
+            System.err.println(getId() + "?this2> " + ((SlotContract) this).getTrackingContracts().size());
+            Binder trackingHashesAsBase64 = ((SlotContract) this).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
+
+            System.err.println(getId() + " ?this2> " + trackingHashesAsBase64.size());
         }
     }
 
@@ -1069,8 +1084,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Role createdBy = getRole("creator");
         if (createdBy == null || !createdBy.isValid())
             addError(BAD_VALUE, "state.created_by");
-        if (!isSignedBy(createdBy))
+        if (!isSignedBy(createdBy)) {
+            System.err.println(NOT_SIGNED + " " + getId() + " " + sealedByKeys.size());
             addError(NOT_SIGNED, "", "missing creator signature(s)");
+        }
     }
 
     private boolean isSignedBy(Role role) throws Quantiser.QuantiserException {
@@ -1392,6 +1409,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public void addSignatureToSeal(Set<PrivateKey> privateKeys) {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to add signature: sealed binary does not exist");
+
+        keysToSignWith.addAll(privateKeys);
 
         Binder data = Boss.unpack(sealedBinary);
         byte[] contractBytes = data.getBinaryOrThrow("data");

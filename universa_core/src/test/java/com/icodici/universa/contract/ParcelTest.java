@@ -43,6 +43,7 @@ public class ParcelTest  {
         payload.registerRole(new RoleLink("owner", "issuer"));
         payload.registerRole(new RoleLink("creator", "issuer"));
         payload.setExpiresAt(ZonedDateTime.now().plusDays(2));
+        payload.addNewItems(new Contract(TestKeys.privateKey(3)));
         payload.seal();
 
         Contract payment = new Contract();
@@ -97,7 +98,7 @@ public class ParcelTest  {
         assertEquals(equal1.getPayload().getContract().getExpiresAt().getDayOfYear(), equal2.getPayload().getContract().getExpiresAt().getDayOfYear());
         assertEquals(equal1.getPayment().getContract().getExpiresAt().getDayOfYear(), equal2.getPayment().getContract().getExpiresAt().getDayOfYear());
 
-        assertEquals(equal1.getPayload().getSubItems(), equal2.getPayload().getSubItems());
+        assertEquals(equal1.getPayload().getSubItems().size(), equal2.getPayload().getSubItems().size());
         assertEquals(equal1.getPayment().getSubItems(), equal2.getPayment().getSubItems());
     }
 
@@ -114,6 +115,9 @@ public class ParcelTest  {
 
         parcelAssertions(parcel, des_parcel);
         parcelAssertions(des_parcelFromFile, des_parcelFromFile);
+
+        assertEquals(1, des_parcel.getPayload().getSubItems().size());
+        assertEquals(1, des_parcel.getPayload().getContract().getNew().size());
     }
 
     @Test
@@ -128,5 +132,8 @@ public class ParcelTest  {
 
         parcelAssertions(parcel, des_parcel);
         parcelAssertions(parcelFromFile, des_parcelFromFile);
+
+        assertEquals(1, des_parcel.getPayload().getSubItems().size());
+        assertEquals(1, des_parcel.getPayload().getContract().getNew().size());
     }
 }

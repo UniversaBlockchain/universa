@@ -332,6 +332,14 @@ public class TransactionPack implements BiSerializable {
                         contract = new SlotContract(bb, this);
                         break;
                 }
+                System.err.println(scType + " " + contract.getId() + " " + contract.getSealedByKeys().size());
+                if(contract instanceof SmartContract) {
+                    System.err.println(contract.getId() + "?tp> " + ((SlotContract) contract).getTrackingContract());
+                    System.err.println(contract.getId() + "?tp> " + ((SlotContract) contract).getTrackingContracts().size());
+                    Binder trackingHashesAsBase64 = ((SlotContract) contract).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
+
+                    System.err.println(contract.getId() + " ?tp> " + trackingHashesAsBase64.size());
+                }
             } else {
                 contract = new Contract(bb, this);
             }

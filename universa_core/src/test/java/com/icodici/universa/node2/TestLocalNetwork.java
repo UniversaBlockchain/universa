@@ -13,12 +13,15 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.SmartContract;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import com.icodici.universa.node2.network.UDPAdapter;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 
@@ -38,6 +41,7 @@ public class TestLocalNetwork extends Network {
     private static LogPrinter log = new LogPrinter("TLN");
     private Consumer<Notification> consumer;
     private Boolean shutdown = false;
+    public static final Object mutex = new Object();
 
     public TestLocalNetwork(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
         super(netConfig);
@@ -167,52 +171,76 @@ public class TestLocalNetwork extends Network {
     }
 
     @Override
-    public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+    synchronized public Approvable getItem(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         Node node = nodes.get(nodeInfo);
 
         Approvable item = node.getItem(itemId);
 
-//        if(item instanceof Contract) {
-//            TransactionPack tp_before = ((Contract) item).getTransactionPack();
-//            byte[] data = tp_before.pack();
-//
-//            // here we "send" data and "got" it
-//
-//            TransactionPack tp_after = null;
-//            try {
-//                tp_after = TransactionPack.unpack(data);
-//                Contract gotMainContract = tp_after.getContract();
-//
-//                return gotMainContract;
-//
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
+        if(item instanceof Contract) {
+            TransactionPack tp_before = ((Contract) item).getTransactionPack();
+            byte[] data = tp_before.pack();
+
+            // here we "send" data and "got" it
+
+            TransactionPack tp_after = null;
+            try {
+                tp_after = TransactionPack.unpack(data);
+                Contract gotMainContract = tp_after.getContract();
+
+                return gotMainContract;
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         return item;
     }
 
     @Override
-    public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
-        Node node = nodes.get(nodeInfo);
+    synchronized public Parcel getParcel(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        synchronized (mutex) {
+            Node node = nodes.get(nodeInfo);
 
-        Parcel parcel = node.getParcel(itemId);
-//        System.out.println("got parcel " + parcel.getId() + " from " + node);
-//        byte[] array = parcel.pack();
-//        System.out.println("pack parcel " + parcel.getId() + " from " + node);
-//
-//        //unpack
-//        Parcel des_parcel = null;
-//        try {
-//            des_parcel = Parcel.unpack(array);
-//            System.out.println("unpack parcel " + parcel.getId() + " from " + node);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//
-//        return des_parcel;
-        return parcel;
+            Parcel parcel = node.getParcel(itemId);
+            System.out.println("got parcel " + parcel.getId() + " from " + node
+                    + " " + parcel.getPayload().getContract().getId()
+                    + " " + parcel.getPayload().getContract().getSealedByKeys().size());
+            byte[] array = parcel.pack();
+            System.out.println("pack parcel " + parcel.getId() + " from " + node);
+            Approvable item = parcel.getPayload().getContract();
+            if(item instanceof SmartContract) {
+                System.err.println(item.getId() + "::pack:: " + ((SlotContract) item).getTrackingContract());
+                System.err.println(item.getId() + "::pack:: " + ((SlotContract) item).getTrackingContracts().size());
+                Binder trackingHashesAsBase64 = ((SlotContract) item).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
+
+                System.err.println(item.getId() + "::pack:: " + trackingHashesAsBase64.size());
+            }
+
+            //unpack
+            Parcel des_parcel = null;
+            try {
+                des_parcel = Parcel.unpack(array);
+                System.out.println("unpack parcel " + des_parcel.getId() + " from " + node
+                        + " " + des_parcel.getPayload().getContract().getId()
+                        + " " + des_parcel.getPayload().getContract().getSealedByKeys().size());
+
+                item = des_parcel.getPayload().getContract();
+                if(item instanceof SmartContract) {
+                    System.err.println(item.getId() + "::unpack:: " + ((SlotContract) item).getTrackingContract());
+                    System.err.println(item.getId() + "::unpack:: " + ((SlotContract) item).getTrackingContracts().size());
+                    Binder trackingHashesAsBase64 = ((SlotContract) item).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
+
+                    System.err.println(item.getId() + "::unpack:: " + trackingHashesAsBase64.size());
+                }
+            } catch (Exception e) {
+                System.out.println("error parcel ");
+                e.printStackTrace();
+            }
+
+            return des_parcel;
+//        return parcel;
+        }
     }
 
     private String exceptionCallback(String message) {
