@@ -268,6 +268,13 @@ public class MainTest {
                 } catch (KeyAddress.IllegalAddressException e) {
                     e.printStackTrace();
                 }
+
+                try {
+                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/tu_key.public.unikey")));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
                 m.waitReady();
                 mm.add(m);
@@ -882,8 +889,8 @@ public class MainTest {
         });
         for (int i=0; i < 50; i++) {
             checkShutdown();
-            System.out.println("iteration" + i);
-            Thread.sleep(2000);
+            System.out.println("iteration " + i);
+            Thread.sleep(5000);
             dbUrls.stream().forEach(url -> {
                 try {
                     clearLedger(url);
@@ -1004,7 +1011,7 @@ public class MainTest {
 
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        ts.node.shutdown();
+        ts.nodes.forEach(x -> x.shutdown());
     }
 
     private TestSpace prepareTestSpace() throws Exception {
@@ -1372,7 +1379,7 @@ public class MainTest {
 
         //recreate network and make sure contract is still APPROVED
         testSpace.nodes.forEach(n->n.shutdown());
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         testSpace = prepareTestSpace(issuerKey);
         assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
 
@@ -1398,6 +1405,8 @@ public class MainTest {
         }
         assertEquals(rr.state,ItemState.APPROVED);
 
+        testSpace.nodes.forEach(x -> x.shutdown());
+
     }
 
 
@@ -1420,6 +1429,8 @@ public class MainTest {
         ItemResult itemResult = client.register(contract.getPackedTransaction(), 5000);
         System.out.println("itemResult: " + itemResult);
         assertEquals(expectedState, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
     }
 
 
@@ -1452,6 +1463,8 @@ public class MainTest {
         itemResult = client.register(contract.getPackedTransaction(), 5000);
         System.out.println("itemResult: " + itemResult);
         assertEquals(expectedState, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
     }
 
 }
