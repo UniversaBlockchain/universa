@@ -11,9 +11,11 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.TestCase;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.Quantiser;
+import net.sergeych.tools.Binder;
 import org.junit.Before;
 
 import java.io.IOException;
@@ -140,14 +142,24 @@ public class ContractTestBase extends TestCase {
 
         // -- data
         for(Object k : originContract.getStateData().keySet()) {
-            if(originContract.getStateData().get(k) instanceof byte[]) {
+            if(k.equals(SlotContract.TRACKING_CONTRACT_FIELD_NAME)) {
+                for(String kk : ((Binder) originContract.getStateData().get(k)).keySet()) {
+                    assertArrayEquals(((Binder) originContract.getStateData().get(k)).getBytesOrThrow(kk).toArray(),
+                            ((Binder) checkingContract.getStateData().get(k)).getBytesOrThrow(kk).toArray());
+                }
+            } else if(originContract.getStateData().get(k) instanceof byte[]) {
                 assertArrayEquals((byte[]) originContract.getStateData().get(k), (byte[]) checkingContract.getStateData().get(k));
             } else {
                 assertEquals(originContract.getStateData().get(k), checkingContract.getStateData().get(k));
             }
         }
         for(Object k : originContract.getDefinition().getData().keySet()) {
-            if(originContract.getDefinition().getData().get(k) instanceof byte[]) {
+            if(k.equals(SlotContract.TRACKING_CONTRACT_FIELD_NAME)) {
+                for(String kk : ((Binder) originContract.getDefinition().getData().get(k)).keySet()) {
+                    assertArrayEquals(((Binder) originContract.getDefinition().getData().get(k)).getBytesOrThrow(kk).toArray(),
+                            ((Binder) checkingContract.getDefinition().getData().get(k)).getBytesOrThrow(kk).toArray());
+                }
+            } else if(originContract.getDefinition().getData().get(k) instanceof byte[]) {
                 assertArrayEquals((byte[]) originContract.getDefinition().getData().get(k), (byte[]) checkingContract.getDefinition().getData().get(k));
             } else {
                 assertEquals(originContract.getDefinition().getData().get(k), checkingContract.getDefinition().getData().get(k));

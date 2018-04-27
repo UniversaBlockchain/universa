@@ -186,11 +186,11 @@ public class SlotContract extends NSmartContract {
         packedTrackingContracts.addFirst(packed);
         trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
 
-        Binder trackingHashesAsBase64 = new Binder();
-        for (String k : trackingHashes.keySet()) {
-            trackingHashesAsBase64.set(k, ((HashId) trackingHashes.get(k)).toBase64String());
+        Binder forState = new Binder();
+        for (Contract tc : trackingContracts) {
+            forState.set(String.valueOf(tc.getRevision()), tc.getPackedTransaction());
         }
-        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, trackingHashesAsBase64);
+        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, forState);
 
         if(trackingContracts.size() > keepRevisions) {
             trackingContracts.removeLast();
@@ -210,11 +210,11 @@ public class SlotContract extends NSmartContract {
         packedTrackingContracts.addFirst(c.getPackedTransaction());
         trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
 
-        Binder trackingHashesAsBase64 = new Binder();
-        for (String k : trackingHashes.keySet()) {
-            trackingHashesAsBase64.set(k, ((HashId) trackingHashes.get(k)).toBase64String());
+        Binder forState = new Binder();
+        for (Contract tc : trackingContracts) {
+            forState.set(String.valueOf(tc.getRevision()), tc.getPackedTransaction());
         }
-        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, trackingHashesAsBase64);
+        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, forState);
 
         if(trackingContracts.size() > keepRevisions) {
             trackingContracts.removeLast();
@@ -351,12 +351,28 @@ public class SlotContract extends NSmartContract {
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
-
-        Binder trackingHashesAsBase64 = data.getBinder("state").getBinder("data").getBinder(TRACKING_CONTRACT_FIELD_NAME);
-        for (String k : trackingHashesAsBase64.keySet()) {
-            if(trackingHashesAsBase64.getString(k) != null) {
-                trackingHashes.set(k, HashId.withDigest(trackingHashesAsBase64.getString(k)));
+        try {
+            Binder trackingHashesAsBase64 = data.getBinder("state").getBinder("data").getBinder(TRACKING_CONTRACT_FIELD_NAME);
+            for (String k : trackingHashesAsBase64.keySet()) {
+                byte[] packed = trackingHashesAsBase64.getBinary(k);
+                if(packed != null) {
+                    Contract c = Contract.fromPackedTransaction(packed);
+//                    if(trackingContracts.size() > 0) {
+//                        if (c.getRevision() >= trackingContracts.getFirst().getRevision()) {
+//                            trackingContracts.addFirst(c);
+//                            packedTrackingContracts.addFirst(packed);
+//                        } else {
+//                            trackingContracts.addFirst(c);
+//                            packedTrackingContracts.addFirst(packed);
+//                        }
+//                    }
+                    trackingContracts.addFirst(c);
+                    packedTrackingContracts.addFirst(packed);
+                    trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
+                }
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

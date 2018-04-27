@@ -66,7 +66,8 @@ public class SlotContractTest extends ContractTestBase {
 
         assertEquals(simpleContract.getId(), ((SlotContract) smartContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) smartContract).getPackedTrackingContract()).getContract().getId());
-        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+//        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+        assertEquals(simpleContract.getId(), TransactionPack.unpack(smartContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
     }
 
     @Test
@@ -103,7 +104,8 @@ public class SlotContractTest extends ContractTestBase {
 
         assertEquals(simpleContract.getId(), ((SlotContract) smartContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) smartContract).getPackedTrackingContract()).getContract().getId());
-        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+//        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+        assertEquals(simpleContract.getId(), TransactionPack.unpack(smartContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
     }
 
     @Test
@@ -140,7 +142,8 @@ public class SlotContractTest extends ContractTestBase {
 
         assertEquals(simpleContract.getId(), ((SlotContract) desContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) desContract).getPackedTrackingContract()).getContract().getId());
-        assertEquals(simpleContract.getId().toBase64String(), desContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+//        assertEquals(simpleContract.getId().toBase64String(), desContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+        assertEquals(simpleContract.getId(), TransactionPack.unpack(desContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
 
         Contract copiedContract = smartContract.copy();
         assertSameContracts(smartContract, copiedContract);
@@ -155,7 +158,8 @@ public class SlotContractTest extends ContractTestBase {
 
         assertEquals(simpleContract.getId(), ((SlotContract) copiedContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) copiedContract).getPackedTrackingContract()).getContract().getId());
-        assertEquals(simpleContract.getId().toBase64String(), copiedContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+//        assertEquals(simpleContract.getId().toBase64String(), copiedContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+        assertEquals(simpleContract.getId(), TransactionPack.unpack(copiedContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
     }
 
     @Test
@@ -184,8 +188,8 @@ public class SlotContractTest extends ContractTestBase {
         assertEquals(1, ((SlotContract)smartContract).getTrackingContracts().size());
         assertEquals(simpleContract.getId(), ((SlotContract) smartContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) smartContract).getPackedTrackingContract()).getContract().getId());
-        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
-
+//        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
+        assertEquals(simpleContract.getId(), TransactionPack.unpack(smartContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
 
         Contract simpleContract2 = simpleContract.createRevision(key);
         simpleContract2.seal();
