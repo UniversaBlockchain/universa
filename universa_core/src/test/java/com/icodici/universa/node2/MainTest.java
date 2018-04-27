@@ -232,6 +232,13 @@ public class MainTest {
                 } catch (KeyAddress.IllegalAddressException e) {
                     e.printStackTrace();
                 }
+
+                try {
+                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/tu_key.public.unikey")));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
                 m.waitReady();
                 mm.add(m);
@@ -856,6 +863,33 @@ public class MainTest {
         assertEquals (ItemState.UNDEFINED, itemResult2.state);
 
         mm.forEach(x -> x.shutdown());
+    }
+
+    @Ignore
+    @Test
+    public void shutdownCycle() throws Exception {
+        List<String> dbUrls = new ArrayList<>();
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+        dbUrls.stream().forEach(url -> {
+            try {
+                clearLedger(url);
+            } catch (Exception e) {
+            }
+        });
+        for (int i=0; i < 50; i++) {
+            checkShutdown();
+            System.out.println("iteration" + i);
+            Thread.sleep(2000);
+            dbUrls.stream().forEach(url -> {
+                try {
+                    clearLedger(url);
+                } catch (Exception e) {
+                }
+            });
+        }
     }
 
     @Test
