@@ -839,6 +839,7 @@ public class MainTest {
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
 
         main.shutdown();
+        Thread.sleep(5000);
 
         mm.remove(main);
         main = createMain("node1", false);
@@ -944,7 +945,7 @@ public class MainTest {
             System.out.println(">> wait result: " + itemResult);
         }
 
-        Thread.sleep(5000);
+        Thread.sleep(7000);
         itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
 
         assertEquals (ItemState.APPROVED, itemResult.state);
