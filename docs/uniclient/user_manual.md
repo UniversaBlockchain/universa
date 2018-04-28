@@ -339,6 +339,25 @@ or comma-separated:
 
     uniclient --probe SWlZ0U73oUJ3hWLeIFAJeUaU0y0CowYOxzhfAfPCQ6zouwFUyfXlJoyO1fUb1jbFoSPv/zXiAzVaEBGrdU62SA,G0lCqE2TPn9wiioHDy5nllWbLkRwPA97HdnhtcCn3EDAuoDBwiZcRIGjrBftGLFWOVUY8D5yPVkEj+wqb6ytrA
 
+
+#### Synchronize contract between nodes
+
+In case when different nodes return different status for the same contract (it can happen if node absent at the moment contract was registered: crashed / not yet existed) you can initiate resync process that will synchronize contract status for the node with network:
+
+    uniclient --resync SWlZ0U73oUJ3hWLeIFAJeUaU0y0CowYOxzhfAfPCQ6zouwFUyfXlJoyO1fUb1jbFoSPv/zXiAzVaEBGrdU62SA --node 2 --skey path_to_admin_key.private.unikey
+
+This should be a single line. Beware: you need your private key used for uniclient session to be in network whitelist. The network will answer with something like:
+
+~~~
+Connecting to node 2
+Network version: 3.4.8
+Node has reported the state:
+ItemResult<UNDEFINED null ()>
+~~~
+
+It returns initial status of contract. To ensure the final status you need later probe contract is a usual way.
+Of course, you can resync multiple contracts in the same way you probe.
+
 #### Packing and unpacking the contract
 
 If you have contract stored as a packed transaction you can unpack it using:

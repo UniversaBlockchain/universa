@@ -130,6 +130,18 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("base64_id");
+                accepts("resync", "start resync of the document in the Universa network")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("base64_id");
+                accepts("node", "used with to specify node number to connect to")
+                        .withRequiredArg()
+                        .ofType(Integer.class);
+                accepts("skey", "used with to specify session private key file")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("file");;
                 acceptsAll(asList("k", "keys"), "List of comma-separated private key files to" +
                         "use to sign contract with, if appropriated.")
                         .withRequiredArg().ofType(String.class)
@@ -286,6 +298,16 @@ public class CLIMain {
             if (options.has("?")) {
                 usage(null);
             }
+
+            if (options.has("node")) {
+                setNodeNumber((Integer) options.valueOf("node"));
+            }
+
+            if(options.has("skey")) {
+                setPrivateKey(new PrivateKey(Do.read((String) options.valueOf("skey"))));
+            }
+
+
             if (options.has("v")) {
                 setVerboseMode(true);
             } else {
@@ -317,6 +339,9 @@ public class CLIMain {
             }
             if (options.has("probe")) {
                 doProbe();
+            }
+            if (options.has("resync")) {
+                doResync();
             }
             if (options.has("g")) {
                 doGenerateKeyPair();
@@ -715,6 +740,23 @@ public class CLIMain {
             ItemResult ir = getClientNetwork().check(source);
 //            report("Universa network has reported the state:");
 //            report(ir.toString());
+        }
+        finish();
+    }
+
+    private static void doResync() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("resync"));
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+            ItemResult ir = getClientNetwork().resync(source);
+            report("Node has reported the state:");
+            report(ir.toString());
         }
         finish();
     }
@@ -2300,8 +2342,18 @@ public class CLIMain {
         testRootPath = rootPath;
     }
 
+    public static void setNodeNumber(int nodeNumber) {
+        System.out.println("Connecting to node " + nodeNumber);
+        setNodeUrl("http://node-" + nodeNumber + "-com.universa.io:8080");
+    }
+
     public static void setNodeUrl(String url) {
         nodeUrl = url;
+        clientNetwork = null;
+    }
+
+    public static void setPrivateKey(PrivateKey key) {
+        privateKey = key;
         clientNetwork = null;
     }
 
