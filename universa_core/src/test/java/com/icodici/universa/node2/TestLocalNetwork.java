@@ -203,36 +203,12 @@ public class TestLocalNetwork extends Network {
             Node node = nodes.get(nodeInfo);
 
             Parcel parcel = node.getParcel(itemId);
-            System.out.println("got parcel " + parcel.getId() + " from " + node
-                    + " " + parcel.getPayload().getContract().getId()
-                    + " " + parcel.getPayload().getContract().getSealedByKeys().size());
             byte[] array = parcel.pack();
-            System.out.println("pack parcel " + parcel.getId() + " from " + node);
-            Approvable item = parcel.getPayload().getContract();
-            if(item instanceof SmartContract) {
-                System.err.println(item.getId() + "::pack:: " + ((SlotContract) item).getTrackingContract());
-                System.err.println(item.getId() + "::pack:: " + ((SlotContract) item).getTrackingContracts().size());
-                Binder trackingHashesAsBase64 = ((SlotContract) item).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
-
-                System.err.println(item.getId() + "::pack:: " + trackingHashesAsBase64.size());
-            }
 
             //unpack
             Parcel des_parcel = null;
             try {
                 des_parcel = Parcel.unpack(array);
-                System.out.println("unpack parcel " + des_parcel.getId() + " from " + node
-                        + " " + des_parcel.getPayload().getContract().getId()
-                        + " " + des_parcel.getPayload().getContract().getSealedByKeys().size());
-
-                item = des_parcel.getPayload().getContract();
-                if(item instanceof SmartContract) {
-                    System.err.println(item.getId() + "::unpack:: " + ((SlotContract) item).getTrackingContract());
-                    System.err.println(item.getId() + "::unpack:: " + ((SlotContract) item).getTrackingContracts().size());
-                    Binder trackingHashesAsBase64 = ((SlotContract) item).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
-
-                    System.err.println(item.getId() + "::unpack:: " + trackingHashesAsBase64.size());
-                }
             } catch (Exception e) {
                 System.out.println("error parcel ");
                 e.printStackTrace();

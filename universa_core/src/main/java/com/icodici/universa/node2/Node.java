@@ -1765,12 +1765,7 @@ public class Node {
                         } else {
                             checkPassed = item.check();
 
-                            if(item instanceof SmartContract) {
-                                System.err.println(item.getId() + "?check> " + ((SlotContract) item).getTrackingContract());
-                                System.err.println(item.getId() + "?check> " + ((SlotContract) item).getTrackingContracts().size());
-                                Binder trackingHashesAsBase64 = ((SlotContract) item).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
-
-                                System.err.println(item.getId() + " ?check> " + trackingHashesAsBase64.size());
+                            if(item instanceof SlotContract) {
                                 ((SlotContract) item).setNodeInfo(myInfo);
                                 ((SlotContract) item).setNodeConfig(config);
                                 ((SlotContract) item).setLedger(ledger);
@@ -2033,8 +2028,6 @@ public class Node {
                     if(!processingState.isProcessedToConsensus()) {
                         processingState = ItemProcessingState.POLLING;
                     }
-
-                    ((Contract) item).traceErrors();
 
                     vote(myInfo, record.getState());
                     broadcastMyState();
@@ -2400,11 +2393,6 @@ public class Node {
 
                     try {
                         if(item instanceof SlotContract) {
-                            System.err.println(item.getId() + "??>>> " + ((SlotContract) item).getTrackingContract());
-                            System.err.println(item.getId() + "??>>> " + ((SlotContract) item).getTrackingContracts().size());
-                            Binder trackingHashesAsBase64 = ((SlotContract) item).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
-
-                            System.err.println(item.getId() + " ??>>> " + trackingHashesAsBase64.size());
                             ((SlotContract) item).setNodeInfo(myInfo);
                             ((SlotContract) item).setNodeConfig(config);
                             ((SlotContract) item).setLedger(ledger);

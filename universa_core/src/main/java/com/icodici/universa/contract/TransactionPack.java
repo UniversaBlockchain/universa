@@ -243,7 +243,7 @@ public class TransactionPack implements BiSerializable {
 
             HashMap<ContractDependencies, Bytes> allContractsTrees = new HashMap<>();
             List<HashId> allContractsHids = new ArrayList<>();
-            ArrayList<Bytes> sortedSubItemsBytesList = new ArrayList<>();
+            HashMap<ContractDependencies, Bytes> sortedSubItemsBytesList = new HashMap<>();
 
             if (subItemsBytesList != null) {
                 // First of all extract contracts dependencies from subItems
@@ -257,11 +257,11 @@ public class TransactionPack implements BiSerializable {
                 // and add items to subItems on the each level of tree's hierarchy
                 do {
                     // first add contract from ends of trees, means without own subitems
-                    sortedSubItemsBytesList = new ArrayList<>();
+                    sortedSubItemsBytesList = new HashMap<>();
                     List<ContractDependencies> removingContractDependencies = new ArrayList<>();
                     for (ContractDependencies ct : allContractsTrees.keySet()) {
                         if (ct.dependencies.size() == 0) {
-                            sortedSubItemsBytesList.add(allContractsTrees.get(ct));
+                            sortedSubItemsBytesList.put(ct, allContractsTrees.get(ct));
                             removingContractDependencies.add(ct);
                         }
                     }
@@ -281,7 +281,7 @@ public class TransactionPack implements BiSerializable {
                             }
                         }
                         if (allDependenciesSafe) {
-                            sortedSubItemsBytesList.add(allContractsTrees.get(ct));
+                            sortedSubItemsBytesList.put(ct, allContractsTrees.get(ct));
                             removingContractDependencies.add(ct);
                         }
                     }
@@ -292,20 +292,23 @@ public class TransactionPack implements BiSerializable {
                     }
 
                     // add found binaries on the hierarchy level to subItems
-                    for (int i = 0; i < sortedSubItemsBytesList.size(); i++) {
-                        Contract c = new Contract(sortedSubItemsBytesList.get(i).toArray(), this);
-                        quantiser.addWorkCostFrom(c.getQuantiser());
-                        subItems.put(c.getId(), c);
+//                    for (int i = 0; i < sortedSubItemsBytesList.size(); i++) {
+//                        Contract c = new Contract(sortedSubItemsBytesList.get(i).toArray(), this);
+//                        quantiser.addWorkCostFrom(c.getQuantiser());
+//                        subItems.put(c.getId(), c);
+//                    }
+                    for (ContractDependencies ct : sortedSubItemsBytesList.keySet()) {
+                        Bytes b = sortedSubItemsBytesList.get(ct);
+                        createNeededContractAndAddToSubItems(ct, b, quantiser);
                     }
 
                     // then repeat until we can find hierarchy
                 } while (sortedSubItemsBytesList.size() != 0);
 
                 // finally add not found binaries on the hierarchy levels to subItems
-                for (Bytes b : allContractsTrees.values()) {
-                    Contract c = new Contract(b.toArray(), this);
-                    quantiser.addWorkCostFrom(c.getQuantiser());
-                    subItems.put(c.getId(), c);
+                for (ContractDependencies ct : allContractsTrees.keySet()) {
+                    Bytes b = allContractsTrees.get(ct);
+                    createNeededContractAndAddToSubItems(ct, b, quantiser);
                 }
             }
 
@@ -332,18 +335,42 @@ public class TransactionPack implements BiSerializable {
                         contract = new SlotContract(bb, this);
                         break;
                 }
-                System.err.println(scType + " " + contract.getId() + " " + contract.getSealedByKeys().size());
-                if(contract instanceof SmartContract) {
-                    System.err.println(contract.getId() + "?tp> " + ((SlotContract) contract).getTrackingContract());
-                    System.err.println(contract.getId() + "?tp> " + ((SlotContract) contract).getTrackingContracts().size());
-                    Binder trackingHashesAsBase64 = ((SlotContract) contract).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
-
-                    System.err.println(contract.getId() + " ?tp> " + trackingHashesAsBase64.size());
-                }
             } else {
                 contract = new Contract(bb, this);
             }
             quantiser.addWorkCostFrom(contract.getQuantiser());
+        }
+    }
+
+    private void createNeededContractAndAddToSubItems(ContractDependencies ct, Bytes b, Quantiser quantiser) throws IOException {
+        Contract c = null;
+        SmartContract.SmartContractType scType = null;
+        if(ct.extendedType != null) {
+            try {
+                scType = SmartContract.SmartContractType.valueOf(ct.extendedType);
+            } catch (IllegalArgumentException e) {
+            }
+        }
+        if(scType != null) {
+            switch (scType) {
+                case DEFAULT_SMART_CONTRACT:
+                    c = new SmartContract(b.toArray(), this);
+                    break;
+
+                case N_SMART_CONTRACT:
+                    c = new NSmartContract(b.toArray(), this);
+                    break;
+
+                case SLOT1:
+                    c = new SlotContract(b.toArray(), this);
+                    break;
+            }
+        } else {
+            c = new Contract(b.toArray(), this);
+        }
+        if(c != null) {
+            quantiser.addWorkCostFrom(c.getQuantiser());
+            subItems.put(c.getId(), c);
         }
     }
 
@@ -476,6 +503,7 @@ public class TransactionPack implements BiSerializable {
     public class ContractDependencies {
         private final Set<HashId> dependencies = new HashSet<>();
         private final HashId id;
+        private final String extendedType;
 
         public ContractDependencies(byte[] sealed) throws IOException {
             this.id = HashId.of(sealed);
@@ -486,6 +514,8 @@ public class TransactionPack implements BiSerializable {
             // as it is registered BiSerializable type, and we want to avoid it. Therefore, we decode boss
             // data without BiSerializer and then do it by hand calling deserialize:
             Binder payload = Boss.load(contractBytes, null);
+
+            extendedType = payload.getBinder("contract").getBinder("definition").getString("extended_type", null);
 
             int apiLevel = data.getIntOrThrow("version");
 

@@ -124,13 +124,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Binder payload = Boss.load(contractBytes, null);
         BiDeserializer bm = BossBiMapper.newDeserializer();
         deserialize(payload.getBinderOrThrow("contract"), bm);
-        if(this instanceof SmartContract) {
-            System.err.println(getId() + "?this> " + ((SlotContract) this).getTrackingContract());
-            System.err.println(getId() + "?this> " + ((SlotContract) this).getTrackingContracts().size());
-            Binder trackingHashesAsBase64 = ((SlotContract) this).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
 
-            System.err.println(getId() + " ?this> " + trackingHashesAsBase64.size());
-        }
         if (apiLevel < 3) {
             // Legacy format: revoking and new items are included (so the contract pack grows)
             for (Object packed : payload.getList("revoking", Collections.EMPTY_LIST)) {
@@ -252,14 +246,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 } else
                     addError(Errors.BAD_SIGNATURE, "keytag:" + key.info().getBase64Tag(), "the signature is broken");
             }
-        }
-        System.err.println(getId() + " " + getSealedByKeys().size() + " " + ((List) data.getOrThrow("signatures")).size());
-        if(this instanceof SmartContract) {
-            System.err.println(getId() + "?this2> " + ((SlotContract) this).getTrackingContract());
-            System.err.println(getId() + "?this2> " + ((SlotContract) this).getTrackingContracts().size());
-            Binder trackingHashesAsBase64 = ((SlotContract) this).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
-
-            System.err.println(getId() + " ?this2> " + trackingHashesAsBase64.size());
         }
     }
 

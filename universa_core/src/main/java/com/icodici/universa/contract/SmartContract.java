@@ -40,13 +40,6 @@ public class SmartContract extends Contract implements NodeContract {
      */
     public SmartContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
-        if(this instanceof SmartContract) {
-            System.err.println(getId() + "?smart> " + ((SlotContract) this).getTrackingContract());
-            System.err.println(getId() + "?smart> " + ((SlotContract) this).getTrackingContracts().size());
-            Binder trackingHashesAsBase64 = ((SlotContract) this).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
-
-            System.err.println(getId() + " ?smart> " + trackingHashesAsBase64.size());
-        }
 //        getDefinition().setExtendedType(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name());
     }
 

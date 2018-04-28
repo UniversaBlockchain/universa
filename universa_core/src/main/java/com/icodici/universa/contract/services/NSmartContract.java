@@ -31,13 +31,6 @@ public class NSmartContract extends SmartContract implements NContract {
      */
     public NSmartContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
-        if(this instanceof SmartContract) {
-            System.err.println(getId() + "?nsmart> " + ((SlotContract) this).getTrackingContract());
-            System.err.println(getId() + "?nsmart> " + ((SlotContract) this).getTrackingContracts().size());
-            Binder trackingHashesAsBase64 = ((SlotContract) this).getStateData().getBinder(SlotContract.TRACKING_CONTRACT_FIELD_NAME);
-
-            System.err.println(getId() + " ?nsmart> " + trackingHashesAsBase64.size());
-        }
 //        getDefinition().setExtendedType(SmartContractType.N_SMART_CONTRACT.name());
     }
 
