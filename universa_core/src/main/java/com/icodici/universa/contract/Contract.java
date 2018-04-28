@@ -1071,7 +1071,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (createdBy == null || !createdBy.isValid())
             addError(BAD_VALUE, "state.created_by");
         if (!isSignedBy(createdBy)) {
-            System.err.println(NOT_SIGNED + " " + getId() + " " + sealedByKeys.size());
             addError(NOT_SIGNED, "", "missing creator signature(s)");
         }
     }
