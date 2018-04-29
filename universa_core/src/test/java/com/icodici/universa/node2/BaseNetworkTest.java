@@ -1871,6 +1871,7 @@ public class BaseNetworkTest extends TestCase {
             }
         }
         newDelorean.getSealedByKeys().removeAll(martyPublicKeys);
+        newDelorean.seal();
 
         swapContract.check();
         swapContract.traceErrors();
@@ -1923,6 +1924,7 @@ public class BaseNetworkTest extends TestCase {
             }
         }
         newDelorean.getSealedByKeys().removeAll(stepaPublicKeys);
+        newDelorean.seal();
 
         swapContract.check();
         swapContract.traceErrors();
@@ -2273,6 +2275,7 @@ public class BaseNetworkTest extends TestCase {
             }
         }
         newLamborghini.getTransactional().setId(HashId.createRandom().toBase64String());
+        newLamborghini.seal();
 
         ContractsService.finishSwap(swapContract, martyPrivateKeys);
 
@@ -2339,6 +2342,8 @@ public class BaseNetworkTest extends TestCase {
         newLamborghini.getTransactional().setId("");
         newDelorean.getTransactional().getReferences().get(0).transactional_id = "";
         newLamborghini.getTransactional().getReferences().get(0).transactional_id = "";
+        newDelorean.seal();
+        newLamborghini.seal();
 
         swapContract.check();
         swapContract.traceErrors();
@@ -2403,6 +2408,8 @@ public class BaseNetworkTest extends TestCase {
         newLamborghini.getTransactional().setId(null);
         newDelorean.getTransactional().getReferences().get(0).transactional_id = null;
         newLamborghini.getTransactional().getReferences().get(0).transactional_id = null;
+        newDelorean.seal();
+        newLamborghini.seal();
 
         swapContract.check();
         swapContract.traceErrors();
@@ -4262,7 +4269,13 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
 
         Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
         llcProperty2.setOwnerKeys(thirdPartyPublicKeys);
@@ -4271,11 +4284,11 @@ public class BaseNetworkTest extends TestCase {
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
 
-        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before = llcProperty2.getTransactionPack();
         tp_before.addReferencedItem(jobCertificate);
-        byte[] data = tp_before.pack();
+        data = tp_before.pack();
         // here we "send" data and "got" it
-        TransactionPack tp_after = TransactionPack.unpack(data);
+        tp_after = TransactionPack.unpack(data);
 
         registerAndCheckApproved(tp_after);
     }
@@ -4314,7 +4327,13 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
 
         Contract llcProperty2 = ContractsService.createRevocation(llcProperty, stepaPrivateKeys.iterator().next());
         llcProperty2.check();
@@ -4322,11 +4341,11 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
 
-        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before = llcProperty2.getTransactionPack();
         tp_before.addReferencedItem(jobCertificate);
-        byte[] data = tp_before.pack();
+        data = tp_before.pack();
         // here we "send" data and "got" it
-        TransactionPack tp_after = TransactionPack.unpack(data);
+        tp_after = TransactionPack.unpack(data);
 
         registerAndCheckApproved(tp_after);
     }
@@ -4365,7 +4384,13 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
 
         Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100,
                 "amount", stepaPrivateKeys, true);
@@ -4375,16 +4400,16 @@ public class BaseNetworkTest extends TestCase {
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
 
-        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before = llcProperty2.getTransactionPack();
         tp_before.addReferencedItem(jobCertificate);
-        byte[] data = tp_before.pack();
+        data = tp_before.pack();
         // here we "send" data and "got" it
-        TransactionPack tp_after = TransactionPack.unpack(data);
+        tp_after = TransactionPack.unpack(data);
 
         registerAndCheckApproved(tp_after);
     }
 
-    @Test(timeout = 30000)
+    @Test//(timeout = 30000)
     public void referenceForChangeNumber() throws Exception {
 
         // You have a notary dsl with llc's property
@@ -4418,7 +4443,13 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
 
         Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
         llcProperty2.getStateData().set("units",
@@ -4428,11 +4459,11 @@ public class BaseNetworkTest extends TestCase {
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
 
-        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before = llcProperty2.getTransactionPack();
         tp_before.addReferencedItem(jobCertificate);
-        byte[] data = tp_before.pack();
+        data = tp_before.pack();
         // here we "send" data and "got" it
-        TransactionPack tp_after = TransactionPack.unpack(data);
+        tp_after = TransactionPack.unpack(data);
 
         registerAndCheckApproved(tp_after);
     }
@@ -4498,7 +4529,13 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        byte[] data = tp_before.pack();
+        // here we "send" data and "got" it
+        TransactionPack tp_after = TransactionPack.unpack(data);
+
+        registerAndCheckApproved(tp_after);
 
 
         // 2 revision: change reference in state
@@ -4525,13 +4562,13 @@ public class BaseNetworkTest extends TestCase {
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());
 
-        TransactionPack tp_before = llcProperty2.getTransactionPack();
+        tp_before = llcProperty2.getTransactionPack();
         // don't forget add all contracts needed for all references
         tp_before.addReferencedItem(jobCertificate);
         tp_before.addReferencedItem(oldJobCertificate);
-        byte[] data = tp_before.pack();
+        data = tp_before.pack();
         // here we "send" data and "got" it
-        TransactionPack tp_after = TransactionPack.unpack(data);
+        tp_after = TransactionPack.unpack(data);
 
         registerAndCheckApproved(tp_after);
 
@@ -5075,7 +5112,23 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before;
+        TransactionPack tp_after;
+        Contract jobCertificate;
+
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckApproved(tp_after);
 
         Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
         llcProperty2.setOwnerKeys(thirdPartyPublicKeys);
@@ -5085,10 +5138,6 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         // bad situations
-
-        TransactionPack tp_before;
-        TransactionPack tp_after;
-        Contract jobCertificate;
 
         // missing data.issuer
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
@@ -5259,7 +5308,23 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before;
+        TransactionPack tp_after;
+        Contract jobCertificate;
+
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckApproved(tp_after);
 
         Contract llcProperty2 = ContractsService.createRevocation(llcProperty, stepaPrivateKeys.iterator().next());
         llcProperty2.check();
@@ -5267,10 +5332,6 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         // bad situations
-
-        TransactionPack tp_before;
-        TransactionPack tp_after;
-        Contract jobCertificate;
 
         // missing data.issuer
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
@@ -5441,7 +5502,23 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before;
+        TransactionPack tp_after;
+        Contract jobCertificate;
+
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckApproved(tp_after);
 
         Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100,
                 "amount", stepaPrivateKeys, true);
@@ -5450,10 +5527,6 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         // bad situations
-
-        TransactionPack tp_before;
-        TransactionPack tp_after;
-        Contract jobCertificate;
 
         // missing data.issuer
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
@@ -5624,7 +5697,23 @@ public class BaseNetworkTest extends TestCase {
         llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
         llcProperty.seal();
 
-        registerAndCheckApproved(llcProperty);
+        TransactionPack tp_before;
+        TransactionPack tp_after;
+        Contract jobCertificate;
+
+        jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        registerAndCheckApproved(jobCertificate);
+
+        tp_before = llcProperty.getTransactionPack();
+        tp_before.addReferencedItem(jobCertificate);
+        tp_after = TransactionPack.unpack(tp_before.pack());
+
+        registerAndCheckApproved(tp_after);
 
         Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
         llcProperty2.getStateData().set("units",
@@ -5635,10 +5724,6 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         // bad situations
-
-        TransactionPack tp_before;
-        TransactionPack tp_after;
-        Contract jobCertificate;
 
         // missing data.issuer
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
