@@ -8101,7 +8101,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
-        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays());
+        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> " + ((double)100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length) + " days");
@@ -8138,8 +8138,17 @@ public class BaseNetworkTest extends TestCase {
         Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
-                System.out.println(foundCss.expiresAt());
-                calculateExpires = timeReg1.plusSeconds(100 * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 / simpleContract.getPackedTransaction().length);
+                double days = (double) 100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+                double hours = days * 24;
+                long seconds = (long) (days * 24 * 3600);
+                calculateExpires = timeReg1.plusSeconds(seconds);
+
+                System.out.println("days " + days);
+                System.out.println("hours " + hours);
+                System.out.println("seconds " + seconds);
+                System.out.println("reg time " + timeReg1);
+                System.out.println("expected " + calculateExpires);
+                System.out.println("found " + foundCss.expiresAt());
                 assertAlmostSame(calculateExpires, foundCss.expiresAt());
             }
         } else {
