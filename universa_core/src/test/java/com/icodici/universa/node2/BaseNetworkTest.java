@@ -8057,6 +8057,443 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test
+    public void registerSlotContractWithStoringRevisions() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+
+        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        Contract simpleContract = new Contract(key);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // slot contract that storing
+
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
+        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setKeepRevisions(2);
+        slotContract.putTrackingContract(simpleContract);
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        slotContract.check();
+        slotContract.traceErrors();
+        assertTrue(slotContract.isOk());
+
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays());
+        System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
+        System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
+        System.out.println(">> " + ((double)100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length) + " days");
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
+
+        ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
+        assertEquals(simpleContract.getId(), slotContract.getTrackingContract().getId());
+        assertEquals(simpleContract.getId(), ((SlotContract) payingParcel.getPayload().getContract()).getTrackingContract().getId());
+
+        // check if we store same contract as want
+
+        byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        long spentBs = 0;
+        ZonedDateTime calculateExpires;
+
+        Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
+        if(foundCssSet != null) {
+            for (ContractStorageSubscription foundCss : foundCssSet) {
+                System.out.println(foundCss.expiresAt());
+                calculateExpires = timeReg1.plusSeconds(100 * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 / simpleContract.getPackedTransaction().length);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check if we store environment
+
+        byte[] ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
+        assertNotNull(ebytes);
+        Binder binder = Boss.unpack(ebytes);
+        assertNotNull(binder);
+
+        // create revision of stored contract
+
+        Contract simpleContract2 = restoredContract.createRevision(key);
+        simpleContract2.setOwnerKey(stepaPrivateKeys.iterator().next().getPublicKey());
+        simpleContract2.seal();
+        simpleContract2.check();
+        simpleContract2.traceErrors();
+        assertTrue(simpleContract2.isOk());
+
+        registerAndCheckApproved(simpleContract2);
+
+        Set<PrivateKey> keysSlotRevisions = new HashSet<>();
+        keysSlotRevisions.add(key);
+        keysSlotRevisions.add(stepaPrivateKeys.iterator().next());
+
+        // refill slot contract with U (means add storing days).
+
+        SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
+        refilledSlotContract.putTrackingContract(simpleContract2);
+        refilledSlotContract.setNodeConfig(node.getConfig());
+        assertEquals(refilledSlotContract.getKeepRevisions(), 2);
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedTUContract();
+
+        payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+
+        refilledSlotContract.check();
+        refilledSlotContract.traceErrors();
+        assertTrue(refilledSlotContract.isOk());
+
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
+        assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays());
+        System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
+        System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
+        System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
+        System.out.println(">> Summ: " + ((double)(simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024) + " Kb");
+        System.out.println(">> " +  ((double)(100 + 300) * Config.kilobytesAndDaysPerU * 1024 / (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        // check root stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        spentBs += (timeReg2.toEpochSecond() - timeReg1.toEpochSecond()) * simpleContract.getPackedTransaction().length;
+        calculateExpires = timeReg2.plusSeconds(((100 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - spentBs) /
+                (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
+        if(foundCssSet != null) {
+            for (ContractStorageSubscription foundCss : foundCssSet) {
+                System.out.println(foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check revision of stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract2.getId(), restoredContract.getId());
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract2.getId());
+        if(foundCssSet != null) {
+            for (ContractStorageSubscription foundCss : foundCssSet) {
+                System.out.println(foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check if we updated environment and subscriptions (remove old, create new)
+
+        assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
+        ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
+        assertNull(ebytes);
+
+        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract.getId());
+        assertNotNull(ebytes);
+        binder = Boss.unpack(ebytes);
+        assertNotNull(binder);
+
+        // create additional revision of stored contract
+
+        Contract simpleContract3 = restoredContract.createRevision(key);
+        simpleContract3.setOwnerKey(key.getPublicKey());
+        simpleContract3.seal();
+        simpleContract3.check();
+        simpleContract3.traceErrors();
+        assertTrue(simpleContract3.isOk());
+
+        registerAndCheckApproved(simpleContract3);
+
+        // refill slot contract with U again (means add storing days). the oldest revision should removed
+
+        SlotContract refilledSlotContract2 = (SlotContract) refilledSlotContract.createRevision(key);
+        refilledSlotContract2.putTrackingContract(simpleContract3);
+        refilledSlotContract2.setNodeConfig(node.getConfig());
+        assertEquals(refilledSlotContract2.getKeepRevisions(), 2);
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedTUContract();
+
+        payingParcel = ContractsService.createPayingParcel(refilledSlotContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+
+        refilledSlotContract2.check();
+        refilledSlotContract2.traceErrors();
+        assertTrue(refilledSlotContract2.isOk());
+
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
+        assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays());
+        System.out.println(">> " + refilledSlotContract2.getPrepaidKilobytesForDays() + " KD");
+        System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
+        System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
+        System.out.println(">> Summ: " + ((double)(simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024) + " Kb");
+        System.out.println(">> " + ((double)(100 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 / (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract2.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledSlotContract2.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        // check root stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNull(restoredPackedData);
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
+        assertNull(foundCssSet);
+
+        // check revision of stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract2.getId(), restoredContract.getId());
+
+        spentBs += (timeReg3.toEpochSecond() - timeReg2.toEpochSecond()) * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
+        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - spentBs) /
+                (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract2.getId());
+        if(foundCssSet != null) {
+            for (ContractStorageSubscription foundCss : foundCssSet) {
+                System.out.println(foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check additional revision of stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract3.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract3.getId(), restoredContract.getId());
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract3.getId());
+        if(foundCssSet != null) {
+            for (ContractStorageSubscription foundCss : foundCssSet) {
+                System.out.println(foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check if we updated environment and subscriptions (remove old, create new)
+
+        assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
+        ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
+        assertNull(ebytes);
+
+        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract.getId());
+        assertNull(ebytes);
+
+        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract2.getId());
+        assertNotNull(ebytes);
+        binder = Boss.unpack(ebytes);
+        assertNotNull(binder);
+
+        // check reducing number of keep revisions
+
+        SlotContract refilledSlotContract3 = (SlotContract) refilledSlotContract2.createRevision(key);
+        refilledSlotContract3.setKeepRevisions(1);
+        refilledSlotContract3.setNodeConfig(node.getConfig());
+
+        // payment contract
+        paymentContract = getApprovedTUContract();
+
+        payingParcel = ContractsService.createPayingParcel(refilledSlotContract3.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
+
+        refilledSlotContract3.check();
+        refilledSlotContract3.traceErrors();
+        assertTrue(refilledSlotContract3.isOk());
+
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.getDefinition().getExtendedType());
+        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.get("definition.extended_type"));
+        assertEquals((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract3.getPrepaidKilobytesForDays());
+        System.out.println(">> " + refilledSlotContract3.getPrepaidKilobytesForDays() + " KD");
+        System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
+        System.out.println(">> " + ((double)(100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 / simpleContract3.getPackedTransaction().length) + " days");
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg4 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract3.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledSlotContract3.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        // check root stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNull(restoredPackedData);
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
+        assertNull(foundCssSet);
+
+        // check revision of stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
+        assertNull(restoredPackedData);
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract2.getId());
+        assertNull(foundCssSet);
+
+        // check additional (last) revision of stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract3.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract3.getId(), restoredContract.getId());
+
+        spentBs += (timeReg4.toEpochSecond() - timeReg3.toEpochSecond()) * (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
+        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - spentBs) / simpleContract3.getPackedTransaction().length);
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract3.getId());
+        if(foundCssSet != null) {
+            for (ContractStorageSubscription foundCss : foundCssSet) {
+                System.out.println(foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+            }
+        } else {
+            fail("ContractStorageSubscription was not found");
+        }
+
+        // check if we updated environment and subscriptions (remove old, create new)
+
+        assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
+        ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
+        assertNull(ebytes);
+
+        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract.getId());
+        assertNull(ebytes);
+
+        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract2.getId());
+        assertNull(ebytes);
+
+        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract3.getId());
+        assertNotNull(ebytes);
+        binder = Boss.unpack(ebytes);
+        assertNotNull(binder);
+
+        // revoke slot contract, means remove stored contract from storage
+
+        Contract revokingSlotContract = ContractsService.createRevocation(refilledSlotContract3, key);
+
+        registerAndCheckApproved(revokingSlotContract);
+
+        itemResult = node.waitItem(refilledSlotContract3.getId(), 8000);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        // check if we remove stored contract from storage
+
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNull(restoredPackedData);
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
+        assertNull(restoredPackedData);
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract3.getId());
+        assertNull(restoredPackedData);
+
+        // check if we remove subscriptions
+
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
+        assertNull(foundCssSet);
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract2.getId());
+        assertNull(foundCssSet);
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract3.getId());
+        assertNull(foundCssSet);
+
+        // check if we remove environment
+
+        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract3.getId());
+        assertNull(ebytes);
+    }
+
+
+    @Test
     public void goodNSmartContractFromDSLWithSending() throws Exception {
         Contract smartContract = NSmartContract.fromDslFile(ROOT_PATH + "NotaryNSmartDSLTemplate.yml");
         smartContract.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
