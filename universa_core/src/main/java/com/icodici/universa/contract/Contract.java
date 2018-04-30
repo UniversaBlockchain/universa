@@ -1035,9 +1035,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         if ((transactional != null) && (transactional.validUntil != null)) {
             if (StateRecord.getTime(transactional.validUntil).isBefore(ZonedDateTime.now()))
-                addError(BAD_VALUE, "transactional.validUntil", "time for register is over");
+                addError(BAD_VALUE, "transactional.valid_until", "time for register is over");
             else if (StateRecord.getTime(transactional.validUntil).isBefore(ZonedDateTime.now().plusSeconds(Config.validUntilTailTime.getSeconds())))
-                addError(BAD_VALUE, "transactional.validUntil", "time for register ends");
+                addError(BAD_VALUE, "transactional.valid_until", "time for register ends");
         }
 
         if (definition.createdAt == null) {
