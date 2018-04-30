@@ -160,6 +160,8 @@ public class Config {
 
     public static int quantiser_quantaPerUTN = 200;
 
+    public static Duration validUntilTailTime = Duration.ofMinutes(5);
+
     private String tuIssuerName = "Universa Reserve System";
 
     /**

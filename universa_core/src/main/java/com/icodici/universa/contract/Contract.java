@@ -15,6 +15,7 @@ import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
@@ -1031,6 +1032,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private void basicCheck() throws Quantiser.QuantiserException {
+
+        if ((transactional != null) && (transactional.validUntil != null)) {
+            if (StateRecord.getTime(transactional.validUntil).isBefore(ZonedDateTime.now()))
+                addError(BAD_VALUE, "transactional.validUntil", "time for register is over");
+            else if (StateRecord.getTime(transactional.validUntil).isBefore(ZonedDateTime.now().plusSeconds(Config.validUntilTailTime.getSeconds())))
+                addError(BAD_VALUE, "transactional.validUntil", "time for register ends");
+        }
+
         if (definition.createdAt == null) {
             addError(BAD_VALUE, "definition.created_at", "invalid");
         }
@@ -2503,6 +2512,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         private String id;
         private List<Reference> references;
+        private Long validUntil;
 
         private Transactional() {
 
@@ -2517,6 +2527,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (references != null)
                 b.set("references", serializer.serialize(references));
 
+            if (validUntil != null)
+                b.set("valid_until", validUntil);
+
             return serializer.serialize(b);
         }
 
@@ -2526,6 +2539,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 List refs = data.getList("references", null);
                 if(refs != null) {
                     references = d.deserializeCollection(refs);
+                }
+                try {
+                    validUntil = data.getLongOrThrow("valid_until");
+                } catch (IllegalArgumentException e) {
+                    validUntil = null;
                 }
             }
         }
@@ -2548,6 +2566,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public void setId(String id) {
             this.id = id;
+        }
+
+        public Long getValidUntil() {
+            return validUntil;
+        }
+
+        public void setValidUntil(Long val) {
+            validUntil = val;
         }
     }
 
