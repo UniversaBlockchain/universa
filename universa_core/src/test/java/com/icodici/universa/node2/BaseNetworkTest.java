@@ -8437,6 +8437,10 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         paymentContract = getApprovedTUContract();
 
+        // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
+        // so sleep should be before seal for test calculations
+        Thread.sleep(10000);
+        
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract3.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
         refilledSlotContract3.check();
@@ -8486,8 +8490,28 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract3.getId(), restoredContract.getId());
 
-        spentKDs += (timeReg4.toEpochSecond() - timeReg3.toEpochSecond()) * (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
+//        spentKDs += (timeReg4.toEpochSecond() - timeReg3.toEpochSecond()) * (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
+//        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
+
+        long spentSeconds3 = (timeReg4.toEpochSecond() - timeReg3.toEpochSecond());
+        double spentDays3 = (double) spentSeconds3 / (3600 * 24);
+        spentKDs += spentDays3 * ((simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length) / 1024);
+
+        int totalLength3 = simpleContract3.getPackedTransaction().length;
+        double days3 = (double) (100 + 300 + 300 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / totalLength3;
+        double hours3 = days3 * 24;
+        long seconds3 = (long) (days3 * 24 * 3600);
+        calculateExpires = timeReg4.plusSeconds(seconds3);
+
+
+        System.out.println("spentSeconds " + spentSeconds3);
+        System.out.println("spentDays " + spentDays3);
+        System.out.println("spentKDs " + spentKDs * 1000000);
+        System.out.println("days " + days3);
+        System.out.println("hours " + hours3);
+        System.out.println("seconds " + seconds3);
+        System.out.println("reg time " + timeReg3);
+        System.out.println("totalLength " + totalLength3);
 
         foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract3.getId());
         if(foundCssSet != null) {

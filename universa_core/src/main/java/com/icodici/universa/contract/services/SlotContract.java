@@ -299,6 +299,14 @@ public class SlotContract extends NSmartContract {
 
     public void setKeepRevisions(int keepRevisions) {
         this.keepRevisions = keepRevisions;
+
+        while(trackingContracts.size() > keepRevisions) {
+            trackingContracts.removeLast();
+        }
+        while(packedTrackingContracts.size() > keepRevisions) {
+            packedTrackingContracts.removeLast();
+        }
+
         getStateData().set(KEEP_REVISIONS_FIELD_NAME, keepRevisions);
     }
 
