@@ -89,6 +89,10 @@ public class Config {
         this.statsIntervalBig = statsIntervalBig;
     }
 
+    public Duration getExpriedStorageCleanupInterval() {
+        return expriedStorageCleanupInterval;
+    }
+
     public interface ConsensusConfigUpdater {
         void updateConsensusConfig(Config config, int nodesCount);
     }
@@ -131,6 +135,7 @@ public class Config {
     private List<Integer> resyncTime = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
+    private Duration expriedStorageCleanupInterval = Duration.ofMinutes(5);
 
     private Boolean isFreeRegistrationsLimited = null;
     private boolean isFreeRegistrationsAllowedFromYaml = false;

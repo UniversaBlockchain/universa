@@ -150,6 +150,7 @@ public class Node {
 
     private void pulseStartCleanup() {
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.cleanup(),1,config.getMaxDiskCacheAge().getSeconds(),TimeUnit.SECONDS);
+        lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.removeExpiredStorageSubscriptionsCascade(),config.getExpriedStorageCleanupInterval().getSeconds(),config.getExpriedStorageCleanupInterval().getSeconds(),TimeUnit.SECONDS);
     }
 
     private void dbSanitationFinished() {

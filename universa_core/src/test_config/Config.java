@@ -100,6 +100,11 @@ public class Config {
         this.statsIntervalBig = statsIntervalBig;
     }
 
+    public Duration getExpriedStorageCleanupInterval() {
+        return expriedStorageCleanupInterval;
+    }
+
+
     public interface ConsensusConfigUpdater {
         void updateConsensusConfig(Config config, int nodesCount);
     }
@@ -131,6 +136,8 @@ public class Config {
     private Duration statsIntervalSmall = Duration.ofSeconds(30);
     private Duration statsIntervalBig = Duration.ofSeconds(3600);
     private Duration maxGetItemTime = Duration.ofSeconds(30);
+    private Duration expriedStorageCleanupInterval = Duration.ofSeconds(15);
+
     private int getItemRetryCount = 10;
     private int negativeConsensus;
     private int positiveConsensus;
