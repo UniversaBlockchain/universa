@@ -8197,7 +8197,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
-        assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays());
+        assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
@@ -8233,7 +8233,8 @@ public class BaseNetworkTest extends TestCase {
         foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
-                System.out.println(foundCss.expiresAt());
+                System.out.println("expected:" + calculateExpires);
+                System.out.println("found: " + foundCss.expiresAt());
                 assertAlmostSame(calculateExpires, foundCss.expiresAt());
             }
         } else {

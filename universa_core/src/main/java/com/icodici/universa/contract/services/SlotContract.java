@@ -273,6 +273,7 @@ public class SlotContract extends NSmartContract {
 
     public void setKeepRevisions(int keepRevisions) {
         this.keepRevisions = keepRevisions;
+        getStateData().set(KEEP_REVISIONS_FIELD_NAME, keepRevisions);
     }
 
     public int getKeepRevisions() {
