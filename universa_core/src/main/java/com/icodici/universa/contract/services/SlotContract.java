@@ -31,6 +31,10 @@ import java.util.*;
 public class SlotContract extends NSmartContract {
 
     public static final String PREPAID_KD_FIELD_NAME = "prepaid_KD";
+    public static final String PREPAID_FROM_TIME_FIELD_NAME = "prepaid_from";
+    public static final String STORED_BYTES_FIELD_NAME = "stored_bytes";
+    public static final String SPENT_KD_FIELD_NAME = "spent_KD";
+    public static final String SPENT_KD_TIME_FIELD_NAME = "spent_KD_time";
     public static final String KEEP_REVISIONS_FIELD_NAME = "keep_revisions";
     public static final String TRACKING_CONTRACT_FIELD_NAME = "tracking_contract";
 
@@ -51,6 +55,12 @@ public class SlotContract extends NSmartContract {
 
     private int paidU = 0;
     private double prepaidKilobytesForDays = 0;
+    private ZonedDateTime prepaidFrom = null;
+    private long storedEarlyBytes = 0;
+    private double spentEarlyKDs = 0;
+    private ZonedDateTime spentEarlyKDsTime = null;
+    private double spentKDs = 0;
+    private ZonedDateTime spentKDsTime = null;
 
     public Config getNodeConfig() {
         return nodeConfig;
@@ -185,6 +195,10 @@ public class SlotContract extends NSmartContract {
             fieldsMap.put("/expires_at", null);
             fieldsMap.put(KEEP_REVISIONS_FIELD_NAME, null);
             fieldsMap.put(PREPAID_KD_FIELD_NAME, null);
+            fieldsMap.put(PREPAID_FROM_TIME_FIELD_NAME, null);
+            fieldsMap.put(STORED_BYTES_FIELD_NAME, null);
+            fieldsMap.put(SPENT_KD_FIELD_NAME, null);
+            fieldsMap.put(SPENT_KD_TIME_FIELD_NAME, null);
             fieldsMap.put(TRACKING_CONTRACT_FIELD_NAME, null);
             Binder modifyDataParams = Binder.of("fields", fieldsMap);
             ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
@@ -244,6 +258,12 @@ public class SlotContract extends NSmartContract {
             packedTrackingContracts.removeLast();
         }
 
+        int storingBytes = 0;
+        for(byte[] p : packedTrackingContracts) {
+            storingBytes += p.length;
+        }
+        getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
+
 //        calculatePrepaidKilobytesForDays();
     }
 
@@ -267,6 +287,12 @@ public class SlotContract extends NSmartContract {
         if(packedTrackingContracts.size() > keepRevisions) {
             packedTrackingContracts.removeLast();
         }
+
+        int storingBytes = 0;
+        for(byte[] p : packedTrackingContracts) {
+            storingBytes += p.length;
+        }
+        getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
 
 //        calculatePrepaidKilobytesForDays();
     }
@@ -317,16 +343,58 @@ public class SlotContract extends NSmartContract {
                 }
             }
         }
+
+        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         double wasPrepaidKilobytesForDays;
+        long wasPrepaidFrom = now.toEpochSecond();
+        long spentEarlyKDsTimeSecs = now.toEpochSecond();
         Contract parentContract = getRevokingItem(getParent());
-        if( parentContract!= null) {
+        if(parentContract != null) {
             wasPrepaidKilobytesForDays = parentContract.getStateData().getDouble(PREPAID_KD_FIELD_NAME);
+            wasPrepaidFrom = parentContract.getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
+            storedEarlyBytes = parentContract.getStateData().getLong(STORED_BYTES_FIELD_NAME, 0);
+            spentEarlyKDs = parentContract.getStateData().getDouble(SPENT_KD_FIELD_NAME);
+            spentEarlyKDsTimeSecs = parentContract.getStateData().getLong(SPENT_KD_TIME_FIELD_NAME, 0);
         } else {
             wasPrepaidKilobytesForDays = 0;
         }
+
+//        int storingBytes = 0;
+//        for(byte[] packed : packedTrackingContracts) {
+//            storingBytes += packed.length;
+//        }
+//        long spentSeconds = (now.toEpochSecond() - wasPrepaidFrom);
+//        double spentDays = (double) spentSeconds / (3600 * 24);
+//        double spentKDs = spentDays * (storingBytes / 1024);
+
+        spentEarlyKDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyKDsTimeSecs), ZoneId.systemDefault());
+        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
         prepaidKilobytesForDays = wasPrepaidKilobytesForDays + paidU * Config.kilobytesAndDaysPerU;
+
+//        System.out.println("===> spentSeconds " + spentSeconds);
+//        System.out.println("===> spentKDs " + spentKDs);
+        System.out.println("===> prepaidKilobytesForDays " + prepaidKilobytesForDays);
+        System.out.println("===> storedEarlyBytes " + storedEarlyBytes);
+
         if(withSaveToState) {
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
+            if(getRevision() == 1) {
+                getStateData().set(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
+            }
+
+            int storingBytes = 0;
+            for(byte[] p : packedTrackingContracts) {
+                storingBytes += p.length;
+            }
+            getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
+
+            spentKDsTime = now;
+            long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
+            double spentDays = (double) spentSeconds / (3600 * 24);
+            spentKDs = spentEarlyKDs + spentDays * (storedEarlyBytes / 1024);
+
+            getStateData().set(SPENT_KD_FIELD_NAME, spentKDs);
+            getStateData().set(SPENT_KD_TIME_FIELD_NAME, spentKDsTime.toEpochSecond());
         }
 //        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
 //        if(packedTrackingContract != null) {
@@ -338,16 +406,31 @@ public class SlotContract extends NSmartContract {
     }
 
     private void saveSubscriptionsToLedger(MutableEnvironment me) {
+
+        calculatePrepaidKilobytesForDays(false);
+
         int storingBytes = 0;
         for(byte[] packed : packedTrackingContracts) {
             storingBytes += packed.length;
         }
         ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
 
-        double days = (double) 100 * Config.kilobytesAndDaysPerU * 1024 / storingBytes;
+        double days = (prepaidKilobytesForDays - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / storingBytes;
         double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         newExpires = newExpires.plusSeconds(seconds);
+
+        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
+
+        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
+        System.out.println(">> spentSeconds " + spentSeconds);
+//        System.out.println(">> spentDays " + spentDays);
+        System.out.println(">> spentKDs " + spentKDs * 1000000);
+        System.out.println(">> days " + days);
+        System.out.println(">> hours " + hours);
+        System.out.println(">> seconds " + seconds);
+//        System.out.println(">> reg time " + timeReg2);
+        System.out.println(">> totalLength " + storingBytes);
 
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
@@ -446,6 +529,8 @@ public class SlotContract extends NSmartContract {
             keepRevisions = numRevisions;
 
         prepaidKilobytesForDays = data.getBinder("state").getBinder("data").getInt(PREPAID_KD_FIELD_NAME, 0);
+        long prepaidFromSeconds = data.getBinder("state").getBinder("data").getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
+        prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
 
 //        try {
 //            putPackedTrackingContract(data.getBinder("state").getBinder("data").getBinary(TRACKING_CONTRACT_FIELD_NAME));

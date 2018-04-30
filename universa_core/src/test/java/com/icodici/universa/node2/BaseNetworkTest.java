@@ -8132,7 +8132,7 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract.getId(), restoredContract.getId());
 
-        long spentBs = 0;
+        double spentKDs = 0;
         ZonedDateTime calculateExpires;
 
         Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
@@ -8189,6 +8189,10 @@ public class BaseNetworkTest extends TestCase {
 
         paymentContract = getApprovedTUContract();
 
+        // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
+        // so sleep should be before seal for test calculations
+        Thread.sleep(10000);
+
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
         refilledSlotContract.check();
@@ -8211,6 +8215,7 @@ public class BaseNetworkTest extends TestCase {
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
+        refilledSlotContract.traceErrors();
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
@@ -8226,9 +8231,27 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract.getId(), restoredContract.getId());
 
-        spentBs += (timeReg2.toEpochSecond() - timeReg1.toEpochSecond()) * simpleContract.getPackedTransaction().length;
-        calculateExpires = timeReg2.plusSeconds(((100 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - spentBs) /
-                (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
+        long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+        spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
+//        calculateExpires = timeReg2.plusSeconds(((100 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - spentBs) /
+//                (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
+
+        int totalLength = simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length;
+        double days = (double) (100 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / totalLength;
+        double hours = days * 24;
+        long seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+
+        System.out.println("spentSeconds " + spentSeconds);
+        System.out.println("spentDays " + spentDays);
+        System.out.println("spentKDs " + spentKDs * 1000000);
+        System.out.println("days " + days);
+        System.out.println("hours " + hours);
+        System.out.println("seconds " + seconds);
+        System.out.println("reg time " + timeReg1);
+        System.out.println("totalLength " + totalLength);
 
         foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
         if(foundCssSet != null) {
@@ -8292,6 +8315,10 @@ public class BaseNetworkTest extends TestCase {
 
         paymentContract = getApprovedTUContract();
 
+        // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
+        // so sleep should be before seal for test calculations
+        Thread.sleep(10000);
+
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
         refilledSlotContract2.check();
@@ -8300,7 +8327,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays());
+        assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract2.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
@@ -8336,9 +8363,29 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract2.getId(), restoredContract.getId());
 
-        spentBs += (timeReg3.toEpochSecond() - timeReg2.toEpochSecond()) * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - spentBs) /
-                (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
+
+//        spentKDs += (timeReg3.toEpochSecond() - timeReg2.toEpochSecond()) * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
+//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - (long)spentKDs) /
+//                (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
+        long spentSeconds2 = (timeReg3.toEpochSecond() - timeReg2.toEpochSecond());
+        double spentDays2 = (double) spentSeconds2 / (3600 * 24);
+        spentKDs += spentDays2 * ((simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024);
+
+        int totalLength2 = simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length;
+        double days2 = (double) (100 + 300 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / totalLength2;
+        double hours2 = days2 * 24;
+        long seconds2 = (long) (days2 * 24 * 3600);
+        calculateExpires = timeReg3.plusSeconds(seconds2);
+
+
+        System.out.println("spentSeconds " + spentSeconds2);
+        System.out.println("spentDays " + spentDays2);
+        System.out.println("spentKDs " + spentKDs * 1000000);
+        System.out.println("days " + days2);
+        System.out.println("hours " + hours2);
+        System.out.println("seconds " + seconds2);
+        System.out.println("reg time " + timeReg3);
+        System.out.println("totalLength " + totalLength2);
 
         foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract2.getId());
         if(foundCssSet != null) {
@@ -8398,7 +8445,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract3.getPrepaidKilobytesForDays());
+        assertEquals((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract3.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract3.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> " + ((double)(100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 / simpleContract3.getPackedTransaction().length) + " days");
@@ -8439,8 +8486,8 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract3.getId(), restoredContract.getId());
 
-        spentBs += (timeReg4.toEpochSecond() - timeReg3.toEpochSecond()) * (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - spentBs) / simpleContract3.getPackedTransaction().length);
+        spentKDs += (timeReg4.toEpochSecond() - timeReg3.toEpochSecond()) * (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
+        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
 
         foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract3.getId());
         if(foundCssSet != null) {
