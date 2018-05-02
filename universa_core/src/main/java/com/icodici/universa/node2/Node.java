@@ -1532,7 +1532,7 @@ public class Node {
          *
          * Then item will be checked. Immediately after download if {@link ItemProcessor#isCheckingForce} is true
          * or after {@link ItemProcessor#forceChecking(boolean)} call. Will call {@link Approvable#check()}
-         * or {@link Approvable#paymentCheck(PublicKey)} if item is payment ({@link Approvable#shouldBeTU()}).
+         * or {@link Approvable#paymentCheck(Set)} if item is payment ({@link Approvable#shouldBeTU()}).
          * Then subitems will be checked: {@link Approvable#getReferencedItems()} will checked if exists in the ledger;
          * {@link Approvable#getRevokingItems()} will checked if exists in the ledger and its
          * own {@link Approvable#getReferencedItems()} will recursively checked and will get {@link ItemState#LOCKED};
@@ -1602,7 +1602,7 @@ public class Node {
 
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: created, state ", processingState),
+                    " :: created, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
 
             if (this.item != null) {
@@ -1667,7 +1667,7 @@ public class Node {
         private final void itemDownloaded() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: itemDownloaded, state ", processingState),
+                    " :: itemDownloaded, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 synchronized (cache) {
@@ -1711,7 +1711,7 @@ public class Node {
         private final synchronized void checkItem() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: checkItem, state ", processingState),
+                    " :: checkItem, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
@@ -1758,6 +1758,8 @@ public class Node {
                             }
                         }
                     } catch (Quantiser.QuantiserException e) {
+                        item.addError(Errors.FAILURE, item.getId().toString(),
+                                "Not enough payment for process item (quantas limit)");
                         emergencyBreak();
                         return;
                     }
@@ -1892,7 +1894,7 @@ public class Node {
         private final void commitCheckedAndStartPolling() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: commitCheckedAndStartPolling, state ", processingState),
+                    " :: commitCheckedAndStartPolling, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
@@ -1987,7 +1989,7 @@ public class Node {
         private final void broadcastMyState() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: broadcastMyState, state ", processingState),
+                    " :: broadcastMyState, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 Notification notification;
@@ -2006,7 +2008,7 @@ public class Node {
         private final void pulseStartPolling() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: pulseStartPolling, state ", processingState),
+                    " :: pulseStartPolling, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
@@ -2123,7 +2125,7 @@ public class Node {
         private final void approveAndCommit() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: approveAndCommit, state ", processingState),
+                    " :: approveAndCommit, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 // todo: fix logic to surely copy approving item dependency. e.g. download original or at least dependencies
@@ -2237,7 +2239,7 @@ public class Node {
         private void rollbackChanges(ItemState newState) {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: rollbackChanges, state ", processingState),
+                    " :: rollbackChanges, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
 
             synchronized (ledgerRollbackLock) {
@@ -2306,7 +2308,7 @@ public class Node {
         private final void pulseSendNewConsensus() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: pulseSendNewConsensus, state ", processingState),
+                    " :: pulseSendNewConsensus, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
 
@@ -2598,7 +2600,7 @@ public class Node {
         private void forceChecking(boolean isCheckingForce) {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: forceChecking, state ", processingState),
+                    " :: forceChecking, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             this.isCheckingForce = isCheckingForce;
             if(processingState.canContinue()) {
@@ -2613,7 +2615,7 @@ public class Node {
         private void close() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: close, state ", processingState),
+                    " :: close, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
 
             if(processingState.canContinue())
@@ -2652,7 +2654,7 @@ public class Node {
         private void emergencyBreak() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: emergencyBreak, state ", processingState),
+                    " :: emergencyBreak, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
 
             boolean doRollback = !processingState.isDone();
@@ -2691,7 +2693,7 @@ public class Node {
         private final void removeSelf() {
             report(getLabel(), () -> concatReportMessage("item processor for item: ",
                     itemId, " from parcel: ", parcelId,
-                    " :: removeSelf, state ", processingState),
+                    " :: removeSelf, state ", processingState, " itemState: ", getState()),
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canRemoveSelf()) {
                 forceRemoveSelf();
