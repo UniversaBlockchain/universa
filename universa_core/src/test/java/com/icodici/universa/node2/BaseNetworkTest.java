@@ -42,6 +42,7 @@ import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anyOf;
@@ -902,7 +903,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
 
         // 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, 30, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, "30", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("70", c1.getStateData().get("amount").toString());
         assertEquals("30", c2.getStateData().get("amount").toString());
@@ -934,7 +935,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c);
 
         // 550
-        Contract c1 = ContractsService.createSplit(c, 550, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, "550", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("-450", c1.getStateData().get("amount").toString());
         assertEquals("550", c2.getStateData().get("amount").toString());
@@ -967,7 +968,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(100, c.getStateData().get("amount"));
 
         // split 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, 30, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, "30", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         assertEquals("70", c1.getStateData().get("amount").toString());
         assertEquals("30", c2.getStateData().get("amount").toString());
@@ -1014,7 +1015,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(100, c.getStateData().get("amount"));
 
         // split 100 - 30 = 70
-        Contract c1 = ContractsService.createSplit(c, 30, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, "30", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
         registerAndCheckApproved(c1);
         assertEquals("70", c1.getStateData().get("amount").toString());
@@ -1115,7 +1116,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract.setTestQuantaLimit(60);
         // 30
-        Contract c1 = ContractsService.createSplit(c, 30, "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
+        Contract c1 = ContractsService.createSplit(c, "30", "amount", new HashSet<PrivateKey>(Arrays.asList(key)));
         Contract c2 = c1.getNew().get(0);
 
         assertEquals("70", c1.getStateData().get("amount").toString());
@@ -2633,9 +2634,9 @@ public class BaseNetworkTest extends TestCase {
 
 
         // 100 - 30 = 70
-        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, 30, "amount", martyPrivateKeys);
+        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, "30", "amount", martyPrivateKeys);
         Contract martyCoinsSplitToStepa = martyCoinsSplit.getNew().get(0);
-        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, 30, "amount", stepaPrivateKeys);
+        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, "30", "amount", stepaPrivateKeys);
         Contract stepaCoinsSplitToMarty = stepaCoinsSplit.getNew().get(0);
 
         martyCoinsSplitToStepa.check();
@@ -2668,6 +2669,81 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(stepaCoinsSplitToMarty.getId(), 5000).state);
         assertEquals(ItemState.REVOKED, node.waitItem(martyCoins.getId(), 5000).state);
         assertEquals(ItemState.REVOKED, node.waitItem(stepaCoins.getId(), 5000).state);
+    }
+
+
+    @Test(timeout = 60000)
+    public void swapSplitJoinAllGood_api2() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> user1PrivKeySet = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> user2PrivKeySet = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+        Set<PublicKey> user1PubKeySet = user1PrivKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
+        Set<PublicKey> user2PubKeySet = user2PrivKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
+
+        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivKeySet, user1PubKeySet, "100", 0.0001);
+        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivKeySet, user2PubKeySet, "100", 0.001);
+        contractTOK92.setApiLevel(2);
+        contractTOK93.setApiLevel(2);
+
+        contractTOK92.seal();
+        contractTOK92.check();
+        contractTOK92.traceErrors();
+        registerAndCheckApproved(contractTOK92);
+
+        contractTOK93.seal();
+        contractTOK93.check();
+        contractTOK93.traceErrors();
+        registerAndCheckApproved(contractTOK93);
+
+        System.out.println("--- coins created ---");
+
+        // TOK92: 100 - 8.02 = 91.98
+        Contract user1CoinsSplit = ContractsService.createSplit(contractTOK92, "8.02", "amount", user1PrivKeySet);
+        Contract user1CoinsSplitToUser2 = user1CoinsSplit.getNew().get(0);
+        // TOK93: 100 - 10.01 = 89.99
+        Contract user2CoinsSplit = ContractsService.createSplit(contractTOK93, "10.01", "amount", user2PrivKeySet);
+        Contract user2CoinsSplitToUser1 = user2CoinsSplit.getNew().get(0);
+
+        user1CoinsSplitToUser2.check();
+        user1CoinsSplitToUser2.traceErrors();
+        user2CoinsSplitToUser1.check();
+        user2CoinsSplitToUser1.traceErrors();
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+        swapContract = ContractsService.startSwap(user1CoinsSplitToUser2, user2CoinsSplitToUser1, user1PrivKeySet, user2PubKeySet, false);
+        ContractsService.signPresentedSwap(swapContract, user2PrivKeySet);
+        ContractsService.finishSwap(swapContract, user1PrivKeySet);
+
+        swapContract.getNewItems().clear();
+        swapContract.addNewItems(user1CoinsSplit, user2CoinsSplit);
+        swapContract.seal();
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+
+        node.registerItem(swapContract);
+        assertEquals(ItemState.APPROVED, node.waitItem(swapContract.getId(), 5000).state);
+
+        assertEquals(ItemState.APPROVED, node.waitItem(user1CoinsSplit.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(user2CoinsSplit.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(user1CoinsSplitToUser2.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(user2CoinsSplitToUser1.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(contractTOK92.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(contractTOK93.getId(), 5000).state);
+        assertEquals("8.02", user1CoinsSplitToUser2.getStateData().getStringOrThrow("amount"));
+        assertEquals("10.01", user2CoinsSplitToUser1.getStateData().getStringOrThrow("amount"));
+        assertFalse(user1CoinsSplitToUser2.getOwner().isAllowedForKeys(user1PubKeySet));
+        assertTrue(user1CoinsSplitToUser2.getOwner().isAllowedForKeys(user2PubKeySet));
+        assertTrue(user2CoinsSplitToUser1.getOwner().isAllowedForKeys(user1PubKeySet));
+        assertFalse(user2CoinsSplitToUser1.getOwner().isAllowedForKeys(user2PubKeySet));
     }
 
 
@@ -2710,13 +2786,13 @@ public class BaseNetworkTest extends TestCase {
 
 
         // 100 - 30 = 70
-        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, 30, "amount", martyPrivateKeys);
+        Contract martyCoinsSplit = ContractsService.createSplit(martyCoins, "30", "amount", martyPrivateKeys);
         // remove sign!!
         martyCoinsSplit.getKeysToSignWith().clear();
         martyCoinsSplit.removeAllSignatures();
         martyCoinsSplit.seal();
         Contract martyCoinsSplitToStepa = martyCoinsSplit.getNew().get(0);
-        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, 30, "amount", stepaPrivateKeys);
+        Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, "30", "amount", stepaPrivateKeys);
         Contract stepaCoinsSplitToMarty = stepaCoinsSplit.getNew().get(0);
 
         martyCoinsSplit.check();
@@ -3994,7 +4070,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100,
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, "100",
                 "amount", stepaPrivateKeys, true);
 //        llcProperty2.createRole("creator", llcProperty2.getRole("owner"));
 //        llcProperty2.getNew().get(0).createRole("creator", llcProperty2.getNew().get(0).getRole("owner"));
@@ -4510,7 +4586,7 @@ public class BaseNetworkTest extends TestCase {
 
         // 3 revision: split
 
-        Contract llcProperty3 = ContractsService.createSplit(llcProperty2, 80, "amount", stepaPrivateKeys, true);
+        Contract llcProperty3 = ContractsService.createSplit(llcProperty2, "80", "amount", stepaPrivateKeys, true);
         llcProperty3.check();
         llcProperty3.traceErrors();
         assertFalse(llcProperty3.isOk());
@@ -4641,7 +4717,7 @@ public class BaseNetworkTest extends TestCase {
 
         // wrong (old) referenced contract
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 80, "amount", stepaPrivateKeys, true);
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, "80", "amount", stepaPrivateKeys, true);
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
         // don't forget add all contracts needed for all references
@@ -4656,7 +4732,7 @@ public class BaseNetworkTest extends TestCase {
 
         System.out.println("------");
 
-        llcProperty2 = ContractsService.createSplit(llcProperty, 80, "amount", stepaPrivateKeys, true);
+        llcProperty2 = ContractsService.createSplit(llcProperty, "80", "amount", stepaPrivateKeys, true);
 
         // and seal all again
         llcProperty2.getNew().get(0).seal();
@@ -5070,7 +5146,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100,
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, "100",
                 "amount", stepaPrivateKeys, true);
         llcProperty2.check();
         llcProperty2.traceErrors();
@@ -6324,7 +6400,7 @@ public class BaseNetworkTest extends TestCase {
         registerAndCheckApproved(c1);
 
         System.out.println("money before split (c1): " + c1.getStateData().getIntOrThrow("amount"));
-        Contract c2 = ContractsService.createSplit(c1, 99, "amount", keys);
+        Contract c2 = ContractsService.createSplit(c1, "99", "amount", keys);
         Contract c3 = c2.getNew().get(0);
 
         System.out.println("money after split (c2): " + c2.getStateData().getIntOrThrow("amount"));
@@ -6937,7 +7013,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(llcProperty);
 
-        Contract llcProperty2 = ContractsService.createSplit(llcProperty, 100, "amount", stepaPrivateKeys, true);
+        Contract llcProperty2 = ContractsService.createSplit(llcProperty, "100", "amount", stepaPrivateKeys, true);
         llcProperty2.check();
         llcProperty2.traceErrors();
         assertFalse(llcProperty2.isOk());

@@ -85,7 +85,7 @@ public class ContractsService {
      * @param keys is keys from owner of c
      * @return working contract that should be register in the Universa to finish procedure.
      */
-    public synchronized static Contract createSplit(Contract c, long amount, String fieldName,
+    public synchronized static Contract createSplit(Contract c, String amount, String fieldName,
                                                     Set<PrivateKey> keys) {
         return createSplit(c, amount, fieldName,  keys, false);
     }
@@ -104,7 +104,7 @@ public class ContractsService {
          * @param andSetCreator if true set owners as creator in both contarcts
          * @return working contract that should be register in the Universa to finish procedure.
          */
-    public synchronized static Contract createSplit(Contract c, long amount, String fieldName,
+    public synchronized static Contract createSplit(Contract c, String amount, String fieldName,
                                                     Set<PrivateKey> keys, boolean andSetCreator) {
         Contract splitFrom = c.createRevision();
         Contract splitTo = splitFrom.splitValue(fieldName, new Decimal(amount));
@@ -551,14 +551,15 @@ public class ContractsService {
      *<br><br>
      * The service creates a simple token contract with issuer, creator and owner roles;
      * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
-     * Split_join permission has by default following params: 0.01 for min_value, 0.01 for min_unit, "amount" for field_name,
+     * Split_join permission has by default following params: "minValue" for min_value and min_unit, "amount" for field_name,
      * "state.origin" for join_match_fields.
      * By default expires at time is set to 60 months from now.
      * @param ownerKeys is owner public keys.
      * @param amount is maximum token number.
+     * @param minValue is minimum token value
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount){
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue){
         Contract tokenContract = new Contract();
         tokenContract.setApiLevel(3);
 
@@ -597,8 +598,8 @@ public class ContractsService {
         tokenContract.addPermission(changeOwnerPerm);
 
         Binder params = new Binder();
-        params.set("min_value", 0.01);
-        params.set("min_unit", 0.01);
+        params.set("min_value", minValue);
+        params.set("min_unit", minValue);
         params.set("field_name", "amount");
         List <String> listFields = new ArrayList<>();
         listFields.add("state.origin");
@@ -617,6 +618,13 @@ public class ContractsService {
         tokenContract.addSignatureToSeal(issuerKeys);
 
         return tokenContract;
+    }
+
+    /**
+     * @see #createTokenContract(Set, Set, String, Double)
+     */
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
+        return createTokenContract(issuerKeys, ownerKeys, amount, 0.01);
     }
 
 
