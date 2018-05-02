@@ -381,8 +381,8 @@ public class SlotContract extends NSmartContract {
 
 //        System.out.println("===> spentSeconds " + spentSeconds);
 //        System.out.println("===> spentKDs " + spentKDs);
-        System.out.println("===> prepaidKilobytesForDays " + prepaidKilobytesForDays);
-        System.out.println("===> storedEarlyBytes " + storedEarlyBytes);
+//        System.out.println("===> prepaidKilobytesForDays " + prepaidKilobytesForDays);
+//        System.out.println("===> storedEarlyBytes " + storedEarlyBytes);
 
         if(withSaveToState) {
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
@@ -430,15 +430,15 @@ public class SlotContract extends NSmartContract {
 
         long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
 
-        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
-        System.out.println(">> spentSeconds " + spentSeconds);
-//        System.out.println(">> spentDays " + spentDays);
-        System.out.println(">> spentKDs " + spentKDs * 1000000);
-        System.out.println(">> days " + days);
-        System.out.println(">> hours " + hours);
-        System.out.println(">> seconds " + seconds);
-//        System.out.println(">> reg time " + timeReg2);
-        System.out.println(">> totalLength " + storingBytes);
+//        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
+//        System.out.println(">> spentSeconds " + spentSeconds);
+////        System.out.println(">> spentDays " + spentDays);
+//        System.out.println(">> spentKDs " + spentKDs * 1000000);
+//        System.out.println(">> days " + days);
+//        System.out.println(">> hours " + hours);
+//        System.out.println(">> seconds " + seconds);
+////        System.out.println(">> reg time " + timeReg2);
+//        System.out.println(">> totalLength " + storingBytes);
 
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
@@ -696,6 +696,14 @@ public class SlotContract extends NSmartContract {
             if (!checkResult) {
                 addError(Errors.FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
                 return checkResult;
+            }
+
+            for(Contract tc : trackingContracts) {
+                checkResult = getTrackingContract().getOrigin().equals(tc.getOrigin());
+                if (!checkResult) {
+                    addError(Errors.FAILED_CHECK, "Slot-contract should store only contracts with same origin");
+                    return checkResult;
+                }
             }
         }
 

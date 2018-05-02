@@ -7849,7 +7849,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
-        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays());
+        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
         System.out.println(">> " + 100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
@@ -8893,13 +8893,26 @@ public class BaseNetworkTest extends TestCase {
 
         paymentContract = getApprovedTUContract();
 
-        ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
+        // imitating check process on the node
+        newSlotContract.beforeUpdate(new SlotMutableEnvironment(newSlotContract));
         newSlotContract.check();
         newSlotContract.traceErrors();
 
         // check error of adding other contract (not revision of old tracking contract)
         assertFalse(newSlotContract.isOk());
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(newSlotContract.getNew().get(0).getId(), 8000).state);
     }
 
     @Test
