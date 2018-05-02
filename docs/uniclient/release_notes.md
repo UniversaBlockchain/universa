@@ -13,6 +13,11 @@ Bulk operations for import, export, register and check.
 
 Probe files, not only ids.
 
+### 3.4.8 (27.04.2018)
+* Added `--resync` command that synchronizes contract status between nodes
+* Added `--node` option that specifies number of node to connect to
+* Added `--skey` option that specifies session private key file
+
 ### 3.2.4b2 (27.03.2018)
 * Added `--address` command that generates address from key. Has option `-short`.
 * Added `--address-match` command that check matching address with key from file. Path to key define in parameter `-keyfile`.

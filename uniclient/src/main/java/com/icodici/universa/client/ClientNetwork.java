@@ -102,6 +102,10 @@ public class ClientNetwork {
         return client.registerParcel(packedParcel, millisToWait);
     }
 
+    public ItemResult resync(String base64Id) throws ClientError {
+        return client.resyncItem(HashId.withDigest(base64Id));
+    }
+
     public ItemResult check(String base64Id) throws ClientError {
         return client.getState(HashId.withDigest(base64Id),reporter);
     }

@@ -7512,4 +7512,88 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(node.nodeStats.todayPaidAmount - today, 0);
     }
 
+    @Test(timeout = 90000)
+    public void transactionalValidUntil_good() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        if (stepaCoins.getTransactional() == null)
+            stepaCoins.createTransactionalSection();
+        stepaCoins.getTransactional().setValidUntil(ZonedDateTime.now().plusSeconds(Config.validUntilTailTime.getSeconds()*2).toEpochSecond());
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+        assertTrue(parcel.getPayloadContract().isOk());
+
+        node.registerParcel(parcel);
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+    @Test(timeout = 90000)
+    public void transactionalValidUntil_timeIsOver() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        if (stepaCoins.getTransactional() == null)
+            stepaCoins.createTransactionalSection();
+        stepaCoins.getTransactional().setValidUntil(ZonedDateTime.now().plusMonths(-1).toEpochSecond());
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+        assertFalse(parcel.getPayloadContract().isOk());
+
+        node.registerParcel(parcel);
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+    @Test(timeout = 90000)
+    public void transactionalValidUntil_timeEnds() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+        if (stepaCoins.getTransactional() == null)
+            stepaCoins.createTransactionalSection();
+        stepaCoins.getTransactional().setValidUntil(ZonedDateTime.now().plusSeconds(Config.validUntilTailTime.getSeconds()/2).toEpochSecond());
+        stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+        assertFalse(parcel.getPayloadContract().isOk());
+
+        node.registerParcel(parcel);
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+    }
+
 }
