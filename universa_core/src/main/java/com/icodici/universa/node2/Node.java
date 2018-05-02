@@ -2272,7 +2272,11 @@ public class Node {
 //                                    ItemResult cr = cache.getResult(r.getId());
                                     ItemResult rr = new ItemResult(r);
                                     rr.extraDataBinder = null;
-                                    cache.update(r.getId(), rr);
+                                    if(cache.get(r.getId()) == null) {
+                                        cache.put(revokingItem, rr);
+                                    } else {
+                                        cache.update(r.getId(), rr);
+                                    }
                                 }
                             } catch (Ledger.Failure failure) {
                                 emergencyBreak();
@@ -2308,6 +2312,7 @@ public class Node {
                                         me = new SlotMutableEnvironment((SlotContract) newItem);
                                         er = ((SlotContract) newItem).onCreated(me);
                                         newExtraResult.set("onCreatedResult", er);
+                                        System.err.println(er);
                                     } else {
                                         try{
                                             byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
@@ -2332,7 +2337,11 @@ public class Node {
 //                                    if(cr != null) {
                                         rr.extraDataBinder = newExtraResult;
 //                                    }
-                                    cache.update(r.getId(), rr);
+                                    if(cache.get(r.getId()) == null) {
+                                        cache.put(newItem, rr);
+                                    } else {
+                                        cache.update(r.getId(), rr);
+                                    }
                                 }
                             } catch (Ledger.Failure failure) {
                                 emergencyBreak();
