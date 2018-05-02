@@ -8766,7 +8766,7 @@ public class BaseNetworkTest extends TestCase {
         paymentContract = getApprovedTUContract();
 
         // revision should be created without additional payments (only setKeepRevisions and putTrackingContract)
-        payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 0, stepaPrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
         refilledSlotContract.check();
         refilledSlotContract.traceErrors();

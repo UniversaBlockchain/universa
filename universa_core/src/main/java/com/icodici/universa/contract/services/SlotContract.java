@@ -101,40 +101,42 @@ public class SlotContract extends NSmartContract {
     public SlotContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
 
-        // TODO: check, why trackingContracts is clearing here, so we need to fill it again, however it was done in the deserialization
-        try {
-            Binder trackingHashesAsBase64 = getStateData().getBinder(TRACKING_CONTRACT_FIELD_NAME);
-            for (String k : trackingHashesAsBase64.keySet()) {
-                byte[] packed = trackingHashesAsBase64.getBinary(k);
-                if(packed != null) {
-                    Contract c = Contract.fromPackedTransaction(packed);
-//                    if(trackingContracts.size() > 0) {
-//                        if (c.getRevision() >= trackingContracts.getFirst().getRevision()) {
+//        // TODO: check, why trackingContracts is clearing here, so we need to fill it again, however it was done in the deserialization
+//        try {
+//            Binder trackingHashesAsBase64 = getStateData().getBinder(TRACKING_CONTRACT_FIELD_NAME);
+//            for (String k : trackingHashesAsBase64.keySet()) {
+//                byte[] packed = trackingHashesAsBase64.getBinary(k);
+//                if(packed != null) {
+//                    Contract c = Contract.fromPackedTransaction(packed);
+////                    if(trackingContracts.size() > 0) {
+////                        if (c.getRevision() >= trackingContracts.getFirst().getRevision()) {
+////                            trackingContracts.addFirst(c);
+////                            packedTrackingContracts.addFirst(packed);
+////                        } else {
+////                            trackingContracts.addFirst(c);
+////                            packedTrackingContracts.addFirst(packed);
+////                        }
+////                    }
+//                    if(c != null) {
+//                        if(trackingContracts != null) {
 //                            trackingContracts.addFirst(c);
 //                            packedTrackingContracts.addFirst(packed);
+//                            trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
 //                        } else {
-//                            trackingContracts.addFirst(c);
-//                            packedTrackingContracts.addFirst(packed);
+//                            System.err.println("trackingContracts: " + trackingContracts +
+//                                    " packedTrackingContracts: " + packedTrackingContracts +
+//                                    " trackingHashes: " + trackingHashes);
 //                        }
+//                    } else {
+//                        System.err.println("reconstruction storing contract from slot.state.data failed: null");
 //                    }
-                    if(c != null) {
-                        if(trackingContracts != null) {
-                            trackingContracts.addFirst(c);
-                            packedTrackingContracts.addFirst(packed);
-                            trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
-                        } else {
-                            System.err.println("trackingContracts: " + trackingContracts +
-                                    " packedTrackingContracts: " + packedTrackingContracts +
-                                    " trackingHashes: " + trackingHashes);
-                        }
-                    } else {
-                        System.err.println("reconstruction storing contract from slot.state.data failed: null");
-                    }
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//                }
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+        deserializeForSlot();
 
 //        createSlotSpecific();
 
@@ -518,6 +520,13 @@ public class SlotContract extends NSmartContract {
     public void deserialize(Binder data, BiDeserializer deserializer) {
         super.deserialize(data, deserializer);
 
+        deserializeForSlot();
+    }
+
+    // this method should be only at the deserialize
+    private void deserializeForSlot() {
+
+
         if(packedTrackingContracts == null) {
             packedTrackingContracts = new LinkedList<>();
         }
@@ -527,17 +536,20 @@ public class SlotContract extends NSmartContract {
         if(trackingHashes == null) {
             trackingHashes = new Binder();
         }
-        keepRevisions = 1;
+//        keepRevisions = 1;
 
-        paidU = 0;
-        prepaidKilobytesForDays = 0;
+//        paidU = 0;
+//        prepaidKilobytesForDays = 0;
 
-        int numRevisions = data.getBinder("state").getBinder("data").getInt(KEEP_REVISIONS_FIELD_NAME, -1);
+        int numRevisions = getStateData().getInt(KEEP_REVISIONS_FIELD_NAME, -1);
+        System.out.println("numRevisions " + numRevisions);
         if(numRevisions > 0)
             keepRevisions = numRevisions;
 
-        prepaidKilobytesForDays = data.getBinder("state").getBinder("data").getInt(PREPAID_KD_FIELD_NAME, 0);
-        long prepaidFromSeconds = data.getBinder("state").getBinder("data").getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
+
+
+        prepaidKilobytesForDays = getStateData().getInt(PREPAID_KD_FIELD_NAME, 0);
+        long prepaidFromSeconds = getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
 
 //        try {
@@ -546,7 +558,7 @@ public class SlotContract extends NSmartContract {
 //            e.printStackTrace();
 //        }
         try {
-            Binder trackingHashesAsBase64 = data.getBinder("state").getBinder("data").getBinder(TRACKING_CONTRACT_FIELD_NAME);
+            Binder trackingHashesAsBase64 = getStateData().getBinder(TRACKING_CONTRACT_FIELD_NAME);
             for (String k : trackingHashesAsBase64.keySet()) {
                 byte[] packed = trackingHashesAsBase64.getBinary(k);
                 if(packed != null) {
