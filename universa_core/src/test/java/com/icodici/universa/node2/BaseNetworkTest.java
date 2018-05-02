@@ -8902,6 +8902,589 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(newSlotContract.isOk());
     }
 
+    @Test
+    public void registerSlotContractInNewItem() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+
+        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        Contract simpleContract = new Contract(key);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        Contract baseContract = new Contract(key);
+
+        // slot contract that storing
+
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
+        slotContract.setNodeConfig(node.getConfig());
+        slotContract.putTrackingContract(simpleContract);
+        slotContract.seal();
+        slotContract.check();
+        slotContract.traceErrors();
+        assertTrue(slotContract.isOk());
+
+        baseContract.addNewItems(slotContract);
+
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        assertTrue(baseContract.isOk());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        for (Contract c: baseContract.getNew())
+            if (!c.equals(slotContract)) {
+                baseContract.getNewItems().remove(c);
+                slotContract.addNewItems(c);
+                slotContract.seal();
+                baseContract.seal();
+                break;
+            }
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = slotContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
+
+        ItemResult itemResult = node.waitItem(slotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
+        // check if we store same contract as want
+
+        byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        // create revision of stored contract
+
+        Contract simpleContract2 = restoredContract.createRevision(key);
+        simpleContract2.setOwnerKey(stepaPrivateKeys.iterator().next().getPublicKey());
+        simpleContract2.seal();
+        simpleContract2.check();
+        simpleContract2.traceErrors();
+        assertTrue(simpleContract2.isOk());
+
+        registerAndCheckApproved(simpleContract2);
+
+        Contract baseContract2 = new Contract(key);
+
+        Set<PrivateKey> keysSlotRevisions = new HashSet<>();
+        keysSlotRevisions.add(key);
+        keysSlotRevisions.add(stepaPrivateKeys.iterator().next());
+
+        // refill slot contract with U (means add storing days).
+
+        SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
+        refilledSlotContract.setKeepRevisions(2);
+        refilledSlotContract.putTrackingContract(simpleContract2);
+        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.seal();
+        refilledSlotContract.check();
+        refilledSlotContract.traceErrors();
+        assertTrue(refilledSlotContract.isOk());
+
+        baseContract2.addNewItems(refilledSlotContract);
+
+        baseContract2.seal();
+        baseContract2.check();
+        baseContract2.traceErrors();
+        assertTrue(baseContract2.isOk());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedTUContract();
+
+        payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        for (Contract c: baseContract2.getNew())
+            if (!c.equals(refilledSlotContract)) {
+                baseContract2.getNewItems().remove(c);
+                refilledSlotContract.addNewItems(c);
+                refilledSlotContract.seal();
+                baseContract2.seal();
+                break;
+            }
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = refilledSlotContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract.getNew().get(0).getId(), 8000).state);
+
+        itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
+        // check root stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        // check revision of stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract2.getId(), restoredContract.getId());
+
+        // revoke slot contract, means remove stored contract from storage
+
+        Contract revokingSlotContract = ContractsService.createRevocation(refilledSlotContract, key);
+
+        registerAndCheckApproved(revokingSlotContract);
+
+        itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
+        assertEquals(ItemState.REVOKED, itemResult.state);
+
+        // check if we remove stored contract from storage
+
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNull(restoredPackedData);
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
+        assertNull(restoredPackedData);
+        restoredPackedData = node.getLedger().getContractInStorage(slotContract.getId());
+        assertNull(restoredPackedData);
+        restoredPackedData = node.getLedger().getContractInStorage(refilledSlotContract.getId());
+        assertNull(restoredPackedData);
+
+        // check if we remove subscriptions
+
+        Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
+        assertNull(foundCssSet);
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract2.getId());
+        assertNull(foundCssSet);
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(slotContract.getId());
+        assertNull(foundCssSet);
+        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(refilledSlotContract.getId());
+        assertNull(foundCssSet);
+
+        // check if we remove environment
+
+        byte[] ebytes = node.getLedger().getEnvironmentFromStorage(simpleContract.getId());
+        assertNull(ebytes);
+        ebytes = node.getLedger().getEnvironmentFromStorage(simpleContract2.getId());
+        assertNull(ebytes);
+        ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
+        assertNull(ebytes);
+        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract.getId());
+        assertNull(ebytes);
+    }
+
+    @Test
+    public void registerSlotContractInNewItemBadCreate() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+
+        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        Contract simpleContract = new Contract(key);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        Contract baseContract = new Contract(key);
+
+        // slot contract that storing
+
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
+        slotContract.setNodeConfig(node.getConfig());
+        slotContract.putTrackingContract(simpleContract);
+        slotContract.seal();
+        slotContract.check();
+        slotContract.traceErrors();
+        assertTrue(slotContract.isOk());
+
+        baseContract.addNewItems(slotContract);
+
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        assertTrue(baseContract.isOk());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        // provoke error FAILED_CHECK, "Payment for slot contract is below minimum level of " + nodeConfig.getMinSlotPayment() + "U");
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, node.getConfig().getMinSlotPayment() - 1, stepaPrivateKeys, false);
+        for (Contract c: baseContract.getNew())
+            if (!c.equals(slotContract)) {
+                baseContract.getNewItems().remove(c);
+                slotContract.addNewItems(c);
+                slotContract.seal();
+                baseContract.seal();
+                break;
+            }
+
+        node.registerParcel(payingParcel);
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        payingParcel.getPayload().getContract().traceErrors();
+
+        // check declined payload contract
+        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+    @Test
+    public void registerSlotContractInNewItemBadUpdate() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+
+        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        Contract simpleContract = new Contract(key);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        Contract baseContract = new Contract(key);
+
+        // slot contract that storing
+
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
+        slotContract.setNodeConfig(node.getConfig());
+        slotContract.putTrackingContract(simpleContract);
+        slotContract.seal();
+        slotContract.check();
+        slotContract.traceErrors();
+        assertTrue(slotContract.isOk());
+
+        baseContract.addNewItems(slotContract);
+
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        assertTrue(baseContract.isOk());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        for (Contract c: baseContract.getNew())
+            if (!c.equals(slotContract)) {
+                baseContract.getNewItems().remove(c);
+                slotContract.addNewItems(c);
+                slotContract.seal();
+                baseContract.seal();
+                break;
+            }
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = slotContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
+
+        // check if we store same contract as want
+
+        byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        // create revision of stored contract
+
+        Contract simpleContract2 = restoredContract.createRevision(key);
+        simpleContract2.setOwnerKey(stepaPrivateKeys.iterator().next().getPublicKey());
+        simpleContract2.seal();
+        simpleContract2.check();
+        simpleContract2.traceErrors();
+        assertTrue(simpleContract2.isOk());
+
+        registerAndCheckApproved(simpleContract2);
+
+        Contract baseContract2 = new Contract(key);
+
+        Set<PrivateKey> keysSlotRevisions = new HashSet<>();
+        keysSlotRevisions.add(key);
+        keysSlotRevisions.add(stepaPrivateKeys.iterator().next());
+
+        // refill slot contract with U (means add storing days).
+
+        // provoke error FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
+        SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
+        refilledSlotContract.setKeepRevisions(2);
+        refilledSlotContract.putTrackingContract(simpleContract2);
+        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.seal();
+        refilledSlotContract.check();
+        refilledSlotContract.traceErrors();
+        assertTrue(refilledSlotContract.isOk());
+
+        baseContract2.addNewItems(refilledSlotContract);
+
+        baseContract2.seal();
+        baseContract2.check();
+        baseContract2.traceErrors();
+        assertTrue(baseContract2.isOk());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedTUContract();
+
+        payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        for (Contract c: baseContract2.getNew())
+            if (!c.equals(refilledSlotContract)) {
+                baseContract2.getNewItems().remove(c);
+                refilledSlotContract.addNewItems(c);
+                refilledSlotContract.seal();
+                baseContract2.seal();
+                break;
+            }
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = refilledSlotContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        payingParcel.getPayload().getContract().traceErrors();
+
+        // check declined payload contract
+        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+    }
+
+    @Ignore
+    @Test
+    public void registerSlotContractInNewItemBadRevoke() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+
+        SimpleRole ownerRole = new SimpleRole("owner", slotIssuerPublicKeys);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+
+        Contract simpleContract = new Contract(key);
+        simpleContract.addPermission(changeOwnerPerm);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        Contract baseContract = new Contract(key);
+
+        // slot contract that storing
+
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
+        slotContract.setNodeConfig(node.getConfig());
+        slotContract.putTrackingContract(simpleContract);
+        slotContract.seal();
+        slotContract.check();
+        slotContract.traceErrors();
+        assertTrue(slotContract.isOk());
+
+        baseContract.addNewItems(slotContract);
+
+        baseContract.seal();
+        baseContract.check();
+        baseContract.traceErrors();
+        assertTrue(baseContract.isOk());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        for (Contract c: baseContract.getNew())
+            if (!c.equals(slotContract)) {
+                baseContract.getNewItems().remove(c);
+                slotContract.addNewItems(c);
+                slotContract.seal();
+                baseContract.seal();
+                break;
+            }
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = slotContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
+
+        // check if we store same contract as want
+
+        byte[] restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        Contract restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        // create revision of stored contract
+
+        Contract simpleContract2 = restoredContract.createRevision(key);
+        simpleContract2.setOwnerKey(stepaPrivateKeys.iterator().next().getPublicKey());
+        simpleContract2.seal();
+        simpleContract2.check();
+        simpleContract2.traceErrors();
+        assertTrue(simpleContract2.isOk());
+
+        registerAndCheckApproved(simpleContract2);
+
+        Contract baseContract2 = new Contract(key);
+
+        Set<PrivateKey> keysSlotRevisions = new HashSet<>();
+        keysSlotRevisions.add(key);
+        keysSlotRevisions.add(stepaPrivateKeys.iterator().next());
+
+        // refill slot contract with U (means add storing days).
+
+        SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
+        refilledSlotContract.setKeepRevisions(2);
+        refilledSlotContract.putTrackingContract(simpleContract2);
+        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.seal();
+        refilledSlotContract.check();
+        refilledSlotContract.traceErrors();
+        assertTrue(refilledSlotContract.isOk());
+
+        baseContract2.addNewItems(refilledSlotContract);
+
+        baseContract2.seal();
+        baseContract2.check();
+        baseContract2.traceErrors();
+        assertTrue(baseContract2.isOk());
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+
+        paymentContract = getApprovedTUContract();
+
+        payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        for (Contract c: baseContract2.getNew())
+            if (!c.equals(refilledSlotContract)) {
+                baseContract2.getNewItems().remove(c);
+                refilledSlotContract.addNewItems(c);
+                refilledSlotContract.seal();
+                baseContract2.seal();
+                break;
+            }
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = refilledSlotContract.getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract.getNew().get(0).getId(), 8000).state);
+
+        // check root stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract.getId(), restoredContract.getId());
+
+        // check revision of stored contract
+        restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
+        assertNotNull(restoredPackedData);
+        restoredContract = Contract.fromPackedTransaction(restoredPackedData);
+        assertNotNull(restoredContract);
+        assertEquals(simpleContract2.getId(), restoredContract.getId());
+
+        // provoke error FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
+        refilledSlotContract.setCreator(Do.list(slotIssuerPublicKeys));
+
+        // revoke slot contract, means remove stored contract from storage
+
+        Contract revokingSlotContract = ContractsService.createRevocation(refilledSlotContract, key);
+
+        registerAndCheckDeclined(revokingSlotContract);
+    }
+
 
     @Test
     public void goodNSmartContractFromDSLWithSending() throws Exception {
