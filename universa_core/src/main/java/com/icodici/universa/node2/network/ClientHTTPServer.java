@@ -133,6 +133,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("getParcelProcessingState", this::getParcelProcessingState);
         addSecureEndpoint("approve", this::approve);
         addSecureEndpoint("resyncItem", this::resyncItem);
+        addSecureEndpoint("setVerbose", this::setVerbose);
         addSecureEndpoint("approveParcel", this::approveParcel);
         addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
@@ -258,6 +259,59 @@ public class ClientHTTPServer extends BasicHttpServer {
                     node.checkItem((HashId) params.get("itemId")));
             node.resync((HashId) params.get("itemId"));
             return result;
+        } catch (Exception e) {
+            System.out.println("getState ERROR: " + e.getMessage());
+            return Binder.of(
+                    "itemResult", itemResultOfError(Errors.COMMAND_FAILED,"resyncItem", e.getMessage()));
+        }
+    }
+
+    private Binder setVerbose(Binder params, Session session) throws CommandFailedException {
+
+        checkNode(session);
+
+        if (config.limitFreeRegistrations())
+            if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+                System.out.println("approve ERROR: command needs client key from whitelist");
+
+                return Binder.of(
+                        "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"resyncItem", "command needs client key from whitelist"));
+            }
+
+        try {
+            String nodeLevel = params.getString("node");
+            if(nodeLevel != null) {
+                if("nothing".equals(nodeLevel)) {
+                    node.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+                } else if("base".equals(nodeLevel)) {
+                    node.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+                } else if("detail".equals(nodeLevel)) {
+                    node.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+                }
+            }
+
+            String networkLevel = params.getString("network");
+            if(networkLevel != null) {
+                if("nothing".equals(networkLevel)) {
+                    node.setNeworkVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+                } else if("base".equals(networkLevel)) {
+                    node.setNeworkVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+                } else if("detail".equals(networkLevel)) {
+                    node.setNeworkVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+                }
+            }
+
+            String udpLevel = params.getString("udp");
+            if(udpLevel != null) {
+                if("nothing".equals(udpLevel)) {
+                    node.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING);
+                } else if("base".equals(udpLevel)) {
+                    node.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+                } else if("detail".equals(udpLevel)) {
+                    node.setUDPVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+                }
+            }
+            return Binder.of("itemResult",ItemResult.UNDEFINED);
         } catch (Exception e) {
             System.out.println("getState ERROR: " + e.getMessage());
             return Binder.of(

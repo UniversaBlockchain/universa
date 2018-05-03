@@ -19,6 +19,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
+import com.icodici.universa.node2.network.NetworkV2;
 import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -995,6 +996,18 @@ public class Node {
                 "yesterdayPaidAmount", nodeStats.yesterdayPaidAmount,
                 "todayPaidAmount", nodeStats.todayPaidAmount
         );
+    }
+
+    public void setNeworkVerboseLevel(int level) {
+        if(network instanceof NetworkV2) {
+            ((NetworkV2)network).setVerboseLevel(level);
+        }
+    }
+
+    public void setUDPVerboseLevel(int level) {
+        if(network instanceof NetworkV2) {
+            ((NetworkV2)network).setUDPVerboseLevel(level);
+        }
     }
 
 

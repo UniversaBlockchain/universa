@@ -14,9 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node.ItemResult;
-import com.icodici.universa.node2.NetConfig;
-import com.icodici.universa.node2.NodeInfo;
-import com.icodici.universa.node2.Notification;
+import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
@@ -26,6 +24,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 public class NetworkV2 extends Network {
@@ -59,6 +58,7 @@ public class NetworkV2 extends Network {
                     if( n == null )
                         report(getLabel(), "bad notification skipped", DatagramAdapter.VerboseLevel.BASE);
                     else {
+                        logNotification(n,null);
                         consumer.accept(n);
                     }
                 }
@@ -122,6 +122,8 @@ public class NetworkV2 extends Network {
     public void deliver(NodeInfo toNode, Notification notification) {
         try {
             byte[] data = packNotifications(myInfo, Do.listOf(notification));
+            logNotification(notification,toNode);
+
             if(adapter != null) {
                 adapter.send(toNode, data);
             } else {
@@ -133,6 +135,34 @@ public class NetworkV2 extends Network {
             report(getLabel(), "deliver exception: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private void logNotification(Notification notification, NodeInfo to) {
+        try {
+
+            NodeInfo from;
+            if(to == null) {
+                to = myInfo;
+                from = notification.getFrom();
+            } else {
+                from = myInfo;
+            }
+            NodeInfo finalTo = to;
+
+            if(notification instanceof ItemResyncNotification) {
+                report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," IRN ", ((ItemResyncNotification)notification).getItemsToResync().keySet().iterator().next().toBase64String(), DatagramAdapter.VerboseLevel.DETAILED));
+            } else if(notification instanceof ParcelNotification){
+                report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," PN ", ((ParcelNotification)notification).getParcelId().toBase64String()," ", ((ParcelNotification)notification).getType().name()), DatagramAdapter.VerboseLevel.DETAILED);
+            } else if(notification instanceof ItemNotification) {
+                report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," IN ", ((ItemNotification)notification).getItemId().toBase64String()), DatagramAdapter.VerboseLevel.DETAILED);
+            } else {
+                report(getLabel(), () -> concatReportMessage("unknown notification ",notification.getClass().getName()));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     @Override
@@ -267,5 +297,28 @@ public class NetworkV2 extends Network {
     public void report(String label, String message)
     {
         report(label, message, DatagramAdapter.VerboseLevel.DETAILED);
+    }
+
+    public void report(String label, Callable<String> message, int level)
+    {
+        if(level <= verboseLevel)
+            try {
+                System.out.println(label + message.call());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+    }
+
+    public void report(String label, Callable<String> message)
+    {
+        report(label, message, DatagramAdapter.VerboseLevel.DETAILED);
+    }
+
+    protected String concatReportMessage(Object... messages) {
+        StringBuilder returnMessage = new StringBuilder("");
+        for (Object m : messages) {
+            returnMessage.append(m != null ? m.toString() : "null");
+        }
+        return returnMessage.toString();
     }
 }
