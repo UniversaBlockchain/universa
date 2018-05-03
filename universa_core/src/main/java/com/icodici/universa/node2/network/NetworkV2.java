@@ -147,14 +147,44 @@ public class NetworkV2 extends Network {
             } else {
                 from = myInfo;
             }
+
+            if (to == null) {
+                report(getLabel(), "notification TO null");
+                return;
+            }
+
+            if (from == null) {
+                report(getLabel(), "notification FROM null");
+                return;
+            }
+
             NodeInfo finalTo = to;
 
             if(notification instanceof ItemResyncNotification) {
-                report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," IRN ", ((ItemResyncNotification)notification).getItemsToResync().keySet().iterator().next().toBase64String(), DatagramAdapter.VerboseLevel.DETAILED));
+                report(getLabel(), () -> concatReportMessage(
+                        from.getNumber(),
+                        "->",
+                        finalTo.getNumber(),
+                        " IRN ",
+                        ((ItemResyncNotification)notification).getItemsToResync().keySet().isEmpty() ? "EMTRY RESYNC ITEMS" : ((ItemResyncNotification)notification).getItemsToResync().keySet().iterator().next().toBase64String(),
+                        DatagramAdapter.VerboseLevel.DETAILED));
             } else if(notification instanceof ParcelNotification && ((ParcelNotification)notification).getParcelId() != null) {
-                report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," PN ", ((ParcelNotification)notification).getParcelId().toBase64String()," ", ((ParcelNotification)notification).getType().name()), DatagramAdapter.VerboseLevel.DETAILED);
+                report(getLabel(), () -> concatReportMessage(
+                        from.getNumber(),
+                        "->",
+                        finalTo.getNumber(),
+                        " PN ",
+                        ((ParcelNotification)notification).getParcelId().toBase64String()," ",
+                        ((ParcelNotification)notification).getType() == null ? "NULL" : ((ParcelNotification)notification).getType().name()),
+                        DatagramAdapter.VerboseLevel.DETAILED);
             } else if(notification instanceof ItemNotification) {
-                report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," IN ", ((ItemNotification)notification).getItemId().toBase64String()), DatagramAdapter.VerboseLevel.DETAILED);
+                report(getLabel(), () -> concatReportMessage(
+                        from.getNumber(),
+                        "->",
+                        finalTo.getNumber(),
+                        " IN ",
+                        ((ItemNotification)notification).getItemId().toBase64String()),
+                        DatagramAdapter.VerboseLevel.DETAILED);
             } else {
                 report(getLabel(), () -> concatReportMessage("unknown notification ",notification.getClass().getName()));
             }
