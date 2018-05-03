@@ -176,7 +176,16 @@ public class Config {
 
     public static int maxCostTUInTestMode = 3;
 
-    public static int quantiser_quantaPerUTN = 200;
+    public static int quantiser_quantaPerU = 200;
+
+    // num of KD (kilobytes and days) for one U
+    public static int kilobytesAndDaysPerU = 1;
+
+    public static int getMinSlotPayment() {
+        return minSlotPayment;
+    }
+
+    private static int minSlotPayment = 100;
 
     private String tuIssuerName = "Universa Reserve System";
 
