@@ -1374,7 +1374,7 @@ public class MainTest {
         contract.seal();
         testSpace.client.register(contract.getPackedTransaction(),8000);
         Thread.sleep(2000);
-        testSpace.client.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING,DatagramAdapter.VerboseLevel.DETAILED,DatagramAdapter.VerboseLevel.BASE);
+        testSpace.client.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING,DatagramAdapter.VerboseLevel.DETAILED,DatagramAdapter.VerboseLevel.NOTHING);
         contract = new Contract(TestKeys.privateKey(3));
         contract.seal();
         testSpace.client.register(contract.getPackedTransaction(),8000);
