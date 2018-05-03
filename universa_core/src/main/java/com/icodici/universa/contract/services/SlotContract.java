@@ -429,17 +429,17 @@ public class SlotContract extends NSmartContract {
         long seconds = (long) (days * 24 * 3600);
         newExpires = newExpires.plusSeconds(seconds);
 
-        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
-
-        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
-        System.out.println(">> spentSeconds " + spentSeconds);
-//        System.out.println(">> spentDays " + spentDays);
-        System.out.println(">> spentKDs " + spentKDs * 1000000);
-        System.out.println(">> days " + days);
-        System.out.println(">> hours " + hours);
-        System.out.println(">> seconds " + seconds);
-//        System.out.println(">> reg time " + timeReg2);
-        System.out.println(">> totalLength " + storingBytes);
+//        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
+//
+//        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
+//        System.out.println(">> spentSeconds " + spentSeconds);
+////        System.out.println(">> spentDays " + spentDays);
+//        System.out.println(">> spentKDs " + spentKDs * 1000000);
+//        System.out.println(">> days " + days);
+//        System.out.println(">> hours " + hours);
+//        System.out.println(">> seconds " + seconds);
+////        System.out.println(">> reg time " + timeReg2);
+//        System.out.println(">> totalLength " + storingBytes);
 
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
@@ -465,7 +465,6 @@ public class SlotContract extends NSmartContract {
     @Override
     public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
 
-        System.err.println((event instanceof ContractStorageSubscription.ApprovedEvent) + " " + (event instanceof ContractStorageSubscription.RevokedEvent));
         MutableEnvironment me;
         if(event instanceof ContractStorageSubscription.ApprovedEvent) {
 

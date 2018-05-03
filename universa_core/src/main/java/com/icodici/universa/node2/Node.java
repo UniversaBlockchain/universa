@@ -2315,7 +2315,6 @@ public class Node {
                                         me = new SlotMutableEnvironment((SlotContract) newItem);
                                         er = ((SlotContract) newItem).onCreated(me);
                                         newExtraResult.set("onCreatedResult", er);
-                                        System.err.println(er);
                                     } else {
                                         try{
                                             byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
@@ -2491,7 +2490,6 @@ public class Node {
                 HashId lookingId = null;
 
                 // we are looking for updatingItem's parent subscriptions and want to update it
-                System.err.println(((Contract) updatingItem).getParent() + " " + updatingState);
                 if (updatingState == ItemState.APPROVED) {
                     if(updatingItem instanceof Contract && ((Contract) updatingItem).getParent() != null) {
                         lookingId = ((Contract) updatingItem).getParent();
@@ -2507,7 +2505,6 @@ public class Node {
                     Set<ContractStorageSubscription> foundCssSet = ledger.getStorageSubscriptionsForContractId(lookingId);
 
                     if (foundCssSet != null) {
-                        System.err.println(((Contract) updatingItem).getParent() + " " + foundCssSet.size());
                         for (ContractStorageSubscription foundCss : foundCssSet) {
                             if (foundCss instanceof SlotContractStorageSubscription) {
     //                                    if (foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
@@ -2518,7 +2515,6 @@ public class Node {
                                         foundSlot.setNodeInfo(myInfo);
                                         foundSlot.setNodeConfig(config);
                                         foundSlot.setLedger(ledger);
-                                        System.err.println(updatingState);
                                         if (updatingState == ItemState.APPROVED) {
                                             foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
                                                 @Override
