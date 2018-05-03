@@ -385,6 +385,7 @@ public class SlotContract extends NSmartContract {
 //        System.out.println("===> prepaidKilobytesForDays " + prepaidKilobytesForDays);
 //        System.out.println("===> storedEarlyBytes " + storedEarlyBytes);
 
+        spentKDsTime = now;
         if(withSaveToState) {
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
             if(getRevision() == 1) {
@@ -397,7 +398,6 @@ public class SlotContract extends NSmartContract {
             }
             getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
 
-            spentKDsTime = now;
             long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
             double spentDays = (double) spentSeconds / (3600 * 24);
             spentKDs = spentEarlyKDs + spentDays * (storedEarlyBytes / 1024);
@@ -429,17 +429,17 @@ public class SlotContract extends NSmartContract {
         long seconds = (long) (days * 24 * 3600);
         newExpires = newExpires.plusSeconds(seconds);
 
-//        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
+        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
 
-//        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
-//        System.out.println(">> spentSeconds " + spentSeconds);
-////        System.out.println(">> spentDays " + spentDays);
-//        System.out.println(">> spentKDs " + spentKDs * 1000000);
-//        System.out.println(">> days " + days);
-//        System.out.println(">> hours " + hours);
-//        System.out.println(">> seconds " + seconds);
-////        System.out.println(">> reg time " + timeReg2);
-//        System.out.println(">> totalLength " + storingBytes);
+        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
+        System.out.println(">> spentSeconds " + spentSeconds);
+//        System.out.println(">> spentDays " + spentDays);
+        System.out.println(">> spentKDs " + spentKDs * 1000000);
+        System.out.println(">> days " + days);
+        System.out.println(">> hours " + hours);
+        System.out.println(">> seconds " + seconds);
+//        System.out.println(">> reg time " + timeReg2);
+        System.out.println(">> totalLength " + storingBytes);
 
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
@@ -464,6 +464,8 @@ public class SlotContract extends NSmartContract {
 
     @Override
     public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
+
+        System.err.println((event instanceof ContractStorageSubscription.ApprovedEvent) + " " + (event instanceof ContractStorageSubscription.RevokedEvent));
         MutableEnvironment me;
         if(event instanceof ContractStorageSubscription.ApprovedEvent) {
 
@@ -471,6 +473,7 @@ public class SlotContract extends NSmartContract {
             Contract newStoredItem = ((ContractStorageSubscription.ApprovedEvent)event).getNewRevision();
 
             putTrackingContract(newStoredItem);
+
 
             byte[] ebytes = ledger.getEnvironmentFromStorage(getId());
             if (ebytes != null) {
@@ -481,11 +484,11 @@ public class SlotContract extends NSmartContract {
             }
 
             // remove old subscriptions
-            if(((Set<ContractStorageSubscription>)me.storageSubscriptions()).size() >= keepRevisions) {
+//            if(((Set<ContractStorageSubscription>)me.storageSubscriptions()).size() >= keepRevisions) {
                 // todo: remove all old
                 ledger.removeSlotContractWithAllSubscriptions(getId());
 //                ledger.removeEnvironmentSubscriptionsByEnvId(environmentId);
-            }
+//            }
 
             saveSubscriptionsToLedger(me);
 //            ContractStorageSubscription css = me.createStorageSubscription(newStoredItem.getId(), newExpires);
@@ -496,6 +499,7 @@ public class SlotContract extends NSmartContract {
 //            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
         } else if(event instanceof ContractStorageSubscription.RevokedEvent) {
             // remove subscription
+            ledger.removeSlotContractWithAllSubscriptions(getId());
         }
 
         event.getSubscription().destroy();

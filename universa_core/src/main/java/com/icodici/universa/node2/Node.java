@@ -2268,6 +2268,9 @@ public class Node {
                                     ((SlotContract) revokingItem).setLedger(ledger);
                                     ((SlotContract) revokingItem).onRevoked(ime);
                                 }
+
+//                                updateItemForSmartContracts(revokingItem, r.getState());
+
                                 synchronized (cache) {
 //                                    ItemResult cr = cache.getResult(r.getId());
                                     ItemResult rr = new ItemResult(r);
@@ -2331,6 +2334,9 @@ public class Node {
                                         }
                                     }
                                 }
+
+                                updateItemForSmartContracts(newItem, r.getState());
+
                                 synchronized (cache) {
 //                                    ItemResult cr = cache.getResult(r.getId());
                                     ItemResult rr = new ItemResult(r);
@@ -2449,45 +2455,9 @@ public class Node {
                                 }
                             }
                         }
-                        Set<ContractStorageSubscription> foundCssSet = ledger.getStorageSubscriptionsForContractId(item.getId());
-                        if(foundCssSet != null) {
-                            for (ContractStorageSubscription foundCss : foundCssSet) {
-                                if(foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
-                                    byte[] foundSlotPack = ledger.getSlotForSubscriptionStorageId(((SlotContractStorageSubscription) foundCss).getId());
-                                    SlotContract foundSlot = (SlotContract) Contract.fromPackedTransaction(foundSlotPack);
 
-                                    foundSlot.setNodeInfo(myInfo);
-                                    foundSlot.setNodeConfig(config);
-                                    foundSlot.setLedger(ledger);
-                                    if (getState() == ItemState.APPROVED) {
-                                        foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
-                                            @Override
-                                            public Contract getNewRevision() {
-                                                return (Contract) item;
-                                            }
+                        updateItemForSmartContracts(item, getState());
 
-                                            @Override
-                                            public byte[] getPackedTransaction() {
-                                                return ((Contract) item).getPackedTransaction();
-                                            }
-
-                                            @Override
-                                            public ContractStorageSubscription getSubscription() {
-                                                return foundCss;
-                                            }
-                                        });
-                                    }
-                                    if (getState() == ItemState.REVOKED) {
-                                        foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.RevokedEvent() {
-                                            @Override
-                                            public ContractStorageSubscription getSubscription() {
-                                                return foundCss;
-                                            }
-                                        });
-                                    }
-                                }
-                            }
-                        }
                     } catch (Exception ex) {
                         System.err.println(myInfo);
                         ex.printStackTrace();
@@ -2513,6 +2483,77 @@ public class Node {
                     }
                 }
                 close();
+            }
+        }
+
+        private void updateItemForSmartContracts(Approvable updatingItem, ItemState updatingState) {
+            try {
+                HashId lookingId = null;
+
+                // we are looking for updatingItem's parent subscriptions and want to update it
+                System.err.println(((Contract) updatingItem).getParent() + " " + updatingState);
+                if (updatingState == ItemState.APPROVED) {
+                    if(updatingItem instanceof Contract && ((Contract) updatingItem).getParent() != null) {
+                        lookingId = ((Contract) updatingItem).getParent();
+                    }
+                }
+
+                // we are looking for own id and will update own subscriptions
+                if (updatingState == ItemState.REVOKED) {
+                    lookingId = updatingItem.getId();
+                }
+
+                if(lookingId != null) {
+                    Set<ContractStorageSubscription> foundCssSet = ledger.getStorageSubscriptionsForContractId(lookingId);
+
+                    if (foundCssSet != null) {
+                        System.err.println(((Contract) updatingItem).getParent() + " " + foundCssSet.size());
+                        for (ContractStorageSubscription foundCss : foundCssSet) {
+                            if (foundCss instanceof SlotContractStorageSubscription) {
+    //                                    if (foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
+                                byte[] foundSlotPack = ledger.getSlotForSubscriptionStorageId(((SlotContractStorageSubscription) foundCss).getId());
+                                if(foundSlotPack != null) {
+                                    SlotContract foundSlot = (SlotContract) Contract.fromPackedTransaction(foundSlotPack);
+                                    if(foundSlot != null) {
+                                        foundSlot.setNodeInfo(myInfo);
+                                        foundSlot.setNodeConfig(config);
+                                        foundSlot.setLedger(ledger);
+                                        System.err.println(updatingState);
+                                        if (updatingState == ItemState.APPROVED) {
+                                            foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
+                                                @Override
+                                                public Contract getNewRevision() {
+                                                    return (Contract) updatingItem;
+                                                }
+
+                                                @Override
+                                                public byte[] getPackedTransaction() {
+                                                    return ((Contract) updatingItem).getPackedTransaction();
+                                                }
+
+                                                @Override
+                                                public ContractStorageSubscription getSubscription() {
+                                                    return foundCss;
+                                                }
+                                            });
+                                        }
+                                        if (updatingState == ItemState.REVOKED) {
+                                            foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.RevokedEvent() {
+                                                @Override
+                                                public ContractStorageSubscription getSubscription() {
+                                                    return foundCss;
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println(myInfo);
+                ex.printStackTrace();
             }
         }
 
