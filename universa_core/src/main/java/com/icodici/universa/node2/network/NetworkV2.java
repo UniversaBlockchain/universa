@@ -166,7 +166,7 @@ public class NetworkV2 extends Network {
                         "->",
                         finalTo.getNumber(),
                         " IRN ",
-                        ((ItemResyncNotification)notification).getItemsToResync().keySet().isEmpty() ? "EMTRY RESYNC ITEMS" : ((ItemResyncNotification)notification).getItemsToResync().keySet().iterator().next().toBase64String(),
+                        ((ItemResyncNotification)notification).getItemsToResync().keySet().isEmpty() ? "EMTRY RESYNC ITEMS" : ((ItemResyncNotification)notification).getItemsToResync().keySet().iterator().next().toString(),
                         DatagramAdapter.VerboseLevel.DETAILED));
             } else if(notification instanceof ParcelNotification && ((ParcelNotification)notification).getParcelId() != null) {
                 report(getLabel(), () -> concatReportMessage(
@@ -174,7 +174,7 @@ public class NetworkV2 extends Network {
                         "->",
                         finalTo.getNumber(),
                         " PN ",
-                        ((ParcelNotification)notification).getParcelId().toBase64String()," ",
+                        ((ParcelNotification)notification).getParcelId().toString()," ",
                         ((ParcelNotification)notification).getType() == null ? "NULL" : ((ParcelNotification)notification).getType().name()),
                         DatagramAdapter.VerboseLevel.DETAILED);
             } else if(notification instanceof ItemNotification) {
@@ -183,7 +183,7 @@ public class NetworkV2 extends Network {
                         "->",
                         finalTo.getNumber(),
                         " IN ",
-                        ((ItemNotification)notification).getItemId().toBase64String()),
+                        ((ItemNotification)notification).getItemId().toString()),
                         DatagramAdapter.VerboseLevel.DETAILED);
             } else {
                 report(getLabel(), () -> concatReportMessage("unknown notification ",notification.getClass().getName()));
