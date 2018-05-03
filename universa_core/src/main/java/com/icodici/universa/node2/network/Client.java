@@ -18,8 +18,6 @@ import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.*;
-import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
@@ -79,6 +77,24 @@ public class Client {
             clients.set(i, c);
         }
         return c;
+    }
+
+    public ItemResult setVerboseLevel(int node, int network, int udp) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("setVerbose",
+                    "node", DatagramAdapter.VerboseLevel.intToString(node),
+                    "network", DatagramAdapter.VerboseLevel.intToString(network),
+                    "udp", DatagramAdapter.VerboseLevel.intToString(udp));
+
+            Object ir = result.getOrThrow("itemResult");
+            if (ir instanceof ItemResult)
+                return (ItemResult) ir;
+
+            if (ir instanceof String)
+                System.out.println(">> " + ir);
+
+            return ItemResult.UNDEFINED;
+        });
     }
 
     protected interface Executor<T> {

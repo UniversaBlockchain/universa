@@ -36,7 +36,7 @@ public class NetworkV2 extends Network {
 //    private Map<NodeInfo, Node> nodes = new HashMap<>();
 
     private static LogPrinter log = new LogPrinter("TLN");
-    protected int verboseLevel = DatagramAdapter.VerboseLevel.DETAILED;
+    protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     private Consumer<Notification> consumer;
 
     public NetworkV2(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
@@ -151,7 +151,7 @@ public class NetworkV2 extends Network {
 
             if(notification instanceof ItemResyncNotification) {
                 report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," IRN ", ((ItemResyncNotification)notification).getItemsToResync().keySet().iterator().next().toBase64String(), DatagramAdapter.VerboseLevel.DETAILED));
-            } else if(notification instanceof ParcelNotification){
+            } else if(notification instanceof ParcelNotification && ((ParcelNotification)notification).getParcelId() != null) {
                 report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," PN ", ((ParcelNotification)notification).getParcelId().toBase64String()," ", ((ParcelNotification)notification).getType().name()), DatagramAdapter.VerboseLevel.DETAILED);
             } else if(notification instanceof ItemNotification) {
                 report(getLabel(), () -> concatReportMessage(from.getNumber(), "->", finalTo.getNumber()," IN ", ((ItemNotification)notification).getItemId().toBase64String()), DatagramAdapter.VerboseLevel.DETAILED);

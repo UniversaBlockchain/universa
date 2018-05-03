@@ -1365,6 +1365,22 @@ public class MainTest {
 
     }
 
+    @Test
+    public void verboseLevelTest() throws Exception {
+        PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
+        TestSpace testSpace = prepareTestSpace(issuerKey);
+
+        Contract contract = new Contract(TestKeys.privateKey(3));
+        contract.seal();
+        testSpace.client.register(contract.getPackedTransaction(),8000);
+        Thread.sleep(2000);
+        testSpace.client.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING,DatagramAdapter.VerboseLevel.DETAILED,DatagramAdapter.VerboseLevel.BASE);
+        contract = new Contract(TestKeys.privateKey(3));
+        contract.seal();
+        testSpace.client.register(contract.getPackedTransaction(),8000);
+    }
+
+
 
 
     @Test(timeout = 30000)
