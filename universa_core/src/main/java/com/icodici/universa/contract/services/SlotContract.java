@@ -180,7 +180,6 @@ public class SlotContract extends NSmartContract {
         if(mdps != null) {
             for (Permission perm : mdps) {
                 if (perm.getName() == ModifyDataPermission.FIELD_NAME) {
-                    System.out.println(perm.getName() + " " + perm.isAllowedForKeys(getOwner().getKeys()));
                     if (perm.isAllowedForKeys(getOwner().getKeys())) {
                         permExist = true;
                         break;
@@ -245,11 +244,11 @@ public class SlotContract extends NSmartContract {
         Contract c = TransactionPack.unpack(packed).getContract();
         trackingContracts.addFirst(c);
         packedTrackingContracts.addFirst(packed);
-        trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
+        trackingHashes.set(c.getId().toBase64String(), c.getRevision());
 
         Binder forState = new Binder();
         for (Contract tc : trackingContracts) {
-            forState.set(String.valueOf(tc.getRevision()), tc.getPackedTransaction());
+            forState.set(tc.getId().toBase64String(), tc.getPackedTransaction());
         }
         getStateData().set(TRACKING_CONTRACT_FIELD_NAME, forState);
 
@@ -275,11 +274,11 @@ public class SlotContract extends NSmartContract {
 
         trackingContracts.addFirst(c);
         packedTrackingContracts.addFirst(c.getPackedTransaction());
-        trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
+        trackingHashes.set(c.getId().toBase64String(), c.getRevision());
 
         Binder forState = new Binder();
         for (Contract tc : trackingContracts) {
-            forState.set(String.valueOf(tc.getRevision()), tc.getPackedTransaction());
+            forState.set(tc.getId().toBase64String(), tc.getPackedTransaction());
         }
         getStateData().set(TRACKING_CONTRACT_FIELD_NAME, forState);
 
@@ -361,10 +360,10 @@ public class SlotContract extends NSmartContract {
         Contract parentContract = getRevokingItem(getParent());
         if(parentContract != null) {
             wasPrepaidKilobytesForDays = parentContract.getStateData().getDouble(PREPAID_KD_FIELD_NAME);
-            wasPrepaidFrom = parentContract.getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
+            wasPrepaidFrom = parentContract.getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
             storedEarlyBytes = parentContract.getStateData().getLong(STORED_BYTES_FIELD_NAME, 0);
             spentEarlyKDs = parentContract.getStateData().getDouble(SPENT_KD_FIELD_NAME);
-            spentEarlyKDsTimeSecs = parentContract.getStateData().getLong(SPENT_KD_TIME_FIELD_NAME, 0);
+            spentEarlyKDsTimeSecs = parentContract.getStateData().getLong(SPENT_KD_TIME_FIELD_NAME, now.toEpochSecond());
         } else {
             wasPrepaidKilobytesForDays = 0;
         }
@@ -430,7 +429,7 @@ public class SlotContract extends NSmartContract {
         long seconds = (long) (days * 24 * 3600);
         newExpires = newExpires.plusSeconds(seconds);
 
-        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
+//        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
 
 //        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
 //        System.out.println(">> spentSeconds " + spentSeconds);
@@ -542,7 +541,6 @@ public class SlotContract extends NSmartContract {
 //        prepaidKilobytesForDays = 0;
 
         int numRevisions = getStateData().getInt(KEEP_REVISIONS_FIELD_NAME, -1);
-        System.out.println("numRevisions " + numRevisions);
         if(numRevisions > 0)
             keepRevisions = numRevisions;
 
@@ -558,6 +556,7 @@ public class SlotContract extends NSmartContract {
 //            e.printStackTrace();
 //        }
         try {
+            List<Contract> contracts = new ArrayList<>();
             Binder trackingHashesAsBase64 = getStateData().getBinder(TRACKING_CONTRACT_FIELD_NAME);
             for (String k : trackingHashesAsBase64.keySet()) {
                 byte[] packed = trackingHashesAsBase64.getBinary(k);
@@ -574,9 +573,10 @@ public class SlotContract extends NSmartContract {
 //                    }
                     if(c != null) {
                         if(trackingContracts != null) {
-                            trackingContracts.addFirst(c);
-                            packedTrackingContracts.addFirst(packed);
-                            trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
+                            contracts.add(c);
+//                            trackingContracts.addFirst(c);
+//                            packedTrackingContracts.addFirst(packed);
+                            trackingHashes.set(c.getId().toBase64String(), c.getRevision());
                         } else {
                             System.err.println("trackingContracts: " + trackingContracts +
                                     " packedTrackingContracts: " + packedTrackingContracts +
@@ -586,6 +586,16 @@ public class SlotContract extends NSmartContract {
                         System.err.println("reconstruction storing contract from slot.state.data failed: null");
                     }
                 }
+            }
+            Collections.sort(contracts, new Comparator<Contract>() {
+
+                public int compare(Contract o1, Contract o2) {
+                    return o1.getRevision() - o2.getRevision();
+                }
+            });
+            for (Contract c : contracts) {
+                trackingContracts.addFirst(c);
+                packedTrackingContracts.addFirst(c.getPackedTransaction());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -807,7 +817,6 @@ public class SlotContract extends NSmartContract {
     @Override
     public void onRevoked(ImmutableEnvironment ime) {
         ledger.removeSlotContractWithAllSubscriptions(getId());
-        System.out.println("onRevoked ");
 //        ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(ime), getPackedTransaction());
 //
 //        for (ContractStorageSubscription css : ime.storageSubscriptions()) {

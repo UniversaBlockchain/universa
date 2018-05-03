@@ -2657,6 +2657,8 @@ public class BaseNetworkTest extends TestCase {
         ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
         ContractsService.finishSwap(swapContract, martyPrivateKeys);
 
+        martyCoinsSplit.seal();
+        stepaCoinsSplit.seal();
         swapContract.getNewItems().clear();
         swapContract.addNewItems(martyCoinsSplit, stepaCoinsSplit);
         swapContract.seal();
@@ -3138,9 +3140,11 @@ public class BaseNetworkTest extends TestCase {
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.setExpiresAt(stepaCoins.getCreatedAt().plusMonths(6));
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
+        stepaCoins.seal();
 
         Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys, true);
         stepaTU.setExpiresAt(stepaTU.getCreatedAt().plusMonths(6));
+        stepaTU.seal();
         stepaTU.check();
         stepaTU.traceErrors();
         node.registerItem(stepaTU);
@@ -3169,6 +3173,7 @@ public class BaseNetworkTest extends TestCase {
         node.registerParcel(parcel);
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
+        parcel.getPaymentContract().traceErrors();
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
@@ -7850,14 +7855,12 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
         assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
-        System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
-        System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
-        System.out.println(">> " + 100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
 
 //        for(Node n : nodes) {
 //            n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        }
         node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         synchronized (tuContractLock) {
             tuContract = payingParcel.getPayloadContract().getNew().get(0);
         }
@@ -7886,12 +7889,16 @@ public class BaseNetworkTest extends TestCase {
 
         ZonedDateTime now;
 
+        double days = (double) 100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+        double hours = days * 24;
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
         Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-                assertAlmostSame(now.plusDays(100 * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -7923,13 +7930,10 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
-        assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays());
-        now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
-        System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
-        System.out.println(">> " + (100 + 300) * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
+        assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
 
         node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         synchronized (tuContractLock) {
             tuContract = payingParcel.getPayloadContract().getNew().get(0);
         }
@@ -7943,12 +7947,20 @@ public class BaseNetworkTest extends TestCase {
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
 
+        long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
+        double spentDays = (double) spentSeconds / (3600 * 24);
+        double spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
+
+        days = (double) (100 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+        hours = days * 24;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
         foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-                assertAlmostSame(now.plusDays((100 + 300) * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -7984,13 +7996,10 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
         assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays());
-        now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        System.out.println(">> " + refilledSlotContract2.getPrepaidKilobytesForDays() + " KD");
-        System.out.println(">> " + simpleContract.getPackedTransaction().length / 1024 + " Kb");
-        System.out.println(">> " + (100 + 300 + 300) * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024) + " days");
+        assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
 
         node.registerParcel(payingParcel);
+        ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         synchronized (tuContractLock) {
             tuContract = payingParcel.getPayloadContract().getNew().get(0);
         }
@@ -8004,12 +8013,20 @@ public class BaseNetworkTest extends TestCase {
         itemResult = node.waitItem(refilledSlotContract2.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
 
+        spentSeconds = (timeReg3.toEpochSecond() - timeReg1.toEpochSecond());
+        spentDays = (double) spentSeconds / (3600 * 24);
+        spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
+
+        days = (double) (100 + 300 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+        hours = days * 24;
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
         foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-                assertAlmostSame(now.plusDays((100 + 300 + 300) * Config.kilobytesAndDaysPerU / (simpleContract.getPackedTransaction().length / 1024)), foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8149,7 +8166,7 @@ public class BaseNetworkTest extends TestCase {
                 System.out.println("reg time " + timeReg1);
                 System.out.println("expected " + calculateExpires);
                 System.out.println("found " + foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8258,7 +8275,7 @@ public class BaseNetworkTest extends TestCase {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println("expected:" + calculateExpires);
                 System.out.println("found: " + foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8275,7 +8292,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8309,6 +8326,7 @@ public class BaseNetworkTest extends TestCase {
         refilledSlotContract2.putTrackingContract(simpleContract3);
         refilledSlotContract2.setNodeConfig(node.getConfig());
         assertEquals(refilledSlotContract2.getKeepRevisions(), 2);
+        refilledSlotContract2.seal();
 
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
@@ -8391,7 +8409,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8408,7 +8426,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8433,6 +8451,7 @@ public class BaseNetworkTest extends TestCase {
         SlotContract refilledSlotContract3 = (SlotContract) refilledSlotContract2.createRevision(key);
         refilledSlotContract3.setKeepRevisions(1);
         refilledSlotContract3.setNodeConfig(node.getConfig());
+        refilledSlotContract3.seal();
 
         // payment contract
         paymentContract = getApprovedTUContract();
@@ -8517,7 +8536,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt());
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
             }
         } else {
             fail("ContractStorageSubscription was not found");
