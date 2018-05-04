@@ -1659,7 +1659,6 @@ public class Node {
 
                     synchronized (mutex) {
                         if (item == null && (downloader == null || downloader.isDone())) {
-//                            debug("submitting download");
                             downloader = (ScheduledFuture<?>) executorService.submit(() -> download(),
                                     Node.this.toString() + toString() + " :: item pulseDownload -> download");
                         }
@@ -1791,16 +1790,12 @@ public class Node {
                                 } else {
                                     ime = new SlotImmutableEnvironment((SlotContract) item);
                                 }
-//                                if (getState() == ItemState.APPROVED) {
-                                    if (((SmartContract) item).getRevision() == 1) {
-                                        ((SmartContract) item).beforeCreate(ime);
-                                    } else {
-                                        ((SmartContract) item).beforeUpdate(ime);
-                                    }
-//                                }
-//                                if (getState() == ItemState.REVOKED) {
-//                                    ((SmartContract) item).beforeRevoke(ime);
-//                                }
+                                // Here can be only APPROVED state
+                                if (((SmartContract) item).getRevision() == 1) {
+                                    ((SmartContract) item).beforeCreate(ime);
+                                } else {
+                                    ((SmartContract) item).beforeUpdate(ime);
+                                }
                             }
                         }
 
@@ -1869,11 +1864,9 @@ public class Node {
                 if (!processingState.isProcessedToConsensus()) {
                     for (Approvable ref : checkingItem.getReferencedItems()) {
                         HashId id = ref.getId();
-//                        if (refModel.type != Reference.TYPE_TRANSACTIONAL) {
                         if (!ledger.isApproved(id)) {
                             checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                         }
-//                        }
                     }
                 }
             }
@@ -1903,16 +1896,8 @@ public class Node {
                             } else {
                                 ime = new SlotImmutableEnvironment((SlotContract) revokingItem);
                             }
-//                                if (getState() == ItemState.APPROVED) {
-//                            if (((Contract) newItem).getRevision() == 1) {
-//                                ((NodeContract) newItem).beforeCreate(ime);
-//                            } else {
-//                                ((NodeContract) newItem).beforeUpdate(ime);
-//                            }
-//                                }
-//                                if (getState() == ItemState.REVOKED) {
-                                    ((SlotContract) revokingItem).beforeRevoke(ime);
-//                                }
+                            // Here only REVOKED states
+                            ((SlotContract) revokingItem).beforeRevoke(ime);
                         }
 
                         for (ErrorRecord er : revokingItem.getErrors()) {
@@ -1961,16 +1946,12 @@ public class Node {
                             } else {
                                 ime = new SlotImmutableEnvironment((SlotContract) newItem);
                             }
-//                                if (getState() == ItemState.APPROVED) {
+                            // Here only APPROVED states
                             if (((Contract) newItem).getRevision() == 1) {
                                 ((SlotContract) newItem).beforeCreate(ime);
                             } else {
                                 ((SlotContract) newItem).beforeUpdate(ime);
                             }
-//                                }
-//                                if (getState() == ItemState.REVOKED) {
-//                                    ((NodeContract) item).beforeRevoke(ime);
-//                                }
                         }
 
                         if (!newItem.getErrors().isEmpty()) {
@@ -2188,7 +2169,7 @@ public class Node {
                         DatagramAdapter.VerboseLevel.BASE);
                 boolean positiveConsensus = false;
                 boolean negativeConsensus = false;
-//                ItemProcessingState processingStateWas;
+
                 // check if vote already count
                 if((state.isPositive() && positiveNodes.contains(node)) ||
                         (!state.isPositive() && negativeNodes.contains(node))) {
@@ -2210,8 +2191,6 @@ public class Node {
                     }
                     add.add(node);
                     remove.remove(node);
-
-//                    processingStateWas = processingState;
 
                     if (processingState.isProcessedToConsensus()) {
                         if(processingState.isDone()) {
@@ -2280,13 +2259,13 @@ public class Node {
                                     ((SlotContract) revokingItem).setNodeInfo(myInfo);
                                     ((SlotContract) revokingItem).setNodeConfig(config);
                                     ((SlotContract) revokingItem).setLedger(ledger);
+
                                     ((SlotContract) revokingItem).onRevoked(ime);
                                 }
 
 //                                updateItemForSmartContracts(revokingItem, r.getState());
 
                                 synchronized (cache) {
-//                                    ItemResult cr = cache.getResult(r.getId());
                                     ItemResult rr = new ItemResult(r);
                                     rr.extraDataBinder = null;
                                     if(cache.get(r.getId()) == null) {
@@ -2351,11 +2330,8 @@ public class Node {
                                 updateItemForSmartContracts(newItem, r.getState());
 
                                 synchronized (cache) {
-//                                    ItemResult cr = cache.getResult(r.getId());
                                     ItemResult rr = new ItemResult(r);
-//                                    if(cr != null) {
-                                        rr.extraDataBinder = newExtraResult;
-//                                    }
+                                    rr.extraDataBinder = newExtraResult;
                                     if(cache.get(r.getId()) == null) {
                                         cache.put(newItem, rr);
                                     } else {
@@ -2425,6 +2401,7 @@ public class Node {
                             ((SlotContract) item).setNodeInfo(myInfo);
                             ((SlotContract) item).setNodeConfig(config);
                             ((SlotContract) item).setLedger(ledger);
+
                             Binder er;
                             MutableEnvironment me;
                             ImmutableEnvironment ime;

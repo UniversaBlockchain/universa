@@ -613,22 +613,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 }
             } else if(rm.type == Reference.TYPE_EXISTING) {
 
-//                for (String key : getPermissions().keySet()) {
-//                    Collection<Permission> permissions = getPermissions().get(key);
-//                    boolean permissionQuantized = false;
-//                    // TODO: hack - is exist another way to filter references that is use for validness checking
-//                    for (Permission permission : permissions) {
-//                        if (permission.isAllowedFor(getSealedByKeys(), asList(rm.name))) {
-//                            System.out.println(">> " + rm.name + " >> " + rm.matchingItems.size());
-//                            rm_check = rm.isValid();
-//                        } else {
-//                            System.out.println(">>> " + rm.name + " >>> " + rm.matchingItems.size());
-//                            // this reference do not need for contract
-//                            // or need but will fail on checking permitted changes
-//                            rm_check = true;
-//                        }
-//                    }
-//                }
                 rm_check = rm.isValid();
             }
 

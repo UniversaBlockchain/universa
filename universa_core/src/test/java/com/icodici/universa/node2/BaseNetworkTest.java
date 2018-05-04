@@ -2680,6 +2680,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
+    @Ignore
     @Test(timeout = 60000)
     public void swapSplitJoinAllGood_api2() throws Exception {
         if(node == null) {
@@ -5042,7 +5043,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test
+    @Test(timeout = 30000)
     public void originReference() throws Exception {
 
         // You have a notary dsl with llc's property

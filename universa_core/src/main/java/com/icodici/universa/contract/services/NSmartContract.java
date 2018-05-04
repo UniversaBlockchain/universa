@@ -31,12 +31,10 @@ public class NSmartContract extends SmartContract implements NContract {
      */
     public NSmartContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
-//        getDefinition().setExtendedType(SmartContractType.N_SMART_CONTRACT.name());
     }
 
     public NSmartContract() {
         super();
-//        getDefinition().setExtendedType(SmartContractType.N_SMART_CONTRACT.name());
     }
 
     /**

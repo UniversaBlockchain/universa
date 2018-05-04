@@ -57,7 +57,13 @@ definition:
       - role: owner
         fields:
           action:
-            - ~
+          keep_revisions:
+          tracking_contract:
+          spent_KD_time:
+          spent_KD:
+          prepaid_from:
+          prepaid_KD:
+          stored_bytes:
 
 
   # not required section. If exist should point to one of known by node smart contract types.
