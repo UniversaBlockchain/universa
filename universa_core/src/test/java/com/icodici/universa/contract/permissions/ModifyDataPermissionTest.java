@@ -9,7 +9,11 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -117,7 +121,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
     @Test
     public void modifyExpiresAtWhiteList() throws Exception {
-        ZonedDateTime now = ZonedDateTime.now();
+        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         Contract contract = new Contract(TestKeys.privateKey(0));
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"), new Binder());
         modifyDataPermission.addField("/expires_at", Do.listOf(now.plusDays(1), now.plusDays(2)));
@@ -129,6 +133,7 @@ public class ModifyDataPermissionTest extends TestCase {
         changed.setExpiresAt(now.plusDays(1));
         changed.seal();
         changed.check();
+        changed.traceErrors();
         assertTrue(changed.isOk());
 
         changed = contract.createRevision();
@@ -192,7 +197,16 @@ public class ModifyDataPermissionTest extends TestCase {
         Contract contract = new Contract(TestKeys.privateKey(0));
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"),new Binder());
         Contract referencedContract = new Contract(TestKeys.privateKey(1));
+
+        List<String> listConditionsForDefinition = new ArrayList<>();
+        listConditionsForDefinition.add("ref.definition.data.type == \"Good Bank\"");
+        Binder conditionsForDefinition = new Binder();
+        conditionsForDefinition.set("all_of", listConditionsForDefinition);
+
         Reference ref = new Reference(referencedContract);
+        ref.name = "bank_certificate";
+        ref.type = Reference.TYPE_EXISTING;
+        ref.setConditions(conditionsForDefinition);
         ref.addMatchingItem(referencedContract);
 
         modifyDataPermission.addField("/references", Do.listOf(ref));
@@ -204,19 +218,78 @@ public class ModifyDataPermissionTest extends TestCase {
         changed.addReferenceToState(ref);
         changed.seal();
         changed.check();
+        changed.traceErrors();
         assertTrue(changed.isOk());
 
+        // we allow setting any contract matching conditions
+//        referencedContract = new Contract(TestKeys.privateKey(2));
+//        ref = new Reference(referencedContract);
+//        ref.addMatchingItem(referencedContract);
 
-        referencedContract = new Contract(TestKeys.privateKey(2));
-        ref = new Reference(referencedContract);
-        ref.addMatchingItem(referencedContract);
+        // but dissallow change reference and its conditions itself
+        ref.name = "stepa_certificate";
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
         changed.addReferenceToState(ref);
         changed.seal();
         changed.check();
-        assertTrue(!changed.isOk());
+        changed.traceErrors();
+        assertFalse(changed.isOk());
+
+        ref.name = "bank_certificate";
+        ref.type = Reference.TYPE_TRANSACTIONAL;
+
+        changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.addReferenceToState(ref);
+        changed.seal();
+        changed.check();
+        changed.traceErrors();
+        assertFalse(changed.isOk());
+
+        ref.type = Reference.TYPE_EXISTING;
+        conditionsForDefinition = new Binder();
+        conditionsForDefinition.set("any_of", listConditionsForDefinition);
+        ref.setConditions(conditionsForDefinition);
+
+        changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.addReferenceToState(ref);
+        changed.seal();
+        changed.check();
+        changed.traceErrors();
+        assertFalse(changed.isOk());
+
+        listConditionsForDefinition = new ArrayList<>();
+        listConditionsForDefinition.add("ref.definition.data.type == \"Stepa Bank\"");
+        conditionsForDefinition = new Binder();
+        conditionsForDefinition.set("all_of", listConditionsForDefinition);
+        ref.setConditions(conditionsForDefinition);
+
+        changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.addReferenceToState(ref);
+        changed.seal();
+        changed.check();
+        changed.traceErrors();
+        assertFalse(changed.isOk());
+
+        // and check that backed values is ok
+
+        listConditionsForDefinition = new ArrayList<>();
+        listConditionsForDefinition.add("ref.definition.data.type == \"Good Bank\"");
+        conditionsForDefinition = new Binder();
+        conditionsForDefinition.set("all_of", listConditionsForDefinition);
+        ref.setConditions(conditionsForDefinition);
+
+        changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.addReferenceToState(ref);
+        changed.seal();
+        changed.check();
+        changed.traceErrors();
+        assertTrue(changed.isOk());
 
     }
 

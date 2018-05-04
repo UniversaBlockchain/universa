@@ -1306,7 +1306,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public void addReferenceToState(Reference reference) {
         if(reference.type == Reference.TYPE_TRANSACTIONAL) {
-            transactional.addReference(reference);
+            if(transactional != null)
+                transactional.addReference(reference);
         } else if(reference.type == Reference.TYPE_EXISTING) {
             state.addReference(reference);
         }

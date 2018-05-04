@@ -10,10 +10,7 @@ import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
-import net.sergeych.diff.ChangedItem;
-import net.sergeych.diff.Delta;
-import net.sergeych.diff.ListDelta;
-import net.sergeych.diff.MapDelta;
+import net.sergeych.diff.*;
 import net.sergeych.tools.Binder;
 
 import java.util.*;
@@ -106,6 +103,9 @@ public class ModifyDataPermission extends Permission {
 
                         Object value = "";
 
+                        if (changed != null && changed instanceof CreatedItem) {
+                            value = ((CreatedItem) mapChanges.get(key)).newValue();
+                        }
                         if (changed != null && changed instanceof ChangedItem) {
                             value = ((ChangedItem) mapChanges.get(key)).newValue();
                         }
