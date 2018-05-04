@@ -15,6 +15,7 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
@@ -762,6 +763,56 @@ public class ContractsService {
     }
 
 
+
+    public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys){
+        SlotContract slotContract = new SlotContract();
+        slotContract.setApiLevel(3);
+
+        Contract.Definition cd = slotContract.getDefinition();
+        cd.setExpiresAt(slotContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default notary");
+        data.set("description", "Default notary description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        slotContract.registerRole(issuerRole);
+        slotContract.createRole("issuer", issuerRole);
+        slotContract.createRole("creator", issuerRole);
+
+        slotContract.registerRole(ownerRole);
+        slotContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        slotContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        slotContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        slotContract.addPermission(revokePerm2);
+
+        slotContract.addSlotSpecific();
+
+        slotContract.seal();
+        slotContract.addSignatureToSeal(issuerKeys);
+
+        return slotContract;
+    }
+
+
     /**
      * Create paid transaction, which consist from contract you want to register and payment contract that will be
      * spend to process transaction.
@@ -847,6 +898,53 @@ public class ContractsService {
         }
 
         paymentDecreased.seal();
+
+        Parcel parcel = new Parcel(payload, paymentDecreased.getTransactionPack());
+
+        return parcel;
+    }
+
+    /**
+     * Create paid transaction, which consist from prepared TransactionPack you want to register
+     * and payment contract that will be spend to process transaction.
+     * Included second payment.
+     *<br><br>
+     * @param payload is prepared TransactionPack you want to register in the Universa.
+     * @param payment is approved contract with transaction units belongs to you.
+     * @param amount is number of transaction units you want to spend to register payload contract.
+     * @param amountSecond is number of transaction units you want to spend from second payment.
+     * @param keys is own private keys, which are set as owner of payment contract
+     * @param withTestPayment if true {@link Parcel} will be created with test payment
+     * @return parcel, it ready to send to the Universa.
+     */
+    public synchronized static Parcel createPayingParcel(TransactionPack payload, Contract payment, int amount, int amountSecond,
+                                                         Set<PrivateKey> keys, boolean withTestPayment) {
+
+        Contract paymentDecreased = payment.createRevision(keys);
+
+        if(withTestPayment) {
+            paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
+        } else {
+            paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
+        }
+
+        paymentDecreased.seal();
+
+        Contract paymentDecreasedSecond = paymentDecreased.createRevision(keys);
+
+        if(withTestPayment) {
+            paymentDecreasedSecond.getStateData().set("test_transaction_units", paymentDecreased.getStateData().getIntOrThrow("test_transaction_units") - amountSecond);
+        } else {
+            paymentDecreasedSecond.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - amountSecond);
+        }
+
+        paymentDecreasedSecond.seal();
+
+        // we add new item to the contract, so we need to recreate transaction pack
+        Contract mainContract = payload.getContract();
+        mainContract.addNewItems(paymentDecreasedSecond);
+        mainContract.seal();
+        payload = mainContract.getTransactionPack();
 
         Parcel parcel = new Parcel(payload, paymentDecreased.getTransactionPack());
 

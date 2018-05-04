@@ -11,12 +11,15 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.services.ContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -182,6 +185,26 @@ public interface Ledger {
     Approvable getItem(StateRecord record);
     void putItem(StateRecord record, Approvable item, Instant keepTill);
 
+
+    void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin);
+    List<Long> clearExpiredStorageSubscriptions();
+    void clearExpiredStorageContracts();
+    long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack);
+    byte[] getEnvironmentFromStorage(HashId contractId);
+    long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin);
+    long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt);
+    void saveEnvironmentSubscription(long subscriptionId, long environmentId);
+    Set<byte[]> getEnvironmentsForContractId(HashId contractId);
+    Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId);
+    Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId);
+    byte[] getSlotContractByEnvironmentId(long environmentId);
+    byte[] getContractInStorage(HashId contractId);
+    byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId);
+    void removeEnvironmentSubscription(long subscriptionId);
+    List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId);
+    long removeEnvironment(HashId ncontractHashId);
+    void removeSlotContractWithAllSubscriptions(HashId slotHashId);
+    void removeExpiredStorageSubscriptionsCascade();
 
     void cleanup();
 }

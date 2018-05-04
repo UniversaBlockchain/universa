@@ -28,7 +28,7 @@ public class ModifyDataPermission extends Permission {
 
     private Map<String, List<String>> fields = new HashMap<>();
 
-    private Set<String> rootFields = new HashSet<>(asList("references"));
+    private Set<String> rootFields = new HashSet<>(asList("references", "expires_at"));
 
     public ModifyDataPermission() {
     }
@@ -95,10 +95,12 @@ public class ModifyDataPermission extends Permission {
                     mapChanges = ((ListDelta) rootFieldChanges).getChanges();
                 } else if(rootFieldChanges instanceof MapDelta) {
                     mapChanges = ((MapDelta) data).getChanges();
+                } else if(rootFieldChanges instanceof ChangedItem) {
+                    mapChanges = stateChanges;
                 } else {
                     mapChanges = null;
                 }
-                if(mapChanges!= null) {
+                if(mapChanges != null) {
                     mapChanges.keySet().removeIf(key -> {
                         Object changed = mapChanges.get(key);
 

@@ -7,15 +7,19 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.NodeContract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.SmartContract;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
@@ -24,6 +28,7 @@ import net.sergeych.biserializer.BiAdapter;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.*;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -34,7 +39,6 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
@@ -65,6 +69,9 @@ public class Node {
 
     private static LogPrinter log = new LogPrinter("NODE");
 
+    public Config getConfig() {
+        return config;
+    }
     private final Config config;
     private final NodeInfo myInfo;
     private final Ledger ledger;
@@ -144,6 +151,7 @@ public class Node {
 
     private void pulseStartCleanup() {
         lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.cleanup(),1,config.getMaxDiskCacheAge().getSeconds(),TimeUnit.SECONDS);
+        lowPrioExecutorService.scheduleAtFixedRate(() -> ledger.removeExpiredStorageSubscriptionsCascade(),config.getExpriedStorageCleanupInterval().getSeconds(),config.getExpriedStorageCleanupInterval().getSeconds(),TimeUnit.SECONDS);
     }
 
     private void dbSanitationFinished() {
@@ -212,6 +220,9 @@ public class Node {
                         try {
                             itemLock.synchronize(r.getId(), lock -> {
                                 r.save();
+                                synchronized (cache) {
+                                    cache.update(r.getId(), new ItemResult(r));
+                                }
                                 return null;
                             });
                         } catch (Exception e) {
@@ -734,7 +745,14 @@ public class Node {
                         report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
                                 "found item result, and state is: ", r.getState()),
                                 DatagramAdapter.VerboseLevel.BASE);
-                        return new ItemResult(r, cache.get(itemId) != null);
+
+                        Approvable cachedItem = cache.get(itemId);
+                        ItemResult result = cache.getResult(itemId);
+                        if(result == null) {
+                            result = new ItemResult(r, cachedItem != null);
+                        }
+
+                        return result;
                     }
 
                     // we have no consensus on it. We might need to find one, after some precheck.
@@ -754,7 +772,7 @@ public class Node {
                 if (autoStart) {
                     if (item != null) {
                         synchronized (cache) {
-                            cache.put(item);
+                            cache.put(item, ItemResult.UNDEFINED);
                         }
                     }
                     report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
@@ -1517,6 +1535,8 @@ public class Node {
         private boolean alreadyChecked;
         private boolean isCheckingForce = false;
 
+        private Binder extraResult = new Binder();
+
         private final AsyncEvent<Void> downloadedEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> doneEvent = new AsyncEvent<>();
         private final AsyncEvent<Void> pollingReadyEvent = new AsyncEvent<>();
@@ -1684,7 +1704,7 @@ public class Node {
                     DatagramAdapter.VerboseLevel.BASE);
             if(processingState.canContinue()) {
                 synchronized (cache) {
-                    cache.put(item);
+                    cache.put(item, getResult());
                 }
 
 
@@ -1758,6 +1778,30 @@ public class Node {
                             }
                         } else {
                             checkPassed = item.check();
+
+                            if(item instanceof SlotContract) {
+                                ((SlotContract) item).setNodeInfo(myInfo);
+                                ((SlotContract) item).setNodeConfig(config);
+                                ((SlotContract) item).setLedger(ledger);
+                                ImmutableEnvironment ime;
+                                byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
+                                if (ebytes != null) {
+                                    Binder binder = Boss.unpack(ebytes);
+                                    ime = new SlotImmutableEnvironment((SlotContract) item, binder);
+                                } else {
+                                    ime = new SlotImmutableEnvironment((SlotContract) item);
+                                }
+//                                if (getState() == ItemState.APPROVED) {
+                                    if (((SmartContract) item).getRevision() == 1) {
+                                        ((SmartContract) item).beforeCreate(ime);
+                                    } else {
+                                        ((SmartContract) item).beforeUpdate(ime);
+                                    }
+//                                }
+//                                if (getState() == ItemState.REVOKED) {
+//                                    ((SmartContract) item).beforeRevoke(ime);
+//                                }
+                            }
                         }
 
                         if (checkPassed) {
@@ -1775,6 +1819,8 @@ public class Node {
                                 "Not enough payment for process item (quantas limit)");
                         emergencyBreak();
                         return;
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                     alreadyChecked = true;
 
@@ -1838,23 +1884,47 @@ public class Node {
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
                     // check revoking items
-                    for (Approvable a : checkingItem.getRevokingItems()) {
+                    for (Approvable revokingItem : checkingItem.getRevokingItems()) {
 
-                        if (a instanceof Contract)
-                            ((Contract)a).getErrors().clear();
+                        if (revokingItem instanceof Contract)
+                            ((Contract)revokingItem).getErrors().clear();
 
-                        checkReferencesOf(a);
+                        checkReferencesOf(revokingItem);
 
-                        for (ErrorRecord er : a.getErrors()) {
-                            checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke: " + er);
+                        if(revokingItem instanceof SlotContract) {
+                            ((SlotContract) revokingItem).setNodeInfo(myInfo);
+                            ((SlotContract) revokingItem).setNodeConfig(config);
+                            ((SlotContract) revokingItem).setLedger(ledger);
+                            ImmutableEnvironment ime;
+                            byte[] ebytes = ledger.getEnvironmentFromStorage(revokingItem.getId());
+                            if (ebytes != null) {
+                                Binder binder = Boss.unpack(ebytes);
+                                ime = new SlotImmutableEnvironment((SlotContract) revokingItem, binder);
+                            } else {
+                                ime = new SlotImmutableEnvironment((SlotContract) revokingItem);
+                            }
+//                                if (getState() == ItemState.APPROVED) {
+//                            if (((Contract) newItem).getRevision() == 1) {
+//                                ((NodeContract) newItem).beforeCreate(ime);
+//                            } else {
+//                                ((NodeContract) newItem).beforeUpdate(ime);
+//                            }
+//                                }
+//                                if (getState() == ItemState.REVOKED) {
+                                    ((SlotContract) revokingItem).beforeRevoke(ime);
+//                                }
+                        }
+
+                        for (ErrorRecord er : revokingItem.getErrors()) {
+                            checkingItem.addError(Errors.BAD_REVOKE, revokingItem.getId().toString(), "can't revoke: " + er);
                         }
 
                         synchronized (mutex) {
                             try {
-                                itemLock.synchronize(a.getId(), lock -> {
-                                    StateRecord r = record.lockToRevoke(a.getId());
+                                itemLock.synchronize(revokingItem.getId(), lock -> {
+                                    StateRecord r = record.lockToRevoke(revokingItem.getId());
                                     if (r == null) {
-                                        checkingItem.addError(Errors.BAD_REVOKE, a.getId().toString(), "can't revoke");
+                                        checkingItem.addError(Errors.BAD_REVOKE, revokingItem.getId().toString(), "can't revoke");
                                     } else {
                                         if (!lockedToRevoke.contains(r))
                                             lockedToRevoke.add(r);
@@ -1878,6 +1948,30 @@ public class Node {
                     for (Approvable newItem : checkingItem.getNewItems()) {
 
                         checkSubItemsOf(newItem);
+
+                        if(newItem instanceof SlotContract) {
+                            ((SlotContract) newItem).setNodeInfo(myInfo);
+                            ((SlotContract) newItem).setNodeConfig(config);
+                            ((SlotContract) newItem).setLedger(ledger);
+                            ImmutableEnvironment ime;
+                            byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
+                            if (ebytes != null) {
+                                Binder binder = Boss.unpack(ebytes);
+                                ime = new SlotImmutableEnvironment((SlotContract) newItem, binder);
+                            } else {
+                                ime = new SlotImmutableEnvironment((SlotContract) newItem);
+                            }
+//                                if (getState() == ItemState.APPROVED) {
+                            if (((Contract) newItem).getRevision() == 1) {
+                                ((SlotContract) newItem).beforeCreate(ime);
+                            } else {
+                                ((SlotContract) newItem).beforeUpdate(ime);
+                            }
+//                                }
+//                                if (getState() == ItemState.REVOKED) {
+//                                    ((NodeContract) item).beforeRevoke(ime);
+//                                }
+                        }
 
                         if (!newItem.getErrors().isEmpty()) {
                             checkingItem.addError(Errors.BAD_NEW_ITEM, newItem.getId().toString(), "bad new item: not passed check");
@@ -1931,6 +2025,12 @@ public class Node {
                         try {
                             if (record.getState() != ItemState.UNDEFINED) {
                                 record.save();
+
+                                if (item != null) {
+                                    synchronized (cache) {
+                                        cache.update(itemId, getResult());
+                                    }
+                                }
                             } else {
                                 log.e("Checked item with state ItemState.UNDEFINED (should be ItemState.PENDING)");
                                 emergencyBreak();
@@ -1944,6 +2044,7 @@ public class Node {
                     if(!processingState.isProcessedToConsensus()) {
                         processingState = ItemProcessingState.POLLING;
                     }
+
                     vote(myInfo, record.getState());
                     broadcastMyState();
                     pulseStartPolling();
@@ -2080,6 +2181,11 @@ public class Node {
 
         private final void vote(NodeInfo node, ItemState state) {
             if(processingState.canContinue()) {
+                report(getLabel(), () -> concatReportMessage("item processor for item: ",
+                        itemId, " from parcel: ", parcelId,
+                        " :: vote " + state + " from " + node + ", state ", processingState,
+                        " :: itemState ", getState()),
+                        DatagramAdapter.VerboseLevel.BASE);
                 boolean positiveConsensus = false;
                 boolean negativeConsensus = false;
 //                ItemProcessingState processingStateWas;
@@ -2161,6 +2267,34 @@ public class Node {
                             r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
                             try {
                                 r.save();
+                                if(revokingItem instanceof SlotContract) {
+                                    Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) revokingItem).getTrackingContract().getId());
+                                    ImmutableEnvironment ime;
+                                    byte[] ebytes = ledger.getEnvironmentFromStorage(revokingItem.getId());
+                                    if (ebytes != null) {
+                                        Binder binder = Boss.unpack(ebytes);
+                                        ime = new SlotImmutableEnvironment((SlotContract) revokingItem, binder, trackingCssSet);
+                                    } else {
+                                        ime = new SlotImmutableEnvironment((SlotContract) revokingItem, null, trackingCssSet);
+                                    }
+                                    ((SlotContract) revokingItem).setNodeInfo(myInfo);
+                                    ((SlotContract) revokingItem).setNodeConfig(config);
+                                    ((SlotContract) revokingItem).setLedger(ledger);
+                                    ((SlotContract) revokingItem).onRevoked(ime);
+                                }
+
+//                                updateItemForSmartContracts(revokingItem, r.getState());
+
+                                synchronized (cache) {
+//                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+                                    rr.extraDataBinder = null;
+                                    if(cache.get(r.getId()) == null) {
+                                        cache.put(revokingItem, rr);
+                                    } else {
+                                        cache.update(r.getId(), rr);
+                                    }
+                                }
                             } catch (Ledger.Failure failure) {
                                 emergencyBreak();
                                 return null;
@@ -2181,6 +2315,53 @@ public class Node {
                             r.setExpiresAt(newItem.getExpiresAt());
                             try {
                                 r.save();
+                                Binder newExtraResult = new Binder();
+                                if(newItem instanceof SlotContract) {
+                                    Binder er;
+                                    Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) newItem).getTrackingContract().getId());
+                                    MutableEnvironment me;
+
+                                    ((SlotContract) newItem).setNodeInfo(myInfo);
+                                    ((SlotContract) newItem).setNodeConfig(config);
+                                    ((SlotContract) newItem).setLedger(ledger);
+
+                                    if (((SlotContract) newItem).getRevision() == 1) {
+                                        me = new SlotMutableEnvironment((SlotContract) newItem);
+                                        er = ((SlotContract) newItem).onCreated(me);
+                                        newExtraResult.set("onCreatedResult", er);
+                                    } else {
+                                        try{
+                                            byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
+                                            if (ebytes != null) {
+                                                Binder binder = Boss.unpack(ebytes);
+                                                me = new SlotMutableEnvironment((SlotContract) newItem, binder, trackingCssSet);
+                                                er = ((SlotContract) newItem).onUpdated(me);
+                                                newExtraResult.set("onUpdateResult", er);
+                                            } else {
+                                                me = new SlotMutableEnvironment((SlotContract) newItem, null, trackingCssSet);
+                                                er = ((SlotContract) newItem).onUpdated(me);
+                                                newExtraResult.set("onUpdateResult", er);
+                                            }
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                }
+
+                                updateItemForSmartContracts(newItem, r.getState());
+
+                                synchronized (cache) {
+//                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+//                                    if(cr != null) {
+                                        rr.extraDataBinder = newExtraResult;
+//                                    }
+                                    if(cache.get(r.getId()) == null) {
+                                        cache.put(newItem, rr);
+                                    } else {
+                                        cache.update(r.getId(), rr);
+                                    }
+                                }
                             } catch (Ledger.Failure failure) {
                                 emergencyBreak();
                                 return null;
@@ -2223,6 +2404,12 @@ public class Node {
 
                         try {
                             record.save();
+
+                            if (item != null) {
+                                synchronized (cache) {
+                                    cache.update(itemId, getResult());
+                                }
+                            }
                         } catch (Ledger.Failure failure) {
                             emergencyBreak();
                             return;
@@ -2232,6 +2419,63 @@ public class Node {
                             log.e("record is not approved " + record.getState());
                         }
                     }
+
+                    try {
+                        if(item instanceof SlotContract) {
+                            ((SlotContract) item).setNodeInfo(myInfo);
+                            ((SlotContract) item).setNodeConfig(config);
+                            ((SlotContract) item).setLedger(ledger);
+                            Binder er;
+                            MutableEnvironment me;
+                            ImmutableEnvironment ime;
+                            Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) item).getTrackingContract().getId());
+
+                            if(getState() == ItemState.APPROVED) {
+                                if (((SlotContract) item).getRevision() == 1) {
+                                    me = new SlotMutableEnvironment((SlotContract) item);
+                                    er = ((SlotContract) item).onCreated(me);
+                                    extraResult.set("onCreatedResult", er);
+                                } else {
+                                    try{
+                                        byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
+                                        if (ebytes != null) {
+                                            Binder binder = Boss.unpack(ebytes);
+                                            me = new SlotMutableEnvironment((SlotContract) item, binder, trackingCssSet);
+                                            er = ((SlotContract) item).onUpdated(me);
+                                            extraResult.set("onUpdateResult", er);
+                                        } else {
+                                            me = new SlotMutableEnvironment((SlotContract) item, null, trackingCssSet);
+                                            er = ((SlotContract) item).onUpdated(me);
+                                            extraResult.set("onUpdateResult", er);
+                                        }
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }
+                            if(getState() == ItemState.REVOKED) {
+                                byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
+                                if (ebytes != null) {
+                                    Binder binder = Boss.unpack(ebytes);
+                                    ime = new SlotImmutableEnvironment((SlotContract) item, binder, trackingCssSet);
+                                    ((SlotContract) item).onRevoked(ime);
+                                }
+                            }
+
+                            if (item != null) {
+                                synchronized (cache) {
+                                    cache.update(itemId, getResult());
+                                }
+                            }
+                        }
+
+                        updateItemForSmartContracts(item, getState());
+
+                    } catch (Exception ex) {
+                        System.err.println(myInfo);
+                        ex.printStackTrace();
+                    }
+
                     lowPrioExecutorService.schedule(() -> checkSpecialItem(item),100,TimeUnit.MILLISECONDS);
 
                 } catch (TimeoutException | InterruptedException e) {
@@ -2239,6 +2483,12 @@ public class Node {
                     try {
                         itemLock.synchronize(record.getId(), lock -> {
                             record.destroy();
+
+                            if (item != null) {
+                                synchronized (cache) {
+                                    cache.update(itemId, null);
+                                }
+                            }
                             return null;
                         });
                     } catch (Exception ee) {
@@ -2246,6 +2496,74 @@ public class Node {
                     }
                 }
                 close();
+            }
+        }
+
+        private void updateItemForSmartContracts(Approvable updatingItem, ItemState updatingState) {
+            try {
+                HashId lookingId = null;
+
+                // we are looking for updatingItem's parent subscriptions and want to update it
+                if (updatingState == ItemState.APPROVED) {
+                    if(updatingItem instanceof Contract && ((Contract) updatingItem).getParent() != null) {
+                        lookingId = ((Contract) updatingItem).getParent();
+                    }
+                }
+
+                // we are looking for own id and will update own subscriptions
+                if (updatingState == ItemState.REVOKED) {
+                    lookingId = updatingItem.getId();
+                }
+
+                if(lookingId != null) {
+                    Set<ContractStorageSubscription> foundCssSet = ledger.getStorageSubscriptionsForContractId(lookingId);
+
+                    if (foundCssSet != null) {
+                        for (ContractStorageSubscription foundCss : foundCssSet) {
+                            if (foundCss instanceof SlotContractStorageSubscription) {
+    //                                    if (foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
+                                byte[] foundSlotPack = ledger.getSlotForSubscriptionStorageId(((SlotContractStorageSubscription) foundCss).getId());
+                                if(foundSlotPack != null) {
+                                    SlotContract foundSlot = (SlotContract) Contract.fromPackedTransaction(foundSlotPack);
+                                    if(foundSlot != null) {
+                                        foundSlot.setNodeInfo(myInfo);
+                                        foundSlot.setNodeConfig(config);
+                                        foundSlot.setLedger(ledger);
+                                        if (updatingState == ItemState.APPROVED) {
+                                            foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
+                                                @Override
+                                                public Contract getNewRevision() {
+                                                    return (Contract) updatingItem;
+                                                }
+
+                                                @Override
+                                                public byte[] getPackedTransaction() {
+                                                    return ((Contract) updatingItem).getPackedTransaction();
+                                                }
+
+                                                @Override
+                                                public ContractStorageSubscription getSubscription() {
+                                                    return foundCss;
+                                                }
+                                            });
+                                        }
+                                        if (updatingState == ItemState.REVOKED) {
+                                            foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.RevokedEvent() {
+                                                @Override
+                                                public ContractStorageSubscription getSubscription() {
+                                                    return foundCss;
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                System.err.println(myInfo);
+                ex.printStackTrace();
             }
         }
 
@@ -2261,6 +2579,14 @@ public class Node {
                         try {
                             itemLock.synchronize(r.getId(), lock -> {
                                 r.unlock().save();
+                                synchronized (cache) {
+                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+                                    if(cr != null) {
+                                        rr.extraDataBinder = cr.extraDataBinder;
+                                    }
+                                    cache.update(r.getId(), rr);
+                                }
                                 return null;
                             });
                         } catch (Exception e) {
@@ -2274,6 +2600,14 @@ public class Node {
                         try {
                             itemLock.synchronize(r.getId(), lock -> {
                                 r.unlock().save();
+                                synchronized (cache) {
+                                    ItemResult cr = cache.getResult(r.getId());
+                                    ItemResult rr = new ItemResult(r);
+                                    if(cr != null) {
+                                        rr.extraDataBinder = cr.extraDataBinder;
+                                    }
+                                    cache.update(r.getId(), rr);
+                                }
                                 return null;
                             });
                         } catch (Exception e) {
@@ -2292,6 +2626,12 @@ public class Node {
                         synchronized (mutex) {
                             if (newState != ItemState.UNDEFINED) {
                                 record.save(); // TODO: current implementation will cause an inner dbPool.db() invocation
+
+                                if (item != null) {
+                                    synchronized (cache) {
+                                        cache.update(itemId, getResult());
+                                    }
+                                }
                             } else {
 //                                log.e("Can not rollback to ItemState.UNDEFINED, will destroy item");
                                 record.destroy();
@@ -2731,7 +3071,9 @@ public class Node {
 
 
         public @NonNull ItemResult getResult() {
-            return new ItemResult(record, item != null);
+            ItemResult result = new ItemResult(record, item != null);
+            result.extraDataBinder = extraResult;
+            return result;
         }
 
         /**
@@ -2787,10 +3129,16 @@ public class Node {
                                     if (r.getState() == ItemState.LOCKED) {
                                         r.setState(ItemState.REVOKED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
                                         r.setState(ItemState.APPROVED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     }
                                 } else if (record.getState() == ItemState.DECLINED) {
@@ -2798,9 +3146,15 @@ public class Node {
                                     if (r.getState() == ItemState.LOCKED) {
                                         r.setState(ItemState.APPROVED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
                                         r.destroy();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), null);
+                                        }
                                         idsToRemove.add(r.getId());
                                     }
                                 } else if (record.getState() == ItemState.REVOKED) {
@@ -2808,10 +3162,16 @@ public class Node {
                                     if (r.getState() == ItemState.LOCKED) {
                                         r.setState(ItemState.REVOKED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
                                         r.setState(ItemState.APPROVED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     }
                                 } else if (record.getState() == ItemState.UNDEFINED) {
@@ -2819,9 +3179,15 @@ public class Node {
                                     if (r.getState() == ItemState.LOCKED) {
                                         r.setState(ItemState.APPROVED);
                                         r.save();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), new ItemResult(r));
+                                        }
                                         idsToRemove.add(r.getId());
                                     } else if (r.getState() == ItemState.LOCKED_FOR_CREATION) {
                                         r.destroy();
+                                        synchronized (cache) {
+                                            cache.update(r.getId(), null);
+                                        }
                                         idsToRemove.add(r.getId());
                                     }
                                 }
@@ -2854,6 +3220,9 @@ public class Node {
                 try {
                     itemLock.synchronize(record.getId(), lock -> {
                         record.save();
+                        synchronized (cache) {
+                            cache.update(record.getId(), new ItemResult(record));
+                        }
                         return null;
                     });
                 } catch (Exception e) {
@@ -3286,10 +3655,14 @@ public class Node {
 
                                     try {
                                         itemLock.synchronize(hashId, lock -> {
-                                            ledger.findOrCreate(hashId).setState(committingState)
+                                            StateRecord newRecord = ledger.findOrCreate(hashId);
+                                            newRecord.setState(committingState)
                                                     .setCreatedAt(createdAt)
                                                     .setExpiresAt(expiresAt)
                                                     .save();
+                                            synchronized (cache) {
+                                                cache.update(newRecord.getId(), new ItemResult(newRecord));
+                                            }
                                             return null;
                                         });
                                     } catch (Exception e) {

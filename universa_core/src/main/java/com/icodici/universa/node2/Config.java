@@ -89,6 +89,10 @@ public class Config {
         this.statsIntervalBig = statsIntervalBig;
     }
 
+    public Duration getExpriedStorageCleanupInterval() {
+        return expriedStorageCleanupInterval;
+    }
+
     public interface ConsensusConfigUpdater {
         void updateConsensusConfig(Config config, int nodesCount);
     }
@@ -131,6 +135,7 @@ public class Config {
     private List<Integer> resyncTime = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
+    private Duration expriedStorageCleanupInterval = Duration.ofMinutes(5);
 
     private Boolean isFreeRegistrationsLimited = null;
     private boolean isFreeRegistrationsAllowedFromYaml = false;
@@ -158,7 +163,16 @@ public class Config {
 
     public static int maxCostTUInTestMode = 3;
 
-    public static int quantiser_quantaPerUTN = 200;
+    public static int quantiser_quantaPerU = 200;
+
+    // num of KD (kilobytes and days) for one U
+    public static int kilobytesAndDaysPerU = 1;
+
+    public static int getMinSlotPayment() {
+        return minSlotPayment;
+    }
+
+    private static int minSlotPayment = 100;
 
     public static Duration validUntilTailTime = Duration.ofMinutes(5);
 

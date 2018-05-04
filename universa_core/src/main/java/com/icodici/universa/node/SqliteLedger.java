@@ -11,6 +11,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.services.ContractStorageSubscription;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import org.sqlite.SQLiteConfig;
@@ -22,10 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 /**
@@ -308,11 +306,69 @@ public class SqliteLedger implements Ledger {
         }
     }
 
-    /**
-     * Enable or disable records caching. USe it in tests only, in production it should always be enabled
-     *
-     * @param enable, if true it is enabling cache
-     */
+    @Override
+    public void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin) {}
+
+    @Override
+    public List<Long> clearExpiredStorageSubscriptions() {return null;}
+
+    @Override
+    public void clearExpiredStorageContracts() {}
+
+    @Override
+    public long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {return 0;}
+
+    @Override
+    public byte[] getEnvironmentFromStorage(HashId contractId) {return null;}
+
+    @Override
+    public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin) {return 0;}
+
+    @Override
+    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt) {return 0;}
+
+    @Override
+    public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {}
+
+    @Override
+    public Set<byte[]> getEnvironmentsForContractId(HashId contractId) {return null;}
+
+    @Override
+    public Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {return null;}
+
+    @Override
+    public Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId) {return null;}
+
+    @Override
+    public byte[] getSlotContractByEnvironmentId(long environmentId) {return null;}
+
+    @Override
+    public byte[] getContractInStorage(HashId contractId) {return null;}
+
+    @Override
+    public byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId) {return null;}
+
+    @Override
+    public void removeEnvironmentSubscription(long subscriptionId) {}
+
+    @Override
+    public long removeEnvironment(HashId ncontractHashId) {return 0;}
+
+    @Override
+    public List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId) {return null;}
+
+    @Override
+    public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {}
+
+    @Override
+    public void removeExpiredStorageSubscriptionsCascade() {}
+
+
+        /**
+         * Enable or disable records caching. USe it in tests only, in production it should always be enabled
+         *
+         * @param enable, if true it is enabling cache
+         */
     public void enableCache(boolean enable) {
         if (enable) {
             this.useCache = true;

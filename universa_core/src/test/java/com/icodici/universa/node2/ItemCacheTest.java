@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.TestItem;
 import org.junit.Test;
 
@@ -19,7 +20,7 @@ public class ItemCacheTest {
     public void cleanUp() throws Exception {
         ItemCache c = new ItemCache(Duration.ofMillis(10));
         TestItem i1 = new TestItem(true);
-        c.put(i1);
+        c.put(i1, ItemResult.UNDEFINED);
         assertEquals(i1, c.get(i1.getId()));
         Thread.sleep(11);
         c.cleanUp();

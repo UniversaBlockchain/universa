@@ -14,6 +14,7 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.Config;
@@ -421,7 +422,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private final List<ErrorRecord> errors = new ArrayList<>();
 
-    private Contract initializeWithDsl(Binder root) throws EncryptionError {
+    protected Contract initializeWithDsl(Binder root) throws EncryptionError {
         apiLevel = root.getIntOrThrow("api_level");
         definition = new Definition().initializeWithDsl(root.getBinder("definition"));
         state = new State().initializeWithDsl(root.getBinder("state"));
@@ -1011,7 +1012,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      *
      * @return matching Contract instance or null if not found.
      */
-    private Contract getRevokingItem(HashId id) {
+    protected Contract getRevokingItem(HashId id) {
         for (Approvable a : revokingItems) {
             if (a.getId().equals(id) && a instanceof Contract)
                 return (Contract) a;
@@ -1078,8 +1079,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Role createdBy = getRole("creator");
         if (createdBy == null || !createdBy.isValid())
             addError(BAD_VALUE, "state.created_by");
-        if (!isSignedBy(createdBy))
+        if (!isSignedBy(createdBy)) {
             addError(NOT_SIGNED, "", "missing creator signature(s)");
+        }
     }
 
     private boolean isSignedBy(Role role) throws Quantiser.QuantiserException {
@@ -1401,6 +1403,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public void addSignatureToSeal(Set<PrivateKey> privateKeys) {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to add signature: sealed binary does not exist");
+
+        keysToSignWith.addAll(privateKeys);
 
         Binder data = Boss.unpack(sealedBinary);
         byte[] contractBytes = data.getBinaryOrThrow("data");
@@ -1807,6 +1811,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     return (T) state.expiresAt;
                 case "created_at":
                     return (T) definition.createdAt;
+                case "extended_type":
+                    return (T) definition.extendedType;
                 case "issuer":
                     return (T) getRole("issuer");
                 case "origin":
@@ -2319,9 +2325,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         private ZonedDateTime expiresAt;
         private Binder definition;
-        private Binder data;
+        private Binder data = new Binder();
         private List<Reference> references = new ArrayList<>();
 
+        private String extendedType;
+        public void setExtendedType(String extendedType) {
+            this.extendedType = extendedType;
+            if(definition != null)
+                definition.set("extended_type", extendedType);
+        }
+        public String getExtendedType() {
+            return extendedType;
+        }
 
         private Definition() {
             createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -2336,6 +2351,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 expiresAt = decodeDslTime(t);
             registerRole(issuer);
             data = definition.getBinder("data");
+
+            extendedType = definition.getString("extended_type", null);
 
             List<LinkedHashMap<String, Binder>> refList = definition.getList("references", null);
             if (refList != null) {
@@ -2477,18 +2494,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (references != null)
                 of.set("references", references);
 
+            if (extendedType != null)
+                of.set("extended_type", extendedType);
 
-            return serializer.serialize(
-                    of
-            );
+            return serializer.serialize(of);
         }
 
         public void deserializeWith(Binder data, BiDeserializer d) {
             registerRole(d.deserialize(data.getBinderOrThrow("issuer")));
             createdAt = data.getZonedDateTimeOrThrow("created_at");
             expiresAt = data.getZonedDateTime("expires_at", null);
+            extendedType = data.getString("extended_type", null);
             this.data = d.deserialize(data.getBinder("data", Binder.EMPTY));
-            this.references = d.deserialize(data.getList("references", null));
+            references = d.deserialize(data.getList("references", null));
             Map<String, Permission> perms = d.deserialize(data.getOrThrow("permissions"));
             perms.forEach((id, perm) -> {
                 perm.setId(id);

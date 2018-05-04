@@ -11,9 +11,11 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.TestCase;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.Quantiser;
+import net.sergeych.tools.Binder;
 import org.junit.Before;
 
 import java.io.IOException;
@@ -108,6 +110,81 @@ public class ContractTestBase extends TestCase {
         } catch (Quantiser.QuantiserException e) {
             e.printStackTrace();
         }
+    }
+
+    protected void assertSameContracts(Contract originContract, Contract checkingContract) {
+
+        // check issuer
+        KeyRecord originIssuer = originContract.getIssuer().getKeyRecords().iterator().next();
+        KeyRecord checkingIssuer = checkingContract.getIssuer().getKeyRecords().iterator().next();
+        assertNotNull(checkingIssuer);
+        assertThat(checkingIssuer.getPublicKey(), is(instanceOf(PublicKey.class)));
+        assertEquals(checkingIssuer, originIssuer);
+
+        // check creator
+        KeyRecord originCreator = originContract.getCreator().getKeyRecords().iterator().next();
+        KeyRecord checkingCreator = checkingContract.getCreator().getKeyRecords().iterator().next();
+        assertNotNull(checkingCreator);
+        assertThat(checkingCreator.getPublicKey(), is(instanceOf(PublicKey.class)));
+        assertEquals(checkingCreator, originCreator);
+
+        // check owner
+        KeyRecord originOwner = originContract.getOwner().getKeyRecords().iterator().next();
+        KeyRecord checkingOwner = checkingContract.getOwner().getKeyRecords().iterator().next();
+        assertNotNull(checkingOwner);
+        assertThat(checkingOwner.getPublicKey(), is(instanceOf(PublicKey.class)));
+        assertEquals(checkingOwner, originOwner);
+
+        // --- times
+        assertAlmostSame(ZonedDateTime.now(), checkingContract.getCreatedAt());
+        assertEquals(originContract.getCreatedAt(), checkingContract.getCreatedAt());
+        assertEquals(originContract.getExpiresAt(), checkingContract.getExpiresAt());
+
+        // -- data
+        for(Object k : originContract.getStateData().keySet()) {
+            if(k.equals(SlotContract.TRACKING_CONTRACT_FIELD_NAME)) {
+                for(String kk : ((Binder) originContract.getStateData().get(k)).keySet()) {
+                    assertArrayEquals(((Binder) originContract.getStateData().get(k)).getBytesOrThrow(kk).toArray(),
+                            ((Binder) checkingContract.getStateData().get(k)).getBytesOrThrow(kk).toArray());
+                }
+            } else if(originContract.getStateData().get(k) instanceof byte[]) {
+                assertArrayEquals((byte[]) originContract.getStateData().get(k), (byte[]) checkingContract.getStateData().get(k));
+            } else {
+                assertEquals(originContract.getStateData().get(k), checkingContract.getStateData().get(k));
+            }
+        }
+        for(Object k : originContract.getDefinition().getData().keySet()) {
+            if(k.equals(SlotContract.TRACKING_CONTRACT_FIELD_NAME)) {
+                for(String kk : ((Binder) originContract.getDefinition().getData().get(k)).keySet()) {
+                    assertArrayEquals(((Binder) originContract.getDefinition().getData().get(k)).getBytesOrThrow(kk).toArray(),
+                            ((Binder) checkingContract.getDefinition().getData().get(k)).getBytesOrThrow(kk).toArray());
+                }
+            } else if(originContract.getDefinition().getData().get(k) instanceof byte[]) {
+                assertArrayEquals((byte[]) originContract.getDefinition().getData().get(k), (byte[]) checkingContract.getDefinition().getData().get(k));
+            } else {
+                assertEquals(originContract.getDefinition().getData().get(k), checkingContract.getDefinition().getData().get(k));
+            }
+        }
+
+        // -- definition
+        Contract.Definition originDefinition = originContract.getDefinition();
+        Contract.Definition checkingDefinition = checkingContract.getDefinition();
+        assertEquals(originDefinition.getExtendedType(), checkingDefinition.getExtendedType());
+
+        // -- state
+        Contract.State originState = originContract.getState();
+        Contract.State checkingState = checkingContract.getState();
+        assertEquals(originState.getRevision(), checkingState.getRevision());
+        assertEquals(originState.getBranchId(), checkingState.getBranchId());
+        assertEquals(originState.getBranchRevision(), checkingState.getBranchRevision());
+
+        // -- references
+        for (Reference ref: originContract.getReferences().values()) {
+            Reference desRef = checkingContract.findReferenceByName(ref.getName());
+            assertTrue(desRef != null);
+            assertEquals(ref.getConditions(), desRef.getConditions());
+        }
+
     }
 
     protected void sealCheckTrace(Contract c, boolean isOk) {

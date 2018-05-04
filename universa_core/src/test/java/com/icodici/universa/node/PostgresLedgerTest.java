@@ -2,14 +2,14 @@ package com.icodici.universa.node;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.PooledDb;
-import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.ItemLock;
 import com.icodici.universa.node2.Config;
-import com.icodici.universa.node2.NodeInfo;
 import com.icodici.universa.node2.NodeStats;
+import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.StopWatch;
 import org.junit.Before;
@@ -18,14 +18,9 @@ import org.junit.Test;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -650,6 +645,95 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(stats.yesterdayPaidAmount,200);
         assertEquals(stats.thisMonthPaidAmount,200*now.getDayOfMonth());
         assertEquals(stats.lastMonthPaidAmount,200*now.minusMonths(1).getMonth().length(now.getYear() % 4 == 0));
+
+    }
+
+
+    @Test
+    public void addContractToStorage() throws Exception {
+
+        HashId originId = HashId.createRandom();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        ledger.addContractToStorage(contract.getId(), contract.getPackedTransaction(), 50, originId);
+
+        PreparedStatement st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+    }
+
+
+    @Test
+    public void addAndGetEnvironment() throws Exception {
+
+        long now = StateRecord.unixTime(ZonedDateTime.now());
+        Binder someBinder = Binder.of("balance", "12.345", "expires_at", now);
+        HashId contractId = HashId.createRandom();
+        Contract someContract = new Contract(TestKeys.privateKey(0));
+        someContract.seal();
+
+        long id1 = ledger.saveEnvironmentToStorage("SLOT0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
+        System.out.println("id1: " + id1);
+
+        byte[] readedBytes = ledger.getEnvironmentFromStorage(contractId);
+        assertNotEquals(null, readedBytes);
+        Binder readedBinder = Boss.unpack(readedBytes);
+
+        assertEquals(someBinder.getStringOrThrow("balance"), readedBinder.getStringOrThrow("balance"));
+        assertEquals(someBinder.getLongOrThrow("expires_at"), readedBinder.getLongOrThrow("expires_at"));
+
+        Binder updatedBinder = new Binder(readedBinder);
+        updatedBinder.set("balance", "23.456");
+        updatedBinder.set("expires_at", 33);
+
+        long id2 = ledger.saveEnvironmentToStorage("SLOT0test", contractId, Boss.pack(updatedBinder), someContract.getPackedTransaction());
+        System.out.println("id2: " + id2);
+
+        byte[] readedBytes2 = ledger.getEnvironmentFromStorage(contractId);
+        assertNotEquals(null, readedBytes2);
+        Binder readedBinder2 = Boss.unpack(readedBytes2);
+
+        assertEquals(updatedBinder.getStringOrThrow("balance"), readedBinder2.getStringOrThrow("balance"));
+        assertEquals(updatedBinder.getLongOrThrow("expires_at"), readedBinder2.getLongOrThrow("expires_at"));
+        assertEquals(id1, id2);
+    }
+
+
+    @Test
+    public void clearExpiredStorage() throws Exception {
+
+        HashId originId = HashId.createRandom();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        ledger.addContractToStorage(contract.getId(), contract.getPackedTransaction(), 5, originId);
+
+        PreparedStatement st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+        ledger.clearExpiredStorageSubscriptions();
+        ledger.clearExpiredStorageContracts();
+
+        st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+        }
+
+        Thread.sleep(10000);
+        ledger.clearExpiredStorageSubscriptions();
+        ledger.clearExpiredStorageContracts();
+
+        st = ledger.getDb().statement("select count(*) from contract_storage where hash_id = ?", contract.getId().getDigest());
+        try(ResultSet rs = st.executeQuery()) {
+            assertTrue(rs.next());
+            assertEquals(0, rs.getInt(1));
+        }
 
     }
 

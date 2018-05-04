@@ -9,6 +9,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
+import com.icodici.universa.node.ItemResult;
 import net.sergeych.utils.Base64;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -55,9 +56,26 @@ public class ItemCache {
         return i != null ? i.item : null;
     }
 
-    public void put(Approvable item) {
+    public @Nullable ItemResult getResult(HashId itemId) {
+        Record r = records.get(itemId);
+        if( r != null && r.item == null )
+            throw new RuntimeException("cache: record with empty item");
+        return r != null ? r.result : null;
+    }
+
+    public void put(Approvable item, ItemResult result) {
         // this will plainly override current if any
-        new Record(item);
+        Record r = new Record(item, result);
+    }
+
+    public void update(HashId itemId, ItemResult result) {
+        Record r = records.get(itemId);
+        if( r != null && r.item == null )
+            throw new RuntimeException("cache: record with empty item");
+
+        if( r != null ) {
+            r.result = result;
+        }
     }
 
     private ConcurrentHashMap<HashId,Record> records = new ConcurrentHashMap();
@@ -78,10 +96,12 @@ public class ItemCache {
     private class Record {
         private Instant expiresAt;
         private Approvable item;
+        private ItemResult result;
 
-        private Record(Approvable item) {
+        private Record(Approvable item, ItemResult result) {
             expiresAt = Instant.now().plus(maxAge);
             this.item = item;
+            this.result = result;
             records.put(item.getId(), this);
         }
 
