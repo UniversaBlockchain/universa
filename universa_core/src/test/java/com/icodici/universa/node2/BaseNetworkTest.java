@@ -7974,7 +7974,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8036,7 +8036,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8102,7 +8102,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8243,7 +8243,7 @@ public class BaseNetworkTest extends TestCase {
                 System.out.println("reg time " + timeReg1);
                 System.out.println("expected " + calculateExpires);
                 System.out.println("found " + foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8285,7 +8285,7 @@ public class BaseNetworkTest extends TestCase {
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
-        Thread.sleep(10000);
+        Thread.sleep(15000);
 
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
@@ -8352,7 +8352,7 @@ public class BaseNetworkTest extends TestCase {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println("expected:" + calculateExpires);
                 System.out.println("found: " + foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8369,7 +8369,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8412,7 +8412,7 @@ public class BaseNetworkTest extends TestCase {
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
-        Thread.sleep(10000);
+        Thread.sleep(15000);
 
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
@@ -8486,7 +8486,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8503,7 +8503,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8535,7 +8535,7 @@ public class BaseNetworkTest extends TestCase {
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
-        Thread.sleep(10000);
+        Thread.sleep(15000);
         
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract3.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
@@ -8613,7 +8613,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8764,7 +8764,7 @@ public class BaseNetworkTest extends TestCase {
                 System.out.println("reg time " + timeReg1);
                 System.out.println("expected " + calculateExpires);
                 System.out.println("found " + foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8832,7 +8832,7 @@ public class BaseNetworkTest extends TestCase {
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
                 System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 3);
+                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
             }
         } else {
             fail("ContractStorageSubscription was not found");

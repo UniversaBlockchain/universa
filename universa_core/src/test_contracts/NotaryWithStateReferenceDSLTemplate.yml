@@ -81,7 +81,6 @@ definition:
               - certification_contract
         fields:
           /references:
-            - ~
 
   references:
   - reference:
