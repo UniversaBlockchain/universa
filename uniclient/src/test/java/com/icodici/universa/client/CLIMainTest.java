@@ -152,7 +152,7 @@ public class CLIMainTest {
         contract.seal();
         CLIMain.saveContract(contract, basePath + "packedContract.unicon");
         callMain("--register", basePath + "packedContract.unicon", "--wait", "5000");
-        Contract packedContract = ContractsService.createSplit(contract, 1, FIELD_NAME, keys);
+        Contract packedContract = ContractsService.createSplit(contract, "1", FIELD_NAME, keys);
         packedContract.addSignerKey(keys.iterator().next());
         packedContract.seal();
 
