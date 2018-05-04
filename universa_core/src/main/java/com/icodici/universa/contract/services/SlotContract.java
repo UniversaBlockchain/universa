@@ -46,11 +46,8 @@ public class SlotContract extends NSmartContract {
         return trackingContracts;
     }
 
-    //    private byte[] packedTrackingContract;
-//    private Contract trackingContract;
     private LinkedList<byte[]> packedTrackingContracts = new LinkedList<>();
     private LinkedList<Contract> trackingContracts = new LinkedList<>();
-    private Binder trackingHashes = new Binder();
     private int keepRevisions = 1;
 
     private int paidU = 0;
@@ -101,54 +98,11 @@ public class SlotContract extends NSmartContract {
     public SlotContract(byte[] sealed, @NonNull TransactionPack pack) throws IOException {
         super(sealed, pack);
 
-//        // TODO: check, why trackingContracts is clearing here, so we need to fill it again, however it was done in the deserialization
-//        try {
-//            Binder trackingHashesAsBase64 = getStateData().getBinder(TRACKING_CONTRACT_FIELD_NAME);
-//            for (String k : trackingHashesAsBase64.keySet()) {
-//                byte[] packed = trackingHashesAsBase64.getBinary(k);
-//                if(packed != null) {
-//                    Contract c = Contract.fromPackedTransaction(packed);
-////                    if(trackingContracts.size() > 0) {
-////                        if (c.getRevision() >= trackingContracts.getFirst().getRevision()) {
-////                            trackingContracts.addFirst(c);
-////                            packedTrackingContracts.addFirst(packed);
-////                        } else {
-////                            trackingContracts.addFirst(c);
-////                            packedTrackingContracts.addFirst(packed);
-////                        }
-////                    }
-//                    if(c != null) {
-//                        if(trackingContracts != null) {
-//                            trackingContracts.addFirst(c);
-//                            packedTrackingContracts.addFirst(packed);
-//                            trackingHashes.set(String.valueOf(c.getRevision()), c.getId());
-//                        } else {
-//                            System.err.println("trackingContracts: " + trackingContracts +
-//                                    " packedTrackingContracts: " + packedTrackingContracts +
-//                                    " trackingHashes: " + trackingHashes);
-//                        }
-//                    } else {
-//                        System.err.println("reconstruction storing contract from slot.state.data failed: null");
-//                    }
-//                }
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-
         deserializeForSlot();
-
-//        createSlotSpecific();
-
-//        calculatePrepaidKilobytesForDays();
     }
 
     public SlotContract() {
         super();
-
-//        createSlotSpecific();
-
-//        calculatePrepaidKilobytesForDays();
     }
 
     /**
@@ -165,8 +119,6 @@ public class SlotContract extends NSmartContract {
         super(key);
 
         addSlotSpecific();
-
-//        calculatePrepaidKilobytesForDays();
     }
 
     public void addSlotSpecific() {
@@ -238,13 +190,10 @@ public class SlotContract extends NSmartContract {
     }
 
     public void putPackedTrackingContract(byte[] packed) throws IOException {
-//        trackingContract = TransactionPack.unpack(packed).getContract();
-//        packedTrackingContract = packed;
 
         Contract c = TransactionPack.unpack(packed).getContract();
         trackingContracts.addFirst(c);
         packedTrackingContracts.addFirst(packed);
-        trackingHashes.set(c.getId().toBase64String(), c.getRevision());
 
         Binder forState = new Binder();
         for (Contract tc : trackingContracts) {
@@ -264,17 +213,12 @@ public class SlotContract extends NSmartContract {
             storingBytes += p.length;
         }
         getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
-
-//        calculatePrepaidKilobytesForDays();
     }
 
     public void putTrackingContract(Contract c) {
-//        packedTrackingContract = c.getPackedTransaction();
-//        trackingContract = c;
 
         trackingContracts.addFirst(c);
         packedTrackingContracts.addFirst(c.getPackedTransaction());
-        trackingHashes.set(c.getId().toBase64String(), c.getRevision());
 
         Binder forState = new Binder();
         for (Contract tc : trackingContracts) {
@@ -294,8 +238,6 @@ public class SlotContract extends NSmartContract {
             storingBytes += p.length;
         }
         getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
-
-//        calculatePrepaidKilobytesForDays();
     }
 
     public void setKeepRevisions(int keepRevisions) {
@@ -368,24 +310,12 @@ public class SlotContract extends NSmartContract {
             wasPrepaidKilobytesForDays = 0;
         }
 
-//        int storingBytes = 0;
-//        for(byte[] packed : packedTrackingContracts) {
-//            storingBytes += packed.length;
-//        }
-//        long spentSeconds = (now.toEpochSecond() - wasPrepaidFrom);
-//        double spentDays = (double) spentSeconds / (3600 * 24);
-//        double spentKDs = spentDays * (storingBytes / 1024);
-
         spentEarlyKDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyKDsTimeSecs), ZoneId.systemDefault());
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
         prepaidKilobytesForDays = wasPrepaidKilobytesForDays + paidU * Config.kilobytesAndDaysPerU;
 
-//        System.out.println("===> spentSeconds " + spentSeconds);
-//        System.out.println("===> spentKDs " + spentKDs);
-//        System.out.println("===> prepaidKilobytesForDays " + prepaidKilobytesForDays);
-//        System.out.println("===> storedEarlyBytes " + storedEarlyBytes);
-
         spentKDsTime = now;
+
         if(withSaveToState) {
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
             if(getRevision() == 1) {
@@ -405,12 +335,7 @@ public class SlotContract extends NSmartContract {
             getStateData().set(SPENT_KD_FIELD_NAME, spentKDs);
             getStateData().set(SPENT_KD_TIME_FIELD_NAME, spentKDsTime.toEpochSecond());
         }
-//        ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-//        if(packedTrackingContract != null) {
-//            setExpiresAt(now.plusDays(prepaidKilobytesForDays / (packedTrackingContract.length / 1024)));
-//        } else {
-//            setExpiresAt(now);
-//        }
+
         return prepaidKilobytesForDays;
     }
 
@@ -428,18 +353,6 @@ public class SlotContract extends NSmartContract {
         double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         newExpires = newExpires.plusSeconds(seconds);
-
-//        long spentSeconds = (spentKDsTime.toEpochSecond() - spentEarlyKDsTime.toEpochSecond());
-//
-//        System.out.println(">> storedEarlyBytes " + storedEarlyBytes);
-//        System.out.println(">> spentSeconds " + spentSeconds);
-////        System.out.println(">> spentDays " + spentDays);
-//        System.out.println(">> spentKDs " + spentKDs * 1000000);
-//        System.out.println(">> days " + days);
-//        System.out.println(">> hours " + hours);
-//        System.out.println(">> seconds " + seconds);
-////        System.out.println(">> reg time " + timeReg2);
-//        System.out.println(">> totalLength " + storingBytes);
 
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
@@ -483,19 +396,10 @@ public class SlotContract extends NSmartContract {
             }
 
             // remove old subscriptions
-//            if(((Set<ContractStorageSubscription>)me.storageSubscriptions()).size() >= keepRevisions) {
-                // todo: remove all old
-                ledger.removeSlotContractWithAllSubscriptions(getId());
-//                ledger.removeEnvironmentSubscriptionsByEnvId(environmentId);
-//            }
+            ledger.removeSlotContractWithAllSubscriptions(getId());
 
             saveSubscriptionsToLedger(me);
-//            ContractStorageSubscription css = me.createStorageSubscription(newStoredItem.getId(), newExpires);
-//            css.receiveEvents(true);
-//            long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
-//            long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
-//            long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-//            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
+
         } else if(event instanceof ContractStorageSubscription.RevokedEvent) {
             // remove subscription
             ledger.removeSlotContractWithAllSubscriptions(getId());
@@ -511,12 +415,6 @@ public class SlotContract extends NSmartContract {
         return super.seal();
     }
 
-//    @Override
-//    public Binder serialize(BiSerializer s) {
-//        Binder b = super.serialize(s);
-//        return b;
-//    }
-
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
@@ -528,36 +426,22 @@ public class SlotContract extends NSmartContract {
     // this method should be only at the deserialize
     private void deserializeForSlot() {
 
-
         if(packedTrackingContracts == null) {
             packedTrackingContracts = new LinkedList<>();
         }
         if(trackingContracts == null) {
             trackingContracts = new LinkedList<>();
         }
-        if(trackingHashes == null) {
-            trackingHashes = new Binder();
-        }
-//        keepRevisions = 1;
-
-//        paidU = 0;
-//        prepaidKilobytesForDays = 0;
 
         int numRevisions = getStateData().getInt(KEEP_REVISIONS_FIELD_NAME, -1);
         if(numRevisions > 0)
             keepRevisions = numRevisions;
 
-
-
         prepaidKilobytesForDays = getStateData().getInt(PREPAID_KD_FIELD_NAME, 0);
+
         long prepaidFromSeconds = getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
 
-//        try {
-//            putPackedTrackingContract(data.getBinder("state").getBinder("data").getBinary(TRACKING_CONTRACT_FIELD_NAME));
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
         try {
             List<Contract> contracts = new ArrayList<>();
             Binder trackingHashesAsBase64 = getStateData().getBinder(TRACKING_CONTRACT_FIELD_NAME);
@@ -565,26 +449,8 @@ public class SlotContract extends NSmartContract {
                 byte[] packed = trackingHashesAsBase64.getBinary(k);
                 if(packed != null) {
                     Contract c = Contract.fromPackedTransaction(packed);
-//                    if(trackingContracts.size() > 0) {
-//                        if (c.getRevision() >= trackingContracts.getFirst().getRevision()) {
-//                            trackingContracts.addFirst(c);
-//                            packedTrackingContracts.addFirst(packed);
-//                        } else {
-//                            trackingContracts.addFirst(c);
-//                            packedTrackingContracts.addFirst(packed);
-//                        }
-//                    }
                     if(c != null) {
-                        if(trackingContracts != null) {
-                            contracts.add(c);
-//                            trackingContracts.addFirst(c);
-//                            packedTrackingContracts.addFirst(packed);
-                            trackingHashes.set(c.getId().toBase64String(), c.getRevision());
-                        } else {
-                            System.err.println("trackingContracts: " + trackingContracts +
-                                    " packedTrackingContracts: " + packedTrackingContracts +
-                                    " trackingHashes: " + trackingHashes);
-                        }
+                        contracts.add(c);
                     } else {
                         System.err.println("reconstruction storing contract from slot.state.data failed: null");
                     }
@@ -597,8 +463,13 @@ public class SlotContract extends NSmartContract {
                 }
             });
             for (Contract c : contracts) {
-                trackingContracts.addFirst(c);
-                packedTrackingContracts.addFirst(c.getPackedTransaction());
+                if(trackingContracts != null) {
+                    trackingContracts.addFirst(c);
+                    packedTrackingContracts.addFirst(c.getPackedTransaction());
+                } else {
+                    System.err.println("trackingContracts: " + trackingContracts +
+                            " packedTrackingContracts: " + packedTrackingContracts);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -710,7 +581,7 @@ public class SlotContract extends NSmartContract {
             return checkResult;
         }
 
-        checkResult = trackingHashes.size() == 0 || getTrackingContract() != null;
+        checkResult = trackingContracts.size() == 0 || getTrackingContract() != null;
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Tracking contract is missed");
             return checkResult;
@@ -739,43 +610,6 @@ public class SlotContract extends NSmartContract {
     public @Nullable Binder onCreated(MutableEnvironment me) {
         saveSubscriptionsToLedger(me);
 
-//        int storingKiloBytes = 0;
-//        for(byte[] packed : packedTrackingContracts) {
-//            storingKiloBytes += packed.length / 1024;
-//        }
-//        ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-//        newExpires = newExpires.plusDays(prepaidKilobytesForDays / storingKiloBytes);
-//
-//        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
-//        for(Contract tc : trackingContracts) {
-//            try {
-//                ContractStorageSubscription css = me.createStorageSubscription(tc.getId(), newExpires);
-//                css.receiveEvents(true);
-//                long contractStorageId = ledger.saveContractInStorage(tc.getId(), tc.getPackedTransaction(), css.expiresAt(), tc.getOrigin());
-//                long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-//                ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
-//
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//            System.out.println("onCreated " + newExpires + " " + prepaidKilobytesForDays / storingKiloBytes);
-//        }
-//        try {
-//            ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-//            newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-//            ContractStorageSubscription css = me.createStorageSubscription(getTrackingContract().getId(), newExpires);
-//            css.receiveEvents(true);
-//            long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
-//            long contractStorageId = ledger.saveContractInStorage(css.getContract().getId(), css.getContract().getPackedTransaction(), css.expiresAt(), css.getContract().getOrigin());
-//            long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-//            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
-//            System.out.println(nodeInfo + " onCreated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-//            System.out.println(nodeInfo + " onCreated " + subscriptionId + " " + contractStorageId);
-//
-//        } catch (Exception e) {
-////            e.printStackTrace();
-//        }
-
         return Binder.fromKeysValues("status", "ok");
     }
 
@@ -783,51 +617,12 @@ public class SlotContract extends NSmartContract {
     public Binder onUpdated(MutableEnvironment me) {
         saveSubscriptionsToLedger(me);
 
-//        int storingKiloBytes = 0;
-//        for(byte[] packed : packedTrackingContracts) {
-//            storingKiloBytes += packed.length / 1024;
-//        }
-//        ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-//        newExpires = newExpires.plusDays(prepaidKilobytesForDays / storingKiloBytes);
-//
-//        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
-//        for(Contract tc : trackingContracts) {
-//            try {
-//                ContractStorageSubscription css = me.createStorageSubscription(tc.getId(), newExpires);
-//                css.receiveEvents(true);
-//                long contractStorageId = ledger.saveContractInStorage(tc.getId(), tc.getPackedTransaction(), css.expiresAt(), tc.getOrigin());
-//                long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-//                ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
-//
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//            System.out.println("onUpdated " + newExpires + " " + prepaidKilobytesForDays / storingKiloBytes);
-//        }
-
-//        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
-//        for(ContractStorageSubscription css : me.storageSubscriptions()) {
-//            ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-//            newExpires = newExpires.plusDays(prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-//            long subscriptionId = ledger.saveSubscriptionInStorage(((SlotContractStorageSubscription)css).getContractStorageId(), newExpires);
-//            ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
-//            System.out.println("onUpdated " + newExpires + " " + prepaidKilobytesForDays / (getPackedTrackingContract().length / 1024));
-//            System.out.println("onUpdated " + subscriptionId + " " + ((SlotContractStorageSubscription)css).getId());
-//        }
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
     public void onRevoked(ImmutableEnvironment ime) {
         ledger.removeSlotContractWithAllSubscriptions(getId());
-//        ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(ime), getPackedTransaction());
-//
-//        for (ContractStorageSubscription css : ime.storageSubscriptions()) {
-//            // todo: may be here we can remove subscriptions by set of ids?
-//            ledger.removeEnvironmentSubscription(((SlotContractStorageSubscription) css).getId());
-//        }
-//
-//        ledger.removeEnvironment(getId());
     }
 
     static {
