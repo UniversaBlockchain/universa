@@ -12,17 +12,15 @@ import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import org.hamcrest.Matchers;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.*;
 
 public class SlotContractTest extends ContractTestBase {
 
@@ -66,8 +64,15 @@ public class SlotContractTest extends ContractTestBase {
 
         assertEquals(simpleContract.getId(), ((SlotContract) smartContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) smartContract).getPackedTrackingContract()).getContract().getId());
-//        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
-        assertEquals(simpleContract.getId(), TransactionPack.unpack(smartContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
+
+        Binder trackingHashesAsBase64 = smartContract.getStateData().getBinder("tracking_contract");
+        for (String k : trackingHashesAsBase64.keySet()) {
+            byte[] packed = trackingHashesAsBase64.getBinary(k);
+            if (packed != null) {
+                Contract c = Contract.fromPackedTransaction(packed);
+                assertEquals(simpleContract.getId(), c.getId());
+            }
+        }
     }
 
     @Test
@@ -104,8 +109,15 @@ public class SlotContractTest extends ContractTestBase {
 
         assertEquals(simpleContract.getId(), ((SlotContract) smartContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) smartContract).getPackedTrackingContract()).getContract().getId());
-//        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
-        assertEquals(simpleContract.getId(), TransactionPack.unpack(smartContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
+
+        Binder trackingHashesAsBase64 = smartContract.getStateData().getBinder("tracking_contract");
+        for (String k : trackingHashesAsBase64.keySet()) {
+            byte[] packed = trackingHashesAsBase64.getBinary(k);
+            if (packed != null) {
+                Contract c = Contract.fromPackedTransaction(packed);
+                assertEquals(simpleContract.getId(), c.getId());
+            }
+        }
     }
 
     @Test
@@ -142,8 +154,15 @@ public class SlotContractTest extends ContractTestBase {
 
         assertEquals(simpleContract.getId(), ((SlotContract) desContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) desContract).getPackedTrackingContract()).getContract().getId());
-//        assertEquals(simpleContract.getId().toBase64String(), desContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
-        assertEquals(simpleContract.getId(), TransactionPack.unpack(desContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
+
+        Binder trackingHashesAsBase64 = desContract.getStateData().getBinder("tracking_contract");
+        for (String k : trackingHashesAsBase64.keySet()) {
+            byte[] packed = trackingHashesAsBase64.getBinary(k);
+            if (packed != null) {
+                Contract c = Contract.fromPackedTransaction(packed);
+                assertEquals(simpleContract.getId(), c.getId());
+            }
+        }
 
         Contract copiedContract = smartContract.copy();
         assertSameContracts(smartContract, copiedContract);
@@ -158,9 +177,16 @@ public class SlotContractTest extends ContractTestBase {
 
         assertEquals(simpleContract.getId(), ((SlotContract) copiedContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) copiedContract).getPackedTrackingContract()).getContract().getId());
-//        assertEquals(simpleContract.getId().toBase64String(), copiedContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
-        assertEquals(simpleContract.getId(), TransactionPack.unpack(copiedContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
-    }
+
+        trackingHashesAsBase64 = copiedContract.getStateData().getBinder("tracking_contract");
+        for (String k : trackingHashesAsBase64.keySet()) {
+            byte[] packed = trackingHashesAsBase64.getBinary(k);
+            if (packed != null) {
+                Contract c = Contract.fromPackedTransaction(packed);
+                assertEquals(simpleContract.getId(), c.getId());
+            }
+        }
+   }
 
     @Test
     public void keepRevisions() throws Exception {
@@ -188,8 +214,15 @@ public class SlotContractTest extends ContractTestBase {
         assertEquals(1, ((SlotContract)smartContract).getTrackingContracts().size());
         assertEquals(simpleContract.getId(), ((SlotContract) smartContract).getTrackingContract().getId());
         assertEquals(simpleContract.getId(), TransactionPack.unpack(((SlotContract) smartContract).getPackedTrackingContract()).getContract().getId());
-//        assertEquals(simpleContract.getId().toBase64String(), smartContract.getStateData().getBinder("tracking_contract").get(String.valueOf(simpleContract.getRevision())));
-        assertEquals(simpleContract.getId(), TransactionPack.unpack(smartContract.getStateData().getBinder("tracking_contract").getBinary(String.valueOf(simpleContract.getRevision()))).getContract().getId());
+
+        Binder trackingHashesAsBase64 = smartContract.getStateData().getBinder("tracking_contract");
+        for (String k : trackingHashesAsBase64.keySet()) {
+            byte[] packed = trackingHashesAsBase64.getBinary(k);
+            if (packed != null) {
+                Contract c = Contract.fromPackedTransaction(packed);
+                assertEquals(simpleContract.getId(), c.getId());
+            }
+        }
 
         Contract simpleContract2 = simpleContract.createRevision(key);
         simpleContract2.seal();
@@ -202,8 +235,15 @@ public class SlotContractTest extends ContractTestBase {
         assertEquals(2, ((SlotContract)smartContract).getTrackingContracts().size());
         assertEquals(simpleContract2.getId(), ((SlotContract) smartContract).getTrackingContract().getId());
         assertEquals(simpleContract2.getId(), TransactionPack.unpack(((SlotContract) smartContract).getPackedTrackingContract()).getContract().getId());
-//        assertEquals(simpleContract2.getId(), TransactionPack.unpack(smartContract.getStateData().getBinary("tracking_contract")).getContract().getId());
 
+        trackingHashesAsBase64 = smartContract.getStateData().getBinder("tracking_contract");
+        for (String k : trackingHashesAsBase64.keySet()) {
+            byte[] packed = trackingHashesAsBase64.getBinary(k);
+            if (packed != null) {
+                Contract c = Contract.fromPackedTransaction(packed);
+                assertThat(c.getId(), Matchers.anyOf(equalTo(simpleContract.getId()), equalTo(simpleContract2.getId())));
+            }
+        }
 
         Contract simpleContract3 = simpleContract2.createRevision(key);
         simpleContract3.seal();
@@ -216,8 +256,19 @@ public class SlotContractTest extends ContractTestBase {
         assertEquals(2, ((SlotContract)smartContract).getTrackingContracts().size());
         assertEquals(simpleContract3.getId(), ((SlotContract) smartContract).getTrackingContract().getId());
         assertEquals(simpleContract3.getId(), TransactionPack.unpack(((SlotContract) smartContract).getPackedTrackingContract()).getContract().getId());
-//        assertEquals(simpleContract3.getId(), TransactionPack.unpack(smartContract.getStateData().getBinary("tracking_contract")).getContract().getId());
 
+        trackingHashesAsBase64 = smartContract.getStateData().getBinder("tracking_contract");
+        for (String k : trackingHashesAsBase64.keySet()) {
+            byte[] packed = trackingHashesAsBase64.getBinary(k);
+            if (packed != null) {
+                Contract c = Contract.fromPackedTransaction(packed);
+                assertThat(c.getId(), Matchers.anyOf(
+                        equalTo(simpleContract.getId()),
+                        equalTo(simpleContract2.getId()),
+                        equalTo(simpleContract3.getId())
+                ));
+            }
+        }
     }
 
     public Contract createSlotPayment() throws IOException {

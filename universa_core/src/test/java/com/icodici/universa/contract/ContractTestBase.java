@@ -149,6 +149,8 @@ public class ContractTestBase extends TestCase {
                 }
             } else if(originContract.getStateData().get(k) instanceof byte[]) {
                 assertArrayEquals((byte[]) originContract.getStateData().get(k), (byte[]) checkingContract.getStateData().get(k));
+            } else if(originContract.getStateData().get(k) instanceof Long) {
+                assertEquals(originContract.getStateData().getLong((String) k), checkingContract.getStateData().getLong((String) k));
             } else {
                 assertEquals(originContract.getStateData().get(k), checkingContract.getStateData().get(k));
             }
@@ -161,6 +163,8 @@ public class ContractTestBase extends TestCase {
                 }
             } else if(originContract.getDefinition().getData().get(k) instanceof byte[]) {
                 assertArrayEquals((byte[]) originContract.getDefinition().getData().get(k), (byte[]) checkingContract.getDefinition().getData().get(k));
+            } else if(originContract.getStateData().get(k) instanceof Long) {
+                assertEquals(originContract.getStateData().getLong((String) k), checkingContract.getStateData().getLong((String) k));
             } else {
                 assertEquals(originContract.getDefinition().getData().get(k), checkingContract.getDefinition().getData().get(k));
             }
