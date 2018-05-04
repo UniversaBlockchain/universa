@@ -2524,37 +2524,42 @@ public class Node {
     //                                    if (foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
                                 byte[] foundSlotPack = ledger.getSlotForSubscriptionStorageId(((SlotContractStorageSubscription) foundCss).getId());
                                 if(foundSlotPack != null) {
-                                    SlotContract foundSlot = (SlotContract) Contract.fromPackedTransaction(foundSlotPack);
-                                    if(foundSlot != null) {
-                                        foundSlot.setNodeInfo(myInfo);
-                                        foundSlot.setNodeConfig(config);
-                                        foundSlot.setLedger(ledger);
-                                        if (updatingState == ItemState.APPROVED) {
-                                            foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
-                                                @Override
-                                                public Contract getNewRevision() {
-                                                    return (Contract) updatingItem;
-                                                }
+                                    Contract found = Contract.fromPackedTransaction(foundSlotPack);
+                                    if(found instanceof SlotContract) {
+                                        SlotContract foundSlot = (SlotContract) found;
+                                        if (foundSlot != null) {
+                                            foundSlot.setNodeInfo(myInfo);
+                                            foundSlot.setNodeConfig(config);
+                                            foundSlot.setLedger(ledger);
+                                            if (updatingState == ItemState.APPROVED) {
+                                                foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
+                                                    @Override
+                                                    public Contract getNewRevision() {
+                                                        return (Contract) updatingItem;
+                                                    }
 
-                                                @Override
-                                                public byte[] getPackedTransaction() {
-                                                    return ((Contract) updatingItem).getPackedTransaction();
-                                                }
+                                                    @Override
+                                                    public byte[] getPackedTransaction() {
+                                                        return ((Contract) updatingItem).getPackedTransaction();
+                                                    }
 
-                                                @Override
-                                                public ContractStorageSubscription getSubscription() {
-                                                    return foundCss;
-                                                }
-                                            });
+                                                    @Override
+                                                    public ContractStorageSubscription getSubscription() {
+                                                        return foundCss;
+                                                    }
+                                                });
+                                            }
+                                            if (updatingState == ItemState.REVOKED) {
+                                                foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.RevokedEvent() {
+                                                    @Override
+                                                    public ContractStorageSubscription getSubscription() {
+                                                        return foundCss;
+                                                    }
+                                                });
+                                            }
                                         }
-                                        if (updatingState == ItemState.REVOKED) {
-                                            foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.RevokedEvent() {
-                                                @Override
-                                                public ContractStorageSubscription getSubscription() {
-                                                    return foundCss;
-                                                }
-                                            });
-                                        }
+                                    } else {
+                                        log.e("Stored environment have not a slot contract");
                                     }
                                 }
                             }
