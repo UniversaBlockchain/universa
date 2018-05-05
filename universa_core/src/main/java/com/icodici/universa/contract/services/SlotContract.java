@@ -463,7 +463,6 @@ public class SlotContract extends NSmartContract {
         // calculate time that will be added to now as new expiring time
         // it is difference of all prepaid KD (kilobytes*days) and already spent divided to new storing volume.
         double days = (prepaidKilobytesForDays - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / storingBytes;
-        double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         newExpires = newExpires.plusSeconds(seconds);
 

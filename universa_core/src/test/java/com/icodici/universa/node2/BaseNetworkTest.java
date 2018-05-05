@@ -9031,7 +9031,7 @@ public class BaseNetworkTest extends TestCase {
         paymentContract = getApprovedTUContract();
 
         // revision should be created without additional payments (only setKeepRevisions and putTrackingContract)
-        payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        payingParcel = ContractsService.createParcel(refilledSlotContract, paymentContract, 1, stepaPrivateKeys, false);
 
         refilledSlotContract.check();
         refilledSlotContract.traceErrors();
@@ -9039,14 +9039,12 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+            tuContract = paymentContract;
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
-        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
-        assertEquals(ItemState.APPROVED, node.waitItem(refilledSlotContract.getNew().get(0).getId(), 8000).state);
 
         itemResult = node.waitItem(refilledSlotContract.getId(), 8000);
         assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
