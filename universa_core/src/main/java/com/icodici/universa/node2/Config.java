@@ -168,6 +168,9 @@ public class Config {
     // num of KD (kilobytes and days) for one U
     public static int kilobytesAndDaysPerU = 1;
 
+    // num of ND (names and days) for one U
+    public static double namesAndDaysPerU = 1;
+
     public static int getMinSlotPayment() {
         return minSlotPayment;
     }

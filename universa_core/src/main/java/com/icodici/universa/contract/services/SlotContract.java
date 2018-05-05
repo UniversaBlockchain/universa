@@ -350,7 +350,6 @@ public class SlotContract extends NSmartContract {
         ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
 
         double days = (prepaidKilobytesForDays - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / storingBytes;
-        double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         newExpires = newExpires.plusSeconds(seconds);
 
