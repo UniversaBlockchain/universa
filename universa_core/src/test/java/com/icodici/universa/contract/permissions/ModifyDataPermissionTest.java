@@ -294,4 +294,60 @@ public class ModifyDataPermissionTest extends TestCase {
     }
 
 
+    @Test
+    public void modifyStatDataAtWhiteList() throws Exception {
+
+        // we create first revision with empty data
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"), new Binder());
+        modifyDataPermission.addField("value", Do.listOf("0", "1"));
+        contract.addPermission(modifyDataPermission);
+        contract.getStateData().set("value", null);
+        contract.seal();
+
+//        // then create new revision with non-valid change data
+        Contract changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.getStateData().set("value", "2");
+        changed.seal();
+        changed.check();
+        changed.traceErrors();
+        assertFalse(changed.isOk());
+
+        // then create new revision with valid change data
+        changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.getStateData().set("value", "1");
+        changed.seal();
+        changed.check();
+        changed.traceErrors();
+        assertTrue(changed.isOk());
+
+        // then create new revision with non-valid change data
+        changed = contract.createRevision();
+        changed.addSignerKey(TestKeys.privateKey(0));
+        changed.getStateData().set("value", "2");
+        changed.seal();
+        changed.check();
+        changed.traceErrors();
+        assertFalse(changed.isOk());
+
+        // then update previous contract with valid change data
+        changed.getErrors().clear();
+        changed.getStateData().set("value", "1");
+        changed.seal();
+        changed.check();
+        changed.traceErrors();
+        assertTrue(changed.isOk());
+
+        // we create first revision with initially bad data
+        Contract trickContract = new Contract(TestKeys.privateKey(0));
+        trickContract.addPermission(modifyDataPermission);
+        trickContract.getStateData().set("value", "2");
+        trickContract.seal();
+        trickContract.check();
+        trickContract.traceErrors();
+        assertFalse(trickContract.isOk());
+    }
+
 }
