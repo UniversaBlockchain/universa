@@ -7,7 +7,7 @@ public class Quantiser {
     private int quantaSum_ = 0;
     private int quantaLimit_ = -1;
     private boolean isCalculationFinished_ = false;
-    public static int quantaPerUTN = Config.quantiser_quantaPerU;
+    public static int quantaPerU = Config.quantiser_quantaPerU;
 
 
     public Quantiser() {

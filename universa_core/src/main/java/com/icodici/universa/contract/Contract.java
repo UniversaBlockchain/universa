@@ -14,7 +14,6 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
-import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.Config;
@@ -61,7 +60,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private int apiLevel = MAX_API_LEVEL;
     private Context context = null;
 
-    private boolean shouldBeTU = false;
+    private boolean shouldBeU = false;
     private boolean limitedForTestnet = false;
     private boolean isSuitableForTestnet = false;
 
@@ -677,7 +676,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean checkTestPaymentLimitations() {
         boolean res = true;
         // we won't check TU contract
-        if (!shouldBeTU()) {
+        if (!shouldBeU()) {
             isSuitableForTestnet = true;
             for (PublicKey key : sealedByKeys.keySet()) {
                 if (key != null) {
@@ -870,7 +869,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public int getProcessedCostTU() {
-        return (int) Math.floor(quantiser.getQuantaSum() / Quantiser.quantaPerUTN) + 1;
+        return (int) Math.floor(quantiser.getQuantaSum() / Quantiser.quantaPerU) + 1;
     }
 
     /**
@@ -2622,7 +2621,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public boolean isTU(Set<KeyAddress> issuerKeys, String issuerName) {
+    public boolean isU(Set<KeyAddress> issuerKeys, String issuerName) {
         Set<KeyAddress> thisIssuerAddresses = new HashSet<>(getIssuer().getKeyAddresses());
         for (PublicKey publicKey : getIssuer().getKeys())
             thisIssuerAddresses.add(publicKey.getShortAddress());
@@ -2634,11 +2633,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     @Override
-    public boolean shouldBeTU() {
-        return shouldBeTU;
+    public boolean shouldBeU() {
+        return shouldBeU;
     }
-    public void setShouldBeTU(boolean shouldBeTU) {
-        this.shouldBeTU = shouldBeTU;
+    public void setShouldBeU(boolean shouldBeU) {
+        this.shouldBeU = shouldBeU;
     }
 
     public void setLimitedForTestnet(boolean limitedForTestnet) {

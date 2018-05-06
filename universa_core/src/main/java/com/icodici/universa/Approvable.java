@@ -84,6 +84,13 @@ public interface Approvable extends HashIdentifiable {
         return check("");
     }
 
+    /**
+     * Special check for U contracts (used as payment for {@link com.icodici.universa.contract.Parcel}).
+     * Use {@link Approvable#shouldBeU()} to know if item should checked using this method.
+     * @param issuerKeys is set of keys allowed for U issuing
+     * @return true if checking passed successfully otherwise false.
+     * @throws Quantiser.QuantiserException
+     */
     default boolean paymentCheck(Set<KeyAddress> issuerKeys) throws Quantiser.QuantiserException {
         return false;
     }
@@ -105,7 +112,13 @@ public interface Approvable extends HashIdentifiable {
 
     default ZonedDateTime getExpiresAt() { return ZonedDateTime.now().plusHours(5);}
 
-    default boolean isTU(Set<KeyAddress> issuerKeys, String issuerName) {
+    /**
+     * Special check for item to pass or not U contract criteria: allowed issuer keys and issuer name
+     * @param issuerKeys is set of allowed by node keys for U issuing
+     * @param issuerName is allowed issuer name
+     * @return true id item match with given criteria, otherwise false.
+     */
+    default boolean isU(Set<KeyAddress> issuerKeys, String issuerName) {
         return false;
     }
 
@@ -113,7 +126,13 @@ public interface Approvable extends HashIdentifiable {
         return false;
     }
 
-    default boolean shouldBeTU() {
+    /**
+     * Getter for the node that shows for the node if item should be U contract and should check with special payment check.
+     * Set value for this getter should be safe, i.e. on the node while unpacking or later.
+     *
+     * @return true if item is U contract.
+     */
+    default boolean shouldBeU() {
         return false;
     }
 }

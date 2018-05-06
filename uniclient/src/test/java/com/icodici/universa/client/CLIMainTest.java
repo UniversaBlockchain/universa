@@ -26,7 +26,6 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.ConsoleInterceptor;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
-import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -1998,7 +1997,7 @@ public class CLIMainTest {
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerUTN) + 1;
+        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerU) + 1;
         callMain("--cost", basePath + "contract_for_cost.unicon");
         System.out.println(output);
 
@@ -2024,7 +2023,7 @@ public class CLIMainTest {
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerUTN) + 1;
+        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerU) + 1;
         callMain("--cost",
                 basePath + "contract_for_cost1.unicon",
                 basePath + "contract_for_cost2.unicon");
@@ -2051,7 +2050,7 @@ public class CLIMainTest {
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerUTN) + 1;
+        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerU) + 1;
         callMain("--register", basePath + "contract_for_register_and_cost.unicon",
                 "--cost");
         System.out.println(output);
@@ -2274,7 +2273,7 @@ public class CLIMainTest {
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerUTN) + 1;
+        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerU) + 1;
         callMain("--register",
                 basePath + "contract_for_register_and_cost0.unicon",
                 basePath + "contract_for_register_and_cost1.unicon",

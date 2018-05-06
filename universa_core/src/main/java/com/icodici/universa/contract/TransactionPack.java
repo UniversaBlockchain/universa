@@ -130,7 +130,12 @@ public class TransactionPack implements BiSerializable {
             addKeys(key.getPublicKey());
     }
 
-
+    /**
+     * Method add found contracts in the new items and revoking items to {@link TransactionPack#subItems} and do it
+     * again for each new item.
+     * Also method add to {@link TransactionPack#referencedItems} referenced contracts from given.
+     * @param c - given contract to extract from.
+     */
     protected synchronized void extractAllSubItemsAndReferenced(Contract c) {
         for (Contract r : c.getRevoking()) {
             putSubItem(r);
@@ -210,6 +215,7 @@ public class TransactionPack implements BiSerializable {
             Quantiser quantiser = new Quantiser();
             quantiser.reset(Contract.getTestQuantaLimit());
 
+            // first of all extract public keys given with this transaction pack
             List<Object> keysList = deserializer.deserializeCollection(data.getList("keys", new ArrayList<>()));
 
             keysForPack = new HashSet<>();
@@ -225,6 +231,7 @@ public class TransactionPack implements BiSerializable {
                 }
             }
 
+            // then extracn given referenced items
             List<Bytes> foreignReferenceBytesList = deserializer.deserializeCollection(
                     data.getList("referencedItems", new ArrayList<>())
             );
@@ -235,8 +242,9 @@ public class TransactionPack implements BiSerializable {
                     referencedItems.put(frc.getId(), frc);
                 }
             }
-            
 
+
+            // then extract subItems
             List<Bytes> subItemsBytesList = deserializer.deserializeCollection(
                     data.getListOrThrow("subItems")
             );
@@ -292,11 +300,6 @@ public class TransactionPack implements BiSerializable {
                     }
 
                     // add found binaries on the hierarchy level to subItems
-//                    for (int i = 0; i < sortedSubItemsBytesList.size(); i++) {
-//                        Contract c = new Contract(sortedSubItemsBytesList.get(i).toArray(), this);
-//                        quantiser.addWorkCostFrom(c.getQuantiser());
-//                        subItems.put(c.getId(), c);
-//                    }
                     for (ContractDependencies ct : sortedSubItemsBytesList.keySet()) {
                         Bytes b = sortedSubItemsBytesList.get(ct);
                         createNeededContractAndAddToSubItems(ct, b, quantiser);
@@ -313,6 +316,8 @@ public class TransactionPack implements BiSerializable {
             }
 
             byte[] bb = data.getBinaryOrThrow("contract");
+
+            // contract can be extended, so check it
             String extendedType = data.getString("extended_type", null);
             SmartContract.SmartContractType scType = null;
             if(extendedType != null) {
@@ -321,6 +326,7 @@ public class TransactionPack implements BiSerializable {
                 } catch (IllegalArgumentException e) {
                 }
             }
+            // and if extended type of contract is allowed - create extended contrac, otherwise create simple contract
             if(scType != null) {
                 switch(scType) {
                     case DEFAULT_SMART_CONTRACT:
@@ -342,6 +348,13 @@ public class TransactionPack implements BiSerializable {
         }
     }
 
+    /**
+     * Work method to check if subItem is extended contract and create one, otherwise create simple contract.
+     * @param ct is contract's tree for checking contract
+     * @param b is bytes array for contract creation
+     * @param quantiser is quantizer to control quantas spending
+     * @throws IOException if something went wrong
+     */
     private void createNeededContractAndAddToSubItems(ContractDependencies ct, Bytes b, Quantiser quantiser) throws IOException {
         Contract c = null;
         SmartContract.SmartContractType scType = null;
@@ -515,6 +528,7 @@ public class TransactionPack implements BiSerializable {
             // data without BiSerializer and then do it by hand calling deserialize:
             Binder payload = Boss.load(contractBytes, null);
 
+            // contract can be extended type - we need know about it before
             extendedType = payload.getBinder("contract").getBinder("definition").getString("extended_type", null);
 
             int apiLevel = data.getIntOrThrow("version");

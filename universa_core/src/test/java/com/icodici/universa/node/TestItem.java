@@ -137,7 +137,7 @@ public class TestItem implements Approvable {
     }
 
     @Override
-    public boolean isTU(Set<KeyAddress> issuerKeys, String issuerName) {
+    public boolean isU(Set<KeyAddress> issuerKeys, String issuerName) {
         return true;
     }
 

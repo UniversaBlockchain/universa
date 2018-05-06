@@ -20,7 +20,6 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
-import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
@@ -2868,8 +2867,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -2934,8 +2933,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3002,8 +3001,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3070,8 +3069,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3141,8 +3140,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3191,8 +3190,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 10, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3244,8 +3243,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(stepaTU.getStateData().getIntOrThrow("test_transaction_units") - 80, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("test_transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3356,8 +3355,8 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
         int todayPaidAmount = node.nodeStats.todayPaidAmount;//        reuse payment for another contract
         Contract contract = new Contract(TestKeys.privateKey(12));
@@ -3444,8 +3443,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 
         node.nodeStats.collect(ledger,config);
@@ -3544,9 +3543,9 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(subItemPayload.isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3633,9 +3632,9 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(subItemPayload.isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3734,9 +3733,9 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(subItemPayload.isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3823,9 +3822,9 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(subItemPayload.isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3923,8 +3922,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3983,8 +3982,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -4042,8 +4041,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -4102,8 +4101,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -4157,8 +4156,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isTU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);

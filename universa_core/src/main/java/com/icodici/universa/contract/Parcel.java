@@ -31,9 +31,53 @@ public class Parcel implements BiSerializable {
     private int quantasLimit = 0;
     private boolean isTestPayment = false;
 
+    /**
+     * Terms.
+     <ul>
+     <li><b>parcel</b>: the payment transaction and the payload transaction packed together.
+     The unit of data that node expects from the client to perform approval.</li>
+
+     <li><b>payload</b>: the client's transaction he or she needs to approve with the Universa</li>
+
+     <li><b>payment</b>: the client's transaction that spends one or more TU to pay for the payload processing.</li>
+
+     <li><b>cost</b>: payload processing cost in TU, positive integer.</li>
+
+     <li><b>payment</b>: transaction in U contracts owned by the client reducing its remaining value by some value, or this value.</li>
+     </ul>
+     <br><br>
+     This class implements Parcel.
+     <br>
+     Parcel sends via network as packed {@link Parcel#pack()} byte array. When the node get byte array it
+     unpack it via {@link Parcel#unpack(byte[])}, while unpacking payment and payload is unpacking as {@link TransactionPack},
+     then {@link Parcel#prepareForNode()} is called and unpacked contracts is preparing for the
+     node (set need flags and quanta's limits).
+     */
     public Parcel() {
     }
 
+    /**
+     * Terms.
+     <ul>
+     <li><b>parcel</b>: the payment transaction and the payload transaction packed together.
+     The unit of data that node expects from the client to perform approval.</li>
+
+     <li><b>payload</b>: the client's transaction he or she needs to approve with the Universa</li>
+
+     <li><b>payment</b>: the client's transaction that spends one or more TU to pay for the payload processing.</li>
+
+     <li><b>cost</b>: payload processing cost in TU, positive integer.</li>
+
+     <li><b>payment</b>: transaction in U contracts owned by the client reducing its remaining value by some value, or this value.</li>
+     </ul>
+     <br><br>
+     This class implements Parcel.
+     <br>
+     Parcel sends via network as packed {@link Parcel#pack()} byte array. When the node get byte array it
+     unpack it via {@link Parcel#unpack(byte[])}, while unpacking payment and payload is unpacking as {@link TransactionPack},
+     then {@link Parcel#prepareForNode()} is called and unpacked contracts is preparing for the
+     node (set need flags and quanta's limits).
+     */
     public Parcel(TransactionPack payload, TransactionPack payment) {
 
         this.payload = payload;
@@ -55,7 +99,29 @@ public class Parcel implements BiSerializable {
         prepareForNode();
     }
 
-    //New constructor for initializing an object from a binder when deserializing
+    /**
+     * Terms.
+     <ul>
+     <li><b>parcel</b>: the payment transaction and the payload transaction packed together.
+     The unit of data that node expects from the client to perform approval.</li>
+
+     <li><b>payload</b>: the client's transaction he or she needs to approve with the Universa</li>
+
+     <li><b>payment</b>: the client's transaction that spends one or more TU to pay for the payload processing.</li>
+
+     <li><b>cost</b>: payload processing cost in TU, positive integer.</li>
+
+     <li><b>payment</b>: transaction in U contracts owned by the client reducing its remaining value by some value, or this value.</li>
+     </ul>
+     <br><br>
+     This class implements Parcel.
+     <br>
+     Parcel sends via network as packed {@link Parcel#pack()} byte array. When the node get byte array it
+     unpack it via {@link Parcel#unpack(byte[])}, while unpacking payment and payload is unpacking as {@link TransactionPack},
+     then {@link Parcel#prepareForNode()} is called and unpacked contracts is preparing for the
+     node (set need flags and quanta's limits).
+
+     */
     public Parcel(Binder data) throws IOException {
         BiDeserializer biD = new BiDeserializer();
         deserialize(data, biD);
@@ -74,9 +140,16 @@ public class Parcel implements BiSerializable {
     }
 
 
+    /**
+     * Method check parcel's specific behavior and prepare Parcel for the node. It do while unpacking on the Node.
+     * First of all, method extract set payment in U amount convert it to quantas and set quantas for payload.
+     * Method check if payment is test and set special flag in the payment and payload contracts.
+     * And finally set special flag for payment that contract should be U and node should check it in special mode.
+     */
+    protected void prepareForNode() {
 
-    public void prepareForNode() {
-
+        // general idea - take U from payment's parent and take U from payment itself and calculate difference - it will be payment amount in U.
+        // then check test or real payment by field names.
         Contract parent = null;
         for(Contract c : payment.getContract().getRevoking()) {
             if(c.getId().equals(payment.getContract().getParent())) {
@@ -85,30 +158,31 @@ public class Parcel implements BiSerializable {
             }
         }
         if(parent != null) {
-            boolean hasTestTU = payment.getContract().getStateData().get("test_transaction_units") != null;
+            boolean hasTestU = payment.getContract().getStateData().get("test_transaction_units") != null;
             // set pay quantasLimit for payload processing
-            if (hasTestTU) {
+            if (hasTestU) {
                 isTestPayment = true;
-                quantasLimit = Quantiser.quantaPerUTN * (
+                quantasLimit = Quantiser.quantaPerU * (
                         parent.getStateData().getIntOrThrow("test_transaction_units")
                                 - payment.getContract().getStateData().getIntOrThrow("test_transaction_units")
                 );
                 if (quantasLimit <= 0) {
                     isTestPayment = false;
-                    quantasLimit = Quantiser.quantaPerUTN * (
+                    quantasLimit = Quantiser.quantaPerU * (
                             parent.getStateData().getIntOrThrow("transaction_units")
                                     - payment.getContract().getStateData().getIntOrThrow("transaction_units")
                     );
                 }
             } else {
                 isTestPayment = false;
-                quantasLimit = Quantiser.quantaPerUTN * (
+                quantasLimit = Quantiser.quantaPerU * (
                         parent.getStateData().getIntOrThrow("transaction_units")
                                 - payment.getContract().getStateData().getIntOrThrow("transaction_units")
                 );
             }
         }
-        payment.getContract().setShouldBeTU(true);
+
+        payment.getContract().setShouldBeU(true);
         payment.getContract().setLimitedForTestnet(isTestPayment);
         payload.getContract().setLimitedForTestnet(isTestPayment);
         payload.getContract().getNew().forEach(c -> c.setLimitedForTestnet(isTestPayment));
@@ -141,7 +215,6 @@ public class Parcel implements BiSerializable {
 
     @Override
     public synchronized Binder serialize(BiSerializer s) {
-//        System.out.println("Parcel serialize ");
         return Binder.of(
                 "payload", payload.pack(),
                 "payment", payment.pack(),
@@ -150,7 +223,6 @@ public class Parcel implements BiSerializable {
 
     @Override
     public synchronized void deserialize(Binder data, BiDeserializer ds) throws IOException {
-//        System.out.println("Parcel deserialize ");
         payload = TransactionPack.unpack(data.getBinary("payload"));
         payment = TransactionPack.unpack(data.getBinary("payment"));
         hashId = ds.deserialize(data.get("hashId"));
