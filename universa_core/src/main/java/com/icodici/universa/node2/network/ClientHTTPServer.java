@@ -8,6 +8,7 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
@@ -137,6 +138,10 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("approveParcel", this::approveParcel);
         addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
+        addSecureEndpoint("unsRate", this::unsRate);
+        addSecureEndpoint("queryNameRecord", this::queryNameRecord);
+        addSecureEndpoint("queryNameContract", this::queryNameContract);
+
     }
 
     @Override
@@ -148,6 +153,38 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder throw_error(Binder binder, Session session) throws IOException {
         throw new IOException("just a test");
+    }
+
+    private Binder unsRate(Binder params, Session session) throws IOException {
+        Double rate = config.namesAndDaysPerU;
+        String str = rate.toString();
+        Binder b = new Binder();
+        b.put("U", str);
+
+        return b;
+    }
+
+    private Binder queryNameRecord(Binder params, Session session) throws IOException {
+        Binder b = new Binder();
+        byte[] address = params.getBinary("address");
+        byte[] origin = params.getBinary("origin");
+        if (((address == null) && (origin == null)) || ((address != null) && (origin != null)))
+            throw new IOException("invalid arguments");
+        //if (address != null)
+           // b = node.getLedger().getNameForAddress(address);
+       // else
+        // b = node.getLedger().getNameForOrigin(origin);
+
+        return b;
+    }
+
+    private Binder queryNameContract(Binder params, Session session) throws IOException {
+        Binder b = new Binder();
+        String nameContract = params.getStringOrThrow("nameContract");
+
+        // byte[] packedContract = node.getLedger().getContractForNameContract(nameContract);
+        //b.put("packedContract", packedContract);
+        return b;
     }
 
     private ItemResult itemResultOfError(Errors error, String object, String message) {
