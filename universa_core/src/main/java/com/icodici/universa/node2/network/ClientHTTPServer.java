@@ -71,7 +71,11 @@ public class ClientHTTPServer extends BasicHttpServer {
                         data = c.getPackedTransaction();
                     }
                 }
+                if (data == null) {
+                    data = node.getLedger().getContractInStorage(id);
+                }
             }
+
             if (data != null) {
                 // contracts are immutable: cache forever
                 Binder hh = response.getHeaders();
