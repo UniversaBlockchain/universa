@@ -84,6 +84,40 @@ public class SlotContract extends NSmartContract {
     private NodeInfo nodeInfo;
 
     /**
+     * Slot contract is one of several types of smarts contracts that can be run on the node. Slot contract provides
+     * paid storing of other contracts at the special storage, control storing time and control storing revisions of
+     * tracking contract.
+     */
+    public SlotContract() {
+        super();
+    }
+
+    /**
+     * Slot contract is one of several types of smarts contracts that can be run on the node. Slot contract provides
+     * paid storing of other contracts at the special storage, control storing time and control storing revisions of
+     * tracking contract.
+     * <br><br>
+     * Create a default empty new slot contract using a provided key as issuer and owner and sealer. Will set slot's specific
+     * permissions and values.
+     * Default expiration is set to 5 years.
+     * <p>
+     * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
+     * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
+     * creation (but before sealing).
+     *
+     * @param key is {@link PrivateKey} for creating roles "issuer", "owner", "creator" and sign contract
+     */
+    public SlotContract(PrivateKey key) {
+        super(key);
+
+        addSlotSpecific();
+    }
+
+    /**
+     * Slot contract is one of several types of smarts contracts that can be run on the node. Slot contract provides
+     * paid storing of other contracts at the special storage, control storing time and control storing revisions of
+     * tracking contract.
+     * <br><br>
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from the transaction pack supplied. If
      * the transaction pack fails to resolve a link, no error will be reported - not sure it's a good idea. If need, the
      * exception could be generated with the transaction pack.
@@ -101,26 +135,13 @@ public class SlotContract extends NSmartContract {
         deserializeForSlot();
     }
 
-    public SlotContract() {
-        super();
-    }
-
     /**
-     * Create a default empty new contract using a provided key as issuer and owner and sealer. Default expiration is
-     * set to 5 years.
-     * <p>
-     * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
-     * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
-     * creation (but before sealing).
-     *
-     * @param key is {@link PrivateKey} for creating roles "issuer", "owner", "creator" and sign contract
+     * Method adds slot's specific to contract:
+     * <ul>
+     *     <li><i>definition.extended_type</i> is sets to SLOT1</li>
+     *     <li>adds permission <i>modify_data</i> with needed fields</li>
+     * </ul>
      */
-    public SlotContract(PrivateKey key) {
-        super(key);
-
-        addSlotSpecific();
-    }
-
     public void addSlotSpecific() {
         if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(SmartContractType.SLOT1.name()))
             getDefinition().setExtendedType(SmartContractType.SLOT1.name());
@@ -159,6 +180,12 @@ public class SlotContract extends NSmartContract {
         }
     }
 
+    /**
+     * Method calls from {@link SlotContract#fromDslFile(String)} and initialize contract from given binder.
+     * @param root id binder with initialized data
+     * @return created and ready {@link SlotContract} contract.
+     * @throws EncryptionError if something went wrong
+     */
     protected SlotContract initializeWithDsl(Binder root) throws EncryptionError {
         super.initializeWithDsl(root);
         int numRevisions = root.getBinder("state").getBinder("data").getInt(KEEP_REVISIONS_FIELD_NAME, -1);
@@ -167,6 +194,12 @@ public class SlotContract extends NSmartContract {
         return this;
     }
 
+    /**
+     * Method creates {@link SlotContract} contract from dsl file where contract is described.
+     * @param fileName is path to dsl file with yaml structure of data for contract.
+     * @return created and ready {@link SlotContract} contract.
+     * @throws IOException if something went wrong
+     */
     public static SlotContract fromDslFile(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         try (FileReader r = new FileReader(fileName)) {
@@ -175,6 +208,9 @@ public class SlotContract extends NSmartContract {
         }
     }
 
+    /**
+     * @return last revision of the tracking contract packed as {@link TransactionPack}.
+     */
     public byte[] getPackedTrackingContract() {
         if(packedTrackingContracts != null && packedTrackingContracts.size() > 0)
             return packedTrackingContracts.getFirst();
@@ -182,6 +218,9 @@ public class SlotContract extends NSmartContract {
         return null;
     }
 
+    /**
+     * @return last revision of the tracking contract.
+     */
     public Contract getTrackingContract() {
         if(trackingContracts != null && trackingContracts.size() > 0)
             return trackingContracts.getFirst();
@@ -189,6 +228,12 @@ public class SlotContract extends NSmartContract {
         return null;
     }
 
+    /**
+     * Put contract to the tracking contract's revisions queue. Contract will be created from given bytes array.
+     * If queue contains more then {@link SlotContract#keepRevisions} revisions then last one will removed.
+     * @param packed is bytes array with packed {@link TransactionPack}.
+     * @throws IOException if something went wrong.
+     */
     public void putPackedTrackingContract(byte[] packed) throws IOException {
 
         Contract c = TransactionPack.unpack(packed).getContract();
@@ -215,6 +260,11 @@ public class SlotContract extends NSmartContract {
         getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
     }
 
+    /**
+     * Put contract to the tracking contract's revisions queue.
+     * If queue contains more then {@link SlotContract#keepRevisions} revisions then last one will removed.
+     * @param c is revision of tracking {@link Contract}.
+     */
     public void putTrackingContract(Contract c) {
 
         trackingContracts.addFirst(c);
@@ -240,6 +290,10 @@ public class SlotContract extends NSmartContract {
         getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
     }
 
+    /**
+     * Sets number of revisions of tracking contract to hold in the storage.
+     * @param keepRevisions is number of revisions to keep.
+     */
     public void setKeepRevisions(int keepRevisions) {
         this.keepRevisions = keepRevisions;
 
@@ -253,12 +307,28 @@ public class SlotContract extends NSmartContract {
         getStateData().set(KEEP_REVISIONS_FIELD_NAME, keepRevisions);
     }
 
+    /**
+     * @return number of revisions of tracking contract to hold in the storage.
+     */
     public int getKeepRevisions() {
         return keepRevisions;
     }
 
+    /**
+     * It is private method that looking for U contract in the new items of this slot contract. Then calculates
+     * new payment, looking for already paid, summize it and calculate new prepaid period for storing, that sets to
+     * {@link SlotContract#prepaidKilobytesForDays}. This field is measured in the kilobytes*days, means how many kilobytes
+     * storage can hold for how many days.
+     * But if withSaveToState param is false, calculated value
+     * do not saving to state. It is useful for checking set state.data values.
+     * <br><br> Additionally will be calculated new times of payment refilling, and storing info for previous revision of slot.
+     * It is also useful for slot checking.
+     * @param withSaveToState if true, calculated values is saving to  state.data
+     * @return calculated {@link SlotContract#prepaidKilobytesForDays}.
+     */
     private double calculatePrepaidKilobytesForDays(boolean withSaveToState) {
 
+        // first of all looking for U contract and calculate paid U amount.
         for (Contract nc : getNew()) {
             if (nc.isU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
                 int calculatedPayment = 0;
@@ -295,6 +365,8 @@ public class SlotContract extends NSmartContract {
             }
         }
 
+        // then looking for prepaid early U that can be find at the stat.data
+        // additionally we looking for and calculate times of payment fillings and some other data
         ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         double wasPrepaidKilobytesForDays;
         long wasPrepaidFrom = now.toEpochSecond();
@@ -316,6 +388,7 @@ public class SlotContract extends NSmartContract {
 
         spentKDsTime = now;
 
+        // if true we save it to stat.data
         if(withSaveToState) {
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
             if(getRevision() == 1) {
@@ -339,16 +412,28 @@ public class SlotContract extends NSmartContract {
         return prepaidKilobytesForDays;
     }
 
+    /**
+     * Own private slot's method for saving subscription. It calls
+     * from {@link SlotContract#onContractStorageSubscriptionEvent(ContractStorageSubscription.Event)} (when tracking
+     * contract have registered new revision, from {@link SlotContract#onCreated(MutableEnvironment)} and
+     * from {@link SlotContract#onUpdated(MutableEnvironment)} (both when this slot contract have registered new revision).
+     * It recalculate storing params (storing time) and update expiring dates for each revision at the ledger.
+     * @param me is {@link MutableEnvironment} object with some data.
+     */
     private void saveSubscriptionsToLedger(MutableEnvironment me) {
 
+        // recalculate storing info without saving to state to get valid storing data
         calculatePrepaidKilobytesForDays(false);
 
         int storingBytes = 0;
         for(byte[] packed : packedTrackingContracts) {
             storingBytes += packed.length;
         }
+
         ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
 
+        // calculate time that will be added to now as new expiring time
+        // it is difference of all prepaid KD (kilobytes*days) and already spent divided to new storing volume.
         double days = (prepaidKilobytesForDays - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / storingBytes;
         double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
@@ -371,6 +456,9 @@ public class SlotContract extends NSmartContract {
         }
     }
 
+    /**
+     * @return calculated prepaid KD (kilobytes*days) for all time, from first revision
+     */
     public double getPrepaidKilobytesForDays() {
         return prepaidKilobytesForDays;
     }
@@ -398,10 +486,11 @@ public class SlotContract extends NSmartContract {
             // remove old subscriptions
             ledger.removeSlotContractWithAllSubscriptions(getId());
 
+            // and save new
             saveSubscriptionsToLedger(me);
 
         } else if(event instanceof ContractStorageSubscription.RevokedEvent) {
-            // remove subscription
+            // remove subscriptions
             ledger.removeSlotContractWithAllSubscriptions(getId());
         }
 
@@ -409,6 +498,9 @@ public class SlotContract extends NSmartContract {
     }
 
     @Override
+    /**
+     * We override seal method to recalculate holding at the state.data values
+     */
     public byte[] seal() {
         calculatePrepaidKilobytesForDays(true);
 
@@ -423,7 +515,9 @@ public class SlotContract extends NSmartContract {
         deserializeForSlot();
     }
 
-    // this method should be only at the deserialize
+    /**
+     * Extract values from deserializing object for slot fields.
+     */
     private void deserializeForSlot() {
 
         if(packedTrackingContracts == null) {
@@ -433,15 +527,19 @@ public class SlotContract extends NSmartContract {
             trackingContracts = new LinkedList<>();
         }
 
+        // extract keep_revisions value
         int numRevisions = getStateData().getInt(KEEP_REVISIONS_FIELD_NAME, -1);
         if(numRevisions > 0)
             keepRevisions = numRevisions;
 
+        // extract saved prepaid KD (kilobytes*days) value
         prepaidKilobytesForDays = getStateData().getInt(PREPAID_KD_FIELD_NAME, 0);
 
+        // and extract time when first time payment was
         long prepaidFromSeconds = getStateData().getLong(PREPAID_FROM_TIME_FIELD_NAME, 0);
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
 
+        // extract and sort by revision number
         try {
             List<Contract> contracts = new ArrayList<>();
             Binder trackingHashesAsBase64 = getStateData().getBinder(TRACKING_CONTRACT_FIELD_NAME);
@@ -481,8 +579,10 @@ public class SlotContract extends NSmartContract {
 
         boolean checkResult = false;
 
+        // recalculate storing info without saving to state to get valid storing data
         calculatePrepaidKilobytesForDays(false);
 
+        // check that slot has payment and payment is valid
         boolean hasPayment = false;
         for (Contract nc : getNew()) {
             if(nc.isU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
@@ -530,6 +630,7 @@ public class SlotContract extends NSmartContract {
             return checkResult;
         }
 
+        // check that payment was not hacked
         checkResult = prepaidKilobytesForDays == getStateData().getInt(PREPAID_KD_FIELD_NAME, 0);
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_KD_FIELD_NAME + "] value. " +
@@ -537,6 +638,7 @@ public class SlotContract extends NSmartContract {
             return checkResult;
         }
 
+        // and call common slot check
         checkResult = additionallySlotCheck(c);
 
         return checkResult;
@@ -546,8 +648,10 @@ public class SlotContract extends NSmartContract {
     public boolean beforeUpdate(ImmutableEnvironment c) {
         boolean checkResult = false;
 
+        // recalculate storing info without saving to state to get valid storing data
         calculatePrepaidKilobytesForDays(false);
 
+        // check that payment was not hacked
         checkResult = prepaidKilobytesForDays == getStateData().getInt(PREPAID_KD_FIELD_NAME, 0);
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_KD_FIELD_NAME + "] value. " +
@@ -555,6 +659,7 @@ public class SlotContract extends NSmartContract {
             return checkResult;
         }
 
+        // and call common slot check
         checkResult = additionallySlotCheck(c);
 
         return checkResult;
@@ -569,18 +674,21 @@ public class SlotContract extends NSmartContract {
 
         boolean checkResult = false;
 
+        // check slot environment
         checkResult = ime != null;
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Environment should be not null");
             return checkResult;
         }
 
+        // check that slot has known and valid type of smart contract
         checkResult = getExtendedType().equals(SmartContractType.SLOT1.name());
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "definition.extended_type", "illegal value, should be " + SmartContractType.SLOT1.name() + " instead " + getExtendedType());
             return checkResult;
         }
 
+        // check for tracking contract existing
         checkResult = trackingContracts.size() == 0 || getTrackingContract() != null;
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Tracking contract is missed");
@@ -588,12 +696,14 @@ public class SlotContract extends NSmartContract {
         }
 
         if(getTrackingContract() != null) {
+            // check for that last revision of tracking contract has same owner as creator of slot
             checkResult = getTrackingContract().getOwner().isAllowedForKeys(getCreator().getKeys());
             if (!checkResult) {
                 addError(Errors.FAILED_CHECK, "Creator of Slot-contract must has allowed keys for owner of tracking contract");
                 return checkResult;
             }
 
+            // check for all revisions of tracking contract has same origin
             for(Contract tc : trackingContracts) {
                 checkResult = getTrackingContract().getOrigin().equals(tc.getOrigin());
                 if (!checkResult) {
@@ -622,6 +732,7 @@ public class SlotContract extends NSmartContract {
 
     @Override
     public void onRevoked(ImmutableEnvironment ime) {
+        // remove subscriptions
         ledger.removeSlotContractWithAllSubscriptions(getId());
     }
 
