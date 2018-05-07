@@ -50,18 +50,31 @@ public class SlotContract extends NSmartContract {
     private LinkedList<Contract> trackingContracts = new LinkedList<>();
     private int keepRevisions = 1;
 
+    // Calculate U paid with las revision of slot
     private int paidU = 0;
+    // All KD (kilobytes*days) prepaid from first revision (sum of all paidU, converted to KD)
     private double prepaidKilobytesForDays = 0;
+    // Time of first payment
     private ZonedDateTime prepaidFrom = null;
+    // Stored bytes for previous revision of slot. Use for calculate spent KDs
     private long storedEarlyBytes = 0;
+    // Spent KDs for previous revision
     private double spentEarlyKDs = 0;
+    // Time of spent KD's calculation for previous revision
     private ZonedDateTime spentEarlyKDsTime = null;
+    // Spent KDs for current revious revision
     private double spentKDs = 0;
+    // Time of spent KD's calculation for current revision
     private ZonedDateTime spentKDsTime = null;
 
     public Config getNodeConfig() {
         return nodeConfig;
     }
+
+    /**
+     * Set node's {@link Config}. Slot needs for config to find and check U contract (needs u issuer keys).
+     * @param nodeConfig is {@link Config}
+     */
     public void setNodeConfig(Config nodeConfig) {
         this.nodeConfig = nodeConfig;
     }
@@ -70,6 +83,11 @@ public class SlotContract extends NSmartContract {
     public Ledger getLedger() {
         return ledger;
     }
+
+    /**
+     * Set {@link Ledger} from the node. Slot contract needs with ledger for creation and update subscriptions.
+     * @param ledger is {@link Ledger}
+     */
     public void setLedger(Ledger ledger) {
         this.ledger = ledger;
     }
@@ -78,6 +96,11 @@ public class SlotContract extends NSmartContract {
     public NodeInfo getNodeInfo() {
         return nodeInfo;
     }
+
+    /**
+     * Set {@link NodeInfo}
+     * @param nodeInfo
+     */
     public void setNodeInfo(NodeInfo nodeInfo) {
         this.nodeInfo = nodeInfo;
     }
