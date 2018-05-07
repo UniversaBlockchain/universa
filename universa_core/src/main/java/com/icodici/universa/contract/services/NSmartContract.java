@@ -57,12 +57,18 @@ public class NSmartContract extends SmartContract implements NContract {
 
     }
 
+    /**
+     * Method calls from {@link NSmartContract#fromDslFile(String)} and initialize contract from given binder.
+     * @param root id binder with initialized data
+     * @return created and ready {@link NSmartContract} contract.
+     * @throws EncryptionError if something went wrong
+     */
     protected NSmartContract initializeWithDsl(Binder root) throws EncryptionError {
         super.initializeWithDsl(root);
         return this;
     }
 
-    public static SmartContract fromDslFile(String fileName) throws IOException {
+    public static NSmartContract fromDslFile(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         try (FileReader r = new FileReader(fileName)) {
             Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(r)));

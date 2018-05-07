@@ -119,6 +119,7 @@ public class SmartContract extends Contract implements NodeContract {
     public boolean check() throws Quantiser.QuantiserException {
         boolean checkResult = false;
 
+        // check that type of smart contract is set and exist
         String extendedTypeString = getExtendedType();
         if(extendedTypeString != null) {
 
@@ -149,11 +150,23 @@ public class SmartContract extends Contract implements NodeContract {
         return checkResult;
     }
 
+    /**
+     * Method calls from {@link SmartContract#fromDslFile(String)} and initialize contract from given binder.
+     * @param root id binder with initialized data
+     * @return created and ready {@link SmartContract} contract.
+     * @throws EncryptionError if something went wrong
+     */
     protected SmartContract initializeWithDsl(Binder root) throws EncryptionError {
         super.initializeWithDsl(root);
         return this;
     }
 
+    /**
+     * Method creates {@link SmartContract} contract from dsl file where contract is described.
+     * @param fileName is path to dsl file with yaml structure of data for contract.
+     * @return created and ready {@link SmartContract} contract.
+     * @throws IOException if something went wrong
+     */
     public static SmartContract fromDslFile(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         try (FileReader r = new FileReader(fileName)) {

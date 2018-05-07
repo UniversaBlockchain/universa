@@ -28,6 +28,11 @@ import java.time.ZonedDateTime;
 import java.util.*;
 
 @BiType(name = "SlotContract")
+/**
+ * Slot contract is one of several types of smarts contracts that can be run on the node. Slot contract provides
+ * paid storing of other contracts at the special storage, control storing time and control storing revisions of
+ * tracking contract.
+ */
 public class SlotContract extends NSmartContract {
 
     public static final String PREPAID_KD_FIELD_NAME = "prepaid_KD";

@@ -10,17 +10,31 @@ import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Implements {@link ImmutableEnvironment} interface for slot contract.
+ */
 public class SlotImmutableEnvironment extends Binder implements ImmutableEnvironment {
 
+    // slot contract this environment belongs to
     protected SlotContract contract;
     protected ZonedDateTime createdAt;
+    // set of subscriptions holds by slot contract
     protected Set<ContractStorageSubscription> storageSubscriptionsSet = new HashSet<>();
 
+    /**
+     * Restore SlotImmutableEnvironment
+     * @param contract slot contract this environment belongs to
+     */
     public SlotImmutableEnvironment(SlotContract contract) {
         this.contract = contract;
         createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
     }
 
+    /**
+     * Restore SlotImmutableEnvironment
+     * @param contract slot contract this environment belongs to
+     * @param kvBinder map stored in the ledger
+     */
     public SlotImmutableEnvironment(SlotContract contract, Binder kvBinder) {
         this(contract);
 
@@ -31,6 +45,12 @@ public class SlotImmutableEnvironment extends Binder implements ImmutableEnviron
         }
     }
 
+    /**
+     * Restore SlotImmutableEnvironment
+     * @param contract slot contract this environment belongs to
+     * @param kvBinder map stored in the ledger
+     * @param storageSubscriptionsSet subscriptions for this environment
+     */
     public SlotImmutableEnvironment(SlotContract contract, Binder kvBinder, Set<ContractStorageSubscription> storageSubscriptionsSet) {
         this(contract, kvBinder);
 

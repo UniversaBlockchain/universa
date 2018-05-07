@@ -4,6 +4,9 @@ import com.icodici.universa.contract.Contract;
 
 import java.time.ZonedDateTime;
 
+/**
+ * Implements {@link ContractStorageSubscription} interface for slot contract.
+ */
 public class SlotContractStorageSubscription implements ContractStorageSubscription {
 
     private long id = 0;
@@ -47,6 +50,11 @@ public class SlotContractStorageSubscription implements ContractStorageSubscript
         return id;
     }
 
+    /**
+     * Set id from ledger for record with stored contract.
+     *
+     * @param value is id
+     */
     public void setContractStorageId(long value) {
         contractStorageId = value;
     }

@@ -10,16 +10,36 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Set;
 
+/**
+ * Implements {@link MutableEnvironment} interface for slot contract.
+ */
 public class SlotMutableEnvironment extends SlotImmutableEnvironment implements MutableEnvironment {
 
+    /**
+     * Restore SlotMutableEnvironment
+     * @param contract slot contract this environment belongs to
+     */
     public SlotMutableEnvironment(SlotContract contract) {
         super(contract);
     }
 
+
+    /**
+     * Restore SlotMutableEnvironment
+     * @param contract slot contract this environment belongs to
+     * @param kvBinder map stored in the ledger
+     */
     public SlotMutableEnvironment(SlotContract contract, Binder kvBinder) {
         super(contract, kvBinder);
     }
 
+
+    /**
+     * Restore SlotMutableEnvironment
+     * @param contract slot contract this environment belongs to
+     * @param kvBinder map stored in the ledger
+     * @param storageSubscriptionsSet subscriptions for this environment
+     */
     public SlotMutableEnvironment(SlotContract contract, Binder kvBinder, Set<ContractStorageSubscription> storageSubscriptionsSet) {
         super(contract, kvBinder, storageSubscriptionsSet);
     }

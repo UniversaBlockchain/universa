@@ -22,21 +22,21 @@ public interface NodeContract {
     @NonNull String getExtendedType();
 
     /**
-     * Check the smartcontract could be created
+     * Check the smart contract could be created
      *
      * @return true it if can be created
      */
     boolean beforeCreate(ImmutableEnvironment e);
 
     /**
-     * Check the smartcontract could be updated (e.g. new revision could be registered)
+     * Check the smart contract could be updated (e.g. new revision could be registered)
      *
      * @return true it if can be created
      */
     boolean beforeUpdate(ImmutableEnvironment e);
 
     /**
-     * Check the smartcontract could be revoked
+     * Check the smart contract could be revoked
      *
      * @return true it if can be created
      */
