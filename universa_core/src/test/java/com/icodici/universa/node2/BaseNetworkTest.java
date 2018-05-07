@@ -9766,6 +9766,38 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
+    @Test(timeout = 90000)
+    public void registerUnsContract() throws Exception {
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        UnsContract uns = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
+        uns.setNodeConfig(node.getConfig());
+        uns.addSignerKey(manufacturePrivateKeys.iterator().next());
+        uns.seal();
+        uns.check();
+        uns.traceErrors();
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+    }
+
+
     @Test
     public void goodNSmartContractFromDSLWithSending() throws Exception {
         Contract smartContract = NSmartContract.fromDslFile(ROOT_PATH + "NotaryNSmartDSLTemplate.yml");

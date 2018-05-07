@@ -2,6 +2,7 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -15,6 +16,7 @@ import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
@@ -40,7 +42,7 @@ public class UnsContract extends NSmartContract {
     public static final String SPENT_ND_FIELD_NAME = "spent_ND";
     public static final String SPENT_ND_TIME_FIELD_NAME = "spent_ND_time";
 
-    private ArrayList<Binder> storedNames = new ArrayList<>();
+    private ArrayList<?> storedNames = new ArrayList<>();
     private int paidU = 0;
     private double prepaidNamesForDays = 0;
     private long storedEarlyEntries = 0;
@@ -217,9 +219,16 @@ public class UnsContract extends NSmartContract {
             if(getRevision() == 1)
                 getStateData().set(PREPAID_ND_FROM_TIME_FIELD_NAME, now.toEpochSecond());
 
+            // calculate num of entries
             int storingEntries = 0;
-            for(Binder name: storedNames) {
-                ArrayList<?> entries = name.getArray(ENTRIES_FIELD_NAME);
+            for (Object name: storedNames) {
+                Binder binder;
+                if (name.getClass().getName().endsWith("Binder"))
+                    binder = (Binder) name;
+                else
+                    binder = new Binder((Map) name);
+
+                ArrayList<?> entries = binder.getArray(ENTRIES_FIELD_NAME);
                 if (entries != null)
                     storingEntries += entries.size();
             }
@@ -253,7 +262,7 @@ public class UnsContract extends NSmartContract {
     // this method should be only at the deserialize
     private void deserializeForUns() {
 
-        storedNames = getStateData().getBinders(NAMES_FIELD_NAME);
+        storedNames = getStateData().getArray(NAMES_FIELD_NAME);
 
         prepaidNamesForDays = getStateData().getInt(PREPAID_ND_FIELD_NAME, 0);
 
@@ -263,7 +272,7 @@ public class UnsContract extends NSmartContract {
 
     protected UnsContract initializeWithDsl(Binder root) throws EncryptionError {
         super.initializeWithDsl(root);
-        storedNames = root.getBinder("state").getBinder("data").getBinders(NAMES_FIELD_NAME);
+        storedNames = root.getBinder("state").getBinder("data").getArray(NAMES_FIELD_NAME);
         return this;
     }
 
@@ -273,6 +282,138 @@ public class UnsContract extends NSmartContract {
             Binder binder = Binder.from(DefaultBiMapper.deserialize((Map) yaml.load(r)));
             return new UnsContract().initializeWithDsl(binder);
         }
+    }
+
+    @Override
+    public boolean beforeCreate(ImmutableEnvironment c) {
+
+        boolean checkResult = false;
+
+        calculatePrepaidNamesForDays(false);
+
+        boolean hasPayment = false;
+        for (Contract nc : getNew()) {
+            if (nc.isTU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
+                hasPayment = true;
+
+                int calculatedPayment = 0;
+                boolean isTestPayment = false;
+                Contract parent = null;
+                for (Contract nrc : nc.getRevoking()) {
+                    if (nrc.getId().equals(nc.getParent())) {
+                        parent = nrc;
+                        break;
+                    }
+                }
+                if (parent != null) {
+                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
+                    if (hasTestTU) {
+                        isTestPayment = true;
+                        if (calculatedPayment <= 0)
+                            isTestPayment = false;
+                    } else
+                        isTestPayment = false;
+
+                    if (isTestPayment) {
+                        hasPayment = false;
+                        addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing names");
+                    }
+
+                    if (paidU < nodeConfig.getMinUnsPayment()) {
+                        hasPayment = false;
+                        addError(Errors.FAILED_CHECK, "Payment for UNS contract is below minimum level of " + nodeConfig.getMinUnsPayment() + "U");
+                    }
+                } else {
+                    hasPayment = false;
+                    addError(Errors.FAILED_CHECK, "Payment contract is missing parent contract");
+                }
+            }
+        }
+
+        checkResult = hasPayment;
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, "UNS contract hasn't valid payment");
+            return checkResult;
+        }
+
+        checkResult = prepaidNamesForDays == getStateData().getInt(PREPAID_ND_FIELD_NAME, 0);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_ND_FIELD_NAME + "] value. " +
+                    "Should be sum of early paid U and paid U by current revision.");
+            return checkResult;
+        }
+
+        checkResult = additionallyUnsCheck(c);
+
+        return checkResult;
+    }
+
+    @Override
+    public boolean beforeUpdate(ImmutableEnvironment c) {
+        boolean checkResult = false;
+
+        calculatePrepaidNamesForDays(false);
+
+        checkResult = prepaidNamesForDays == getStateData().getInt(PREPAID_ND_FIELD_NAME, 0);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_ND_FIELD_NAME + "] value. " +
+                    "Should be sum of early paid U and paid U by current revision.");
+            return checkResult;
+        }
+
+        checkResult = additionallyUnsCheck(c);
+
+        return checkResult;
+    }
+
+    @Override
+    public boolean beforeRevoke(ImmutableEnvironment c) {
+        return additionallyUnsCheck(c);
+    }
+
+    private boolean additionallyUnsCheck(ImmutableEnvironment ime) {
+
+        boolean checkResult = false;
+
+        checkResult = ime != null;
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, "Environment should be not null");
+            return checkResult;
+        }
+
+        checkResult = getExtendedType().equals(SmartContractType.UNS1.name());
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, "definition.extended_type", "illegal value, should be " + SmartContractType.UNS1.name() + " instead " + getExtendedType());
+            return checkResult;
+        }
+
+
+        checkResult = (storedNames.size() > 0);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, "Names for storing is missing");
+            return checkResult;
+        }
+
+        return checkResult;
+    }
+
+    @Override
+    public @Nullable Binder onCreated(MutableEnvironment me) {
+        //saveSubscriptionsToLedger(me);
+
+        return Binder.fromKeysValues("status", "ok");
+    }
+
+    @Override
+    public Binder onUpdated(MutableEnvironment me) {
+        //saveSubscriptionsToLedger(me);
+
+        return Binder.fromKeysValues("status", "ok");
+    }
+
+    @Override
+    public void onRevoked(ImmutableEnvironment ime) {
+        //ledger.removeSlotContractWithAllSubscriptions(getId());
     }
 
     static {

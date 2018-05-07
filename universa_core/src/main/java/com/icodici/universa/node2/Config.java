@@ -169,13 +169,19 @@ public class Config {
     public static int kilobytesAndDaysPerU = 1;
 
     // num of ND (names and days) for one U
-    public static double namesAndDaysPerU = 1;
+    public static double namesAndDaysPerU = 0.25;
 
     public static int getMinSlotPayment() {
         return minSlotPayment;
     }
 
     private static int minSlotPayment = 100;
+
+    public static int getMinUnsPayment() {
+        return minUnsPayment;
+    }
+
+    private static int minUnsPayment = 365 * 4;
 
     public static Duration validUntilTailTime = Duration.ofMinutes(5);
 
