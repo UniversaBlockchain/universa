@@ -2679,7 +2679,6 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Ignore
     @Test(timeout = 60000)
     public void swapSplitJoinAllGood_api2() throws Exception {
         if(node == null) {
@@ -2729,6 +2728,8 @@ public class BaseNetworkTest extends TestCase {
         ContractsService.signPresentedSwap(swapContract, user2PrivKeySet);
         ContractsService.finishSwap(swapContract, user1PrivKeySet);
 
+        user1CoinsSplit.seal();
+        user2CoinsSplit.seal();
         swapContract.getNewItems().clear();
         swapContract.addNewItems(user1CoinsSplit, user2CoinsSplit);
         swapContract.seal();
@@ -2736,6 +2737,9 @@ public class BaseNetworkTest extends TestCase {
         swapContract.check();
         swapContract.traceErrors();
         System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+
+        //now emulate sending transaction pack through network
+        swapContract = Contract.fromPackedTransaction(swapContract.getPackedTransaction());
 
         node.registerItem(swapContract);
         assertEquals(ItemState.APPROVED, node.waitItem(swapContract.getId(), 5000).state);
