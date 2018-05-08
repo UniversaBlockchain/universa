@@ -12,6 +12,7 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.ContractStorageSubscription;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
@@ -205,6 +206,10 @@ public interface Ledger {
     long removeEnvironment(HashId ncontractHashId);
     void removeSlotContractWithAllSubscriptions(HashId slotHashId);
     void removeExpiredStorageSubscriptionsCascade();
+
+    void saveNameRecord(final NameRecordModel nameRecordModel);
+    void removeNameRecord(final String nameReduced);
+    NameRecordModel getNameRecord(final String nameReduced);
 
     void cleanup();
 }
