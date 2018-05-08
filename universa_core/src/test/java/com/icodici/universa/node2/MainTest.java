@@ -233,6 +233,13 @@ public class MainTest {
                 } catch (KeyAddress.IllegalAddressException e) {
                     e.printStackTrace();
                 }
+
+                try {
+                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/tu_key.public.unikey")));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
                 m.waitReady();
                 mm.add(m);
@@ -262,6 +269,13 @@ public class MainTest {
                 } catch (KeyAddress.IllegalAddressException e) {
                     e.printStackTrace();
                 }
+
+                try {
+                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/tu_key.public.unikey")));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
                 m.waitReady();
                 mm.add(m);
@@ -833,6 +847,7 @@ public class MainTest {
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
 
         main.shutdown();
+        Thread.sleep(5000);
 
         mm.remove(main);
         main = createMain("node1", false);
@@ -857,6 +872,33 @@ public class MainTest {
         assertEquals (ItemState.UNDEFINED, itemResult2.state);
 
         mm.forEach(x -> x.shutdown());
+    }
+
+    @Ignore
+    @Test
+    public void shutdownCycle() throws Exception {
+        List<String> dbUrls = new ArrayList<>();
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t1");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t2");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t3");
+        dbUrls.add("jdbc:postgresql://localhost:5432/universa_node_t4");
+        dbUrls.stream().forEach(url -> {
+            try {
+                clearLedger(url);
+            } catch (Exception e) {
+            }
+        });
+        for (int i=0; i < 50; i++) {
+            checkShutdown();
+            System.out.println("iteration " + i);
+            Thread.sleep(5000);
+            dbUrls.stream().forEach(url -> {
+                try {
+                    clearLedger(url);
+                } catch (Exception e) {
+                }
+            });
+        }
     }
 
     @Test
@@ -911,7 +953,7 @@ public class MainTest {
             System.out.println(">> wait result: " + itemResult);
         }
 
-        Thread.sleep(5000);
+        Thread.sleep(7000);
         itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
 
         assertEquals (ItemState.APPROVED, itemResult.state);
@@ -970,7 +1012,7 @@ public class MainTest {
 
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        ts.node.shutdown();
+        ts.nodes.forEach(x -> x.shutdown());
     }
 
     private TestSpace prepareTestSpace() throws Exception {
@@ -1338,7 +1380,7 @@ public class MainTest {
 
         //recreate network and make sure contract is still APPROVED
         testSpace.nodes.forEach(n->n.shutdown());
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         testSpace = prepareTestSpace(issuerKey);
         assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
 
@@ -1363,6 +1405,8 @@ public class MainTest {
             Thread.sleep(100);
         }
         assertEquals(rr.state,ItemState.APPROVED);
+
+        testSpace.nodes.forEach(x -> x.shutdown());
 
     }
 
@@ -1402,6 +1446,8 @@ public class MainTest {
         ItemResult itemResult = client.register(contract.getPackedTransaction(), 5000);
         System.out.println("itemResult: " + itemResult);
         assertEquals(expectedState, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
     }
 
 
@@ -1434,6 +1480,8 @@ public class MainTest {
         itemResult = client.register(contract.getPackedTransaction(), 5000);
         System.out.println("itemResult: " + itemResult);
         assertEquals(expectedState, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
     }
 
 }

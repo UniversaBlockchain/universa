@@ -904,6 +904,7 @@ public class Node {
             for (HashId hid : processors.keySet()) {
                 ItemProcessor ipr = processors.get(hid);
                 System.out.println(toString() + "processor " + hid + " is " + ipr);
+                ipr.emergencyBreak();
             }
             try {
                 Thread.sleep(1000);
