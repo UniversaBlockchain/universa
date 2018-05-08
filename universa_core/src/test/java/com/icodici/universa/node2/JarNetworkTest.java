@@ -391,7 +391,7 @@ public class JarNetworkTest extends TestCase {
 
         attemps = 30;
         do {
-            itemResult = normalClient.getState(parcel.getPaymentContract().getId());
+            itemResult = normalClient.getState(parcel.getPayloadContract().getId());
             if(!itemResult.state.isPending())
                 break;
             attemps--;
@@ -655,6 +655,57 @@ public class JarNetworkTest extends TestCase {
         assertNull(ebytes);
     }
 
+    @Test
+    public void slotContractNoPayment() throws Exception {
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+
+        Contract simpleContract = new Contract(key);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+
+        registerAndCheckApproved(simpleContract);
+
+        // slot contract that storing
+
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
+        slotContract.setNodeConfig(config);
+        slotContract.putTrackingContract(simpleContract);
+
+
+        normalClient.register(slotContract.getTransactionPack().pack());
+
+        ItemResult rr;
+        do {
+            rr = normalClient.getState(slotContract.getId());
+        } while (rr.state.isPending());
+
+        assertEquals(rr.state, ItemState.UNDEFINED);
+
+
+        registerAndCheckDeclined(slotContract);
+
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), paymentContract, 1, 1, stepaPrivateKeys, false);
+
+        normalClient.registerParcel(payingParcel.pack(),8000);
+        assertEquals(ItemState.APPROVED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
+        assertEquals(ItemState.DECLINED, normalClient.getState(payingParcel.getPayload().getContract().getId()).state);
+        assertEquals(ItemState.UNDEFINED, normalClient.getState(slotContract.getNew().get(0).getId()).state);
+
+    }
 
     @Test
     public void registerSlotContractWithStoringRevisions() throws Exception {
