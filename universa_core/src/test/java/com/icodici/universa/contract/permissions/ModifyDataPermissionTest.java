@@ -164,12 +164,13 @@ public class ModifyDataPermissionTest extends TestCase {
         Contract changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
         Reference ref = new Reference(referencedContract);
+        ref.type =  Reference.TYPE_EXISTING_STATE;
         ref.addMatchingItem(referencedContract);
-        changed.addReferenceToState(ref);
+        changed.addReference(ref);
         changed.seal();
         changed.check();
+        changed.traceErrors();
         assertTrue(changed.isOk());
-
     }
 
     @Test
@@ -185,7 +186,8 @@ public class ModifyDataPermissionTest extends TestCase {
         changed.addSignerKey(TestKeys.privateKey(0));
         Reference ref = new Reference(referencedContract);
         ref.addMatchingItem(referencedContract);
-        changed.addReferenceToState(ref);
+        ref.type =  Reference.TYPE_EXISTING_STATE;
+        changed.addReference(ref);
         changed.seal();
         changed.check();
         assertTrue(!changed.isOk());
@@ -205,7 +207,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         Reference ref = new Reference(referencedContract);
         ref.name = "bank_certificate";
-        ref.type = Reference.TYPE_EXISTING_DEFINITION;
+        ref.type =  Reference.TYPE_EXISTING_STATE;
         ref.setConditions(conditionsForDefinition);
         ref.addMatchingItem(referencedContract);
 
@@ -215,7 +217,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         Contract changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
-        changed.addReferenceToState(ref);
+        changed.addReference(ref);
         changed.seal();
         changed.check();
         changed.traceErrors();
@@ -231,7 +233,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
-        changed.addReferenceToState(ref);
+        changed.addReference(ref);
         changed.seal();
         changed.check();
         changed.traceErrors();
@@ -242,20 +244,20 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
-        changed.addReferenceToState(ref);
+        changed.addReference(ref);
         changed.seal();
         changed.check();
         changed.traceErrors();
         assertFalse(changed.isOk());
 
-        ref.type = Reference.TYPE_EXISTING_DEFINITION;
+        ref.type =  Reference.TYPE_EXISTING_STATE;
         conditionsForDefinition = new Binder();
         conditionsForDefinition.set("any_of", listConditionsForDefinition);
         ref.setConditions(conditionsForDefinition);
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
-        changed.addReferenceToState(ref);
+        changed.addReference(ref);
         changed.seal();
         changed.check();
         changed.traceErrors();
@@ -269,7 +271,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
-        changed.addReferenceToState(ref);
+        changed.addReference(ref);
         changed.seal();
         changed.check();
         changed.traceErrors();
@@ -285,7 +287,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
-        changed.addReferenceToState(ref);
+        changed.addReference(ref);
         changed.seal();
         changed.check();
         changed.traceErrors();
