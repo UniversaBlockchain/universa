@@ -12,6 +12,7 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.ContractStorageSubscription;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import org.sqlite.SQLiteConfig;
@@ -362,6 +363,16 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public void removeExpiredStorageSubscriptionsCascade() {}
+
+
+    @Override
+    public void saveNameRecord(final NameRecordModel nameRecordModel) {}
+
+    @Override
+    public void removeNameRecord(final String nameReduced) {}
+
+    @Override
+    public NameRecordModel getNameRecord(final String nameReduced) {return null;}
 
 
         /**

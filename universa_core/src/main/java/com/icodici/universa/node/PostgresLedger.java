@@ -16,6 +16,8 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.ContractStorageSubscription;
 import com.icodici.universa.contract.services.SlotContractStorageSubscription;
+import com.icodici.universa.node.models.NameEntryModel;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
@@ -1279,6 +1281,164 @@ public class PostgresLedger implements Ledger {
         List<Long> contracts = clearExpiredStorageSubscriptions();
         if ((contracts != null) && (contracts.size() > 0))
             removeStorageContractsForIds(contracts);
+    }
+
+    private long addNameStorage(final NameRecordModel nameRecordModel) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement("" +
+                                    "INSERT INTO name_storage (name_reduced,name_full,description,url,expires_at,environment_id) " +
+                                    "VALUES (?,?,?,?,?,?) " +
+                                    "RETURNING id")
+            ) {
+                statement.setString(1, nameRecordModel.name_reduced);
+                statement.setString(2, nameRecordModel.name_full);
+                statement.setString(3, nameRecordModel.description);
+                statement.setString(4, nameRecordModel.url);
+                statement.setLong(5, StateRecord.unixTime(nameRecordModel.expires_at));
+                statement.setLong(6, nameRecordModel.environment_id);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("addNameStorage failed: returning null");
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addNameStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    private long addNameEntry(final long nameStorageId, final NameEntryModel nameEntryModel) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement("" +
+                                    "INSERT INTO name_entry (name_storage_id,short_addr,long_addr,origin) " +
+                                    "VALUES (?,?,?,?) " +
+                                    "RETURNING entry_id")
+            ) {
+                statement.setLong(1, nameStorageId);
+                statement.setString(2, nameEntryModel.short_addr);
+                statement.setString(3, nameEntryModel.long_addr);
+                statement.setBytes(4, nameEntryModel.origin);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("addNameEntry failed: returning null");
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addNameEntry failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    @Override
+    public void saveNameRecord(final NameRecordModel nameRecordModel) {
+        long nameStorageId = addNameStorage(nameRecordModel);
+        if (nameStorageId != 0) {
+            for (NameEntryModel nameEntryModel : nameRecordModel.entries)
+                addNameEntry(nameStorageId, nameEntryModel);
+        } else {
+            throw new Failure("addNameRecord failed");
+        }
+    }
+
+    @Override
+    public void removeNameRecord(final String nameReduced) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM name_storage WHERE name_reduced=?"
+                            )
+            ) {
+                statement.setString(1, nameReduced);
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("removeNameRecord failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public NameRecordModel getNameRecord(final String nameReduced) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  name_storage.id AS id, " +
+                                            "  name_storage.name_reduced AS name_reduced, " +
+                                            "  name_storage.name_full AS name_full, " +
+                                            "  name_storage.description AS description, " +
+                                            "  name_storage.url AS url, " +
+                                            "  name_storage.expires_at AS expires_at, " +
+                                            "  name_storage.environment_id AS environment_id, " +
+                                            "  name_entry.entry_id AS entry_id, " +
+                                            "  name_entry.short_addr AS short_addr, " +
+                                            "  name_entry.long_addr AS long_addr, " +
+                                            "  name_entry.origin AS origin " +
+                                            "FROM name_storage JOIN name_entry ON name_storage.id=name_entry.name_storage_id " +
+                                            "WHERE name_storage.name_reduced=?"
+                            )
+            ) {
+                statement.setString(1, nameReduced);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getNameRecord failed: returning null");
+                NameRecordModel nameRecordModel = new NameRecordModel();
+                nameRecordModel.entries = new ArrayList<>();
+                boolean firstRow = true;
+                while (rs.next()) {
+                    if (firstRow) {
+                        nameRecordModel.id = rs.getLong("id");
+                        nameRecordModel.name_reduced = rs.getString("name_reduced");
+                        nameRecordModel.name_full = rs.getString("name_full");
+                        nameRecordModel.description = rs.getString("description");
+                        nameRecordModel.url = rs.getString("url");
+                        nameRecordModel.expires_at = StateRecord.getTime(rs.getLong("expires_at"));
+                        nameRecordModel.environment_id = rs.getLong("environment_id");
+                        firstRow = false;
+                    }
+                    NameEntryModel nameEntryModel = new NameEntryModel();
+                    nameEntryModel.name_storage_id = nameRecordModel.id;
+                    nameEntryModel.entry_id = rs.getLong("entry_id");
+                    nameEntryModel.short_addr = rs.getString("short_addr");
+                    nameEntryModel.long_addr = rs.getString("long_addr");
+                    nameEntryModel.origin = rs.getBytes("origin");
+                    nameRecordModel.entries.add(nameEntryModel);
+                }
+                rs.close();
+                return nameRecordModel;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getNameRecord failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+
     }
 
 }
