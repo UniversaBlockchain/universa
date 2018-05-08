@@ -188,13 +188,18 @@ public class UDPAdapter extends DatagramAdapter {
         report(getLabel(), "shutdown", VerboseLevel.BASE);
     }
 
-
+    /**
+     * Just clear all sessions.
+     */
     public void closeSessions() {
         report(getLabel(), "closeSessions");
         sessionsById.clear();
     }
 
 
+    /**
+     * Method brake all seesions by set new empty public key.
+     */
     public void brakeSessions() {
         report(getLabel(), "brakeSessions");
         for (Session s : sessionsById.values()) {
@@ -245,6 +250,13 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Method extract list of {@link DatagramPacket} from sending {@link Block} and put all directly to the socket.
+     *
+     * @param block is {@link Block} to send.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
     protected void sendBlock(Block block, Session session) throws InterruptedException {
 
         if(!block.isValidToSend()) {
@@ -282,6 +294,13 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Method prepare and sends raw {@link Block} as {@link PacketTypes#DATA}. Session for this sending should be
+     * already in the {@link Session#EXCHANGING} mode.
+     * @param rawDataBlock is raw {@link Block} with data.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
     synchronized protected void sendAsDataBlock(Block rawDataBlock, Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send data to ", session.remoteNodeId), VerboseLevel.BASE);
         report(getLabel(), () -> concatReportMessage("sessionKey is ", session.sessionKey.hashCode(),
@@ -323,6 +342,11 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Method create {@link Block} of {@link Session#HELLO} type. This is first step of creation and installation of the session.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
     protected void sendHello(Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send hello to ", session.remoteNodeId), VerboseLevel.BASE);
 
@@ -337,7 +361,12 @@ public class UDPAdapter extends DatagramAdapter {
         sendBlock(block, session);
     }
 
-
+    /**
+     * Method create {@link Block} of {@link Session#WELCOME} type. When someone send us {@link Session#HELLO} typed {@link Block},
+     * we should call this method.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
     protected void sendWelcome(Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send welcome to ", session.remoteNodeId), VerboseLevel.BASE);
 
@@ -349,7 +378,12 @@ public class UDPAdapter extends DatagramAdapter {
         sendBlock(block, session);
     }
 
-
+    /**
+     * Method create {@link Block} of {@link Session#KEY_REQ} type. We have sent {@link Session#HELLO} typed {@link Block},
+     * and have got {@link Session#WELCOME} typed {@link Block} - it means we can continue handshake and sen request for session's keys.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
     synchronized protected void sendKeyRequest(Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send key request to ", session.remoteNodeId), VerboseLevel.BASE);
 
@@ -388,7 +422,13 @@ public class UDPAdapter extends DatagramAdapter {
         }
     }
 
-
+    /**
+     * Method create {@link Block} of {@link Session#SESSION} type. Someone who sent {@link Session#HELLO} typed {@link Block},
+     * send us new {@link Session#KEY_REQ} typed {@link Block} - if all is ok we send session keys to.
+     * From now we ready to data exchange.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
     synchronized protected void sendSessionKey(Session session) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send session key to ", session.remoteNodeId), VerboseLevel.BASE);
         report(getLabel(), () -> concatReportMessage("sessionKey is ", session.sessionKey.hashCode(),
@@ -432,7 +472,14 @@ public class UDPAdapter extends DatagramAdapter {
         }
     }
 
-
+    /**
+     * Each adapter will try to send packets until have got special {@link Block} with type {@link PacketTypes#PACKET_ACK},
+     * that means receiver have got packet. So when we got packet call this method. Note that block can consist from some packets.
+     * @param session is {@link Session} in which sending is.
+     * @param blockId is id of block the packet belongs to.
+     * @param packetId is packet we have got.
+     * @throws InterruptedException if something went wrong
+     */
     protected void sendPacketAck(Session session, int blockId, int packetId) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send packet_ack to ", session.remoteNodeId));
 
@@ -444,7 +491,14 @@ public class UDPAdapter extends DatagramAdapter {
         sendBlock(block, session);
     }
 
-
+    /**
+     * Each adapter will try to send blocks until have got special {@link Block} with type {@link PacketTypes#ACK},
+     * that means receiver have got block. So when we got block and all is ok - call this method. Note that block can consist from
+     * some packets and for got packets needs to call {@link UDPAdapter#sendPacketAck(Session, int, int)}.
+     * @param session is {@link Session} in which sending is.
+     * @param blockId is id of block we have got.
+     * @throws InterruptedException if something went wrong
+     */
     protected void sendAck(Session session, int blockId) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send ack to ", session.remoteNodeId), VerboseLevel.BASE);
 
@@ -455,7 +509,14 @@ public class UDPAdapter extends DatagramAdapter {
         sendBlock(block, session);
     }
 
-
+    /**
+     * Each adapter will try to send blocks until have got special {@link Block} with type {@link PacketTypes#ACK},
+     * that means receiver have got block. So when we got block, but something went wrong - call this method. Note that
+     * for success blocks needs to call {@link UDPAdapter#sendAck(Session, int)}
+     * @param session is {@link Session} in which sending is.
+     * @param blockId is id of block we have got.
+     * @throws InterruptedException if something went wrong
+     */
     protected void sendNack(Session session, int blockId) throws InterruptedException {
         report(getLabel(), () -> concatReportMessage("send nack to ", session.remoteNodeId), VerboseLevel.BASE);
 
@@ -467,6 +528,13 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * If session for remote id is already created - returns it, otherwise creates new {@link Session}
+     * @param remoteId is id of remote party.
+     * @param address is {@link InetAddress} of remote party.
+     * @param port is port number of remote party.
+     * @return
+     */
     protected Session getOrCreateSession(int remoteId, InetAddress address, int port) {
 
         if(sessionsById.containsKey(remoteId)) {
@@ -495,7 +563,13 @@ public class UDPAdapter extends DatagramAdapter {
 
     }
 
-
+    /**
+     * Method checks blocks in the sending queue. If block still in the queue method increment it {@link Block#sendAttempts}
+     * value. If that value become above {@link DatagramAdapter#RETRANSMIT_MAX_ATTEMPTS} block remove from queue. After that
+     * if some sessions was had that blocks and blocks was removed - remove that sessions as possible broken.
+     *
+     * Calls from timer.
+     */
     protected void checkUnsent() {
         List<Block> blocksToRemove;
         List<Session> brokenSessions = new ArrayList<>();
@@ -561,7 +635,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
     }
 
-
+    /**
+     * Check unsent (or not delivered, i.e. without {@link PacketTypes#PACKET_ACK} answer) packets and try to resend it.
+     * @param session is {@link Session} in which sending is.
+     */
     protected void checkUnsentPackets(Session session) {
         List<Block> blocksToResend = new ArrayList();
         List<Packet> packetsToResend = new ArrayList();
@@ -599,6 +676,12 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Before sending high-level data (stored in the {@link Block} with type {@link PacketTypes#DATA}), we need to install session.
+     * So prepared {@link Block} with type {@link PacketTypes#DATA} is stored at waiting blcoks and wait until seesion
+     * will turn to {@link Session#EXCHANGING} mode. After that we call this method.
+     * @param session
+     */
     protected void sendWaitingBlocks(Session session) {
         if (session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
             report(getLabel(), () -> concatReportMessage("waiting blocks num ", session.waitingBlocksQueue.size()));
@@ -619,14 +702,19 @@ public class UDPAdapter extends DatagramAdapter {
         }
     }
 
-
-
+    /**
+     * Use {@link DatagramAdapter#addErrorsCallback(Function)} to add callback to catch errors. This method call this backs.
+     * @param message
+     */
     protected void callErrorCallbacks(String message) {
         for(Function<String, String> fn : errorCallbacks) {
             fn.apply(message);
         }
     }
 
+    /**
+     * Method prints some info about UdpAdapter.
+     */
     protected void heartBeat() {
         int waitingBlocksNum = 0;
         int sendingBlocksNum = 0;
@@ -666,6 +754,10 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * This thread listen socket for packets. From packets it construct blocks. And send anwer for blocks by creating
+     * and sending oter blocks.
+     */
     class SocketListenThread extends Thread
     {
         private Boolean active = false;
@@ -673,8 +765,14 @@ public class UDPAdapter extends DatagramAdapter {
         private final DatagramSocket threadSocket;
         private DatagramPacket receivedDatagram;
 
+        /**
+         * Blocks that waiting packets.
+         */
         private ConcurrentHashMap<Integer, Block> waitingBlocks = new ConcurrentHashMap<>();
 
+        /**
+         * Blocks that already got all packets.
+         */
         private ConcurrentHashMap<Integer, Instant> obtainedBlocks = new ConcurrentHashMap<>();
         private ConcurrentLinkedQueue<BlockTime> obtainedBlocksQueue = new ConcurrentLinkedQueue<>();
         private Duration maxObtainedBlockAge = Duration.ofMinutes(5);
@@ -735,6 +833,7 @@ public class UDPAdapter extends DatagramAdapter {
 
                 if(active) {
 
+                    // first of all reconstruct packet from got bytes array
                     byte[] data = Arrays.copyOfRange(receivedDatagram.getData(), 0, receivedDatagram.getLength());
 
                     Packet packet = new Packet();
@@ -745,6 +844,9 @@ public class UDPAdapter extends DatagramAdapter {
                         report(getLabel(), () -> concatReportMessage("got packet with blockId: ",
                                 packet.blockId, " packetId: ", packet.packetId, " type: ", packet.type));
 
+                        // check if we packet is from block we got earlier
+                        // if block already exist - we choose it
+                        // otherwise we create new block for packet
                         if (waitingBlocks.containsKey(packet.blockId)) {
                             waitingBlock = waitingBlocks.get(packet.blockId);
                         } else {
@@ -761,14 +863,19 @@ public class UDPAdapter extends DatagramAdapter {
 //                        waitingBlocks.put(waitingBlock.blockId, waitingBlock);
                         }
 
+                        // if we found or create block - add packet to it
+                        // and if all packets is got by block start block obtaining
                         if (waitingBlock != null) {
                             waitingBlock.addToPackets(packet);
 
+                            // if all packets is got by block start block obtaining
                             if (waitingBlock.isSolid()) {
                                 moveWaitingBlockToObtained(waitingBlock);
                                 waitingBlock.reconstruct();
                                 obtainSolidBlock(waitingBlock);
                             } else {
+                                // if we got only part of block - send PACKET_ACK
+                                // and clean session's blocks according packet.type
                                 if (packet.type != PacketTypes.PACKET_ACK) {
 //                                    Session session = sessionsById.get(packet.senderNodeId);
 //                                    if (session == null) {
@@ -862,6 +969,13 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * MMethod processing solid {@link Block}. Continue handshake for session or exchanging with data.
+         * @param block is solid {@link Block}
+         * @throws SymmetricKey.AuthenticationFailed if session hasn't valid sessions key
+         * @throws EncryptionError if decode of data is fails
+         * @throws InterruptedException if something went wrong
+         */
         protected void obtainSolidBlock(Block block) throws SymmetricKey.AuthenticationFailed, EncryptionError, InterruptedException {
             Session session = null;
             Binder unbossedPayload;
@@ -872,6 +986,7 @@ public class UDPAdapter extends DatagramAdapter {
 
             switch (block.type) {
 
+                // we got HELLO block - create session and answer WELCOME
                 case PacketTypes.HELLO:
                     report(getLabel(), () -> concatReportMessage("got hello from ",
                             block.senderNodeId), VerboseLevel.BASE);
@@ -919,6 +1034,7 @@ public class UDPAdapter extends DatagramAdapter {
                     }
                     break;
 
+                // we got WELCOME - it means we sent HELLO, so continue handshake by sending KEY_REQ
                 case PacketTypes.WELCOME:
                     report(getLabel(), () -> concatReportMessage("got welcome from ", block.senderNodeId), VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
@@ -951,6 +1067,7 @@ public class UDPAdapter extends DatagramAdapter {
                     }
                     break;
 
+                // we got KEY_REQ - so check that request got from same remote party as we send WELCOME
                 case PacketTypes.KEY_REQ:
                     report(getLabel(), () -> concatReportMessage("got key request from ", block.senderNodeId), VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
@@ -1020,6 +1137,8 @@ public class UDPAdapter extends DatagramAdapter {
                     }
                     break;
 
+                // we got SESSION - nice, check that session key is got from tha same remote party as we ask
+                // and if all is ok - finish handshake and start EXCHANGING
                 case PacketTypes.SESSION:
                     report(getLabel(), () -> concatReportMessage("got session from ", block.senderNodeId), VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
@@ -1070,6 +1189,7 @@ public class UDPAdapter extends DatagramAdapter {
                     }
                     break;
 
+                // we got DATA - check if session is valid, decrypt data and just answer
                 case PacketTypes.DATA:
                     report(getLabel(), () -> concatReportMessage("got data from ", block.senderNodeId), VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
@@ -1123,6 +1243,7 @@ public class UDPAdapter extends DatagramAdapter {
                     }
                     break;
 
+                // we got ACK - means DATA block we sent has delivered, so remove it
                 case PacketTypes.ACK:
                     report(getLabel(), () -> concatReportMessage("got ack from ", block.senderNodeId), VerboseLevel.BASE);
                     session = sessionsById.get(block.senderNodeId);
@@ -1147,6 +1268,7 @@ public class UDPAdapter extends DatagramAdapter {
                     }
                     break;
 
+                // we got NACK - means DATA block we sent has not delivered, so start handshake again
                 case PacketTypes.NACK:
                     report(getLabel(), () -> concatReportMessage("got nack from ", block.senderNodeId), VerboseLevel.BASE);
                     ackBlockId = Boss.load(block.payload);
@@ -1171,6 +1293,7 @@ public class UDPAdapter extends DatagramAdapter {
                     }
                     break;
 
+                // we got PACKET_ACK - means packet we sent has delivered, so remove it
                 case PacketTypes.PACKET_ACK:
                     ackList = Boss.load(block.payload);
                     ackBlockId = (int) ackList.get(0);
@@ -1194,6 +1317,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * Calls when block got all its packets.
+         * @param block to move.
+         */
         public void moveWaitingBlockToObtained(Block block) {
             waitingBlocks.remove(block.blockId);
             Instant blockExpiresAt = Instant.now().plus(maxObtainedBlockAge);
@@ -1202,6 +1329,16 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * Check session  and if session valid and has {@link Session#EXCHANGING} or {@link Session#SESSION} state -
+         * answer {@link PacketTypes#ACK}, otherwise answer {@link PacketTypes#NACK} or if session is in the handshake
+         * mode - answer nothing.
+         * @param session is {@link Session} in which sending is.
+         * @param block for answer
+         * @param address of remote party to answer
+         * @param port of remote party to answer
+         * @throws InterruptedException if something went wrong
+         */
         public void answerAckOrNack(Session session, Block block, InetAddress address, int port) throws InterruptedException {
             if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
                 sendAck(session, block.blockId);
@@ -1225,6 +1362,11 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * If handshaking starts by both remote party at one time - we need resolve it by downstating one of that sessions.
+         * @param session is {@link Session} in which sending is.
+         * @throws InterruptedException if something went wrong
+         */
         public void downStateAndResend(Session session) throws InterruptedException {
             switch (session.state) {
                 case Session.HELLO:
@@ -1242,7 +1384,11 @@ public class UDPAdapter extends DatagramAdapter {
         }
     }
 
-
+    /**
+     * Packet is atomary object for sending to socket. It has size that fit socket buffer size. From packets consists
+     * {@link Block}. Think about packet as about low-level structure. Has type, link to block (by id), num of packets in
+     * block at all, payload section and some other data.
+     */
     public class PacketTypes
     {
         static public final int RAW_DATA =     -1;
@@ -1285,12 +1431,21 @@ public class UDPAdapter extends DatagramAdapter {
             this.payload = payload;
         }
 
+        /**
+         * Pack packet.
+         * @return packed packet.
+         */
         public byte[] makeByteArray() {
             List data = asList(brotherPacketsNum, packetId, senderNodeId, receiverNodeId, blockId, type, new Bytes(payload));
             Bytes byteArray = Boss.dump(data);
             return byteArray.toArray();
         }
 
+        /**
+         * Reconstruct packet from bytes array.
+         * @param byteArray is bytes array for reconstruction.
+         * @throws IOException if something went wrong.
+         */
         public void parseFromByteArray(byte[] byteArray) throws IOException {
 
             List data = Boss.load(byteArray);
@@ -1305,6 +1460,11 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Block is structure for sending between sessions (in other words between remotes parties). Block consists from
+     * {@link Packet}. Think about block as middle-level structure. Block has set of packets, own id, own type,
+     * receiver's info and some other control fields.
+     */
     public class Block
     {
         private int senderNodeId;
@@ -1360,6 +1520,11 @@ public class UDPAdapter extends DatagramAdapter {
             prepareToSend(packetSize,5);
         }
 
+        /**
+         * Here block is cut to packets
+         * @param packetSize is packets size to cut
+         * @param bossArtefact magic
+         */
         public void prepareToSend(int packetSize, int bossArtefact) {
             packets = new ConcurrentHashMap<>();
             datagrams = new ConcurrentHashMap<>();
@@ -1403,6 +1568,10 @@ public class UDPAdapter extends DatagramAdapter {
             validToSend = true;
         }
 
+        /**
+         * Reconstruct block from its packets.
+         * @throws IOException if something went wrong
+         */
         public void reconstruct() throws IOException {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
             for (Packet packet : packets.values()) {
@@ -1411,6 +1580,10 @@ public class UDPAdapter extends DatagramAdapter {
             payload = outputStream.toByteArray();
         }
 
+        /**
+         * Add packet that belong to block.
+         * @param packet for adding
+         */
         public void addToPackets(Packet packet) {
             if(!packets.containsKey(packet.packetId)) {
                 packets.put(packet.packetId, packet);
@@ -1425,6 +1598,10 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
+        /**
+         * Check if block got all packets (added by {@link Block#addToPackets(Packet)}).
+         * @return true if all packets is added,otherwise return false
+         */
         public Boolean isSolid() {
             if(packets.size() > 0) {
                 // packets.get(0) may be null because packets can received in random order
@@ -1456,7 +1633,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
     }
 
-
+    /**
+     * Two remote parties should create valid session before start data's exchanging. This class implement that session
+     * according with remote parties is handshaking and eexchanging.
+     */
     private class Session {
 
         private PublicKey publicKey;
@@ -1500,6 +1680,10 @@ public class UDPAdapter extends DatagramAdapter {
             state = HANDSHAKE;
         }
 
+        /**
+         * Check if session has localNonce, remoteNonce, sessionKey and remoteNodeId.
+         * @return true if valid, otherwise false
+         */
         public Boolean isValid() {
             if (localNonce == null) {
                 report(getLabel(), "session validness check: localNonce is null");
@@ -1534,6 +1718,10 @@ public class UDPAdapter extends DatagramAdapter {
 //            state = EXCHANGING;
         }
 
+        /**
+         * Reconstruct key from got byte array. Calls when remote party sends key.
+         * @param key is byte array with packed key.
+         */
         public void reconstructSessionKey(byte[] key) throws EncryptionError {
             sessionKey = new SymmetricKey(key);
             state = EXCHANGING;
