@@ -22,6 +22,9 @@ Download the current version of the uniclient tool from
 
 Executing `uniclient` with no arguments will show built-in help.
 
+
+**Important**. Session keys created for uniclient is stored at the .universa folder. Uniclient do not copy or move your own private keys, it use it from paths you point to.
+
 ### Usage scenarios
 
 #### Create a new smart contract from DSL template
@@ -88,7 +91,7 @@ or specify a name for each contract independently:
 
     uniclient -i contract1.json --name contract1.unicon contract2.xml --name contract2.unicon
 
-**Important:** the imported contract will have no signatures unless the `-k` option was provided, see “Signing the contract” section below.
+**Important:** the imported contract will have no signatures unless the `-k` or `-keys` option was provided, see “Signing the contract” section below.
 
 #### Export contract to XML, JSON or YAML file
 
@@ -235,16 +238,28 @@ or comma-separated:
 The command like
 
     uniclient -g key_name_prefix
+    
+or
 
-will create a key pair files `key_name_prefix.public.unikey` and `key_name_prefix.private.unikey`. Keep them safe and never transmit your private key over the network except that inside of some very well encrypted containers (such as Universa CryptoCloud capsules).
+    uniclient -generate key_name_prefix
+
+will create a key pair files `key_name_prefix.public.unikey` and `key_name_prefix.private.unikey`. Keep them safe and never transmit your private key over the network except that inside of some very well encrypted containers (such as Universa CryptoCloud capsules). 
+
+Use key `-s` to specify key strength, f.e.: 
+
+    uniclient -g key_name_prefix -s 2048
+    
+Additionally you can see fingerprints of the specified with option `-k` keys using command `fingerprints`: 
+
+    uniclient -fingerprints -k key_name.private.unikey
 
 #### Signing the contract
 
-Universa requires each new contract or contract revision to be properly signed by the required parties. To do it, seal the contract while creating it:
+Universa requires each new contract or contract revision to be properly signed by the required parties. To do it, seal the contract while creating it, use `-k` or `-keys` option for point to your key files:
 
     uniclient -c some_dsl_template.yaml -k your.private.unikey
 
-Also, you should provide proper signing keys when importing any text format (see import section above), with the `-`k option. Note that the `-k` option should precede `-i`:
+Also, you should provide proper signing keys when importing any text format (see import section above), with the `-k` or `-keys` option. Note that the `-k` option should precede `-i`:
 
     uniclient -k sample.private.unikey -i test1.yml
 
@@ -368,7 +383,7 @@ This command extracts revoking and new items from contract and save them in the 
 
 And you can pack them together using:
 
-    uniclient --pack contract.unicon --add-sibling sibling.unicon --add-revoke revoke.unicon
+    uniclient --pack-with contract.unicon --add-sibling sibling.unicon --add-revoke revoke.unicon
 
 As a result, the `contract.unicon` file will be created from the counterpart contracts. Note: use `--name` to save the contract with the name different from the original contract.
 
