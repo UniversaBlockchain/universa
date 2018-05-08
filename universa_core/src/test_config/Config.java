@@ -194,6 +194,8 @@ public class Config {
      */
     private int knownSubContractsToResync = 1;
 
+    public static Duration validUntilTailTime = Duration.ofMinutes(5);
+
     public int getPositiveConsensus() {
         return positiveConsensus;
     }
