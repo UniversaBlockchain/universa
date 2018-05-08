@@ -170,7 +170,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         // fill references with contracts from TransactionPack
 
-        if (transactional != null && transactional.references != null) {
+        /*if (transactional != null && transactional.references != null) {
             for(Reference ref : transactional.references) {
                 ref.setContract(this);
                 references.put(ref.name, ref);
@@ -187,7 +187,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 ref.setContract(this);
                 references.put(ref.name, ref);
             }
-        }
+        }*/
 
         for(Reference ref : getReferences().values()) {
             for(Contract c : pack.getReferencedItems().values()) {
@@ -303,7 +303,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         // fill references with contracts from TransactionPack
 
-        if (transactional != null && transactional.references != null) {
+        /*if (transactional != null && transactional.references != null) {
             for(Reference ref : transactional.references) {
                 ref.setContract(this);
                 references.put(ref.name, ref);
@@ -320,7 +320,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 ref.setContract(this);
                 references.put(ref.name, ref);
             }
-        }
+        }*/
 
         for(Reference ref : getReferences().values()) {
             for(Contract c : pack.getReferencedItems().values()) {
@@ -425,6 +425,22 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         apiLevel = root.getIntOrThrow("api_level");
         definition = new Definition().initializeWithDsl(root.getBinder("definition"));
         state = new State().initializeWithDsl(root.getBinder("state"));
+
+        // fill references list
+        if (definition != null && definition.references != null) {
+            for(Reference ref : definition.references) {
+                ref.setContract(this);
+                references.put(ref.name, ref);
+            }
+        }
+
+        if (state != null && state.references != null){
+            for(Reference ref : state.references) {
+                ref.setContract(this);
+                references.put(ref.name, ref);
+            }
+        }
+
         // now we have all roles, we can build permissions:
         definition.scanDslPermissions();
         return this;
@@ -476,6 +492,32 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
         return referencedItems;
+    }
+
+    public void removeReferencedItem(Contract removed) {
+
+        for (Reference ref: getReferences().values())
+            ref.matchingItems.remove(removed);
+
+        if (transactional != null && transactional.references != null)
+            for (Reference ref: transactional.references)
+                ref.matchingItems.remove(removed);
+
+        if (definition != null && definition.references != null)
+            for(Reference ref : definition.references)
+                ref.matchingItems.remove(removed);
+
+        if (state != null && state.references != null)
+            for(Reference ref : state.references)
+                ref.matchingItems.remove(removed);
+
+        newItems.remove(removed);
+        revokingItems.remove(removed);
+    }
+
+    public void removeAllReferencedItems() {
+        for (Contract c: getReferenced())
+            removeReferencedItem(c);
     }
 
     @Override
@@ -599,6 +641,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // check each reference, all must be ok
         boolean allRefs_check = true;
         for (final Reference rm : getReferences().values()) {
+            //TODO: Do not check the conditions of the reference (and result of check in the constructors of the Contract class is not used)
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
             if(rm.type == Reference.TYPE_TRANSACTIONAL) {
@@ -610,8 +653,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                             rm_check = true;
                         }
                 }
-            } else if(rm.type == Reference.TYPE_EXISTING) {
+            } else if ((rm.type == Reference.TYPE_EXISTING_DEFINITION) || (rm.type == Reference.TYPE_EXISTING_STATE)) {
 
+//                for (String key : getPermissions().keySet()) {
+//                    Collection<Permission> permissions = getPermissions().get(key);
+//                    boolean permissionQuantized = false;
+//                    // TODO: hack - is exist another way to filter references that is use for validness checking
+//                    for (Permission permission : permissions) {
+//                        if (permission.isAllowedFor(getSealedByKeys(), asList(rm.name))) {
+//                            System.out.println(">> " + rm.name + " >> " + rm.matchingItems.size());
+//                            rm_check = rm.isValid();
+//                        } else {
+//                            System.out.println(">>> " + rm.name + " >>> " + rm.matchingItems.size());
+//                            // this reference do not need for contract
+//                            // or need but will fail on checking permitted changes
+//                            rm_check = true;
+//                        }
+//                    }
+//                }
+                //TODO: The check is performed only in the constructors of the Contract class. If the contract is loaded from dsl-template - this check will fail
                 rm_check = rm.isValid();
             }
 
@@ -627,10 +687,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean checkOneReference(final Reference rm, final Contract refContract) throws Quantiser.QuantiserException {
         boolean res = true;
 
-        if (rm.type == Reference.TYPE_EXISTING) {
+/*        if((rm.type == Reference.TYPE_EXISTING_DEFINITION) || (rm.type == Reference.TYPE_EXISTING_STATE)) {
 //            res = false;
 //            addError(Errors.UNKNOWN_COMMAND, "Reference.TYPE_EXISTING not implemented");
-        } else if (rm.type == Reference.TYPE_TRANSACTIONAL) {
+        } else */
+        if (rm.type == Reference.TYPE_TRANSACTIONAL) {
             if ((rm.transactional_id == null) ||
                 (refContract.transactional == null) ||
                 (refContract.transactional.getId() == null) ||
@@ -1278,11 +1339,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public void addReference(Reference reference) {
-        if(reference.type == Reference.TYPE_TRANSACTIONAL) {
+        if(reference.type == Reference.TYPE_TRANSACTIONAL)
             transactional.addReference(reference);
-        } else if(reference.type == Reference.TYPE_EXISTING) {
+        else if (reference.type == Reference.TYPE_EXISTING_DEFINITION)
             definition.addReference(reference);
-        }
+        else if(reference.type == Reference.TYPE_EXISTING_STATE)
+            state.addReference(reference);
 
         references.put(reference.name, reference);
     }
@@ -1291,7 +1353,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if(reference.type == Reference.TYPE_TRANSACTIONAL) {
             if(transactional != null)
                 transactional.addReference(reference);
-        } else if(reference.type == Reference.TYPE_EXISTING) {
+        } else if(reference.type == Reference.TYPE_EXISTING_STATE) {
             state.addReference(reference);
         }
 
@@ -1675,6 +1737,27 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 transactional = new Transactional();
             transactional.deserializeWith(data.getBinder("transactional", null), deserializer);
 
+            // fill references list
+            if (transactional != null && transactional.references != null) {
+                for(Reference ref : transactional.references) {
+                    ref.setContract(this);
+                    references.put(ref.name, ref);
+                }
+            }
+
+            if (definition != null && definition.references != null) {
+                for(Reference ref : definition.references) {
+                    ref.setContract(this);
+                    references.put(ref.name, ref);
+                }
+            }
+
+            if (state != null && state.references != null) {
+                for(Reference ref : state.references) {
+                    ref.setContract(this);
+                    references.put(ref.name, ref);
+                }
+            }
         });
     }
 
@@ -1792,13 +1875,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             name = name.substring(11);
             switch (name) {
                 case "expires_at":
-                    return (T) state.expiresAt;
+                    return (T) definition.expiresAt;
                 case "created_at":
                     return (T) definition.createdAt;
                 case "extended_type":
                     return (T) definition.extendedType;
                 case "issuer":
                     return (T) getRole("issuer");
+                case "owner":
+                    return (T) getRole("owner");
+                case "creator":
+                    return (T) getRole("creator");
                 case "origin":
                     return (T) getOrigin();
                 default:
@@ -1814,6 +1901,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     return (T) getOrigin();
                 case "created_at":
                     return (T) state.createdAt;
+                case "expires_at":
+                    return (T) state.expiresAt;
+                case "issuer":
+                    return (T) getRole("issuer");
+                case "owner":
+                    return (T) getRole("owner");
+                case "creator":
+                    return (T) getRole("creator");
+                case "revision":
+                    return (T) ((Integer) getRevision());
+                case "parent":
+                    return (T) getParent();
+                case "branchId":
+                    return (T) state.getBranchId();
                 default:
                     if (name.startsWith("data."))
                         return state.data.getOrNull(name.substring(5));
@@ -2186,6 +2287,43 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
             createRole("owner", state.get("owner"));
             createRole("creator", state.getOrThrow("created_by"));
+
+            List<LinkedHashMap<String, Binder>> refList = state.getList("references", null);
+            if (refList != null) {
+                for (LinkedHashMap<String, Binder> refItem : refList) {
+                    Binder item = new Binder(refItem);
+                    Binder ref = item.getBinder("reference");
+                    if (ref != null) {
+                        String name = ref.getString("name");
+                        Binder where = null;
+                        try {
+                            where = ref.getBinderOrThrow("where");
+                        }
+                        catch (Exception e)
+                        {
+                            // Insert simple condition to binder with key all_of
+                            List<String> simpleConditions = ref.getList("where", null);
+                            if (simpleConditions != null)
+                                where = new Binder(all_of.name(), simpleConditions);
+                        }
+
+                        Reference reference = new Reference(getContract());
+
+                        if (name == null)
+                            throw new IllegalArgumentException("Expected reference name");
+
+                        reference.setName(name);
+
+                        if (where != null)
+                            reference.setConditions(where);
+
+                        references.add(reference);
+                    }
+                    else
+                        throw new IllegalArgumentException("Expected reference section");
+                }
+            }
+
             return this;
         }
 

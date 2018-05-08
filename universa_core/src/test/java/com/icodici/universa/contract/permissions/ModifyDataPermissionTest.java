@@ -205,7 +205,7 @@ public class ModifyDataPermissionTest extends TestCase {
 
         Reference ref = new Reference(referencedContract);
         ref.name = "bank_certificate";
-        ref.type = Reference.TYPE_EXISTING;
+        ref.type = Reference.TYPE_EXISTING_DEFINITION;
         ref.setConditions(conditionsForDefinition);
         ref.addMatchingItem(referencedContract);
 
@@ -248,7 +248,7 @@ public class ModifyDataPermissionTest extends TestCase {
         changed.traceErrors();
         assertFalse(changed.isOk());
 
-        ref.type = Reference.TYPE_EXISTING;
+        ref.type = Reference.TYPE_EXISTING_DEFINITION;
         conditionsForDefinition = new Binder();
         conditionsForDefinition.set("any_of", listConditionsForDefinition);
         ref.setConditions(conditionsForDefinition);

@@ -13,9 +13,14 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
+import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.permissions.RevokePermission;
+import com.icodici.universa.contract.roles.ListRole;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiSerializationException;
@@ -1257,4 +1262,129 @@ public class ContractTest extends ContractTestBase {
 //        c.traceErrors();
 //
 //    }
+
+    @Test
+    public void checkRemoveReferencedItems() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
+        //Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+        llcPrivateKeys.add(new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract contractCertificate = new Contract(llcPrivateKeys.iterator().next());
+        contractCertificate.setOwnerKeys(stepaPublicKeys);
+        contractCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        contractCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+
+        contractCertificate.getStateData().set("issuer", "Roga & Kopita & Co");
+        contractCertificate.getStateData().set("type", "Animals");
+
+        contractCertificate.seal();
+
+        Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
+
+        List <String> listConditionsRefDef = new ArrayList<>();
+        listConditionsRefDef.add("ref.definition.issuer == \"HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5\n" +
+                "          a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M\n" +
+                "          z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+\n" +
+                "          BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM\n" +
+                "          vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy\n" +
+                "          Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc\n" +
+                "          hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8\n" +
+                "          LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal\n" +
+                "          MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=\"");
+        listConditionsRefDef.add("ref.definition.data.issuer == \"Roga & Kopita\"");
+        listConditionsRefDef.add("ref.definition.data.type == \"chief accountant assignment\"");
+
+        Reference referenceDef = new Reference(llcProperty);
+        referenceDef.name="certification_contract_def";
+        referenceDef.type = Reference.TYPE_EXISTING_DEFINITION;
+
+        Binder conditionsRefDef = new Binder();
+        conditionsRefDef.set("all_of", listConditionsRefDef);
+        referenceDef.setConditions(conditionsRefDef);
+        referenceDef.addMatchingItem(contractCertificate);
+
+        llcProperty.addReference(referenceDef);
+
+        List <String> listConditionsRefState = new ArrayList<>();
+
+        listConditionsRefDef.add("ref.state.data.issuer == \"Roga & Kopita & Co\"");
+        listConditionsRefDef.add("ref.state.data.type == \"Animals\"");
+
+        Reference referenceState = new Reference(llcProperty);
+        referenceState.name="certification_contract_state";
+        referenceState.type = Reference.TYPE_EXISTING_STATE;
+
+        Binder conditionsRefState = new Binder();
+        conditionsRefState.set("all_of", listConditionsRefState);
+        referenceState.setConditions(conditionsRefState);
+        referenceState.addMatchingItem(contractCertificate);
+
+        llcProperty.addReference(referenceState);
+
+        ListRole listRole = new ListRole("list_role");
+        SimpleRole ownerRole = new SimpleRole("owner", stepaPrivateKeys);
+        listRole.addRole(ownerRole);
+        listRole.addRequiredReference("certification_contract", Role.RequiredMode.ALL_OF);
+
+        llcProperty.getPermissions().remove("change_owner");
+        llcProperty.getPermissions().remove("revoke");
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(listRole);
+        llcProperty.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm = new RevokePermission(listRole);
+        llcProperty.addPermission(revokePerm);
+
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
+
+
+        TransactionPack tp = new TransactionPack();
+        tp.setContract(llcProperty);
+        tp.addSubItem(contractCertificate);
+        tp.addReferencedItem(contractCertificate);
+
+
+        Contract remRefContract1 = new Contract(llcProperty.seal(), tp);
+        Contract remRefContract2 = new Contract(llcProperty.seal(), tp);
+
+
+        assertTrue(remRefContract1.getReferences().get("certification_contract_def").matchingItems.contains(contractCertificate));
+        assertTrue(remRefContract1.getReferences().get("certification_contract_state").matchingItems.contains(contractCertificate));
+
+        assertTrue(remRefContract1.getDefinition().getReferences().get(0).matchingItems.contains(contractCertificate));
+        assertTrue(remRefContract1.getState().getReferences().get(0).matchingItems.contains(contractCertificate));
+
+        remRefContract1.removeReferencedItem(contractCertificate);
+
+        assertFalse(remRefContract1.getReferences().get("certification_contract_def").matchingItems.contains(contractCertificate));
+        assertFalse(remRefContract1.getReferences().get("certification_contract_state").matchingItems.contains(contractCertificate));
+
+        assertFalse(remRefContract1.getDefinition().getReferences().get(0).matchingItems.contains(contractCertificate));
+        assertFalse(remRefContract1.getState().getReferences().get(0).matchingItems.contains(contractCertificate));
+
+        assertTrue(remRefContract2.getReferences().get("certification_contract_def").matchingItems.contains(contractCertificate));
+        assertTrue(remRefContract2.getReferences().get("certification_contract_state").matchingItems.contains(contractCertificate));
+
+        assertTrue(remRefContract2.getDefinition().getReferences().get(0).matchingItems.contains(contractCertificate));
+        assertTrue(remRefContract2.getState().getReferences().get(0).matchingItems.contains(contractCertificate));
+
+        remRefContract2.removeAllReferencedItems();
+
+        assertFalse(remRefContract2.getReferences().get("certification_contract_def").matchingItems.contains(contractCertificate));
+        assertFalse(remRefContract2.getReferences().get("certification_contract_state").matchingItems.contains(contractCertificate));
+
+        assertFalse(remRefContract2.getDefinition().getReferences().get(0).matchingItems.contains(contractCertificate));
+        assertFalse(remRefContract2.getState().getReferences().get(0).matchingItems.contains(contractCertificate));
+
+    }
 }

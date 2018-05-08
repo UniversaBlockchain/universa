@@ -297,6 +297,198 @@ definition:
                          LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
                          MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111
 
+# mirroring -------------------------------------------------------------------------------------------
+         - ref.definition.issuer == this.definition.issuer
+         - ref.owner == this.owner
+         - ref.owner != this.definition.issuer
+         - ref.definition.issuer != this.owner
+
+         - 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R == ref.issuer
+         - 26RzR JDLq ze3P 5Z1A zpnu cF75 RLi1 oa6j qBaD h8MJ 3XmT aUoF8R == ref.creator
+         - 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R != this.owner
+
+         - bZmurQxHtG8S8  RgZabTrv  fa5Rsan7DZZGS4  fjWrScb3jVmPtNP1  oRiJBiJCAqchjyuH2ov3z == ref.issuer
+         - bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z == ref.creator
+         - bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z != this.owner
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+           a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+           z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+           BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+           vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+           Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+           hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+           LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+           MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=  == ref.definition.issuer
+
+         - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+           a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+           z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+           BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+           vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+           Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+           hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+           LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+           MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.definition.issuer
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                     MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.definition.issuer
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= ==  ref.definition.issuer
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                                    a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                                    z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                                    BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                                    vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                                    Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                                    hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                                    LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                    MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 == ref.definition.issuer
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.issuer
+
+         - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.issuer
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                     MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.issuer
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.issuer
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+           a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+           z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+           BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+           vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+           Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+           hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+           LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+           MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 == ref.issuer
+
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+           a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+           z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+           BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+           vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+           Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+           hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+           LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+           MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.creator
+
+         - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+           a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+           z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+           BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+           vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+           Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+           hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+           LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+           MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.creator
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                          MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.creator
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.creator
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                          a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                          z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                          BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                          vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                          Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                          hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                          LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                          MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 == ref.creator
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+         - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                    MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                     MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != this.owner
+
+         - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                    MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=  != this.owner
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                     MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=  != this.owner
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=  != this.owner
+
+         - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 != this.owner
+# mirroring ===========================================================================================
+
          - any_of:
            - ref.issuer  undefined
            - all_of:
@@ -548,6 +740,196 @@ definition:
                              LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
                              MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111
 
+# mirroring -------------------------------------------------------------------------------------------
+             - ref.definition.issuer == this.definition.issuer
+             - ref.owner == this.owner
+             - ref.owner != this.definition.issuer
+             - ref.definition.issuer != this.owner
+
+             - 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R == ref.issuer
+             - 26RzR JDLq ze3P 5Z1A zpnu cF75 RLi1 oa6j qBaD h8MJ 3XmT aUoF8R == ref.creator
+             - 26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R != this.owner
+
+             - bZmurQxHtG8S8  RgZabTrv  fa5Rsan7DZZGS4  fjWrScb3jVmPtNP1  oRiJBiJCAqchjyuH2ov3z == ref.issuer
+             - bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z == ref.creator
+             - bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z != this.owner
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+               a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+               z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+               BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+               vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+               Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+               hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+               LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+               MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=  == ref.definition.issuer
+
+             - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+               a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+               z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+               BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+               vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+               Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+               hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+               LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+               MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.definition.issuer
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                     MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.definition.issuer
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= ==  ref.definition.issuer
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                                    a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                                    z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                                    BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                                    vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                                    Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                                    hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                                    LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                    MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 == ref.definition.issuer
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.issuer
+
+             - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.issuer
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                     MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.issuer
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.issuer
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+               a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+               z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+               BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+               vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+               Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+               hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+               LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+               MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 == ref.issuer
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+               a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+               z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+               BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+               vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+               Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+               hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+               LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+               MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.creator
+
+             - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                          a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                          z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                          BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                          vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                          Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                          hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                          LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                          MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.creator
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                          MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.creator
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= == ref.creator
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                          a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                          z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                          BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                          vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                          Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                          hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                          LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                          MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 == ref.creator
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+             - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                    MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                     MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != ref.owner
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 != ref.owner
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c= != this.owner
+
+             - HggcAQABxAACz             HE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhY        H/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1                              oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwP            aFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwA             GZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                    MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=  != this.owner
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8                                     LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                                     MexOc3/kPEEdfjH/GcJU0M  w6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=  != this.owner
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=  != this.owner
+
+             - HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5
+                         a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M
+                         z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+
+                         BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM
+                         vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy
+                         Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc
+                         hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8
+                         LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal
+                         MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=11111111111111111111111111111111111111111111 != this.owner
+# mirroring ===========================================================================================
+
  - reference:
      name: ref_integer
      where:
@@ -558,6 +940,13 @@ definition:
          - this.definition.data.int2 < ref.state.data.int3
          - this.definition.data.int1 <= ref.definition.data.int2
          - this.state.data.int4 >= ref.definition.data.int1
+         - this.state.revision != ref.state.revision
+         - this.state.revision < ref.state.revision
+         - this.state.revision < ref.state.data.float3
+         - ref.state.revision < this.state.data.double2
+         - ref.state.revision == 4
+         - ref.state.revision defined
+         - ref.state.revision != null
          - ref.definition.data.int1 defined
          - ref.definition.data.int3 undefined
          - ref.definition.data.int4 == null
@@ -586,6 +975,45 @@ definition:
          - ref.state.data.long2 >= this.state.data.long1
          - this.state.data.long1 <= ref.state.data.long1
          - ref.state.data.long1 < this.state.data.long2
+
+# mirroring -------------------------------------------------------------------------------------------
+         - ref.state.data.int3 == this.state.data.int3
+         - ref.state.data.int4  != this.definition.data.int1
+         - ref.definition.data.int2 < this.state.data.int3
+         - ref.state.data.int3 > this.definition.data.int2
+         - ref.definition.data.int2 >= this.definition.data.int1
+         - ref.definition.data.int1 <= this.state.data.int4
+         - ref.state.revision != this.state.revision
+         - ref.state.revision > this.state.revision
+         - ref.state.data.float3 > this.state.revision
+         - this.state.data.double2 > ref.state.revision
+         - 4 == ref.state.revision
+         - null == ref.definition.data.int4
+         - null != ref.state.data.int3
+         - ref.definition.data.float2 == this.definition.data.int2
+         - ref.definition.data.float1 < this.state.data.int3
+         - ref.state.data.float3 > this.definition.data.int2
+         - ref.state.data.float4 >= this.state.data.int3
+         - ref.definition.data.float2 <= this.definition.data.int2
+         - 6 < ref.definition.data.int1
+         - 1000000.0 > ref.state.data.int4
+         - 50 <= ref.definition.data.int2
+         - 777 >= ref.state.data.int3
+         - 77.0 == ref.definition.data.int2
+         - 1000 != ref.state.data.int4
+         - ref.state.data.long1 == this.state.data.long1
+         - ref.state.data.long2 != this.state.data.long1
+         - 540809613457836009 == ref.state.data.long1
+         - 1434344332300905480.0 == ref.state.data.long2
+         - 1434344332300905481 != ref.state.data.long2
+         - ref.state.data.float3 != ref.state.data.long1
+         - -3902932093200002020 != ref.state.data.long2
+         - ref.state.data.long1 < this.state.data.long2
+         - this.state.data.long1 <= ref.state.data.long2
+         - ref.state.data.long1 >= this.state.data.long1
+         - this.state.data.long2 > ref.state.data.long1
+# mirroring ===========================================================================================
+
          - any_of:
            - ref.state.data.int3  undefined
            - all_of:
@@ -622,6 +1050,40 @@ definition:
              - ref.state.data.long2>=this.state.data.long1
              - this.state.data.long1<=ref.state.data.long1
              - ref.state.data.long1<this.state.data.long2
+
+# mirroring -------------------------------------------------------------------------------------------
+             - ref.state.data.int3==this.state.data.int3
+             - ref.state.data.int4!=this.definition.data.int1
+             - ref.definition.data.int2<this.state.data.int3
+             - ref.state.data.int3>this.definition.data.int2
+             - ref.definition.data.int2>=this.definition.data.int1
+             - ref.definition.data.int1<=this.state.data.int4
+             - null==ref.definition.data.int4
+             - null!=ref.state.data.int3
+             - ref.definition.data.float2==this.definition.data.int2
+             - ref.definition.data.float1<this.state.data.int3
+             - ref.state.data.float3>this.definition.data.int2
+             - ref.state.data.float4>=this.state.data.int3
+             - ref.definition.data.float2<=this.definition.data.int2
+             - 6<ref.definition.data.int1
+             - 1000000.0>ref.state.data.int4
+             - 50<=ref.definition.data.int2
+             - 777>=ref.state.data.int3
+             - 77.0==ref.definition.data.int2
+             - 1000!=ref.state.data.int4
+             - ref.state.data.long1==this.state.data.long1
+             - ref.state.data.long2!=this.state.data.long1
+             - 540809613457836009==ref.state.data.long1
+             - 1434344332300905480.0==ref.state.data.long2
+             - 1434344332300905481!=ref.state.data.long2
+             - ref.state.data.float3!=ref.state.data.long1
+             - -3902932093200002020!=ref.state.data.long2
+             - ref.state.data.long1<this.state.data.long2
+             - this.state.data.long1<=ref.state.data.long2
+             - ref.state.data.long1>=this.state.data.long1
+             - this.state.data.long2>ref.state.data.long1
+
+# mirroring ===========================================================================================
 
  - reference:
      name: ref_float
@@ -661,6 +1123,40 @@ definition:
          - ref.state.data.double2 >= this.state.data.double1
          - this.state.data.double1 <= ref.state.data.double1
          - ref.state.data.double1 < this.state.data.double2
+
+# mirroring -------------------------------------------------------------------------------------------
+         - ref.state.data.float3 == this.state.data.float3
+         - ref.state.data.float4 != this.definition.data.float1
+         - ref.definition.data.float2 < this.state.data.float3
+         - ref.state.data.float3 > this.definition.data.float2
+         - ref.definition.data.float2 >= this.definition.data.float1
+         - ref.definition.data.float1 <= this.state.data.float4
+         - null != ref.definition.data.float2
+         - null == ref.state.data.float1
+         - ref.definition.data.float2 == this.definition.data.float2
+         - ref.definition.data.int1 == this.definition.data.float1
+         - ref.definition.data.int1 < this.state.data.float3
+         - ref.state.data.int3 > this.definition.data.float2
+         - ref.state.data.int4 >= this.state.data.float3
+         - ref.definition.data.int2 <= this.definition.data.float2
+         - 6.78 < ref.definition.data.float1
+         - 1000000 > ref.state.data.float4
+         - -58.037092 <= ref.definition.data.float2
+         - 77780192993439232.2389283928 >= ref.state.data.float3
+         - 77 == ref.definition.data.float2
+         - 1000.0 != ref.state.data.float4
+         - ref.state.data.double1 == this.state.data.double1
+         - ref.state.data.double2 != this.state.data.double1
+         - -93029039209309103.09204932042000024555 == ref.state.data.double1
+         - 3232322288829209309103.09204932042000024555 == ref.state.data.double2
+         - ref.state.data.float4 != ref.state.data.double1
+         - -390293209320.329029302998487300020204 != ref.state.data.double2
+         - ref.state.data.double1 < this.state.data.double2
+         - this.state.data.double1 <= ref.state.data.double2
+         - ref.state.data.double1 >= this.state.data.double1
+         - this.state.data.double2 > ref.state.data.double1
+# mirroring ===========================================================================================
+
          - any_of:
            - ref.state.data.float3  undefined
            - all_of:
@@ -699,12 +1195,50 @@ definition:
              - this.state.data.double1<=ref.state.data.double1
              - ref.state.data.double1<this.state.data.double2
 
+# mirroring -------------------------------------------------------------------------------------------
+             - ref.state.data.float3==this.state.data.float3
+             - ref.state.data.float4!=this.definition.data.float1
+             - ref.definition.data.float2<this.state.data.float3
+             - ref.state.data.float3>this.definition.data.float2
+             - ref.definition.data.float2>=this.definition.data.float1
+             - ref.definition.data.float1<=this.state.data.float4
+             - null!=ref.definition.data.float2
+             - null==ref.state.data.float1
+             - ref.definition.data.float2==this.definition.data.float2
+             - ref.definition.data.int1==this.definition.data.float1
+             - ref.definition.data.int1<this.state.data.float3
+             - ref.state.data.int3>this.definition.data.float2
+             - ref.state.data.int4>=this.state.data.float3
+             - ref.definition.data.int2<=this.definition.data.float2
+             - 6.78<ref.definition.data.float1
+             - 1000000>ref.state.data.float4
+             - -58.037092<=ref.definition.data.float2
+             - 77780192993439232.2389283928>=ref.state.data.float3
+             - 77==ref.definition.data.float2
+             - 1000.0!=ref.state.data.float4
+             - ref.state.data.double1==this.state.data.double1
+             - ref.state.data.double2!=this.state.data.double1
+             - -93029039209309103.09204932042000024555==ref.state.data.double1
+             - 3232322288829209309103.09204932042000024555==ref.state.data.double2
+             - ref.state.data.float4!=ref.state.data.double1
+             - -390293209320.329029302998487300020204!=ref.state.data.double2
+             - ref.state.data.double1<this.state.data.double2
+             - this.state.data.double1<=ref.state.data.double2
+             - ref.state.data.double1>=this.state.data.double1
+             - this.state.data.double2>ref.state.data.double1
+# mirroring ===========================================================================================
+
  - reference:
      name: ref_string
      where:
        all_of:
          - this.definition.data.string1 == ref.definition.data.string1
          - this.state.data.string3 != ref.state.data.string4
+         - this.state.branchId == "1:25"
+         - this.state.branchId != "1:26"
+         - this.state.branchId defined
+         - this.state.branchId != null
+
          - ref.definition.data.string1 defined
          - ref.definition.data.string2 != null
          - ref.state.data.string2 undefined
@@ -713,6 +1247,16 @@ definition:
          - ref.definition.data.string3 undefined
          - ref.definition.data.string2 == "==INFORMATION=="
          - ref.state.data.string3 != "string"
+         - ref.state.branchId undefined
+         - ref.state.branchId == null
+# mirroring -------------------------------------------------------------------------------------------
+         - ref.definition.data.string1 == this.definition.data.string1
+         - ref.state.data.string4 != this.state.data.string3
+         - null != ref.definition.data.string2
+         - null == ref.state.data.string1
+         - null != this.state.branchId
+         - null == ref.state.branchId
+# mirroring ===========================================================================================
          - any_of:
            - ref.definition.data.string1  undefined
            - all_of:
@@ -726,6 +1270,13 @@ definition:
              - ref.definition.data.string3    undefined
              - ref.definition.data.string2=="==INFORMATION=="
              - ref.state.data.string3!="string"
+# mirroring -------------------------------------------------------------------------------------------
+             - ref.definition.data.string1==this.definition.data.string1
+             - ref.state.data.string4!=this.state.data.string3
+             - null!=ref.definition.data.string2
+             - null==ref.state.data.string1
+# mirroring ===========================================================================================
+
  - reference:
      name: ref_boolean
      where:
@@ -742,6 +1293,18 @@ definition:
          - ref.definition.data.boolean2 == false
          - ref.state.data.boolean3 != false
          - ref.state.data.boolean4 != true
+
+# mirroring -------------------------------------------------------------------------------------------
+         - ref.definition.data.boolean2 == this.definition.data.boolean2
+         - ref.definition.data.boolean1 != this.state.data.boolean4
+         - null == ref.state.data.boolean2
+         - null != ref.state.data.boolean3
+         - true == ref.definition.data.boolean1
+         - false == ref.definition.data.boolean2
+         - false != ref.state.data.boolean3
+         - true != ref.state.data.boolean4
+# mirroring ===========================================================================================
+
          - any_of:
            - ref.definition.data.boolean2    undefined
            - all_of:
@@ -757,29 +1320,82 @@ definition:
              - ref.definition.data.boolean2==false
              - ref.state.data.boolean3!=false
              - ref.state.data.boolean4!=true
+
+        # mirroring -------------------------------------------------------------------------------------------
+             - ref.definition.data.boolean2==this.definition.data.boolean2
+             - ref.definition.data.boolean1!=this.state.data.boolean4
+             - null==ref.state.data.boolean2
+             - null!=ref.state.data.boolean3
+             - true==ref.definition.data.boolean1
+             - false==ref.definition.data.boolean2
+             - false!=ref.state.data.boolean3
+             - true!=ref.state.data.boolean4
+        # mirroring ===========================================================================================
+
  - reference:
-     name: ref_inherited
+     name: ref_time
      where:
        all_of:
-         - inherit this.definition.references.ref_roles
-         - inherit this.definition.references.ref_float
-         - inherit this.definition.references.ref_string
-         - inherit this.definition.references.ref_boolean
-         - this.definition.references.ref_roles defined
-         - ref.state.references.ref_roles undefined
-         - this.definition.references.ref_inherited is_inherit this.definition.references.ref_float
-         - this.definition.references.ref_inherited is_inherit this.definition.references.ref_boolean
-         - any_of:
-           - this.definition.references.ref_inherited is_inherit this.definition.references.ref_integer
-           - all_of:
-             -  inherit   this.definition.references.ref_roles
-             -  inherit   this.definition.references.ref_float
-             -  inherit  this.definition.references.ref_string
-             -  inherit  this.definition.references.ref_boolean
-             -  this.definition.references.ref_roles   defined
-             -  ref.state.references.ref_roles   undefined
-             -  this.definition.references.ref_inherited  is_inherit   this.definition.references.ref_float
-             -  this.definition.references.ref_inherited is_inherit   this.definition.references.ref_boolean
+         - this.definition.expires_at > 0
+         - this.definition.created_at > 10000
+         - this.definition.expires_at < "4908-04-18 23:58:00"
+         - this.definition.expires_at > this.definition.data.time1
+
+         - this.definition.data.time2 >= ref.state.created_at
+
+         - this.definition.data.time4 >= ref.definition.expires_at
+         - this.definition.data.time5 <= ref.definition.created_at
+         - this.definition.data.int2 <= ref.definition.created_at
+         - this.state.data.time5 < this.state.data.time6
+
+         - this.definition.expires_at != this.definition.created_at
+         - this.definition.created_at >= ref.definition.data.time2
+         - this.definition.created_at < ref.state.data.time3
+         - this.definition.created_at > ref.definition.data.time4
+         - this.definition.expires_at != ref.definition.data.time5
+         - this.definition.expires_at != ref.state.data.time6
+         - this.definition.expires_at < ref.definition.data.long2
+         - this.definition.expires_at > ref.state.data.time5
+         - this.state.data.time2 > 0
+         - this.state.created_at > 10000
+         - this.definition.data.active_since > this.definition.data.time1
+         - this.state.data.time2 >= ref.state.created_at
+         - this.state.data.time4 >= ref.definition.expires_at
+         - this.state.data.time5 <= ref.definition.created_at
+         - this.state.expires_at >= ref.definition.created_at
+         - ref.definition.expires_at <= 100000000000
+         - ref.definition.created_at > "1986-01-18 17:00:10"
+         - ref.definition.created_at > this.definition.data.time3
+         - ref.definition.expires_at < this.definition.data.time6
+         - ref.definition.created_at >= this.definition.created_at
+         - ref.definition.expires_at > ref.state.created_at
+         - ref.definition.created_at < ref.definition.expires_at
+         - ref.definition.created_at > ref.state.data.int3
+         - ref.definition.created_at == ref.state.created_at
+         - ref.definition.created_at <= this.definition.data.time4
+         - ref.state.data.time5 < ref.state.data.time3
+         - ref.state.expires_at >= this.definition.created_at
+         - ref.definition.data.time2 <= ref.state.created_at
+         - this.state.data.time3 != ref.state.data.time3
+        # mirroring -------------------------------------------------------------------------------------------
+         - 700000000000 >= ref.definition.created_at
+         - 0 < this.definition.expires_at
+         - 10000 < this.definition.created_at
+         - this.definition.data.time1 < this.definition.expires_at
+         - ref.state.created_at <= this.definition.data.time2
+        # mirroring ===========================================================================================
+
+ - reference:
+     name: ref_parent
+     where:
+       all_of:
+         - ref.state.parent == this.state.data.contract3_parent
+         - ref.state.parent != oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3
+         - this.state.data.contract3_parent == ref.state.parent
+         - ref.state.parent defined
+         - ref.state.parent!=this.state.data.string5
+         - this.state.data.string5!=ref.state.parent
+         - this.state.parent undefined
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.
  permissions:
@@ -814,6 +1430,16 @@ definition:
    string2: "==INFORMATION=="
    boolean1: true
    boolean2: false
+   time1: 20000000
+   time2: 400000000000
+   time3: "2015-05-05 14:38:06"
+   time4: "3345-03-01 07:22:01"
+   time5:
+     __type: unixtime
+     seconds: 1200000000
+   time6:
+     __type: unixtime
+     seconds: 82000000000000
 
 # required section. Data that represent current contract state, could be modified in accordance with
 # 'permissions' section above
@@ -857,6 +1483,57 @@ state:
  # leave it empty:
  created_at: ~
 
+ expires_at:
+   __t: unixtime
+   seconds: 1659720337
+
+ references:
+ - reference:
+     name: ref_inherited
+     where:
+       all_of:
+         - inherit this.definition.references.ref_roles
+         - inherit this.definition.references.ref_float
+         - inherit this.definition.references.ref_string
+         - inherit this.definition.references.ref_boolean
+         - this.definition.references.ref_roles defined
+         - ref.state.references.ref_roles undefined
+         - this.state.references.ref_inherited is_inherit this.definition.references.ref_float
+         - this.state.references.ref_inherited is_inherit this.definition.references.ref_boolean
+         - any_of:
+           - this.state.references.ref_inherited is_inherit this.definition.references.ref_integer
+           - all_of:
+             -  inherit   this.definition.references.ref_roles
+             -  inherit   this.definition.references.ref_float
+             -  inherit  this.definition.references.ref_string
+             -  inherit  this.definition.references.ref_boolean
+             -  this.definition.references.ref_roles   defined
+             -  ref.state.references.ref_roles   undefined
+             -  this.state.references.ref_inherited  is_inherit   this.definition.references.ref_float
+             -  this.state.references.ref_inherited is_inherit   this.definition.references.ref_boolean
+
+ - reference:
+     name: ref_hashes
+     where:
+       all_of:
+         - this.state.data.contract2_origin == ref.state.origin
+         - this.id defined
+         - this.id != ref.id
+         - this.id != EAewHEvdkUJY4UQOB+OAF+V3zdMyryXBCnVtPfqZDUTUX2iUaldvl09/4etdb7ArZrVyP+Iq3E31tSUtm8dAOpxxwocEDybiFa/DCLKFmvv3ELsBc/vNMU+lTJ8XQQpb
+         - this.id != this.state.data.string5
+         - this.state.data.contract2_id == ref.id
+         - ref.state.origin == this.state.data.contract2_origin
+         - ref.state.origin != oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3
+         - this.state.data.contract2_origin == ref.state.origin
+         - ref.state.origin defined
+
+         - oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3 != ref.state.origin
+         - ref.state.origin == this.state.data.contract2_origin
+         - ref.id != this.id
+         - EAewHEvdkUJY4UQOB+OAF+V3zdMyryXBCnVtPfqZDUTUX2iUaldvl09/4etdb7ArZrVyP+Iq3E31tSUtm8dAOpxxwocEDybiFa/DCLKFmvv3ELsBc/vNMU+lTJ8XQQpb != this.id
+         - this.state.data.string5 != this.id
+         - ref.id == this.state.data.contract2_id
+
  # required section. any application data that could be changed.
  data:
    amount: 1000
@@ -866,9 +1543,21 @@ state:
    float4: 7777.0
    string3: "strong"
    string4: "==DATA=="
+   string5: "mqIooBcuyMBRLHZGJGQ7osf6TnoWkkVVBGNG0LDuPiZeXahnDxM+PoPMgEuqzOvsfoWNISyqYaCYyR9zCfpZCF6pjZ+HvjsD73pZ6uaXlUY0e72nBPNbAtFhk2pEXyxt"
    boolean3: true
    boolean4: false
    long1: 540809613457836009
    long2: 1434344332300905480
    double1: -93029039209309103.09204932042000024555
    double2: 3232322288829209309103.09204932042000024555
+
+   time1: 20000000
+   time2: 400000000000
+   time3: "2015-05-05 14:38:06"
+   time4: "3345-03-01 07:22:01"
+   time5:
+     __type: unixtime
+     seconds: 1200000000
+   time6:
+     __type: unixtime
+     seconds: 82000000000000

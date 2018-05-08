@@ -75,8 +75,20 @@ definition:
    float2: 77.0
    string1: "spec"
    string2: "==INFORMATION=="
+   long2: 1434344332300905480
    boolean1: true
    boolean2: false
+   time1: 10000000
+   time2: "2015-05-05 14:38:06"
+   time3: "3345-03-01 07:22:01"
+   time4: "1964-03-01 07:22:01"
+   time5:
+     __type: unixtime
+     seconds: 1200000000
+   time6:
+     __type: unixtime
+     seconds: 82000000000000
+
 
 # required section. Data that represent current contract state, could be modified in accordance with
 # 'permissions' section above
@@ -104,7 +116,7 @@ state:
  created_by: issuer
 
  # required. revision increments on any contract edit. the root contract has always revision of 1
- revision: 1
+ revision: 4
 
  # required. the contract based on which has created this one. it could be previous state of the contract in the
  # case of the edit or another contract that generates child contract and so on. this time it is a new chain
@@ -118,7 +130,12 @@ state:
 
  # required except root contracs. creation time of this revision (e.g. state). As it is a root contract, we
  # leave it empty:
- created_at: ~
+ created_at:
+   now()
+
+ expires_at:
+   __t: unixtime
+   seconds: 1659720337
 
  # required section. any application data that could be changed.
  data:
@@ -135,3 +152,14 @@ state:
    long2: 1434344332300905480
    double1: -93029039209309103.09204932042000024555
    double2: 3232322288829209309103.09204932042000024555
+
+   time1: 10000000
+   time2: "2015-05-05 14:38:06"
+   time3: "3345-03-01 07:22:01"
+   time4: "1960-03-01 07:22:01"
+   time5:
+     __type: unixtime
+     seconds: 1200000000
+   time6:
+     __type: unixtime
+     seconds: 82000000000000

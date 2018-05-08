@@ -434,8 +434,11 @@ public class PermissionsTest extends ContractTestBase {
         Set<String> references = new HashSet<>();
         references.add("certification_contract");
 
+        Contract referencedItem = new Contract();
+
         Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        c.findReferenceByName("certification_contract").addMatchingItem(referencedItem);
 
         Role r = c.getPermissions().getFirst("change_owner").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
@@ -454,11 +457,12 @@ public class PermissionsTest extends ContractTestBase {
         // Bad contract change: owner has no right to change owner ;)
         Contract c1 = c.createRevision(TestKeys.privateKey(0));
         c1.setOwnerKey(ownerKey2);
+        c1.findReferenceByName("certification_contract").addMatchingItem(referencedItem);
         assertNotEquals(c.getOwner(), c1.getOwner());
         c1.seal();
         c1.check();
         c1.traceErrors();
-        assertEquals(2, c1.getErrors().size());
+        assertEquals(1, c1.getErrors().size());
         for(ErrorRecord error : c1.getErrors()) {
             assertThat(error.getError(), anyOf(equalTo(Errors.FORBIDDEN), equalTo(Errors.FAILED_CHECK)));
         }
@@ -483,7 +487,7 @@ public class PermissionsTest extends ContractTestBase {
         c3.setOwnerKey(ownerKey3);
         Reference ref = new Reference();
         ref.name = "certification_contract";
-        ref.type = Reference.TYPE_EXISTING;
+        ref.type = Reference.TYPE_EXISTING_DEFINITION;
         ref.addMatchingItem(new Contract());
         c3.getReferences().put(ref.name, ref);
         assertEquals(c3, c3.getPermissions().getFirst("change_owner").getRole().getContract());
@@ -504,8 +508,11 @@ public class PermissionsTest extends ContractTestBase {
         Set<String> references = new HashSet<>();
         references.add("certification_contract");
 
+        Contract referencedItem = new Contract();
+
         Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        c.findReferenceByName("certification_contract").addMatchingItem(referencedItem);
 
         Role r = c.getPermissions().getFirst("revoke").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
@@ -523,11 +530,12 @@ public class PermissionsTest extends ContractTestBase {
         // Bad contract change: owner has no right to change owner ;)
         Contract c1 = c.createRevision(TestKeys.privateKey(0));
         c1.setOwnerKey(ownerKey2);
+        c1.findReferenceByName("certification_contract").addMatchingItem(referencedItem);
         assertNotEquals(c.getOwner(), c1.getOwner());
         c1.seal();
         c1.check();
         c1.traceErrors();
-        assertEquals(2, c1.getErrors().size());
+        assertEquals(1, c1.getErrors().size());
         for(ErrorRecord error : c1.getErrors()) {
             assertThat(error.getError(), anyOf(equalTo(Errors.FORBIDDEN), equalTo(Errors.FAILED_CHECK)));
         }
@@ -535,6 +543,7 @@ public class PermissionsTest extends ContractTestBase {
         // bad contract change: good key but bad reference
 
         Contract c2 = ContractsService.createRevocation(c, stepaPrivateKeys.iterator().next());
+        c2.getRevoking().get(0).removeReferencedItem(referencedItem);
         assertEquals(c2.getRevoking().get(0), c2.getRevoking().get(0).getPermissions().getFirst("revoke").getRole().getContract());
         c2.seal();
         c2.check();
@@ -549,7 +558,7 @@ public class PermissionsTest extends ContractTestBase {
         Contract c3 = ContractsService.createRevocation(c, stepaPrivateKeys.iterator().next());
         Reference ref = new Reference();
         ref.name = "certification_contract";
-        ref.type = Reference.TYPE_EXISTING;
+        ref.type = Reference.TYPE_EXISTING_DEFINITION;
         ref.addMatchingItem(new Contract());
         c3.getRevoking().get(0).getReferences().put(ref.name, ref);
 //        assertEquals(c3.getRevoking().get(0), c3.getPermissions().getFirst("revoke").getRole().getContract());
@@ -572,6 +581,7 @@ public class PermissionsTest extends ContractTestBase {
 
         Contract c = Contract.fromDslFile(rootPath + "TokenWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        c.findReferenceByName("certification_contract").addMatchingItem(new Contract());
 
         Role r = c.getPermissions().getFirst("split_join").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
@@ -621,7 +631,7 @@ public class PermissionsTest extends ContractTestBase {
         c3.getNew().get(0).createRole("creator", c3.getNew().get(0).getRole("owner"));
         Reference ref = new Reference();
         ref.name = "certification_contract";
-        ref.type = Reference.TYPE_EXISTING;
+        ref.type = Reference.TYPE_EXISTING_DEFINITION;
         ref.addMatchingItem(new Contract());
         c3.getReferences().put(ref.name, ref);
         c3.getNew().get(0).getReferences().put(ref.name, ref);
@@ -645,6 +655,7 @@ public class PermissionsTest extends ContractTestBase {
 
         Contract c = Contract.fromDslFile(rootPath + "AbonementWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        c.findReferenceByName("certification_contract").addMatchingItem(new Contract());
 
         Role r = c.getPermissions().getFirst("decrement_permission").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
@@ -694,7 +705,7 @@ public class PermissionsTest extends ContractTestBase {
         c3.getStateData().set("units", c.getStateData().getIntOrThrow("units") - 1);
         Reference ref = new Reference();
         ref.name = "certification_contract";
-        ref.type = Reference.TYPE_EXISTING;
+        ref.type = Reference.TYPE_EXISTING_DEFINITION;
         ref.addMatchingItem(new Contract());
         c3.getReferences().put(ref.name, ref);
         assertEquals(c3, c3.getPermissions().getFirst("decrement_permission").getRole().getContract());

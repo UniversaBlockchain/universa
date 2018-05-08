@@ -4618,7 +4618,6 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(tp_after);
 
-
         // 2 revision: change reference in state
         // it do issuer with reference "certification_contract"
 
@@ -4629,14 +4628,14 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name = "temp_certification_contract";
-        reference.type = Reference.TYPE_EXISTING;
+        reference.type = Reference.TYPE_EXISTING_STATE;
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
         reference.addMatchingItem(oldJobCertificate);
 
-        llcProperty2.addReferenceToState(reference);
+        llcProperty2.addReference(reference);
 
         llcProperty2.seal();
         llcProperty2.check();
@@ -4666,7 +4665,7 @@ public class BaseNetworkTest extends TestCase {
 
         Reference newReference = new Reference(llcProperty);
         newReference.name = "temp_certification_contract";
-        newReference.type = Reference.TYPE_EXISTING;
+        newReference.type = Reference.TYPE_EXISTING_STATE;
 
         Contract llcProperty3 = llcProperty2.createRevision(llcPrivateKeys.iterator().next());
 
@@ -4675,7 +4674,7 @@ public class BaseNetworkTest extends TestCase {
 
         llcProperty3.getState().getReferences().remove(llcProperty3.getReferences().get("temp_certification_contract"));
         llcProperty3.getReferences().remove("temp_certification_contract");
-        llcProperty3.addReferenceToState(newReference);
+        llcProperty3.addReference(newReference);
 
         llcProperty3.seal();
         llcProperty3.check();
@@ -4794,7 +4793,7 @@ public class BaseNetworkTest extends TestCase {
 
         Reference refForDefinition = new Reference(llcProperty);
         refForDefinition.name = "bank_certificate";
-        refForDefinition.type = Reference.TYPE_EXISTING;
+        refForDefinition.type = Reference.TYPE_EXISTING_DEFINITION;
         refForDefinition.setConditions(conditionsForDefinition);
         refForDefinition.addMatchingItem(oldAccountCertificate);
 
@@ -4811,11 +4810,12 @@ public class BaseNetworkTest extends TestCase {
 
         Reference refForState = new Reference(llcProperty);
         refForState.name = "account_in_bank_certificate";
-        refForState.type = Reference.TYPE_EXISTING;
+        refForState.type = Reference.TYPE_EXISTING_STATE;
         refForState.setConditions(conditionsForState);
         refForState.addMatchingItem(oldAccountCertificate);
 
-        llcProperty.addReferenceToState(refForState);
+        llcProperty.addReference(refForState);
+
 
         // seal
 
@@ -4838,7 +4838,7 @@ public class BaseNetworkTest extends TestCase {
 
         Reference newReference = new Reference(llcProperty2);
         newReference.name = "account_in_bank_certificate";
-        newReference.type = Reference.TYPE_EXISTING;
+        newReference.type = Reference.TYPE_EXISTING_STATE;
         newReference.setConditions(newConditions);
         newReference.addMatchingItem(newAccountCertificate);
 
@@ -4848,7 +4848,7 @@ public class BaseNetworkTest extends TestCase {
         llcProperty2.getState().getReferences().remove(llcProperty2.getReferences().get("account_in_bank_certificate"));
         llcProperty2.getReferences().remove("account_in_bank_certificate");
 
-        llcProperty2.addReferenceToState(newReference);
+        llcProperty2.addReference(newReference);
 
         llcProperty2.seal();
         llcProperty2.check();
@@ -4957,13 +4957,14 @@ public class BaseNetworkTest extends TestCase {
         List <String> listConditionsForDefinition = new ArrayList<>();
         listConditionsForDefinition.add("ref.definition.data.type == \"Good Bank\"");
         listConditionsForDefinition.add("ref.state.origin == this.state.data.account_origin");
+        listConditionsForDefinition.add("this.state.data.account_origin == ref.state.origin"); // mirroring
 
         Binder conditionsForDefinition = new Binder();
         conditionsForDefinition.set("all_of", listConditionsForDefinition);
 
         Reference refForDefinition = new Reference(llcProperty);
         refForDefinition.name = "bank_certificate";
-        refForDefinition.type = Reference.TYPE_EXISTING;
+        refForDefinition.type = Reference.TYPE_EXISTING_DEFINITION;
         refForDefinition.setConditions(conditionsForDefinition);
         refForDefinition.addMatchingItem(oldAccountCertificate);
 
@@ -5099,7 +5100,7 @@ public class BaseNetworkTest extends TestCase {
 
         Reference refForDefinition = new Reference(llcProperty);
         refForDefinition.name = "bank_certificate";
-        refForDefinition.type = Reference.TYPE_EXISTING;
+        refForDefinition.type = Reference.TYPE_EXISTING_DEFINITION;
         refForDefinition.setConditions(conditionsForDefinition);
         refForDefinition.addMatchingItem(oldAccountCertificate);
 
@@ -5189,13 +5190,13 @@ public class BaseNetworkTest extends TestCase {
             thirdPartyPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
-        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
-        llcProperty.seal();
-
         TransactionPack tp_before;
         TransactionPack tp_after;
         Contract jobCertificate;
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
 
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
         jobCertificate.setOwnerKeys(stepaPublicKeys);
@@ -5385,13 +5386,13 @@ public class BaseNetworkTest extends TestCase {
             thirdPartyPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
-        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
-        llcProperty.seal();
-
         TransactionPack tp_before;
         TransactionPack tp_after;
         Contract jobCertificate;
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "NotaryWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
 
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
         jobCertificate.setOwnerKeys(stepaPublicKeys);
@@ -5579,13 +5580,13 @@ public class BaseNetworkTest extends TestCase {
             thirdPartyPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "TokenWithReferenceDSLTemplate.yml");
-        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
-        llcProperty.seal();
-
         TransactionPack tp_before;
         TransactionPack tp_after;
         Contract jobCertificate;
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "TokenWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
 
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
         jobCertificate.setOwnerKeys(stepaPublicKeys);
@@ -5774,13 +5775,13 @@ public class BaseNetworkTest extends TestCase {
             thirdPartyPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "AbonementWithReferenceDSLTemplate.yml");
-        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
-        llcProperty.seal();
-
         TransactionPack tp_before;
         TransactionPack tp_after;
         Contract jobCertificate;
+
+        Contract llcProperty = Contract.fromDslFile(ROOT_PATH + "AbonementWithReferenceDSLTemplate.yml");
+        llcProperty.addSignerKey(llcPrivateKeys.iterator().next());
+        llcProperty.seal();
 
         jobCertificate = new Contract(llcPrivateKeys.iterator().next());
         jobCertificate.setOwnerKeys(stepaPublicKeys);
@@ -6712,7 +6713,8 @@ public class BaseNetworkTest extends TestCase {
             // check the referenced items
             for (Reference refModel : item.getReferences().values()) {
                 HashId id = refModel.contract_id;
-                if(refModel.type == Reference.TYPE_EXISTING && id != null) {
+                if (((refModel.type == Reference.TYPE_EXISTING_DEFINITION) ||
+                     (refModel.type == Reference.TYPE_EXISTING_STATE)) && id != null) {
                     StateRecord r = node.getLedger().getRecord(id);
 
                     if (r == null || !r.getState().isConsensusFound()) {
@@ -7172,14 +7174,13 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name="certification_contract";
-        reference.type = Reference.TYPE_EXISTING;
+        reference.type = Reference.TYPE_EXISTING_DEFINITION;
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
         reference.addMatchingItem(jobCertificate);
 
-//        llcProperty.getDefinition().getReferences().add(reference);
         llcProperty.addReference(reference);
 
         ListRole listRole = new ListRole("list_role");
@@ -7259,14 +7260,13 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name="certification_contract";
-        reference.type = Reference.TYPE_EXISTING;
+        reference.type = Reference.TYPE_EXISTING_DEFINITION;
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
         reference.addMatchingItem(jobCertificate);
 
-//        llcProperty.getDefinition().getReferences().add(reference);
         llcProperty.addReference(reference);
 
         ListRole listRole = new ListRole("list_role");
@@ -7352,14 +7352,13 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name="certification_contract";
-        reference.type = Reference.TYPE_EXISTING;
+        reference.type = Reference.TYPE_EXISTING_DEFINITION;
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
         reference.addMatchingItem(jobCertificate);
 
-//        llcProperty.getDefinition().getReferences().add(reference);
         llcProperty.addReference(reference);
 
         ListRole listRole = new ListRole("list_role");
@@ -7440,14 +7439,14 @@ public class BaseNetworkTest extends TestCase {
 
         Reference reference = new Reference(llcProperty);
         reference.name="certification_contract";
-        reference.type = Reference.TYPE_EXISTING;
+        reference.type = Reference.TYPE_EXISTING_DEFINITION;
+
 
         Binder conditions = new Binder();
         conditions.set("all_of", listConditions);
         reference.setConditions(conditions);
         reference.addMatchingItem(jobCertificate);
 
-//        llcProperty.getDefinition().getReferences().add(reference);
         llcProperty.addReference(reference);
 
         ListRole listRole = new ListRole("list_role");
@@ -8536,7 +8535,7 @@ public class BaseNetworkTest extends TestCase {
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
         Thread.sleep(15000);
-        
+
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract3.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
         refilledSlotContract3.check();
