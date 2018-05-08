@@ -763,7 +763,18 @@ public class ContractsService {
     }
 
 
-
+    /**
+     * Create and return ready {@link SlotContract} contract with need permissions and values. {@link SlotContract} is
+     * used for control and for payment for store some contracts in the distributed store.
+     * <br><br>
+     * Created {@link SlotContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special slot
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link SlotContract#putTrackingContract(Contract)}
+     * for putting contract should be add to storage.
+     * <br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @return ready {@link SlotContract}
+     */
     public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys){
         SlotContract slotContract = new SlotContract();
         slotContract.setApiLevel(3);
@@ -908,7 +919,24 @@ public class ContractsService {
      * Create paid transaction, which consist from prepared TransactionPack you want to register
      * and payment contract that will be spend to process transaction.
      * Included second payment.
-     *<br><br>
+     * It is an extension to the parcel structure allowing include additional payment field that will not be
+     * registered if the transaction will fail.
+     * <br><br>
+     * Creates 2 U payment blocks:
+     * <ul>
+     *     <li><i>first</i> (this is mandatory) is transaction payment, that will always be accepted, as it is now</li>
+     *     <li><i>second</i> extra payment block for the same U that is accepted with the transaction inside it. </li>
+     * </ul>
+     * Technically it done by adding second payment to the new items of payload transaction.
+     * <br><br>
+     * Node processing logic logic is:
+     * <ul>
+     *     <li>if the first payment fails, no further action is taking (no changes)</li>
+     *     <li>if the first payments is OK, the transaction is evaluated and the second payment should be the part of it</li>
+     *     <li>if the transaction including the second payment is OK, the transaction and the second payment are registered altogether.</li>
+     *     <li>if any of the latest fail, the whole transaction is not accepted, e.g. the second payment is not accepted too</li>
+     * </ul>
+     * <br><br>
      * @param payload is prepared TransactionPack you want to register in the Universa.
      * @param payment is approved contract with transaction units belongs to you.
      * @param amount is number of transaction units you want to spend to register payload contract.
