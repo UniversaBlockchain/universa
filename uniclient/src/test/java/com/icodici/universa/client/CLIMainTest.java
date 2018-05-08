@@ -2112,6 +2112,39 @@ public class CLIMainTest {
     }
 
     @Test
+    public void registerContractWithPaymentForStorage() throws Exception {
+
+        Contract contract = createCoin();
+        contract.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        contract.seal();
+
+        CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
+
+        System.out.println("--- get tu ---");
+
+        String tuContract = getApprovedTUContract();
+
+        System.out.println("--- registering contract with paying parcel (with processing cost print) ---");
+        LogPrinter.showDebug(true);
+
+        callMain("--register", basePath + "contract_for_register_and_cost.unicon",
+                "-k-contract", PRIVATE_KEY_PATH,
+                "--tu", tuContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-amount", "2",
+                "-amount-storage", "100",
+                "-wait", "5000");
+
+        System.out.println(output);
+
+        assertTrue (output.indexOf("registering the paid contract " + contract.getId()
+                + " from " + basePath + "contract_for_register_and_cost.unicon"
+                + " for 2 TU (and 100 TU for storage)") >= 0);
+        assertTrue (output.indexOf("submitted with result: ItemResult<APPROVED") >= 0);
+    }
+
+    @Test
     public void saveAndLoad() throws Exception {
 
         // Should register contracts and use -cost as key to print cost of processing it.
