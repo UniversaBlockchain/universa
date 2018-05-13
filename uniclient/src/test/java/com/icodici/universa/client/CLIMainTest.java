@@ -2134,7 +2134,7 @@ public class CLIMainTest {
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-amount", "2",
                 "-amount-storage", "100",
-                "-wait", "5000");
+                "-wait", "10000");
 
         System.out.println(output);
 
