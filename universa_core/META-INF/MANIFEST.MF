@@ -1,3 +1,0 @@
-Manifest-Version: 1.0
-Main-Class: com.icodici.universa.node2.Main
-
