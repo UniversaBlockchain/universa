@@ -10181,4 +10181,33 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
     }
 
+
+    @Test
+    public void itemResultWithErrors() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"), new Binder());
+        modifyDataPermission.addField("value", Do.listOf("0", "1"));
+        contract.addPermission(modifyDataPermission);
+        contract.getStateData().set("value", "1");
+        contract.seal();
+        node.registerItem(contract);
+        node.waitItem(contract.getId(), 5000);
+
+        Contract contract2 = contract.createRevision();
+        contract2.addSignerKey(TestKeys.privateKey(0));
+        contract2.getStateData().set("value", "2");
+        contract2.seal();
+        node.registerItem(contract2);
+
+        ItemResult itemResult = node.waitItem(contract2.getId(), 5000);
+        System.out.println("itemResult: " + itemResult.state);
+        System.out.println("errors: " + itemResult.errors);
+        if (itemResult.errors != null) {
+            for (ErrorRecord er : itemResult.errors)
+                System.out.println("  error: " + er);
+        }
+        assertNotNull(itemResult.errors);
+        assertEquals(true, itemResult.errors.size() > 0);
+    }
+
 }

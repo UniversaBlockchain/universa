@@ -3101,6 +3101,8 @@ public class Node {
         public @NonNull ItemResult getResult() {
             ItemResult result = new ItemResult(record, item != null);
             result.extraDataBinder = extraResult;
+            if (item != null)
+                result.errors = new ArrayList<>(item.getErrors());
             return result;
         }
 
