@@ -115,9 +115,9 @@ state:
   data:
    # this is writable section for mutable data
    names:
-     - name: test         # network-unique
-       description: test  # optional
-       url: test          # optinoal
+     - name: test                       # network-unique
+       description: "test description"  # optional
+       url: "http://test.com"           # optinoal
        entries:
          - addresses: [26RzRJDLqze3P5Z1AzpnucF75RLi1oa6jqBaDh8MJ3XmTaUoF8R, bZmurQxHtG8S8RgZabTrvfa5Rsan7DZZGS4fjWrScb3jVmPtNP1oRiJBiJCAqchjyuH2ov3z]
          - origin: oRhAix5Z9/O1MCjyJ/Iz1xHB2h8mcSC6Ylj//O06xJr2xeJF/XmE9nQpP7Ar9COlgsIP6QHhQcRltYlNdtDx/154bzaGGNA3FUqll/0aOM4qikYbqTrwCoKlTQIlaRI3
