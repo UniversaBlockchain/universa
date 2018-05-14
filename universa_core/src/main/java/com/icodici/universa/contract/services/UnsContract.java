@@ -158,7 +158,7 @@ public class UnsContract extends NSmartContract {
     private double calculatePrepaidNamesForDays(boolean withSaveToState) {
 
         for (Contract nc : getNew()) {
-            if (nc.isTU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
+            if (nc.isU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
                 int calculatedPayment = 0;
                 boolean isTestPayment = false;
                 Contract parent = null;
@@ -293,7 +293,7 @@ public class UnsContract extends NSmartContract {
 
         boolean hasPayment = false;
         for (Contract nc : getNew()) {
-            if (nc.isTU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
+            if (nc.isU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
                 hasPayment = true;
 
                 int calculatedPayment = 0;
