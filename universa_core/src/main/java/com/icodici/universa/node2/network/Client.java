@@ -11,6 +11,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
@@ -23,9 +24,11 @@ import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.tools.Reporter;
+import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Instant;
@@ -457,6 +460,38 @@ public class Client {
         if (positiveConsensus < 1)
             positiveConsensus = (int) Math.floor(nodes.size() * 0.90);
         return positiveConsensus;
+    }
+
+    public Decimal storageGetRate() throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("storageGetRate");
+            Double U = result.getDouble("U");
+            return new Decimal(BigDecimal.valueOf(U));
+        });
+    }
+
+    public Binder querySlotInfo(HashId slotId) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("querySlotInfo", "slot_id", slotId.getDigest());
+            Binder binder = result.getBinder("slot_state", null);
+            return binder;
+        });
+    }
+
+    public byte[] queryContract(HashId slotId, HashId originId, HashId contractId) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("queryContract",
+                    "slot_id", slotId.getDigest(),
+                    "origin_id", originId==null?null:originId.getDigest(),
+                    "contract_id", contractId==null?null:contractId.getDigest()
+            );
+            try {
+                Bytes bytes = result.getBytesOrThrow("contract");
+                return bytes.getData();
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        });
     }
 
 }

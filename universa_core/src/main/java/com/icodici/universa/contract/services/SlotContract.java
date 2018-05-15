@@ -3,6 +3,7 @@ package com.icodici.universa.contract.services;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -217,6 +218,20 @@ public class SlotContract extends NSmartContract {
             return trackingContracts.getFirst();
 
         return null;
+    }
+
+    /**
+     * @param hashId contract's id to check
+     * @return true if hashId is present in tracking revisions
+     */
+    public boolean isContractTracking(HashId hashId) {
+        if (trackingContracts != null) {
+            for (Contract contract : trackingContracts) {
+                if (contract.getId().equals(hashId))
+                    return true;
+            }
+        }
+        return false;
     }
 
     /**

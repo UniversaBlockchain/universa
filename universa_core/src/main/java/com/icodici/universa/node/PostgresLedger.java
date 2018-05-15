@@ -1056,6 +1056,22 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public byte[] getSlotContractBySlotId(HashId slotId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT transaction_pack FROM environments " +
+                    "WHERE ncontract_hash_id=?", slotId.getDigest()))) {
+                if (rs == null)
+                    return null;
+                return rs.getBytes(1);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
     public byte[] getContractInStorage(HashId contractId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +

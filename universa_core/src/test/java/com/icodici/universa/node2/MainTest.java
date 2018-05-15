@@ -14,6 +14,7 @@ import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.Core;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
@@ -22,6 +23,7 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.*;
@@ -1482,6 +1484,66 @@ public class MainTest {
         assertEquals(expectedState, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
+    }
+
+
+    @Test
+    public void testSlotApi() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Decimal kilobytesAndDaysPerU = client.storageGetRate();
+        System.out.println("storageGetRate: " + kilobytesAndDaysPerU);
+        assertEquals(new Decimal(main.config.kilobytesAndDaysPerU), kilobytesAndDaysPerU);
+
+        Contract simpleContract = new Contract(TestKeys.privateKey(1));
+        simpleContract.seal();
+        ItemResult itemResult = client.register(simpleContract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        slotContract.setNodeConfig(main.node.getConfig());
+        slotContract.putTrackingContract(simpleContract);
+
+        Contract stepaTU = InnerContractsService.createFreshTU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
+        System.out.println("stepaTU itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaTU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+
+        Binder slotInfo = client.querySlotInfo(slotContract.getId());
+        System.out.println("slot info is null: " + (slotInfo == null));
+        assertNull(slotInfo);
+
+        byte[] simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
+        System.out.println("simpleContractBytes (by contractId): " + simpleContractBytes);
+        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
+        System.out.println("simpleContractBytes (by originId): " + simpleContractBytes);
+        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        client.registerParcel(parcel.pack(), 5000);
+        itemResult = client.getState(slotContract.getId());
+        System.out.println("slot itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        slotInfo = client.querySlotInfo(slotContract.getId());
+        System.out.println("slot info size: " + slotInfo.size());
+        assertNotNull(slotInfo);
+
+        simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
+        System.out.println("simpleContractBytes (by contractId) length: " + simpleContractBytes.length);
+        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
+        System.out.println("simpleContractBytes (by originId) length: " + simpleContractBytes.length);
+        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
     }
 
 }
