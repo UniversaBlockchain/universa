@@ -364,6 +364,9 @@ public class SqliteLedger implements Ledger {
     @Override
     public void removeExpiredStorageSubscriptionsCascade() {}
 
+    @Override
+    public byte[] getSlotContractBySlotId(HashId slotId) {return null;}
+
 
     @Override
     public void saveNameRecord(final NameRecordModel nameRecordModel) {}
