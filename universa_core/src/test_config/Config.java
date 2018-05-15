@@ -100,6 +100,10 @@ public class Config {
         this.statsIntervalBig = statsIntervalBig;
     }
 
+    public Duration getExpriedNamesCleanupInterval() {
+        return expriedNamesCleanupInterval;
+    }
+
     public Duration getExpriedStorageCleanupInterval() {
         return expriedStorageCleanupInterval;
     }
@@ -137,6 +141,7 @@ public class Config {
     private Duration statsIntervalBig = Duration.ofSeconds(3600);
     private Duration maxGetItemTime = Duration.ofSeconds(30);
     private Duration expriedStorageCleanupInterval = Duration.ofSeconds(15);
+    private Duration expriedNamesCleanupInterval = Duration.ofMinutes(5);
 
     private int getItemRetryCount = 10;
     private int negativeConsensus;

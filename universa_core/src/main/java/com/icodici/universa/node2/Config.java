@@ -89,6 +89,11 @@ public class Config {
         this.statsIntervalBig = statsIntervalBig;
     }
 
+
+    public Duration getExpriedNamesCleanupInterval() {
+        return expriedNamesCleanupInterval;
+    }
+
     public Duration getExpriedStorageCleanupInterval() {
         return expriedStorageCleanupInterval;
     }
@@ -136,6 +141,8 @@ public class Config {
     private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
     private Duration expriedStorageCleanupInterval = Duration.ofMinutes(5);
+    private Duration expriedNamesCleanupInterval = Duration.ofMinutes(5);
+
 
     private Boolean isFreeRegistrationsLimited = null;
     private boolean isFreeRegistrationsAllowedFromYaml = false;

@@ -1457,4 +1457,26 @@ public class PostgresLedger implements Ledger {
 
     }
 
+
+    public void clearExpiredNameRecords() {
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime now = ZonedDateTime.now().minusMonths(1);
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM name_storage WHERE expires_at < ? "
+                            )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(now));
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("clearExpiredNameRecords failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 }

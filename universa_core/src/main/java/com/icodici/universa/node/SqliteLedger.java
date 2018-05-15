@@ -377,8 +377,13 @@ public class SqliteLedger implements Ledger {
     @Override
     public NameRecordModel getNameRecord(final String nameReduced) {return null;}
 
+    @Override
+    public void clearExpiredNameRecords() {
 
-        /**
+    }
+
+
+    /**
          * Enable or disable records caching. USe it in tests only, in production it should always be enabled
          *
          * @param enable, if true it is enabling cache
