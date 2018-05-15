@@ -1460,6 +1460,7 @@ public class PostgresLedger implements Ledger {
 
     public void clearExpiredNameRecords() {
         try (PooledDb db = dbPool.db()) {
+            //TODO: get hold interval from config
             ZonedDateTime now = ZonedDateTime.now().minusMonths(1);
             try (
                     PreparedStatement statement =
