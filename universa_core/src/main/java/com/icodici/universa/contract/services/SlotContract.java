@@ -72,44 +72,7 @@ public class SlotContract extends NSmartContract {
     // Time of spent KD's calculation for current revision
     private ZonedDateTime spentKDsTime = null;
 
-    public Config getNodeConfig() {
-        return nodeConfig;
-    }
 
-    /**
-     * Set node's {@link Config}. Slot needs for config to find and check U contract (needs u issuer keys).
-     * @param nodeConfig is {@link Config}
-     */
-    public void setNodeConfig(Config nodeConfig) {
-        this.nodeConfig = nodeConfig;
-    }
-    private Config nodeConfig;
-
-    public Ledger getLedger() {
-        return ledger;
-    }
-
-    /**
-     * Set {@link Ledger} from the node. Slot contract needs with ledger for creation and update subscriptions.
-     * @param ledger is {@link Ledger}
-     */
-    public void setLedger(Ledger ledger) {
-        this.ledger = ledger;
-    }
-    private Ledger ledger;
-
-    public NodeInfo getNodeInfo() {
-        return nodeInfo;
-    }
-
-    /**
-     * Set {@link NodeInfo}
-     * @param nodeInfo
-     */
-    public void setNodeInfo(NodeInfo nodeInfo) {
-        this.nodeInfo = nodeInfo;
-    }
-    private NodeInfo nodeInfo;
 
     /**
      * Slot contract is one of several types of smarts contracts that can be run on the node. Slot contract provides

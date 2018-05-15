@@ -13,15 +13,12 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.SmartContract;
 import com.icodici.universa.contract.TransactionPack;
-import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
 import com.icodici.universa.node2.network.UDPAdapter;
 import net.sergeych.boss.Boss;
-import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
 

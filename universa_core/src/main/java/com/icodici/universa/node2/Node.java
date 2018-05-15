@@ -11,7 +11,6 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.SmartContract;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -1778,26 +1777,26 @@ public class Node {
                             checkPassed = item.check();
 
                             // if item is smart contract we check it additionally
-                            if(item instanceof SlotContract) {
+                            if(item instanceof NSmartContract) {
                                 // slot contract need ledger, node's config and nodeInfo to work
-                                ((SlotContract) item).setNodeInfo(myInfo);
-                                ((SlotContract) item).setNodeConfig(config);
-                                ((SlotContract) item).setLedger(ledger);
+                                ((NSmartContract) item).setNodeInfo(myInfo);
+                                ((NSmartContract) item).setNodeConfig(config);
+                                ((NSmartContract) item).setLedger(ledger);
 
                                 // restore environment if exist, otherwise create new.
                                 ImmutableEnvironment ime;
                                 byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
                                 if (ebytes != null) {
                                     Binder binder = Boss.unpack(ebytes);
-                                    ime = new SlotImmutableEnvironment((SlotContract) item, binder);
+                                    ime = new SlotImmutableEnvironment((NSmartContract) item, binder);
                                 } else {
-                                    ime = new SlotImmutableEnvironment((SlotContract) item);
+                                    ime = new SlotImmutableEnvironment((NSmartContract) item);
                                 }
                                 // Here can be only APPROVED state, so we call only beforeCreate or beforeUpdate
-                                if (((SmartContract) item).getRevision() == 1) {
-                                    ((SmartContract) item).beforeCreate(ime);
+                                if (((NSmartContract) item).getRevision() == 1) {
+                                    ((NSmartContract) item).beforeCreate(ime);
                                 } else {
-                                    ((SmartContract) item).beforeUpdate(ime);
+                                    ((NSmartContract) item).beforeUpdate(ime);
                                 }
                             }
                         }
@@ -1888,23 +1887,23 @@ public class Node {
                         checkReferencesOf(revokingItem);
 
                         // if revoking item is smart contract node additionally check it
-                        if(revokingItem instanceof SlotContract) {
+                        if(revokingItem instanceof NSmartContract) {
                             // slot contract need ledger, node's config and nodeInfo to work
-                            ((SlotContract) revokingItem).setNodeInfo(myInfo);
-                            ((SlotContract) revokingItem).setNodeConfig(config);
-                            ((SlotContract) revokingItem).setLedger(ledger);
+                            ((NSmartContract) revokingItem).setNodeInfo(myInfo);
+                            ((NSmartContract) revokingItem).setNodeConfig(config);
+                            ((NSmartContract) revokingItem).setLedger(ledger);
 
                             // restore environment if exist, otherwise create new.
                             ImmutableEnvironment ime;
                             byte[] ebytes = ledger.getEnvironmentFromStorage(revokingItem.getId());
                             if (ebytes != null) {
                                 Binder binder = Boss.unpack(ebytes);
-                                ime = new SlotImmutableEnvironment((SlotContract) revokingItem, binder);
+                                ime = new SlotImmutableEnvironment((NSmartContract) revokingItem, binder);
                             } else {
-                                ime = new SlotImmutableEnvironment((SlotContract) revokingItem);
+                                ime = new SlotImmutableEnvironment((NSmartContract) revokingItem);
                             }
                             // Here only REVOKED states, so we call only beforeRevoke
-                            ((SlotContract) revokingItem).beforeRevoke(ime);
+                            ((NSmartContract) revokingItem).beforeRevoke(ime);
                         }
 
                         for (ErrorRecord er : revokingItem.getErrors()) {
@@ -1942,26 +1941,26 @@ public class Node {
                         checkSubItemsOf(newItem);
 
                         // if new item is smart contract we check it additionally
-                        if(newItem instanceof SlotContract) {
+                        if(newItem instanceof NSmartContract) {
                             // slot contract need ledger, node's config and nodeInfo to work
-                            ((SlotContract) newItem).setNodeInfo(myInfo);
-                            ((SlotContract) newItem).setNodeConfig(config);
-                            ((SlotContract) newItem).setLedger(ledger);
+                            ((NSmartContract) newItem).setNodeInfo(myInfo);
+                            ((NSmartContract) newItem).setNodeConfig(config);
+                            ((NSmartContract) newItem).setLedger(ledger);
 
                             // restore environment if exist, otherwise create new.
                             ImmutableEnvironment ime;
                             byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
                             if (ebytes != null) {
                                 Binder binder = Boss.unpack(ebytes);
-                                ime = new SlotImmutableEnvironment((SlotContract) newItem, binder);
+                                ime = new SlotImmutableEnvironment((NSmartContract) newItem, binder);
                             } else {
-                                ime = new SlotImmutableEnvironment((SlotContract) newItem);
+                                ime = new SlotImmutableEnvironment((NSmartContract) newItem);
                             }
                             // Here only APPROVED states, so we call only beforeCreate or beforeUpdate
                             if (((Contract) newItem).getRevision() == 1) {
-                                ((SlotContract) newItem).beforeCreate(ime);
+                                ((NSmartContract) newItem).beforeCreate(ime);
                             } else {
-                                ((SlotContract) newItem).beforeUpdate(ime);
+                                ((NSmartContract) newItem).beforeUpdate(ime);
                             }
                         }
 
@@ -2258,24 +2257,30 @@ public class Node {
                             try {
                                 r.save();
                                 // if revoking item is smart contract node calls method onRevoked
-                                if(revokingItem instanceof SlotContract) {
-                                    // we need to get all subscriptions
-                                    Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) revokingItem).getTrackingContract().getId());
+                                if(revokingItem instanceof NSmartContract) {
                                     //restore environment with found subcriptions
                                     ImmutableEnvironment ime;
                                     byte[] ebytes = ledger.getEnvironmentFromStorage(revokingItem.getId());
+                                    Binder binder = null;
+
                                     if (ebytes != null) {
-                                        Binder binder = Boss.unpack(ebytes);
-                                        ime = new SlotImmutableEnvironment((SlotContract) revokingItem, binder, trackingCssSet);
-                                    } else {
-                                        ime = new SlotImmutableEnvironment((SlotContract) revokingItem, null, trackingCssSet);
+                                        binder = Boss.unpack(ebytes);
                                     }
+
+                                    if(revokingItem instanceof SlotContract) {
+                                        // we need to get all subscriptions
+                                        Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) revokingItem).getTrackingContract().getId());
+                                        ime = new SlotImmutableEnvironment((NSmartContract) revokingItem, binder, trackingCssSet);
+                                    } else {
+                                        ime = new SlotImmutableEnvironment((NSmartContract) revokingItem, binder);
+                                    }
+
                                     // set ledger, config and nodeInfo for slot contarct
-                                    ((SlotContract) revokingItem).setNodeInfo(myInfo);
-                                    ((SlotContract) revokingItem).setNodeConfig(config);
-                                    ((SlotContract) revokingItem).setLedger(ledger);
+                                    ((NSmartContract) revokingItem).setNodeInfo(myInfo);
+                                    ((NSmartContract) revokingItem).setNodeConfig(config);
+                                    ((NSmartContract) revokingItem).setLedger(ledger);
                                     // and run onRevoked
-                                    ((SlotContract) revokingItem).onRevoked(ime);
+                                    ((NSmartContract) revokingItem).onRevoked(ime);
                                 }
 
 //                                updateItemForSmartContracts(revokingItem, r.getState());
@@ -2311,40 +2316,43 @@ public class Node {
                                 r.save();
                                 Binder newExtraResult = new Binder();
                                 // if new item is smart contract node calls method onCreated or onUpdated
-                                if(newItem instanceof SlotContract) {
+                                if(newItem instanceof NSmartContract) {
                                     Binder er;
 
-                                    ((SlotContract) newItem).setNodeInfo(myInfo);
-                                    ((SlotContract) newItem).setNodeConfig(config);
-                                    ((SlotContract) newItem).setLedger(ledger);
+                                    ((NSmartContract) newItem).setNodeInfo(myInfo);
+                                    ((NSmartContract) newItem).setNodeConfig(config);
+                                    ((NSmartContract) newItem).setLedger(ledger);
 
                                     MutableEnvironment me;
 
-                                    if (((SlotContract) newItem).getRevision() == 1) {
+                                    if (((NSmartContract) newItem).getRevision() == 1) {
                                         // create environment
-                                        me = new SlotMutableEnvironment((SlotContract) newItem);
+                                        me = new SlotMutableEnvironment((NSmartContract) newItem);
                                         // and call onCreated
-                                        er = ((SlotContract) newItem).onCreated(me);
+                                        er = ((NSmartContract) newItem).onCreated(me);
                                         newExtraResult.set("onCreatedResult", er);
                                     } else {
                                         try{
-                                            // we need to find all subscriptions
-                                            Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) newItem).getTrackingContract().getId());
 
                                             // restore environment with found subscriptions
                                             byte[] ebytes = ledger.getEnvironmentFromStorage(newItem.getId());
+                                            Binder binder = null;
+
                                             if (ebytes != null) {
-                                                Binder binder = Boss.unpack(ebytes);
-                                                me = new SlotMutableEnvironment((SlotContract) newItem, binder, trackingCssSet);
-                                                // and call onUpdated
-                                                er = ((SlotContract) newItem).onUpdated(me);
-                                                newExtraResult.set("onUpdateResult", er);
-                                            } else {
-                                                me = new SlotMutableEnvironment((SlotContract) newItem, null, trackingCssSet);
-                                                // and call onUpdated
-                                                er = ((SlotContract) newItem).onUpdated(me);
-                                                newExtraResult.set("onUpdateResult", er);
+                                                binder = Boss.unpack(ebytes);
+
                                             }
+                                            if(newItem instanceof SlotContract) {
+                                                // we need to find all subscriptions
+                                                Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) newItem).getTrackingContract().getId());
+                                                me = new SlotMutableEnvironment((NSmartContract) newItem, binder, trackingCssSet);
+                                            } else {
+                                                me = new SlotMutableEnvironment((NSmartContract) newItem, binder);
+                                            }
+                                            // and call onUpdated
+                                            er = ((NSmartContract) newItem).onUpdated(me);
+                                            newExtraResult.set("onUpdateResult", er);
+
                                         } catch (Exception e) {
                                             e.printStackTrace();
                                         }
@@ -2423,11 +2431,11 @@ public class Node {
 
                     try {
                         // if item is smart contract node calls onCreated or onUpdated
-                        if(item instanceof SlotContract) {
+                        if(item instanceof NSmartContract) {
                             // slot need ledger, config and nodeInfo for processing
-                            ((SlotContract) item).setNodeInfo(myInfo);
-                            ((SlotContract) item).setNodeConfig(config);
-                            ((SlotContract) item).setLedger(ledger);
+                            ((NSmartContract) item).setNodeInfo(myInfo);
+                            ((NSmartContract) item).setNodeConfig(config);
+                            ((NSmartContract) item).setLedger(ledger);
 
                             Binder er;
                             MutableEnvironment me;
@@ -2435,31 +2443,35 @@ public class Node {
 
                             // here can be only APPROVED states
                             if(getState() == ItemState.APPROVED) {
-                                if (((SlotContract) item).getRevision() == 1) {
+                                if (((NSmartContract) item).getRevision() == 1) {
                                     // create new environment
-                                    me = new SlotMutableEnvironment((SlotContract) item);
+                                    me = new SlotMutableEnvironment((NSmartContract) item);
                                     // and run onCreated
-                                    er = ((SlotContract) item).onCreated(me);
+                                    er = ((NSmartContract) item).onCreated(me);
                                     extraResult.set("onCreatedResult", er);
                                 } else {
                                     try{
-                                        // find all subscriptions
-                                        Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) item).getTrackingContract().getId());
 
+
+                                        Binder binder = null;
                                         // restore environment with found subscriptions
                                         byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
                                         if (ebytes != null) {
-                                            Binder binder = Boss.unpack(ebytes);
-                                            me = new SlotMutableEnvironment((SlotContract) item, binder, trackingCssSet);
-                                            // and run onUpdated
-                                            er = ((SlotContract) item).onUpdated(me);
-                                            extraResult.set("onUpdateResult", er);
-                                        } else {
-                                            me = new SlotMutableEnvironment((SlotContract) item, null, trackingCssSet);
-                                            // and run onUpdated
-                                            er = ((SlotContract) item).onUpdated(me);
-                                            extraResult.set("onUpdateResult", er);
+                                            binder = Boss.unpack(ebytes);
                                         }
+
+                                        if(item instanceof SlotContract) {
+                                            // we need to find all subscriptions
+                                            Set<ContractStorageSubscription> trackingCssSet = ledger.getStorageSubscriptionsForContractId(((SlotContract) item).getTrackingContract().getId());
+                                            me = new SlotMutableEnvironment((NSmartContract) item, binder, trackingCssSet);
+                                        } else {
+                                            me = new SlotMutableEnvironment((NSmartContract) item, binder);
+                                        }
+
+                                        // and run onUpdated
+                                        er = ((NSmartContract) item).onUpdated(me);
+                                        extraResult.set("onUpdateResult", er);
+
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
@@ -2469,8 +2481,8 @@ public class Node {
 //                                byte[] ebytes = ledger.getEnvironmentFromStorage(item.getId());
 //                                if (ebytes != null) {
 //                                    Binder binder = Boss.unpack(ebytes);
-//                                    ime = new SlotImmutableEnvironment((SlotContract) item, binder, trackingCssSet);
-//                                    ((SlotContract) item).onRevoked(ime);
+//                                    ime = new SlotImmutableEnvironment((NSmartContract) item, binder, trackingCssSet);
+//                                    ((NSmartContract) item).onRevoked(ime);
 //                                }
 //                            }
 
@@ -2540,13 +2552,13 @@ public class Node {
                     if (foundCssSet != null) {
                         for (ContractStorageSubscription foundCss : foundCssSet) {
                             if (foundCss instanceof SlotContractStorageSubscription) {
-    //                                    if (foundCss instanceof SlotContractStorageSubscription && ((SlotContractStorageSubscription) foundCss).isReceiveEvents()) {
+    //                                    if (foundCss instanceof NSmartContractStorageSubscription && ((NSmartContractStorageSubscription) foundCss).isReceiveEvents()) {
                                 // find slot contract for each subscription
                                 byte[] foundSlotPack = ledger.getSlotForSubscriptionStorageId(((SlotContractStorageSubscription) foundCss).getId());
                                 if(foundSlotPack != null) {
                                     Contract found = Contract.fromPackedTransaction(foundSlotPack);
-                                    if(found instanceof SlotContract) {
-                                        SlotContract foundSlot = (SlotContract) found;
+                                    if(found instanceof NSmartContract) {
+                                        NSmartContract foundSlot = (NSmartContract) found;
                                         // and fire event for slot
                                         if (foundSlot != null) {
                                             // slot need ledger, config and node info for processing

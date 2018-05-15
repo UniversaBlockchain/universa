@@ -2,20 +2,65 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.contract.SmartContract;
+import com.icodici.universa.ErrorRecord;
+import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node2.Config;
+import com.icodici.universa.node2.NodeInfo;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Map;
 
-public class NSmartContract extends SmartContract implements NContract {
+import static com.icodici.universa.Errors.BAD_VALUE;
 
+public class NSmartContract extends Contract implements NContract {
+
+    public Config getNodeConfig() {
+        return nodeConfig;
+    }
+
+    /**
+     * Set node's {@link Config}. Slot needs for config to find and check U contract (needs u issuer keys).
+     * @param nodeConfig is {@link Config}
+     */
+    public void setNodeConfig(Config nodeConfig) {
+        this.nodeConfig = nodeConfig;
+    }
+    protected Config nodeConfig;
+
+    public Ledger getLedger() {
+        return ledger;
+    }
+
+    /**
+     * Set {@link Ledger} from the node. Slot contract needs with ledger for creation and update subscriptions.
+     * @param ledger is {@link Ledger}
+     */
+    public void setLedger(Ledger ledger) {
+        this.ledger = ledger;
+    }
+    protected Ledger ledger;
+
+    public NodeInfo getNodeInfo() {
+        return nodeInfo;
+    }
+
+    /**
+     * Set {@link NodeInfo}
+     * @param nodeInfo
+     */
+    public void setNodeInfo(NodeInfo nodeInfo) {
+        this.nodeInfo = nodeInfo;
+    }
+    protected NodeInfo nodeInfo;
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
@@ -53,6 +98,95 @@ public class NSmartContract extends SmartContract implements NContract {
     }
 
     @Override
+    public @NonNull String getExtendedType() {
+        try {
+            return get("definition.extended_type");
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    @Override
+    public boolean beforeCreate(ImmutableEnvironment c) {
+        return true;
+    }
+
+    @Override
+    public boolean beforeUpdate(ImmutableEnvironment c) {
+        return true;
+    }
+
+    @Override
+    public boolean beforeRevoke(ImmutableEnvironment c) {
+        return true;
+    }
+
+    @Override
+    public @Nullable Binder onCreated(MutableEnvironment c) {
+        return Binder.fromKeysValues("status", "ok");
+    }
+
+    @Override
+    public Binder onUpdated(MutableEnvironment c) {
+        return Binder.fromKeysValues("status", "ok");
+    }
+
+    @Override
+    public void onRevoked(ImmutableEnvironment c) {
+
+    }
+
+    @Override
+    public @NonNull Binder query(ImmutableEnvironment e, String methodName, Binder params) {
+        return null;
+    }
+
+    @Override
+    public void addError(ErrorRecord r) {
+        super.addError(r);
+    }
+
+    @Override
+    public Binder toBinder() {
+        return super.toBinder();
+    }
+
+    @Override
+    public boolean check() throws Quantiser.QuantiserException {
+        boolean checkResult = false;
+
+        // check that type of smart contract is set and exist
+        String extendedTypeString = getExtendedType();
+        if(extendedTypeString != null) {
+
+            SmartContractType scType = null;
+            try {
+                scType = SmartContractType.valueOf(extendedTypeString);
+                if(scType != null) {
+                    checkResult = true;
+                }
+
+            } catch (IllegalArgumentException e) {
+                addError(BAD_VALUE, "definition.extended_type", "illegal value, should be string from SmartContractType enum");
+                checkResult = false;
+            }
+        } else {
+            addError(BAD_VALUE, "definition.extended_type", "value not defined, should be string from SmartContractType enum");
+            checkResult = false;
+        }
+
+        if(!checkResult)
+            return checkResult;
+
+        checkResult = super.check();
+        if(!checkResult) {
+            return checkResult;
+        }
+
+        return checkResult;
+    }
+
+    @Override
     public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
 
     }
@@ -79,5 +213,11 @@ public class NSmartContract extends SmartContract implements NContract {
     static {
         Config.forceInit(NSmartContract.class);
         DefaultBiMapper.registerClass(NSmartContract.class);
+    }
+
+    public enum SmartContractType {
+        N_SMART_CONTRACT,
+        SLOT1,
+        UNS1
     }
 }

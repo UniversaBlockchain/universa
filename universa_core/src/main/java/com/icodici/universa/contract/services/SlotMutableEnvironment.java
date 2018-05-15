@@ -19,7 +19,7 @@ public class SlotMutableEnvironment extends SlotImmutableEnvironment implements 
      * Restore SlotMutableEnvironment
      * @param contract slot contract this environment belongs to
      */
-    public SlotMutableEnvironment(SlotContract contract) {
+    public SlotMutableEnvironment(NSmartContract contract) {
         super(contract);
     }
 
@@ -29,7 +29,7 @@ public class SlotMutableEnvironment extends SlotImmutableEnvironment implements 
      * @param contract slot contract this environment belongs to
      * @param kvBinder map stored in the ledger
      */
-    public SlotMutableEnvironment(SlotContract contract, Binder kvBinder) {
+    public SlotMutableEnvironment(NSmartContract contract, Binder kvBinder) {
         super(contract, kvBinder);
     }
 
@@ -40,7 +40,7 @@ public class SlotMutableEnvironment extends SlotImmutableEnvironment implements 
      * @param kvBinder map stored in the ledger
      * @param storageSubscriptionsSet subscriptions for this environment
      */
-    public SlotMutableEnvironment(SlotContract contract, Binder kvBinder, Set<ContractStorageSubscription> storageSubscriptionsSet) {
+    public SlotMutableEnvironment(NSmartContract contract, Binder kvBinder, Set<ContractStorageSubscription> storageSubscriptionsSet) {
         super(contract, kvBinder, storageSubscriptionsSet);
     }
 
@@ -56,7 +56,8 @@ public class SlotMutableEnvironment extends SlotImmutableEnvironment implements 
 
     @Override
     public @Nullable ContractStorageSubscription createStorageSubscription(@NonNull HashId contractId, @NonNull ZonedDateTime expiresAt) {
-        SlotContractStorageSubscription css = new SlotContractStorageSubscription(contract.getTrackingContract());
+        //TODO: contractId is not used
+        SlotContractStorageSubscription css = new SlotContractStorageSubscription(((SlotContract)contract).getTrackingContract());
         css.setExpiresAt(expiresAt);
         storageSubscriptionsSet.add(css);
         return css;
@@ -64,7 +65,8 @@ public class SlotMutableEnvironment extends SlotImmutableEnvironment implements 
 
     @Override
     public @NonNull ContractStorageSubscription createStorageSubscription(byte[] packedTransaction, @NonNull ZonedDateTime expiresAt) {
-        ContractStorageSubscription css = new SlotContractStorageSubscription(contract.getTrackingContract());
+        //TODO: contractId is not used
+        ContractStorageSubscription css = new SlotContractStorageSubscription(((SlotContract)contract).getTrackingContract());
         css.setExpiresAt(expiresAt);
         storageSubscriptionsSet.add(css);
         return css;

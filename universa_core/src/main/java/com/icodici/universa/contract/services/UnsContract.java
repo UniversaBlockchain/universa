@@ -48,29 +48,6 @@ public class UnsContract extends NSmartContract {
     private ZonedDateTime prepaidFrom = null;
     private ZonedDateTime spentNDsTime = null;
 
-    public Config getNodeConfig() {
-        return nodeConfig;
-    }
-    public void setNodeConfig(Config nodeConfig) {
-        this.nodeConfig = nodeConfig;
-    }
-    private Config nodeConfig;
-
-    public Ledger getLedger() {
-        return ledger;
-    }
-    public void setLedger(Ledger ledger) {
-        this.ledger = ledger;
-    }
-    private Ledger ledger;
-
-    public NodeInfo getNodeInfo() {
-        return nodeInfo;
-    }
-    public void setNodeInfo(NodeInfo nodeInfo) {
-        this.nodeInfo = nodeInfo;
-    }
-    private NodeInfo nodeInfo;
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from the transaction pack supplied. If

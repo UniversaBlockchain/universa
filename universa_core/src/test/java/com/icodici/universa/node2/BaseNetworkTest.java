@@ -7745,17 +7745,17 @@ public class BaseNetworkTest extends TestCase {
     @Test
     public void goodSmartContract() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract smartContract = new SmartContract(key);
+        Contract smartContract = new NSmartContract(key);
         smartContract.seal();
         smartContract.check();
         smartContract.traceErrors();
         assertTrue(smartContract.isOk());
 
-        assertTrue(smartContract instanceof SmartContract);
-        assertTrue(smartContract instanceof NodeContract);
+        assertTrue(smartContract instanceof NSmartContract);
+        assertTrue(smartContract instanceof NContract);
 
-        assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
 
         registerAndCheckApproved(smartContract);
 
@@ -7766,18 +7766,18 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void goodSmartContractFromDSL() throws Exception {
-        Contract smartContract = SmartContract.fromDslFile(ROOT_PATH + "NotarySmartDSLTemplate.yml");
+        Contract smartContract = NSmartContract.fromDslFile(ROOT_PATH + "NotarySmartDSLTemplate.yml");
         smartContract.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
         smartContract.seal();
         smartContract.check();
         smartContract.traceErrors();
         assertTrue(smartContract.isOk());
 
-        assertTrue(smartContract instanceof SmartContract);
-        assertTrue(smartContract instanceof NodeContract);
+        assertTrue(smartContract instanceof NSmartContract);
+        assertTrue(smartContract instanceof NContract);
 
-        assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.DEFAULT_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
 
         registerAndCheckApproved(smartContract);
 
@@ -7789,7 +7789,7 @@ public class BaseNetworkTest extends TestCase {
     @Test
     public void goodSmartContractWithSending() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract smartContract = new SmartContract(key);
+        Contract smartContract = new NSmartContract(key);
         smartContract.seal();
         smartContract.check();
         smartContract.traceErrors();
@@ -7797,8 +7797,8 @@ public class BaseNetworkTest extends TestCase {
 
         Contract gotContract = imitateSendingTransactionToPartner(smartContract);
 
-        assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeContract);
+        assertTrue(gotContract instanceof NSmartContract);
+        assertTrue(gotContract instanceof NContract);
 
         registerAndCheckApproved(gotContract);
 
@@ -7810,7 +7810,7 @@ public class BaseNetworkTest extends TestCase {
 
     @Test
     public void goodSmartContractFromDSLWithSending() throws Exception {
-        Contract smartContract = SmartContract.fromDslFile(ROOT_PATH + "NotarySmartDSLTemplate.yml");
+        Contract smartContract = NSmartContract.fromDslFile(ROOT_PATH + "NotarySmartDSLTemplate.yml");
         smartContract.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
         smartContract.seal();
         smartContract.check();
@@ -7819,8 +7819,8 @@ public class BaseNetworkTest extends TestCase {
 
         Contract gotContract = imitateSendingTransactionToPartner(smartContract);
 
-        assertTrue(gotContract instanceof SmartContract);
-        assertTrue(gotContract instanceof NodeContract);
+        assertTrue(gotContract instanceof NSmartContract);
+        assertTrue(gotContract instanceof NContract);
 
         registerAndCheckApproved(gotContract);
 
@@ -7841,8 +7841,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(smartContract instanceof NSmartContract);
         assertTrue(smartContract instanceof NContract);
 
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
 
         registerAndCheckApproved(smartContract);
 
@@ -7863,8 +7863,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(smartContract instanceof NSmartContract);
         assertTrue(smartContract instanceof NContract);
 
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
 
         registerAndCheckApproved(smartContract);
 
@@ -7931,8 +7931,8 @@ public class BaseNetworkTest extends TestCase {
         slotContract.traceErrors();
         assertTrue(slotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
         assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
 
 //        for(Node n : nodes) {
@@ -8007,8 +8007,8 @@ public class BaseNetworkTest extends TestCase {
         refilledSlotContract.traceErrors();
         assertTrue(refilledSlotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
         assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
 
         node.registerParcel(payingParcel);
@@ -8073,8 +8073,8 @@ public class BaseNetworkTest extends TestCase {
         refilledSlotContract2.traceErrors();
         assertTrue(refilledSlotContract2.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
         assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
 
         node.registerParcel(payingParcel);
@@ -8196,8 +8196,8 @@ public class BaseNetworkTest extends TestCase {
         slotContract.traceErrors();
         assertTrue(slotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
         assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
@@ -8296,8 +8296,8 @@ public class BaseNetworkTest extends TestCase {
         refilledSlotContract.traceErrors();
         assertTrue(refilledSlotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
         assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
@@ -8423,8 +8423,8 @@ public class BaseNetworkTest extends TestCase {
         refilledSlotContract2.traceErrors();
         assertTrue(refilledSlotContract2.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
         assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract2.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
@@ -8546,8 +8546,8 @@ public class BaseNetworkTest extends TestCase {
         refilledSlotContract3.traceErrors();
         assertTrue(refilledSlotContract3.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.get("definition.extended_type"));
         assertEquals((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract3.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract3.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
@@ -8717,8 +8717,8 @@ public class BaseNetworkTest extends TestCase {
         slotContract.traceErrors();
         assertTrue(slotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
         assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double) simpleContract.getPackedTransaction().length / 1024) + " Kb");

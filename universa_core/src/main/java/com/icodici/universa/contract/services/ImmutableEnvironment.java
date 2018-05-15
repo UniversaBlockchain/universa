@@ -1,7 +1,6 @@
 package com.icodici.universa.contract.services;
 
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.NodeContract;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 

@@ -16,7 +16,7 @@ import java.util.Set;
 public class SlotImmutableEnvironment extends Binder implements ImmutableEnvironment {
 
     // slot contract this environment belongs to
-    protected SlotContract contract;
+    protected NSmartContract contract;
     protected ZonedDateTime createdAt;
     // set of subscriptions holds by slot contract
     protected Set<ContractStorageSubscription> storageSubscriptionsSet = new HashSet<>();
@@ -25,7 +25,7 @@ public class SlotImmutableEnvironment extends Binder implements ImmutableEnviron
      * Restore SlotImmutableEnvironment
      * @param contract slot contract this environment belongs to
      */
-    public SlotImmutableEnvironment(SlotContract contract) {
+    public SlotImmutableEnvironment(NSmartContract contract) {
         this.contract = contract;
         createdAt = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
     }
@@ -35,7 +35,7 @@ public class SlotImmutableEnvironment extends Binder implements ImmutableEnviron
      * @param contract slot contract this environment belongs to
      * @param kvBinder map stored in the ledger
      */
-    public SlotImmutableEnvironment(SlotContract contract, Binder kvBinder) {
+    public SlotImmutableEnvironment(NSmartContract contract, Binder kvBinder) {
         this(contract);
 
         if(kvBinder!= null) {
@@ -51,7 +51,7 @@ public class SlotImmutableEnvironment extends Binder implements ImmutableEnviron
      * @param kvBinder map stored in the ledger
      * @param storageSubscriptionsSet subscriptions for this environment
      */
-    public SlotImmutableEnvironment(SlotContract contract, Binder kvBinder, Set<ContractStorageSubscription> storageSubscriptionsSet) {
+    public SlotImmutableEnvironment(NSmartContract contract, Binder kvBinder, Set<ContractStorageSubscription> storageSubscriptionsSet) {
         this(contract, kvBinder);
 
         if(storageSubscriptionsSet != null) {
