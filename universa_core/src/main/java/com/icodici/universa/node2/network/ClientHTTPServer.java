@@ -13,6 +13,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.network.BasicHTTPService;
@@ -137,6 +138,9 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("approveParcel", this::approveParcel);
         addSecureEndpoint("startApproval", this::startApproval);
         addSecureEndpoint("throw_error", this::throw_error);
+        addSecureEndpoint("storageGetRate", this::storageGetRate);
+        addSecureEndpoint("querySlotInfo", this::querySlotInfo);
+        addSecureEndpoint("queryContract", this::queryContract);
     }
 
     @Override
@@ -375,6 +379,57 @@ public class ClientHTTPServer extends BasicHttpServer {
             }
             handler.handle(request, response);
         });
+    }
+
+    private Binder storageGetRate(Binder params, Session session) throws IOException {
+        Double rate = new Double(config.kilobytesAndDaysPerU);
+        String str = rate.toString();
+        Binder b = new Binder();
+        b.put("U", str);
+
+        return b;
+    }
+
+    private Binder querySlotInfo(Binder params, Session session) throws IOException {
+        Binder res = new Binder();
+        res.set("slot_state", null);
+        byte[] slot_id = params.getBinary("slot_id");
+        byte[] slotBin = node.getLedger().getSlotContractBySlotId(HashId.withDigest(slot_id));
+        if (slotBin != null) {
+            SlotContract slotContract = (SlotContract) Contract.fromPackedTransaction(slotBin);
+            res.set("slot_state", slotContract.getStateData());
+        }
+        return res;
+    }
+
+    private Binder queryContract(Binder params, Session session) throws IOException {
+        Binder res = new Binder();
+        res.set("contract", null);
+        byte[] slot_id = params.getBinary("slot_id");
+        byte[] origin_id = params.getBinary("origin_id");
+        byte[] contract_id = params.getBinary("contract_id");
+        if ((origin_id == null) && (contract_id == null))
+            throw new IOException("invalid arguments (both origin_id and contract_id are null)");
+        if ((origin_id != null) && (contract_id != null))
+            throw new IOException("invalid arguments (only one origin_id or contract_id is allowed)");
+        byte[] slotBin = node.getLedger().getSlotContractBySlotId(HashId.withDigest(slot_id));
+        if (slotBin != null) {
+            SlotContract slotContract = (SlotContract) Contract.fromPackedTransaction(slotBin);
+            if (contract_id != null) {
+                HashId contractHashId = HashId.withDigest(contract_id);
+                if (slotContract.isContractTracking(contractHashId))
+                    res.set("contract", node.getLedger().getContractInStorage(contractHashId));
+            } else if (origin_id != null) {
+                HashId originHashId = HashId.withDigest(origin_id);
+                for (Contract contract : slotContract.getTrackingContracts()) {
+                    if (contract.getOrigin().equals(originHashId)) {
+                        res.set("contract", node.getLedger().getContractInStorage(contract.getId()));
+                        break;
+                    }
+                }
+            }
+        }
+        return res;
     }
 
     private Node node;
