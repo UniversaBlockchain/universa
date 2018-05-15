@@ -9836,6 +9836,197 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
     }
 
+    @Test(timeout =  90000)
+    public void checkUnsContractForBusyNameWithDsl() throws Exception{
+        final PrivateKey unsIssuerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        UnsContract unsContract = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
+        unsContract.setNodeConfig(node.getConfig());
+        unsContract.addSignerKey(unsIssuerPrivateKey);
+
+        unsContract.seal();
+        unsContract.check();
+        unsContract.traceErrors();
+
+        Contract paymentContract = getApprovedTUContract();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        unsContract.check();
+        unsContract.traceErrors();
+        assertTrue(unsContract.isOk());
+
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        unsContract.traceErrors();
+
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(unsContract.getNew().get(0).getId(), 8000).state);
+
+
+        UnsContract unsContractDuble = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
+        unsContractDuble.setNodeConfig(node.getConfig());
+        unsContractDuble.addSignerKey(unsIssuerPrivateKey);
+        unsContractDuble.seal();
+        unsContractDuble.check();
+        unsContractDuble.traceErrors();
+        assertTrue(unsContractDuble.isOk());
+
+        // assertEquals(unsContract.getStateData().get, unsContractDuble.getStateData());
+        //  assertEquals(unsContract.getState().getData().getBinder("")
+        paymentContract = getApprovedTUContract();
+        payingParcel = ContractsService.createPayingParcel(unsContractDuble.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+
+        // assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(unsContractDuble.getNew().get(0).getId(), 8000).state);
+    }
+
+
+    @Test(timeout =  90000)
+    public void checkUnsContractForBusyAddressWithDsl() throws Exception{
+
+        final PrivateKey unsIssuerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        UnsContract unsContract = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
+        unsContract.setNodeConfig(node.getConfig());
+        unsContract.addSignerKey(unsIssuerPrivateKey);
+
+        unsContract.seal();
+        unsContract.check();
+        unsContract.traceErrors();
+
+        Contract paymentContract = getApprovedTUContract();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        unsContract.check();
+        unsContract.traceErrors();
+        assertTrue(unsContract.isOk());
+
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(unsContract.getNew().get(0).getId(), 8000).state);
+
+
+        UnsContract unsContractDuble = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract_address.yml");
+        unsContractDuble.setNodeConfig(node.getConfig());
+        unsContractDuble.addSignerKey(unsIssuerPrivateKey);
+        unsContractDuble.seal();
+        unsContractDuble.check();
+        unsContractDuble.traceErrors();
+        assertTrue(unsContractDuble.isOk());
+
+        paymentContract = getApprovedTUContract();
+        payingParcel = ContractsService.createPayingParcel(unsContractDuble.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        unsContractDuble.traceErrors();
+        // check payment and payload contracts
+
+        //assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(unsContractDuble.getNew().get(0).getId(), 8000).state);
+    }
+
+    @Test(timeout =  90000)
+    public void checkUnsContractForBusyOriginWithDsl() throws Exception{
+
+        final PrivateKey unsIssuerPrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        UnsContract unsContract = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
+        unsContract.setNodeConfig(node.getConfig());
+        unsContract.addSignerKey(unsIssuerPrivateKey);
+
+        unsContract.seal();
+        unsContract.check();
+        unsContract.traceErrors();
+
+        Contract paymentContract = getApprovedTUContract();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        unsContract.check();
+        unsContract.traceErrors();
+        assertTrue(unsContract.isOk());
+
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        unsContract.traceErrors();
+
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(unsContract.getNew().get(0).getId(), 8000).state);
+
+
+        UnsContract unsContractDuble = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract_origin.yml");
+        unsContractDuble.setNodeConfig(node.getConfig());
+        unsContractDuble.addSignerKey(unsIssuerPrivateKey);
+        unsContractDuble.seal();
+        unsContractDuble.check();
+        unsContractDuble.traceErrors();
+        assertTrue(unsContractDuble.isOk());
+
+        paymentContract = getApprovedTUContract();
+        payingParcel = ContractsService.createPayingParcel(unsContractDuble.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        unsContractDuble.traceErrors();
+        // check payment and payload contracts
+
+        //assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(unsContractDuble.getNew().get(0).getId(), 8000).state);
+    }
+
+    @Ignore
+    @Test(timeout = 90000)
+    public void checkExpiresUnsContract() throws Exception {
+
+    }
 
     @Test
     public void goodNSmartContractFromDSLWithSending() throws Exception {
