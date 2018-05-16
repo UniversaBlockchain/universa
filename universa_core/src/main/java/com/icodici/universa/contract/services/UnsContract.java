@@ -13,9 +13,12 @@ import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.Ledger;
+import com.icodici.universa.node.models.NameEntryModel;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.biserializer.*;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -26,6 +29,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -402,7 +406,7 @@ public class UnsContract extends NSmartContract {
             }
 
             return unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)));
-            
+
         }));
 
         if (!checkResult) {
@@ -423,21 +427,76 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
-        //saveSubscriptionsToLedger(me);
+        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
+
+        storedNames.forEach(sn -> {
+                    NameRecordModel nrm = new NameRecordModel();
+                    nrm.name_full = sn.getUnsName();
+                    nrm.name_reduced = sn.getUnsNameReduced();
+                    nrm.description = sn.getUnsDescription();
+                    nrm.url = sn.getUnsURL();
+                    nrm.expires_at = spentNDsTime.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    sn.getUnsRecords().forEach(snr ->{
+                        NameEntryModel nem = new NameEntryModel();
+                        if(snr.getOrigin() != null) {
+                            nem.origin = snr.getOrigin().getDigest();
+                        }
+                        snr.getAddresses().forEach(keyAddress -> {
+                            if(keyAddress.isLong()) {
+                                nem.long_addr = keyAddress.toString();
+                            } else {
+                                nem.short_addr = keyAddress.toString();
+                            }
+                        });
+                        nrm.entries.add(nem);
+                    });
+                    nrm.environment_id = environmentId;
+                    ledger.saveNameRecord(nrm);
+                }
+        );
 
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
     public Binder onUpdated(MutableEnvironment me) {
-        //saveSubscriptionsToLedger(me);
+        ledger.removeEnvironment(getId());
+
+        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
+
+        storedNames.forEach(sn -> {
+                    NameRecordModel nrm = new NameRecordModel();
+                    nrm.name_full = sn.getUnsName();
+                    nrm.name_reduced = sn.getUnsNameReduced();
+                    nrm.description = sn.getUnsDescription();
+                    nrm.url = sn.getUnsURL();
+                    nrm.expires_at = spentNDsTime.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    sn.getUnsRecords().forEach(snr ->{
+                        NameEntryModel nem = new NameEntryModel();
+                        if(snr.getOrigin() != null) {
+                            nem.origin = snr.getOrigin().getDigest();
+                        }
+                        snr.getAddresses().forEach(keyAddress -> {
+                            if(keyAddress.isLong()) {
+                                nem.long_addr = keyAddress.toString();
+                            } else {
+                                nem.short_addr = keyAddress.toString();
+                            }
+                        });
+                        nrm.entries.add(nem);
+                    });
+                    nrm.environment_id = environmentId;
+                    ledger.saveNameRecord(nrm);
+                }
+        );
 
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
     public void onRevoked(ImmutableEnvironment ime) {
-        //ledger.removeSlotContractWithAllSubscriptions(getId());
+        ledger.removeEnvironment(getId());
+
     }
 
     public void addUnsName(UnsName unsName, Collection<Contract> referencedOrigins) {

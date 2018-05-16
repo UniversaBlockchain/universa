@@ -1367,6 +1367,7 @@ public class PostgresLedger implements Ledger {
     public void saveNameRecord(final NameRecordModel nameRecordModel) {
         long nameStorageId = addNameStorage(nameRecordModel);
         if (nameStorageId != 0) {
+            nameRecordModel.id = nameStorageId;
             for (NameEntryModel nameEntryModel : nameRecordModel.entries)
                 addNameEntry(nameStorageId, nameEntryModel);
         } else {
