@@ -2,6 +2,7 @@ package com.icodici.universa.node2;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +52,25 @@ public class NameCache {
 
     public void unlockName(String name_reduced) {
         records.remove(name_reduced);
+    }
+
+    public boolean lockNameList(List<String> reducedNameList) {
+        boolean isAllNamesLocked = true;
+        for (String reducedName : reducedNameList) {
+            if (!lockName(reducedName)) {
+                isAllNamesLocked = false;
+                break;
+            }
+        }
+        if (!isAllNamesLocked) {
+            unlockNameList(reducedNameList);
+        }
+        return isAllNamesLocked;
+    }
+
+    public void unlockNameList(List<String> reducedNameList) {
+        for (String reducedName : reducedNameList)
+            unlockName(reducedName);
     }
 
     private ConcurrentHashMap<String,Record> records = new ConcurrentHashMap();

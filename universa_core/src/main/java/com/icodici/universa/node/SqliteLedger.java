@@ -378,6 +378,9 @@ public class SqliteLedger implements Ledger {
     public NameRecordModel getNameRecord(final String nameReduced) {return null;}
 
     @Override
+    public boolean isAllNameRecordsAvailable(final List<String> reducedNames) {return false;}
+
+    @Override
     public void clearExpiredNameRecords() {
 
     }

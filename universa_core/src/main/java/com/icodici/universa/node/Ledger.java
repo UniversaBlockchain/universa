@@ -211,6 +211,7 @@ public interface Ledger {
     void saveNameRecord(final NameRecordModel nameRecordModel);
     void removeNameRecord(final String nameReduced);
     NameRecordModel getNameRecord(final String nameReduced);
+    boolean isAllNameRecordsAvailable(final List<String> reducedNames);
     void clearExpiredNameRecords();
 
     void cleanup();

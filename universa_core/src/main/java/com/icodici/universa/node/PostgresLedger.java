@@ -1459,6 +1459,49 @@ public class PostgresLedger implements Ledger {
     }
 
 
+    @Override
+    public boolean isAllNameRecordsAvailable(final List<String> reducedNames) {
+        try (PooledDb db = dbPool.db()) {
+            String queryPart = "";
+            List<String> queryPartList = new ArrayList<>();
+            for (int i = 0; i < reducedNames.size(); ++i)
+                queryPartList.add("?");
+            queryPart = String.join(",", queryPartList);
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  COUNT(id) " +
+                                            "FROM name_storage " +
+                                            "WHERE name_reduced IN ["+queryPart+"]"
+                            )
+            ) {
+                for (int i = 1; i <= reducedNames.size(); ++i)
+                    statement.setString(i, reducedNames.get(i));
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("isNameRecordBusy failed: returning null");
+                boolean res = false;
+                if (rs.next()) {
+                    if (rs.getLong(1) == 0)
+                        res = true;
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("isNameRecordBusy failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return true;
+        }
+
+    }
+
+
     public void clearExpiredNameRecords() {
         try (PooledDb db = dbPool.db()) {
             //TODO: get hold interval from config

@@ -455,8 +455,20 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        //TODO: tryAllocateName
+        List<String> reducedNames = new ArrayList<>();
+        for (UnsName unsName : storedNames)
+            reducedNames.add(unsName.getUnsNameReduced());
+        checkResult = ledger.isAllNameRecordsAvailable(reducedNames);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names already registered");
+            return checkResult;
+        }
 
+        checkResult = nameCache.lockNameList(reducedNames);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names are registering right now");
+            return checkResult;
+        }
 
         return checkResult;
     }

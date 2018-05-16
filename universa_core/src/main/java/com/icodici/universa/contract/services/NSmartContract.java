@@ -7,6 +7,7 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node2.Config;
+import com.icodici.universa.node2.NameCache;
 import com.icodici.universa.node2.NodeInfo;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.DefaultBiMapper;
@@ -61,6 +62,18 @@ public class NSmartContract extends Contract implements NContract {
         this.nodeInfo = nodeInfo;
     }
     protected NodeInfo nodeInfo;
+
+    protected NameCache nameCache;
+    /**
+     * Set {@link NameCache}
+     * @param nameCache
+     */
+    public void setNameCache(NameCache nameCache) {
+        this.nameCache = nameCache;
+    }
+    public NameCache getNameCache() {
+        return nameCache;
+    }
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If

@@ -1786,6 +1786,7 @@ public class Node {
                                 ((NSmartContract) item).setNodeInfo(myInfo);
                                 ((NSmartContract) item).setNodeConfig(config);
                                 ((NSmartContract) item).setLedger(ledger);
+                                ((NSmartContract) item).setNameCache(nameCache);
 
                                 // restore environment if exist, otherwise create new.
                                 ImmutableEnvironment ime;
@@ -1896,6 +1897,7 @@ public class Node {
                             ((NSmartContract) revokingItem).setNodeInfo(myInfo);
                             ((NSmartContract) revokingItem).setNodeConfig(config);
                             ((NSmartContract) revokingItem).setLedger(ledger);
+                            ((NSmartContract) revokingItem).setNameCache(nameCache);
 
                             // restore environment if exist, otherwise create new.
                             ImmutableEnvironment ime;
@@ -1950,6 +1952,7 @@ public class Node {
                             ((NSmartContract) newItem).setNodeInfo(myInfo);
                             ((NSmartContract) newItem).setNodeConfig(config);
                             ((NSmartContract) newItem).setLedger(ledger);
+                            ((NSmartContract) newItem).setNameCache(nameCache);
 
                             // restore environment if exist, otherwise create new.
                             ImmutableEnvironment ime;
@@ -2283,6 +2286,7 @@ public class Node {
                                     ((NSmartContract) revokingItem).setNodeInfo(myInfo);
                                     ((NSmartContract) revokingItem).setNodeConfig(config);
                                     ((NSmartContract) revokingItem).setLedger(ledger);
+                                    ((NSmartContract) revokingItem).setNameCache(nameCache);
                                     // and run onRevoked
                                     ((NSmartContract) revokingItem).onRevoked(ime);
                                 }
@@ -2326,6 +2330,7 @@ public class Node {
                                     ((NSmartContract) newItem).setNodeInfo(myInfo);
                                     ((NSmartContract) newItem).setNodeConfig(config);
                                     ((NSmartContract) newItem).setLedger(ledger);
+                                    ((NSmartContract) newItem).setNameCache(nameCache);
 
                                     MutableEnvironment me;
 
@@ -2440,6 +2445,7 @@ public class Node {
                             ((NSmartContract) item).setNodeInfo(myInfo);
                             ((NSmartContract) item).setNodeConfig(config);
                             ((NSmartContract) item).setLedger(ledger);
+                            ((NSmartContract) item).setNameCache(nameCache);
 
                             Binder er;
                             MutableEnvironment me;
@@ -2569,6 +2575,7 @@ public class Node {
                                             foundSlot.setNodeInfo(myInfo);
                                             foundSlot.setNodeConfig(config);
                                             foundSlot.setLedger(ledger);
+                                            foundSlot.setNameCache(nameCache);
 
                                             if (updatingState == ItemState.APPROVED) {
                                                 foundSlot.onContractStorageSubscriptionEvent(new ContractStorageSubscription.ApprovedEvent() {
