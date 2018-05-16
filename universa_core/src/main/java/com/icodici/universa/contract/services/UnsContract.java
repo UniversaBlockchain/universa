@@ -411,6 +411,14 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
+        checkResult = getSealedByKeys().contains(nodeConfig.getAuthorizedNameServiceCenterKey());
+        if(!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Authorized name service signature is missing");
+            return checkResult;
+        }
+
+        //TODO: tryAllocateName
+
 
         return checkResult;
     }
