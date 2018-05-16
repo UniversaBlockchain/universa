@@ -7,6 +7,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -26,6 +27,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @BiType(name = "UnsContract")
 public class UnsContract extends NSmartContract {
@@ -377,9 +380,37 @@ public class UnsContract extends NSmartContract {
 
         checkResult = (storedNames.size() > 0);
         if (!checkResult) {
-            addError(Errors.FAILED_CHECK, "Names for storing is missing");
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Names for storing is missing");
             return checkResult;
         }
+
+        checkResult = storedNames.stream().allMatch(n -> n.getUnsRecords().stream().allMatch(unsRecord -> {
+            if(unsRecord.getOrigin() != null) {
+                List<Reference> matchingRefs = getReferences().values().stream().filter(ref ->
+                        ref.getContract().getId().equals(unsRecord.getOrigin())
+                                || ref.getContract().getOrigin() != null && ref.getContract().getOrigin().equals(unsRecord.getOrigin())).collect(Collectors.toList());
+                if(matchingRefs.isEmpty()) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + " but no corresponding reference is found");
+                    return false;
+                }
+
+                Contract contract = matchingRefs.get(0).getContract();
+                if(!contract.getRole("issuer").isAllowedForKeys(getSealedByKeys())) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + ". UNS1 contract should be also signed by this contract issuer key.");
+                    return false;
+                }
+                return true;
+            } else {
+
+                return unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)));
+            }
+
+        }));
+
+        if (!checkResult) {
+            return checkResult;
+        }
+
 
         return checkResult;
     }
@@ -403,8 +434,26 @@ public class UnsContract extends NSmartContract {
         //ledger.removeSlotContractWithAllSubscriptions(getId());
     }
 
-    public void addUnsName(UnsName unsName) {
+    public void addUnsName(UnsName unsName, Collection<Contract> referencedOrigins) {
+        unsName.getUnsRecords().forEach(unsRecord -> {
+            if(unsRecord.getOrigin() != null) {
+                if(referencedOrigins != null) {
+                    List<Contract> matchingRefs = referencedOrigins.stream().filter(contract ->
+                            contract.getId().equals(unsRecord.getOrigin()) ||
+                                    contract.getOrigin() != null && contract.getOrigin().equals(unsRecord.getOrigin())
+                    ).collect(Collectors.toList());
+                    if(!matchingRefs.isEmpty()) {
+                        addReference(new Reference(matchingRefs.get(0)));
+                    }
+                }
+            }
+        });
         storedNames.add(unsName);
+    }
+
+
+    public void addUnsName(UnsName unsName) {
+        addUnsName(unsName,null);
     }
 
     static {

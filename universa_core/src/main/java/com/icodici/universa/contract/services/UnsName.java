@@ -142,6 +142,10 @@ public class UnsName implements BiSerializable {
         this.unsRecords = deserializer.deserialize(data.getList("unsRecords", null));
     }
 
+    public List<UnsRecord> getUnsRecords() {
+        return unsRecords;
+    }
+
     static {
         Config.forceInit(UnsName.class);
         Config.forceInit(UnsRecord.class);
