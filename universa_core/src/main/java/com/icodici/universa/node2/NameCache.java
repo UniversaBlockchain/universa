@@ -2,6 +2,7 @@ package com.icodici.universa.node2;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -56,14 +57,18 @@ public class NameCache {
 
     public boolean lockNameList(List<String> reducedNameList) {
         boolean isAllNamesLocked = true;
+        List<String> lockedByThisCall = new ArrayList<>();
         for (String reducedName : reducedNameList) {
-            if (!lockName(reducedName)) {
+            if (lockName(reducedName)) {
+                lockedByThisCall.add(reducedName);
+            } else {
                 isAllNamesLocked = false;
                 break;
             }
         }
         if (!isAllNamesLocked) {
-            unlockNameList(reducedNameList);
+            for (String rn : lockedByThisCall)
+                unlockName(rn);
         }
         return isAllNamesLocked;
     }
