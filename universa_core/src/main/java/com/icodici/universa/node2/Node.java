@@ -76,6 +76,7 @@ public class Node {
     private final Network network;
     private final ItemCache cache;
     private final ParcelCache parcelCache;
+    private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     protected String label = null;
@@ -121,6 +122,7 @@ public class Node {
         this.network = network;
         cache = new ItemCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());
+        nameCache = new NameCache(config.getMaxNameCacheAge());
         config.updateConsensusConfig(network.getNodesCount());
 
         label = "Node(" + myInfo.getNumber() + ") ";
@@ -927,6 +929,7 @@ public class Node {
         }
         cache.shutdown();
         parcelCache.shutdown();
+        nameCache.shutdown();
         System.out.println(toString() + "shutdown finished");
     }
 

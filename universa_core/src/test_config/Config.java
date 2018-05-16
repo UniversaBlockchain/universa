@@ -53,6 +53,7 @@ public class Config {
         config.maxDownloadOnApproveTime = maxDownloadOnApproveTime;
         config.declinedItemExpiration = declinedItemExpiration;
         config.maxCacheAge = maxCacheAge;
+        config.maxNameCacheAge = maxNameCacheAge;
         config.maxGetItemTime = maxGetItemTime;
         synchronized (this) {
             config.negativeConsensus = negativeConsensus;
@@ -137,6 +138,7 @@ public class Config {
     private Duration declinedItemExpiration = Duration.ofDays(10);
     private Duration maxCacheAge = Duration.ofMinutes(20);
     private Duration maxDiskCacheAge = Duration.ofMinutes(40);
+    private Duration maxNameCacheAge = Duration.ofMinutes(5);
     private Duration statsIntervalSmall = Duration.ofSeconds(30);
     private Duration statsIntervalBig = Duration.ofSeconds(3600);
     private Duration maxGetItemTime = Duration.ofSeconds(30);
@@ -247,6 +249,10 @@ public class Config {
 
     public Duration getMaxCacheAge() {
         return maxCacheAge;
+    }
+
+    public Duration getMaxNameCacheAge() {
+        return maxNameCacheAge;
     }
 
     public void setMaxCacheAge(Duration maxCacheAge) {
