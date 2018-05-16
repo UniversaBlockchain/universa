@@ -399,12 +399,10 @@ public class UnsContract extends NSmartContract {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + ". UNS1 contract should be also signed by this contract issuer key.");
                     return false;
                 }
-                return true;
-            } else {
-
-                return unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)));
             }
 
+            return unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)));
+            
         }));
 
         if (!checkResult) {
