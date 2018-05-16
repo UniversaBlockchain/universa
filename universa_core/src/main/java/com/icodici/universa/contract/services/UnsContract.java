@@ -431,12 +431,7 @@ public class UnsContract extends NSmartContract {
                     }
                 }
             }
-            if(!shortAddress.isMatchingKeyAddress(longAddress)) {
-                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " should refer to 1 LONG and 1 short address at maximum.");
-                return false;
-            }
 
-            //TODO: check only one address as they should match
             if(!unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)))) {
                 addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " using address that missing corresponding key UNS contract signed with.");
                 return false;
