@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 public class UnsName implements BiSerializable {
+    private String unsNameReduced;
     private String unsName;
     private String unsDescription;
     private String unsURL;
@@ -27,20 +28,23 @@ public class UnsName implements BiSerializable {
 
     public UnsName() {}
 
-    public UnsName(String name, String description, String URL) {
+    public UnsName(String nameReduced, String name, String description, String URL) {
+        unsNameReduced = nameReduced;
         unsName = name;
         unsDescription = description;
         unsURL = URL;
     }
 
-    public UnsName(String name, String description, String URL, UnsRecord record) {
+    public UnsName(String nameReduced, String name, String description, String URL, UnsRecord record) {
+        unsNameReduced = nameReduced;
         unsName = name;
         unsDescription = description;
         unsURL = URL;
         unsRecords.add(record);
     }
 
-    public UnsName(String name, String description, String URL, List<UnsRecord> records) {
+    public UnsName(String nameReduced, String name, String description, String URL, List<UnsRecord> records) {
+        unsNameReduced = nameReduced;
         unsName = name;
         unsDescription = description;
         unsURL = URL;
@@ -48,6 +52,8 @@ public class UnsName implements BiSerializable {
     }
 
     protected UnsName initializeWithDsl(Binder binder) {
+        //TODO: calculate nameReduced here?
+        unsNameReduced = unsName;
         unsName = binder.getString(NAME_FIELD_NAME, null);
         unsDescription = binder.getString(DESCRIPTION_FIELD_NAME, null);
         unsURL = binder.getString(URL_FIELD_NAME, null);
@@ -67,10 +73,12 @@ public class UnsName implements BiSerializable {
         return this;
     }
 
+    public String getUnsNameReduced() { return unsNameReduced; }
     public String getUnsName() { return unsName; }
     public String getUnsDescription() { return unsDescription; }
     public String getUnsURL() { return unsURL; }
 
+    public void setUnsNameReduced(String nameReduced) { unsNameReduced = nameReduced; }
     public void setUnsName(String name) { unsName = name; }
     public void setUnsDescription(String description) { unsDescription = description; }
     public void setUnsURL(String URL) { unsURL = URL; }
@@ -126,6 +134,7 @@ public class UnsName implements BiSerializable {
     @Override
     public Binder serialize(BiSerializer serializer) {
         Binder data = new Binder();
+        data.set("unsNameReduced", serializer.serialize(unsNameReduced));
         data.set("unsName", serializer.serialize(unsName));
         data.set("unsDescription", serializer.serialize(unsDescription));
         data.set("unsURL", serializer.serialize(unsURL));
@@ -136,6 +145,7 @@ public class UnsName implements BiSerializable {
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
+        this.unsNameReduced = data.getString("unsNameReduced");
         this.unsName = data.getString("unsName");
         this.unsDescription = data.getString("unsDescription");
         this.unsURL = data.getString("unsURL");

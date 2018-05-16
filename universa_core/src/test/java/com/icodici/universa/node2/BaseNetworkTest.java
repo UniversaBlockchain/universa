@@ -9777,7 +9777,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns.seal();
 
-        UnsName unsName = new UnsName("test", "test description", "http://test.com");
+        UnsName unsName = new UnsName("test", "test", "test description", "http://test.com");
         UnsRecord unsRecord1 = new UnsRecord(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(uns.getId());
         unsName.addUnsRecord(unsRecord1);
