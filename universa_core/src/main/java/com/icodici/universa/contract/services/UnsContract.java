@@ -1,22 +1,18 @@
 package com.icodici.universa.contract.services;
 
-import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
-import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node.models.NameEntryModel;
 import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.Config;
-import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
@@ -29,9 +25,8 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @BiType(name = "UnsContract")
@@ -390,6 +385,11 @@ public class UnsContract extends NSmartContract {
 
         checkResult = storedNames.stream().allMatch(n -> n.getUnsRecords().stream().allMatch(unsRecord -> {
             if(unsRecord.getOrigin() != null) {
+                if(!unsRecord.getAddresses().isEmpty()) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + " AND addresses. Should be either origin or addresses");
+                    return false;
+                }
+
                 List<Reference> matchingRefs = getReferences().values().stream().filter(ref ->
                         ref.getContract().getId().equals(unsRecord.getOrigin())
                                 || ref.getContract().getOrigin() != null && ref.getContract().getOrigin().equals(unsRecord.getOrigin())).collect(Collectors.toList());
@@ -403,10 +403,46 @@ public class UnsContract extends NSmartContract {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + ". UNS1 contract should be also signed by this contract issuer key.");
                     return false;
                 }
+
+                return true;
             }
 
-            return unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)));
+            if(unsRecord.getAddresses().isEmpty()) {
+                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " is missing both addresses and origin.");
+                return false;
+            }
 
+            KeyAddress longAddress = null;
+            KeyAddress shortAddress = null;
+            for(KeyAddress address : unsRecord.getAddresses()) {
+                if (address.isLong()) {
+                    if (longAddress != null) {
+                        addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " should refer to 1 LONG and 1 short address at maximum.");
+                        return false;
+                    } else {
+                        longAddress = address;
+                    }
+                } else {
+                    if (shortAddress != null) {
+                        addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " should refer to 1 long and 1 SHORT address at maximum.");
+                        return false;
+                    } else {
+                        shortAddress = address;
+                    }
+                }
+            }
+            if(!shortAddress.isMatchingKeyAddress(longAddress)) {
+                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " should refer to 1 LONG and 1 short address at maximum.");
+                return false;
+            }
+
+            //TODO: check only one address as they should match
+            if(!unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)))) {
+                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " using address that missing corresponding key UNS contract signed with.");
+                return false;
+            }
+
+            return true;
         }));
 
         if (!checkResult) {
