@@ -1496,7 +1496,7 @@ public class PostgresLedger implements Ledger {
             throw new Failure("isNameRecordBusy failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            return true;
+            throw new Failure("isNameRecordBusy failed: " + e);
         }
 
     }
