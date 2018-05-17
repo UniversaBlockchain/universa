@@ -9778,16 +9778,23 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
+        Contract referencesContract = new Contract(authorizedNameServiceKey);
+        referencesContract.seal();
+
+
+
+
+
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
         UnsName unsName = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
         UnsRecord unsRecord1 = new UnsRecord(manufacturePrivateKeys.iterator().next().getPublicKey());
-        //UnsRecord unsRecord2 = new UnsRecord(uns.getId());
+        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
-        //unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName);
+        unsName.addUnsRecord(unsRecord2);
+        uns.addUnsName(unsName,Do.listOf(referencesContract));
 
         uns.setNodeConfig(node.getConfig());
         uns.seal();
@@ -9795,6 +9802,19 @@ public class BaseNetworkTest extends TestCase {
         uns.traceErrors();
 
         Contract paymentContract = getApprovedTUContract();
+
+        Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
+
+        paymentContract = getApprovedTUContract();
+
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 

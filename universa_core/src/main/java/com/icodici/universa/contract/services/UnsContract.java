@@ -50,6 +50,7 @@ public class UnsContract extends NSmartContract {
     private ZonedDateTime spentEarlyNDsTime = null;
     private ZonedDateTime prepaidFrom = null;
     private ZonedDateTime spentNDsTime = null;
+    private ArrayList<Contract> referencesOrigins = new ArrayList<>();
 
 
     /**
@@ -231,7 +232,11 @@ public class UnsContract extends NSmartContract {
         saveNamesToState();
         calculatePrepaidNamesForDays(true);
 
-        return super.seal();
+        byte[] result = super.seal();
+
+        referencesOrigins.forEach(c -> getTransactionPack().addReferencedItem(c));
+
+        return result;
     }
 
     private void saveNamesToState() {
@@ -595,7 +600,7 @@ public class UnsContract extends NSmartContract {
         Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
         ref.setConditions(conditions);
         addReference(ref);
-        getTransactionPack().addReferencedItem(contract);
+        referencesOrigins.add(contract);
     }
 
 
