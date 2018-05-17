@@ -9794,7 +9794,8 @@ public class BaseNetworkTest extends TestCase {
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
         unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName,Do.listOf(referencesContract));
+        uns.addUnsName(unsName);
+        uns.addOriginContract(referencesContract);
 
         uns.setNodeConfig(node.getConfig());
         uns.seal();
@@ -9859,7 +9860,8 @@ public class BaseNetworkTest extends TestCase {
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
         unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName,Do.listOf(referencesContract));
+        uns.addUnsName(unsName);
+        uns.addOriginContract(referencesContract);
 
         uns.setNodeConfig(node.getConfig());
         uns.seal();
@@ -9962,7 +9964,8 @@ public class BaseNetworkTest extends TestCase {
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
         unsName.addUnsRecord(unsRecord2);
-        uns.addUnsName(unsName,Do.listOf(referencesContract));
+        uns.addUnsName(unsName);
+        uns.addOriginContract(referencesContract);
 
         uns.setNodeConfig(node.getConfig());
         uns.seal();

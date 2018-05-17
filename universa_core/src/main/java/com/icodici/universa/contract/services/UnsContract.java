@@ -1,7 +1,6 @@
 package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.EncryptionError;
-import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
@@ -27,7 +26,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @BiType(name = "UnsContract")
@@ -40,6 +38,7 @@ public class UnsContract extends NSmartContract {
     public static final String STORED_ENTRIES_FIELD_NAME = "stored_entries";
     public static final String SPENT_ND_FIELD_NAME = "spent_ND";
     public static final String SPENT_ND_TIME_FIELD_NAME = "spent_ND_time";
+    private static final String REFERENCE_CONDITION_PREFIX = "ref.state.origin==";
 
     private List<UnsName> storedNames = new ArrayList<>();
     private int paidU = 0;
@@ -50,7 +49,7 @@ public class UnsContract extends NSmartContract {
     private ZonedDateTime spentEarlyNDsTime = null;
     private ZonedDateTime prepaidFrom = null;
     private ZonedDateTime spentNDsTime = null;
-    private ArrayList<Contract> referencesOrigins = new ArrayList<>();
+    private Map<HashId,Contract> originContracts = new HashMap<>();
 
 
     /**
@@ -230,13 +229,41 @@ public class UnsContract extends NSmartContract {
     @Override
     public byte[] seal() {
         saveNamesToState();
+        saveOriginReferencesToState();
         calculatePrepaidNamesForDays(true);
 
-        byte[] result = super.seal();
+        return super.seal();
+    }
 
-        referencesOrigins.forEach(c -> getTransactionPack().addReferencedItem(c));
+    private void saveOriginReferencesToState() {
+        Set<HashId> origins = new HashSet<>();
 
-        return result;
+        storedNames.forEach(sn->sn.getUnsRecords().forEach(unsRecord -> {
+            if(unsRecord.getOrigin()!=null) {
+                origins.add(unsRecord.getOrigin());
+            }
+        }));
+
+        /*Set<Reference> refsToRemove = new HashSet<>();
+
+        getReferences().values().forEach(ref -> {
+            ArrayList conditions = ref.getConditions().getArray(Reference.conditionsModeType.all_of.name());
+            conditions.forEach(condition -> {
+                if(condition instanceof String && ((String) condition).startsWith(REFERENCE_CONDITION_PREFIX)) {
+                    if(!origins.contains(new HashId(Base64u.decodeCompactString(((String) condition).substring(REFERENCE_CONDITION_PREFIX.length()))))) {
+                        refsToRemove.add(ref);
+                    }
+                }
+            });
+        });*/
+
+        //TODO: remove references refsToRemove
+
+        origins.forEach( origin -> {
+            if(!isOriginReferenceExists(origin)) {
+                addOriginReference(origin);
+            }
+        });
     }
 
     private void saveNamesToState() {
@@ -375,7 +402,7 @@ public class UnsContract extends NSmartContract {
 
     private boolean additionallyUnsCheck(ImmutableEnvironment ime) {
 
-        boolean checkResult = false;
+        boolean checkResult;
 
         checkResult = ime != null;
         if (!checkResult) {
@@ -399,14 +426,12 @@ public class UnsContract extends NSmartContract {
         checkResult = storedNames.stream().allMatch(n -> n.getUnsRecords().stream().allMatch(unsRecord -> {
             if(unsRecord.getOrigin() != null) {
                 if(!unsRecord.getAddresses().isEmpty()) {
-                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + " AND addresses. Should be either origin or addresses");
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin AND addresses. Should be either origin or addresses");
                     return false;
                 }
 
                 //check reference exists in contract (ensures that matching contract was checked by system for being approved)
-                if(!getReferences().values().stream().anyMatch(ref ->
-                        ref.getConditions().getArray(Reference.conditionsModeType.all_of.name()).stream().anyMatch(cond ->
-                                cond.equals("ref.state.origin=="+unsRecord.getOrigin().toBase64String())))) {
+                if(!isOriginReferenceExists(unsRecord.getOrigin())) {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + " but no corresponding reference is found");
                     return false;
                 }
@@ -427,7 +452,6 @@ public class UnsContract extends NSmartContract {
                     return false;
                 }
 
-
                 return true;
             }
 
@@ -442,26 +466,6 @@ public class UnsContract extends NSmartContract {
 
             if ((unsRecord.getAddresses().size() == 2) && unsRecord.getAddresses().get(0).isLong() == unsRecord.getAddresses().get(1).isLong())
                 addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + ": Addresses list may only contain one short and one long addresses");
-
-            KeyAddress longAddress = null;
-            KeyAddress shortAddress = null;
-            for(KeyAddress address : unsRecord.getAddresses()) {
-                if (address.isLong()) {
-                    if (longAddress != null) {
-                        addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " should refer to 1 LONG and 1 short address at maximum.");
-                        return false;
-                    } else {
-                        longAddress = address;
-                    }
-                } else {
-                    if (shortAddress != null) {
-                        addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " should refer to 1 long and 1 SHORT address at maximum.");
-                        return false;
-                    } else {
-                        shortAddress = address;
-                    }
-                }
-            }
 
             if(!unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)))) {
                 addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " using address that missing corresponding key UNS contract signed with.");
@@ -499,6 +503,12 @@ public class UnsContract extends NSmartContract {
         return checkResult;
     }
 
+    private boolean isOriginReferenceExists(HashId origin) {
+        return getReferences().values().stream().anyMatch(ref ->
+                ref.getConditions().getArray(Reference.conditionsModeType.all_of.name()).stream().anyMatch(cond ->
+                        cond.equals(REFERENCE_CONDITION_PREFIX+origin.toBase64String())));
+    }
+
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
@@ -509,7 +519,7 @@ public class UnsContract extends NSmartContract {
                     nrm.name_reduced = sn.getUnsNameReduced();
                     nrm.description = sn.getUnsDescription();
                     nrm.url = sn.getUnsURL();
-                    nrm.expires_at = spentNDsTime.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
                     nrm.entries = new ArrayList<>();
                     sn.getUnsRecords().forEach(snr ->{
                         NameEntryModel nem = new NameEntryModel();
@@ -545,7 +555,7 @@ public class UnsContract extends NSmartContract {
                     nrm.name_reduced = sn.getUnsNameReduced();
                     nrm.description = sn.getUnsDescription();
                     nrm.url = sn.getUnsURL();
-                    nrm.expires_at = spentNDsTime.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
                     sn.getUnsRecords().forEach(snr ->{
                         NameEntryModel nem = new NameEntryModel();
                         if(snr.getOrigin() != null) {
@@ -574,38 +584,29 @@ public class UnsContract extends NSmartContract {
 
     }
 
-    public void addUnsName(UnsName unsName, Collection<Contract> referencedOrigins) {
-        storedNames.add(unsName);
-        unsName.getUnsRecords().forEach(unsRecord -> {
-            if(unsRecord.getOrigin() != null) {
-                if(referencedOrigins != null) {
-                    List<Contract> matchingRefs = referencedOrigins.stream().filter(contract ->
-                            contract.getId().equals(unsRecord.getOrigin()) ||
-                                    contract.getOrigin() != null && contract.getOrigin().equals(unsRecord.getOrigin())
-                    ).collect(Collectors.toList());
-                    if(!matchingRefs.isEmpty()) {
-                        addReferencedOrigin(unsName.getUnsName()+unsRecord.getOrigin().toString(),matchingRefs.get(0));
-                    }
-                }
-            }
-        });
-    }
 
-    private void addReferencedOrigin(String refName, Contract contract) {
+
+    private void addOriginReference(HashId origin) {
         Reference ref = new Reference(this);
-        ref.setName(refName);
+        ref.setName(origin.toString());
         List<Object> conditionsList = new ArrayList<>();
-        HashId origin = contract.getOrigin() == null ? contract.getId() : contract.getOrigin();
-        conditionsList.add("ref.state.origin=="+origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
         Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
         ref.setConditions(conditions);
+        if(originContracts.containsKey(origin))
+            ref.addMatchingItem(originContracts.get(origin));
         addReference(ref);
-        referencesOrigins.add(contract);
+
     }
+
+    public void addOriginContract(Contract contract) {
+        originContracts.put(contract.getId(),contract);
+    }
+
 
 
     public void addUnsName(UnsName unsName) {
-        addUnsName(unsName,null);
+        storedNames.add(unsName);
     }
 
     static {
