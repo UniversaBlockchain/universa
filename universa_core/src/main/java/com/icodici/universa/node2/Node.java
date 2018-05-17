@@ -1823,6 +1823,7 @@ public class Node {
                         return;
                     } catch (Exception e) {
                         e.printStackTrace();
+                        item.addError(Errors.FAILED_CHECK,item.getId().toString(), "Exception during check: " + e.getMessage());
                     }
                     alreadyChecked = true;
 

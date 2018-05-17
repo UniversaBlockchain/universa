@@ -34,9 +34,7 @@ public class UnsRecord implements BiSerializable {
         if (addresses.size() > 2)
             throw new IllegalArgumentException("Addresses list should not be contains more 2 addresses");
 
-        if ((addresses.size() == 2) &&
-                ((!addresses.get(0).isLong() && !addresses.get(1).isLong()) ||
-                        (addresses.get(0).isLong() && addresses.get(1).isLong())))
+        if ((addresses.size() == 2) && addresses.get(0).isLong() == addresses.get(1).isLong())
             throw new IllegalArgumentException("Addresses list may be contains only one short and one long addresses");
 
         unsAddresses.addAll(addresses);

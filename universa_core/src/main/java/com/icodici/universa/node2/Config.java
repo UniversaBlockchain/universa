@@ -351,6 +351,11 @@ public class Config {
         }
     }
 
+
+    public void setAuthorizedNameServiceCenterKeyData(Bytes authorizedNameServiceCenterKeyData) {
+        this.authorizedNameServiceCenterKeyData = authorizedNameServiceCenterKeyData;
+    }
+
     public PublicKey getAuthorizedNameServiceCenterKey() {
         try {
             return new PublicKey(authorizedNameServiceCenterKeyData.getData());

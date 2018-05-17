@@ -22,7 +22,7 @@ import static com.icodici.universa.contract.Reference.conditionsModeType.any_of;
 
 public class Reference implements BiSerializable {
 
-    enum conditionsModeType {
+    public enum conditionsModeType {
         all_of,
         any_of,
         simple_condition

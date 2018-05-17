@@ -26,6 +26,7 @@ import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.Ignore;
@@ -9769,19 +9770,23 @@ public class BaseNetworkTest extends TestCase {
     @Test(timeout = 90000)
     public void registerUnsContract() throws Exception {
 
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
-        UnsName unsName = new UnsName("test", "test", "test description", "http://test.com");
+        UnsName unsName = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
         UnsRecord unsRecord1 = new UnsRecord(manufacturePrivateKeys.iterator().next().getPublicKey());
-        UnsRecord unsRecord2 = new UnsRecord(uns.getId());
+        //UnsRecord unsRecord2 = new UnsRecord(uns.getId());
         unsName.addUnsRecord(unsRecord1);
-        unsName.addUnsRecord(unsRecord2);
+        //unsName.addUnsRecord(unsRecord2);
         uns.addUnsName(unsName);
 
         uns.setNodeConfig(node.getConfig());
@@ -9791,7 +9796,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract paymentContract = getApprovedTUContract();
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -9800,8 +9805,8 @@ public class BaseNetworkTest extends TestCase {
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
-        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
     }
 

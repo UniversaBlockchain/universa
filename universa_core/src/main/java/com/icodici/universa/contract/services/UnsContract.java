@@ -4,6 +4,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
@@ -226,10 +227,16 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public byte[] seal() {
+        saveNamesToState();
         calculatePrepaidNamesForDays(true);
 
         return super.seal();
     }
+
+    private void saveNamesToState() {
+        getStateData().put(NAMES_FIELD_NAME,storedNames);
+    }
+
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
@@ -325,7 +332,7 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        checkResult = prepaidNamesForDays == getStateData().getInt(PREPAID_ND_FIELD_NAME, 0);
+        checkResult = prepaidNamesForDays == getStateData().getDouble(PREPAID_ND_FIELD_NAME);
         if (!checkResult) {
             addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_ND_FIELD_NAME + "] value. " +
                     "Should be sum of early paid U and paid U by current revision.");
@@ -343,7 +350,7 @@ public class UnsContract extends NSmartContract {
 
         calculatePrepaidNamesForDays(false);
 
-        checkResult = prepaidNamesForDays == getStateData().getInt(PREPAID_ND_FIELD_NAME, 0);
+        checkResult = prepaidNamesForDays == getStateData().getDouble(PREPAID_ND_FIELD_NAME);
         if (!checkResult) {
             addError(Errors.FAILED_CHECK, "Wrong [state.data." + PREPAID_ND_FIELD_NAME + "] value. " +
                     "Should be sum of early paid U and paid U by current revision.");
@@ -390,19 +397,30 @@ public class UnsContract extends NSmartContract {
                     return false;
                 }
 
-                List<Reference> matchingRefs = getReferences().values().stream().filter(ref ->
-                        ref.getContract().getId().equals(unsRecord.getOrigin())
-                                || ref.getContract().getOrigin() != null && ref.getContract().getOrigin().equals(unsRecord.getOrigin())).collect(Collectors.toList());
-                if(matchingRefs.isEmpty()) {
+                //check reference exists in contract (ensures that matching contract was checked by system for being approved)
+                if(!getReferences().values().stream().anyMatch(ref ->
+                        ref.getConditions().getArray(Reference.conditionsModeType.all_of.name()).stream().anyMatch(cond ->
+                                cond.equals("ref.state.origin=="+unsRecord.getOrigin().toBase64String())))) {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + " but no corresponding reference is found");
                     return false;
                 }
 
-                Contract contract = matchingRefs.get(0).getContract();
+                List<Contract> matchingContracts = getTransactionPack().getReferencedItems().values().stream()
+                        .filter(contract -> contract.getId().equals(unsRecord.getOrigin())
+                                || contract.getOrigin() != null && contract.getOrigin().equals(unsRecord.getOrigin()))
+                        .collect(Collectors.toList());
+
+                if(matchingContracts.isEmpty()) {
+                    addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + " but no corresponding referenced contract is found");
+                    return false;
+                }
+
+                Contract contract = matchingContracts.get(0);
                 if(!contract.getRole("issuer").isAllowedForKeys(getSealedByKeys())) {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + ". UNS1 contract should be also signed by this contract issuer key.");
                     return false;
                 }
+
 
                 return true;
             }
@@ -411,6 +429,13 @@ public class UnsContract extends NSmartContract {
                 addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " is missing both addresses and origin.");
                 return false;
             }
+
+
+            if (unsRecord.getAddresses().size() > 2)
+                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + ": Addresses list should not be contains more 2 addresses");
+
+            if ((unsRecord.getAddresses().size() == 2) && unsRecord.getAddresses().get(0).isLong() == unsRecord.getAddresses().get(1).isLong())
+                addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + ": Addresses list may only contain one short and one long addresses");
 
             KeyAddress longAddress = null;
             KeyAddress shortAddress = null;
@@ -479,6 +504,7 @@ public class UnsContract extends NSmartContract {
                     nrm.description = sn.getUnsDescription();
                     nrm.url = sn.getUnsURL();
                     nrm.expires_at = spentNDsTime.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    nrm.entries = new ArrayList<>();
                     sn.getUnsRecords().forEach(snr ->{
                         NameEntryModel nem = new NameEntryModel();
                         if(snr.getOrigin() != null) {
@@ -543,6 +569,7 @@ public class UnsContract extends NSmartContract {
     }
 
     public void addUnsName(UnsName unsName, Collection<Contract> referencedOrigins) {
+        storedNames.add(unsName);
         unsName.getUnsRecords().forEach(unsRecord -> {
             if(unsRecord.getOrigin() != null) {
                 if(referencedOrigins != null) {
@@ -551,12 +578,23 @@ public class UnsContract extends NSmartContract {
                                     contract.getOrigin() != null && contract.getOrigin().equals(unsRecord.getOrigin())
                     ).collect(Collectors.toList());
                     if(!matchingRefs.isEmpty()) {
-                        addReference(new Reference(matchingRefs.get(0)));
+                        addReferencedOrigin(unsName.getUnsName()+unsRecord.getOrigin().toString(),matchingRefs.get(0));
                     }
                 }
             }
         });
-        storedNames.add(unsName);
+    }
+
+    private void addReferencedOrigin(String refName, Contract contract) {
+        Reference ref = new Reference(this);
+        ref.setName(refName);
+        List<Object> conditionsList = new ArrayList<>();
+        HashId origin = contract.getOrigin() == null ? contract.getId() : contract.getOrigin();
+        conditionsList.add("ref.state.origin=="+origin.toBase64String());
+        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
+        ref.setConditions(conditions);
+        addReference(ref);
+        getTransactionPack().addReferencedItem(contract);
     }
 
 
