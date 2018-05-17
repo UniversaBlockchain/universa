@@ -115,6 +115,7 @@ public class UnsContract extends NSmartContract {
             HashMap<String, Object> fieldsMap = new HashMap<>();
             fieldsMap.put("action", null);
             fieldsMap.put("/expires_at", null);
+            fieldsMap.put("/references", null);
             fieldsMap.put(NAMES_FIELD_NAME, null);
             fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
             fieldsMap.put(PREPAID_ND_FROM_TIME_FIELD_NAME, null);
