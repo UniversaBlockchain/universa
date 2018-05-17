@@ -22,6 +22,7 @@ public class UnsName implements BiSerializable {
     private List<UnsRecord> unsRecords = new ArrayList<>();
 
     public static final String NAME_FIELD_NAME = "name";
+    public static final String NAME_REDUCED_FIELD_NAME= "name_reduced";
     public static final String DESCRIPTION_FIELD_NAME = "description";
     public static final String URL_FIELD_NAME = "url";
     public static final String ENTRIES_FIELD_NAME = "entries";
@@ -52,9 +53,9 @@ public class UnsName implements BiSerializable {
     }
 
     protected UnsName initializeWithDsl(Binder binder) {
+        unsName = binder.getString(NAME_FIELD_NAME, null);
         //TODO: calculate nameReduced here?
         unsNameReduced = unsName;
-        unsName = binder.getString(NAME_FIELD_NAME, null);
         unsDescription = binder.getString(DESCRIPTION_FIELD_NAME, null);
         unsURL = binder.getString(URL_FIELD_NAME, null);
 
@@ -134,22 +135,22 @@ public class UnsName implements BiSerializable {
     @Override
     public Binder serialize(BiSerializer serializer) {
         Binder data = new Binder();
-        data.set("unsNameReduced", serializer.serialize(unsNameReduced));
-        data.set("unsName", serializer.serialize(unsName));
-        data.set("unsDescription", serializer.serialize(unsDescription));
-        data.set("unsURL", serializer.serialize(unsURL));
-        data.set("unsRecords", serializer.serialize(unsRecords));
+        data.set(NAME_REDUCED_FIELD_NAME, serializer.serialize(unsNameReduced));
+        data.set(NAME_FIELD_NAME, serializer.serialize(unsName));
+        data.set(DESCRIPTION_FIELD_NAME, serializer.serialize(unsDescription));
+        data.set(URL_FIELD_NAME, serializer.serialize(unsURL));
+        data.set(ENTRIES_FIELD_NAME, serializer.serialize(unsRecords));
 
         return data;
     }
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
-        this.unsNameReduced = data.getString("unsNameReduced");
-        this.unsName = data.getString("unsName");
-        this.unsDescription = data.getString("unsDescription");
-        this.unsURL = data.getString("unsURL");
-        this.unsRecords = deserializer.deserialize(data.getList("unsRecords", null));
+        this.unsNameReduced = data.getString(NAME_REDUCED_FIELD_NAME);
+        this.unsName = data.getString(NAME_FIELD_NAME);
+        this.unsDescription = data.getString(DESCRIPTION_FIELD_NAME);
+        this.unsURL = data.getString(URL_FIELD_NAME);
+        this.unsRecords = deserializer.deserialize(data.getList(ENTRIES_FIELD_NAME, null));
     }
 
     public List<UnsRecord> getUnsRecords() {

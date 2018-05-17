@@ -10154,7 +10154,7 @@ public class BaseNetworkTest extends TestCase {
         Contract paymentContract = getApprovedTUContract();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 1460, stepaPrivateKeys, false);
 
         unsContract.check();
         unsContract.traceErrors();
@@ -10182,7 +10182,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(unsContractDuble.isOk());
 
         paymentContract = getApprovedTUContract();
-        payingParcel = ContractsService.createPayingParcel(unsContractDuble.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(unsContractDuble.getTransactionPack(), paymentContract, 1, 1460, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -10217,7 +10217,7 @@ public class BaseNetworkTest extends TestCase {
         Contract paymentContract = getApprovedTUContract();
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 1460, stepaPrivateKeys, false);
 
         unsContract.check();
         unsContract.traceErrors();
@@ -10246,7 +10246,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(unsContractDuble.isOk());
 
         paymentContract = getApprovedTUContract();
-        payingParcel = ContractsService.createPayingParcel(unsContractDuble.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(unsContractDuble.getTransactionPack(), paymentContract, 1, 1460, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
