@@ -1474,11 +1474,11 @@ public class PostgresLedger implements Ledger {
                                             "SELECT " +
                                             "  COUNT(id) " +
                                             "FROM name_storage " +
-                                            "WHERE name_reduced IN ["+queryPart+"]"
+                                            "WHERE name_reduced IN ("+queryPart+")"
                             )
             ) {
                 for (int i = 1; i <= reducedNames.size(); ++i)
-                    statement.setString(i, reducedNames.get(i));
+                    statement.setString(i, reducedNames.get(i-1));
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
