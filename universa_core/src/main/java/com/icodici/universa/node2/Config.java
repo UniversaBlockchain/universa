@@ -16,10 +16,13 @@ import com.icodici.universa.HashId;
 import net.sergeych.utils.Bytes;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAmount;
 import java.util.*;
 
 public class Config {
+
+
 
 
     public Config () {
@@ -99,6 +102,14 @@ public class Config {
         return expriedStorageCleanupInterval;
     }
 
+    public Duration getHoldDuration() {
+        return holdDuration;
+    }
+
+    public void setHoldDuration(Duration holdDuration) {
+        this.holdDuration = holdDuration;
+    }
+
     public interface ConsensusConfigUpdater {
         void updateConsensusConfig(Config config, int nodesCount);
     }
@@ -144,7 +155,7 @@ public class Config {
     private Duration maxResyncTime = Duration.ofMinutes(5);
     private Duration expriedStorageCleanupInterval = Duration.ofMinutes(5);
     private Duration expriedNamesCleanupInterval = Duration.ofMinutes(5);
-
+    private Duration holdDuration = Duration.ofDays(30);
 
     private Boolean isFreeRegistrationsLimited = null;
     private boolean isFreeRegistrationsAllowedFromYaml = false;

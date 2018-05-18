@@ -25,6 +25,7 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -1592,17 +1593,16 @@ public class PostgresLedger implements Ledger {
 
 
 
-    public void clearExpiredNameRecords() {
+    public void clearExpiredNameRecords(Duration holdDuration) {
         try (PooledDb db = dbPool.db()) {
-            //TODO: get hold interval from config
-            ZonedDateTime now = ZonedDateTime.now().minusMonths(1);
+            ZonedDateTime before = ZonedDateTime.now().minus(holdDuration);
             try (
                     PreparedStatement statement =
                             db.statement(
                                     "DELETE FROM name_storage WHERE expires_at < ? "
                             )
             ) {
-                statement.setLong(1, StateRecord.unixTime(now));
+                statement.setLong(1, StateRecord.unixTime(before));
                 statement.closeOnCompletion();
                 statement.executeUpdate();
             }

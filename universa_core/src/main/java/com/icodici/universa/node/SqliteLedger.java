@@ -22,6 +22,7 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -387,7 +388,7 @@ public class SqliteLedger implements Ledger {
     public boolean isAllAddressesAvailable(final List<String> addresses) {return false;}
 
     @Override
-    public void clearExpiredNameRecords() {
+    public void clearExpiredNameRecords(Duration holdDuration) {
 
     }
 

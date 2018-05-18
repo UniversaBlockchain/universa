@@ -16,6 +16,7 @@ import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -214,7 +215,7 @@ public interface Ledger {
     boolean isAllNameRecordsAvailable(final List<String> reducedNames);
     boolean isAllOriginsAvailable(final List<HashId> origins);
     boolean isAllAddressesAvailable(final List<String> addresses);
-    void clearExpiredNameRecords();
+    void clearExpiredNameRecords(Duration holdDuration);
 
     void cleanup();
 }
