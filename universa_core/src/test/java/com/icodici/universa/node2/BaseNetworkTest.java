@@ -10219,6 +10219,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract2.getId(), 8000).state);
 
         UnsContract unsOriginal = uns;
+        unsOriginal.removeReferencedItem(referencesContract1);
 
         //Create revision to add payment without any changes. Should be declined
         uns = (UnsContract) unsOriginal.createRevision(keys);

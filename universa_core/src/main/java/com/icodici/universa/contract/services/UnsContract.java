@@ -265,6 +265,12 @@ public class UnsContract extends NSmartContract {
         origins.forEach( origin -> {
             if(!isOriginReferenceExists(origin)) {
                 addOriginReference(origin);
+            } else {
+                Reference reference = getReferences().values().stream().filter(ref ->
+                        ref.getConditions().getArray(Reference.conditionsModeType.all_of.name()).stream().anyMatch(cond ->
+                                cond.equals(REFERENCE_CONDITION_PREFIX+origin.toBase64String()))).collect(Collectors.toList()).get(0);
+                if(reference.matchingItems.isEmpty() && originContracts.containsKey(origin))
+                    reference.addMatchingItem(originContracts.get(origin));
             }
         });
     }
@@ -744,7 +750,7 @@ public class UnsContract extends NSmartContract {
     }
 
     public void addOriginContract(Contract contract) {
-        originContracts.put(contract.getId(),contract);
+        originContracts.put(contract.getOrigin() != null ? contract.getOrigin() : contract.getId(),contract);
     }
 
 
