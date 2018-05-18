@@ -532,6 +532,9 @@ public class UnsContract extends NSmartContract {
                 if (unsRecord.getOrigin() != null)
                     origins.add(unsRecord.getOrigin());
 
+        if (origins.size() == 0)
+            return true;
+
         checkResult = nameCache.lockOriginList(origins);
         if (!checkResult) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins are registering right now");
@@ -556,6 +559,9 @@ public class UnsContract extends NSmartContract {
             for (UnsRecord unsRecord : unsName.getUnsRecords())
                 for (KeyAddress keyAddress : unsRecord.getAddresses())
                     addresses.add(keyAddress.toString());
+
+        if (addresses.size() == 0)
+            return true;
 
         checkResult = nameCache.lockAddressList(addresses);
         if (!checkResult) {
