@@ -9835,7 +9835,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsName()).entries.size(),2);
+        assertEquals(ledger.getNameRecord(unsName.getUnsNameReduced()).entries.size(),2);
     }
 
     @Test(timeout = 90000)
@@ -9935,8 +9935,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsName()).entries.size(),2);
-        assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsName()).entries.size(),1);
+        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsNameReduced()).entries.size(),2);
+        assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsNameReduced()).entries.size(),1);
 
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(TestKeys.privateKey(2));
@@ -9987,9 +9987,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsName()).entries.size(),2);
-        assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsName()).entries.size(),1);
-        assertNull(ledger.getNameRecord(unsNameToRemove.getUnsName()));
+        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsNameReduced()).entries.size(),2);
+        assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsNameReduced()).entries.size(),1);
+        assertNull(ledger.getNameRecord(unsNameToRemove.getUnsNameReduced()));
     }
 
 
@@ -10059,7 +10059,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsName()).entries.size(),1);
+        assertEquals(1, ledger.getNameRecord(unsName.getUnsNameReduced()).entries.size());
 
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(TestKeys.privateKey(1));
@@ -10069,6 +10069,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract referencesContract2 = referencesContract1.createRevision(manufacturePrivateKeys);
         referencesContract2.setOwnerKeys(TestKeys.privateKey(8));
+        referencesContract2.seal();
         paymentContract = getApprovedTUContract();
 
         parcel = ContractsService.createParcel(referencesContract2.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
@@ -10104,7 +10105,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsName()).entries.size(),1);
+        assertEquals(ledger.getNameRecord(unsName.getUnsNameReduced()).entries.size(),1);
 
 
         //Create revision to add payment without any changes. Should be declined
@@ -10128,7 +10129,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsName()).entries.size(),1);
+        assertEquals(ledger.getNameRecord(unsName.getUnsNameReduced()).entries.size(),1);
     }
 
     @Test(timeout = 90000)
