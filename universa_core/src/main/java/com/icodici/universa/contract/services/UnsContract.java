@@ -489,14 +489,30 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        if (checkResult)
-            checkResult = additionallyUnsCheck_isNamesAvailable(ime);
+        List<String> reducedNamesToCkeck = getReducedNamesToCheck();
+        List<HashId> originsToCheck = getOriginsToCheck();
+        List<String> addressesToCheck = getAddressesToCheck();
 
+        boolean checkResultNames = false;
         if (checkResult)
-            checkResult = additionallyUnsCheck_isOriginsAvailable(ime);
+            checkResult = checkResultNames = additionallyUnsCheck_isNamesAvailable(ime, reducedNamesToCkeck);
 
+        boolean checkResultOrigins = false;
         if (checkResult)
-            checkResult = additionallyUnsCheck_isAddressesAvailable(ime);
+            checkResult = checkResultOrigins = additionallyUnsCheck_isOriginsAvailable(ime, originsToCheck);
+
+        boolean checkResultAddresses = false;
+        if (checkResult)
+            checkResult = checkResultAddresses = additionallyUnsCheck_isAddressesAvailable(ime, addressesToCheck);
+
+        if (!checkResult) {
+            if (checkResultNames)
+                nameCache.unlockNameList(reducedNamesToCkeck);
+            if (checkResultOrigins)
+                nameCache.unlockOriginList(originsToCheck);
+            if (checkResultAddresses)
+                nameCache.unlockAddressList(addressesToCheck);
+        }
 
         return checkResult;
     }
@@ -551,10 +567,8 @@ public class UnsContract extends NSmartContract {
         return new ArrayList<>(addresses);
     }
 
-    private boolean additionallyUnsCheck_isNamesAvailable(ImmutableEnvironment ime) {
+    private boolean additionallyUnsCheck_isNamesAvailable(ImmutableEnvironment ime, List<String> reducedNames) {
         boolean checkResult;
-
-        List<String> reducedNames = getReducedNamesToCheck();
 
         if (reducedNames.size() == 0)
             return true;
@@ -567,7 +581,6 @@ public class UnsContract extends NSmartContract {
 
         checkResult = ledger.isAllNameRecordsAvailable(reducedNames);
         if (!checkResult) {
-            nameCache.unlockNameList(reducedNames);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names already registered");
             return checkResult;
         }
@@ -575,10 +588,8 @@ public class UnsContract extends NSmartContract {
         return checkResult;
     }
 
-    private boolean additionallyUnsCheck_isOriginsAvailable(ImmutableEnvironment ime) {
+    private boolean additionallyUnsCheck_isOriginsAvailable(ImmutableEnvironment ime, List<HashId> origins) {
         boolean checkResult;
-
-        List<HashId> origins = getOriginsToCheck();
 
         if (origins.size() == 0)
             return true;
@@ -591,7 +602,6 @@ public class UnsContract extends NSmartContract {
 
         checkResult = ledger.isAllOriginsAvailable(origins);
         if (!checkResult) {
-            nameCache.unlockOriginList(origins);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins already registered");
             return checkResult;
         }
@@ -599,10 +609,8 @@ public class UnsContract extends NSmartContract {
         return checkResult;
     }
 
-    private boolean additionallyUnsCheck_isAddressesAvailable(ImmutableEnvironment ime) {
+    private boolean additionallyUnsCheck_isAddressesAvailable(ImmutableEnvironment ime, List<String> addresses) {
         boolean checkResult;
-
-        List<String> addresses = getAddressesToCheck();
 
         if (addresses.size() == 0)
             return true;
@@ -615,7 +623,6 @@ public class UnsContract extends NSmartContract {
 
         checkResult = ledger.isAllAddressesAvailable(addresses);
         if (!checkResult) {
-            nameCache.unlockAddressList(addresses);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses already registered");
             return checkResult;
         }
