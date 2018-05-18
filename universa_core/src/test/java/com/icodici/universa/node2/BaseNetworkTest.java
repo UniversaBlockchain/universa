@@ -19,6 +19,7 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
@@ -9836,6 +9837,141 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
         assertEquals(ledger.getNameRecord(unsName.getUnsName()).entries.size(),2);
+    }
+
+    @Test(timeout = 90000)
+    public void checkUnsContractHOLD() throws Exception {
+
+        PrivateKey randomPrivKey = new PrivateKey(2048);
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+
+        double oldValue = Config.namesAndDaysPerU;
+        Config.namesAndDaysPerU = 10.0/(24*3600*Config.getMinUnsPayment());
+        config.setHoldDuration(Duration.ofSeconds(10));
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+
+        UnsContract uns3 = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns3.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName3 = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsRecord unsRecord3 = new UnsRecord(randomPrivKey.getPublicKey());
+        unsName3.addUnsRecord(unsRecord3);
+        uns3.addUnsName(unsName3);
+
+        uns3.setNodeConfig(node.getConfig());
+        uns3.seal();
+        uns3.addSignatureToSeal(randomPrivKey);
+        uns3.addSignatureToSeal(TestKeys.privateKey(8));
+        uns3.check();
+        uns3.traceErrors();
+
+        UnsContract uns2 = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns2.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName2 = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsRecord unsRecord2 = new UnsRecord(randomPrivKey.getPublicKey());
+        unsName2.addUnsRecord(unsRecord2);
+        uns2.addUnsName(unsName2);
+
+        uns2.setNodeConfig(node.getConfig());
+        uns2.seal();
+        uns2.addSignatureToSeal(randomPrivKey);
+        uns2.addSignatureToSeal(TestKeys.privateKey(8));
+        uns2.check();
+        uns2.traceErrors();
+
+        UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsRecord unsRecord = new UnsRecord(randomPrivKey.getPublicKey());
+        unsName.addUnsRecord(unsRecord);
+        uns.addUnsName(unsName);
+
+        uns.setNodeConfig(node.getConfig());
+        uns.seal();
+        uns.addSignatureToSeal(randomPrivKey);
+        uns.addSignatureToSeal(TestKeys.privateKey(8));
+        uns.check();
+        uns.traceErrors();
+
+
+
+        Contract paymentContract = getApprovedTUContract();
+
+
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        assertEquals(ledger.getNameRecord(unsName.getUnsName()).entries.size(),1);
+        node.getLedger().clearExpiredNameRecords(config.getHoldDuration());
+        Thread.sleep(11000);
+        node.getLedger().clearExpiredNameRecords(config.getHoldDuration());
+        NameRecordModel nr = ledger.getNameRecord(unsName.getUnsName());
+        assertEquals(nr.entries.size(),1);
+        assertTrue(nr.expires_at.isBefore(ZonedDateTime.now()));
+
+
+
+        paymentContract = getApprovedTUContract();
+
+
+        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
+
+        Thread.sleep(11000);
+        node.getLedger().clearExpiredNameRecords(config.getHoldDuration());
+        nr = ledger.getNameRecord(unsName.getUnsName());
+        assertEquals(nr.id,0);
+        assertEquals(nr.entries.size(),0);
+
+
+        paymentContract = getApprovedTUContract();
+
+
+        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), stepaPrivateKeys, false);
+
+        node.registerParcel(payingParcel);
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        ItemResult ir = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
+
+
+        Config.namesAndDaysPerU = oldValue;
     }
 
     @Test(timeout = 90000)

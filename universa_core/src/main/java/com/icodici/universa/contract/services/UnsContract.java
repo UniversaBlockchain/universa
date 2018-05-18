@@ -589,7 +589,12 @@ public class UnsContract extends NSmartContract {
     public @Nullable Binder onCreated(MutableEnvironment me) {
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
+        List<String> namesList = new ArrayList<>();
+        List<String> addressesList = new ArrayList<>();
+        List<HashId> originsList = new ArrayList<>();
+
         storedNames.forEach(sn -> {
+                    namesList.add(sn.getUnsName());
                     NameRecordModel nrm = new NameRecordModel();
                     nrm.name_full = sn.getUnsName();
                     nrm.name_reduced = sn.getUnsNameReduced();
@@ -601,8 +606,11 @@ public class UnsContract extends NSmartContract {
                         NameEntryModel nem = new NameEntryModel();
                         if(snr.getOrigin() != null) {
                             nem.origin = snr.getOrigin().getDigest();
+                            originsList.add(snr.getOrigin());
                         }
+
                         snr.getAddresses().forEach(keyAddress -> {
+                            addressesList.add(keyAddress.toString());
                             if(keyAddress.isLong()) {
                                 nem.long_addr = keyAddress.toString();
                             } else {
@@ -615,7 +623,9 @@ public class UnsContract extends NSmartContract {
                     ledger.saveNameRecord(nrm);
                 }
         );
-
+        nameCache.unlockNameList(namesList);
+        nameCache.unlockAddressList(addressesList);
+        nameCache.unlockOriginList(originsList);
         return Binder.fromKeysValues("status", "ok");
     }
 
@@ -625,19 +635,29 @@ public class UnsContract extends NSmartContract {
 
         long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
+        List<String> namesList = new ArrayList<>();
+        List<String> addressesList = new ArrayList<>();
+        List<HashId> originsList = new ArrayList<>();
+
+
         storedNames.forEach(sn -> {
+                    namesList.add(sn.getUnsName());
                     NameRecordModel nrm = new NameRecordModel();
                     nrm.name_full = sn.getUnsName();
                     nrm.name_reduced = sn.getUnsNameReduced();
                     nrm.description = sn.getUnsDescription();
                     nrm.url = sn.getUnsURL();
                     nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    nrm.entries = new ArrayList<>();
                     sn.getUnsRecords().forEach(snr ->{
                         NameEntryModel nem = new NameEntryModel();
                         if(snr.getOrigin() != null) {
                             nem.origin = snr.getOrigin().getDigest();
+                            originsList.add(snr.getOrigin());
                         }
+
                         snr.getAddresses().forEach(keyAddress -> {
+                            addressesList.add(keyAddress.toString());
                             if(keyAddress.isLong()) {
                                 nem.long_addr = keyAddress.toString();
                             } else {
@@ -650,6 +670,9 @@ public class UnsContract extends NSmartContract {
                     ledger.saveNameRecord(nrm);
                 }
         );
+        nameCache.unlockNameList(namesList);
+        nameCache.unlockAddressList(addressesList);
+        nameCache.unlockOriginList(originsList);
 
         return Binder.fromKeysValues("status", "ok");
     }
