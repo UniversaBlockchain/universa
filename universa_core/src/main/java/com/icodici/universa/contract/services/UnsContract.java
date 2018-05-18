@@ -556,6 +556,9 @@ public class UnsContract extends NSmartContract {
 
         List<String> reducedNames = getReducedNamesToCheck();
 
+        if (reducedNames.size() == 0)
+            return true;
+
         checkResult = nameCache.lockNameList(reducedNames);
         if (!checkResult) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names are registering right now");

@@ -10067,7 +10067,7 @@ public class BaseNetworkTest extends TestCase {
         keys.add(authorizedNameServiceKey);
 
 
-        Contract referencesContract2 = referencesContract1.createRevision(manufacturePrivateKeys);
+        Contract referencesContract2 = referencesContract1.createRevision(TestKeys.privateKey(1));
         referencesContract2.setOwnerKeys(TestKeys.privateKey(8));
         referencesContract2.seal();
         paymentContract = getApprovedTUContract();
