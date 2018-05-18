@@ -1350,6 +1350,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         references.put(reference.name, reference);
     }
 
+    public void removeReference(Reference reference) {
+        reference.matchingItems.forEach(approvable -> {
+            if(approvable instanceof Contract) {
+                removeReferencedItem((Contract) approvable);
+            }
+        });
+
+
+        if(reference.type == Reference.TYPE_TRANSACTIONAL) {
+            if(transactional != null)
+                transactional.removeReference(reference);
+        } else if (reference.type == Reference.TYPE_EXISTING_DEFINITION)
+            definition.removeReference(reference);
+        else if(reference.type == Reference.TYPE_EXISTING_STATE)
+            state.removeReference(reference);
+
+        references.remove(reference.name);
+    }
+
+
     /**
      * Important. This method should be invoked after {@link #check()}.
      *
@@ -2412,9 +2432,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             references.add(reference);
         }
 
+        public void removeReference(Reference reference) {
+            if(references == null) {
+                return;
+            }
+            references.remove(reference);
+        }
+
         public List<Reference> getReferences() {
             return this.references;
         }
+
     }
 
     private Multimap<String, Permission> permissions = new Multimap<>();
@@ -2511,6 +2539,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
 
             references.add(reference);
+        }
+
+        public void removeReference(Reference reference) {
+            if(references == null) {
+                return;
+            }
+
+            references.remove(reference);
         }
 
         public List<Reference> getReferences() {
@@ -2684,6 +2720,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
 
             references.add(reference);
+        }
+
+        public void removeReference(Reference reference) {
+            if(references == null) {
+                return;
+            }
+
+            references.remove(reference);
         }
 
         public List<Reference> getReferences() {

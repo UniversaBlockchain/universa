@@ -245,20 +245,21 @@ public class UnsContract extends NSmartContract {
             }
         }));
 
-        /*Set<Reference> refsToRemove = new HashSet<>();
+        Set<Reference> refsToRemove = new HashSet<>();
 
         getReferences().values().forEach(ref -> {
             ArrayList conditions = ref.getConditions().getArray(Reference.conditionsModeType.all_of.name());
             conditions.forEach(condition -> {
                 if(condition instanceof String && ((String) condition).startsWith(REFERENCE_CONDITION_PREFIX)) {
-                    if(!origins.contains(new HashId(Base64u.decodeCompactString(((String) condition).substring(REFERENCE_CONDITION_PREFIX.length()))))) {
+                    HashId o = HashId.withDigest(((String) condition).substring(REFERENCE_CONDITION_PREFIX.length()));
+                    if(!origins.contains(o)) {
                         refsToRemove.add(ref);
                     }
                 }
             });
-        });*/
+        });
 
-        //TODO: remove references refsToRemove
+        refsToRemove.forEach(ref -> removeReference(ref));
 
         origins.forEach( origin -> {
             if(!isOriginReferenceExists(origin)) {
@@ -266,6 +267,7 @@ public class UnsContract extends NSmartContract {
             }
         });
     }
+
 
     private void saveNamesToState() {
         getStateData().put(NAMES_FIELD_NAME,storedNames);
@@ -671,6 +673,7 @@ public class UnsContract extends NSmartContract {
 
     private void addOriginReference(HashId origin) {
         Reference ref = new Reference(this);
+        ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setName(origin.toString());
         List<Object> conditionsList = new ArrayList<>();
         conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
@@ -692,6 +695,15 @@ public class UnsContract extends NSmartContract {
         storedNames.add(unsName);
     }
 
+    public UnsName getUnsName(String name) {
+        for(UnsName unsName : storedNames) {
+            if(unsName.getUnsName().equals(name)) {
+                return unsName;
+            }
+        }
+        return null;
+    }
+
     static {
         Config.forceInit(UnsRecord.class);
         Config.forceInit(UnsName.class);
@@ -699,6 +711,19 @@ public class UnsContract extends NSmartContract {
         DefaultBiMapper.registerClass(UnsRecord.class);
         DefaultBiMapper.registerClass(UnsName.class);
         DefaultBiMapper.registerClass(UnsContract.class);
+    }
+
+    public void removeName(String name) {
+        UnsName nameToRemove = null;
+        for(UnsName unsName : storedNames) {
+            if(unsName.getUnsName().equals(name)) {
+                nameToRemove = unsName;
+                break;
+            }
+        }
+        if(nameToRemove != null) {
+            storedNames.remove(nameToRemove);
+        }
     }
 }
 
