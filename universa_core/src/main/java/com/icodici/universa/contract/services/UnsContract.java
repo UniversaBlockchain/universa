@@ -587,6 +587,7 @@ public class UnsContract extends NSmartContract {
 
         checkResult = ledger.isAllNameRecordsAvailable(reducedNames);
         if (!checkResult) {
+            nameCache.unlockNameList(reducedNames);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names already registered");
             return checkResult;
         }
@@ -608,6 +609,7 @@ public class UnsContract extends NSmartContract {
 
         checkResult = ledger.isAllOriginsAvailable(origins);
         if (!checkResult) {
+            nameCache.unlockOriginList(origins);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins already registered");
             return checkResult;
         }
@@ -629,6 +631,7 @@ public class UnsContract extends NSmartContract {
 
         checkResult = ledger.isAllAddressesAvailable(addresses);
         if (!checkResult) {
+            nameCache.unlockAddressList(addresses);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses already registered");
             return checkResult;
         }

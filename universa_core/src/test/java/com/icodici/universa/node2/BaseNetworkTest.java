@@ -9922,9 +9922,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
         assertEquals(ledger.getNameRecord(unsName.getUnsName()).entries.size(),1);
-        node.getLedger().clearExpiredNameRecords(config.getHoldDuration());
+        nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
         Thread.sleep(11000);
-        node.getLedger().clearExpiredNameRecords(config.getHoldDuration());
+        nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
         NameRecordModel nr = ledger.getNameRecord(unsName.getUnsName());
         assertEquals(nr.entries.size(),1);
         assertTrue(nr.expires_at.isBefore(ZonedDateTime.now()));
@@ -9948,7 +9948,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
         Thread.sleep(11000);
-        node.getLedger().clearExpiredNameRecords(config.getHoldDuration());
+        nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
         nr = ledger.getNameRecord(unsName.getUnsName());
         assertNull(nr);
 

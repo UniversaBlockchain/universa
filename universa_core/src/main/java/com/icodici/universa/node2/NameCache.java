@@ -12,16 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Class-helper for concurrency work with UNS1 ledger functions.
- *
- * Main workflow for case of new name_reduced registration:
- *
- *   if !ledger.isNameRegistered(name_reduced):
- *     if nameCache.lockName(name_reduced):
- *       someProcessingOfUnsContract()
- *       if weCanRegisterThisName:
- *         ledger.registerName(name_reduced)
- *       nameCache.unlockName(name_reduced)
- *
  */
 public class NameCache {
 
