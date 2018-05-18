@@ -9770,6 +9770,8 @@ public class BaseNetworkTest extends TestCase {
     @Test(timeout = 90000)
     public void registerUnsContract() throws Exception {
 
+        PrivateKey randomPrivKey = new PrivateKey(2048);
+
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
         config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
 
@@ -9790,7 +9792,8 @@ public class BaseNetworkTest extends TestCase {
         uns.seal();
 
         UnsName unsName = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
-        UnsRecord unsRecord1 = new UnsRecord(manufacturePrivateKeys.iterator().next().getPublicKey());
+        //UnsRecord unsRecord1 = new UnsRecord(manufacturePrivateKeys.iterator().next().getPublicKey());
+        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
         unsName.addUnsRecord(unsRecord2);
@@ -9799,6 +9802,7 @@ public class BaseNetworkTest extends TestCase {
 
         uns.setNodeConfig(node.getConfig());
         uns.seal();
+        uns.addSignatureToSeal(randomPrivKey);
         uns.check();
         uns.traceErrors();
 

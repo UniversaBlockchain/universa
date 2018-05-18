@@ -1,6 +1,7 @@
 package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.EncryptionError;
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
@@ -485,6 +486,21 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
+        if (checkResult)
+            checkResult = additionallyUnsCheck_isNamesAvailable(ime);
+
+        if (checkResult)
+            checkResult = additionallyUnsCheck_isOriginsAvailable(ime);
+
+        if (checkResult)
+            checkResult = additionallyUnsCheck_isAddressesAvailable(ime);
+
+        return checkResult;
+    }
+
+    private boolean additionallyUnsCheck_isNamesAvailable(ImmutableEnvironment ime) {
+        boolean checkResult;
+
         List<String> reducedNames = new ArrayList<>();
         for (UnsName unsName : storedNames)
             reducedNames.add(unsName.getUnsNameReduced());
@@ -497,6 +513,73 @@ public class UnsContract extends NSmartContract {
         checkResult = nameCache.lockNameList(reducedNames);
         if (!checkResult) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names are registering right now");
+            return checkResult;
+        }
+
+        //second ledger check here
+        checkResult = ledger.isAllNameRecordsAvailable(reducedNames);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names already registered");
+            return checkResult;
+        }
+
+        return checkResult;
+    }
+
+    private boolean additionallyUnsCheck_isOriginsAvailable(ImmutableEnvironment ime) {
+        boolean checkResult;
+
+        List<HashId> origins = new ArrayList<>();
+        for (UnsName unsName : storedNames)
+            for (UnsRecord unsRecord : unsName.getUnsRecords())
+                if (unsRecord.getOrigin() != null)
+                    origins.add(unsRecord.getOrigin());
+        checkResult = ledger.isAllOriginsAvailable(origins);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins already registered");
+            return checkResult;
+        }
+
+        checkResult = nameCache.lockOriginList(origins);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins are registering right now");
+            return checkResult;
+        }
+
+        //second ledger check here
+        checkResult = ledger.isAllOriginsAvailable(origins);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins already registered");
+            return checkResult;
+        }
+
+        return checkResult;
+    }
+
+    private boolean additionallyUnsCheck_isAddressesAvailable(ImmutableEnvironment ime) {
+        boolean checkResult;
+
+        List<String> addresses = new ArrayList<>();
+        for (UnsName unsName : storedNames)
+            for (UnsRecord unsRecord : unsName.getUnsRecords())
+                for (KeyAddress keyAddress : unsRecord.getAddresses())
+                    addresses.add(keyAddress.toString());
+        checkResult = ledger.isAllAddressesAvailable(addresses);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses already registered");
+            return checkResult;
+        }
+
+        checkResult = nameCache.lockAddressList(addresses);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses are registering right now");
+            return checkResult;
+        }
+
+        //second ledger check here
+        checkResult = ledger.isAllAddressesAvailable(addresses);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses already registered");
             return checkResult;
         }
 

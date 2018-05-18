@@ -818,4 +818,94 @@ public class PostgresLedgerTest extends TestCase {
         }
     }
 
+
+    @Test
+    public void unsUniqueFields() throws Exception {
+        long now = StateRecord.unixTime(ZonedDateTime.now());
+        Binder someBinder = Binder.of("balance", "12.345", "expires_at", now);
+        HashId contractId = HashId.createRandom();
+        Contract someContract = new Contract(TestKeys.privateKey(0));
+        someContract.seal();
+
+        long id1 = ledger.saveEnvironmentToStorage("UNS0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
+        System.out.println("id1: " + id1);
+
+        NameRecordModel nameRecordModel = new NameRecordModel();
+        nameRecordModel.environment_id = id1;
+        nameRecordModel.name_full = "test_name";
+        nameRecordModel.name_reduced = "1234_6789";
+        nameRecordModel.description = "test description";
+        nameRecordModel.url = "test url";
+        nameRecordModel.expires_at = ZonedDateTime.now().plusMonths(1);
+        nameRecordModel.entries = new ArrayList<>();
+        NameEntryModel nameEntryModel = new NameEntryModel();
+        nameEntryModel.short_addr = TestKeys.privateKey(0).getPublicKey().getShortAddress().toString();
+        nameEntryModel.long_addr = TestKeys.privateKey(0).getPublicKey().getLongAddress().toString();
+        nameRecordModel.entries.add(nameEntryModel);
+        nameEntryModel = new NameEntryModel();
+        nameEntryModel.origin = HashId.createRandom().getDigest();
+        nameRecordModel.entries.add(nameEntryModel);
+
+        ledger.removeNameRecord(nameRecordModel.name_reduced);
+        ledger.saveNameRecord(nameRecordModel);
+
+        NameRecordModel nameRecordModel2 = new NameRecordModel();
+        nameRecordModel2.environment_id = id1;
+        nameRecordModel2.name_full = "test_name2";
+        nameRecordModel2.name_reduced = "1234_67890";
+        nameRecordModel2.description = "test description";
+        nameRecordModel2.url = "test url";
+        nameRecordModel2.expires_at = ZonedDateTime.now().plusMonths(1);
+        nameRecordModel2.entries = new ArrayList<>();
+        NameEntryModel nameEntryModel2 = new NameEntryModel();
+        nameEntryModel2.short_addr = TestKeys.privateKey(1).getPublicKey().getShortAddress().toString();
+        nameEntryModel2.long_addr = TestKeys.privateKey(1).getPublicKey().getLongAddress().toString();
+        nameRecordModel2.entries.add(nameEntryModel2);
+        nameEntryModel2 = new NameEntryModel();
+        nameEntryModel2.origin = HashId.createRandom().getDigest();
+        nameRecordModel2.entries.add(nameEntryModel2);
+
+        ledger.removeNameRecord(nameRecordModel2.name_reduced);
+        ledger.saveNameRecord(nameRecordModel2);
+
+        assertFalse(ledger.isAllNameRecordsAvailable(Arrays.asList(nameRecordModel.name_reduced, nameRecordModel2.name_reduced)));
+        assertFalse(ledger.isAllOriginsAvailable(Arrays.asList(HashId.withDigest(nameEntryModel.origin), HashId.withDigest(nameEntryModel2.origin))));
+        assertFalse(ledger.isAllAddressesAvailable(Arrays.asList(
+                TestKeys.publicKey(0).getShortAddress().toString(),
+                TestKeys.publicKey(0).getLongAddress().toString(),
+                TestKeys.publicKey(1).getShortAddress().toString(),
+                TestKeys.publicKey(1).getLongAddress().toString())));
+
+        assertFalse(ledger.isAllNameRecordsAvailable(Arrays.asList(nameRecordModel.name_reduced, nameRecordModel2.name_reduced, "some_name")));
+        assertFalse(ledger.isAllOriginsAvailable(Arrays.asList(HashId.withDigest(nameEntryModel.origin), HashId.withDigest(nameEntryModel2.origin), HashId.createRandom())));
+        assertFalse(ledger.isAllAddressesAvailable(Arrays.asList(
+                TestKeys.publicKey(0).getShortAddress().toString(),
+                TestKeys.publicKey(0).getLongAddress().toString(),
+                TestKeys.publicKey(1).getShortAddress().toString(),
+                TestKeys.publicKey(1).getLongAddress().toString(),
+                TestKeys.publicKey(2).getShortAddress().toString(),
+                TestKeys.publicKey(2).getLongAddress().toString())));
+
+        ledger.removeNameRecord(nameRecordModel.name_reduced);
+        ledger.removeNameRecord(nameRecordModel2.name_reduced);
+
+        assertTrue(ledger.isAllNameRecordsAvailable(Arrays.asList(nameRecordModel.name_reduced, nameRecordModel2.name_reduced)));
+        assertTrue(ledger.isAllOriginsAvailable(Arrays.asList(HashId.withDigest(nameEntryModel.origin), HashId.withDigest(nameEntryModel2.origin))));
+        assertTrue(ledger.isAllAddressesAvailable(Arrays.asList(
+                TestKeys.publicKey(0).getShortAddress().toString(),
+                TestKeys.publicKey(0).getLongAddress().toString(),
+                TestKeys.publicKey(1).getShortAddress().toString(),
+                TestKeys.publicKey(1).getLongAddress().toString())));
+
+        assertTrue(ledger.isAllNameRecordsAvailable(Arrays.asList(nameRecordModel.name_reduced, nameRecordModel2.name_reduced, "some_name")));
+        assertTrue(ledger.isAllOriginsAvailable(Arrays.asList(HashId.withDigest(nameEntryModel.origin), HashId.withDigest(nameEntryModel2.origin), HashId.createRandom())));
+        assertTrue(ledger.isAllAddressesAvailable(Arrays.asList(
+                TestKeys.publicKey(0).getShortAddress().toString(),
+                TestKeys.publicKey(0).getLongAddress().toString(),
+                TestKeys.publicKey(1).getShortAddress().toString(),
+                TestKeys.publicKey(1).getLongAddress().toString(),
+                TestKeys.publicKey(2).getShortAddress().toString(),
+                TestKeys.publicKey(2).getLongAddress().toString())));
+    }
+
 }

@@ -381,6 +381,12 @@ public class SqliteLedger implements Ledger {
     public boolean isAllNameRecordsAvailable(final List<String> reducedNames) {return false;}
 
     @Override
+    public boolean isAllOriginsAvailable(final List<HashId> origins) {return false;}
+
+    @Override
+    public boolean isAllAddressesAvailable(final List<String> addresses) {return false;}
+
+    @Override
     public void clearExpiredNameRecords() {
 
     }

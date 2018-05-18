@@ -1,5 +1,7 @@
 package com.icodici.universa.node2;
 
+import com.icodici.universa.HashId;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -97,12 +99,18 @@ public class NameCache {
         unlockStringList(getSringListWithPrefix(NAME_PREFIX, reducedNameList));
     }
 
-    public boolean lockOriginList(List<String> originList) {
-        return lockStringList(getSringListWithPrefix(ORIGIN_PREFIX, originList));
+    public boolean lockOriginList(List<HashId> originList) {
+        List<String> stringList = new ArrayList<>();
+        for (HashId origin : originList)
+            stringList.add(ORIGIN_PREFIX + origin.toBase64String());
+        return lockStringList(stringList);
     }
 
-    public void unlockOriginList(List<String> originList) {
-        unlockStringList(getSringListWithPrefix(ORIGIN_PREFIX, originList));
+    public void unlockOriginList(List<HashId> originList) {
+        List<String> stringList = new ArrayList<>();
+        for (HashId origin : originList)
+            stringList.add(ORIGIN_PREFIX + origin.toBase64String());
+        unlockStringList(stringList);
     }
 
     public boolean lockAddressList(List<String> addressList) {

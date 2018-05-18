@@ -1502,6 +1502,96 @@ public class PostgresLedger implements Ledger {
     }
 
 
+    @Override
+    public boolean isAllOriginsAvailable(final List<HashId> origins) {
+        try (PooledDb db = dbPool.db()) {
+            String queryPart = "";
+            List<String> queryPartList = new ArrayList<>();
+            for (int i = 0; i < origins.size(); ++i)
+                queryPartList.add("?");
+            queryPart = String.join(",", queryPartList);
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  COUNT(entry_id) " +
+                                            "FROM name_entry " +
+                                            "WHERE origin IN ("+queryPart+")"
+                            )
+            ) {
+                for (int i = 1; i <= origins.size(); ++i)
+                    statement.setBytes(i, origins.get(i-1).getDigest());
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("isAllOriginsAvailable failed: returning null");
+                boolean res = false;
+                if (rs.next()) {
+                    if (rs.getLong(1) == 0)
+                        res = true;
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("isAllOriginsAvailable failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("isAllOriginsAvailable failed: " + e);
+        }
+    }
+
+
+    @Override
+    public boolean isAllAddressesAvailable(final List<String> addresses) {
+        try (PooledDb db = dbPool.db()) {
+            String queryPart = "";
+            List<String> queryPartList = new ArrayList<>();
+            for (int i = 0; i < addresses.size(); ++i)
+                queryPartList.add("?");
+            queryPart = String.join(",", queryPartList);
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  COUNT(entry_id) " +
+                                            "FROM name_entry " +
+                                            "WHERE " +
+                                            "  short_addr IN ("+queryPart+") " +
+                                            "OR " +
+                                            "  long_addr IN ("+queryPart+") "
+                            )
+            ) {
+                for (int i = 1; i <= addresses.size(); ++i) {
+                    statement.setString(i, addresses.get(i - 1));
+                    statement.setString(i+addresses.size(), addresses.get(i - 1));
+                }
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("isAllAddressesAvailable failed: returning null");
+                boolean res = false;
+                if (rs.next()) {
+                    if (rs.getLong(1) == 0)
+                        res = true;
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("isAllAddressesAvailable failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("isAllAddressesAvailable failed: " + e);
+        }
+    }
+
+
+
     public void clearExpiredNameRecords() {
         try (PooledDb db = dbPool.db()) {
             //TODO: get hold interval from config
