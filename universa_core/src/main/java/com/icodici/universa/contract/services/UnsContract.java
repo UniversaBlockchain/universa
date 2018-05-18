@@ -506,11 +506,6 @@ public class UnsContract extends NSmartContract {
         List<String> reducedNames = new ArrayList<>();
         for (UnsName unsName : storedNames)
             reducedNames.add(unsName.getUnsNameReduced());
-        checkResult = ledger.isAllNameRecordsAvailable(reducedNames);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names already registered");
-            return checkResult;
-        }
 
         checkResult = nameCache.lockNameList(reducedNames);
         if (!checkResult) {
@@ -518,9 +513,9 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        //second ledger check here
         checkResult = ledger.isAllNameRecordsAvailable(reducedNames);
         if (!checkResult) {
+            nameCache.unlockNameList(reducedNames);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names already registered");
             return checkResult;
         }
@@ -536,11 +531,6 @@ public class UnsContract extends NSmartContract {
             for (UnsRecord unsRecord : unsName.getUnsRecords())
                 if (unsRecord.getOrigin() != null)
                     origins.add(unsRecord.getOrigin());
-        checkResult = ledger.isAllOriginsAvailable(origins);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins already registered");
-            return checkResult;
-        }
 
         checkResult = nameCache.lockOriginList(origins);
         if (!checkResult) {
@@ -548,9 +538,9 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        //second ledger check here
         checkResult = ledger.isAllOriginsAvailable(origins);
         if (!checkResult) {
+            nameCache.unlockOriginList(origins);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins already registered");
             return checkResult;
         }
@@ -566,11 +556,6 @@ public class UnsContract extends NSmartContract {
             for (UnsRecord unsRecord : unsName.getUnsRecords())
                 for (KeyAddress keyAddress : unsRecord.getAddresses())
                     addresses.add(keyAddress.toString());
-        checkResult = ledger.isAllAddressesAvailable(addresses);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses already registered");
-            return checkResult;
-        }
 
         checkResult = nameCache.lockAddressList(addresses);
         if (!checkResult) {
@@ -578,9 +563,9 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        //second ledger check here
         checkResult = ledger.isAllAddressesAvailable(addresses);
         if (!checkResult) {
+            nameCache.unlockAddressList(addresses);
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses already registered");
             return checkResult;
         }
