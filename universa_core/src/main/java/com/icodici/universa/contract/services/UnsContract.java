@@ -3,6 +3,7 @@ package com.icodici.universa.contract.services;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
@@ -400,7 +401,7 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public boolean beforeRevoke(ImmutableEnvironment c) {
-        return additionallyUnsCheck(c);
+        return true;
     }
 
     private boolean additionallyUnsCheck(ImmutableEnvironment ime) {
@@ -500,12 +501,60 @@ public class UnsContract extends NSmartContract {
         return checkResult;
     }
 
+    private List<String> getReducedNamesToCheck() {
+        Set<String> reducedNames = new HashSet<>();
+        for (UnsName unsName : storedNames)
+            reducedNames.add(unsName.getUnsNameReduced());
+        for (Approvable approvable : getRevokingItems()) {
+            if (approvable instanceof UnsContract) {
+                UnsContract revokingUns = (UnsContract) approvable;
+                for (UnsName unsName : revokingUns.storedNames)
+                    reducedNames.remove(unsName.getUnsNameReduced());
+            }
+        }
+        return new ArrayList<>(reducedNames);
+    }
+
+    private List<HashId> getOriginsToCheck() {
+        Set<HashId> origins = new HashSet<>();
+        for (UnsName unsName : storedNames)
+            for (UnsRecord unsRecord : unsName.getUnsRecords())
+                if (unsRecord.getOrigin() != null)
+                    origins.add(unsRecord.getOrigin());
+        for (Approvable approvable : getRevokingItems()) {
+            if (approvable instanceof UnsContract) {
+                UnsContract revokingUns = (UnsContract) approvable;
+                for (UnsName unsName : revokingUns.storedNames)
+                    for (UnsRecord unsRecord : unsName.getUnsRecords())
+                        if (unsRecord.getOrigin() != null)
+                            origins.remove(unsRecord.getOrigin());
+            }
+        }
+        return new ArrayList<>(origins);
+    }
+
+    private List<String> getAddressesToCheck() {
+        List<String> addresses = new ArrayList<>();
+        for (UnsName unsName : storedNames)
+            for (UnsRecord unsRecord : unsName.getUnsRecords())
+                for (KeyAddress keyAddress : unsRecord.getAddresses())
+                    addresses.add(keyAddress.toString());
+        for (Approvable approvable : getRevokingItems()) {
+            if (approvable instanceof UnsContract) {
+                UnsContract revokingUns = (UnsContract) approvable;
+                for (UnsName unsName : revokingUns.storedNames)
+                    for (UnsRecord unsRecord : unsName.getUnsRecords())
+                        for (KeyAddress keyAddress : unsRecord.getAddresses())
+                            addresses.remove(keyAddress.toString());
+            }
+        }
+        return new ArrayList<>(addresses);
+    }
+
     private boolean additionallyUnsCheck_isNamesAvailable(ImmutableEnvironment ime) {
         boolean checkResult;
 
-        List<String> reducedNames = new ArrayList<>();
-        for (UnsName unsName : storedNames)
-            reducedNames.add(unsName.getUnsNameReduced());
+        List<String> reducedNames = getReducedNamesToCheck();
 
         checkResult = nameCache.lockNameList(reducedNames);
         if (!checkResult) {
@@ -526,11 +575,7 @@ public class UnsContract extends NSmartContract {
     private boolean additionallyUnsCheck_isOriginsAvailable(ImmutableEnvironment ime) {
         boolean checkResult;
 
-        List<HashId> origins = new ArrayList<>();
-        for (UnsName unsName : storedNames)
-            for (UnsRecord unsRecord : unsName.getUnsRecords())
-                if (unsRecord.getOrigin() != null)
-                    origins.add(unsRecord.getOrigin());
+        List<HashId> origins = getOriginsToCheck();
 
         if (origins.size() == 0)
             return true;
@@ -554,11 +599,7 @@ public class UnsContract extends NSmartContract {
     private boolean additionallyUnsCheck_isAddressesAvailable(ImmutableEnvironment ime) {
         boolean checkResult;
 
-        List<String> addresses = new ArrayList<>();
-        for (UnsName unsName : storedNames)
-            for (UnsRecord unsRecord : unsName.getUnsRecords())
-                for (KeyAddress keyAddress : unsRecord.getAddresses())
-                    addresses.add(keyAddress.toString());
+        List<String> addresses = getAddressesToCheck();
 
         if (addresses.size() == 0)
             return true;
@@ -632,6 +673,7 @@ public class UnsContract extends NSmartContract {
                     nrm.description = sn.getUnsDescription();
                     nrm.url = sn.getUnsURL();
                     nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    nrm.entries = new ArrayList<>();
                     sn.getUnsRecords().forEach(snr ->{
                         NameEntryModel nem = new NameEntryModel();
                         if(snr.getOrigin() != null) {
