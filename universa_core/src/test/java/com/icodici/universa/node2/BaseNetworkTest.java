@@ -9856,11 +9856,12 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
+        String name = "test"+Instant.now().getEpochSecond();
 
         UnsContract uns3 = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns3.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName3 = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsName unsName3 = new UnsName(name, name, "test description", "http://test.com");
         UnsRecord unsRecord3 = new UnsRecord(randomPrivKey.getPublicKey());
         unsName3.addUnsRecord(unsRecord3);
         uns3.addUnsName(unsName3);
@@ -9875,7 +9876,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns2 = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns2.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName2 = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsName unsName2 = new UnsName(name, name, "test description", "http://test.com");
         UnsRecord unsRecord2 = new UnsRecord(randomPrivKey.getPublicKey());
         unsName2.addUnsRecord(unsRecord2);
         uns2.addUnsName(unsName2);
@@ -9890,7 +9891,7 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsName unsName = new UnsName(name, name, "test description", "http://test.com");
         UnsRecord unsRecord = new UnsRecord(randomPrivKey.getPublicKey());
         unsName.addUnsRecord(unsRecord);
         uns.addUnsName(unsName);
@@ -9949,8 +9950,7 @@ public class BaseNetworkTest extends TestCase {
         Thread.sleep(11000);
         node.getLedger().clearExpiredNameRecords(config.getHoldDuration());
         nr = ledger.getNameRecord(unsName.getUnsName());
-        assertEquals(nr.id,0);
-        assertEquals(nr.entries.size(),0);
+        assertNull(nr);
 
 
         paymentContract = getApprovedTUContract();
