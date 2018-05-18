@@ -1427,7 +1427,9 @@ public class PostgresLedger implements Ledger {
                 NameRecordModel nameRecordModel = new NameRecordModel();
                 nameRecordModel.entries = new ArrayList<>();
                 boolean firstRow = true;
+                int rowsCount = 0;
                 while (rs.next()) {
+                    ++ rowsCount;
                     if (firstRow) {
                         nameRecordModel.id = rs.getLong("id");
                         nameRecordModel.name_reduced = rs.getString("name_reduced");
@@ -1446,6 +1448,8 @@ public class PostgresLedger implements Ledger {
                     nameEntryModel.origin = rs.getBytes("origin");
                     nameRecordModel.entries.add(nameEntryModel);
                 }
+                if (rowsCount == 0)
+                    nameRecordModel = null;
                 rs.close();
                 return nameRecordModel;
             }
