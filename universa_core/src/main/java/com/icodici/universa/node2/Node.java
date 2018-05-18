@@ -1818,7 +1818,9 @@ public class Node {
                         emergencyBreak();
                         return;
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        item.addError(Errors.FAILED_CHECK,item.getId().toString(), "Exception during check: " + e.getMessage());
+                        emergencyBreak();
+                        return;
                     }
                     alreadyChecked = true;
 
