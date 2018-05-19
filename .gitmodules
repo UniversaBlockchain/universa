@@ -1,3 +1,3 @@
 [submodule "contrib/nanohttpd"]
 	path = contrib/nanohttpd
-	url = git@github.com:devenergy/nanohttpd.git
+	url = git://github.com/devenergy/nanohttpd.git
