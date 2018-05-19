@@ -11,6 +11,7 @@ import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.node.models.NameEntryModel;
 import com.icodici.universa.node.models.NameRecordModel;
@@ -96,13 +97,13 @@ public class UnsContract extends NSmartContract {
         if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(SmartContractType.UNS1.name()))
             getDefinition().setExtendedType(SmartContractType.UNS1.name());
 
-        // add modify_data permission
-
+        /*// add modify_data permission
         boolean permExist = false;
         Collection<Permission> mdps = getPermissions().get(ModifyDataPermission.FIELD_NAME);
         if(mdps != null) {
             for (Permission perm : mdps) {
-                if (perm.getName() == ModifyDataPermission.FIELD_NAME) {
+                if (perm.getName().equals(ModifyDataPermission.FIELD_NAME)) {
+                    //TODO: isONLYAllowedFor owner keys
                     if (perm.isAllowedForKeys(getOwner().getKeys())) {
                         permExist = true;
                         break;
@@ -111,23 +112,26 @@ public class UnsContract extends NSmartContract {
             }
         }
 
-        if(!permExist) {
-            RoleLink ownerLink = new RoleLink("owner_link", "owner");
-            registerRole(ownerLink);
-            HashMap<String, Object> fieldsMap = new HashMap<>();
-            fieldsMap.put("action", null);
-            fieldsMap.put("/expires_at", null);
-            fieldsMap.put("/references", null);
-            fieldsMap.put(NAMES_FIELD_NAME, null);
-            fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
-            fieldsMap.put(PREPAID_ND_FROM_TIME_FIELD_NAME, null);
-            fieldsMap.put(STORED_ENTRIES_FIELD_NAME, null);
-            fieldsMap.put(SPENT_ND_FIELD_NAME, null);
-            fieldsMap.put(SPENT_ND_TIME_FIELD_NAME, null);
-            Binder modifyDataParams = Binder.of("fields", fieldsMap);
-            ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
-            addPermission(modifyDataPermission);
-        }
+        if(!permExist) {*/
+
+        RoleLink ownerLink = new RoleLink("owner_link", "owner");
+        registerRole(ownerLink);
+        HashMap<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("action", null);
+        fieldsMap.put("/expires_at", null);
+        fieldsMap.put("/references", null);
+        fieldsMap.put(NAMES_FIELD_NAME, null);
+        fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
+        fieldsMap.put(PREPAID_ND_FROM_TIME_FIELD_NAME, null);
+        fieldsMap.put(STORED_ENTRIES_FIELD_NAME, null);
+        fieldsMap.put(SPENT_ND_FIELD_NAME, null);
+        fieldsMap.put(SPENT_ND_TIME_FIELD_NAME, null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        addPermission(modifyDataPermission);
+
+        RevokePermission revokePermission = new RevokePermission(ownerLink);
+        addPermission(revokePermission);
     }
 
     public double getPrepaidNamesForDays() {
