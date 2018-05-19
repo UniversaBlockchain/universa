@@ -1,0 +1,27 @@
+version: '2.1'
+services:
+  db:
+    image: postgres:10.4
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: universa-pass
+      POSTGRES_USER: universa-user
+      POSTGRES_DB: universa_node
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      retries: 10
+      timeout: 10s
+  universa-node-1:
+    build: .
+    image: uninode
+    links:
+     - db
+    ports:
+      - 2052:2052
+      - 2082:2082
+      - 2700:2700
+    depends_on:
+      db:
+        condition: service_healthy
