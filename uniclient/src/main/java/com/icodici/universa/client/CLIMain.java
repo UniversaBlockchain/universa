@@ -63,7 +63,7 @@ import static java.util.Arrays.asList;
 
 public class CLIMain {
 
-    private static final String CLI_VERSION = Core.VERSION;
+    private static final String CLI_VERSION = Core.VERSION+"p2";
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -298,6 +298,7 @@ public class CLIMain {
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("address");
+                accepts("id", "extract ID from a packed contract").withRequiredArg().ofType(String.class).describedAs("packed contract");
 
 //                acceptsAll(asList("ie"), "Test - delete.")
 //                        .withRequiredArg().ofType(String.class)
@@ -351,6 +352,9 @@ public class CLIMain {
                 int total = n.size();
                 n.checkNetworkState(reporter);
                 finish();
+            }
+            if(options.has("id")) {
+                doShowId();
             }
             if (options.has("register")) {
                 doRegister();
@@ -422,9 +426,11 @@ public class CLIMain {
             if (reporter.isQuiet())
                 System.out.println(reporter.reportJson());
         } catch (Exception e) {
-            System.err.println(e.toString());
-//            e.printStackTrace();
-            usage("Error: " + e.getMessage());
+            System.err.println("Error: "+e.toString());
+            if( options.has("verbose"))
+                e.printStackTrace();
+            System.out.println("\nShow usage: uniclient --help");
+//            usage("Error: " + e.getMessage());
 //            usage(e.getMessage());
             System.exit(100);
         }
@@ -716,6 +722,7 @@ public class CLIMain {
                     if(tuAmountStorage == 0) {
                         report("registering the paid contract " + contract.getId() + " from " + source
                                 + " for " + tuAmount + " TU");
+                        report("cnotactId: "+contract.getId().toBase64String());
                         Parcel parcel = registerContract(contract, tu, tuAmount, tuKeys, tutest, (int) options.valueOf("wait"));
                         if (parcel != null) {
                             report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
@@ -733,6 +740,7 @@ public class CLIMain {
                     } else { // if storage payment
                         report("registering the paid contract " + contract.getId() + " from " + source
                                 + " for " + tuAmount + " TU (and " + tuAmountStorage + " TU for storage)");
+                        report("cnotactId: "+contract.getId().toBase64String());
                         Parcel parcel = registerPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest, (int) options.valueOf("wait"));
                         if (parcel != null) {
                             report("save payment revision: " + parcel.getPayloadContract().getNew().get(0).getState().getRevision() + " id: " + parcel.getPayloadContract().getNew().get(0).getId());
@@ -762,6 +770,13 @@ public class CLIMain {
         } else {
             finish();
         }
+    }
+
+    private static void doShowId() throws Exception {
+        String contractFile = (String) options.valueOf("id");
+        Contract c = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractFile)));
+        reporter.message(c.getId().toBase64String());
+        finish();
     }
 
     private static void doProbe() throws IOException {
@@ -1361,30 +1376,31 @@ public class CLIMain {
     }
 
     static public void saveSession() throws IOException {
-        int nodeNumber = getClientNetwork().getNodeNumber();
-        reporter.verbose("Session from ClientNetwork is exist: " + (session != null));
-        if(session != null) {
-            Path keysDir = Paths.get(System.getProperty("user.home") + "/.universa");
-            if (!Files.exists(keysDir)) {
-                reporter.verbose("creating new keys directory: " + keysDir.toString());
-                final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwx------");
-                final FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(perms);
-                Files.createDirectory(keysDir, ownerOnly);
-            }
+        if( clientNetwork != null) {
+            int nodeNumber = getClientNetwork().getNodeNumber();
+            reporter.verbose("Session from ClientNetwork is exist: " + (session != null));
+            if (session != null) {
+                Path keysDir = Paths.get(System.getProperty("user.home") + "/.universa");
+                if (!Files.exists(keysDir)) {
+                    reporter.verbose("creating new keys directory: " + keysDir.toString());
+                    final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwx------");
+                    final FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(perms);
+                    Files.createDirectory(keysDir, ownerOnly);
+                }
 
-            Path sessionFile = keysDir.resolve("node_" + nodeNumber + ".session");
-            try (OutputStream out = Files.newOutputStream(sessionFile)) {
-                out.write(Boss.pack(session.asBinder()));
-            }
-            final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
-            try {
-                Files.setPosixFilePermissions(sessionFile, perms);
-            }
-            catch(UnsupportedOperationException x) {
-                // fucking windows :( have no idea what to do with it
-            }
-            prefs.put("session_" + nodeNumber, sessionFile.toString());
+                Path sessionFile = keysDir.resolve("node_" + nodeNumber + ".session");
+                try (OutputStream out = Files.newOutputStream(sessionFile)) {
+                    out.write(Boss.pack(session.asBinder()));
+                }
+                final Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rw-------");
+                try {
+                    Files.setPosixFilePermissions(sessionFile, perms);
+                } catch (UnsupportedOperationException x) {
+                    // fucking windows :( have no idea what to do with it
+                }
+                prefs.put("session_" + nodeNumber, sessionFile.toString());
 //            report("Session has been stored to the " + keysDir + "/" + sessionFile);
+            }
         }
     }
 
@@ -2387,7 +2403,7 @@ public class CLIMain {
         out.println("\nUniversa client tool, v. " + CLI_VERSION + "\n");
 
         if (options == null)
-            System.err.println("error while parsing command line");
+            System.err.println("error while parsing command line. Use uniclient --help");
         else {
             Integer columns = (Integer) options.valueOf("term-width");
             if (columns == null)
