@@ -106,6 +106,14 @@ public class Client {
 
     final BasicHttpClient httpClient;
 
+    /**
+     * Start new client protocol session.
+     * @param rootUrlString node url
+     * @param clientPrivateKey client private key
+     * @param nodePublicKey node key
+     * @param session set to null or to the reconstructed instance
+     * @throws IOException
+     */
     public Client(String rootUrlString, PrivateKey clientPrivateKey,
                   PublicKey nodePublicKey, BasicHttpClientSession session) throws IOException {
         httpClient = new BasicHttpClient(rootUrlString);
