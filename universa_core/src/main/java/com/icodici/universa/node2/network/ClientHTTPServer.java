@@ -327,7 +327,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         checkNode(session);
 
-        if(config == null || !config.getNetworkAdminKey().equals(session.getPublicKey())) {
+        if(config == null || !config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey())) {
             System.out.println("command needs admin key");
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"getStats", "command needs admin key"));
