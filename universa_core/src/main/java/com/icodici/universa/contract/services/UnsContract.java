@@ -531,14 +531,19 @@ public class UnsContract extends NSmartContract {
         Set<String> reducedNames = new HashSet<>();
         for (UnsName unsName : storedNames)
             reducedNames.add(unsName.getUnsNameReduced());
-        for (Approvable approvable : getRevokingItems()) {
-            if (approvable instanceof UnsContract) {
-                UnsContract revokingUns = (UnsContract) approvable;
-                for (UnsName unsName : revokingUns.storedNames)
-                    reducedNames.remove(unsName.getUnsNameReduced());
-            }
-        }
+        for (Approvable revoked : getRevokingItems())
+            removeRevokedNames(revoked, reducedNames);
         return new ArrayList<>(reducedNames);
+    }
+
+    private void removeRevokedNames(Approvable approvable, Set<String> set) {
+        if (approvable instanceof UnsContract) {
+            UnsContract unsContract = (UnsContract) approvable;
+            for (UnsName unsName : unsContract.storedNames)
+                set.remove(unsName.getUnsNameReduced());
+        }
+        for (Approvable revoked : approvable.getRevokingItems())
+            removeRevokedNames(revoked, set);
     }
 
     private List<HashId> getOriginsToCheck() {
@@ -547,34 +552,44 @@ public class UnsContract extends NSmartContract {
             for (UnsRecord unsRecord : unsName.getUnsRecords())
                 if (unsRecord.getOrigin() != null)
                     origins.add(unsRecord.getOrigin());
-        for (Approvable approvable : getRevokingItems()) {
-            if (approvable instanceof UnsContract) {
-                UnsContract revokingUns = (UnsContract) approvable;
-                for (UnsName unsName : revokingUns.storedNames)
-                    for (UnsRecord unsRecord : unsName.getUnsRecords())
-                        if (unsRecord.getOrigin() != null)
-                            origins.remove(unsRecord.getOrigin());
-            }
-        }
+        for (Approvable revoked : getRevokingItems())
+            removeRevokedOrigins(revoked, origins);
         return new ArrayList<>(origins);
     }
 
+    private void removeRevokedOrigins(Approvable approvable, Set<HashId> set) {
+        if (approvable instanceof UnsContract) {
+            UnsContract unsContract = (UnsContract) approvable;
+            for (UnsName unsName : unsContract.storedNames)
+                for (UnsRecord unsRecord : unsName.getUnsRecords())
+                    if (unsRecord.getOrigin() != null)
+                        set.remove(unsRecord.getOrigin());
+        }
+        for (Approvable revoked : approvable.getRevokingItems())
+            removeRevokedOrigins(revoked, set);
+    }
+
     private List<String> getAddressesToCheck() {
-        List<String> addresses = new ArrayList<>();
+        Set<String> addresses = new HashSet<>();
         for (UnsName unsName : storedNames)
             for (UnsRecord unsRecord : unsName.getUnsRecords())
                 for (KeyAddress keyAddress : unsRecord.getAddresses())
                     addresses.add(keyAddress.toString());
-        for (Approvable approvable : getRevokingItems()) {
-            if (approvable instanceof UnsContract) {
-                UnsContract revokingUns = (UnsContract) approvable;
-                for (UnsName unsName : revokingUns.storedNames)
-                    for (UnsRecord unsRecord : unsName.getUnsRecords())
-                        for (KeyAddress keyAddress : unsRecord.getAddresses())
-                            addresses.remove(keyAddress.toString());
-            }
-        }
+        for (Approvable revoked : getRevokingItems())
+            removeRevokedAddresses(revoked, addresses);
         return new ArrayList<>(addresses);
+    }
+
+    private void removeRevokedAddresses(Approvable approvable, Set<String> set) {
+        if (approvable instanceof UnsContract) {
+            UnsContract unsContract = (UnsContract) approvable;
+            for (UnsName unsName : unsContract.storedNames)
+                for (UnsRecord unsRecord : unsName.getUnsRecords())
+                    for (KeyAddress keyAddress : unsRecord.getAddresses())
+                        set.remove(keyAddress.toString());
+        }
+        for (Approvable revoked : approvable.getRevokingItems())
+            removeRevokedAddresses(revoked, set);
     }
 
     private boolean additionallyUnsCheck_isNamesAvailable(ImmutableEnvironment ime, List<String> reducedNames) {
