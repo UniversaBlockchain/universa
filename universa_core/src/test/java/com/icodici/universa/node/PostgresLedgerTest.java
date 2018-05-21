@@ -781,6 +781,33 @@ public class PostgresLedgerTest extends TestCase {
         assertEquals(nameRecordModel.expires_at.toEpochSecond(), loadedNameRecord.expires_at.toEpochSecond());
         assertEquals(nameRecordModel.entries.size(), loadedNameRecord.entries.size());
 
+        loadedNameRecord = ledger.getNameByAddress(nameRecordModel.entries.get(0).short_addr);
+
+        assertEquals(nameRecordModel.name_reduced, loadedNameRecord.name_reduced);
+        assertEquals(nameRecordModel.name_full, loadedNameRecord.name_full);
+        assertEquals(nameRecordModel.description, loadedNameRecord.description);
+        assertEquals(nameRecordModel.url, loadedNameRecord.url);
+        assertEquals(nameRecordModel.expires_at.toEpochSecond(), loadedNameRecord.expires_at.toEpochSecond());
+        assertEquals(nameRecordModel.entries.size(), loadedNameRecord.entries.size());
+
+        loadedNameRecord = ledger.getNameByAddress(nameRecordModel.entries.get(0).long_addr);
+
+        assertEquals(nameRecordModel.name_reduced, loadedNameRecord.name_reduced);
+        assertEquals(nameRecordModel.name_full, loadedNameRecord.name_full);
+        assertEquals(nameRecordModel.description, loadedNameRecord.description);
+        assertEquals(nameRecordModel.url, loadedNameRecord.url);
+        assertEquals(nameRecordModel.expires_at.toEpochSecond(), loadedNameRecord.expires_at.toEpochSecond());
+        assertEquals(nameRecordModel.entries.size(), loadedNameRecord.entries.size());
+
+        loadedNameRecord = ledger.getNameByOrigin(nameRecordModel.entries.get(1).origin);
+
+        assertEquals(nameRecordModel.name_reduced, loadedNameRecord.name_reduced);
+        assertEquals(nameRecordModel.name_full, loadedNameRecord.name_full);
+        assertEquals(nameRecordModel.description, loadedNameRecord.description);
+        assertEquals(nameRecordModel.url, loadedNameRecord.url);
+        assertEquals(nameRecordModel.expires_at.toEpochSecond(), loadedNameRecord.expires_at.toEpochSecond());
+        assertEquals(nameRecordModel.entries.size(), loadedNameRecord.entries.size());
+
         nameRecordModel.entries.sort((NameEntryModel e1, NameEntryModel e2) -> e1.short_addr==null?-1:e1.short_addr.compareTo(e2.short_addr));
         loadedNameRecord.entries.sort((NameEntryModel e1, NameEntryModel e2) -> e1.short_addr==null?-1:e1.short_addr.compareTo(e2.short_addr));
 

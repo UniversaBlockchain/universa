@@ -212,6 +212,8 @@ public interface Ledger {
     void saveNameRecord(final NameRecordModel nameRecordModel);
     void removeNameRecord(final String nameReduced);
     NameRecordModel getNameRecord(final String nameReduced);
+    NameRecordModel getNameByAddress (String address);
+    NameRecordModel getNameByOrigin (byte[] origin);
     boolean isAllNameRecordsAvailable(final List<String> reducedNames);
     boolean isAllOriginsAvailable(final List<HashId> origins);
     boolean isAllAddressesAvailable(final List<String> addresses);
