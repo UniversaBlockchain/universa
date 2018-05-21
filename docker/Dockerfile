@@ -36,13 +36,14 @@ EXPOSE 2052
 EXPOSE 2082
 EXPOSE 2700
 
-COPY deploy /deploy
-WORKDIR /deploy/tmp
-
-RUN java -jar /code/uniclient/build/libs/uniclient.jar -g node-1-local.universa.io
-
-RUN mv /deploy/tmp/node-1-local.universa.io.public.unikey /deploy/config/keys/node-1-local.universa.io.public.unikey
+RUN mkdir /deploy && mkdir /deploy/config && mkdir /deploy/tmp
 
 WORKDIR /deploy
 
-ENTRYPOINT  java -jar /code/universa_core/build/output/uninode.jar -c .
+COPY init-node.sh /deploy/init-node.sh
+
+RUN chmod +x /deploy/init-node.sh
+
+RUN ls /deploy
+
+ENTRYPOINT /deploy/init-node.sh

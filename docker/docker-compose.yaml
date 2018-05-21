@@ -6,16 +6,22 @@ services:
       - 5432:5432
     environment:
       POSTGRES_PASSWORD: universa-pass
-      POSTGRES_USER: universa-user
-      POSTGRES_DB: universa_node
+      POSTGRES_USER: root
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 2s
       retries: 10
       timeout: 10s
-  universa-node-1:
+    volumes:
+     - ./init-user-db.sh:/docker-entrypoint-initdb.d/init-user-db.sh
+    networks:
+      main:
+        aliases:
+          - db
+        ipv4_address: 10.6.0.10
+  node-1-local:
     build: .
-    image: uninode
+    image: uninode:latest
     links:
      - db
     ports:
@@ -25,3 +31,92 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+     - ./deploy/config-node-1/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/keys:/deploy/config/keys
+     - ./deploy/config/nodes:/deploy/config/nodes
+     - ./deploy/tmp-node-1:/deploy/tmp
+    environment:
+      NODE_INDEX: 1
+    networks:
+      main:
+        aliases:
+          - node-1-local.universa.io
+        ipv4_address: 10.6.0.11
+  node-2-local:
+    image: uninode:latest
+    links:
+     - db
+    ports:
+      - 2053:2052
+      - 2083:2082
+      - 2701:2700
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+     - ./deploy/config-node-2/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/keys:/deploy/config/keys
+     - ./deploy/config/nodes:/deploy/config/nodes
+     - ./deploy/tmp-node-2:/deploy/tmp
+    environment:
+      NODE_INDEX: 2
+    networks:
+      main:
+        aliases:
+          - node-2-local.universa.io
+        ipv4_address: 10.6.0.12
+  node-3-local:
+    image: uninode:latest
+    links:
+     - db
+    ports:
+      - 2054:2052
+      - 2084:2082
+      - 2702:2700
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+     - ./deploy/config-node-3/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/keys:/deploy/config/keys
+     - ./deploy/config/nodes:/deploy/config/nodes
+     - ./deploy/tmp-node-3:/deploy/tmp
+    environment:
+      NODE_INDEX: 3
+    networks:
+      main:
+        aliases:
+          - node-3-local.universa.io
+        ipv4_address: 10.6.0.13
+  node-4-local:
+    image: uninode:latest
+    links:
+     - db
+    ports:
+      - 2055:2052
+      - 2085:2082
+      - 2703:2700
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+     - ./deploy/config-node-4/config.yaml:/deploy/config/config.yaml
+     - ./deploy/config/keys:/deploy/config/keys
+     - ./deploy/config/nodes:/deploy/config/nodes
+     - ./deploy/tmp-node-4:/deploy/tmp
+    environment:
+      NODE_INDEX: 4
+    networks:
+      main:
+        aliases:
+          - node-4-local.universa.io
+        ipv4_address: 10.6.0.14
+      
+networks:
+  main:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.6.0.0/16
+         gateway: 10.6.0.1

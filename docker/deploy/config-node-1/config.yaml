@@ -1,12 +1,12 @@
 ---
 http_client_port: 2052
 http_client_listen:
-- 127.0.0.1
+- 0.0.0.0
 http_server_port: 2082
 udp_server_port: 2700
-database: jdbc:postgresql://db:5432/universa_node?user=universa-user&password=universa-pass
+database: jdbc:postgresql://db:5432/node1db?user=node1user&password=uniPass
 node_number: 1
 public_host: node-1-local.universa.io
 node_name: node-1-local.universa.io
 ip:
-- IP
+- 10.6.0.11
