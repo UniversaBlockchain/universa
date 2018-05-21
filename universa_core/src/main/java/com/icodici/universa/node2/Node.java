@@ -3290,7 +3290,7 @@ public class Node {
     private void checkSpecialItem(Approvable item) {
         if(item instanceof Contract) {
             Contract contract = (Contract) item;
-            if (contract.getIssuer().getKeys().equals(new HashSet<>(Arrays.asList(config.getNetworkConfigIssuerKey())))) {
+            if (contract.getIssuer().getKeys().stream().anyMatch(key -> config.getNetworkReconfigKeyAddress().isMatchingKey(key))) {
                 if(contract.getParent() == null)
                     return;
 
