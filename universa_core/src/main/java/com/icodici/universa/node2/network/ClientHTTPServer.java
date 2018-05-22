@@ -17,6 +17,7 @@ import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.*;
 import net.sergeych.tools.Binder;
@@ -174,24 +175,29 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder queryNameRecord(Binder params, Session session) throws IOException {
         Binder b = new Binder();
-        byte[] address = params.getBinary("address");
-        byte[] origin = params.getBinary("origin");
+        NameRecordModel loadedNameRecord;
+        String address = params.getStringOrThrow("address");
+        byte[] origin = params.getBinaryOrThrow("origin");
+
         if (((address == null) && (origin == null)) || ((address != null) && (origin != null)))
             throw new IOException("invalid arguments");
-        //if (address != null)
-           // b = node.getLedger().getNameForAddress(address);
-       // else
-        // b = node.getLedger().getNameForOrigin(origin);
+        if (address != null)
+            loadedNameRecord = node.getLedger().getNameByAddress(address);
+        else
+            loadedNameRecord = node.getLedger().getNameByOrigin(origin);
+
+        b.put("name record",loadedNameRecord);
 
         return b;
     }
 
     private Binder queryNameContract(Binder params, Session session) throws IOException {
         Binder b = new Binder();
-        String nameContract = params.getStringOrThrow("nameContract");
+        String nameContract = params.getStringOrThrow("contract name");
 
-        // byte[] packedContract = node.getLedger().getContractForNameContract(nameContract);
-        //b.put("packedContract", packedContract);
+        NameRecordModel packedContract = node.getLedger().getNameRecord(nameContract);
+        b.put("packedContract", packedContract);
+
         return b;
     }
 
