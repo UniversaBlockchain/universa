@@ -116,4 +116,46 @@ public class UnsRecord implements BiSerializable {
         Config.forceInit(UnsRecord.class);
         DefaultBiMapper.registerClass(UnsRecord.class);
     }
+
+
+    public boolean equalsTo(NameRecordEntry entry) {
+        String longAddress = null;
+        String shortAddress = null;
+        for(KeyAddress keyAddress : getAddresses()) {
+            if(keyAddress.isLong())
+                longAddress = keyAddress.toString();
+            else
+                shortAddress = keyAddress.toString();
+        }
+
+
+        boolean checkResult;
+        if(unsOrigin != null && entry.getOrigin() != null) {
+            checkResult = unsOrigin.equals(entry.getOrigin());
+        } else {
+            checkResult = unsOrigin == null && entry.getOrigin() == null;
+        }
+
+        if(!checkResult)
+            return false;
+
+
+        if(longAddress != null && entry.getLongAddress() != null) {
+            checkResult = longAddress.equals(entry.getLongAddress());
+        } else {
+            checkResult = longAddress == null && entry.getLongAddress() == null;
+        }
+
+        if(!checkResult)
+            return false;
+
+
+        if(shortAddress != null && entry.getShortAddress() != null) {
+            checkResult = shortAddress.equals(entry.getShortAddress());
+        } else {
+            checkResult = shortAddress == null && entry.getShortAddress() == null;
+        }
+
+        return checkResult;
+    }
 }

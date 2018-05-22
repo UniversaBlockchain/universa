@@ -48,7 +48,7 @@ public class SlotContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof SlotContract);
 
         ((SlotContract)smartContract).putTrackingContract(simpleContract);
-        ((SlotContract)smartContract).setNodeConfig(nodeConfig);
+        ((SlotContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
         smartContract.addNewItems(paymentDecreased);
         smartContract.seal();
         smartContract.check();
@@ -91,7 +91,7 @@ public class SlotContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof SlotContract);
 
         ((SlotContract)smartContract).putTrackingContract(simpleContract);
-        ((SlotContract)smartContract).setNodeConfig(nodeConfig);
+        ((SlotContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
         smartContract.addNewItems(paymentDecreased);
         smartContract.seal();
         smartContract.check();
@@ -120,6 +120,38 @@ public class SlotContractTest extends ContractTestBase {
             }
         }
     }
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
+
+        Config config = new Config();
+        @Override
+        public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
+            return config.getTransactionUnitsIssuerKeys();
+        }
+
+        @Override
+        public String getTUIssuerName() {
+            return config.getTUIssuerName();
+        }
+
+        @Override
+        public int getMinPayment(String extendedType) {
+            return config.getMinPayment(extendedType);
+        }
+
+        @Override
+        public double getRate(String extendedType) {
+            return config.getRate(extendedType);
+        }
+
+        @Override
+        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
+            Set<PublicKey> set = new HashSet<>();
+            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
+                set.add(config.getAuthorizedNameServiceCenterKey());
+            }
+            return set;
+        }
+    };
 
     @Test
     public void serializeSmartContract() throws Exception {
@@ -134,7 +166,7 @@ public class SlotContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof SlotContract);
 
         ((SlotContract)smartContract).putTrackingContract(simpleContract);
-        ((SlotContract)smartContract).setNodeConfig(nodeConfig);
+        ((SlotContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
         smartContract.addNewItems(paymentDecreased);
         smartContract.seal();
         smartContract.check();
@@ -204,7 +236,7 @@ public class SlotContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof SlotContract);
 
         ((SlotContract)smartContract).putTrackingContract(simpleContract);
-        ((SlotContract)smartContract).setNodeConfig(nodeConfig);
+        ((SlotContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
         ((SlotContract)smartContract).setKeepRevisions(2);
         smartContract.addNewItems(paymentDecreased);
         smartContract.seal();

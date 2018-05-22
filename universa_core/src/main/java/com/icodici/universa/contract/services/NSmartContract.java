@@ -1,7 +1,9 @@
 package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.EncryptionError;
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
@@ -18,62 +20,29 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import static com.icodici.universa.Errors.BAD_VALUE;
 
 public class NSmartContract extends Contract implements NContract {
 
-    public Config getNodeConfig() {
-        return nodeConfig;
+    public void setNodeInfoProvider(NodeInfoProvider nodeInfoProvider) {
+        this.nodeInfoProvider = nodeInfoProvider;
     }
 
-    /**
-     * Set node's {@link Config}. Slot needs for config to find and check U contract (needs u issuer keys).
-     * @param nodeConfig is {@link Config}
-     */
-    public void setNodeConfig(Config nodeConfig) {
-        this.nodeConfig = nodeConfig;
-    }
-    protected Config nodeConfig;
+    public interface NodeInfoProvider {
 
-    public Ledger getLedger() {
-        return ledger;
-    }
+        Set<KeyAddress> getTransactionUnitsIssuerKeys();
+        String getTUIssuerName();
+        int getMinPayment(String extendedType);
+        double getRate(String extendedType);
+        Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType);
+    };
 
-    /**
-     * Set {@link Ledger} from the node. Slot contract needs with ledger for creation and update subscriptions.
-     * @param ledger is {@link Ledger}
-     */
-    public void setLedger(Ledger ledger) {
-        this.ledger = ledger;
-    }
-    protected Ledger ledger;
+    private NodeInfoProvider nodeInfoProvider;
 
-    public NodeInfo getNodeInfo() {
-        return nodeInfo;
-    }
-
-    /**
-     * Set {@link NodeInfo}
-     * @param nodeInfo
-     */
-    public void setNodeInfo(NodeInfo nodeInfo) {
-        this.nodeInfo = nodeInfo;
-    }
-    protected NodeInfo nodeInfo;
-
-    protected NameCache nameCache;
-    /**
-     * Set {@link NameCache}
-     * @param nameCache
-     */
-    public void setNameCache(NameCache nameCache) {
-        this.nameCache = nameCache;
-    }
-    public NameCache getNameCache() {
-        return nameCache;
-    }
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
@@ -233,4 +202,62 @@ public class NSmartContract extends Contract implements NContract {
         SLOT1,
         UNS1
     }
+    protected int getMinPayment() {
+        return nodeInfoProvider.getMinPayment(getExtendedType());
+    }
+    protected int getPaidU() {
+        return getPaidU(false);
+    }
+
+    protected int getPaidU(boolean allowTestPayments) {
+        if(nodeInfoProvider == null)
+            throw new IllegalStateException("NodeInfoProvider is not set for NSmartContract");
+
+        // first of all looking for U contract and calculate paid U amount.
+        for (Contract nc : getNew()) {
+            if (nc.isU(nodeInfoProvider.getTransactionUnitsIssuerKeys(), nodeInfoProvider.getTUIssuerName())) {
+                int calculatedPayment = 0;
+                boolean isTestPayment = false;
+                Contract parent = null;
+                for (Contract nrc : nc.getRevoking()) {
+                    if (nrc.getId().equals(nc.getParent())) {
+                        parent = nrc;
+                        break;
+                    }
+                }
+                if (parent != null) {
+                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
+                    if (hasTestTU) {
+                        isTestPayment = true;
+                        calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
+                                - nc.getStateData().getIntOrThrow("test_transaction_units");
+
+                        if (calculatedPayment <= 0) {
+                            isTestPayment = false;
+                            calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
+                                    - nc.getStateData().getIntOrThrow("transaction_units");
+                        }
+                    } else {
+                        isTestPayment = false;
+                        calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
+                                - nc.getStateData().getIntOrThrow("transaction_units");
+                    }
+                }
+
+                if(!isTestPayment || allowTestPayments) {
+                    return calculatedPayment;
+                }
+            }
+        }
+        return 0;
+    }
+
+    protected double getRate() {
+        return nodeInfoProvider.getRate(getExtendedType());
+    }
+
+    protected Collection<PublicKey> getAdditionalKeysToSignWith() {
+        return nodeInfoProvider.getAdditionalKeysToSignWith(getExtendedType());
+    }
+
 }

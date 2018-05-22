@@ -14,6 +14,7 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -164,7 +165,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder unsRate(Binder params, Session session) throws IOException {
-        Double rate = config.namesAndDaysPerU;
+        Double rate = config.rate.get(NSmartContract.SmartContractType.UNS1.name());
         String str = rate.toString();
         Binder b = new Binder();
         b.put("U", str);
@@ -423,7 +424,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder storageGetRate(Binder params, Session session) throws IOException {
-        Double rate = new Double(config.kilobytesAndDaysPerU);
+        Double rate = config.rate.get(NSmartContract.SmartContractType.SLOT1.name());
         String str = rate.toString();
         Binder b = new Binder();
         b.put("U", str);

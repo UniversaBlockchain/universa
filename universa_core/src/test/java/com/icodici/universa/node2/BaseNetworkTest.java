@@ -7896,6 +7896,38 @@ public class BaseNetworkTest extends TestCase {
 //        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
     }
 
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
+
+        @Override
+        public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
+            return config.getTransactionUnitsIssuerKeys();
+        }
+
+        @Override
+        public String getTUIssuerName() {
+            return config.getTUIssuerName();
+        }
+
+        @Override
+        public int getMinPayment(String extendedType) {
+            return config.getMinPayment(extendedType);
+        }
+
+        @Override
+        public double getRate(String extendedType) {
+            return config.getRate(extendedType);
+        }
+
+        @Override
+        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
+            Set<PublicKey> set = new HashSet<>();
+            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
+                set.add(config.getAuthorizedNameServiceCenterKey());
+            }
+            return set;
+        }
+    };
+    /*
     @Test
     public void registerSlotContract() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
@@ -7917,7 +7949,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
 
         // payment contract
@@ -7935,7 +7967,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
-        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals(100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), slotContract.getPrepaidKilobytesForDays(), 0.01);
 
 //        for(Node n : nodes) {
 //            n.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -7970,7 +8002,7 @@ public class BaseNetworkTest extends TestCase {
 
         ZonedDateTime now;
 
-        double days = (double) 100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+        double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
         double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
@@ -7996,7 +8028,7 @@ public class BaseNetworkTest extends TestCase {
         // refill slot contract with U (means add storing days).
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
-        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.setNodeInfoProvider(nodeInfoProvider);
 
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
@@ -8011,7 +8043,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
-        assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals((100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8032,7 +8064,7 @@ public class BaseNetworkTest extends TestCase {
         double spentDays = (double) spentSeconds / (3600 * 24);
         double spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
 
-        days = (double) (100 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+        days = (double) (100 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
         hours = days * 24;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
@@ -8062,7 +8094,7 @@ public class BaseNetworkTest extends TestCase {
         // refill slot contract with U again (means add storing days). the oldest revision should removed
 
         SlotContract refilledSlotContract2 = (SlotContract) refilledSlotContract.createRevision(key);
-        refilledSlotContract2.setNodeConfig(node.getConfig());
+        refilledSlotContract2.setNodeInfoProvider(nodeInfoProvider);
 
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
@@ -8077,7 +8109,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8098,7 +8130,7 @@ public class BaseNetworkTest extends TestCase {
         spentDays = (double) spentSeconds / (3600 * 24);
         spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
 
-        days = (double) (100 + 300 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+        days = (double) (100 + 300 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
         hours = days * 24;
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
@@ -8180,7 +8212,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.setKeepRevisions(2);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
@@ -8200,10 +8232,10 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
-        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals(100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), slotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
-        System.out.println(">> " + ((double)100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length) + " days");
+        System.out.println(">> " + ((double)100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8237,7 +8269,7 @@ public class BaseNetworkTest extends TestCase {
         Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
         if(foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
-                double days = (double) 100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+                double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
                 double hours = days * 24;
                 long seconds = (long) (days * 24 * 3600);
                 calculateExpires = timeReg1.plusSeconds(seconds);
@@ -8280,7 +8312,7 @@ public class BaseNetworkTest extends TestCase {
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
         refilledSlotContract.putTrackingContract(simpleContract2);
-        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.setNodeInfoProvider(nodeInfoProvider);
         assertEquals(refilledSlotContract.getKeepRevisions(), 2);
 
         // payment contract
@@ -8300,12 +8332,12 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
-        assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals((100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> Summ: " + ((double)(simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024) + " Kb");
-        System.out.println(">> " +  ((double)(100 + 300) * Config.kilobytesAndDaysPerU * 1024 / (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
+        System.out.println(">> " +  ((double)(100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8333,11 +8365,11 @@ public class BaseNetworkTest extends TestCase {
         long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays = (double) spentSeconds / (3600 * 24);
         spentKDs = spentDays * (simpleContract.getPackedTransaction().length / 1024);
-//        calculateExpires = timeReg2.plusSeconds(((100 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - spentBs) /
+//        calculateExpires = timeReg2.plusSeconds(((100 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - spentBs) /
 //                (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
 
         int totalLength = simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length;
-        double days = (double) (100 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / totalLength;
+        double days = (double) (100 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / totalLength;
         double hours = days * 24;
         long seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
@@ -8406,7 +8438,7 @@ public class BaseNetworkTest extends TestCase {
 
         SlotContract refilledSlotContract2 = (SlotContract) refilledSlotContract.createRevision(key);
         refilledSlotContract2.putTrackingContract(simpleContract3);
-        refilledSlotContract2.setNodeConfig(node.getConfig());
+        refilledSlotContract2.setNodeInfoProvider(nodeInfoProvider);
         assertEquals(refilledSlotContract2.getKeepRevisions(), 2);
         refilledSlotContract2.seal();
 
@@ -8427,12 +8459,12 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract2.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
         System.out.println(">> Summ: " + ((double)(simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024) + " Kb");
-        System.out.println(">> " + ((double)(100 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 / (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
+        System.out.println(">> " + ((double)(100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length)) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8465,14 +8497,14 @@ public class BaseNetworkTest extends TestCase {
 
 
 //        spentKDs += (timeReg3.toEpochSecond() - timeReg2.toEpochSecond()) * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - (long)spentKDs) /
+//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long)spentKDs) /
 //                (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
         long spentSeconds2 = (timeReg3.toEpochSecond() - timeReg2.toEpochSecond());
         double spentDays2 = (double) spentSeconds2 / (3600 * 24);
         spentKDs += spentDays2 * ((simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length) / 1024);
 
         int totalLength2 = simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length;
-        double days2 = (double) (100 + 300 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / totalLength2;
+        double days2 = (double) (100 + 300 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / totalLength2;
         double hours2 = days2 * 24;
         long seconds2 = (long) (days2 * 24 * 3600);
         calculateExpires = timeReg3.plusSeconds(seconds2);
@@ -8532,7 +8564,7 @@ public class BaseNetworkTest extends TestCase {
 
         SlotContract refilledSlotContract3 = (SlotContract) refilledSlotContract2.createRevision(key);
         refilledSlotContract3.setKeepRevisions(1);
-        refilledSlotContract3.setNodeConfig(node.getConfig());
+        refilledSlotContract3.setNodeInfoProvider(nodeInfoProvider);
         refilledSlotContract3.seal();
 
         // payment contract
@@ -8550,10 +8582,10 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.get("definition.extended_type"));
-        assertEquals((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract3.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals((100 + 300 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), refilledSlotContract3.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract3.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
-        System.out.println(">> " + ((double)(100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 / simpleContract3.getPackedTransaction().length) + " days");
+        System.out.println(">> " + ((double)(100 + 300 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract3.getPackedTransaction().length) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg4 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8592,14 +8624,14 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(simpleContract3.getId(), restoredContract.getId());
 
 //        spentKDs += (timeReg4.toEpochSecond() - timeReg3.toEpochSecond()) * (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-//        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
+//        calculateExpires = timeReg3.plusSeconds(((100 + 300 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long) spentKDs) / simpleContract3.getPackedTransaction().length);
 
         long spentSeconds3 = (timeReg4.toEpochSecond() - timeReg3.toEpochSecond());
         double spentDays3 = (double) spentSeconds3 / (3600 * 24);
         spentKDs += spentDays3 * ((simpleContract2.getPackedTransaction().length + simpleContract3.getPackedTransaction().length) / 1024);
 
         int totalLength3 = simpleContract3.getPackedTransaction().length;
-        double days3 = (double) (100 + 300 + 300 + 300 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / totalLength3;
+        double days3 = (double) (100 + 300 + 300 + 300 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / totalLength3;
         double hours3 = days3 * 24;
         long seconds3 = (long) (days3 * 24 * 3600);
         calculateExpires = timeReg4.plusSeconds(seconds3);
@@ -8701,7 +8733,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.setKeepRevisions(1);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
@@ -8721,10 +8753,10 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
         assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
-        assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
+        assertEquals(100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()), slotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double) simpleContract.getPackedTransaction().length / 1024) + " Kb");
-        System.out.println(">> " + ((double) 100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length) + " days");
+        System.out.println(">> " + ((double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length) + " days");
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
@@ -8758,7 +8790,7 @@ public class BaseNetworkTest extends TestCase {
         Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
         if (foundCssSet != null) {
             for (ContractStorageSubscription foundCss : foundCssSet) {
-                double days = (double) 100 * Config.kilobytesAndDaysPerU * 1024 / simpleContract.getPackedTransaction().length;
+                double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
                 double hours = days * 24;
                 long seconds = (long) (days * 24 * 3600);
                 calculateExpires = timeReg1.plusSeconds(seconds);
@@ -8811,14 +8843,14 @@ public class BaseNetworkTest extends TestCase {
 
 
 //        spentKDs += (timeReg3.toEpochSecond() - timeReg2.toEpochSecond()) * (simpleContract.getPackedTransaction().length + simpleContract2.getPackedTransaction().length);
-//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * Config.kilobytesAndDaysPerU * 1024 * 24 * 3600 - (long)spentKDs) /
+//        calculateExpires = timeReg2.plusSeconds(((100 + 300 + 300) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 * 24 * 3600 - (long)spentKDs) /
 //                (simpleContract3.getPackedTransaction().length + simpleContract2.getPackedTransaction().length));
         long spentSeconds2 = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
         double spentDays2 = (double) spentSeconds2 / (3600 * 24);
         spentKDs += spentDays2 * ((simpleContract.getPackedTransaction().length) / 1024);
 
         int totalLength2 = simpleContract2.getPackedTransaction().length;
-        double days2 = (double) (100 - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / totalLength2;
+        double days2 = (double) (100 - spentKDs) * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / totalLength2;
         double hours2 = days2 * 24;
         long seconds2 = (long) (days2 * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds2);
@@ -8870,7 +8902,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.setKeepRevisions(5);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
@@ -8931,7 +8963,7 @@ public class BaseNetworkTest extends TestCase {
 
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
         refilledSlotContract.putTrackingContract(simpleContract2);
-        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.setNodeInfoProvider(nodeInfoProvider);
         refilledSlotContract.seal();
 
         // check saving keepRevisions
@@ -8969,7 +9001,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
 
@@ -9028,7 +9060,7 @@ public class BaseNetworkTest extends TestCase {
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
         refilledSlotContract.setKeepRevisions(2);
         refilledSlotContract.putTrackingContract(simpleContract2);
-        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.setNodeInfoProvider(nodeInfoProvider);
         refilledSlotContract.seal();
 
         // payment contract
@@ -9096,7 +9128,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
 
@@ -9154,7 +9186,7 @@ public class BaseNetworkTest extends TestCase {
         SlotContract newSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
         newSlotContract.setKeepRevisions(2);
         newSlotContract.putTrackingContract(otherContract);
-        newSlotContract.setNodeConfig(node.getConfig());
+        newSlotContract.setNodeInfoProvider(nodeInfoProvider);
         newSlotContract.seal();
 
         // payment contract
@@ -9165,7 +9197,7 @@ public class BaseNetworkTest extends TestCase {
         payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
         // imitating check process on the node
-        newSlotContract.beforeUpdate(new SlotMutableEnvironment(newSlotContract));
+        newSlotContract.beforeUpdate(new NMutableEnvironment(newSlotContract));
         newSlotContract.check();
         newSlotContract.traceErrors();
 
@@ -9212,7 +9244,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
         slotContract.check();
@@ -9289,7 +9321,7 @@ public class BaseNetworkTest extends TestCase {
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
         refilledSlotContract.setKeepRevisions(2);
         refilledSlotContract.putTrackingContract(simpleContract2);
-        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.setNodeInfoProvider(nodeInfoProvider);
         refilledSlotContract.seal();
         refilledSlotContract.check();
         refilledSlotContract.traceErrors();
@@ -9416,7 +9448,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
         slotContract.check();
@@ -9439,7 +9471,7 @@ public class BaseNetworkTest extends TestCase {
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
         // provoke error FAILED_CHECK, "Payment for slot contract is below minimum level of " + nodeConfig.getMinSlotPayment() + "U");
-        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, node.getConfig().getMinSlotPayment() - 1, stepaPrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(baseContract.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(slotContract.getExtendedType()) - 1, stepaPrivateKeys, false);
         for (Contract c: baseContract.getNew())
             if (!c.equals(slotContract)) {
                 baseContract.getNewItems().remove(c);
@@ -9486,7 +9518,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
         slotContract.check();
@@ -9561,7 +9593,7 @@ public class BaseNetworkTest extends TestCase {
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(key);
         refilledSlotContract.setKeepRevisions(2);
         refilledSlotContract.putTrackingContract(simpleContract2);
-        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.setNodeInfoProvider(nodeInfoProvider);
         refilledSlotContract.seal();
         refilledSlotContract.check();
         refilledSlotContract.traceErrors();
@@ -9630,7 +9662,7 @@ public class BaseNetworkTest extends TestCase {
         // slot contract that storing
 
         SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeConfig(node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
         slotContract.check();
@@ -9704,7 +9736,7 @@ public class BaseNetworkTest extends TestCase {
         SlotContract refilledSlotContract = (SlotContract) slotContract.createRevision(keysSlotRevisions);
         refilledSlotContract.setKeepRevisions(2);
         refilledSlotContract.putTrackingContract(simpleContract2);
-        refilledSlotContract.setNodeConfig(node.getConfig());
+        refilledSlotContract.setNodeInfoProvider(nodeInfoProvider);
         refilledSlotContract.seal();
         refilledSlotContract.check();
         refilledSlotContract.traceErrors();
@@ -9766,7 +9798,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckDeclined(revokingSlotContract);
     }
-
+*/
 
     @Test(timeout = 90000)
     public void registerUnsContract() throws Exception {
@@ -9801,7 +9833,7 @@ public class BaseNetworkTest extends TestCase {
         uns.addUnsName(unsName);
         uns.addOriginContract(referencesContract);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9847,8 +9879,8 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
         config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
 
-        double oldValue = Config.namesAndDaysPerU;
-        Config.namesAndDaysPerU = 10.0/(24*3600*Config.getMinUnsPayment());
+        double oldValue = config.getRate(NSmartContract.SmartContractType.UNS1.name());
+        config.setRate(NSmartContract.SmartContractType.UNS1.name(),10.0/(24*3600*nodeInfoProvider.getMinPayment(NSmartContract.SmartContractType.UNS1.name())));
         config.setHoldDuration(Duration.ofSeconds(10));
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
@@ -9866,7 +9898,7 @@ public class BaseNetworkTest extends TestCase {
         unsName3.addUnsRecord(unsRecord3);
         uns3.addUnsName(unsName3);
 
-        uns3.setNodeConfig(node.getConfig());
+        uns3.setNodeInfoProvider(nodeInfoProvider);
         uns3.seal();
         uns3.addSignatureToSeal(randomPrivKey);
         uns3.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9881,7 +9913,7 @@ public class BaseNetworkTest extends TestCase {
         unsName2.addUnsRecord(unsRecord2);
         uns2.addUnsName(unsName2);
 
-        uns2.setNodeConfig(node.getConfig());
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
         uns2.addSignatureToSeal(randomPrivKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9896,7 +9928,7 @@ public class BaseNetworkTest extends TestCase {
         unsName.addUnsRecord(unsRecord);
         uns.addUnsName(unsName);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9908,7 +9940,7 @@ public class BaseNetworkTest extends TestCase {
         Contract paymentContract = getApprovedTUContract();
 
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), stepaPrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -9934,7 +9966,7 @@ public class BaseNetworkTest extends TestCase {
         paymentContract = getApprovedTUContract();
 
 
-        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), stepaPrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -9956,7 +9988,7 @@ public class BaseNetworkTest extends TestCase {
         paymentContract = getApprovedTUContract();
 
 
-        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), stepaPrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -9971,7 +10003,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
 
 
-        Config.namesAndDaysPerU = oldValue;
+        config.setRate(NSmartContract.SmartContractType.UNS1.name(),oldValue);
     }
 
 
@@ -9999,7 +10031,7 @@ public class BaseNetworkTest extends TestCase {
         unsName.addUnsRecord(unsRecord);
         uns.addUnsName(unsName);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -10015,7 +10047,7 @@ public class BaseNetworkTest extends TestCase {
         unsName2.addUnsRecord(unsRecord2);
         uns2.addUnsName(unsName2);
 
-        uns2.setNodeConfig(node.getConfig());
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
         uns2.addSignatureToSeal(randomPrivKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -10026,7 +10058,7 @@ public class BaseNetworkTest extends TestCase {
         Contract paymentContract = getApprovedTUContract();
 
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), stepaPrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -10066,7 +10098,7 @@ public class BaseNetworkTest extends TestCase {
 
         //REGISTER UNS2
         paymentContract = getApprovedTUContract();
-        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), stepaPrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -10134,7 +10166,7 @@ public class BaseNetworkTest extends TestCase {
         uns.addUnsName(unsNameToRemove);
         uns.addOriginContract(referencesContract1);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.check();
         uns.traceErrors();
@@ -10211,7 +10243,7 @@ public class BaseNetworkTest extends TestCase {
             }
         }
         unsNameToChangeCopy.addUnsRecord(unsRecordToAdd);
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
 
 
@@ -10269,7 +10301,7 @@ public class BaseNetworkTest extends TestCase {
         uns.addUnsName(unsName);
         uns.addOriginContract(referencesContract1);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.check();
         uns.traceErrors();
@@ -10332,7 +10364,7 @@ public class BaseNetworkTest extends TestCase {
         //Create revision to add payment without any changes. Should be declined
         uns = (UnsContract) unsOriginal.createRevision(keys);
         uns.addOriginContract(referencesContract1);
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
 
         paymentContract = getApprovedTUContract();
@@ -10356,7 +10388,7 @@ public class BaseNetworkTest extends TestCase {
         //Create revision to add payment without any changes. Should be declined
         uns = (UnsContract) unsOriginal.createRevision(keys);
         uns.addOriginContract(referencesContract2);
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
 
         paymentContract = getApprovedTUContract();
@@ -10407,7 +10439,7 @@ public class BaseNetworkTest extends TestCase {
         uns.addUnsName(unsName);
         uns.addOriginContract(referencesContract);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.check();
         uns.traceErrors();
@@ -10459,7 +10491,7 @@ public class BaseNetworkTest extends TestCase {
         unsName.addUnsRecord(unsRecord2);
         uns.addUnsName(unsName);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.check();
         uns.traceErrors();
@@ -10508,7 +10540,7 @@ public class BaseNetworkTest extends TestCase {
         uns.addUnsName(unsName);
         uns.addOriginContract(referencesContract);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.check();
         uns.traceErrors();
@@ -10564,7 +10596,7 @@ public class BaseNetworkTest extends TestCase {
         unsName.addUnsRecord(unsRecord1);
         uns.addUnsName(unsName);
 
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.check();
         uns.traceErrors();
@@ -10595,7 +10627,7 @@ public class BaseNetworkTest extends TestCase {
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
         UnsContract uns = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
-        uns.setNodeConfig(node.getConfig());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(manufacturePrivateKeys.iterator().next());
         uns.seal();
         uns.check();
@@ -10646,7 +10678,7 @@ public class BaseNetworkTest extends TestCase {
         uns1.addUnsName(unsName);
         uns1.addOriginContract(nameContract1);
 
-        uns1.setNodeConfig(node.getConfig());
+        uns1.setNodeInfoProvider(nodeInfoProvider);
         uns1.seal();
         uns1.addSignatureToSeal(randomPrivateKey1);
         uns1.addSignatureToSeal(TestKeys.privateKey(8));
@@ -10698,7 +10730,7 @@ public class BaseNetworkTest extends TestCase {
         uns2.addUnsName(unsName);
         uns2.addOriginContract(nameContract2);
 
-        uns2.setNodeConfig(node.getConfig());
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
         uns2.addSignatureToSeal(randomPrivateKey2);
         uns2.addSignatureToSeal(TestKeys.privateKey(9));
@@ -10762,7 +10794,7 @@ public class BaseNetworkTest extends TestCase {
         uns1.addUnsName(unsName);
         uns1.addOriginContract(nameContract1);
 
-        uns1.setNodeConfig(node.getConfig());
+        uns1.setNodeInfoProvider(nodeInfoProvider);
         uns1.seal();
         uns1.addSignatureToSeal(randomPrivateKey);
         uns1.addSignatureToSeal(TestKeys.privateKey(8));
@@ -10813,7 +10845,7 @@ public class BaseNetworkTest extends TestCase {
         uns2.addUnsName(unsName);
         uns2.addOriginContract(nameContract2);
 
-        uns2.setNodeConfig(node.getConfig());
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
         uns2.addSignatureToSeal(randomPrivateKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(9));
@@ -10877,7 +10909,7 @@ public class BaseNetworkTest extends TestCase {
         uns1.addUnsName(unsName);
         uns1.addOriginContract(nameContract);
 
-        uns1.setNodeConfig(node.getConfig());
+        uns1.setNodeInfoProvider(nodeInfoProvider);
         uns1.seal();
         uns1.addSignatureToSeal(randomPrivateKey1);
         uns1.addSignatureToSeal(TestKeys.privateKey(8));
@@ -10927,7 +10959,7 @@ public class BaseNetworkTest extends TestCase {
         uns2.addUnsName(unsName);
         uns2.addOriginContract(nameContract);
 
-        uns2.setNodeConfig(node.getConfig());
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
         uns1.addSignatureToSeal(randomPrivateKey2);
         uns1.addSignatureToSeal(TestKeys.privateKey(8));

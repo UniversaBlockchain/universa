@@ -3,6 +3,7 @@ package com.icodici.universa.contract.services;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
@@ -140,41 +141,7 @@ public class UnsContract extends NSmartContract {
 
     private double calculatePrepaidNamesForDays(boolean withSaveToState) {
 
-        for (Contract nc : getNew()) {
-            if (nc.isU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
-                int calculatedPayment = 0;
-                boolean isTestPayment = false;
-                Contract parent = null;
-                for (Contract nrc : nc.getRevoking()) {
-                    if (nrc.getId().equals(nc.getParent())) {
-                        parent = nrc;
-                        break;
-                    }
-                }
-                if (parent != null) {
-                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
-                    if (hasTestTU) {
-                        isTestPayment = true;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
-                                - nc.getStateData().getIntOrThrow("test_transaction_units");
-
-                        if (calculatedPayment <= 0) {
-                            isTestPayment = false;
-                            calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                    - nc.getStateData().getIntOrThrow("transaction_units");
-                        }
-                    } else {
-                        isTestPayment = false;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                - nc.getStateData().getIntOrThrow("transaction_units");
-                    }
-                }
-
-                if(!isTestPayment) {
-                    paidU = calculatedPayment;
-                }
-            }
-        }
+        paidU = getPaidU();
 
         ZonedDateTime now = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
         double wasPrepaidNamesForDays;
@@ -193,7 +160,7 @@ public class UnsContract extends NSmartContract {
 
         spentEarlyNDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyNDsTimeSecs), ZoneId.systemDefault());
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
-        prepaidNamesForDays = wasPrepaidNamesForDays + paidU * Config.namesAndDaysPerU;
+        prepaidNamesForDays = wasPrepaidNamesForDays + paidU * getRate();
 
         spentNDsTime = now;
 
@@ -334,46 +301,17 @@ public class UnsContract extends NSmartContract {
 
         calculatePrepaidNamesForDays(false);
 
-        boolean hasPayment = false;
-        for (Contract nc : getNew()) {
-            if (nc.isU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
-                hasPayment = true;
-
-                int calculatedPayment = 0;
-                boolean isTestPayment = false;
-                Contract parent = null;
-                for (Contract nrc : nc.getRevoking()) {
-                    if (nrc.getId().equals(nc.getParent())) {
-                        parent = nrc;
-                        break;
-                    }
-                }
-                if (parent != null) {
-                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
-                    if (hasTestTU) {
-                        isTestPayment = true;
-                        if (calculatedPayment <= 0)
-                            isTestPayment = false;
-                    } else
-                        isTestPayment = false;
-
-                    if (isTestPayment) {
-                        hasPayment = false;
-                        addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing names");
-                    }
-
-                    if (paidU < nodeConfig.getMinUnsPayment()) {
-                        hasPayment = false;
-                        addError(Errors.FAILED_CHECK, "Payment for UNS contract is below minimum level of " + nodeConfig.getMinUnsPayment() + "U");
-                    }
-                } else {
-                    hasPayment = false;
-                    addError(Errors.FAILED_CHECK, "Payment contract is missing parent contract");
-                }
+        int paidU = getPaidU();
+        if(paidU == 0) {
+            if(getPaidU(true) > 0) {
+                addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing storing names");
             }
+            checkResult = false;
+        } else if(paidU < getMinPayment()) {
+            addError(Errors.FAILED_CHECK, "Payment for UNS contract is below minimum level of " + getMinPayment() + "U");
+            checkResult = false;
         }
 
-        checkResult = hasPayment;
         if (!checkResult) {
             addError(Errors.FAILED_CHECK, "UNS contract hasn't valid payment");
             return checkResult;
@@ -493,7 +431,7 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        checkResult = getSealedByKeys().contains(nodeConfig.getAuthorizedNameServiceCenterKey());
+        checkResult = getSealedByKeys().containsAll(getAdditionalKeysToSignWith());
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Authorized name service signature is missing");
             return checkResult;
@@ -503,29 +441,11 @@ public class UnsContract extends NSmartContract {
         List<HashId> originsToCheck = getOriginsToCheck();
         List<String> addressesToCheck = getAddressesToCheck();
 
-        boolean checkResultNames = false;
-        if (checkResult)
-            checkResult = checkResultNames = additionallyUnsCheck_isNamesAvailable(ime, reducedNamesToCkeck);
-
-        boolean checkResultOrigins = false;
-        if (checkResult)
-            checkResult = checkResultOrigins = additionallyUnsCheck_isOriginsAvailable(ime, originsToCheck);
-
-        boolean checkResultAddresses = false;
-        if (checkResult)
-            checkResult = checkResultAddresses = additionallyUnsCheck_isAddressesAvailable(ime, addressesToCheck);
-
-        if (!checkResult) {
-            if (checkResultNames)
-                nameCache.unlockNameList(reducedNamesToCkeck);
-            if (checkResultOrigins)
-                nameCache.unlockOriginList(originsToCheck);
-            if (checkResultAddresses)
-                nameCache.unlockAddressList(addressesToCheck);
-        }
+        checkResult = ime.tryAllocate(reducedNamesToCkeck,originsToCheck,addressesToCheck);
 
         return checkResult;
     }
+
 
     private List<String> getReducedNamesToCheck() {
         Set<String> reducedNames = new HashSet<>();
@@ -577,71 +497,7 @@ public class UnsContract extends NSmartContract {
         return new ArrayList<>(addresses);
     }
 
-    private boolean additionallyUnsCheck_isNamesAvailable(ImmutableEnvironment ime, List<String> reducedNames) {
-        boolean checkResult;
 
-        if (reducedNames.size() == 0)
-            return true;
-
-        checkResult = nameCache.lockNameList(reducedNames);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names are registering right now");
-            return checkResult;
-        }
-
-        checkResult = ledger.isAllNameRecordsAvailable(reducedNames);
-        if (!checkResult) {
-            nameCache.unlockNameList(reducedNames);
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected names already registered");
-            return checkResult;
-        }
-
-        return checkResult;
-    }
-
-    private boolean additionallyUnsCheck_isOriginsAvailable(ImmutableEnvironment ime, List<HashId> origins) {
-        boolean checkResult;
-
-        if (origins.size() == 0)
-            return true;
-
-        checkResult = nameCache.lockOriginList(origins);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins are registering right now");
-            return checkResult;
-        }
-
-        checkResult = ledger.isAllOriginsAvailable(origins);
-        if (!checkResult) {
-            nameCache.unlockOriginList(origins);
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected origins already registered");
-            return checkResult;
-        }
-
-        return checkResult;
-    }
-
-    private boolean additionallyUnsCheck_isAddressesAvailable(ImmutableEnvironment ime, List<String> addresses) {
-        boolean checkResult;
-
-        if (addresses.size() == 0)
-            return true;
-
-        checkResult = nameCache.lockAddressList(addresses);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses are registering right now");
-            return checkResult;
-        }
-
-        checkResult = ledger.isAllAddressesAvailable(addresses);
-        if (!checkResult) {
-            nameCache.unlockAddressList(addresses);
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Some of selected addresses already registered");
-            return checkResult;
-        }
-
-        return checkResult;
-    }
 
     private boolean isOriginReferenceExists(HashId origin) {
         return getReferences().values().stream().anyMatch(ref ->
@@ -651,99 +507,39 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
-        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
-        List<String> namesList = new ArrayList<>();
-        List<String> addressesList = new ArrayList<>();
-        List<HashId> originsList = new ArrayList<>();
 
-        storedNames.forEach(sn -> {
-                    namesList.add(sn.getUnsName());
-                    NameRecordModel nrm = new NameRecordModel();
-                    nrm.name_full = sn.getUnsName();
-                    nrm.name_reduced = sn.getUnsNameReduced();
-                    nrm.description = sn.getUnsDescription();
-                    nrm.url = sn.getUnsURL();
-                    nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
-                    nrm.entries = new ArrayList<>();
-                    sn.getUnsRecords().forEach(snr ->{
-                        NameEntryModel nem = new NameEntryModel();
-                        if(snr.getOrigin() != null) {
-                            nem.origin = snr.getOrigin().getDigest();
-                            originsList.add(snr.getOrigin());
-                        }
+        ZonedDateTime expiresAt = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
 
-                        snr.getAddresses().forEach(keyAddress -> {
-                            addressesList.add(keyAddress.toString());
-                            if(keyAddress.isLong()) {
-                                nem.long_addr = keyAddress.toString();
-                            } else {
-                                nem.short_addr = keyAddress.toString();
-                            }
-                        });
-                        nrm.entries.add(nem);
-                    });
-                    nrm.environment_id = environmentId;
-                    ledger.saveNameRecord(nrm);
-                }
-        );
-        nameCache.unlockNameList(namesList);
-        nameCache.unlockAddressList(addressesList);
-        nameCache.unlockOriginList(originsList);
+        storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
+
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
     public Binder onUpdated(MutableEnvironment me) {
-        ledger.removeEnvironment(getId());
+        ZonedDateTime expiresAt = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
 
-        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
+        Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
+        me.nameRecords().forEach( nameRecord -> {
+            UnsName unsName = newNames.get(nameRecord.getName());
+            if(unsName != null &&
+                    unsName.getUnsRecords().size() == nameRecord.getEntries().size() &&
+                    unsName.getUnsRecords().stream().allMatch(unsRecord -> nameRecord.getEntries().stream().anyMatch(nameRecordEntry -> unsRecord.equalsTo(nameRecordEntry)))) {
+                me.setNameRecordExpiresAt(nameRecord,expiresAt);
+                newNames.remove(nameRecord.getName());
+            } else {
+                me.destroyNameRecord(nameRecord);
+            }
+        });
 
-        List<String> namesList = new ArrayList<>();
-        List<String> addressesList = new ArrayList<>();
-        List<HashId> originsList = new ArrayList<>();
-
-
-        storedNames.forEach(sn -> {
-                    namesList.add(sn.getUnsName());
-                    NameRecordModel nrm = new NameRecordModel();
-                    nrm.name_full = sn.getUnsName();
-                    nrm.name_reduced = sn.getUnsNameReduced();
-                    nrm.description = sn.getUnsDescription();
-                    nrm.url = sn.getUnsURL();
-                    nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
-                    nrm.entries = new ArrayList<>();
-                    sn.getUnsRecords().forEach(snr ->{
-                        NameEntryModel nem = new NameEntryModel();
-                        if(snr.getOrigin() != null) {
-                            nem.origin = snr.getOrigin().getDigest();
-                            originsList.add(snr.getOrigin());
-                        }
-
-                        snr.getAddresses().forEach(keyAddress -> {
-                            addressesList.add(keyAddress.toString());
-                            if(keyAddress.isLong()) {
-                                nem.long_addr = keyAddress.toString();
-                            } else {
-                                nem.short_addr = keyAddress.toString();
-                            }
-                        });
-                        nrm.entries.add(nem);
-                    });
-                    nrm.environment_id = environmentId;
-                    ledger.saveNameRecord(nrm);
-                }
-        );
-        nameCache.unlockNameList(namesList);
-        nameCache.unlockAddressList(addressesList);
-        nameCache.unlockOriginList(originsList);
+        newNames.values().forEach(sn -> me.createNameRecord(sn,expiresAt));
 
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
     public void onRevoked(ImmutableEnvironment ime) {
-        ledger.removeEnvironment(getId());
 
     }
 

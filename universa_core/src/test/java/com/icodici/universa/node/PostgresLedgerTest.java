@@ -1,6 +1,5 @@
 package com.icodici.universa.node;
 
-import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.HashId;
@@ -652,7 +651,7 @@ public class PostgresLedgerTest extends TestCase {
 
     }
 
-
+/*
     @Test
     public void addContractToStorage() throws Exception {
 
@@ -679,7 +678,7 @@ public class PostgresLedgerTest extends TestCase {
         Contract someContract = new Contract(TestKeys.privateKey(0));
         someContract.seal();
 
-        long id1 = ledger.saveEnvironmentToStorage("SLOT0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
+        long id1 = ledger.updateEnvironment("SLOT0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
         System.out.println("id1: " + id1);
 
         byte[] readedBytes = ledger.getEnvironmentFromStorage(contractId);
@@ -693,7 +692,7 @@ public class PostgresLedgerTest extends TestCase {
         updatedBinder.set("balance", "23.456");
         updatedBinder.set("expires_at", 33);
 
-        long id2 = ledger.saveEnvironmentToStorage("SLOT0test", contractId, Boss.pack(updatedBinder), someContract.getPackedTransaction());
+        long id2 = ledger.updateEnvironment("SLOT0test", contractId, Boss.pack(updatedBinder), someContract.getPackedTransaction());
         System.out.println("id2: " + id2);
 
         byte[] readedBytes2 = ledger.getEnvironmentFromStorage(contractId);
@@ -750,7 +749,7 @@ public class PostgresLedgerTest extends TestCase {
         Contract someContract = new Contract(TestKeys.privateKey(0));
         someContract.seal();
 
-        long id1 = ledger.saveEnvironmentToStorage("UNS0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
+        long id1 = ledger.updateEnvironment("UNS0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
         System.out.println("id1: " + id1);
 
         NameRecordModel nameRecordModel = new NameRecordModel();
@@ -770,7 +769,7 @@ public class PostgresLedgerTest extends TestCase {
         nameRecordModel.entries.add(nameEntryModel);
 
         ledger.removeNameRecord(nameRecordModel.name_reduced);
-        ledger.saveNameRecord(nameRecordModel);
+        ledger.addNameRecord(nameRecordModel);
 
         NameRecordModel loadedNameRecord = ledger.getNameRecord(nameRecordModel.name_reduced);
 
@@ -827,7 +826,7 @@ public class PostgresLedgerTest extends TestCase {
         Contract someContract = new Contract(TestKeys.privateKey(0));
         someContract.seal();
 
-        long id1 = ledger.saveEnvironmentToStorage("UNS0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
+        long id1 = ledger.updateEnvironment("UNS0test", contractId, Boss.pack(someBinder), someContract.getPackedTransaction());
         System.out.println("id1: " + id1);
 
         NameRecordModel nameRecordModel = new NameRecordModel();
@@ -847,7 +846,7 @@ public class PostgresLedgerTest extends TestCase {
         nameRecordModel.entries.add(nameEntryModel);
 
         ledger.removeNameRecord(nameRecordModel.name_reduced);
-        ledger.saveNameRecord(nameRecordModel);
+        ledger.addNameRecord(nameRecordModel);
 
         NameRecordModel nameRecordModel2 = new NameRecordModel();
         nameRecordModel2.environment_id = id1;
@@ -866,7 +865,7 @@ public class PostgresLedgerTest extends TestCase {
         nameRecordModel2.entries.add(nameEntryModel2);
 
         ledger.removeNameRecord(nameRecordModel2.name_reduced);
-        ledger.saveNameRecord(nameRecordModel2);
+        ledger.addNameRecord(nameRecordModel2);
 
         assertFalse(ledger.isAllNameRecordsAvailable(Arrays.asList(nameRecordModel.name_reduced, nameRecordModel2.name_reduced)));
         assertFalse(ledger.isAllOriginsAvailable(Arrays.asList(HashId.withDigest(nameEntryModel.origin), HashId.withDigest(nameEntryModel2.origin))));
@@ -907,5 +906,6 @@ public class PostgresLedgerTest extends TestCase {
                 TestKeys.publicKey(2).getShortAddress().toString(),
                 TestKeys.publicKey(2).getLongAddress().toString())));
     }
+    */
 
 }

@@ -24,7 +24,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -403,6 +402,7 @@ public class JarNetworkTest extends TestCase {
         assertEquals(waitState, itemResult.state);
     }
 
+    /*
     @Test
     public void registerSlotContract() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
@@ -1702,7 +1702,7 @@ public class JarNetworkTest extends TestCase {
         payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
         // imitating check process on the node
-        newSlotContract.beforeUpdate(new SlotMutableEnvironment(newSlotContract));
+        newSlotContract.beforeUpdate(new NMutableEnvironment(newSlotContract));
         newSlotContract.check();
         newSlotContract.traceErrors();
 
@@ -2286,7 +2286,7 @@ public class JarNetworkTest extends TestCase {
         Contract revokingSlotContract = ContractsService.createRevocation(refilledSlotContract, key);
 
         registerAndCheckDeclined(revokingSlotContract);
-    }
+    }*/
 
 
     /*@Test

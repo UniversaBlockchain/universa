@@ -12,6 +12,9 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.ContractStorageSubscription;
+import com.icodici.universa.contract.services.NImmutableEnvironment;
+import com.icodici.universa.contract.services.NNameRecord;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
@@ -185,6 +188,16 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt) {
+
+    }
+
+    @Override
+    public void updateNameRecord(long id, ZonedDateTime expiresAt) {
+
+    }
+
+    @Override
     public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
 
     }
@@ -216,6 +229,26 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public void putItem(StateRecord record, Approvable item, Instant keepTill) {
+
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(long environmentId) {
+        return null;
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(HashId contractId) {
+        return null;
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(NSmartContract smartContract) {
+        return null;
+    }
+
+    @Override
+    public void updateEnvironment(long id, String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
 
     }
 
@@ -308,8 +341,6 @@ public class SqliteLedger implements Ledger {
         }
     }
 
-    @Override
-    public void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin) {}
 
     @Override
     public List<Long> clearExpiredStorageSubscriptions() {return null;}
@@ -317,11 +348,6 @@ public class SqliteLedger implements Ledger {
     @Override
     public void clearExpiredStorageContracts() {}
 
-    @Override
-    public long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {return 0;}
-
-    @Override
-    public byte[] getEnvironmentFromStorage(HashId contractId) {return null;}
 
     @Override
     public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin) {return 0;}
@@ -333,44 +359,32 @@ public class SqliteLedger implements Ledger {
     public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {}
 
     @Override
-    public Set<byte[]> getEnvironmentsForContractId(HashId contractId) {return null;}
+    public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
+        return null;
+    }
 
-    @Override
-    public Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {return null;}
-
-    @Override
-    public Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId) {return null;}
-
-    @Override
-    public byte[] getSlotContractByEnvironmentId(long environmentId) {return null;}
 
     @Override
     public byte[] getContractInStorage(HashId contractId) {return null;}
-
-    @Override
-    public byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId) {return null;}
-
     @Override
     public void removeEnvironmentSubscription(long subscriptionId) {}
 
     @Override
     public long removeEnvironment(HashId ncontractHashId) {return 0;}
 
-    @Override
-    public List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId) {return null;}
-
-    @Override
-    public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {}
 
     @Override
     public void removeExpiredStorageSubscriptionsCascade() {}
 
     @Override
+    public void addNameRecord(NNameRecord nameRecordModel) {
+
+    }
+
+    @Override
     public byte[] getSlotContractBySlotId(HashId slotId) {return null;}
 
 
-    @Override
-    public void saveNameRecord(final NameRecordModel nameRecordModel) {}
 
     @Override
     public void removeNameRecord(final String nameReduced) {}
@@ -379,13 +393,20 @@ public class SqliteLedger implements Ledger {
     public NameRecordModel getNameRecord(final String nameReduced) {return null;}
 
     @Override
-    public boolean isAllNameRecordsAvailable(final List<String> reducedNames) {return false;}
+    public boolean isAllNameRecordsAvailable(Collection<String> reducedNames) {
+        return false;
+    }
 
     @Override
-    public boolean isAllOriginsAvailable(final List<HashId> origins) {return false;}
+    public boolean isAllOriginsAvailable(Collection<HashId> origins) {
+        return false;
+    }
 
     @Override
-    public boolean isAllAddressesAvailable(final List<String> addresses) {return false;}
+    public boolean isAllAddressesAvailable(Collection<String> addresses) {
+        return false;
+    }
+
 
     @Override
     public void clearExpiredNameRecords(Duration holdDuration) {

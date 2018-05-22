@@ -23,10 +23,7 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
-import com.icodici.universa.contract.services.SlotContract;
-import com.icodici.universa.contract.services.UnsContract;
-import com.icodici.universa.contract.services.UnsName;
-import com.icodici.universa.contract.services.UnsRecord;
+import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
 import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node.network.TestKeys;
@@ -1505,7 +1502,7 @@ public class MainTest {
 
         Decimal kilobytesAndDaysPerU = client.storageGetRate();
         System.out.println("storageGetRate: " + kilobytesAndDaysPerU);
-        assertEquals(new Decimal(main.config.kilobytesAndDaysPerU), kilobytesAndDaysPerU);
+        assertEquals(new Decimal((int) main.config.getRate("SLOT1")), kilobytesAndDaysPerU);
 
         Contract simpleContract = new Contract(TestKeys.privateKey(1));
         simpleContract.seal();
@@ -1513,7 +1510,7 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
-        slotContract.setNodeConfig(main.node.getConfig());
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
 
         Contract stepaTU = InnerContractsService.createFreshTU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
@@ -1625,10 +1622,40 @@ public class MainTest {
         }
     }
 
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
+        Config config = new Config();
+        @Override
+        public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
+            return config.getTransactionUnitsIssuerKeys();
+        }
+
+        @Override
+        public String getTUIssuerName() {
+            return config.getTUIssuerName();
+        }
+
+        @Override
+        public int getMinPayment(String extendedType) {
+            return config.getMinPayment(extendedType);
+        }
+
+        @Override
+        public double getRate(String extendedType) {
+            return config.getRate(extendedType);
+        }
+
+        @Override
+        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
+            Set<PublicKey> set = new HashSet<>();
+            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
+                set.add(config.getAuthorizedNameServiceCenterKey());
+            }
+            return set;
+        }
+    };
+
     @Test(timeout = 90000)
     public void checkUnsNodeMissedRevocation() throws Exception {
-
-
 
 
         PrivateKey randomPrivKey1 = new PrivateKey(2048);
@@ -1655,7 +1682,7 @@ public class MainTest {
         unsName.addUnsRecord(unsRecord);
         uns.addUnsName(unsName);
 
-        uns.setNodeConfig(testSpace.node.config);
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
         uns.addSignatureToSeal(randomPrivKey1);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -1671,7 +1698,7 @@ public class MainTest {
         unsName2.addUnsRecord(unsRecord2);
         uns2.addUnsName(unsName2);
 
-        uns2.setNodeConfig(testSpace.node.config);
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
         uns2.addSignatureToSeal(randomPrivKey2);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -1686,7 +1713,7 @@ public class MainTest {
         unsName3.addUnsRecord(unsRecord3);
         uns3.addUnsName(unsName3);
 
-        uns3.setNodeConfig(testSpace.node.config);
+        uns3.setNodeInfoProvider(nodeInfoProvider);
         uns3.seal();
         uns3.addSignatureToSeal(randomPrivKey3);
         uns3.addSignatureToSeal(TestKeys.privateKey(8));
@@ -1697,7 +1724,7 @@ public class MainTest {
         Contract paymentContract = getApprovedTUContract(testSpace);
 
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), manufacturePrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.tuContractLock) {
@@ -1737,7 +1764,7 @@ public class MainTest {
 
         //REGISTER UNS2
         paymentContract = getApprovedTUContract(testSpace);
-        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), manufacturePrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.tuContractLock) {
@@ -1789,7 +1816,7 @@ public class MainTest {
         //REGISTER UNS3
         paymentContract = getApprovedTUContract(testSpace);
 
-        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, Config.getMinUnsPayment(), manufacturePrivateKeys, false);
+        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
         synchronized (testSpace.tuContractLock) {

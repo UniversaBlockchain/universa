@@ -13,6 +13,8 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.Core;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.services.NSmartContract;
+import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 
 import java.time.Duration;
@@ -23,7 +25,8 @@ import java.util.*;
 public class Config {
 
 
-
+    public Map<String,Integer> minPayment = new HashMap<>();
+    public Map<String,Double> rate = new HashMap<>();
 
     public Config () {
         System.out.println("USING REAL CONFIG");
@@ -35,6 +38,12 @@ public class Config {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        rate.put(NSmartContract.SmartContractType.SLOT1.name(),1.0);
+        rate.put(NSmartContract.SmartContractType.UNS1.name(), 0.25);
+
+        minPayment.put(NSmartContract.SmartContractType.SLOT1.name(),100);
+        minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name())));
     }
 
     public Config copy() {
@@ -108,6 +117,10 @@ public class Config {
 
     public void setHoldDuration(Duration holdDuration) {
         this.holdDuration = holdDuration;
+    }
+
+    public void setRate(String name, double value) {
+        rate.put(name,value);
     }
 
     public interface ConsensusConfigUpdater {
@@ -186,23 +199,16 @@ public class Config {
 
     public static int quantiser_quantaPerU = 200;
 
-    // num of KD (kilobytes and days) for one U
-    public static int kilobytesAndDaysPerU = 1;
 
-    // num of ND (names and days) for one U
-    public static double namesAndDaysPerU = 0.25;
-
-    public static int getMinSlotPayment() {
-        return minSlotPayment;
+    public int getMinPayment(String extendedType)
+    {
+        return minPayment.get(extendedType);
     }
 
-    private static int minSlotPayment = 100;
-
-    public static int getMinUnsPayment() {
-        return minUnsPayment;
+    public double getRate(String extendedType)
+    {
+        return rate.get(extendedType);
     }
-
-    private static int minUnsPayment = 365 * 4;
 
     public static Duration validUntilTailTime = Duration.ofMinutes(5);
 
