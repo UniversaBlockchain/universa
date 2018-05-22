@@ -8,4 +8,4 @@ if ! [ "$(ls -A $PRIVATE_DIR)" ]; then
 	mv ./node-${NODE_INDEX}-local.universa.io.private.unikey /deploy/tmp/node-${NODE_INDEX}-local.universa.io.private.unikey
 fi
 
-java -jar /code/universa_core/build/output/uninode.jar -c .
+java -jar /code/universa_core/build/output/uninode.jar -c /deploy

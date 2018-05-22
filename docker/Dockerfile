@@ -44,6 +44,4 @@ COPY init-node.sh /deploy/init-node.sh
 
 RUN chmod +x /deploy/init-node.sh
 
-RUN ls /deploy
-
 ENTRYPOINT /deploy/init-node.sh
