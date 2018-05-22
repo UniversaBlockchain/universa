@@ -998,21 +998,22 @@ public class Node {
         }
     }
 
-    public Binder provideStats() {
+    public Binder provideStats(Integer showDays) {
         if(nodeStats.nodeStartTime == null)
             throw new IllegalStateException("node state are not initialized. wait for node initialization to finish.");
 
-        return Binder.of(
+        Binder result = Binder.of(
                 "uptime", Instant.now().getEpochSecond() - nodeStats.nodeStartTime.toEpochSecond(),
-                "ledgerSize", nodeStats.ledgerSize.isEmpty() ? 0 : nodeStats.ledgerSize.values().stream().reduce((i1, i2) -> i1+i2).get(),
+                "ledgerSize", nodeStats.ledgerSize.isEmpty() ? 0 : nodeStats.ledgerSize.values().stream().reduce((i1, i2) -> i1 + i2).get(),
                 "smallIntervalApproved", nodeStats.smallIntervalApproved,
                 "bigIntervalApproved", nodeStats.bigIntervalApproved,
-                "uptimeApproved", nodeStats.uptimeApproved,
-                "lastMonthPaidAmount", nodeStats.lastMonthPaidAmount,
-                "thisMonthPaidAmount", nodeStats.thisMonthPaidAmount,
-                "yesterdayPaidAmount", nodeStats.yesterdayPaidAmount,
-                "todayPaidAmount", nodeStats.todayPaidAmount
-        );
+                "uptimeApproved", nodeStats.uptimeApproved
+                );
+        if(showDays != null) {
+            result.put("payments",nodeStats.getPaymentStats(ledger,showDays));
+        }
+
+        return result;
     }
 
     public void setNeworkVerboseLevel(int level) {

@@ -51,6 +51,11 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalField;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
@@ -1328,6 +1333,23 @@ public class MainTest {
         }
     }
 
+
+    @Test
+    public void test123() throws Exception {
+        ZonedDateTime now = ZonedDateTime.now();
+        DateTimeFormatterBuilder builder = new DateTimeFormatterBuilder();
+        builder.appendValue(ChronoField.DAY_OF_MONTH,2);
+        builder.appendLiteral("/");
+        builder.appendValue(ChronoField.MONTH_OF_YEAR,2);
+        builder.appendLiteral("/");
+        builder.appendValue(ChronoField.YEAR,4);
+
+        System.out.println(now.format(builder.toFormatter()));
+        System.out.println(now.truncatedTo(ChronoUnit.DAYS).format(builder.toFormatter()));
+        System.out.println(now.truncatedTo(ChronoUnit.DAYS).minusDays(now.getDayOfMonth()-1).format(builder.toFormatter()));
+        System.out.println(now.truncatedTo(ChronoUnit.DAYS).minusDays(now.getDayOfMonth()-1).minusMonths(1).format(builder.toFormatter()));
+    }
+
     @Ignore
     @Test
     public void nodeStatsTest() throws Exception {
@@ -1335,13 +1357,14 @@ public class MainTest {
         TestSpace testSpace = prepareTestSpace(issuerKey);
 
         Thread.sleep(2000);
-        int uptime = testSpace.client.getStats().getIntOrThrow("uptime");
+        Binder b = testSpace.client.getStats(90);
+        int uptime = b.getIntOrThrow("uptime");
 
         testSpace.nodes.get(0).config.setStatsIntervalSmall(Duration.ofSeconds(4));
         testSpace.nodes.get(0).config.setStatsIntervalBig(Duration.ofSeconds(60));
         testSpace.nodes.get(0).config.getKeysWhiteList().add(issuerKey.getPublicKey());
 
-        while(testSpace.client.getStats().getIntOrThrow("uptime") >= uptime) {
+        while(testSpace.client.getStats(null).getIntOrThrow("uptime") >= uptime) {
             Thread.sleep(500);
         }
 
@@ -1355,7 +1378,8 @@ public class MainTest {
             testSpace.client.register(contract.getPackedTransaction(),1500);
 
             Thread.sleep(4000-(Instant.now().toEpochMilli()-now.toEpochMilli()));
-            Binder binder = testSpace.client.getStats();
+            Binder binder = testSpace.client.getStats(90);
+
             assertEquals(binder.getIntOrThrow("smallIntervalApproved"),2);
             int target = i < 15 ? (i+1)*2 : 30;
             assertTrue(binder.getIntOrThrow("bigIntervalApproved") <= target && binder.getIntOrThrow("bigIntervalApproved") >= target-2);

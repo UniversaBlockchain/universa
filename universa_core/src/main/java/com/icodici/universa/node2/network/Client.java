@@ -333,8 +333,8 @@ public class Client {
     }
 
 
-    public Binder getStats() throws ClientError {
-        return protect(() -> httpClient.command("getStats"));
+    public Binder getStats(Integer showPaymentsDays) throws ClientError {
+        return protect(() -> httpClient.command("getStats","showDays",showPaymentsDays));
     }
 
     public Node.ParcelProcessingState getParcelProcessingState(HashId parcelId) throws ClientError {

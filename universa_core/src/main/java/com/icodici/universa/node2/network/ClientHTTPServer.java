@@ -325,14 +325,14 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder getStats(Binder params, Session session) throws CommandFailedException {
 
-        checkNode(session);
+/*        checkNode(session);
 
         if(config == null || !config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey())) {
             System.out.println("command needs admin key");
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"getStats", "command needs admin key"));
-        }
-        return node.provideStats();
+        }*/
+        return node.provideStats(params.getInt("showDays",null));
     }
 
     private Binder getParcelProcessingState(Binder params, Session session) throws CommandFailedException {
