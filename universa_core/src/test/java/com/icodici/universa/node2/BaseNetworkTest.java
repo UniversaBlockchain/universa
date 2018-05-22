@@ -10948,7 +10948,149 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
+    }
 
+    @Test
+    public void checkUnsContractForExpiresTime() throws Exception {
+        PrivateKey randomPrivKey = new PrivateKey(2048);
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract referencesContract = new Contract(TestKeys.privateKey(8));
+        referencesContract.seal();
+
+        UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
+        uns.seal();
+
+        String reducedName = "testTime" + Instant.now().getEpochSecond();
+
+        UnsName unsName = new UnsName(reducedName, reducedName, "test description", "http://test.com");
+        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
+        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
+        unsName.addUnsRecord(unsRecord1);
+        unsName.addUnsRecord(unsRecord2);
+        uns.addUnsName(unsName);
+        uns.addOriginContract(referencesContract);
+
+        uns.setNodeConfig(node.getConfig());
+        uns.seal();
+        uns.addSignatureToSeal(randomPrivKey);
+        uns.addSignatureToSeal(TestKeys.privateKey(8));
+        uns.check();
+        uns.traceErrors();
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
+
+        paymentContract = getApprovedTUContract();
+
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
+
+        // check remaining balance
+        assertEquals(1470 * Config.namesAndDaysPerU, uns.getPrepaidNamesForDays(), 0.01);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        assertEquals(ledger.getNameRecord(unsName.getUnsNameReduced()).entries.size(), 2);
+
+        // check calculation expiration time
+        double days = (double) 1470 * Config.namesAndDaysPerU / uns.getUnsName(reducedName).getRecordsCount();
+        long seconds = (long) (days * 24 * 3600);
+        ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
+
+        NameRecordModel nrModel = node.getLedger().getNameRecord(reducedName);
+        if(nrModel != null) {
+            System.out.println(nrModel.expires_at);
+            assertAlmostSame(calculateExpires, nrModel.expires_at, 5);
+        } else {
+            fail("NameRecordModel was not found");
+        }
+
+        // refill uns contract with U (means add storing days).
+
+        UnsContract refilledUnsContract = (UnsContract) uns.createRevision(manufacturePrivateKeys.iterator().next());
+        refilledUnsContract.seal();
+
+        // pack & unpack for validating reference
+        TransactionPack tp_before = refilledUnsContract.getTransactionPack();
+        tp_before.addReferencedItem(referencesContract);
+        TransactionPack tp_after = TransactionPack.unpack(tp_before.pack());
+
+        refilledUnsContract = (UnsContract) tp_after.getContract();
+        refilledUnsContract.setNodeConfig(node.getConfig());
+        refilledUnsContract.addSignerKey(manufacturePrivateKeys.iterator().next());
+        refilledUnsContract.addSignerKey(randomPrivKey);
+        refilledUnsContract.addSignerKey(TestKeys.privateKey(8));
+        refilledUnsContract.addSignerKey(authorizedNameServiceKey);
+        refilledUnsContract.seal();
+
+        paymentContract = getApprovedTUContract();
+
+        payingParcel = ContractsService.createPayingParcel(refilledUnsContract.getTransactionPack(), paymentContract, 1, 1000, stepaPrivateKeys, false);
+
+        refilledUnsContract.check();
+        refilledUnsContract.traceErrors();
+        assertTrue(refilledUnsContract.isOk());
+
+        // check remaining balance
+        assertEquals(2470 * Config.namesAndDaysPerU, refilledUnsContract.getPrepaidNamesForDays(), 0.01);
+
+        node.registerParcel(payingParcel);
+        ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
+        synchronized (tuContractLock) {
+            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(refilledUnsContract.getNew().get(0).getId(), 8000).state);
+
+        assertEquals(ledger.getNameRecord(reducedName).entries.size(), 2);
+        assertEquals(refilledUnsContract.getUnsName(reducedName).getRecordsCount(), 2);
+
+        // check prolongation
+        long spentSeconds = (timeReg2.toEpochSecond() - timeReg1.toEpochSecond());
+        double spentNDs = (double) spentSeconds / (3600 * 24);
+
+        days = (double) (2470 - spentNDs) * Config.namesAndDaysPerU / refilledUnsContract.getUnsName(reducedName).getRecordsCount();
+        seconds = (long) (days * 24 * 3600);
+        calculateExpires = timeReg2.plusSeconds(seconds);
+
+        nrModel = node.getLedger().getNameRecord(reducedName);
+        if(nrModel != null) {
+            System.out.println(nrModel.expires_at);
+            assertAlmostSame(calculateExpires, nrModel.expires_at, 5);
+        } else {
+            fail("NameRecordModel was not found");
+        }
     }
 
     @Test

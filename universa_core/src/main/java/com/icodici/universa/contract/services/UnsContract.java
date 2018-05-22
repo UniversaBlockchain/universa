@@ -672,6 +672,15 @@ public class UnsContract extends NSmartContract {
         List<String> addressesList = new ArrayList<>();
         List<HashId> originsList = new ArrayList<>();
 
+        // get number of entries
+        int entries = 0;
+        for (UnsName sn: storedNames)
+            entries += sn.getRecordsCount();
+        if (entries == 0)
+            entries = 1;
+
+        final int finalEntries = entries;
+
         storedNames.forEach(sn -> {
                     namesList.add(sn.getUnsName());
                     NameRecordModel nrm = new NameRecordModel();
@@ -679,7 +688,7 @@ public class UnsContract extends NSmartContract {
                     nrm.name_reduced = sn.getUnsNameReduced();
                     nrm.description = sn.getUnsDescription();
                     nrm.url = sn.getUnsURL();
-                    nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600 / finalEntries));
                     nrm.entries = new ArrayList<>();
                     sn.getUnsRecords().forEach(snr ->{
                         NameEntryModel nem = new NameEntryModel();
@@ -718,6 +727,14 @@ public class UnsContract extends NSmartContract {
         List<String> addressesList = new ArrayList<>();
         List<HashId> originsList = new ArrayList<>();
 
+        // get number of entries
+        int entries = 0;
+        for (UnsName sn: storedNames)
+            entries += sn.getRecordsCount();
+        if (entries == 0)
+            entries = 1;
+
+        final int finalEntries = entries;
 
         storedNames.forEach(sn -> {
                     namesList.add(sn.getUnsName());
@@ -726,7 +743,7 @@ public class UnsContract extends NSmartContract {
                     nrm.name_reduced = sn.getUnsNameReduced();
                     nrm.description = sn.getUnsDescription();
                     nrm.url = sn.getUnsURL();
-                    nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+                    nrm.expires_at = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600 / finalEntries));
                     nrm.entries = new ArrayList<>();
                     sn.getUnsRecords().forEach(snr ->{
                         NameEntryModel nem = new NameEntryModel();
