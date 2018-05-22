@@ -9,9 +9,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Implements {@link MutableEnvironment} interface for slot contract.
@@ -127,9 +125,55 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
                 }
         );
 
-        nameRecordsToDestroy.forEach(nameRecord -> ledger.removeNameRecord(nameRecord.getName()));
-        nameRecordsToSave.forEach(nameRecord -> ledger.updateNameRecord(nameRecord.getId(),nameRecord.expiresAt()));
-        nameRecordsToSave.forEach(nameRecord -> ledger.addNameRecord(nameRecord));
+        nameRecordsToDestroy.forEach(nameRecord -> ledger.removeNameRecord(nameRecord.getNameReduced()));
+
+
+        List<String> addressList = new LinkedList<>();
+        List<String> nameList = new LinkedList<>();
+        List<HashId> originsList = new LinkedList<>();
+
+
+        nameRecordsToSave.forEach(nameRecord -> {
+            ledger.updateNameRecord(nameRecord.getId(),nameRecord.expiresAt());
+            nameList.add(nameRecord.getNameReduced());
+            nameRecord.getEntries().forEach( e -> {
+                if(e.getOrigin() != null) {
+                    originsList.add(e.getOrigin());
+                }
+
+                if(e.getLongAddress() != null) {
+                    addressList.add(e.getLongAddress());
+                }
+
+                if(e.getShortAddress() != null) {
+                    addressList.add(e.getShortAddress());
+                }
+
+            });
+        });
+        nameRecordsToAdd.forEach(nameRecord -> {
+            ledger.addNameRecord(nameRecord);
+            nameList.add(nameRecord.getNameReduced());
+            nameRecord.getEntries().forEach( e -> {
+                if(e.getOrigin() != null) {
+                    originsList.add(e.getOrigin());
+                }
+
+                if(e.getLongAddress() != null) {
+                    addressList.add(e.getLongAddress());
+                }
+
+                if(e.getShortAddress() != null) {
+                    addressList.add(e.getShortAddress());
+                }
+
+            });
+        });
+
+
+        nameCache.unlockAddressList(addressList);
+        nameCache.unlockNameList(nameList);
+        nameCache.unlockOriginList(originsList);
 
     }
 }

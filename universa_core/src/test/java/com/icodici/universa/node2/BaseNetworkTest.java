@@ -9821,6 +9821,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
@@ -10140,6 +10141,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(TestKeys.privateKey(1));
         uns.addSignerKey(randomPrivKey1);
         uns.addSignerKey(randomPrivKey3);
@@ -10288,6 +10290,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(TestKeys.privateKey(1));
         uns.addSignerKey(authorizedNameServiceKey);
 
@@ -10429,6 +10432,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(TestKeys.privateKey(8));
         uns.seal();
@@ -10482,6 +10486,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(TestKeys.privateKey(8));
         uns.seal();
@@ -10531,6 +10536,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
@@ -10588,6 +10594,7 @@ public class BaseNetworkTest extends TestCase {
 
 
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
@@ -10665,6 +10672,7 @@ public class BaseNetworkTest extends TestCase {
         nameContract1.seal();
 
         UnsContract uns1 = new UnsContract(manufacturePrivateKey);
+        uns1.setNodeInfoProvider(nodeInfoProvider);
         uns1.addSignerKey(authorizedNameServiceKey);
         uns1.seal();
 
@@ -10784,7 +10792,6 @@ public class BaseNetworkTest extends TestCase {
 
         UnsContract uns1 = new UnsContract(manufacturePrivateKey);
         uns1.addSignerKey(authorizedNameServiceKey);
-        uns1.seal();
 
         UnsName unsName = new UnsName("testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress description", "http://testbusyaddress.com");
         UnsRecord unsRecord1 = new UnsRecord(randomPrivateKey.getPublicKey());
@@ -10898,6 +10905,7 @@ public class BaseNetworkTest extends TestCase {
         nameContract.seal();
 
         UnsContract uns1 = new UnsContract(manufacturePrivateKey);
+        uns1.setNodeInfoProvider(nodeInfoProvider);
         uns1.addSignerKey(authorizedNameServiceKey);
         uns1.seal();
 

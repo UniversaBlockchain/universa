@@ -941,7 +941,7 @@ public class PostgresLedger implements Ledger {
                     "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id " +
                     "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
-                    return null;
+                    return new HashSet<>();
                 do {
                     subscriptionIds.add(rs.getLong(1));
                 } while (rs.next());
