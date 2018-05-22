@@ -333,6 +333,10 @@ public class Client {
     }
 
 
+    public Binder getStats() throws ClientError {
+        return getStats(null);
+    }
+
     public Binder getStats(Integer showPaymentsDays) throws ClientError {
         return protect(() -> httpClient.command("getStats","showDays",showPaymentsDays));
     }
