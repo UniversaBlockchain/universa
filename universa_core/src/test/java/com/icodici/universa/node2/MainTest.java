@@ -28,6 +28,7 @@ import com.icodici.universa.node.*;
 import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.*;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
@@ -1838,4 +1839,50 @@ public class MainTest {
         assertEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
     }
 
+
+    @Test
+    public void environmentSerializationTest() throws Exception{
+        UnsName unsName = new UnsName();
+        unsName.setUnsName("test");
+        unsName.setUnsNameReduced("test");
+
+        PrivateKey privateKey = new PrivateKey(2048);
+        Contract contract = new Contract(privateKey);
+        contract.seal();
+
+        NSmartContract smartContract = new NSmartContract(privateKey);
+        smartContract.seal();
+
+        UnsRecord record1 = new UnsRecord(contract.getId());
+        UnsRecord record2 = new UnsRecord(privateKey.getPublicKey());
+
+        unsName.addUnsRecord(record1);
+        unsName.addUnsRecord(record2);
+        ZonedDateTime now = ZonedDateTime.now();
+        NNameRecord nnr = new NNameRecord(unsName, now);
+
+        Config.forceInit(NMutableEnvironment.class);
+
+
+        NNameRecord nnr2 = Boss.load(Boss.pack(nnr));
+
+        assertTrue(nnr2.getEntries().stream().anyMatch(nre -> unsName.getUnsRecords().stream().anyMatch(ur -> ur.equalsTo(nre))));
+        assertEquals(nnr2.getEntries().size(),unsName.getRecordsCount());
+        assertEquals(nnr2.getName(),unsName.getUnsName());
+        assertEquals(nnr2.getNameReduced(),unsName.getUnsNameReduced());
+        assertEquals(nnr2.getDescription(),unsName.getUnsDescription());
+        assertEquals(nnr2.getUrl(),unsName.getUnsURL());
+        assertEquals(nnr.expiresAt().toEpochSecond(),nnr2.expiresAt().toEpochSecond());
+
+        NContractStorageSubscription sub = Boss.load(Boss.pack(new NContractStorageSubscription(contract.getPackedTransaction(),now)));
+        assertTrue(sub.getContract().getId().equals(contract.getId()));
+        assertEquals(sub.expiresAt().toEpochSecond(),now.toEpochSecond());
+
+        Binder kvStore = new Binder();
+        kvStore.put("test","test1");
+        NImmutableEnvironment environment = new NImmutableEnvironment(smartContract,kvStore,Do.listOf(sub),Do.listOf(nnr2),null);
+
+        environment = Boss.load(Boss.pack(environment));
+        assertEquals(environment.get("test",null),"test1");
+    }
 }

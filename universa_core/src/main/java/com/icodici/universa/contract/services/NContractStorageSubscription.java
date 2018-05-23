@@ -1,6 +1,10 @@
 package com.icodici.universa.contract.services;
 
 import com.icodici.universa.contract.Contract;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializable;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.tools.Binder;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
@@ -8,7 +12,7 @@ import java.time.ZonedDateTime;
 /**
  * Implements {@link ContractStorageSubscription} interface for slot contract.
  */
-public class NContractStorageSubscription implements ContractStorageSubscription {
+public class NContractStorageSubscription implements ContractStorageSubscription,BiSerializable {
 
     private long id = 0;
 
@@ -19,6 +23,10 @@ public class NContractStorageSubscription implements ContractStorageSubscription
     private boolean isReceiveEvents = false;
 
     private Contract trackingContract;
+
+    public NContractStorageSubscription() {
+
+    }
 
     public NContractStorageSubscription(byte[] packedContract, ZonedDateTime expiresAt) {
         this.packedContract = packedContract;
@@ -83,5 +91,20 @@ public class NContractStorageSubscription implements ContractStorageSubscription
 
     public void setEnvironmentId(long environmentId) {
         this.environmentId = environmentId;
+    }
+
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
+        packedContract = data.getBinary("packedContract");
+        trackingContract = Contract.fromPackedTransaction(packedContract);
+        expiresAt = data.getZonedDateTimeOrThrow("expiresAt");
+    }
+
+    @Override
+    public Binder serialize(BiSerializer serializer) {
+        Binder data = new Binder();
+        data.put("packedContract",serializer.serialize(packedContract));
+        data.put("expiresAt", serializer.serialize(expiresAt));
+        return data;
     }
 }

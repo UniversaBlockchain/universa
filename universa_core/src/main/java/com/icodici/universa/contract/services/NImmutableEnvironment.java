@@ -5,10 +5,17 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node.models.NameRecordModel;
+import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NameCache;
+import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiSerializable;
+import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -20,7 +27,7 @@ import java.util.Set;
 /**
  * Implements {@link ImmutableEnvironment} interface for slot contract.
  */
-public class NImmutableEnvironment extends Binder implements ImmutableEnvironment {
+public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializable {
 
     private long id = 0;
     protected NameCache nameCache;
@@ -31,12 +38,18 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
     // set of subscriptions holds by slot contract
     protected Set<ContractStorageSubscription> storageSubscriptionsSet = new HashSet<>();
     protected Set<NameRecord> nameRecordsSet = new HashSet<>();
+    protected Binder kvStore = new Binder();
 
 
     public void setNameCache(NameCache nameCache) {
         this.nameCache = nameCache;
     }
 
+
+
+    public NImmutableEnvironment() {
+
+    }
 
     /**
      * Restore NImmutableEnvironment
@@ -60,7 +73,7 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
 
         if(kvBinder!= null) {
             for (String key : kvBinder.keySet()) {
-                super.set(key, kvBinder.get(key));
+                kvStore.set(key, kvBinder.get(key));
             }
         }
 
@@ -69,12 +82,6 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
     }
 
 
-
-    @Override
-    public <T extends Object> T set(String key, T value) {
-        return null;
-    }
-
     @Override
     public <T extends Contract> @NonNull T getContract() {
         return (T) contract;
@@ -82,8 +89,8 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
 
     @Override
     public <T, U extends T> T get(String keyName, U defaultValue) {
-        if(this.containsKey(keyName))
-            return (T) this.get(keyName);
+        if(kvStore.containsKey(keyName))
+            return (T) kvStore.get(keyName);
 
         return defaultValue;
     }
@@ -189,7 +196,7 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
     }
 
     public NMutableEnvironment getMutable() {
-        return new NMutableEnvironment(contract,this, storageSubscriptionsSet,nameRecordsSet,nameCache,ledger);
+        return new NMutableEnvironment(contract,kvStore, storageSubscriptionsSet,nameRecordsSet,nameCache,ledger);
     }
 
     public long getId() {
@@ -198,5 +205,37 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
 
     public void setId(long id) {
         this.id = id;
+    }
+
+    @Override
+    public Binder serialize(BiSerializer serializer) {
+        Binder data = new Binder();
+        data.set("contract", contract.getPackedTransaction());
+        data.set("createdAt", serializer.serialize(createdAt));
+        data.set("subscriptions", serializer.serialize(Do.list(storageSubscriptionsSet)));
+        data.set("nameRecords", serializer.serialize(Do.list(nameRecordsSet)));
+        data.set("kvStore", serializer.serialize(kvStore));
+
+        return data;
+    }
+
+    @Override
+    public void deserialize(Binder data, BiDeserializer deserializer) throws IOException {
+        createdAt = deserializer.deserialize(data.getZonedDateTimeOrThrow("createdAt"));
+        storageSubscriptionsSet.addAll(deserializer.deserialize(data.getListOrThrow("subscriptions")));
+        nameRecordsSet.addAll(deserializer.deserialize(data.getListOrThrow("nameRecords")));
+        contract = (NSmartContract) Contract.fromPackedTransaction(data.getBinary("contract"));
+        kvStore = deserializer.deserialize(data.getBinderOrThrow("kvStore"));
+    }
+
+    static {
+        Config.forceInit(NImmutableEnvironment.class);
+        Config.forceInit(NNameRecord.class);
+        Config.forceInit(NNameRecordEntry.class);
+        Config.forceInit(NContractStorageSubscription.class);
+        DefaultBiMapper.registerClass(NImmutableEnvironment.class);
+        DefaultBiMapper.registerClass(NNameRecord.class);
+        DefaultBiMapper.registerClass(NNameRecordEntry.class);
+        DefaultBiMapper.registerClass(NContractStorageSubscription.class);
     }
 }

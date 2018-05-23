@@ -43,13 +43,14 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
                                Collection<ContractStorageSubscription> subscriptions,
                                Collection<NameRecord> nameRecords, NameCache nameCache, Ledger ledger) {
         super(contract, kvBinder,subscriptions,nameRecords,ledger);
+        setNameCache(nameCache);
 
     }
 
 
     @Override
     public <T extends Object> T set(String key, T value) {
-        return (T) put(key, value);
+        return (T) kvStore.put(key, value);
     }
 
     @Override
