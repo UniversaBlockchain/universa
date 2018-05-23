@@ -189,7 +189,10 @@ public class NImmutableEnvironment extends Binder implements ImmutableEnvironmen
     }
 
     public NMutableEnvironment getMutable() {
-        return new NMutableEnvironment(contract,this, storageSubscriptionsSet,nameRecordsSet,nameCache,ledger);
+        NMutableEnvironment nMutableEnvironment = new NMutableEnvironment(contract,this, storageSubscriptionsSet,nameRecordsSet,nameCache,ledger);
+        nMutableEnvironment.setId(id);
+        nMutableEnvironment.setNameCache(nameCache);
+        return nMutableEnvironment;
     }
 
     public long getId() {

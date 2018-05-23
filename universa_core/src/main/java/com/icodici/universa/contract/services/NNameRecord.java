@@ -23,7 +23,10 @@ public class NNameRecord implements NameRecord {
     private Set<NNameRecordEntry> entries = new HashSet<>();
 
     public NNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt) {
+        nameReduced = unsName.getUnsNameReduced();
         name = unsName.getUnsName();
+        description = unsName.getUnsDescription();
+        url = unsName.getUnsURL();
         this.expiresAt = expiresAt;
         unsName.getUnsRecords().forEach(unsRecord -> {
             String longAddress = null;

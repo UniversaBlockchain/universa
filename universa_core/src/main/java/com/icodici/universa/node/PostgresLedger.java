@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.db.DbPool;
@@ -19,6 +20,8 @@ import com.icodici.universa.node.models.NameEntryModel;
 import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
+import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 
 import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
@@ -777,19 +780,158 @@ public class PostgresLedger implements Ledger {
 
 
 
+    private List<byte[]> getSmartContractForEnvironmentId(long environmentId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT transaction_pack, kv_storage FROM environments " +
+                    "WHERE id=?", environmentId))) {
+                if (rs == null)
+                    return null;
+                List<byte[]> res = new ArrayList<>();
+                res.add(rs.getBytes(1));
+                res.add(rs.getBytes(2));
+                return res;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+
+
+    private Collection<ContractStorageSubscription> getContractStorageSubscriptions(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  contract_storage.bin_data, " +
+                                            "  contract_storage.expires_at " +
+                                            "FROM environment_subscription " +
+                                            "JOIN contract_subscription ON environment_subscription.subscription_id=contract_subscription.id " +
+                                            "JOIN contract_storage ON contract_subscription.contract_storage_id=contract_storage.id " +
+                                            "WHERE environemtn_id=? "
+                            )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getContractStorageSubscriptions failed: returning null");
+                List<ContractStorageSubscription> res = new ArrayList<>();
+                while (rs.next()) {
+                    ContractStorageSubscription css = new NContractStorageSubscription(rs.getBytes(1), StateRecord.getTime(rs.getLong(2)));
+                    res.add(css);
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getContractStorageSubscriptions failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getContractStorageSubscriptions failed: " + e);
+        }
+    }
+
+
+    private List<String> getReducedNames(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT DISTINCT name_storage.name_reduced AS name_reduced " +
+                                            "FROM name_storage JOIN name_entry ON name_storage.id=name_entry.name_storage_id " +
+                                            "WHERE name_storage.environment_id=?"
+                            )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getNames failed: returning null");
+                List<String> res = new ArrayList<>();
+                while (rs.next()) {
+                    res.add(rs.getString(1));
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getNames failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getNames failed: " + e);
+        }
+    }
+
+
+    private Long getEnvironmentIdForSmartContractHashId(HashId smartContractHashId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT id FROM environments " +
+                    "WHERE ncontract_hash_id=?", smartContractHashId.getDigest()))) {
+                if (rs == null)
+                    return null;
+                return rs.getLong(1);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+
     @Override
     public NImmutableEnvironment getEnvironment(long environmentId) {
-        return null;
+        return protect(() -> {
+            List<byte[]> smkv = getSmartContractForEnvironmentId(environmentId);
+            Contract contract = NSmartContract.fromPackedTransaction(smkv.get(0));
+            NSmartContract nSmartContract = (NSmartContract) contract;
+            Binder kvBinder = Boss.unpack(smkv.get(1));
+            Collection<ContractStorageSubscription> contractStorageSubscriptions = getContractStorageSubscriptions(environmentId);
+            List<String> reducedNames = getReducedNames(environmentId);
+            List<NameRecord> nameRecords = new ArrayList<>();
+            for (String reducedName : reducedNames) {
+                NameRecordModel nrModel = getNameRecord(reducedName);
+                UnsName unsName = new UnsName(nrModel.name_reduced, nrModel.name_full, nrModel.description, nrModel.url);
+                for (NameEntryModel nameEntryModel : nrModel.entries) {
+                    if (nameEntryModel.origin != null)
+                        unsName.addUnsRecord(new UnsRecord(HashId.withDigest(nameEntryModel.origin)));
+                    else
+                        unsName.addUnsRecord(new UnsRecord(Arrays.asList(new KeyAddress(nameEntryModel.short_addr), new KeyAddress(nameEntryModel.long_addr))));
+                }
+                NameRecord nr = new NNameRecord(unsName, nrModel.expires_at);
+                nameRecords.add(nr);
+            }
+            NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder, contractStorageSubscriptions, nameRecords, this);
+            nImmutableEnvironment.setId(environmentId);
+            return nImmutableEnvironment;
+        });
     }
 
     @Override
     public NImmutableEnvironment getEnvironment(HashId contractId) {
+        Long envId = getEnvironmentIdForSmartContractHashId(contractId);
+        if (envId != null)
+            return getEnvironment(envId);
+
+//        NSmartContract nSmartContract = new NSmartContract();
+//        nSmartContract.seal();
+//        return new NImmutableEnvironment(nSmartContract, this);
+
         return null;
     }
 
     @Override
     public NImmutableEnvironment getEnvironment(NSmartContract smartContract) {
-        return null;
+        long envId = saveEnvironmentToStorage(smartContract.getExtendedType(), smartContract.getId(), Boss.pack(new Binder()), smartContract.getPackedTransaction());
+        return getEnvironment(envId);
     }
 
     @Override
@@ -907,6 +1049,39 @@ public class PostgresLedger implements Ledger {
             throw new Failure("updateEnvironment failed: " + e);
         }
     }
+
+    private long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "INSERT INTO environments (ncontract_type,ncontract_hash_id,kv_storage,transaction_pack) VALUES (?,?,?,?) " +
+                                            "ON CONFLICT (ncontract_hash_id) DO UPDATE SET ncontract_type=EXCLUDED.ncontract_type, kv_storage=EXCLUDED.kv_storage, transaction_pack=EXCLUDED.transaction_pack " +
+                                            "RETURNING id"
+                            )
+            ) {
+                statement.setString(1, ncontractType);
+                statement.setBytes(2, ncontractHashId.getDigest());
+                statement.setBytes(3, kvStorage);
+                statement.setBytes(4, transactionPack);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("addEnvironmentToStorage failed: returning null");
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addEnvironmentToStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("addEnvironmentToStorage failed: " + e);
+        }
+    }
+
 
     @Override
     public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {
@@ -1263,8 +1438,8 @@ public class PostgresLedger implements Ledger {
             throw new Failure("addNameStorage failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
+            throw new Failure("addNameStorage failed: " + e);
         }
-        return 0;
     }
 
     private long addNameEntry(final NNameRecordEntry nameRecordEntry) {
@@ -1279,7 +1454,7 @@ public class PostgresLedger implements Ledger {
                 statement.setLong(1, nameRecordEntry.getNameRecordId());
                 statement.setString(2, nameRecordEntry.getShortAddress());
                 statement.setString(3, nameRecordEntry.getLongAddress());
-                statement.setBytes(4, nameRecordEntry.getOrigin().getDigest());
+                statement.setBytes(4, nameRecordEntry.getOrigin()==null ? null : nameRecordEntry.getOrigin().getDigest());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1294,8 +1469,8 @@ public class PostgresLedger implements Ledger {
             throw new Failure("addNameEntry failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
+            throw new Failure("addNameEntry failed: " + e);
         }
-        return 0;
     }
 
     @Override

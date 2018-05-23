@@ -88,6 +88,7 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     @Override
     public @NonNull NameRecord createNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt) {
         NNameRecord nr = new NNameRecord(unsName,expiresAt);
+        nr.setEnvironmentId(this.getId());
         nameRecordsToAdd.add(nr);
         return nr;
     }
