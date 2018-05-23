@@ -10726,6 +10726,7 @@ public class BaseNetworkTest extends TestCase {
         nameContract2.seal();
 
         UnsContract uns2 = new UnsContract(manufacturePrivateKey);
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.addSignerKey(authorizedNameServiceKey);
         uns2.seal();
 
@@ -10841,6 +10842,7 @@ public class BaseNetworkTest extends TestCase {
         nameContract2.seal();
 
         UnsContract uns2 = new UnsContract(manufacturePrivateKey);
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.addSignerKey(authorizedNameServiceKey);
         uns2.seal();
 
@@ -10955,6 +10957,7 @@ public class BaseNetworkTest extends TestCase {
         //stage 2
 
         UnsContract uns2 = new UnsContract(manufacturePrivateKey);
+        uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.addSignerKey(authorizedNameServiceKey);
         uns2.seal();
 

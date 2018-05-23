@@ -297,7 +297,7 @@ public class UnsContract extends NSmartContract {
     @Override
     public boolean beforeCreate(ImmutableEnvironment c) {
 
-        boolean checkResult = false;
+        boolean checkResult = true;
 
         calculatePrepaidNamesForDays(false);
 
