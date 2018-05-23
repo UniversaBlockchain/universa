@@ -1823,9 +1823,11 @@ public class Node {
                                 ime.setNameCache(nameCache);
                                 // Here can be only APPROVED state, so we call only beforeCreate or beforeUpdate
                                 if (((NSmartContract) item).getRevision() == 1) {
-                                    ((NSmartContract) item).beforeCreate(ime);
+                                    if (!((NSmartContract) item).beforeCreate(ime))
+                                        item.addError(Errors.FAILED_CHECK, item.getId().toString(), "beforeCreate fails");
                                 } else {
-                                    ((NSmartContract) item).beforeUpdate(ime);
+                                    if (!((NSmartContract) item).beforeUpdate(ime))
+                                        item.addError(Errors.FAILED_CHECK, item.getId().toString(), "beforeUpdate fails");
                                 }
                             }
                         }
@@ -1977,9 +1979,11 @@ public class Node {
                             ime.setNameCache(nameCache);
                             // Here only APPROVED states, so we call only beforeCreate or beforeUpdate
                             if (((Contract) newItem).getRevision() == 1) {
-                                ((NSmartContract) newItem).beforeCreate(ime);
+                                if (!((NSmartContract) newItem).beforeCreate(ime))
+                                    newItem.addError(Errors.BAD_NEW_ITEM, item.getId().toString(), "newItem.beforeCreate fails");
                             } else {
-                                ((NSmartContract) newItem).beforeUpdate(ime);
+                                if (!((NSmartContract) newItem).beforeUpdate(ime))
+                                    newItem.addError(Errors.BAD_NEW_ITEM, item.getId().toString(), "newItem.beforeUpdate fails");
                             }
                         }
 

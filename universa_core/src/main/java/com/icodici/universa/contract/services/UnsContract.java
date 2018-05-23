@@ -442,6 +442,10 @@ public class UnsContract extends NSmartContract {
         List<String> addressesToCheck = getAddressesToCheck();
 
         checkResult = ime.tryAllocate(reducedNamesToCkeck,originsToCheck,addressesToCheck);
+        if (!checkResult) {
+            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"tryAllocate fails");
+            return checkResult;
+        }
 
         return checkResult;
     }
