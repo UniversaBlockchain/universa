@@ -8020,7 +8020,7 @@ public class BaseNetworkTest extends TestCase {
         }
 
         // check if we store environment
-        assertNotNull(node.getLedger().getEnvironment(slotContract));
+        assertNotNull(node.getLedger().getEnvironment(slotContract.getId()));
 
 
         // refill slot contract with U (means add storing days).
@@ -8084,9 +8084,9 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
 
-        assertNotNull(node.getLedger().getEnvironment(slotContract));
+        assertNull(node.getLedger().getEnvironment(slotContract.getId()));
 
-        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract));
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract.getId()));
 
 
         // refill slot contract with U again (means add storing days). the oldest revision should removed
@@ -8149,11 +8149,11 @@ public class BaseNetworkTest extends TestCase {
         // check if we updated environment and subscriptions (remove old, create new)
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
-        assertNotNull(node.getLedger().getEnvironment(slotContract));
+        assertNull(node.getLedger().getEnvironment(slotContract.getId()));
 
-        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract));
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract.getId()));
 
-        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract2));
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract2.getId()));
 
 
         // revoke slot contract, means remove stored contract from storage
@@ -8176,7 +8176,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(envs.size(),0);
         // check if we remove environment
 
-        assertNull(node.getLedger().getEnvironment(refilledSlotContract2));
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract2.getId()));
     }
 
 /*
