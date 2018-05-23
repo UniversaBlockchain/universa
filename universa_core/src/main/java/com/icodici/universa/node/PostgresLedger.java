@@ -920,18 +920,17 @@ public class PostgresLedger implements Ledger {
         Long envId = getEnvironmentIdForSmartContractHashId(contractId);
         if (envId != null)
             return getEnvironment(envId);
-
-//        NSmartContract nSmartContract = new NSmartContract();
-//        nSmartContract.seal();
-//        return new NImmutableEnvironment(nSmartContract, this);
-
         return null;
     }
 
     @Override
     public NImmutableEnvironment getEnvironment(NSmartContract smartContract) {
-        long envId = saveEnvironmentToStorage(smartContract.getExtendedType(), smartContract.getId(), Boss.pack(new Binder()), smartContract.getPackedTransaction());
-        return getEnvironment(envId);
+        NImmutableEnvironment nim = getEnvironment(smartContract.getId());
+        if (nim == null) {
+            long envId = saveEnvironmentToStorage(smartContract.getExtendedType(), smartContract.getId(), Boss.pack(new Binder()), smartContract.getPackedTransaction());
+            nim = getEnvironment(envId);
+        }
+        return nim;
     }
 
     @Override
