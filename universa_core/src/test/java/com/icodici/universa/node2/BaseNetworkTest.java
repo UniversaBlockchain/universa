@@ -7927,7 +7927,7 @@ public class BaseNetworkTest extends TestCase {
             return set;
         }
     };
-    /*
+
     @Test
     public void registerSlotContract() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
@@ -7948,8 +7948,7 @@ public class BaseNetworkTest extends TestCase {
 
         // slot contract that storing
 
-        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys,nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
 
         // payment contract
@@ -8007,22 +8006,21 @@ public class BaseNetworkTest extends TestCase {
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
-        Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
-        if(foundCssSet != null) {
-            for (ContractStorageSubscription foundCss : foundCssSet) {
-                System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                    System.out.println(foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
             }
         } else {
             fail("ContractStorageSubscription was not found");
         }
 
         // check if we store environment
-
-        byte[] ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
-        assertNotNull(ebytes);
-        Binder binder = Boss.unpack(ebytes);
-        assertNotNull(binder);
+        assertNotNull(node.getLedger().getEnvironment(slotContract));
 
 
         // refill slot contract with U (means add storing days).
@@ -8069,11 +8067,14 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
-        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
-        if(foundCssSet != null) {
-            for (ContractStorageSubscription foundCss : foundCssSet) {
-                System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                    System.out.println(foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8082,13 +8083,10 @@ public class BaseNetworkTest extends TestCase {
         // check if we updated environment and subscriptions (remove old, create new)
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
-        ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
-        assertNull(ebytes);
 
-        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract.getId());
-        assertNotNull(ebytes);
-        binder = Boss.unpack(ebytes);
-        assertNotNull(binder);
+        assertNull(node.getLedger().getEnvironment(slotContract));
+
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract));
 
 
         // refill slot contract with U again (means add storing days). the oldest revision should removed
@@ -8135,11 +8133,14 @@ public class BaseNetworkTest extends TestCase {
         seconds = (long) (days * 24 * 3600);
         calculateExpires = timeReg2.plusSeconds(seconds);
 
-        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
-        if(foundCssSet != null) {
-            for (ContractStorageSubscription foundCss : foundCssSet) {
-                System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                    System.out.println(foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8148,16 +8149,11 @@ public class BaseNetworkTest extends TestCase {
         // check if we updated environment and subscriptions (remove old, create new)
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
-        ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
-        assertNull(ebytes);
+        assertNull(node.getLedger().getEnvironment(slotContract));
 
-        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract.getId());
-        assertNull(ebytes);
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract));
 
-        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract2.getId());
-        assertNotNull(ebytes);
-        binder = Boss.unpack(ebytes);
-        assertNotNull(binder);
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract2));
 
 
         // revoke slot contract, means remove stored contract from storage
@@ -8176,16 +8172,14 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we remove subscriptions
 
-        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
-        assertNull(foundCssSet);
-
+        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        assertEquals(envs.size(),0);
         // check if we remove environment
 
-        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract2.getId());
-        assertNull(ebytes);
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract2));
     }
 
-
+/*
     @Test
     public void registerSlotContractWithStoringRevisions() throws Exception {
 

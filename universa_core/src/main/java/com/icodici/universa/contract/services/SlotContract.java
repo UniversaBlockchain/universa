@@ -501,7 +501,7 @@ public class SlotContract extends NSmartContract {
     @Override
     public boolean beforeCreate(ImmutableEnvironment c) {
 
-        boolean checkResult = false;
+        boolean checkResult = true;
 
         // recalculate storing info without saving to state to get valid storing data
         calculatePrepaidKilobytesForDays(false);

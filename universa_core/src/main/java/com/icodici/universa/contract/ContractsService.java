@@ -11,21 +11,12 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.roles.ListRole;
-import com.icodici.universa.contract.roles.Role;
-import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
-import com.icodici.universa.node2.Config;
-import com.icodici.universa.node2.Quantiser;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
 import com.icodici.universa.contract.permissions.*;
-import java.time.Instant;
-import java.io.IOException;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+
 import java.util.*;
 
 /**
@@ -773,10 +764,12 @@ public class ContractsService {
      * <br><br>
      * @param issuerKeys is issuer private keys.
      * @param ownerKeys is owner public keys.
+     * @param nodeInfoProvider
      * @return ready {@link SlotContract}
      */
-    public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys){
+    public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider){
         SlotContract slotContract = new SlotContract();
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.setApiLevel(3);
 
         Contract.Definition cd = slotContract.getDefinition();
