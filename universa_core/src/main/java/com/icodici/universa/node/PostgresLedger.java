@@ -926,6 +926,10 @@ public class PostgresLedger implements Ledger {
     @Override
     public NImmutableEnvironment getEnvironment(NSmartContract smartContract) {
         NImmutableEnvironment nim = getEnvironment(smartContract.getId());
+
+        if(nim == null && smartContract.getParent() != null)
+            nim = getEnvironment(smartContract.getParent());
+
         if (nim == null) {
             long envId = saveEnvironmentToStorage(smartContract.getExtendedType(), smartContract.getId(), Boss.pack(new Binder()), smartContract.getPackedTransaction());
             nim = getEnvironment(envId);
