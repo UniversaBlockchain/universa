@@ -1924,7 +1924,7 @@ public class Node {
                             ((NSmartContract) revokingItem).setNodeInfoProvider(nodeInfoProvider);
 
                             // restore environment if exist
-                            NImmutableEnvironment ime = ledger.getEnvironment(revokingItem.getId());
+                            NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)revokingItem);
 
                             if(ime != null) {
                                 ime.setNameCache(nameCache);
@@ -2284,7 +2284,7 @@ public class Node {
 
                                     if(!searchNewItemWithParent(item,revokingItem.getId())) {
                                         ((NSmartContract) revokingItem).setNodeInfoProvider(nodeInfoProvider);
-                                        NImmutableEnvironment ime = ledger.getEnvironment(revokingItem.getId());
+                                        NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)revokingItem);
                                         if (ime != null) {
                                             // and run onRevoked
                                             ((NSmartContract) revokingItem).onRevoked(ime);
