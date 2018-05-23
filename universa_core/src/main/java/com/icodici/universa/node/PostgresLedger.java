@@ -1149,9 +1149,10 @@ public class PostgresLedger implements Ledger {
                         }
                     });
 
-                    statement.closeOnCompletion();
                     ResultSet rs = statement.executeQuery();
                     if (rs == null)
+                        throw new Failure("getSubscriptionEnviromentIdsForContractId failed: returning null");
+                    if(!rs.next())
                         throw new Failure("getSubscriptionEnviromentIdsForContractId failed: returning null");
                     do {
                         environmentIds.add(rs.getLong(1));
@@ -1159,10 +1160,10 @@ public class PostgresLedger implements Ledger {
                 }
             } catch (SQLException se) {
                 se.printStackTrace();
-                throw new Failure("isNameRecordBusy failed: " + se);
+                throw new Failure("getSubscriptionEnviromentIdsForContractId failed: " + se);
             } catch (Exception e) {
                 e.printStackTrace();
-                throw new Failure("isNameRecordBusy failed: " + e);
+                throw new Failure("getSubscriptionEnviromentIdsForContractId failed: " + e);
             }
 
             return environmentIds;
