@@ -2278,7 +2278,7 @@ public class Node {
                                 // if revoking item is smart contract node calls method onRevoked
                                 if(revokingItem instanceof NSmartContract) {
 
-                                    if(searchNewItemWithParent(item,revokingItem.getId())) {
+                                    if(!searchNewItemWithParent(item,revokingItem.getId())) {
                                         ((NSmartContract) revokingItem).setNodeInfoProvider(nodeInfoProvider);
                                         NImmutableEnvironment ime = ledger.getEnvironment(revokingItem.getId());
                                         if (ime != null) {
