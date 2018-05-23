@@ -241,4 +241,8 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
         DefaultBiMapper.registerClass(NNameRecordEntry.class);
         DefaultBiMapper.registerClass(NContractStorageSubscription.class);
     }
+
+    public void setContract(NSmartContract smartContract) {
+        contract = smartContract;
+    }
 }

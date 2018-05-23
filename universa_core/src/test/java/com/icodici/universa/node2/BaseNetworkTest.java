@@ -8084,7 +8084,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
 
-        assertNull(node.getLedger().getEnvironment(slotContract));
+        assertNotNull(node.getLedger().getEnvironment(slotContract));
 
         assertNotNull(node.getLedger().getEnvironment(refilledSlotContract));
 
@@ -8149,9 +8149,9 @@ public class BaseNetworkTest extends TestCase {
         // check if we updated environment and subscriptions (remove old, create new)
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
-        assertNull(node.getLedger().getEnvironment(slotContract));
+        assertNotNull(node.getLedger().getEnvironment(slotContract));
 
-        assertNull(node.getLedger().getEnvironment(refilledSlotContract));
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract));
 
         assertNotNull(node.getLedger().getEnvironment(refilledSlotContract2));
 

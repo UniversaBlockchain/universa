@@ -110,6 +110,8 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     }
 
     public void save() {
+        System.out.println("WWWW " + contract.getRevision());
+
         ledger.updateEnvironment(getId(),contract.getExtendedType(),contract.getId(), Boss.pack(kvStore),contract.getPackedTransaction());
 
         subscriptionsToDestroy.forEach(sub -> ledger.removeEnvironmentSubscription(sub.getId()));

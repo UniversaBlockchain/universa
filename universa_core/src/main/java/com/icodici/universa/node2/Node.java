@@ -2441,6 +2441,8 @@ public class Node {
 
 
                             NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)item);
+                            if(myInfo.getNumber() == 1)
+                                System.out.println("QQQQ " + ((NSmartContract) item).getRevision() + " " + ime.getId());
                             ime.setNameCache(nameCache);
                             NMutableEnvironment me = ime.getMutable();
 

@@ -808,7 +808,8 @@ public class PostgresLedger implements Ledger {
                                     "" +
                                             "SELECT " +
                                             "  contract_storage.bin_data, " +
-                                            "  contract_storage.expires_at " +
+                                            "  contract_subscription.expires_at, " +
+                                            "  contract_subscription.id " +
                                             "FROM environment_subscription " +
                                             "JOIN contract_subscription ON environment_subscription.subscription_id=contract_subscription.id " +
                                             "JOIN contract_storage ON contract_subscription.contract_storage_id=contract_storage.id " +
@@ -822,7 +823,8 @@ public class PostgresLedger implements Ledger {
                     throw new Failure("getContractStorageSubscriptions failed: returning null");
                 List<ContractStorageSubscription> res = new ArrayList<>();
                 while (rs.next()) {
-                    ContractStorageSubscription css = new NContractStorageSubscription(rs.getBytes(1), StateRecord.getTime(rs.getLong(2)));
+                    NContractStorageSubscription css = new NContractStorageSubscription(rs.getBytes(1), StateRecord.getTime(rs.getLong(2)));
+                    css.setId(rs.getLong(3));
                     res.add(css);
                 }
                 rs.close();
@@ -933,13 +935,33 @@ public class PostgresLedger implements Ledger {
         if (nim == null) {
             long envId = saveEnvironmentToStorage(smartContract.getExtendedType(), smartContract.getId(), Boss.pack(new Binder()), smartContract.getPackedTransaction());
             nim = getEnvironment(envId);
+        } else {
+            nim.setContract(smartContract);
         }
         return nim;
     }
 
     @Override
     public void updateSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt) {
-
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "UPDATE contract_subscription  SET expires_at = ? WHERE id = ?"
+                            )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setLong(2, subscriptionId);
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("updateEnvironment failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("updateEnvironment failed: " + e);
+        }
     }
 
     @Override
