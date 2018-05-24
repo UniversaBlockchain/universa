@@ -1333,7 +1333,8 @@ public class PostgresLedger implements Ledger {
     public long removeEnvironment(HashId ncontractHashId) {
         long envId = getEnvironmentId(ncontractHashId);
         List<Long> subscriptions = removeEnvironmentSubscriptionsByEnvId(envId);
-        removeStorageSubscriptionsByIds(subscriptions);
+        if (subscriptions.size() > 0)
+            removeStorageSubscriptionsByIds(subscriptions);
         clearExpiredStorageContracts();
         return removeEnvironmentEx(ncontractHashId);
     }
