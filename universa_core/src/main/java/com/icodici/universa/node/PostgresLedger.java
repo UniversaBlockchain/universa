@@ -1174,11 +1174,11 @@ public class PostgresLedger implements Ledger {
                     ResultSet rs = statement.executeQuery();
                     if (rs == null)
                         throw new Failure("getSubscriptionEnviromentIdsForContractId failed: returning null");
-                    if(!rs.next())
-                        throw new Failure("getSubscriptionEnviromentIdsForContractId failed: returning null");
-                    do {
+//                    if(!rs.next())
+//                        throw new Failure("getSubscriptionEnviromentIdsForContractId failed: returning null");
+                    while (rs.next()) {
                         environmentIds.add(rs.getLong(1));
-                    } while (rs.next());
+                    } //while (rs.next());
                 }
             } catch (SQLException se) {
                 se.printStackTrace();
@@ -1231,10 +1231,12 @@ public class PostgresLedger implements Ledger {
             try (
                 PreparedStatement statement =
                     db.statement(
-                "DELETE FROM environment_subscription WHERE subscription_id=?"
+                "DELETE FROM environment_subscription WHERE subscription_id=?;" +
+                       "DELETE FROM contract_subscription WHERE id=?;"
                     )
             ) {
                 statement.setLong(1, subscriptionId);
+                statement.setLong(2, subscriptionId);
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {

@@ -1,10 +1,13 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.crypto.digest.Sha256;
 import com.icodici.universa.HashId;
 import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node2.NameCache;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Base64;
+import net.sergeych.utils.Bytes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -128,6 +131,8 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
                     ledger.saveEnvironmentSubscription(subId, getId());
                 }
         );
+
+        ledger.clearExpiredStorageContracts();
 
         nameRecordsToDestroy.forEach(nameRecord -> ledger.removeNameRecord(nameRecord.getNameReduced()));
 

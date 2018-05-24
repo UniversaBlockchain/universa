@@ -8284,7 +8284,7 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we store environment
 
-        assertNotNull(node.getLedger().getEnvironment(slotContract));
+        assertNotNull(node.getLedger().getEnvironment(slotContract.getId()));
 
         // create revision of stored contract
 
@@ -8414,9 +8414,9 @@ public class BaseNetworkTest extends TestCase {
         // check if we updated environment and subscriptions (remove old, create new)
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
-        assertNull(node.getLedger().getEnvironment(slotContract));
+        assertNull(node.getLedger().getEnvironment(slotContract.getId()));
 
-        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract));
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract.getId()));
 
         // create additional revision of stored contract
 
@@ -8550,11 +8550,11 @@ public class BaseNetworkTest extends TestCase {
         // check if we updated environment and subscriptions (remove old, create new)
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
-        assertNull(node.getLedger().getEnvironment(slotContract));
+        assertNull(node.getLedger().getEnvironment(slotContract.getId()));
 
-        assertNull(node.getLedger().getEnvironment(refilledSlotContract));
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract.getId()));
 
-        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract2));
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract2.getId()));
 
         // check reducing number of keep revisions
 
@@ -8658,13 +8658,13 @@ public class BaseNetworkTest extends TestCase {
         // check if we updated environment and subscriptions (remove old, create new)
 
         assertEquals(ItemState.REVOKED, node.waitItem(slotContract.getId(), 8000).state);
-        assertNull(node.getLedger().getEnvironment(slotContract));
+        assertNull(node.getLedger().getEnvironment(slotContract.getId()));
 
-        assertNull(node.getLedger().getEnvironment(refilledSlotContract));
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract.getId()));
 
-        assertNull(node.getLedger().getEnvironment(refilledSlotContract2));
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract2.getId()));
 
-        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract3));
+        assertNotNull(node.getLedger().getEnvironment(refilledSlotContract3.getId()));
 
         // revoke slot contract, means remove stored contract from storage
 
@@ -8695,7 +8695,7 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we remove environment
 
-        assertNull(node.getLedger().getEnvironment(refilledSlotContract3));
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract3.getId()));
     }
 
 /*
