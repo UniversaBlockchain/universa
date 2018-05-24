@@ -1301,8 +1301,7 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    @Override
-    public long removeEnvironment(HashId ncontractHashId) {
+    private long removeEnvironmentEx(HashId ncontractHashId) {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =
@@ -1328,6 +1327,15 @@ public class PostgresLedger implements Ledger {
             e.printStackTrace();
             return 0;
         }
+    }
+
+    @Override
+    public long removeEnvironment(HashId ncontractHashId) {
+        long envId = getEnvironmentId(ncontractHashId);
+        List<Long> subscriptions = removeEnvironmentSubscriptionsByEnvId(envId);
+        removeStorageSubscriptionsByIds(subscriptions);
+        clearExpiredStorageContracts();
+        return removeEnvironmentEx(ncontractHashId);
     }
 
     public long getEnvironmentId(HashId ncontractHashId) {
