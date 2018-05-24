@@ -2519,6 +2519,7 @@ public class Node {
                     Set<Long> enviromentIdsForContractId = ledger.getSubscriptionEnviromentIdsForContractId(lookingId);
                     for (Long environmentId : enviromentIdsForContractId) {
                         NImmutableEnvironment ime = ledger.getEnvironment(environmentId);
+                        ime.setNameCache(nameCache);
                         NSmartContract contract = ime.getContract();
                         NMutableEnvironment me = ime.getMutable();
                         NContractStorageSubscription subscription = null;
