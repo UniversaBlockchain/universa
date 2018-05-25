@@ -9093,7 +9093,7 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract2.getId(), restoredContract.getId());
     }
-/*
+
     @Test
     public void registerSlotContractCheckAddNewStoringRevision() throws Exception {
 
@@ -9119,8 +9119,7 @@ public class BaseNetworkTest extends TestCase {
 
         // slot contract that storing
 
-        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys, nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
 
@@ -9189,7 +9188,7 @@ public class BaseNetworkTest extends TestCase {
         payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
         // imitating check process on the node
-        newSlotContract.beforeUpdate(new NMutableEnvironment(newSlotContract));
+        newSlotContract.beforeUpdate(new NMutableEnvironment(newSlotContract, new NameCache(Duration.ofMinutes(1)), node.getLedger()));
         newSlotContract.check();
         newSlotContract.traceErrors();
 
@@ -9207,7 +9206,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(newSlotContract.getNew().get(0).getId(), 8000).state);
     }
-
+/*
     @Test
     public void registerSlotContractInNewItem() throws Exception {
 
