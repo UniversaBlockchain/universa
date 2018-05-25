@@ -8698,7 +8698,7 @@ public class BaseNetworkTest extends TestCase {
         assertNull(node.getLedger().getEnvironment(refilledSlotContract3.getId()));
     }
 
-/*
+
     @Test
     public void registerSlotContractWithUpdateStoringRevisions() throws Exception {
 
@@ -8724,8 +8724,7 @@ public class BaseNetworkTest extends TestCase {
 
         // slot contract that storing
 
-        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys, nodeInfoProvider);
         slotContract.setKeepRevisions(1);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
@@ -8779,21 +8778,24 @@ public class BaseNetworkTest extends TestCase {
         double spentKDs = 0;
         ZonedDateTime calculateExpires;
 
-        Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
-        if (foundCssSet != null) {
-            for (ContractStorageSubscription foundCss : foundCssSet) {
-                double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
-                double hours = days * 24;
-                long seconds = (long) (days * 24 * 3600);
-                calculateExpires = timeReg1.plusSeconds(seconds);
+        Set<Long> envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        if(envs.size() > 0) {
+            for(Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                    double days = (double) 100 * config.getRate(NSmartContract.SmartContractType.SLOT1.name()) * 1024 / simpleContract.getPackedTransaction().length;
+                    double hours = days * 24;
+                    long seconds = (long) (days * 24 * 3600);
+                    calculateExpires = timeReg1.plusSeconds(seconds);
 
-                System.out.println("days " + days);
-                System.out.println("hours " + hours);
-                System.out.println("seconds " + seconds);
-                System.out.println("reg time " + timeReg1);
-                System.out.println("expected " + calculateExpires);
-                System.out.println("found " + foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                    System.out.println("days " + days);
+                    System.out.println("hours " + hours);
+                    System.out.println("seconds " + seconds);
+                    System.out.println("reg time " + timeReg1);
+                    System.out.println("expected " + calculateExpires);
+                    System.out.println("found " + foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
             }
         } else {
             fail("ContractStorageSubscription was not found");
@@ -8801,10 +8803,7 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we store environment
 
-        byte[] ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
-        assertNotNull(ebytes);
-        Binder binder = Boss.unpack(ebytes);
-        assertNotNull(binder);
+        assertNotNull(node.getLedger().getEnvironment(slotContract.getId()));
 
         // create revision of stored contract
 
@@ -8823,8 +8822,8 @@ public class BaseNetworkTest extends TestCase {
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract.getId());
         assertNull(restoredPackedData);
 
-        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
-        assertNull(foundCssSet);
+        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId());
+        assertEquals(0, envs.size());
 
         // check revision of stored contract
         restoredPackedData = node.getLedger().getContractInStorage(simpleContract2.getId());
@@ -8857,17 +8856,20 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("reg time " + timeReg2);
         System.out.println("totalLength " + totalLength2);
 
-        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract2.getId());
-        if(foundCssSet != null) {
-            for (ContractStorageSubscription foundCss : foundCssSet) {
-                System.out.println(foundCss.expiresAt());
-                assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+        envs = node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId());
+        if(envs.size() > 0) {
+            for (Long envId : envs) {
+                NImmutableEnvironment environment = node.getLedger().getEnvironment(envId);
+                for (ContractStorageSubscription foundCss : environment.storageSubscriptions()) {
+                    System.out.println(foundCss.expiresAt());
+                    assertAlmostSame(calculateExpires, foundCss.expiresAt(), 5);
+                }
             }
         } else {
             fail("ContractStorageSubscription was not found");
         }
     }
-
+/*
     @Test
     public void registerSlotContractCheckSetKeepRevisions() throws Exception {
 
