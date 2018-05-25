@@ -9470,7 +9470,7 @@ public class BaseNetworkTest extends TestCase {
         // check declined payload contract
         assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
     }
-/*
+
     @Test
     public void registerSlotContractInNewItemBadUpdate() throws Exception {
 
@@ -9498,8 +9498,7 @@ public class BaseNetworkTest extends TestCase {
 
         // slot contract that storing
 
-        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys, nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
         slotContract.check();
@@ -9642,8 +9641,7 @@ public class BaseNetworkTest extends TestCase {
 
         // slot contract that storing
 
-        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys, nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
         slotContract.check();
@@ -9779,7 +9777,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckDeclined(revokingSlotContract);
     }
-*/
+
 
     @Test(timeout = 90000)
     public void registerUnsContract() throws Exception {
