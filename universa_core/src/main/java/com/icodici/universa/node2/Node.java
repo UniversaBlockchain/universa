@@ -2521,6 +2521,7 @@ public class Node {
                         NImmutableEnvironment ime = ledger.getEnvironment(environmentId);
                         ime.setNameCache(nameCache);
                         NSmartContract contract = ime.getContract();
+                        contract.setNodeInfoProvider(nodeInfoProvider);
                         NMutableEnvironment me = ime.getMutable();
                         NContractStorageSubscription subscription = null;
                         for(ContractStorageSubscription sub : ime.storageSubscriptions() ) {
@@ -2568,7 +2569,7 @@ public class Node {
                                         return finalSubscription;
                                     }
                                 });
-                                me.destroySubscription(subscription);
+                                //me.destroySubscription(subscription);
                                 me.save();
                             }
                         }
