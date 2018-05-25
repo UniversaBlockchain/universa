@@ -9206,7 +9206,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(newSlotContract.getNew().get(0).getId(), 8000).state);
     }
-/*
+
     @Test
     public void registerSlotContractInNewItem() throws Exception {
 
@@ -9234,8 +9234,7 @@ public class BaseNetworkTest extends TestCase {
 
         // slot contract that storing
 
-        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys, nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
         slotContract.check();
@@ -9390,27 +9389,19 @@ public class BaseNetworkTest extends TestCase {
 
         // check if we remove subscriptions
 
-        Set<ContractStorageSubscription> foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract.getId());
-        assertNull(foundCssSet);
-        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(simpleContract2.getId());
-        assertNull(foundCssSet);
-        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(slotContract.getId());
-        assertNull(foundCssSet);
-        foundCssSet = node.getLedger().getStorageSubscriptionsForContractId(refilledSlotContract.getId());
-        assertNull(foundCssSet);
+        assertEquals(0, node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract.getId()).size());
+        assertEquals(0, node.getLedger().getSubscriptionEnviromentIdsForContractId(simpleContract2.getId()).size());
+        assertEquals(0, node.getLedger().getSubscriptionEnviromentIdsForContractId(slotContract.getId()).size());
+        assertEquals(0, node.getLedger().getSubscriptionEnviromentIdsForContractId(refilledSlotContract.getId()).size());
 
         // check if we remove environment
 
-        byte[] ebytes = node.getLedger().getEnvironmentFromStorage(simpleContract.getId());
-        assertNull(ebytes);
-        ebytes = node.getLedger().getEnvironmentFromStorage(simpleContract2.getId());
-        assertNull(ebytes);
-        ebytes = node.getLedger().getEnvironmentFromStorage(slotContract.getId());
-        assertNull(ebytes);
-        ebytes = node.getLedger().getEnvironmentFromStorage(refilledSlotContract.getId());
-        assertNull(ebytes);
+        assertNull(node.getLedger().getEnvironment(simpleContract.getId()));
+        assertNull(node.getLedger().getEnvironment(simpleContract2.getId()));
+        assertNull(node.getLedger().getEnvironment(slotContract.getId()));
+        assertNull(node.getLedger().getEnvironment(refilledSlotContract.getId()));
     }
-
+/*
     @Test
     public void registerSlotContractInNewItemBadCreate() throws Exception {
 

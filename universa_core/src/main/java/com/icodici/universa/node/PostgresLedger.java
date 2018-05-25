@@ -783,13 +783,14 @@ public class PostgresLedger implements Ledger {
     private List<byte[]> getSmartContractForEnvironmentId(long environmentId) {
         return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT transaction_pack, kv_storage FROM environments " +
+                    "SELECT transaction_pack, kv_storage, ncontract_hash_id FROM environments " +
                     "WHERE id=?", environmentId))) {
                 if (rs == null)
                     return null;
                 List<byte[]> res = new ArrayList<>();
                 res.add(rs.getBytes(1));
                 res.add(rs.getBytes(2));
+                res.add(rs.getBytes(3));
                 return res;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -893,7 +894,10 @@ public class PostgresLedger implements Ledger {
     public NImmutableEnvironment getEnvironment(long environmentId) {
         return protect(() -> {
             List<byte[]> smkv = getSmartContractForEnvironmentId(environmentId);
+            HashId nContractHashId = HashId.withDigest(smkv.get(2));
             Contract contract = NSmartContract.fromPackedTransaction(smkv.get(0));
+            Contract findNContract = contract.getTransactionPack().getSubItem(nContractHashId);
+            contract = findNContract == null ? contract : findNContract;
             NSmartContract nSmartContract = (NSmartContract) contract;
             Binder kvBinder = Boss.unpack(smkv.get(1));
             Collection<ContractStorageSubscription> contractStorageSubscriptions = getContractStorageSubscriptions(environmentId);
