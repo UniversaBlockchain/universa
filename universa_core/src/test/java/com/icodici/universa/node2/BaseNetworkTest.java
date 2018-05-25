@@ -8967,7 +8967,7 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(((SlotContract)tp_after.getContract()).getKeepRevisions(), 5);
     }
-/*
+
     @Test
     public void registerSlotContractRevision() throws Exception {
 
@@ -8993,8 +8993,7 @@ public class BaseNetworkTest extends TestCase {
 
         // slot contract that storing
 
-        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
-        slotContract.setNodeInfoProvider(nodeInfoProvider);
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys, nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
         slotContract.seal();
 
@@ -9094,7 +9093,7 @@ public class BaseNetworkTest extends TestCase {
         assertNotNull(restoredContract);
         assertEquals(simpleContract2.getId(), restoredContract.getId());
     }
-
+/*
     @Test
     public void registerSlotContractCheckAddNewStoringRevision() throws Exception {
 
