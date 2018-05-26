@@ -121,6 +121,7 @@ public class UnsContract extends NSmartContract {
         fieldsMap.put("/expires_at", null);
         fieldsMap.put("/references", null);
         fieldsMap.put(NAMES_FIELD_NAME, null);
+        fieldsMap.put(PAID_U_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FROM_TIME_FIELD_NAME, null);
         fieldsMap.put(STORED_ENTRIES_FIELD_NAME, null);
@@ -198,6 +199,8 @@ public class UnsContract extends NSmartContract {
         spentNDsTime = now;
 
         if(withSaveToState) {
+            getStateData().set(PAID_U_FIELD_NAME, paidU);
+
             getStateData().set(PREPAID_ND_FIELD_NAME, prepaidNamesForDays);
             if(getRevision() == 1)
                 getStateData().set(PREPAID_ND_FROM_TIME_FIELD_NAME, now.toEpochSecond());
@@ -297,6 +300,7 @@ public class UnsContract extends NSmartContract {
 
         storedNames = deserializer.deserialize(getStateData().getList(NAMES_FIELD_NAME, null));
 
+        paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
         prepaidNamesForDays = getStateData().getInt(PREPAID_ND_FIELD_NAME, 0);
 
         long prepaidFromSeconds = getStateData().getLong(PREPAID_ND_FROM_TIME_FIELD_NAME, 0);

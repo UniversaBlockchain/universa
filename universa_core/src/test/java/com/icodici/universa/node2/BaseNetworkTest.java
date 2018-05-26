@@ -11427,6 +11427,358 @@ public class BaseNetworkTest extends TestCase {
     }
 
     @Test(timeout = 90000)
+    public void checkPaymentStatisticsWithApprovedPayingParcelSlot() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+        Contract simpleContract = new Contract(key);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // slot contract that storing
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
+        slotContract.setNodeConfig(node.getConfig());
+        slotContract.putTrackingContract(simpleContract);
+
+        // payment contract
+        // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
+        Contract paymentContract = getApprovedTUContract();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), paymentContract, 1, 170, stepaPrivateKeys, false);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
+
+        node.nodeStats.collect(ledger, config);
+
+        int lastMonth = node.nodeStats.lastMonthPaidAmount;
+        int thisMonth = node.nodeStats.thisMonthPaidAmount;
+        int yesterday = node.nodeStats.yesterdayPaidAmount;
+        int today = node.nodeStats.todayPaidAmount;
+
+        System.out.println("Statistic before");
+        System.out.println("last month :  " + lastMonth);
+        System.out.println("this month :  " + thisMonth);
+        System.out.println("yesterday  :  " + yesterday);
+        System.out.println("today      :  " + today);
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = slotContract.getNew().get(0);
+        }
+        node.waitParcel(parcel.getId(), 8000);
+
+        assertEquals(ItemState.REVOKED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getNew().get(0).getId(), 8000).state);
+
+        node.nodeStats.collect(ledger,config);
+
+        System.out.println("Statistic after");
+        System.out.println("last month :  " + node.nodeStats.lastMonthPaidAmount );
+        System.out.println("this month :  " + node.nodeStats.thisMonthPaidAmount);
+        System.out.println("yesterday  :  " + node.nodeStats.yesterdayPaidAmount);
+        System.out.println("today      :  " + node.nodeStats.todayPaidAmount);
+
+        assertEquals(node.nodeStats.lastMonthPaidAmount - lastMonth, 0);
+        assertEquals(node.nodeStats.thisMonthPaidAmount - thisMonth, 171);
+        assertEquals(node.nodeStats.yesterdayPaidAmount - yesterday, 0);
+        assertEquals(node.nodeStats.todayPaidAmount - today, 171);
+    }
+
+    @Test(timeout = 90000)
+    public void checkPaymentStatisticsWithDeclinedPayingParcelSlot() throws Exception {
+
+        final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+        Set<PrivateKey> slotIssuerPrivateKeys = new HashSet<>();
+        slotIssuerPrivateKeys.add(key);
+        Set<PublicKey> slotIssuerPublicKeys = new HashSet<>();
+        slotIssuerPublicKeys.add(key.getPublicKey());
+
+        // contract for storing
+        Contract simpleContract = new Contract(key);
+        simpleContract.seal();
+        simpleContract.check();
+        simpleContract.traceErrors();
+        assertTrue(simpleContract.isOk());
+
+        registerAndCheckApproved(simpleContract);
+
+        // slot contract that storing
+        SlotContract slotContract = ContractsService.createSlotContract(slotIssuerPrivateKeys, slotIssuerPublicKeys);
+        slotContract.setNodeConfig(node.getConfig());
+        slotContract.putTrackingContract(simpleContract);
+
+        // illegal payment contract
+        Contract contractTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
+        contractTU.addSignerKey(key);
+        contractTU.seal();
+        contractTU.check();
+        contractTU.traceErrors();
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), contractTU, 1, 170, stepaPrivateKeys, false);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
+
+        node.nodeStats.collect(ledger, config);
+
+        int lastMonth = node.nodeStats.lastMonthPaidAmount;
+        int thisMonth = node.nodeStats.thisMonthPaidAmount;
+        int yesterday = node.nodeStats.yesterdayPaidAmount;
+        int today = node.nodeStats.todayPaidAmount;
+
+        System.out.println("Statistic before");
+        System.out.println("last month :  " + lastMonth);
+        System.out.println("this month :  " + thisMonth);
+        System.out.println("yesterday  :  " + yesterday);
+        System.out.println("today      :  " + today);
+
+        node.registerParcel(parcel);
+        node.waitParcel(parcel.getId(), 8000);
+
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
+        node.nodeStats.collect(ledger,config);
+
+        System.out.println("Statistic after");
+        System.out.println("last month :  " + node.nodeStats.lastMonthPaidAmount );
+        System.out.println("this month :  " + node.nodeStats.thisMonthPaidAmount);
+        System.out.println("yesterday  :  " + node.nodeStats.yesterdayPaidAmount);
+        System.out.println("today      :  " + node.nodeStats.todayPaidAmount);
+
+        assertEquals(node.nodeStats.lastMonthPaidAmount - lastMonth, 0);
+        assertEquals(node.nodeStats.thisMonthPaidAmount - thisMonth, 0);
+        assertEquals(node.nodeStats.yesterdayPaidAmount - yesterday, 0);
+        assertEquals(node.nodeStats.todayPaidAmount - today, 0);
+    }
+
+    @Test(timeout = 90000)
+    public void checkPaymentStatisticsWithApprovedPayingParcelUns() throws Exception {
+
+        PrivateKey randomPrivKey = new PrivateKey(2048);
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract referencesContract = new Contract(TestKeys.privateKey(8));
+        referencesContract.seal();
+
+        UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
+        uns.seal();
+
+        UnsName unsName = new UnsName("test_stat" + Instant.now().getEpochSecond(), "test_stat" + Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
+        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
+        unsName.addUnsRecord(unsRecord1);
+        unsName.addUnsRecord(unsRecord2);
+        uns.addUnsName(unsName);
+        uns.addOriginContract(referencesContract);
+
+        uns.setNodeConfig(node.getConfig());
+        uns.seal();
+        uns.addSignatureToSeal(randomPrivKey);
+        uns.addSignatureToSeal(TestKeys.privateKey(8));
+        uns.check();
+        uns.traceErrors();
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
+
+        paymentContract = getApprovedTUContract();
+
+        parcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1800, stepaPrivateKeys, false);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
+
+        node.nodeStats.collect(ledger, config);
+
+        int lastMonth = node.nodeStats.lastMonthPaidAmount;
+        int thisMonth = node.nodeStats.thisMonthPaidAmount;
+        int yesterday = node.nodeStats.yesterdayPaidAmount;
+        int today = node.nodeStats.todayPaidAmount;
+
+        System.out.println("Statistic before");
+        System.out.println("last month :  " + lastMonth);
+        System.out.println("this month :  " + thisMonth);
+        System.out.println("yesterday  :  " + yesterday);
+        System.out.println("today      :  " + today);
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = uns.getNew().get(0);
+        }
+        node.waitParcel(parcel.getId(), 8000);
+
+        assertEquals(ItemState.REVOKED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getNew().get(0).getId(), 8000).state);
+
+        node.nodeStats.collect(ledger,config);
+
+        System.out.println("Statistic after");
+        System.out.println("last month :  " + node.nodeStats.lastMonthPaidAmount );
+        System.out.println("this month :  " + node.nodeStats.thisMonthPaidAmount);
+        System.out.println("yesterday  :  " + node.nodeStats.yesterdayPaidAmount);
+        System.out.println("today      :  " + node.nodeStats.todayPaidAmount);
+
+        assertEquals(node.nodeStats.lastMonthPaidAmount - lastMonth, 0);
+        assertEquals(node.nodeStats.thisMonthPaidAmount - thisMonth, 1801);
+        assertEquals(node.nodeStats.yesterdayPaidAmount - yesterday, 0);
+        assertEquals(node.nodeStats.todayPaidAmount - today, 1801);
+    }
+
+    @Test(timeout = 90000)
+    public void checkPaymentStatisticsWithDeclinedPayingParcelUns() throws Exception {
+
+        PrivateKey randomPrivKey = new PrivateKey(2048);
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        Contract referencesContract = new Contract(TestKeys.privateKey(8));
+        referencesContract.seal();
+
+        UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
+        uns.seal();
+
+        UnsName unsName = new UnsName("test_stat_declined" + Instant.now().getEpochSecond(), "test_stat_declined" + Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
+        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
+        unsName.addUnsRecord(unsRecord1);
+        unsName.addUnsRecord(unsRecord2);
+        uns.addUnsName(unsName);
+        uns.addOriginContract(referencesContract);
+
+        uns.setNodeConfig(node.getConfig());
+        uns.seal();
+        uns.addSignatureToSeal(randomPrivKey);
+        uns.addSignatureToSeal(TestKeys.privateKey(8));
+        uns.check();
+        uns.traceErrors();
+
+        Contract paymentContract = getApprovedTUContract();
+
+        Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
+
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {
+            tuContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
+
+        // illegal payment contract
+        Contract contractTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
+        contractTU.addSignerKey(manufacturePrivateKeys.iterator().next());
+        contractTU.seal();
+        contractTU.check();
+        contractTU.traceErrors();
+
+        parcel = ContractsService.createPayingParcel(uns.getTransactionPack(), contractTU, 1, 1500, stepaPrivateKeys, false);
+
+        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().traceErrors();
+        parcel.getPayload().getContract().check();
+        parcel.getPayload().getContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
+        assertTrue(parcel.getPayloadContract().isOk());
+        assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
+
+        node.nodeStats.collect(ledger, config);
+
+        int lastMonth = node.nodeStats.lastMonthPaidAmount;
+        int thisMonth = node.nodeStats.thisMonthPaidAmount;
+        int yesterday = node.nodeStats.yesterdayPaidAmount;
+        int today = node.nodeStats.todayPaidAmount;
+
+        System.out.println("Statistic before");
+        System.out.println("last month :  " + lastMonth);
+        System.out.println("this month :  " + thisMonth);
+        System.out.println("yesterday  :  " + yesterday);
+        System.out.println("today      :  " + today);
+
+        node.registerParcel(parcel);
+        node.waitParcel(parcel.getId(), 8000);
+
+        assertEquals(ItemState.DECLINED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.UNDEFINED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+
+        node.nodeStats.collect(ledger,config);
+
+        System.out.println("Statistic after");
+        System.out.println("last month :  " + node.nodeStats.lastMonthPaidAmount );
+        System.out.println("this month :  " + node.nodeStats.thisMonthPaidAmount);
+        System.out.println("yesterday  :  " + node.nodeStats.yesterdayPaidAmount);
+        System.out.println("today      :  " + node.nodeStats.todayPaidAmount);
+
+        assertEquals(node.nodeStats.lastMonthPaidAmount - lastMonth, 0);
+        assertEquals(node.nodeStats.thisMonthPaidAmount - thisMonth, 0);
+        assertEquals(node.nodeStats.yesterdayPaidAmount - yesterday, 0);
+        assertEquals(node.nodeStats.todayPaidAmount - today, 0);
+    }
+
+    @Test(timeout = 90000)
     public void transactionalValidUntil_good() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();

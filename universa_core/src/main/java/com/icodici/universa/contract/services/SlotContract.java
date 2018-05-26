@@ -160,6 +160,7 @@ public class SlotContract extends NSmartContract {
             fieldsMap.put("action", null);
             fieldsMap.put("/expires_at", null);
             fieldsMap.put(KEEP_REVISIONS_FIELD_NAME, null);
+            fieldsMap.put(PAID_U_FIELD_NAME, null);
             fieldsMap.put(PREPAID_KD_FIELD_NAME, null);
             fieldsMap.put(PREPAID_FROM_TIME_FIELD_NAME, null);
             fieldsMap.put(STORED_BYTES_FIELD_NAME, null);
@@ -396,6 +397,8 @@ public class SlotContract extends NSmartContract {
 
         // if true we save it to stat.data
         if(withSaveToState) {
+            getStateData().set(PAID_U_FIELD_NAME, paidU);
+
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
             if(getRevision() == 1) {
                 getStateData().set(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
@@ -536,6 +539,8 @@ public class SlotContract extends NSmartContract {
         int numRevisions = getStateData().getInt(KEEP_REVISIONS_FIELD_NAME, -1);
         if(numRevisions > 0)
             keepRevisions = numRevisions;
+
+        paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
 
         // extract saved prepaid KD (kilobytes*days) value
         prepaidKilobytesForDays = getStateData().getInt(PREPAID_KD_FIELD_NAME, 0);
