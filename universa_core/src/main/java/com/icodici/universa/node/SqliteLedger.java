@@ -398,6 +398,12 @@ public class SqliteLedger implements Ledger {
     public NameRecordModel getNameRecord(final String nameReduced) {return null;}
 
     @Override
+    public NameRecordModel getNameByAddress (String address) {return null;}
+
+    @Override
+    public NameRecordModel getNameByOrigin (byte[] origin) {return null;}
+
+    @Override
     public boolean isAllNameRecordsAvailable(Collection<String> reducedNames) {
         return false;
     }

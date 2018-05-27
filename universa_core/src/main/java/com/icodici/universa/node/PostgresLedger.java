@@ -34,6 +34,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * The basic SQL-based ledger.
@@ -1615,73 +1616,6 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    @Override
-    public NameRecordModel getNameRecord(final String nameReduced) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "" +
-                                            "SELECT " +
-                                            "  name_storage.id AS id, " +
-                                            "  name_storage.name_reduced AS name_reduced, " +
-                                            "  name_storage.name_full AS name_full, " +
-                                            "  name_storage.description AS description, " +
-                                            "  name_storage.url AS url, " +
-                                            "  name_storage.expires_at AS expires_at, " +
-                                            "  name_storage.environment_id AS environment_id, " +
-                                            "  name_entry.entry_id AS entry_id, " +
-                                            "  name_entry.short_addr AS short_addr, " +
-                                            "  name_entry.long_addr AS long_addr, " +
-                                            "  name_entry.origin AS origin " +
-                                            "FROM name_storage JOIN name_entry ON name_storage.id=name_entry.name_storage_id " +
-                                            "WHERE name_storage.name_reduced=?"
-                            )
-            ) {
-                statement.setString(1, nameReduced);
-                statement.closeOnCompletion();
-                ResultSet rs = statement.executeQuery();
-                if (rs == null)
-                    throw new Failure("getNameRecord failed: returning null");
-                NameRecordModel nameRecordModel = new NameRecordModel();
-                nameRecordModel.entries = new ArrayList<>();
-                boolean firstRow = true;
-                int rowsCount = 0;
-                while (rs.next()) {
-                    ++ rowsCount;
-                    if (firstRow) {
-                        nameRecordModel.id = rs.getLong("id");
-                        nameRecordModel.name_reduced = rs.getString("name_reduced");
-                        nameRecordModel.name_full = rs.getString("name_full");
-                        nameRecordModel.description = rs.getString("description");
-                        nameRecordModel.url = rs.getString("url");
-                        nameRecordModel.expires_at = StateRecord.getTime(rs.getLong("expires_at"));
-                        nameRecordModel.environment_id = rs.getLong("environment_id");
-                        firstRow = false;
-                    }
-                    NameEntryModel nameEntryModel = new NameEntryModel();
-                    nameEntryModel.name_storage_id = nameRecordModel.id;
-                    nameEntryModel.entry_id = rs.getLong("entry_id");
-                    nameEntryModel.short_addr = rs.getString("short_addr");
-                    nameEntryModel.long_addr = rs.getString("long_addr");
-                    nameEntryModel.origin = rs.getBytes("origin");
-                    nameRecordModel.entries.add(nameEntryModel);
-                }
-                if (rowsCount == 0)
-                    nameRecordModel = null;
-                rs.close();
-                return nameRecordModel;
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("getNameRecord failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-
-    }
-
 
     @Override
     public boolean isAllNameRecordsAvailable(final Collection<String> reducedNames) {
@@ -1845,7 +1779,113 @@ public class PostgresLedger implements Ledger {
             throw new Failure("clearExpiredNameRecords failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
+            throw new Failure("clearExpiredNameRecords failed: " + e);
         }
+    }
+
+
+
+    private NameRecordModel getNameBy (String whereQueryPard, Consumer<PreparedStatement> paramsFromLambda) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  name_storage.id AS id, " +
+                                            "  name_storage.name_reduced AS name_reduced, " +
+                                            "  name_storage.name_full AS name_full, " +
+                                            "  name_storage.description AS description, " +
+                                            "  name_storage.url AS url, " +
+                                            "  name_storage.expires_at AS expires_at, " +
+                                            "  name_storage.environment_id AS environment_id, " +
+                                            "  name_entry.entry_id AS entry_id, " +
+                                            "  name_entry.short_addr AS short_addr, " +
+                                            "  name_entry.long_addr AS long_addr, " +
+                                            "  name_entry.origin AS origin " +
+                                            "FROM name_storage JOIN name_entry ON name_storage.id=name_entry.name_storage_id " +
+                                            whereQueryPard
+                            )
+            ) {
+                paramsFromLambda.accept(statement);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getNameBy failed: returning null");
+                NameRecordModel nameRecordModel = new NameRecordModel();
+                nameRecordModel.entries = new ArrayList<>();
+                boolean firstRow = true;
+                int rowsCount = 0;
+                while (rs.next()) {
+                    ++ rowsCount;
+                    if (firstRow) {
+                        nameRecordModel.id = rs.getLong("id");
+                        nameRecordModel.name_reduced = rs.getString("name_reduced");
+                        nameRecordModel.name_full = rs.getString("name_full");
+                        nameRecordModel.description = rs.getString("description");
+                        nameRecordModel.url = rs.getString("url");
+                        nameRecordModel.expires_at = StateRecord.getTime(rs.getLong("expires_at"));
+                        nameRecordModel.environment_id = rs.getLong("environment_id");
+                        firstRow = false;
+                    }
+                    NameEntryModel nameEntryModel = new NameEntryModel();
+                    nameEntryModel.name_storage_id = nameRecordModel.id;
+                    nameEntryModel.entry_id = rs.getLong("entry_id");
+                    nameEntryModel.short_addr = rs.getString("short_addr");
+                    nameEntryModel.long_addr = rs.getString("long_addr");
+                    nameEntryModel.origin = rs.getBytes("origin");
+                    nameRecordModel.entries.add(nameEntryModel);
+                }
+                if (rowsCount == 0)
+                    nameRecordModel = null;
+                rs.close();
+                return nameRecordModel;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getNameBy failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getNameBy failed: " + e);
+        }
+    }
+
+
+
+    @Override
+    public NameRecordModel getNameRecord(final String nameReduced) {
+        return getNameBy("WHERE name_storage.name_reduced=? ", (statement)-> {
+            try {
+                statement.setString(1, nameReduced);
+            } catch (SQLException e) {
+                throw new Failure("getNameRecord failed: " + e);
+            }
+        });
+    }
+
+
+    @Override
+    public NameRecordModel getNameByAddress (String address) {
+        return getNameBy("WHERE name_storage.id=(SELECT name_storage_id FROM name_entry WHERE short_addr=? OR long_addr=? LIMIT 1) ", (statement)-> {
+            try {
+                statement.setString(1, address);
+                statement.setString(2, address);
+            } catch (SQLException e) {
+                throw new Failure("getNameByAddress failed: " + e);
+            }
+        });
+    }
+
+
+    @Override
+    public NameRecordModel getNameByOrigin (byte[] origin) {
+        return getNameBy("WHERE name_storage.id=(SELECT name_storage_id FROM name_entry WHERE origin=?) ", (statement)-> {
+            try {
+                statement.setBytes(1, origin);
+            } catch (SQLException e) {
+                throw new Failure("getNameByOrigin failed: " + e);
+            }
+        });
     }
 
 }

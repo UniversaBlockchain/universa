@@ -28,6 +28,8 @@ import static com.icodici.universa.Errors.BAD_VALUE;
 
 public class NSmartContract extends Contract implements NContract {
 
+    public static final String PAID_U_FIELD_NAME = "paid_U";
+
     public void setNodeInfoProvider(NodeInfoProvider nodeInfoProvider) {
         this.nodeInfoProvider = nodeInfoProvider;
     }

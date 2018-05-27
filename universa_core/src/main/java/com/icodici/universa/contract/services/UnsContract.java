@@ -122,6 +122,7 @@ public class UnsContract extends NSmartContract {
         fieldsMap.put("/expires_at", null);
         fieldsMap.put("/references", null);
         fieldsMap.put(NAMES_FIELD_NAME, null);
+        fieldsMap.put(PAID_U_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FIELD_NAME, null);
         fieldsMap.put(PREPAID_ND_FROM_TIME_FIELD_NAME, null);
         fieldsMap.put(STORED_ENTRIES_FIELD_NAME, null);
@@ -165,6 +166,8 @@ public class UnsContract extends NSmartContract {
         spentNDsTime = now;
 
         if(withSaveToState) {
+            getStateData().set(PAID_U_FIELD_NAME, paidU);
+
             getStateData().set(PREPAID_ND_FIELD_NAME, prepaidNamesForDays);
             if(getRevision() == 1)
                 getStateData().set(PREPAID_ND_FROM_TIME_FIELD_NAME, now.toEpochSecond());
@@ -264,6 +267,7 @@ public class UnsContract extends NSmartContract {
 
         storedNames = deserializer.deserialize(getStateData().getList(NAMES_FIELD_NAME, null));
 
+        paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
         prepaidNamesForDays = getStateData().getInt(PREPAID_ND_FIELD_NAME, 0);
 
         long prepaidFromSeconds = getStateData().getLong(PREPAID_ND_FROM_TIME_FIELD_NAME, 0);
@@ -455,14 +459,19 @@ public class UnsContract extends NSmartContract {
         Set<String> reducedNames = new HashSet<>();
         for (UnsName unsName : storedNames)
             reducedNames.add(unsName.getUnsNameReduced());
-        for (Approvable approvable : getRevokingItems()) {
-            if (approvable instanceof UnsContract) {
-                UnsContract revokingUns = (UnsContract) approvable;
-                for (UnsName unsName : revokingUns.storedNames)
-                    reducedNames.remove(unsName.getUnsNameReduced());
-            }
-        }
+        for (Approvable revoked : getRevokingItems())
+            removeRevokedNames(revoked, reducedNames);
         return new ArrayList<>(reducedNames);
+    }
+
+    private void removeRevokedNames(Approvable approvable, Set<String> set) {
+        if (approvable instanceof UnsContract) {
+            UnsContract unsContract = (UnsContract) approvable;
+            for (UnsName unsName : unsContract.storedNames)
+                set.remove(unsName.getUnsNameReduced());
+        }
+        for (Approvable revoked : approvable.getRevokingItems())
+            removeRevokedNames(revoked, set);
     }
 
     private List<HashId> getOriginsToCheck() {
@@ -471,34 +480,44 @@ public class UnsContract extends NSmartContract {
             for (UnsRecord unsRecord : unsName.getUnsRecords())
                 if (unsRecord.getOrigin() != null)
                     origins.add(unsRecord.getOrigin());
-        for (Approvable approvable : getRevokingItems()) {
-            if (approvable instanceof UnsContract) {
-                UnsContract revokingUns = (UnsContract) approvable;
-                for (UnsName unsName : revokingUns.storedNames)
-                    for (UnsRecord unsRecord : unsName.getUnsRecords())
-                        if (unsRecord.getOrigin() != null)
-                            origins.remove(unsRecord.getOrigin());
-            }
-        }
+        for (Approvable revoked : getRevokingItems())
+            removeRevokedOrigins(revoked, origins);
         return new ArrayList<>(origins);
     }
 
+    private void removeRevokedOrigins(Approvable approvable, Set<HashId> set) {
+        if (approvable instanceof UnsContract) {
+            UnsContract unsContract = (UnsContract) approvable;
+            for (UnsName unsName : unsContract.storedNames)
+                for (UnsRecord unsRecord : unsName.getUnsRecords())
+                    if (unsRecord.getOrigin() != null)
+                        set.remove(unsRecord.getOrigin());
+        }
+        for (Approvable revoked : approvable.getRevokingItems())
+            removeRevokedOrigins(revoked, set);
+    }
+
     private List<String> getAddressesToCheck() {
-        List<String> addresses = new ArrayList<>();
+        Set<String> addresses = new HashSet<>();
         for (UnsName unsName : storedNames)
             for (UnsRecord unsRecord : unsName.getUnsRecords())
                 for (KeyAddress keyAddress : unsRecord.getAddresses())
                     addresses.add(keyAddress.toString());
-        for (Approvable approvable : getRevokingItems()) {
-            if (approvable instanceof UnsContract) {
-                UnsContract revokingUns = (UnsContract) approvable;
-                for (UnsName unsName : revokingUns.storedNames)
-                    for (UnsRecord unsRecord : unsName.getUnsRecords())
-                        for (KeyAddress keyAddress : unsRecord.getAddresses())
-                            addresses.remove(keyAddress.toString());
-            }
-        }
+        for (Approvable revoked : getRevokingItems())
+            removeRevokedAddresses(revoked, addresses);
         return new ArrayList<>(addresses);
+    }
+
+    private void removeRevokedAddresses(Approvable approvable, Set<String> set) {
+        if (approvable instanceof UnsContract) {
+            UnsContract unsContract = (UnsContract) approvable;
+            for (UnsName unsName : unsContract.storedNames)
+                for (UnsRecord unsRecord : unsName.getUnsRecords())
+                    for (KeyAddress keyAddress : unsRecord.getAddresses())
+                        set.remove(keyAddress.toString());
+        }
+        for (Approvable revoked : approvable.getRevokingItems())
+            removeRevokedAddresses(revoked, set);
     }
 
 
@@ -513,7 +532,16 @@ public class UnsContract extends NSmartContract {
     public @Nullable Binder onCreated(MutableEnvironment me) {
 
 
-        ZonedDateTime expiresAt = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+        // get number of entries
+        int entries = 0;
+        for (UnsName sn: storedNames)
+            entries += sn.getRecordsCount();
+        if (entries == 0)
+            entries = 1;
+
+        final int finalEntries = entries;
+
+        ZonedDateTime expiresAt = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600 / finalEntries));
 
         storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
 
@@ -522,7 +550,16 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public Binder onUpdated(MutableEnvironment me) {
-        ZonedDateTime expiresAt = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600));
+        // get number of entries
+        int entries = 0;
+        for (UnsName sn: storedNames)
+            entries += sn.getRecordsCount();
+        if (entries == 0)
+            entries = 1;
+
+        final int finalEntries = entries;
+
+        ZonedDateTime expiresAt = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600 / finalEntries));
 
         Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
         me.nameRecords().forEach( nameRecord -> {
