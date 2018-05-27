@@ -162,6 +162,8 @@ public interface Ledger {
 
     void updateNameRecord(long id, ZonedDateTime expiresAt);
 
+    Set<HashId> saveEnvironment(NImmutableEnvironment environment);
+
 
     public static class Rollback extends Db.RollbackException {
     }

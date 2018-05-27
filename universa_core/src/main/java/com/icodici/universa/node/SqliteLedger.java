@@ -198,6 +198,11 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public Set<HashId> saveEnvironment(NImmutableEnvironment environment) {
+        return null;
+    }
+
+    @Override
     public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
 
     }
