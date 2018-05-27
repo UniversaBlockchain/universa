@@ -913,7 +913,8 @@ public class PostgresLedger implements Ledger {
                     else
                         unsName.addUnsRecord(new UnsRecord(Arrays.asList(new KeyAddress(nameEntryModel.short_addr), new KeyAddress(nameEntryModel.long_addr))));
                 }
-                NameRecord nr = new NNameRecord(unsName, nrModel.expires_at);
+                NNameRecord nr = new NNameRecord(unsName, nrModel.expires_at);
+                nr.setId(nrModel.id);
                 nameRecords.add(nr);
             }
             NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder, contractStorageSubscriptions, nameRecords, this);
@@ -971,7 +972,25 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public void updateNameRecord(long nameRecordId, ZonedDateTime expiresAt) {
-
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "UPDATE name_storage SET expires_at = ? WHERE id = ?"
+                            )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setLong(2, nameRecordId);
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("updateNameRecord failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("updateNameRecord failed: " + e);
+        }
     }
 
     @Override
