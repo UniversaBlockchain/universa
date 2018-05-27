@@ -7,13 +7,13 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.SimpleRole;
-import com.icodici.universa.contract.services.NSmartContract;
-import com.icodici.universa.contract.services.SlotContract;
+import com.icodici.universa.contract.services.*;
 import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
 
@@ -816,6 +816,220 @@ public class ContractsService {
         return slotContract;
     }
 
+    /**
+     * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
+     * used for control and for payment for register some names in the distributed store.
+     * <br><br>
+     * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link UnsContract#addUnsName(UnsName)}
+     * for putting uns name should be register.
+     * <br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param nodeInfoProvider
+     * @return ready {@link UnsContract}
+     */
+    public synchronized static UnsContract createUnsContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider) {
+        UnsContract UnsContract = new UnsContract();
+        UnsContract.setNodeInfoProvider(nodeInfoProvider);
+        UnsContract.setApiLevel(3);
+
+        Contract.Definition cd = UnsContract.getDefinition();
+        cd.setExpiresAt(UnsContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default UNS contract");
+        data.set("description", "Default UNS contrac description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        UnsContract.registerRole(issuerRole);
+        UnsContract.createRole("issuer", issuerRole);
+        UnsContract.createRole("creator", issuerRole);
+
+        UnsContract.registerRole(ownerRole);
+        UnsContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        UnsContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        UnsContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        UnsContract.addPermission(revokePerm2);
+
+        UnsContract.addUnsSpecific();
+
+        UnsContract.seal();
+        UnsContract.addSignatureToSeal(issuerKeys);
+
+        return UnsContract;
+    }
+
+    /**
+     * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
+     * used for control and for payment for register some names in the distributed store.
+     * <br><br>
+     * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner.
+     * Also added uns name for registration associated with contract (by origin).
+     * Use {@link UnsContract#addUnsName(UnsName)} for putting additional uns name should be register.
+     * <br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param nodeInfoProvider
+     * @param nameReduced is reduced name for registration.
+     * @param name is name for registration.
+     * @param description is description associated with name for registration.
+     * @param URL is URL associated with name for registration.
+     * @param namedContract is named contract.
+     * @return ready {@link UnsContract}
+     */
+    public synchronized static UnsContract createUnsContractForRegisterContractName(
+            Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider,
+            String nameReduced, String name, String description, String URL, Contract namedContract) {
+
+        UnsContract UnsContract = new UnsContract();
+        UnsContract.setNodeInfoProvider(nodeInfoProvider);
+        UnsContract.setApiLevel(3);
+
+        Contract.Definition cd = UnsContract.getDefinition();
+        cd.setExpiresAt(UnsContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default UNS contract");
+        data.set("description", "Default UNS contract description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        UnsContract.registerRole(issuerRole);
+        UnsContract.createRole("issuer", issuerRole);
+        UnsContract.createRole("creator", issuerRole);
+
+        UnsContract.registerRole(ownerRole);
+        UnsContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        UnsContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        UnsContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        UnsContract.addPermission(revokePerm2);
+
+        UnsContract.addUnsSpecific();
+
+        UnsName unsName = new UnsName(nameReduced, name, description, URL);
+        UnsRecord unsRecord = new UnsRecord(namedContract.getId());
+        unsName.addUnsRecord(unsRecord);
+        UnsContract.addUnsName(unsName);
+        UnsContract.addOriginContract(namedContract);
+
+        UnsContract.seal();
+        UnsContract.addSignatureToSeal(issuerKeys);
+
+        return UnsContract;
+    }
+
+    /**
+     * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
+     * used for control and for payment for register some names in the distributed store.
+     * <br><br>
+     * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner.
+     * Also added uns name for registration associated with key (by addresses).
+     * Use {@link UnsContract#addUnsName(UnsName)} for putting additional uns name should be register.
+     * <br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param nodeInfoProvider
+     * @param nameReduced is reduced name for registration.
+     * @param name is name for registration.
+     * @param description is description associated with name for registration.
+     * @param URL is URL associated with name for registration.
+     * @param namedKey is named key.
+     * @return ready {@link UnsContract}
+     */
+    public synchronized static UnsContract createUnsContractForRegisterKeyName(
+            Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider,
+            String nameReduced, String name, String description, String URL, AbstractKey namedKey) {
+
+        UnsContract UnsContract = new UnsContract();
+        UnsContract.setNodeInfoProvider(nodeInfoProvider);
+        UnsContract.setApiLevel(3);
+
+        Contract.Definition cd = UnsContract.getDefinition();
+        cd.setExpiresAt(UnsContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default UNS contract");
+        data.set("description", "Default UNS contract description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        UnsContract.registerRole(issuerRole);
+        UnsContract.createRole("issuer", issuerRole);
+        UnsContract.createRole("creator", issuerRole);
+
+        UnsContract.registerRole(ownerRole);
+        UnsContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        UnsContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        UnsContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        UnsContract.addPermission(revokePerm2);
+
+        UnsContract.addUnsSpecific();
+
+        UnsName unsName = new UnsName(nameReduced, name, description, URL);
+        UnsRecord unsRecord = new UnsRecord(namedKey);
+        unsName.addUnsRecord(unsRecord);
+        UnsContract.addUnsName(unsName);
+
+        UnsContract.seal();
+        UnsContract.addSignatureToSeal(issuerKeys);
+
+        return UnsContract;
+    }
 
     /**
      * Create paid transaction, which consist from contract you want to register and payment contract that will be

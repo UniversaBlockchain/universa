@@ -1361,10 +1361,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public void removeReference(Reference reference) {
         reference.matchingItems.forEach(approvable -> {
             if(approvable instanceof Contract) {
-                removeReferencedItem((Contract) approvable);
+                newItems.remove((Contract) approvable);
+                revokingItems.remove((Contract) approvable);
             }
         });
-
 
         if(reference.type == Reference.TYPE_TRANSACTIONAL) {
             if(transactional != null)
