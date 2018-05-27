@@ -1030,6 +1030,9 @@ public class Node {
         }
     }
 
+    public PublicKey getNodeKey() {
+        return myInfo.getPublicKey();
+    }
 
     /// ParcelProcessor ///
 
