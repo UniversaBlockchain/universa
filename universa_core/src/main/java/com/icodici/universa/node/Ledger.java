@@ -207,9 +207,7 @@ public interface Ledger {
     long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin);
 
 
-    //TODO: should be one method
-    long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt);
-    void saveEnvironmentSubscription(long subscriptionId, long environmentId);
+    long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId);
 
 
     Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId);

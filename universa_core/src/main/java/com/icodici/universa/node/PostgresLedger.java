@@ -812,10 +812,9 @@ public class PostgresLedger implements Ledger {
                                             "  contract_storage.bin_data, " +
                                             "  contract_subscription.expires_at, " +
                                             "  contract_subscription.id " +
-                                            "FROM environment_subscription " +
-                                            "JOIN contract_subscription ON environment_subscription.subscription_id=contract_subscription.id " +
+                                            "FROM contract_subscription " +
                                             "JOIN contract_storage ON contract_subscription.contract_storage_id=contract_storage.id " +
-                                            "WHERE environemtn_id=? "
+                                            "WHERE environment_id=? "
                             )
             ) {
                 statement.setLong(1, environmentId);
@@ -1000,14 +999,15 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt) {
+    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
-                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at) VALUES(?,?) RETURNING id")
+                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at,environment_id) VALUES(?,?,?) RETURNING id")
             ) {
                 statement.setLong(1, contractStorageId);
                 statement.setLong(2, StateRecord.unixTime(expiresAt));
+                statement.setLong(3, environmentId);
                 //db.updateWithStatement(statement);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
@@ -1138,83 +1138,23 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement("" +
-                                    "INSERT INTO environment_subscription (subscription_id,environemtn_id) VALUES (?,?) " +
-                                    "ON CONFLICT(subscription_id) DO UPDATE SET environemtn_id=EXCLUDED.environemtn_id "
-                            )
-            ) {
-                statement.setLong(1, subscriptionId);
-                statement.setLong(2, environmentId);
-                db.updateWithStatement(statement);
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("addEnvironmentToStorage failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    @Override
     public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
         return protect(() -> {
-            HashSet<Long> subscriptionIds = new HashSet<>();
+            HashSet<Long> environmentIds = new HashSet<>();
 
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT contract_subscription.id FROM contract_storage " +
+                    "SELECT contract_subscription.environment_id FROM contract_storage " +
                     "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id " +
                     "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
                     return new HashSet<>();
                 do {
-                    subscriptionIds.add(rs.getLong(1));
+                    environmentIds.add(rs.getLong(1));
                 } while (rs.next());
 
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
-            }
-
-            HashSet<Long> environmentIds = new HashSet<>();
-
-            try (PooledDb db = dbPool.db()) {
-                String queryPart = String.join(",", Collections.nCopies(subscriptionIds.size(),"?"));
-                try (
-                        PreparedStatement statement =
-                                db.statement(
-                                        "SELECT environemtn_id FROM environment_subscription WHERE subscription_id IN("+queryPart+")"
-                                )
-                ) {
-                    AtomicInteger idx = new AtomicInteger(1);
-                    subscriptionIds.forEach(s -> {
-                        try {
-                            statement.setLong(idx.getAndIncrement(), s);
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                            throw new Failure("getSubscriptionEnviromentIdsForContractId failed: " + e);
-                        }
-                    });
-
-                    ResultSet rs = statement.executeQuery();
-                    if (rs == null)
-                        throw new Failure("getSubscriptionEnviromentIdsForContractId failed: returning null");
-//                    if(!rs.next())
-//                        throw new Failure("getSubscriptionEnviromentIdsForContractId failed: returning null");
-                    while (rs.next()) {
-                        environmentIds.add(rs.getLong(1));
-                    } //while (rs.next());
-                }
-            } catch (SQLException se) {
-                se.printStackTrace();
-                throw new Failure("getSubscriptionEnviromentIdsForContractId failed: " + se);
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new Failure("getSubscriptionEnviromentIdsForContractId failed: " + e);
             }
 
             return environmentIds;
@@ -1260,12 +1200,10 @@ public class PostgresLedger implements Ledger {
             try (
                 PreparedStatement statement =
                     db.statement(
-                "DELETE FROM environment_subscription WHERE subscription_id=?;" +
-                       "DELETE FROM contract_subscription WHERE id=?;"
+                "DELETE FROM contract_subscription WHERE id=?"
                     )
             ) {
                 statement.setLong(1, subscriptionId);
-                statement.setLong(2, subscriptionId);
                 db.updateWithStatement(statement);
             }
         } catch (SQLException se) {
@@ -1273,36 +1211,10 @@ public class PostgresLedger implements Ledger {
             throw new Failure("removeEnvironmentSubscription failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
+            throw new Failure("removeEnvironmentSubscription failed: " + e);
         }
     }
 
-    public List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "DELETE FROM environment_subscription WHERE environemtn_id=? RETURNING subscription_id"
-                            )
-            ) {
-                statement.setLong(1, environmentId);
-                statement.closeOnCompletion();
-                ResultSet rs = statement.executeQuery();
-                if (rs == null)
-                    throw new Failure("removeEnvironmentSubscriptionsByEnvId failed: returning null");
-                List<Long> resList = new ArrayList<>();
-                while (rs.next())
-                    resList.add(rs.getLong(1));
-                rs.close();
-                return resList;
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("removeEnvironmentSubscriptionsByEnvId failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     public List<Long> getEnvironmentSubscriptionsByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
@@ -1363,9 +1275,7 @@ public class PostgresLedger implements Ledger {
     @Override
     public long removeEnvironment(HashId ncontractHashId) {
         long envId = getEnvironmentId(ncontractHashId);
-        List<Long> subscriptions = removeEnvironmentSubscriptionsByEnvId(envId);
-        if (subscriptions.size() > 0)
-            removeStorageSubscriptionsByIds(subscriptions);
+        removeStorageSubscriptionsByEnvId(envId);
         clearExpiredStorageContracts();
         return removeEnvironmentEx(ncontractHashId);
     }
@@ -1398,20 +1308,15 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    public List<Long> removeStorageSubscriptionsByIds(List<Long> subscriptionIds) {
+    public List<Long> removeStorageSubscriptionsByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
-            List<String> queryPatterns = new ArrayList<>();
-            for (int i = 0; i < subscriptionIds.size(); ++i)
-                queryPatterns.add("?");
-            String queryPatternStr = String.join(",", queryPatterns);
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "DELETE FROM contract_subscription WHERE id IN ("+queryPatternStr+") RETURNING contract_storage_id"
+                                    "DELETE FROM contract_subscription WHERE environment_id=? RETURNING contract_storage_id"
                             )
             ) {
-                for (int i = 0; i < subscriptionIds.size(); ++i)
-                    statement.setLong(i+1, subscriptionIds.get(i));
+                statement.setLong(1, environmentId);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1427,7 +1332,7 @@ public class PostgresLedger implements Ledger {
             throw new Failure("removeStorageSubscriptionsByIds failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
+            throw new Failure("removeStorageSubscriptionsByIds failed: " + e);
         }
     }
 
@@ -1457,14 +1362,11 @@ public class PostgresLedger implements Ledger {
 
     public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {
         long environmentId = getEnvironmentId(slotHashId);
-        List<Long> subscriptionIdList = getEnvironmentSubscriptionsByEnvId(environmentId);
         removeEnvironment(slotHashId);
         if (environmentId != 0) {
-            if ((subscriptionIdList != null) && (subscriptionIdList.size() > 0)) {
-                List<Long> contracts = removeStorageSubscriptionsByIds(subscriptionIdList);
-                if ((contracts != null) && (contracts.size() > 0))
-                    removeStorageContractsForIds(contracts);
-            }
+            List<Long> contracts = removeStorageSubscriptionsByEnvId(environmentId);
+            if ((contracts != null) && (contracts.size() > 0))
+                removeStorageContractsForIds(contracts);
         }
     }
 
