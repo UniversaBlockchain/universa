@@ -12,6 +12,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.utils.LogPrinter;
@@ -97,6 +98,12 @@ public class TestEmulatedNetwork extends Network {
 //        }
 
         return item;
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        Node node = nodes.get(nodeInfo);
+        return node.getEnvCache().get(itemId);
     }
 
     @Override

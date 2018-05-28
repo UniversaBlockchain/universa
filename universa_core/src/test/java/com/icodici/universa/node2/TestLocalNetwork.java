@@ -14,6 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.node2.network.Network;
@@ -21,6 +22,7 @@ import com.icodici.universa.node2.network.UDPAdapter;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.LogPrinter;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -192,6 +194,15 @@ public class TestLocalNetwork extends Network {
         }
 
         return item;
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        Node node = nodes.get(nodeInfo);
+        NImmutableEnvironment env = node.getEnvCache().get(itemId);
+        if(env != null)
+            return Boss.load(Boss.pack(env));
+        return null;
     }
 
     @Override
