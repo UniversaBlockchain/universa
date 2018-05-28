@@ -12,6 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import net.sergeych.tools.Binder;
@@ -619,6 +620,80 @@ public class ContractsService {
         return createTokenContract(issuerKeys, ownerKeys, amount, 0.01);
     }
 
+    /**
+     * Creates a token contract with possible additional emission.
+     *<br><br>
+     * The service creates a simple token contract with issuer, creator and owner roles;
+     * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
+     * Split_join permission has by default following params: "minValue" for min_value and min_unit, "amount" for field_name,
+     * "state.origin" for join_match_fields.
+     * Modify_data permission has by default following params: fields: "amount".
+     * By default expires at time is set to 60 months from now.
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param amount is start token number.
+     * @param minValue is minimum token value.
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+
+        Contract tokenContract = createTokenContract(issuerKeys, ownerKeys, amount, minValue);
+
+        RoleLink ownerLink = new RoleLink("owner_link", "owner");
+        tokenContract.registerRole(ownerLink);
+
+        HashMap<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("amount", null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        tokenContract.addPermission(modifyDataPermission);
+
+        tokenContract.seal();
+        tokenContract.addSignatureToSeal(issuerKeys);
+
+        return tokenContract;
+    }
+
+    /**
+     * @see #createTokenContractWithEmission(Set, Set, String, Double)
+     */
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
+        return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, 0.01);
+    }
+
+    /**
+     * Creates a revision of token contract and emitted new tokens.
+     *<br><br>
+     * The service creates a revision of token contract possible for additional emission.
+     * New revision contains additional emitted tokens.
+     * @param tokenContract is token contract possible for additional emission.
+     * @param amount is emitted token number.
+     * @param keys is keys to sign new contract.
+     * @param fieldName is name of token field (usually "amount").
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys, String fieldName) {
+
+        Contract emittedToken = tokenContract.createRevision();
+
+        for (PrivateKey key : keys)
+            emittedToken.addSignerKey(key);
+
+        Binder stateData = emittedToken.getStateData();
+        Decimal value = new Decimal(stateData.getStringOrThrow(fieldName));
+        stateData.set(fieldName, value.add(new Decimal(amount)));
+
+        emittedToken.seal();
+
+        return emittedToken;
+    }
+
+    /**
+     * @see #createTokenEmission(Contract, String, Set, String)
+     */
+    public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys) {
+        return createTokenEmission(tokenContract, amount, keys, "amount");
+    }
 
     /**
      * Creates a share contract for given keys.
@@ -1029,6 +1104,60 @@ public class ContractsService {
         UnsContract.addSignatureToSeal(issuerKeys);
 
         return UnsContract;
+    }
+
+    /**
+     * Add to base {@link Contract} reference and referenced contract.
+     * When the returned {@link Contract} is unpacking referenced contract verifies
+     * the compliance with the conditions of reference in base contract.
+     * <br><br>
+     * Also reference to base contract may be added by {@link Contract#addReference(Reference)}.
+     * <br><br>
+     * @param baseContract is base contract fro adding reference.
+     * @param refContract is referenced contract (which must satisfy the conditions of the reference).
+     * @param refName is name of reference.
+     * @param refType is type of reference (section, may be {@link Reference#TYPE_TRANSACTIONAL}, {@link Reference#TYPE_EXISTING_DEFINITION}, or {@link Reference#TYPE_EXISTING_STATE}).
+     * @param conditions is conditions of the reference.
+     * @return ready {@link Contract}
+     */
+    public synchronized static Contract addReferenceToContract(
+            Contract baseContract, Contract refContract, String refName, int refType, Binder conditions) {
+
+        Reference reference = new Reference(baseContract);
+        reference.name = refName;
+        reference.type = refType;
+
+        reference.setConditions(conditions);
+        reference.addMatchingItem(refContract);
+
+        baseContract.addReference(reference);
+        baseContract.seal();
+
+        return baseContract;
+    }
+
+    /**
+     * Add to base {@link Contract} reference and referenced contract.
+     * When the returned {@link Contract} is unpacking referenced contract verifies
+     * the compliance with the conditions of reference in base contract.
+     * <br><br>
+     * Also reference to base contract may be added by {@link Contract#addReference(Reference)}.
+     * <br><br>
+     * @param baseContract is base contract fro adding reference.
+     * @param refContract is referenced contract (which must satisfy the conditions of the reference).
+     * @param refName is name of reference.
+     * @param refType is type of reference (section, may be {@link Reference#TYPE_TRANSACTIONAL}, {@link Reference#TYPE_EXISTING_DEFINITION}, or {@link Reference#TYPE_EXISTING_STATE}).
+     * @param listConditions is list of strings with conditions of the reference.
+     * @param isAllOfConditions is flag used if all conditions in list must be fulfilled (else - any of conditions).
+     * @return ready {@link Contract}
+     */
+    public synchronized static Contract addReferenceToContract(
+            Contract baseContract, Contract refContract, String refName, int refType, List <String> listConditions, boolean isAllOfConditions) {
+
+        Binder conditions = new Binder();
+        conditions.set(isAllOfConditions ? "all_of" : "any_of", listConditions);
+
+        return addReferenceToContract(baseContract, refContract, refName, refType, conditions);
     }
 
     /**
