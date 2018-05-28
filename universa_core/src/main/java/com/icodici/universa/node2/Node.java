@@ -3049,7 +3049,14 @@ public class Node {
                     if(environment != null) {
                         Set<HashId> conflicts = ledger.saveEnvironment(environment);
                         if (conflicts.size() > 0) {
-                            itemsToReResync.addAll(conflicts);
+                            //TODO: remove in release
+                            boolean resyncConflicts = false;
+                            if(resyncConflicts) {
+                                itemsToReResync.addAll(conflicts);
+                            } else {
+                                conflicts.forEach(conflict -> removeEnvironment(conflict));
+                                assert ledger.saveEnvironment(environment).isEmpty();
+                            }
                         }
                     }
                 } catch (InterruptedException e) {
