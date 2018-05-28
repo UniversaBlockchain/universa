@@ -493,18 +493,18 @@ public class ContractsService {
      * Service creates a contract that should be send to partner,
      * then partner should sign it and return back for final sign from calling part.
      *<br><br>
-     * @param BaseContract is base contract
+     * @param baseContract is base contract
      * @param fromKeys is own private keys
      * @param toKeys is foreign public keys
      * @param createNewRevision create new revision if true
      * @return contract with two signatures that should be send from first part to partner.
      */
-    public synchronized static Contract createTwoSignedContract(Contract BaseContract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
+    public synchronized static Contract createTwoSignedContract(Contract baseContract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
-        Contract twoSignContract = BaseContract;
+        Contract twoSignContract = baseContract;
 
         if (createNewRevision) {
-            twoSignContract = BaseContract.createRevision(fromKeys);
+            twoSignContract = baseContract.createRevision(fromKeys);
             twoSignContract.getKeysToSignWith().clear();
         }
 
