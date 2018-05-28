@@ -992,9 +992,105 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    private Set<HashId> saveEnvironment_getConflicts(NImmutableEnvironment environment) {
+        List<String> namesToCheck = new ArrayList<>();
+        List<HashId> originsToCheck = new ArrayList<>();
+        List<String> addressesToCheck = new ArrayList<>();
+        for (NameRecord nameRecord : environment.nameRecords()) {
+            namesToCheck.add(nameRecord.getNameReduced());
+            for (NameRecordEntry nameRecordEntry : nameRecord.getEntries()) {
+                if (nameRecordEntry.getOrigin() != null)
+                    originsToCheck.add(nameRecordEntry.getOrigin());
+                if (nameRecordEntry.getShortAddress() != null)
+                    addressesToCheck.add(nameRecordEntry.getShortAddress());
+                if (nameRecordEntry.getLongAddress() != null)
+                    addressesToCheck.add(nameRecordEntry.getLongAddress());
+            }
+        }
+
+        String qpNames = String.join(",", Collections.nCopies(namesToCheck.size(),"?"));
+        String qpOrigins = String.join(",", Collections.nCopies(originsToCheck.size(),"?"));
+        String qpAddresses = String.join(",", Collections.nCopies(addressesToCheck.size(),"?"));
+
+        String sqlNames = "(SELECT environments.ncontract_hash_id " +
+                "FROM name_storage JOIN environments ON name_storage.environment_id=environments.id " +
+                "WHERE name_storage.name_reduced IN ("+qpNames+"))";
+        String sqlOrigins = "(SELECT environments.ncontract_hash_id " +
+                "FROM name_entry JOIN name_storage ON name_entry.name_storage_id=name_storage.id " +
+                "JOIN environments ON name_storage.environment_id=environments.id " +
+                "WHERE name_entry.origin IN ("+qpOrigins+"))";
+        String sqlAddresses = "(SELECT environments.ncontract_hash_id " +
+                "FROM name_entry JOIN name_storage ON name_entry.name_storage_id=name_storage.id " +
+                "JOIN environments ON name_storage.environment_id=environments.id " +
+                "WHERE name_entry.short_addr IN ("+qpAddresses+") OR name_entry.long_addr IN ("+qpAddresses+"))";
+
+        List<String> queries = new ArrayList<>();
+        if (namesToCheck.size() > 0)
+            queries.add(sqlNames);
+        if (originsToCheck.size() > 0)
+            queries.add(sqlOrigins);
+        if (addressesToCheck.size() > 0)
+            queries.add(sqlAddresses);
+
+        if (queries.size() == 0)
+            return new HashSet<>();
+
+        String sqlQuery = String.join(" UNION ", queries);
+
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(sqlQuery)
+            ) {
+                int i = 1;
+                for (String name : namesToCheck)
+                    statement.setString(i++, name);
+                for (HashId origin : originsToCheck )
+                    statement.setBytes(i++, origin.getDigest());
+                for (String address : addressesToCheck)
+                    statement.setString(i++, address);
+                for (String address : addressesToCheck)
+                    statement.setString(i++, address);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getNames failed: returning null");
+                Set<HashId> result = new HashSet<>();
+                while (rs.next()) {
+                    result.add(HashId.withDigest(rs.getBytes(1)));
+                }
+                rs.close();
+                return result;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveEnvironment_getConflicts failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveEnvironment_getConflicts failed: " + e);
+        }
+    }
+
+
     @Override
     public Set<HashId> saveEnvironment(NImmutableEnvironment environment) {
-        return new HashSet<>();
+        Set<HashId> conflicts = saveEnvironment_getConflicts(environment);
+        if (conflicts.size() == 0) {
+            NSmartContract nsc = environment.getContract();
+            removeEnvironment(nsc.getId());
+            long envId = saveEnvironmentToStorage(nsc.getExtendedType(), nsc.getId(), Boss.pack(environment.getMutable().getKVStore()), nsc.getPackedTransaction());
+            for (NameRecord nr : environment.nameRecords()) {
+                NNameRecord nnr = (NNameRecord)nr;
+                nnr.setEnvironmentId(envId);
+                addNameRecord(nnr);
+            }
+            for (ContractStorageSubscription css : environment.storageSubscriptions()) {
+                NContractStorageSubscription ncss = (NContractStorageSubscription) css;
+                long contractStorageId = saveContractInStorage(ncss.getContract().getId(), ncss.getPackedContract(), ncss.expiresAt(), ncss.getContract().getOrigin());
+                saveSubscriptionInStorage(contractStorageId, ncss.expiresAt(), envId);
+            }
+        }
+        return conflicts;
     }
 
 

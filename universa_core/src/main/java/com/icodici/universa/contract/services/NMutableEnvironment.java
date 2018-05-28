@@ -180,4 +180,8 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
             immutable.kvStore.set(key, kvStore.get(key));
         }
     }
+
+    public Binder getKVStore() {
+        return kvStore;
+    }
 }
