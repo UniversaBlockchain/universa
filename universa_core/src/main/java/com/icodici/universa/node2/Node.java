@@ -2986,8 +2986,9 @@ public class Node {
                         }
                     }
                     if (resyncingItems.size() == numFinished && processingState.isGotResyncedState()) {
+                        stopResync();
 
-                        if(!processingState.isProcessedToConsensus()) {
+                        if(!processingState.isProcessedToConsensus() && !justResycnNoFurtherVoting) {
                             processingState = ItemProcessingState.CHECKING;
                         }
 
@@ -3015,9 +3016,10 @@ public class Node {
                                     return;
                                 }
                             }
-
-                            processingState = ItemProcessingState.FINISHED;
-                            close();
+                            if(!hasEnvironmentsToSave()) {
+                                processingState = ItemProcessingState.FINISHED;
+                                close();
+                            }
 
                             //item successfully sanitated
                             executorService.schedule(() -> itemSanitationDone(ri.record),0,TimeUnit.SECONDS);
@@ -3038,6 +3040,9 @@ public class Node {
             envSaver = executorService.schedule(() -> saveResyncedEnvironents(),0,TimeUnit.SECONDS);
         }
 
+        private boolean hasEnvironmentsToSave() {
+            return !envSources.isEmpty();
+        }
         private void saveResyncedEnvironents() {
             HashSet<HashId> itemsToReResync = new HashSet<>();
             envSources.keySet().forEach(id ->{
@@ -3050,7 +3055,7 @@ public class Node {
                         Set<HashId> conflicts = ledger.saveEnvironment(environment);
                         if (conflicts.size() > 0) {
                             //TODO: remove in release
-                            boolean resyncConflicts = false;
+                            boolean resyncConflicts = true;
                             if(resyncConflicts) {
                                 itemsToReResync.addAll(conflicts);
                             } else {
@@ -3071,8 +3076,10 @@ public class Node {
                     //TODO: OPTIMIZE GETTING STATE RECORD
                     addItemToResync(id,ledger.getRecord(id));
                 });
-
+//                processingState = ItemProcessingState.RESYNCING;
                 pulseResync(true);
+            } else {
+                close();
             }
         }
 
@@ -3082,8 +3089,10 @@ public class Node {
         }
 
         private void stopResync() {
-            if (resyncer != null)
+            if (resyncer != null) {
                 resyncer.cancel(true);
+                resyncer = null;
+            }
         }
 
         public void addItemToResync(HashId hid, StateRecord record) {
