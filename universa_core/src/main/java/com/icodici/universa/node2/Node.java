@@ -600,7 +600,7 @@ public class Node {
     private NImmutableEnvironment getEnvironment(NSmartContract item) {
         NImmutableEnvironment result = envCache.get(item.getId());
 
-        if(result == null) {
+        if(result == null && item.getParent() != null) {
             result = envCache.get(item.getParent());
         }
 

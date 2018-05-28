@@ -994,7 +994,7 @@ public class PostgresLedger implements Ledger {
 
     @Override
     public Set<HashId> saveEnvironment(NImmutableEnvironment environment) {
-        return null;
+        return new HashSet<>();
     }
 
 
