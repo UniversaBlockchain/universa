@@ -475,6 +475,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return references;
     }
 
+    /**
+     * Get contracts that match all the reference
+     * @return referenced items
+     */
     @Override
     public Set<Approvable> getReferencedItems() {
 
@@ -1338,6 +1342,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         keys.forEach(k -> keysToSignWith.add(k));
     }
 
+    /**
+     * Add reference to the references list of the contract
+     *
+     */
     public void addReference(Reference reference) {
         if(reference.type == Reference.TYPE_TRANSACTIONAL) {
             if(transactional != null)
@@ -1353,10 +1361,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public void removeReference(Reference reference) {
         reference.matchingItems.forEach(approvable -> {
             if(approvable instanceof Contract) {
-                removeReferencedItem((Contract) approvable);
+                newItems.remove((Contract) approvable);
+                revokingItems.remove((Contract) approvable);
             }
         });
-
 
         if(reference.type == Reference.TYPE_TRANSACTIONAL) {
             if(transactional != null)

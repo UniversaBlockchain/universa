@@ -1120,6 +1120,9 @@ public class Node {
         return envCache;
     }
 
+    public PublicKey getNodeKey() {
+        return myInfo.getPublicKey();
+    }
 
     /// ParcelProcessor ///
 
@@ -1273,8 +1276,14 @@ public class Node {
                                     payloadProcessor.doneEvent.await();
                                 }
                                 payloadResult = payloadProcessor.getResult();
-                            } else {
                             }
+
+                            if ((payloadResult != null) && payloadResult.state.isApproved())
+                                if(!payload.isLimitedForTestnet()) {
+                                    int paidU = payload.getStateData().getInt(NSmartContract.PAID_U_FIELD_NAME, 0);
+                                    if (paidU > 0)
+                                        ledger.savePayment(paidU, payloadProcessor != null ? payloadProcessor.record.getCreatedAt() : ledger.getRecord(payload.getId()).getCreatedAt());
+                                }
                         }
                         report(getLabel(), () -> concatReportMessage("parcel processor for: ",
                                 parcelId, " :: payload checked, state ", processingState),

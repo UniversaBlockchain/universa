@@ -125,9 +125,8 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         subscriptionsToAdd.forEach(sub -> {
                     long storageId = ledger.saveContractInStorage(sub.getContract().getId(), sub.getPackedContract(), sub.getContract().getExpiresAt(), sub.getContract().getOrigin());
                     sub.setContractStorageId(storageId);
-                    long subId = ledger.saveSubscriptionInStorage(storageId, sub.expiresAt());
+                    long subId = ledger.saveSubscriptionInStorage(storageId, sub.expiresAt(), getId());
                     sub.setId(subId);
-                    ledger.saveEnvironmentSubscription(subId, getId());
                 }
         );
 

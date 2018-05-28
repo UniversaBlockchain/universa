@@ -358,10 +358,7 @@ public class SqliteLedger implements Ledger {
     public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin) {return 0;}
 
     @Override
-    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt) {return 0;}
-
-    @Override
-    public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {}
+    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {return 0;}
 
     @Override
     public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
@@ -396,6 +393,12 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public NameRecordModel getNameRecord(final String nameReduced) {return null;}
+
+    @Override
+    public NameRecordModel getNameByAddress (String address) {return null;}
+
+    @Override
+    public NameRecordModel getNameByOrigin (byte[] origin) {return null;}
 
     @Override
     public boolean isAllNameRecordsAvailable(Collection<String> reducedNames) {
