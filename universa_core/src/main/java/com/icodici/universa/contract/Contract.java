@@ -2059,6 +2059,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
+     * Binder to hold any data client might want to keep per one transaction.
+     * @return data {@link Binder} from transactional section
+     */
+    public Binder getTransactionalData() {
+        if (transactional == null)
+            createTransactionalSection();
+        return transactional.getData();
+    }
+
+    /**
      * Main .unicon read routine. Load any .unicon version and construct a linked Contract with counterparts (new and
      * revoking items if present) and corresponding {@link TransactionPack} instance to pack it to store or send to
      * approval.
@@ -2643,6 +2653,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         private String id;
         private List<Reference> references;
         private Long validUntil;
+        private Binder data;
 
         private Transactional() {
 
@@ -2660,6 +2671,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if (validUntil != null)
                 b.set("valid_until", validUntil);
 
+            if (data != null)
+                b.set("data", serializer.serialize(data));
+
             return serializer.serialize(b);
         }
 
@@ -2675,6 +2689,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 } catch (IllegalArgumentException e) {
                     validUntil = null;
                 }
+                this.data = data.getBinder("data", null);
             }
         }
 
@@ -2704,6 +2719,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public void setValidUntil(Long val) {
             validUntil = val;
+        }
+
+        public Binder getData() {
+            if (data == null)
+                data = new Binder();
+            return data;
         }
     }
 

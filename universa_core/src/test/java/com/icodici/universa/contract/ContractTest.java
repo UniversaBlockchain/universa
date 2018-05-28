@@ -9,10 +9,7 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.Approvable;
-import com.icodici.universa.Decimal;
-import com.icodici.universa.ErrorRecord;
-import com.icodici.universa.Errors;
+import com.icodici.universa.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
@@ -21,6 +18,7 @@ import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
+import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.BiSerializationException;
@@ -1387,4 +1385,18 @@ public class ContractTest extends ContractTestBase {
         assertFalse(remRefContract2.getState().getReferences().get(0).matchingItems.contains(contractCertificate));
 
     }
+
+    @Test
+    public void transactionalData() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String testValue = HashId.createRandom().toBase64String();
+        contract.getTransactionalData().set("test_value", testValue);
+        contract.seal();
+        byte[] packedData = contract.getPackedTransaction();
+
+        Contract unpackedContract = Contract.fromPackedTransaction(packedData);
+        System.out.println("unpackedContract.transactional.data.test_value: " + unpackedContract.getTransactionalData().getStringOrThrow("test_value"));
+        assertEquals(testValue, unpackedContract.getTransactionalData().getStringOrThrow("test_value"));
+    }
+
 }
