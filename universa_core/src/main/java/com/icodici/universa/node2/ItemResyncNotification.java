@@ -8,6 +8,7 @@ import net.sergeych.boss.Boss;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +30,7 @@ public class ItemResyncNotification extends ItemNotification {
     protected ItemResyncNotification() {
         super();
         itemsToResync = new HashMap<>();
+        itemsWithEnvironment = new HashSet<>();
     }
 
     @Override
