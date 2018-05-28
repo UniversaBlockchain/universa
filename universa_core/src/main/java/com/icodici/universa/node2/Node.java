@@ -623,6 +623,11 @@ public class Node {
         return result;
     }
 
+    private void removeEnvironment(HashId id) {
+        envCache.remove(id);
+        ledger.removeEnvironment(id);
+    }
+
 
 
 
@@ -2362,7 +2367,7 @@ public class Node {
                                         if (ime != null) {
                                             // and run onRevoked
                                             ((NSmartContract) revokingItem).onRevoked(ime);
-                                            ledger.removeEnvironment(revokingItem.getId());
+                                            removeEnvironment(revokingItem.getId());
                                         }
                                     }
                                 }
@@ -2988,7 +2993,7 @@ public class Node {
                         resyncingItems.keySet().forEach(id -> {
                             if(resyncingItems.get(id).getResyncingState() == ResyncingItemProcessingState.COMMIT_SUCCESSFUL) {
                                 if(resyncingItems.get(id).getItemState() == ItemState.REVOKED) {
-                                    ledger.removeEnvironment(id);
+                                    removeEnvironment(id);
                                 }
                             }
                         });

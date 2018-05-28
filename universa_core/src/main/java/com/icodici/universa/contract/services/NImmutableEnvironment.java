@@ -196,10 +196,8 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     }
 
     public NMutableEnvironment getMutable() {
-        NMutableEnvironment nMutableEnvironment = new NMutableEnvironment(contract,kvStore, storageSubscriptionsSet,nameRecordsSet,nameCache,ledger);
-        nMutableEnvironment.setId(id);
-        nMutableEnvironment.setNameCache(nameCache);
-        return nMutableEnvironment;
+        return new NMutableEnvironment(this);
+
     }
 
     public long getId() {

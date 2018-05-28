@@ -9187,8 +9187,10 @@ public class BaseNetworkTest extends TestCase {
 
         payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
+        NImmutableEnvironment ime = new NImmutableEnvironment(newSlotContract, node.getLedger());
+        ime.setNameCache(new NameCache(Duration.ofMinutes(1)));
         // imitating check process on the node
-        newSlotContract.beforeUpdate(new NMutableEnvironment(newSlotContract, new NameCache(Duration.ofMinutes(1)), node.getLedger()));
+        newSlotContract.beforeUpdate(ime);
         newSlotContract.check();
         newSlotContract.traceErrors();
 

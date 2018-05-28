@@ -19,6 +19,7 @@ import java.util.*;
  */
 public class NMutableEnvironment extends NImmutableEnvironment implements MutableEnvironment {
 
+    private final NImmutableEnvironment immutable;
     private Set<NContractStorageSubscription> subscriptionsToAdd = new HashSet<>();
     private Set<NContractStorageSubscription> subscriptionsToDestroy = new HashSet<>();
     private Set<NContractStorageSubscription> subscriptionsToSave = new HashSet<>();
@@ -27,27 +28,13 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
     private Set<NNameRecord> nameRecordsToDestroy = new HashSet<>();
     private Set<NNameRecord> nameRecordsToSave = new HashSet<>();
 
-    /**
-     * Restore NMutableEnvironment
-     * @param contract slot contract this environment belongs to
-     */
-    public NMutableEnvironment(NSmartContract contract, NameCache nameCache, Ledger ledger) {
-        super(contract,ledger);
-        setNameCache(nameCache);
-    }
 
 
-    /**
-     * Restore NMutableEnvironment
-     * @param contract slot contract this environment belongs to
-     * @param kvBinder map stored in the ledger
-     */
-    public NMutableEnvironment(NSmartContract contract, Binder kvBinder,
-                               Collection<ContractStorageSubscription> subscriptions,
-                               Collection<NameRecord> nameRecords, NameCache nameCache, Ledger ledger) {
-        super(contract, kvBinder,subscriptions,nameRecords,ledger);
-        setNameCache(nameCache);
-
+    public NMutableEnvironment(NImmutableEnvironment ime) {
+        super(ime.contract, ime.kvStore,ime.storageSubscriptionsSet,ime.nameRecordsSet,ime.ledger);
+        setNameCache(ime.nameCache);
+        setId(ime.getId());
+        this.immutable = ime;
     }
 
 
@@ -182,5 +169,15 @@ public class NMutableEnvironment extends NImmutableEnvironment implements Mutabl
         nameCache.unlockNameList(nameList);
         nameCache.unlockOriginList(originsList);
 
+        immutable.storageSubscriptionsSet.removeAll(subscriptionsToDestroy);
+        immutable.storageSubscriptionsSet.addAll(subscriptionsToAdd);
+
+        immutable.nameRecordsSet.removeAll(nameRecordsToDestroy);
+        immutable.nameRecordsSet.addAll(nameRecordsToAdd);
+
+        immutable.kvStore.clear();
+        for (String key : kvStore.keySet()) {
+            immutable.kvStore.set(key, kvStore.get(key));
+        }
     }
 }

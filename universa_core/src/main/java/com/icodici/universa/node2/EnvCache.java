@@ -56,9 +56,10 @@ public class EnvCache {
 
 
     public void put(NImmutableEnvironment env) {
-        environemtsByContract.put(env.getContract().getId(),env);
-        environemtsById.put(env.getId(),env);
-        environmetsExpiration.put(env.getId(),Instant.now().plus(maxAge));
+        //TODO: fixed env cache related errors. swapping ids etc
+        //environemtsByContract.put(env.getContract().getId(),env);
+        //environemtsById.put(env.getId(),env);
+        //environmetsExpiration.put(env.getId(),Instant.now().plus(maxAge));
     }
 
     private ConcurrentHashMap<HashId,NImmutableEnvironment> environemtsByContract = new ConcurrentHashMap();
@@ -72,5 +73,14 @@ public class EnvCache {
 
     public NImmutableEnvironment get(Long environmentId) {
         return environemtsById.get(environmentId);
+    }
+
+    public void remove(HashId id) {;
+        NImmutableEnvironment env = environemtsByContract.remove(id);
+        if(env != null) {
+            long envId = env.getId();
+            environemtsById.remove(envId);
+            environmetsExpiration.remove(envId);
+        }
     }
 }

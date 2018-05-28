@@ -127,11 +127,16 @@ public class ClientHTTPServer extends BasicHttpServer {
 
             HashId id = HashId.withDigest(encodedString);
             byte[] data = null;
-            if (envCache != null) {
+            //TODO: implement envCache
+            /*if (envCache != null) {
                 NImmutableEnvironment nie =  envCache.get(id);
                 if (nie != null) {
                     data = Boss.pack(nie);
                 }
+            }*/
+            NImmutableEnvironment nie =  node.getLedger().getEnvironment(id);
+            if (nie != null) {
+                data = Boss.pack(nie);
             }
 
             if (data != null) {
