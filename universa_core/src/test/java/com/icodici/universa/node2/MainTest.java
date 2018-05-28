@@ -1772,6 +1772,7 @@ public class MainTest {
 
         //SHUTDOWN LAST NODE
         testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
+        Thread.sleep(4000);
 
         //REVOKE UNS2
         revokingContract = new Contract(manufacturePrivateKeys.iterator().next());
@@ -1797,6 +1798,7 @@ public class MainTest {
         assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
         //RECREATE NODES
         testSpace.nodes.forEach(m->m.shutdown());
+        Thread.sleep(4000);
         testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
         testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
 
@@ -1822,11 +1824,22 @@ public class MainTest {
 
         NameRecordModel nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
         NameRecordModel nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
+        assertEquals(nrm.entries.size(),1);
+        assertEquals(nrmLast.entries.size(),1);
+        assertNotEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
+        assertNotEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
+
+        Thread.sleep(8000);
+
+        nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
 
         assertEquals(nrm.entries.size(),1);
         assertEquals(nrmLast.entries.size(),1);
         assertEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
         assertEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
+
+        testSpace.nodes.forEach(m->m.shutdown());
+
     }
 
 

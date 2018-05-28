@@ -2558,7 +2558,9 @@ public class Node {
                     lowPrioExecutorService.schedule(() -> checkSpecialItem(item),100,TimeUnit.MILLISECONDS);
 
                     if(!resyncingItems.isEmpty()) {
+                        processingState = ItemProcessingState.RESYNCING;
                         pulseResync(true);
+                        return;
                     }
 
                 } catch (TimeoutException | InterruptedException e) {
@@ -3044,9 +3046,11 @@ public class Node {
                 NodeInfo from = (NodeInfo) array[(int)(array.length*random.nextFloat())];
                 try {
                     NImmutableEnvironment environment = network.getEnvironment(id, from, config.getMaxGetItemTime());
-                    Set<HashId> conflicts = ledger.saveEnvironment(environment);
-                    if(conflicts.size() > 0) {
-                        itemsToReResync.addAll(conflicts);
+                    if(environment != null) {
+                        Set<HashId> conflicts = ledger.saveEnvironment(environment);
+                        if (conflicts.size() > 0) {
+                            itemsToReResync.addAll(conflicts);
+                        }
                     }
                 } catch (InterruptedException e) {
                     return;

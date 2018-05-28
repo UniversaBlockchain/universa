@@ -230,6 +230,7 @@ public class NetworkV2 extends Network {
     @Override
     public NImmutableEnvironment getEnvironment(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
         try {
+            System.out.println("getEnvironment " + itemId.toBase64String());
 //            URL url = new URL("http://localhost:8080/contracts/" + itemId.toBase64String());
             URL url = new URL(nodeInfo.publicUrlString() + "/environments/" + itemId.toBase64String());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();

@@ -122,10 +122,16 @@ public class ClientHTTPServer extends BasicHttpServer {
         });
 
         on("/environments", (request, response) -> {
-            String encodedString = request.getPath().substring(9);
+            String encodedString = request.getPath().substring(14);
+            // this is a bug - path has '+' decoded as ' '
+            encodedString = encodedString.replace(' ', '+');
 
+            System.out.println("/environments " + encodedString);
 
             HashId id = HashId.withDigest(encodedString);
+
+
+
             byte[] data = null;
             //TODO: implement envCache
             /*if (envCache != null) {
@@ -134,7 +140,11 @@ public class ClientHTTPServer extends BasicHttpServer {
                     data = Boss.pack(nie);
                 }
             }*/
+
+
             NImmutableEnvironment nie =  node.getLedger().getEnvironment(id);
+
+
             if (nie != null) {
                 data = Boss.pack(nie);
             }
