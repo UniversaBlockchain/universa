@@ -10604,6 +10604,7 @@ public class BaseNetworkTest extends TestCase {
 
     }
 
+    @Ignore
     @Test(timeout = 90000)
     public void registerUnsContractFromDsl() throws Exception {
 

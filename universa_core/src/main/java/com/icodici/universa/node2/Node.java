@@ -76,6 +76,7 @@ public class Node {
     private final Network network;
     private final ItemCache cache;
     private final ParcelCache parcelCache;
+    private final EnvCache envCache;
     private final NameCache nameCache;
     private final ItemInformer informer = new ItemInformer();
     protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
@@ -154,6 +155,7 @@ public class Node {
         this.network = network;
         cache = new ItemCache(config.getMaxCacheAge());
         parcelCache = new ParcelCache(config.getMaxCacheAge());
+        envCache = new EnvCache(config.getMaxCacheAge());
         nameCache = new NameCache(config.getMaxNameCacheAge());
         config.updateConsensusConfig(network.getNodesCount());
 
@@ -513,7 +515,10 @@ public class Node {
     private final void obtainResyncNotification(ItemResyncNotification notification) {
 
         HashMap<HashId, ItemState> itemsToResync = notification.getItemsToResync();
+        Set<HashId> itemsWithEnvironments = notification.getItemsWithEnvironment();
+
         HashMap<HashId, ItemState> answersForItems = new HashMap<>();
+        Set<HashId> answersForEnvironments = new HashSet<>();
 
         NodeInfo from = notification.getFrom();
 
@@ -544,6 +549,12 @@ public class Node {
                 // we answer only states with consensus, in other cases we answer ItemState.UNDEFINED
                 if (subItemResult != null) {
                     subItemState = subItemResult.state.isConsensusFound() ? subItemResult.state : ItemState.UNDEFINED;
+                    if(subItemResult.state == ItemState.APPROVED) {
+                        NImmutableEnvironment ime =  getEnvironment(hid);
+                        if(ime != null) {
+                            answersForEnvironments.add(hid);
+                        }
+                    }
                 } else {
                     subItemState = ItemState.UNDEFINED;
                 }
@@ -553,7 +564,7 @@ public class Node {
 
             network.deliver(
                     from,
-                    new ItemResyncNotification(myInfo, notification.getItemId(), answersForItems, false)
+                    new ItemResyncNotification(myInfo, notification.getItemId(), answersForItems,answersForEnvironments, false)
             );
         }
 
@@ -563,13 +574,56 @@ public class Node {
                 ip.lock(() -> {
                     for (HashId hid : itemsToResync.keySet()) {
                         ip.resyncVote(hid, from, itemsToResync.get(hid));
+                        if(itemsWithEnvironments.contains(hid)) {
+                            ip.addEnvToSources(hid,from);
+                        }
                     }
+
 
                     return null;
                 });
             }
         }
     }
+
+    private NImmutableEnvironment getEnvironment(HashId hid) {
+        NImmutableEnvironment result = envCache.get(hid);
+        if(result == null) {
+            result = ledger.getEnvironment(hid);
+            if(result != null) {
+                envCache.put(result);
+            }
+        }
+        return result;
+    }
+
+    private NImmutableEnvironment getEnvironment(NSmartContract item) {
+        NImmutableEnvironment result = envCache.get(item.getId());
+
+        if(result == null) {
+            result = envCache.get(item.getParent());
+        }
+
+        if(result == null) {
+            result = ledger.getEnvironment(item);
+            envCache.put(result);
+        }
+        return result;
+    }
+
+    private NImmutableEnvironment getEnvironment(Long environmentId) {
+        NImmutableEnvironment result = envCache.get(environmentId);
+        if(result == null) {
+            result = ledger.getEnvironment(environmentId);
+            if(result != null) {
+                envCache.put(result);
+            }
+        }
+
+        return result;
+    }
+
+
 
 
     /**
@@ -1062,6 +1116,10 @@ public class Node {
         }
     }
 
+    public EnvCache getEnvCache() {
+        return envCache;
+    }
+
 
     /// ParcelProcessor ///
 
@@ -1548,11 +1606,12 @@ public class Node {
         private final ItemState stateWas;
         private ItemProcessingState processingState;
         private Set<NodeInfo> sources = new HashSet<>();
+        private Map<HashId,Set<NodeInfo>> envSources = new HashMap<>();
 
         /**
          * Set true if you resyncing item itself (item will be rollbacked with ItemProcessor if resync will failed).
          */
-        private boolean resyncItselfOnly;
+        private boolean justResycnNoFurtherVoting;
 
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
@@ -1583,6 +1642,7 @@ public class Node {
         private RunnableWithDynamicPeriod poller;
         private RunnableWithDynamicPeriod consensusReceivedChecker;
         private RunnableWithDynamicPeriod resyncer;
+        private ScheduledFuture<?> envSaver;
 
         /**
          * Processor for item that will be processed from check to poll and other processes.
@@ -1772,6 +1832,12 @@ public class Node {
                 downloader.cancel(true);
         }
 
+        private void stopEnvSaver() {
+            if(envSaver != null) {
+                envSaver.cancel(true);
+            }
+        }
+
         //////////// check item section /////////////
 
         private final synchronized void checkItem() {
@@ -1818,8 +1884,7 @@ public class Node {
                                 ((NSmartContract) item).setNodeInfoProvider(nodeInfoProvider);
 
                                 // restore environment if exist, otherwise create new.
-                                //TODO: ledger loads/creates environment AND its services (subscriptions, name records etc)
-                                NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)item);
+                                NImmutableEnvironment ime = getEnvironment((NSmartContract)item);
                                 ime.setNameCache(nameCache);
                                 // Here can be only APPROVED state, so we call only beforeCreate or beforeUpdate
                                 if (((NSmartContract) item).getRevision() == 1) {
@@ -1924,7 +1989,7 @@ public class Node {
                             ((NSmartContract) revokingItem).setNodeInfoProvider(nodeInfoProvider);
 
                             // restore environment if exist
-                            NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)revokingItem);
+                            NImmutableEnvironment ime = getEnvironment((NSmartContract)revokingItem);
 
                             if(ime != null) {
                                 ime.setNameCache(nameCache);
@@ -1975,7 +2040,7 @@ public class Node {
                             ((NSmartContract) newItem).setNodeInfoProvider(nodeInfoProvider);
 
                             // restore environment if exist, otherwise create new.
-                            NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)newItem);
+                            NImmutableEnvironment ime = getEnvironment((NSmartContract)newItem);
                             ime.setNameCache(nameCache);
                             // Here only APPROVED states, so we call only beforeCreate or beforeUpdate
                             if (((Contract) newItem).getRevision() == 1) {
@@ -2284,7 +2349,7 @@ public class Node {
 
                                     if(!searchNewItemWithParent(item,revokingItem.getId())) {
                                         ((NSmartContract) revokingItem).setNodeInfoProvider(nodeInfoProvider);
-                                        NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)revokingItem);
+                                        NImmutableEnvironment ime = getEnvironment((NSmartContract)revokingItem);
                                         if (ime != null) {
                                             // and run onRevoked
                                             ((NSmartContract) revokingItem).onRevoked(ime);
@@ -2328,23 +2393,26 @@ public class Node {
                                 // if new item is smart contract node calls method onCreated or onUpdated
                                 if(newItem instanceof NSmartContract) {
 
-                                    //TODO: if this node was pending negative start resync and download environment rather than onCreate/onUpdate
-
-                                    ((NSmartContract) newItem).setNodeInfoProvider(nodeInfoProvider);
-
-                                    NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)newItem);
-                                    ime.setNameCache(nameCache);
-                                    NMutableEnvironment me = ime.getMutable();
-
-
-                                    if (((NSmartContract) newItem).getRevision() == 1) {
-                                        // and call onCreated
-                                        newExtraResult.set("onCreatedResult", ((NSmartContract) newItem).onCreated(me));
+                                    if(negativeNodes.contains(myInfo)) {
+                                        addItemToResync(itemId,record);
                                     } else {
-                                         newExtraResult.set("onUpdateResult", ((NSmartContract) newItem).onUpdated(me));
-                                    }
 
-                                    me.save();
+                                        ((NSmartContract) newItem).setNodeInfoProvider(nodeInfoProvider);
+
+                                        NImmutableEnvironment ime = getEnvironment((NSmartContract) newItem);
+                                        ime.setNameCache(nameCache);
+                                        NMutableEnvironment me = ime.getMutable();
+
+
+                                        if (((NSmartContract) newItem).getRevision() == 1) {
+                                            // and call onCreated
+                                            newExtraResult.set("onCreatedResult", ((NSmartContract) newItem).onCreated(me));
+                                        } else {
+                                            newExtraResult.set("onUpdateResult", ((NSmartContract) newItem).onUpdated(me));
+                                        }
+
+                                        me.save();
+                                    }
                                 }
 
                                 // update new item's smart contracts link to
@@ -2395,6 +2463,9 @@ public class Node {
                 // it may happen that consensus is found earlier than item is download
                 // we still need item to fix all its relations:
                 try {
+
+                    resyncingItems.clear();
+
                     if (item == null) {
                         // If positive consensus os found, we can spend more time for final download, and can try
                         // all the network as the source:
@@ -2437,27 +2508,27 @@ public class Node {
                             ((NSmartContract) item).setNodeInfoProvider(nodeInfoProvider);
 
 
-                            //TODO: if this node was pending negative start resync and download environment rather than onCreate/onUpdate
-
-
-                            NImmutableEnvironment ime = ledger.getEnvironment((NSmartContract)item);
-                            if(myInfo.getNumber() == 1)
-                                System.out.println("QQQQ " + ((NSmartContract) item).getRevision() + " " + ime.getId());
-                            ime.setNameCache(nameCache);
-                            NMutableEnvironment me = ime.getMutable();
-
-                            if (((NSmartContract) item).getRevision() == 1) {
-                                // and call onCreated
-                                extraResult.set("onCreatedResult", ((NSmartContract) item).onCreated(me));
+                            if(negativeNodes.contains(myInfo)) {
+                                addItemToResync(item.getId(),record);
                             } else {
-                                extraResult.set("onUpdateResult", ((NSmartContract) item).onUpdated(me));
-                            }
 
-                            me.save();
+                                NImmutableEnvironment ime = getEnvironment((NSmartContract) item);
+                                ime.setNameCache(nameCache);
+                                NMutableEnvironment me = ime.getMutable();
 
-                            if (item != null) {
-                                synchronized (cache) {
-                                    cache.update(itemId, getResult());
+                                if (((NSmartContract) item).getRevision() == 1) {
+                                    // and call onCreated
+                                    extraResult.set("onCreatedResult", ((NSmartContract) item).onCreated(me));
+                                } else {
+                                    extraResult.set("onUpdateResult", ((NSmartContract) item).onUpdated(me));
+                                }
+
+                                me.save();
+
+                                if (item != null) {
+                                    synchronized (cache) {
+                                        cache.update(itemId, getResult());
+                                    }
                                 }
                             }
                         }
@@ -2471,6 +2542,10 @@ public class Node {
                     }
 
                     lowPrioExecutorService.schedule(() -> checkSpecialItem(item),100,TimeUnit.MILLISECONDS);
+
+                    if(!resyncingItems.isEmpty()) {
+                        pulseResync(true);
+                    }
 
                 } catch (TimeoutException | InterruptedException e) {
                     setState(ItemState.UNDEFINED);
@@ -2518,7 +2593,7 @@ public class Node {
                     // find all enviroments that have subscription for item
                     Set<Long> enviromentIdsForContractId = ledger.getSubscriptionEnviromentIdsForContractId(lookingId);
                     for (Long environmentId : enviromentIdsForContractId) {
-                        NImmutableEnvironment ime = ledger.getEnvironment(environmentId);
+                        NImmutableEnvironment ime = getEnvironment(environmentId);
                         ime.setNameCache(nameCache);
                         NSmartContract contract = ime.getContract();
                         contract.setNodeInfoProvider(nodeInfoProvider);
@@ -2768,14 +2843,14 @@ public class Node {
         /**
          * Start resyncing.
          *
-         * @param resyncItself - set true if you want to resync item itself.
+         * @param justResyncNoFurtherVoting - set true if you want to resync item itself.
          */
-        public final void pulseResync(boolean resyncItself) {
+        public final void pulseResync(boolean justResyncNoFurtherVoting) {
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()) {
-                    this.resyncItselfOnly = resyncItself;
-                    if (resyncItself) {
+                    this.justResycnNoFurtherVoting = justResyncNoFurtherVoting;
+                    if (justResyncNoFurtherVoting) {
                         addItemToResync(itemId, record);
                     }
 
@@ -2834,7 +2909,7 @@ public class Node {
                             }
                         }
                         if (itemsToResync.size() > 0) {
-                            ItemResyncNotification notification = new ItemResyncNotification(myInfo, itemId, itemsToResync, true);
+                            ItemResyncNotification notification = new ItemResyncNotification(myInfo, itemId, itemsToResync, new HashSet<>(),  true);
 
                             network.deliver(node, notification);
                         }
@@ -2900,8 +2975,21 @@ public class Node {
                             processingState = ItemProcessingState.CHECKING;
                         }
 
+                        //DELETE ENVIRONMENTS FOR REVOKED ITEMS
+                        resyncingItems.keySet().forEach(id -> {
+                            if(resyncingItems.get(id).getResyncingState() == ResyncingItemProcessingState.COMMIT_SUCCESSFUL) {
+                                if(resyncingItems.get(id).getItemState() == ItemState.REVOKED) {
+                                    ledger.removeEnvironment(id);
+                                }
+                            }
+                        });
+                        //SAVE ENVIRONMENTS FOR APPROVED ITEMS
+                        pulseSaveResyncedEnvironments();
+
+
+
                         // if we was resyncing itself (not own subitems) and state from network was undefined - rollback state
-                        if (resyncItselfOnly) {
+                        if (justResycnNoFurtherVoting) {
                             if (itemId.equals(ri.hashId)) {
                                 if (ri.getResyncingState() == ResyncingItemProcessingState.COMMIT_FAILED) {
                                     rollbackChanges(stateWas);
@@ -2929,6 +3017,40 @@ public class Node {
                 }
             }
         }
+
+        private void pulseSaveResyncedEnvironments() {
+            envSaver = executorService.schedule(() -> saveResyncedEnvironents(),0,TimeUnit.SECONDS);
+        }
+
+        private void saveResyncedEnvironents() {
+            HashSet<HashId> itemsToReResync = new HashSet<>();
+            envSources.keySet().forEach(id ->{
+                Random random = new Random(Instant.now().toEpochMilli()*myInfo.getNumber());
+                Object[] array = envSources.get(id).toArray();
+                NodeInfo from = (NodeInfo) array[(int)(array.length*random.nextFloat())];
+                try {
+                    NImmutableEnvironment environment = network.getEnvironment(id, from, config.getMaxGetItemTime());
+                    Set<HashId> conflicts = ledger.saveEnvironment(environment);
+                    if(conflicts.size() > 0) {
+                        itemsToReResync.addAll(conflicts);
+                    }
+                } catch (InterruptedException e) {
+                    return;
+                }
+            });
+
+            if(itemsToReResync.size() > 0) {
+                itemsToReResync.addAll(resyncingItems.keySet());
+                resyncingItems.clear();
+                itemsToReResync.forEach(id -> {
+                    //TODO: OPTIMIZE GETTING STATE RECORD
+                    addItemToResync(id,ledger.getRecord(id));
+                });
+
+                pulseResync(true);
+            }
+        }
+
 
         private boolean isResyncExpired() {
             return resyncExpiresAt.isBefore(Instant.now());
@@ -2997,7 +3119,7 @@ public class Node {
 
             if(processingState.canContinue()) {
                 // If we not just resynced itslef
-                if (!resyncItselfOnly) {
+                if (!justResycnNoFurtherVoting) {
                     checkIfAllReceivedConsensus();
                     if (processingState == ItemProcessingState.DONE) {
                         pulseSendNewConsensus();
@@ -3029,6 +3151,7 @@ public class Node {
             processingState = ItemProcessingState.EMERGENCY_BREAK;
 
             stopDownloader();
+            stopEnvSaver();
             stopPoller();
             stopConsensusReceivedChecker();
             stopResync();
@@ -3113,6 +3236,16 @@ public class Node {
             }
         }
 
+        public void addEnvToSources(HashId hid, NodeInfo from) {
+            synchronized (envSources) {
+                if(!envSources.containsKey(hid)) {
+                    envSources.put(hid,new HashSet<>());
+                }
+                envSources.get(hid).add(from);
+            }
+        }
+
+
         private boolean isDone() {
             return processingState.isDone();
         }
@@ -3126,7 +3259,10 @@ public class Node {
         public String toString() {
             return "ip -> parcel: " + parcelId + ", item: " + itemId + ", processing state: " + processingState;
         }
+
     }
+
+
 
     private void itemSanitationDone(StateRecord record) {
 

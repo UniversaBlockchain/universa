@@ -14,12 +14,14 @@ import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.*;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.utils.Bytes;
@@ -40,12 +42,14 @@ public class ClientHTTPServer extends BasicHttpServer {
     private final BufferedLogger log;
     private ItemCache cache;
     private ParcelCache parcelCache;
+    private EnvCache envCache;
     private NetConfig netConfig;
     private Config config;
 
     private boolean localCors = false;
 
     private ExecutorService es = Executors.newFixedThreadPool(40);
+
 
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
         super(privateKey, port, 32, logger);
@@ -106,6 +110,29 @@ public class ClientHTTPServer extends BasicHttpServer {
                     }
                 }
             }
+            if (data != null) {
+                // contracts are immutable: cache forever
+                Binder hh = response.getHeaders();
+                hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
+                hh.put("Cache-Control", "max-age=315360000");
+                response.setBody(data);
+            } else
+                response.setResponseCode(404);
+        });
+
+        on("/environments", (request, response) -> {
+            String encodedString = request.getPath().substring(9);
+
+
+            HashId id = HashId.withDigest(encodedString);
+            byte[] data = null;
+            if (envCache != null) {
+                NImmutableEnvironment nie =  envCache.get(id);
+                if (nie != null) {
+                    data = Boss.pack(nie);
+                }
+            }
+
             if (data != null) {
                 // contracts are immutable: cache forever
                 Binder hh = response.getHeaders();
@@ -490,6 +517,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setParcelCache(ParcelCache cache) {
         this.parcelCache = cache;
+    }
+
+    public void setEnvCache(EnvCache cache) {
+        this.envCache = cache;
     }
 
     public void setNetConfig(NetConfig netConfig) {
