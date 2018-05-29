@@ -993,6 +993,8 @@ public class PostgresLedger implements Ledger {
     }
 
     private Set<HashId> saveEnvironment_getConflicts(NImmutableEnvironment environment) {
+        HashId ownSmartContractId = environment.getContract().getId();
+
         List<String> namesToCheck = new ArrayList<>();
         List<HashId> originsToCheck = new ArrayList<>();
         List<String> addressesToCheck = new ArrayList<>();
@@ -1014,15 +1016,15 @@ public class PostgresLedger implements Ledger {
 
         String sqlNames = "(SELECT environments.ncontract_hash_id " +
                 "FROM name_storage JOIN environments ON name_storage.environment_id=environments.id " +
-                "WHERE name_storage.name_reduced IN ("+qpNames+"))";
+                "WHERE name_storage.name_reduced IN ("+qpNames+") AND environments.ncontract_hash_id<>?) ";
         String sqlOrigins = "(SELECT environments.ncontract_hash_id " +
                 "FROM name_entry JOIN name_storage ON name_entry.name_storage_id=name_storage.id " +
                 "JOIN environments ON name_storage.environment_id=environments.id " +
-                "WHERE name_entry.origin IN ("+qpOrigins+"))";
+                "WHERE name_entry.origin IN ("+qpOrigins+") AND environments.ncontract_hash_id<>?)";
         String sqlAddresses = "(SELECT environments.ncontract_hash_id " +
                 "FROM name_entry JOIN name_storage ON name_entry.name_storage_id=name_storage.id " +
                 "JOIN environments ON name_storage.environment_id=environments.id " +
-                "WHERE name_entry.short_addr IN ("+qpAddresses+") OR name_entry.long_addr IN ("+qpAddresses+"))";
+                "WHERE (name_entry.short_addr IN ("+qpAddresses+") OR name_entry.long_addr IN ("+qpAddresses+")) AND environments.ncontract_hash_id<>?)";
 
         List<String> queries = new ArrayList<>();
         if (namesToCheck.size() > 0)
@@ -1045,12 +1047,18 @@ public class PostgresLedger implements Ledger {
                 int i = 1;
                 for (String name : namesToCheck)
                     statement.setString(i++, name);
+                if (namesToCheck.size() > 0)
+                    statement.setBytes(i++, ownSmartContractId.getDigest());
                 for (HashId origin : originsToCheck )
                     statement.setBytes(i++, origin.getDigest());
+                if (originsToCheck.size() > 0)
+                    statement.setBytes(i++, ownSmartContractId.getDigest());
                 for (String address : addressesToCheck)
                     statement.setString(i++, address);
                 for (String address : addressesToCheck)
                     statement.setString(i++, address);
+                if (addressesToCheck.size() > 0)
+                    statement.setBytes(i++, ownSmartContractId.getDigest());
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)

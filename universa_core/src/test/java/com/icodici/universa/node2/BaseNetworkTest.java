@@ -1414,13 +1414,16 @@ public class BaseNetworkTest extends TestCase {
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        Contract tokenContract = ContractsService.createTokenContractWithEmission(stepaPrivateKeys, stepaPublicKeys, "300000000000");
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Contract tokenContract = ContractsService.createTokenContractWithEmission(martyPrivateKeys, stepaPublicKeys, "300000000000");
 
         tokenContract.check();
         tokenContract.traceErrors();
         registerAndCheckApproved(tokenContract);
 
-        Contract emittedContract = ContractsService.createTokenEmission(tokenContract, "100000000000", stepaPrivateKeys);
+        Contract emittedContract = ContractsService.createTokenEmission(tokenContract, "100000000000", martyPrivateKeys);
 
         emittedContract.check();
         emittedContract.traceErrors();
@@ -1440,17 +1443,22 @@ public class BaseNetworkTest extends TestCase {
         for (PrivateKey pk : stepaPrivateKeys)
             stepaPublicKeys.add(pk.getPublicKey());
 
-        Contract tokenContract = ContractsService.createTokenContractWithEmission(stepaPrivateKeys, stepaPublicKeys, "300000000000");
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Contract tokenContract = ContractsService.createTokenContractWithEmission(martyPrivateKeys, stepaPublicKeys, "300000000000");
 
         tokenContract.check();
         tokenContract.traceErrors();
         registerAndCheckApproved(tokenContract);
 
-        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
-        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
-
         // with bad signature
-        Contract emittedContract = ContractsService.createTokenEmission(tokenContract, "100000000000", martyPrivateKeys);
+        Contract emittedContract = ContractsService.createTokenEmission(tokenContract, "100000000000", stepaPrivateKeys);
+
+        Set<KeyRecord> krs = new HashSet<>();
+        for (PublicKey k: stepaPublicKeys)
+            krs.add(new KeyRecord(k));
+        emittedContract.setCreator(krs);
 
         emittedContract.check();
         emittedContract.traceErrors();
