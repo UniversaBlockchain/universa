@@ -639,13 +639,13 @@ public class ContractsService {
 
         Contract tokenContract = createTokenContract(issuerKeys, ownerKeys, amount, minValue);
 
-        RoleLink ownerLink = new RoleLink("owner_link", "owner");
-        tokenContract.registerRole(ownerLink);
+        RoleLink issuerLink = new RoleLink("issuer_link", "issuer");
+        tokenContract.registerRole(issuerLink);
 
         HashMap<String, Object> fieldsMap = new HashMap<>();
         fieldsMap.put("amount", null);
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
-        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(ownerLink, modifyDataParams);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(issuerLink, modifyDataParams);
         tokenContract.addPermission(modifyDataPermission);
 
         tokenContract.seal();
