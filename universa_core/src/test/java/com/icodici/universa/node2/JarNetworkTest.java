@@ -24,7 +24,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -403,6 +402,7 @@ public class JarNetworkTest extends TestCase {
         assertEquals(waitState, itemResult.state);
     }
 
+    /*
     @Test
     public void registerSlotContract() throws Exception {
         final PrivateKey key = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
@@ -440,8 +440,8 @@ public class JarNetworkTest extends TestCase {
         slotContract.traceErrors();
         assertTrue(slotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
         assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
 
 //        for(Node n : nodes) {
@@ -514,8 +514,8 @@ public class JarNetworkTest extends TestCase {
         refilledSlotContract.traceErrors();
         assertTrue(refilledSlotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
         assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
 
         normalClient.registerParcel(payingParcel.pack(),8000);
@@ -578,8 +578,8 @@ public class JarNetworkTest extends TestCase {
         refilledSlotContract2.traceErrors();
         assertTrue(refilledSlotContract2.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
         assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
 
         normalClient.registerParcel(payingParcel.pack(),8000);
@@ -751,8 +751,8 @@ public class JarNetworkTest extends TestCase {
         slotContract.traceErrors();
         assertTrue(slotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
         assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
@@ -849,8 +849,8 @@ public class JarNetworkTest extends TestCase {
         refilledSlotContract.traceErrors();
         assertTrue(refilledSlotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract.get("definition.extended_type"));
         assertEquals((100 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract.getPackedTransaction().length / 1024) + " Kb");
@@ -974,8 +974,8 @@ public class JarNetworkTest extends TestCase {
         refilledSlotContract2.traceErrors();
         assertTrue(refilledSlotContract2.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract2.get("definition.extended_type"));
         assertEquals((100 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract2.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract2.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract2.getPackedTransaction().length / 1024) + " Kb");
@@ -1095,8 +1095,8 @@ public class JarNetworkTest extends TestCase {
         refilledSlotContract3.traceErrors();
         assertTrue(refilledSlotContract3.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), refilledSlotContract3.get("definition.extended_type"));
         assertEquals((100 + 300 + 300 + 300) * Config.kilobytesAndDaysPerU, refilledSlotContract3.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + refilledSlotContract3.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double)simpleContract3.getPackedTransaction().length / 1024) + " Kb");
@@ -1264,8 +1264,8 @@ public class JarNetworkTest extends TestCase {
         slotContract.traceErrors();
         assertTrue(slotContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), slotContract.get("definition.extended_type"));
         assertEquals(100 * Config.kilobytesAndDaysPerU, slotContract.getPrepaidKilobytesForDays(), 0.01);
         System.out.println(">> " + slotContract.getPrepaidKilobytesForDays() + " KD");
         System.out.println(">> " + ((double) simpleContract.getPackedTransaction().length / 1024) + " Kb");
@@ -1702,7 +1702,7 @@ public class JarNetworkTest extends TestCase {
         payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
         // imitating check process on the node
-        newSlotContract.beforeUpdate(new SlotMutableEnvironment(newSlotContract));
+        newSlotContract.beforeUpdate(new NMutableEnvironment(newSlotContract));
         newSlotContract.check();
         newSlotContract.traceErrors();
 
@@ -2286,7 +2286,7 @@ public class JarNetworkTest extends TestCase {
         Contract revokingSlotContract = ContractsService.createRevocation(refilledSlotContract, key);
 
         registerAndCheckDeclined(revokingSlotContract);
-    }
+    }*/
 
 
     /*@Test

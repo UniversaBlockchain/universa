@@ -19,10 +19,6 @@ public interface ContractStorageSubscription {
 
     ZonedDateTime expiresAt();
 
-    void setExpiresAt(ZonedDateTime expiresAt);
-
-    void destroy();
-
     /**
      * @return the unpacked stored contract. Note that this instance could be cached/shared among subscribers.
      */
@@ -51,9 +47,13 @@ public interface ContractStorageSubscription {
          * @return Packed transaction of the new revision just approved
          */
         byte[] getPackedTransaction();
+
+
+        MutableEnvironment getEnvironment();
     }
 
     interface RevokedEvent extends Event {
+        ImmutableEnvironment getEnvironment();
     }
 
     /**

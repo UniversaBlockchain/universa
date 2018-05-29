@@ -1,8 +1,7 @@
 package com.icodici.universa.contract.services;
 
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.NodeContract;
+import com.icodici.universa.node.models.NameRecordModel;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -61,5 +60,19 @@ public interface MutableEnvironment extends ImmutableEnvironment {
      */
     @NonNull ContractStorageSubscription createStorageSubscription(byte[] packedTransaction,
                                                                    @NonNull ZonedDateTime expiresAt);
+
+
+    @NonNull NameRecord createNameRecord(@NonNull UnsName unsName,
+                                              @NonNull ZonedDateTime expiresAt);
+
+    void setSubscriptionExpiresAt(ContractStorageSubscription subscription, ZonedDateTime expiresAt);
+
+    void destroySubscription(ContractStorageSubscription subscription);
+
+
+    void setNameRecordExpiresAt(NameRecord nameRecord, ZonedDateTime expiresAt);
+
+    void destroyNameRecord(NameRecord nameRecord);
+
 
 }

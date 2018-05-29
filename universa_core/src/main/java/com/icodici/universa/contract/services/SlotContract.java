@@ -9,13 +9,10 @@ import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.node.Ledger;
 import com.icodici.universa.node2.Config;
-import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -27,6 +24,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @BiType(name = "SlotContract")
 /**
@@ -73,44 +71,7 @@ public class SlotContract extends NSmartContract {
     // Time of spent KD's calculation for current revision
     private ZonedDateTime spentKDsTime = null;
 
-    public Config getNodeConfig() {
-        return nodeConfig;
-    }
 
-    /**
-     * Set node's {@link Config}. Slot needs for config to find and check U contract (needs u issuer keys).
-     * @param nodeConfig is {@link Config}
-     */
-    public void setNodeConfig(Config nodeConfig) {
-        this.nodeConfig = nodeConfig;
-    }
-    private Config nodeConfig;
-
-    public Ledger getLedger() {
-        return ledger;
-    }
-
-    /**
-     * Set {@link Ledger} from the node. Slot contract needs with ledger for creation and update subscriptions.
-     * @param ledger is {@link Ledger}
-     */
-    public void setLedger(Ledger ledger) {
-        this.ledger = ledger;
-    }
-    private Ledger ledger;
-
-    public NodeInfo getNodeInfo() {
-        return nodeInfo;
-    }
-
-    /**
-     * Set {@link NodeInfo}
-     * @param nodeInfo
-     */
-    public void setNodeInfo(NodeInfo nodeInfo) {
-        this.nodeInfo = nodeInfo;
-    }
-    private NodeInfo nodeInfo;
 
     /**
      * Slot contract is one of several types of smarts contracts that can be run on the node. Slot contract provides
@@ -197,6 +158,7 @@ public class SlotContract extends NSmartContract {
             fieldsMap.put("action", null);
             fieldsMap.put("/expires_at", null);
             fieldsMap.put(KEEP_REVISIONS_FIELD_NAME, null);
+            fieldsMap.put(PAID_U_FIELD_NAME, null);
             fieldsMap.put(PREPAID_KD_FIELD_NAME, null);
             fieldsMap.put(PREPAID_FROM_TIME_FIELD_NAME, null);
             fieldsMap.put(STORED_BYTES_FIELD_NAME, null);
@@ -271,37 +233,6 @@ public class SlotContract extends NSmartContract {
         return false;
     }
 
-    /**
-     * Put contract to the tracking contract's revisions queue. Contract will be created from given bytes array.
-     * If queue contains more then {@link SlotContract#keepRevisions} revisions then last one will removed.
-     * @param packed is bytes array with packed {@link TransactionPack}.
-     * @throws IOException if something went wrong.
-     */
-    public void putPackedTrackingContract(byte[] packed) throws IOException {
-
-        Contract c = TransactionPack.unpack(packed).getContract();
-        trackingContracts.addFirst(c);
-        packedTrackingContracts.addFirst(packed);
-
-        Binder forState = new Binder();
-        for (Contract tc : trackingContracts) {
-            forState.set(tc.getId().toBase64String(), tc.getPackedTransaction());
-        }
-        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, forState);
-
-        if(trackingContracts.size() > keepRevisions) {
-            trackingContracts.removeLast();
-        }
-        if(packedTrackingContracts.size() > keepRevisions) {
-            packedTrackingContracts.removeLast();
-        }
-
-        int storingBytes = 0;
-        for(byte[] p : packedTrackingContracts) {
-            storingBytes += p.length;
-        }
-        getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
-    }
 
     /**
      * Put contract to the tracking contract's revisions queue.
@@ -313,24 +244,8 @@ public class SlotContract extends NSmartContract {
         trackingContracts.addFirst(c);
         packedTrackingContracts.addFirst(c.getPackedTransaction());
 
-        Binder forState = new Binder();
-        for (Contract tc : trackingContracts) {
-            forState.set(tc.getId().toBase64String(), tc.getPackedTransaction());
-        }
-        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, forState);
+        updateTrackingContracts();
 
-        if(trackingContracts.size() > keepRevisions) {
-            trackingContracts.removeLast();
-        }
-        if(packedTrackingContracts.size() > keepRevisions) {
-            packedTrackingContracts.removeLast();
-        }
-
-        int storingBytes = 0;
-        for(byte[] p : packedTrackingContracts) {
-            storingBytes += p.length;
-        }
-        getStateData().set(STORED_BYTES_FIELD_NAME, storingBytes);
     }
 
     /**
@@ -338,16 +253,23 @@ public class SlotContract extends NSmartContract {
      * @param keepRevisions is number of revisions to keep.
      */
     public void setKeepRevisions(int keepRevisions) {
-        this.keepRevisions = keepRevisions;
+        if(keepRevisions < 1)
+            throw new IllegalArgumentException("Keep revisions should be positive");
+        getStateData().set(KEEP_REVISIONS_FIELD_NAME, keepRevisions);
 
-        while(trackingContracts.size() > keepRevisions) {
+        this.keepRevisions = keepRevisions;
+        updateTrackingContracts();
+
+    }
+
+    private void updateTrackingContracts() {
+        while (trackingContracts.size() > keepRevisions) {
             trackingContracts.removeLast();
         }
-        while(packedTrackingContracts.size() > keepRevisions) {
+        while (packedTrackingContracts.size() > keepRevisions) {
             packedTrackingContracts.removeLast();
         }
 
-        getStateData().set(KEEP_REVISIONS_FIELD_NAME, keepRevisions);
     }
 
     /**
@@ -371,42 +293,7 @@ public class SlotContract extends NSmartContract {
      */
     private double calculatePrepaidKilobytesForDays(boolean withSaveToState) {
 
-        // first of all looking for U contract and calculate paid U amount.
-        for (Contract nc : getNew()) {
-            if (nc.isU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
-                int calculatedPayment = 0;
-                boolean isTestPayment = false;
-                Contract parent = null;
-                for (Contract nrc : nc.getRevoking()) {
-                    if (nrc.getId().equals(nc.getParent())) {
-                        parent = nrc;
-                        break;
-                    }
-                }
-                if (parent != null) {
-                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
-                    if (hasTestTU) {
-                        isTestPayment = true;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
-                                - nc.getStateData().getIntOrThrow("test_transaction_units");
-
-                        if (calculatedPayment <= 0) {
-                            isTestPayment = false;
-                            calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                    - nc.getStateData().getIntOrThrow("transaction_units");
-                        }
-                    } else {
-                        isTestPayment = false;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                - nc.getStateData().getIntOrThrow("transaction_units");
-                    }
-                }
-
-                if(!isTestPayment) {
-                    paidU = calculatedPayment;
-                }
-            }
-        }
+        paidU = getPaidU();
 
         // then looking for prepaid early U that can be find at the stat.data
         // additionally we looking for and calculate times of payment fillings and some other data
@@ -427,12 +314,14 @@ public class SlotContract extends NSmartContract {
 
         spentEarlyKDsTime = ZonedDateTime.ofInstant(Instant.ofEpochSecond(spentEarlyKDsTimeSecs), ZoneId.systemDefault());
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(wasPrepaidFrom), ZoneId.systemDefault());
-        prepaidKilobytesForDays = wasPrepaidKilobytesForDays + paidU * Config.kilobytesAndDaysPerU;
+        prepaidKilobytesForDays = wasPrepaidKilobytesForDays + paidU * getRate();
 
         spentKDsTime = now;
 
         // if true we save it to stat.data
         if(withSaveToState) {
+            getStateData().set(PAID_U_FIELD_NAME, paidU);
+
             getStateData().set(PREPAID_KD_FIELD_NAME, prepaidKilobytesForDays);
             if(getRevision() == 1) {
                 getStateData().set(PREPAID_FROM_TIME_FIELD_NAME, now.toEpochSecond());
@@ -463,7 +352,7 @@ public class SlotContract extends NSmartContract {
      * It recalculate storing params (storing time) and update expiring dates for each revision at the ledger.
      * @param me is {@link MutableEnvironment} object with some data.
      */
-    private void saveSubscriptionsToLedger(MutableEnvironment me) {
+    private void updateSubscriptions(MutableEnvironment me) {
 
         // recalculate storing info without saving to state to get valid storing data
         calculatePrepaidKilobytesForDays(false);
@@ -473,26 +362,30 @@ public class SlotContract extends NSmartContract {
             storingBytes += packed.length;
         }
 
-        ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-
         // calculate time that will be added to now as new expiring time
         // it is difference of all prepaid KD (kilobytes*days) and already spent divided to new storing volume.
-        double days = (prepaidKilobytesForDays - spentKDs) * Config.kilobytesAndDaysPerU * 1024 / storingBytes;
-        double hours = days * 24;
+        double days = (prepaidKilobytesForDays - spentKDs) * getRate() * 1024 / storingBytes;
         long seconds = (long) (days * 24 * 3600);
-        newExpires = newExpires.plusSeconds(seconds);
+        ZonedDateTime newExpires = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault())
+                .plusSeconds(seconds);
 
-        long environmentId = ledger.saveEnvironmentToStorage(getExtendedType(), getId(), Boss.pack(me), getPackedTransaction());
 
-        // recalculate storing time for all subscriptions and save them again
-        for(Contract tc : trackingContracts) {
+        Map<HashId, Contract> newContracts = trackingContracts.stream().collect(Collectors.toMap(Contract::getId, c -> c));
+
+        me.storageSubscriptions().forEach(sub -> {
+            HashId id = sub.getContract().getId();
+            if(newContracts.containsKey(id)) {
+                me.setSubscriptionExpiresAt(sub, newExpires);
+                newContracts.remove(id);
+            } else {
+                me.destroySubscription(sub);
+            }
+        });
+
+        for(Contract tc : newContracts.values()) {
             try {
-                ContractStorageSubscription css = me.createStorageSubscription(tc.getId(), newExpires);
+                ContractStorageSubscription css = me.createStorageSubscription(tc.getPackedTransaction(), newExpires);
                 css.receiveEvents(true);
-                long contractStorageId = ledger.saveContractInStorage(tc.getId(), tc.getPackedTransaction(), css.expiresAt(), tc.getOrigin());
-                long subscriptionId = ledger.saveSubscriptionInStorage(contractStorageId, css.expiresAt());
-                ledger.saveEnvironmentSubscription(subscriptionId, environmentId);
-
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -509,35 +402,22 @@ public class SlotContract extends NSmartContract {
     @Override
     public void onContractStorageSubscriptionEvent(ContractStorageSubscription.Event event) {
 
-        MutableEnvironment me;
-        if(event instanceof ContractStorageSubscription.ApprovedEvent) {
 
+        if(event instanceof ContractStorageSubscription.ApprovedEvent) {
+            MutableEnvironment me = ((ContractStorageSubscription.ApprovedEvent) event).getEnvironment();
             // recreate subscription:
             Contract newStoredItem = ((ContractStorageSubscription.ApprovedEvent)event).getNewRevision();
 
             putTrackingContract(newStoredItem);
-
-
-            byte[] ebytes = ledger.getEnvironmentFromStorage(getId());
-            if (ebytes != null) {
-                Binder binder = Boss.unpack(ebytes);
-                me = new SlotMutableEnvironment(this, binder);
-            } else {
-                me = new SlotMutableEnvironment(this);
-            }
-
-            // remove old subscriptions
-            ledger.removeSlotContractWithAllSubscriptions(getId());
+            saveTrackingContractsToState();
 
             // and save new
-            saveSubscriptionsToLedger(me);
+            updateSubscriptions(me);
 
         } else if(event instanceof ContractStorageSubscription.RevokedEvent) {
-            // remove subscriptions
-            ledger.removeSlotContractWithAllSubscriptions(getId());
+
         }
 
-        event.getSubscription().destroy();
     }
 
     @Override
@@ -545,9 +425,18 @@ public class SlotContract extends NSmartContract {
      * We override seal method to recalculate holding at the state.data values
      */
     public byte[] seal() {
+        saveTrackingContractsToState();
         calculatePrepaidKilobytesForDays(true);
 
         return super.seal();
+    }
+
+    private void saveTrackingContractsToState() {
+        Binder forState = new Binder();
+        for (Contract tc : trackingContracts) {
+            forState.set(tc.getId().toBase64String(), tc.getPackedTransaction());
+        }
+        getStateData().set(TRACKING_CONTRACT_FIELD_NAME, forState);
     }
 
 
@@ -575,6 +464,8 @@ public class SlotContract extends NSmartContract {
         if(numRevisions > 0)
             keepRevisions = numRevisions;
 
+        paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
+
         // extract saved prepaid KD (kilobytes*days) value
         prepaidKilobytesForDays = getStateData().getInt(PREPAID_KD_FIELD_NAME, 0);
 
@@ -597,12 +488,7 @@ public class SlotContract extends NSmartContract {
                     }
                 }
             }
-            Collections.sort(contracts, new Comparator<Contract>() {
-
-                public int compare(Contract o1, Contract o2) {
-                    return o1.getRevision() - o2.getRevision();
-                }
-            });
+            Collections.sort(contracts, Comparator.comparingInt(Contract::getRevision));
             for (Contract c : contracts) {
                 if(trackingContracts != null) {
                     trackingContracts.addFirst(c);
@@ -620,54 +506,23 @@ public class SlotContract extends NSmartContract {
     @Override
     public boolean beforeCreate(ImmutableEnvironment c) {
 
-        boolean checkResult = false;
+        boolean checkResult = true;
 
         // recalculate storing info without saving to state to get valid storing data
         calculatePrepaidKilobytesForDays(false);
 
-        // check that slot has payment and payment is valid
-        boolean hasPayment = false;
-        for (Contract nc : getNew()) {
-            if(nc.isU(nodeConfig.getTransactionUnitsIssuerKeys(), nodeConfig.getTUIssuerName())) {
-                hasPayment = true;
 
-                int calculatedPayment = 0;
-                boolean isTestPayment = false;
-                Contract parent = null;
-                for(Contract nrc : nc.getRevoking()) {
-                    if(nrc.getId().equals(nc.getParent())) {
-                        parent = nrc;
-                        break;
-                    }
-                }
-                if(parent != null) {
-                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
-                    if (hasTestTU) {
-                        isTestPayment = true;
-                        if (calculatedPayment <= 0) {
-                            isTestPayment = false;
-                        }
-                    } else {
-                        isTestPayment = false;
-                    }
-
-                    if(isTestPayment) {
-                        hasPayment = false;
-                        addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing contracts in slots");
-                    }
-
-                    if(paidU < nodeConfig.getMinSlotPayment()) {
-                        hasPayment = false;
-                        addError(Errors.FAILED_CHECK, "Payment for slot contract is below minimum level of " + nodeConfig.getMinSlotPayment() + "U");
-                    }
-                } else {
-                    hasPayment = false;
-                    addError(Errors.FAILED_CHECK, "Payment contract is missing parent contarct");
-                }
+        int paidU = getPaidU();
+        if(paidU == 0) {
+            if(getPaidU(true) > 0) {
+                addError(Errors.FAILED_CHECK, "Test payment is not allowed for storing contracts in slots");
             }
+            checkResult = false;
+        } else if(paidU < getMinPayment()) {
+            addError(Errors.FAILED_CHECK, "Payment for slot contract is below minimum level of " + getMinPayment() + "U");
+            checkResult = false;
         }
 
-        checkResult = hasPayment;
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, "Slot contract hasn't valid payment");
             return checkResult;
@@ -761,14 +616,14 @@ public class SlotContract extends NSmartContract {
 
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
-        saveSubscriptionsToLedger(me);
+        updateSubscriptions(me);
 
         return Binder.fromKeysValues("status", "ok");
     }
 
     @Override
     public Binder onUpdated(MutableEnvironment me) {
-        saveSubscriptionsToLedger(me);
+        updateSubscriptions(me);
 
         return Binder.fromKeysValues("status", "ok");
     }
@@ -776,7 +631,7 @@ public class SlotContract extends NSmartContract {
     @Override
     public void onRevoked(ImmutableEnvironment ime) {
         // remove subscriptions
-        ledger.removeSlotContractWithAllSubscriptions(getId());
+        //ledger.removeSlotContractWithAllSubscriptions(getId());
     }
 
     static {

@@ -13,6 +13,7 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
@@ -218,6 +219,29 @@ public class NetworkV2 extends Network {
 //            tp.trace();
 //            Contract c = Contract.fromPackedTransaction(data);
             return tp.getContract();
+        } catch (Exception e) {
+            report(getLabel(), "download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e, DatagramAdapter.VerboseLevel.BASE);
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    @Override
+    public NImmutableEnvironment getEnvironment(HashId itemId, NodeInfo nodeInfo, Duration maxTimeout) throws InterruptedException {
+        try {
+            System.out.println("getEnvironment " + itemId.toBase64String());
+//            URL url = new URL("http://localhost:8080/contracts/" + itemId.toBase64String());
+            URL url = new URL(nodeInfo.publicUrlString() + "/environments/" + itemId.toBase64String());
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestProperty("Connection", "close");
+            connection.setRequestMethod("GET");
+            if (200 != connection.getResponseCode())
+                return null;
+            byte[] data = Do.read(connection.getInputStream());
+            return Boss.load(data);
+
         } catch (Exception e) {
             report(getLabel(), "download failure. from: " + nodeInfo.getNumber() + " by: " + myInfo.getNumber() +" reason: " + e, DatagramAdapter.VerboseLevel.BASE);
             e.printStackTrace();

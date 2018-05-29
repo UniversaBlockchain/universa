@@ -8,16 +8,21 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
+import com.icodici.universa.contract.services.NImmutableEnvironment;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.*;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.utils.Bytes;
@@ -38,12 +43,14 @@ public class ClientHTTPServer extends BasicHttpServer {
     private final BufferedLogger log;
     private ItemCache cache;
     private ParcelCache parcelCache;
+    private EnvCache envCache;
     private NetConfig netConfig;
     private Config config;
 
     private boolean localCors = false;
 
     private ExecutorService es = Executors.newFixedThreadPool(40);
+
 
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
         super(privateKey, port, 32, logger);
@@ -71,7 +78,11 @@ public class ClientHTTPServer extends BasicHttpServer {
                         data = c.getPackedTransaction();
                     }
                 }
+                if (data == null) {
+                    data = node.getLedger().getContractInStorage(id);
+                }
             }
+
             if (data != null) {
                 // contracts are immutable: cache forever
                 Binder hh = response.getHeaders();
@@ -100,6 +111,44 @@ public class ClientHTTPServer extends BasicHttpServer {
                     }
                 }
             }
+            if (data != null) {
+                // contracts are immutable: cache forever
+                Binder hh = response.getHeaders();
+                hh.put("Expires", "Thu, 31 Dec 2037 23:55:55 GMT");
+                hh.put("Cache-Control", "max-age=315360000");
+                response.setBody(data);
+            } else
+                response.setResponseCode(404);
+        });
+
+        on("/environments", (request, response) -> {
+            String encodedString = request.getPath().substring(14);
+            // this is a bug - path has '+' decoded as ' '
+            encodedString = encodedString.replace(' ', '+');
+
+            System.out.println("/environments " + encodedString);
+
+            HashId id = HashId.withDigest(encodedString);
+
+
+
+            byte[] data = null;
+            //TODO: implement envCache
+            /*if (envCache != null) {
+                NImmutableEnvironment nie =  envCache.get(id);
+                if (nie != null) {
+                    data = Boss.pack(nie);
+                }
+            }*/
+
+
+            NImmutableEnvironment nie =  node.getLedger().getEnvironment(id);
+
+
+            if (nie != null) {
+                data = Boss.pack(nie);
+            }
+
             if (data != null) {
                 // contracts are immutable: cache forever
                 Binder hh = response.getHeaders();
@@ -141,6 +190,10 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("storageGetRate", this::storageGetRate);
         addSecureEndpoint("querySlotInfo", this::querySlotInfo);
         addSecureEndpoint("queryContract", this::queryContract);
+        addSecureEndpoint("unsRate", this::unsRate);
+        addSecureEndpoint("queryNameRecord", this::queryNameRecord);
+        addSecureEndpoint("queryNameContract", this::queryNameContract);
+
     }
 
     @Override
@@ -152,6 +205,43 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder throw_error(Binder binder, Session session) throws IOException {
         throw new IOException("just a test");
+    }
+
+    private Binder unsRate(Binder params, Session session) throws IOException {
+        Double rate = config.rate.get(NSmartContract.SmartContractType.UNS1.name());
+        String str = rate.toString();
+        Binder b = new Binder();
+        b.put("U", str);
+
+        return b;
+    }
+
+    private Binder queryNameRecord(Binder params, Session session) throws IOException {
+        Binder b = new Binder();
+        NameRecordModel loadedNameRecord;
+        String address = params.getStringOrThrow("address");
+        byte[] origin = params.getBinaryOrThrow("origin");
+
+        if (((address == null) && (origin == null)) || ((address != null) && (origin != null)))
+            throw new IOException("invalid arguments");
+        if (address != null)
+            loadedNameRecord = node.getLedger().getNameByAddress(address);
+        else
+            loadedNameRecord = node.getLedger().getNameByOrigin(origin);
+
+        b.put("name record",loadedNameRecord);
+
+        return b;
+    }
+
+    private Binder queryNameContract(Binder params, Session session) throws IOException {
+        Binder b = new Binder();
+        String nameContract = params.getStringOrThrow("contract name");
+
+        NameRecordModel packedContract = node.getLedger().getNameRecord(nameContract);
+        b.put("packedContract", packedContract);
+
+        return b;
     }
 
     private ItemResult itemResultOfError(Errors error, String object, String message) {
@@ -325,13 +415,14 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder getStats(Binder params, Session session) throws CommandFailedException {
 
-/*        checkNode(session);
+        checkNode(session);
 
-        if(config == null || !config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey())) {
+        if (config == null || node == null || !(config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
+                                                node.getNodeKey().equals(session.getPublicKey()))) {
             System.out.println("command needs admin key");
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"getStats", "command needs admin key"));
-        }*/
+        }
         return node.provideStats(params.getInt("showDays",null));
     }
 
@@ -382,7 +473,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder storageGetRate(Binder params, Session session) throws IOException {
-        Double rate = new Double(config.kilobytesAndDaysPerU);
+        Double rate = config.rate.get(NSmartContract.SmartContractType.SLOT1.name());
         String str = rate.toString();
         Binder b = new Binder();
         b.put("U", str);
@@ -448,6 +539,10 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     public void setParcelCache(ParcelCache cache) {
         this.parcelCache = cache;
+    }
+
+    public void setEnvCache(EnvCache cache) {
+        this.envCache = cache;
     }
 
     public void setNetConfig(NetConfig netConfig) {

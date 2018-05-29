@@ -45,6 +45,7 @@ public class Main {
     public final BufferedLogger logger = new BufferedLogger(4096);
     private String configRoot;
     private Thread hookThread;
+    private EnvCache envCache;
 
     public static void main(String[] args) {
         new Main(args);
@@ -205,6 +206,7 @@ public class Main {
         node = new Node(config, myInfo, ledger, network);
         cache = node.getCache();
         parcelCache = node.getParcelCache();
+        envCache = node.getEnvCache();
 
         StateRecord r = ledger.getRecord(HashId.withDigest("bS/c4YMidaVuzTBhHLkGPFAvPbZQHybzQnXAoBwaZYM8eLYb7mAkVYEpuqKRXYc7anqX47BeNdvFN1n7KluH9A=="));
         if( r != null )
@@ -214,6 +216,7 @@ public class Main {
         clientHTTPServer.setNode(node);
         clientHTTPServer.setCache(cache);
         clientHTTPServer.setParcelCache(parcelCache);
+        clientHTTPServer.setEnvCache(envCache);
         clientHTTPServer.setLocalCors(myInfo.getPublicHost().equals("localhost"));
     }
 

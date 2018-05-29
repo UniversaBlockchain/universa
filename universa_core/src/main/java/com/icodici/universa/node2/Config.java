@@ -10,10 +10,8 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PublicKey;
-import com.icodici.universa.Approvable;
 import com.icodici.universa.Core;
-import com.icodici.universa.HashId;
-import net.sergeych.utils.Base64;
+import com.icodici.universa.contract.services.NSmartContract;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 
@@ -26,22 +24,26 @@ public class Config {
 
     private KeyAddress networkAdminKeyAddress = null;
     private KeyAddress networkReconfigKeyAddress = null;
+    public Map<String,Integer> minPayment = new HashMap<>();
+    public Map<String,Double> rate = new HashMap<>();
+
     public Config () {
         System.out.println("USING REAL CONFIG");
         try {
-            keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABxSSWfXW20wGsRn9khVZDtvcCtUqP/scN3oVPU3r0152Fu62pfx9Mjc1cmQnRYSkeZzWA50RYQTU3FlXC5iIN7w+Lm6TGPQxWe+uYGMgKLCbAmyMXPWupvzeB5SEMtylQ5ml12iwFQkamqOiFE2KWMYz/UGhW87/ELPckmpoanZUa8OGCACUfFGALAZV0G+rQ/8xiW3hkGHmOFP0kejZaCZGPO/XGVay+2q0V2cw6CHar+D9F9FomXYA4bAInlY3zOLHdG8ddUTzhHQWOKmzoF9eIW67U9rd9qIR04U9ls9wGLQchqlG/kxHHfR4Js86mwYNgUKW49fQRppig+SsrjQ==").getData())); //transactionUnitsIssuerKey
-            //transactionUnitsIssuerKeys.add(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-            transactionUnitsIssuerKeys.add(new KeyAddress("ZNuBikFEZbw71QQAFkNQtjfkmxFAdMgveTVPMGrFwo9vQwwPVE"));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        try {
             networkAdminKeyAddress = new KeyAddress("bVmSQXWM7WvUtgcitUtjRd42WRbLycvsfPaRimpSNY3yZMUrVvEHV6mwb8A2DrKnzi795kJB");
             networkReconfigKeyAddress = new KeyAddress("JPgxNXkRSYNnWM82D8WKLSH3d98jFeEeCmDN4wLfzfi5kE6kvfopJUQrbDczrgpCqpo5ncG8");
+            authorizedNameServiceCenterKey = new PublicKey(Base64u.decodeCompactString("HggcAQABxAABg9ideX6A3Wk9CuwnZrakXdvhYDiIiO0HA+YWmLArcZvhhaGMrw1i1mA6S9L6NPAuhYcZzm8Mxtwr1RESyJqm+HFwU+49s0yXHhCJsXcvK23Yx7NEpIrpGkKt9OCCdBGhQkls0Yc1lBBmGYCrShMntPC9xY9DJZ4sbMuBPIUQzpnWLYgRAbZb+KuZFXAIr7hRO0rNTZ6hE5zp6oPwlQLh9hBy6CsvZD/73Cf2WtKDunHD1qKuQU/KqruqVMMv2fd6ZKo692esWsqqIAiQztg1+sArAhf0Cr8lhRf53G5rndiiQx7RDs1P9Pp1wWK9e93UL1KF4PpVx7e7SznrCHTEdw"));
         } catch (KeyAddress.IllegalAddressException e) {
             e.printStackTrace();
+        } catch (EncryptionError encryptionError) {
+            encryptionError.printStackTrace();
         }
+
+        rate.put(NSmartContract.SmartContractType.SLOT1.name(),1.0);
+        rate.put(NSmartContract.SmartContractType.UNS1.name(), 0.25);
+
+        minPayment.put(NSmartContract.SmartContractType.SLOT1.name(),100);
+        minPayment.put(NSmartContract.SmartContractType.UNS1.name(), (int) Math.ceil(365/rate.get(NSmartContract.SmartContractType.UNS1.name())));
     }
 
     public Config copy() {
@@ -52,6 +54,7 @@ public class Config {
         config.maxDownloadOnApproveTime = maxDownloadOnApproveTime;
         config.declinedItemExpiration = declinedItemExpiration;
         config.maxCacheAge = maxCacheAge;
+        config.maxNameCacheAge = maxNameCacheAge;
         config.maxGetItemTime = maxGetItemTime;
         synchronized (this) {
             config.negativeConsensus = negativeConsensus;
@@ -98,8 +101,25 @@ public class Config {
         this.statsIntervalBig = statsIntervalBig;
     }
 
+
+    public Duration getExpriedNamesCleanupInterval() {
+        return expriedNamesCleanupInterval;
+    }
+
     public Duration getExpriedStorageCleanupInterval() {
         return expriedStorageCleanupInterval;
+    }
+
+    public Duration getHoldDuration() {
+        return holdDuration;
+    }
+
+    public void setHoldDuration(Duration holdDuration) {
+        this.holdDuration = holdDuration;
+    }
+
+    public void setRate(String name, double value) {
+        rate.put(name,value);
     }
 
     public interface ConsensusConfigUpdater {
@@ -130,6 +150,7 @@ public class Config {
     private Duration declinedItemExpiration = Duration.ofDays(10);
     private Duration maxCacheAge = Duration.ofMinutes(20);
     private Duration maxDiskCacheAge = Duration.ofMinutes(40);
+    private Duration maxNameCacheAge = Duration.ofMinutes(5);
     private Duration statsIntervalSmall = Duration.ofSeconds(30);
     private Duration statsIntervalBig = Duration.ofSeconds(3600);
     private Duration maxGetItemTime = Duration.ofSeconds(30);
@@ -145,6 +166,8 @@ public class Config {
     private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
     private Duration expriedStorageCleanupInterval = Duration.ofMinutes(5);
+    private Duration expriedNamesCleanupInterval = Duration.ofMinutes(5);
+    private Duration holdDuration = Duration.ofDays(30);
 
     private Boolean isFreeRegistrationsLimited = null;
     private boolean isFreeRegistrationsAllowedFromYaml = false;
@@ -161,6 +184,7 @@ public class Config {
 
     private List<PublicKey> keysWhiteList = new ArrayList<>();
 
+    private PublicKey authorizedNameServiceCenterKey = null;
 
     public static String tuTemplatePath = "./src/test_contracts/TUTemplate.yml";
     public static String testTUTemplatePath = "./src/test_contracts/TestTUTemplate.yml";
@@ -172,14 +196,16 @@ public class Config {
 
     public static int quantiser_quantaPerU = 200;
 
-    // num of KD (kilobytes and days) for one U
-    public static int kilobytesAndDaysPerU = 1;
 
-    public static int getMinSlotPayment() {
-        return minSlotPayment;
+    public int getMinPayment(String extendedType)
+    {
+        return minPayment.get(extendedType);
     }
 
-    private static int minSlotPayment = 100;
+    public double getRate(String extendedType)
+    {
+        return rate.get(extendedType);
+    }
 
     public static Duration validUntilTailTime = Duration.ofMinutes(5);
 
@@ -236,6 +262,10 @@ public class Config {
 
     public Duration getMaxCacheAge() {
         return maxCacheAge;
+    }
+
+    public Duration getMaxNameCacheAge() {
+        return maxNameCacheAge;
     }
 
     public void setMaxCacheAge(Duration maxCacheAge) {
@@ -326,6 +356,20 @@ public class Config {
 
     public KeyAddress getNetworkAdminKeyAddress() {
         return networkAdminKeyAddress;
+    }
+
+
+    public void setAuthorizedNameServiceCenterKeyData(Bytes authorizedNameServiceCenterKeyData) {
+        try {
+            this.authorizedNameServiceCenterKey = new PublicKey(authorizedNameServiceCenterKeyData.getData());
+        } catch (EncryptionError encryptionError) {
+            encryptionError.printStackTrace();
+        }
+    }
+
+    public PublicKey getAuthorizedNameServiceCenterKey() {
+        return authorizedNameServiceCenterKey;
+
     }
 
     public String getTUIssuerName() {

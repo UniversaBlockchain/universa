@@ -12,6 +12,10 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.ContractStorageSubscription;
+import com.icodici.universa.contract.services.NImmutableEnvironment;
+import com.icodici.universa.contract.services.NNameRecord;
+import com.icodici.universa.contract.services.NSmartContract;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import org.sqlite.SQLiteConfig;
@@ -21,6 +25,7 @@ import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -183,6 +188,21 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt) {
+
+    }
+
+    @Override
+    public void updateNameRecord(long id, ZonedDateTime expiresAt) {
+
+    }
+
+    @Override
+    public Set<HashId> saveEnvironment(NImmutableEnvironment environment) {
+        return null;
+    }
+
+    @Override
     public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
 
     }
@@ -214,6 +234,26 @@ public class SqliteLedger implements Ledger {
 
     @Override
     public void putItem(StateRecord record, Approvable item, Instant keepTill) {
+
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(long environmentId) {
+        return null;
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(HashId contractId) {
+        return null;
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(NSmartContract smartContract) {
+        return null;
+    }
+
+    @Override
+    public void updateEnvironment(long id, String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
 
     }
 
@@ -306,8 +346,6 @@ public class SqliteLedger implements Ledger {
         }
     }
 
-    @Override
-    public void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin) {}
 
     @Override
     public List<Long> clearExpiredStorageSubscriptions() {return null;}
@@ -315,59 +353,76 @@ public class SqliteLedger implements Ledger {
     @Override
     public void clearExpiredStorageContracts() {}
 
-    @Override
-    public long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {return 0;}
-
-    @Override
-    public byte[] getEnvironmentFromStorage(HashId contractId) {return null;}
 
     @Override
     public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin) {return 0;}
 
     @Override
-    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt) {return 0;}
+    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {return 0;}
 
     @Override
-    public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {}
+    public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
+        return null;
+    }
 
-    @Override
-    public Set<byte[]> getEnvironmentsForContractId(HashId contractId) {return null;}
-
-    @Override
-    public Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {return null;}
-
-    @Override
-    public Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId) {return null;}
-
-    @Override
-    public byte[] getSlotContractByEnvironmentId(long environmentId) {return null;}
 
     @Override
     public byte[] getContractInStorage(HashId contractId) {return null;}
-
-    @Override
-    public byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId) {return null;}
-
     @Override
     public void removeEnvironmentSubscription(long subscriptionId) {}
 
     @Override
     public long removeEnvironment(HashId ncontractHashId) {return 0;}
 
-    @Override
-    public List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId) {return null;}
-
-    @Override
-    public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {}
 
     @Override
     public void removeExpiredStorageSubscriptionsCascade() {}
 
     @Override
+    public void addNameRecord(NNameRecord nameRecordModel) {
+
+    }
+
+    @Override
     public byte[] getSlotContractBySlotId(HashId slotId) {return null;}
 
 
-        /**
+
+    @Override
+    public void removeNameRecord(final String nameReduced) {}
+
+    @Override
+    public NameRecordModel getNameRecord(final String nameReduced) {return null;}
+
+    @Override
+    public NameRecordModel getNameByAddress (String address) {return null;}
+
+    @Override
+    public NameRecordModel getNameByOrigin (byte[] origin) {return null;}
+
+    @Override
+    public boolean isAllNameRecordsAvailable(Collection<String> reducedNames) {
+        return false;
+    }
+
+    @Override
+    public boolean isAllOriginsAvailable(Collection<HashId> origins) {
+        return false;
+    }
+
+    @Override
+    public boolean isAllAddressesAvailable(Collection<String> addresses) {
+        return false;
+    }
+
+
+    @Override
+    public void clearExpiredNameRecords(Duration holdDuration) {
+
+    }
+
+
+    /**
          * Enable or disable records caching. USe it in tests only, in production it should always be enabled
          *
          * @param enable, if true it is enabling cache

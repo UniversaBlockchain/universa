@@ -14,6 +14,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.HashIdentifiable;
 import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
+import com.icodici.universa.contract.services.UnsContract;
 import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
@@ -319,26 +320,26 @@ public class TransactionPack implements BiSerializable {
 
             // contract can be extended, so check it
             String extendedType = data.getString("extended_type", null);
-            SmartContract.SmartContractType scType = null;
+            NSmartContract.SmartContractType scType = null;
             if(extendedType != null) {
                 try {
-                    scType = SmartContract.SmartContractType.valueOf(extendedType);
+                    scType = NSmartContract.SmartContractType.valueOf(extendedType);
                 } catch (IllegalArgumentException e) {
                 }
             }
             // and if extended type of contract is allowed - create extended contrac, otherwise create simple contract
             if(scType != null) {
                 switch(scType) {
-                    case DEFAULT_SMART_CONTRACT:
-                        contract = new SmartContract(bb, this);
-                        break;
-
                     case N_SMART_CONTRACT:
                         contract = new NSmartContract(bb, this);
                         break;
 
                     case SLOT1:
                         contract = new SlotContract(bb, this);
+                        break;
+
+                    case UNS1:
+                        contract = new UnsContract(bb, this);
                         break;
                 }
             } else {
@@ -357,25 +358,25 @@ public class TransactionPack implements BiSerializable {
      */
     private void createNeededContractAndAddToSubItems(ContractDependencies ct, Bytes b, Quantiser quantiser) throws IOException {
         Contract c = null;
-        SmartContract.SmartContractType scType = null;
+        NSmartContract.SmartContractType scType = null;
         if(ct.extendedType != null) {
             try {
-                scType = SmartContract.SmartContractType.valueOf(ct.extendedType);
+                scType = NSmartContract.SmartContractType.valueOf(ct.extendedType);
             } catch (IllegalArgumentException e) {
             }
         }
         if(scType != null) {
             switch (scType) {
-                case DEFAULT_SMART_CONTRACT:
-                    c = new SmartContract(b.toArray(), this);
-                    break;
-
                 case N_SMART_CONTRACT:
                     c = new NSmartContract(b.toArray(), this);
                     break;
 
                 case SLOT1:
                     c = new SlotContract(b.toArray(), this);
+                    break;
+
+                case UNS1:
+                    c = new UnsContract(b.toArray(), this);
                     break;
             }
         } else {
@@ -414,8 +415,8 @@ public class TransactionPack implements BiSerializable {
                 ));
             }
 
-            if(contract instanceof SmartContract) {
-                of.set("extended_type", ((SmartContract) contract).getExtendedType());
+            if(contract instanceof NSmartContract) {
+                of.set("extended_type", ((NSmartContract) contract).getExtendedType());
             }
             return of;
         }

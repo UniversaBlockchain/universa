@@ -1,14 +1,17 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.NodeContract;
+import com.icodici.universa.node.models.NameRecordModel;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.ZonedDateTime;
+import java.util.Collection;
+import java.util.List;
 
 /**
- * The environment accessible to readonly {@link NodeContract} methods, e.g. {@link
+ * The environment accessible to readonly {@link NContract} methods, e.g. {@link
  * NContract#query(ImmutableEnvironment, String, Binder)} and {@link NContract#onRevoked(ImmutableEnvironment)} and like.
  *
  * Note tha the envidonment associated with {@link NContract} must be destroyed when the NContract is revoked.
@@ -49,5 +52,8 @@ public interface ImmutableEnvironment {
      */
     @NonNull ZonedDateTime instanceCreatedAt();
 
-    public Iterable<ContractStorageSubscription> storageSubscriptions();
+    Iterable<ContractStorageSubscription> storageSubscriptions();
+    Iterable<NameRecord> nameRecords();
+
+    boolean tryAllocate(Collection<String> reducedNamesToAllocate, Collection<HashId> originsToAllocate, Collection<String> addressesToAllocate);
 }

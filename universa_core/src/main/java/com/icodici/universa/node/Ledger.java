@@ -11,12 +11,15 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.services.ContractStorageSubscription;
+import com.icodici.universa.contract.services.*;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -155,6 +158,13 @@ public interface Ledger {
 
     boolean isTestnet(HashId itemId);
 
+    void updateSubscriptionInStorage(long id, ZonedDateTime expiresAt);
+
+    void updateNameRecord(long id, ZonedDateTime expiresAt);
+
+    Set<HashId> saveEnvironment(NImmutableEnvironment environment);
+
+
     public static class Rollback extends Db.RollbackException {
     }
 
@@ -186,26 +196,41 @@ public interface Ledger {
     void putItem(StateRecord record, Approvable item, Instant keepTill);
 
 
-    void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin);
+
+    NImmutableEnvironment getEnvironment(long environmentId);
+    NImmutableEnvironment getEnvironment(HashId contractId);
+    NImmutableEnvironment getEnvironment(NSmartContract smartContract);
+
+    void updateEnvironment(long id, String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack);
+
+
+    long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin);
+
+
+    long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId);
+
+
+    Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId);
+
     List<Long> clearExpiredStorageSubscriptions();
     void clearExpiredStorageContracts();
-    long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack);
-    byte[] getEnvironmentFromStorage(HashId contractId);
-    long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin);
-    long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt);
-    void saveEnvironmentSubscription(long subscriptionId, long environmentId);
-    Set<byte[]> getEnvironmentsForContractId(HashId contractId);
-    Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId);
-    Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId);
-    byte[] getSlotContractByEnvironmentId(long environmentId);
+
     byte[] getSlotContractBySlotId(HashId slotId);
     byte[] getContractInStorage(HashId contractId);
-    byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId);
+
     void removeEnvironmentSubscription(long subscriptionId);
-    List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId);
     long removeEnvironment(HashId ncontractHashId);
-    void removeSlotContractWithAllSubscriptions(HashId slotHashId);
     void removeExpiredStorageSubscriptionsCascade();
+
+    void addNameRecord(final NNameRecord nameRecordModel);
+    void removeNameRecord(final String nameReduced);
+    NameRecordModel getNameRecord(final String nameReduced);
+    NameRecordModel getNameByAddress (String address);
+    NameRecordModel getNameByOrigin (byte[] origin);
+    boolean isAllNameRecordsAvailable(final Collection<String> reducedNames);
+    boolean isAllOriginsAvailable(final Collection<HashId> origins);
+    boolean isAllAddressesAvailable(final Collection<String> addresses);
+    void clearExpiredNameRecords(Duration holdDuration);
 
     void cleanup();
 }

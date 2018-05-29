@@ -5,6 +5,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
 import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.BossBiMapper;
@@ -47,15 +48,15 @@ public class SlotContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof SlotContract);
 
         ((SlotContract)smartContract).putTrackingContract(simpleContract);
-        ((SlotContract)smartContract).setNodeConfig(nodeConfig);
+        ((SlotContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
         smartContract.addNewItems(paymentDecreased);
         smartContract.seal();
         smartContract.check();
         smartContract.traceErrors();
         assertTrue(smartContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), smartContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), smartContract.get("definition.extended_type"));
 
         Multimap<String, Permission> permissions = smartContract.getPermissions();
         Collection<Permission> mdp = permissions.get("modify_data");
@@ -90,15 +91,15 @@ public class SlotContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof SlotContract);
 
         ((SlotContract)smartContract).putTrackingContract(simpleContract);
-        ((SlotContract)smartContract).setNodeConfig(nodeConfig);
+        ((SlotContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
         smartContract.addNewItems(paymentDecreased);
         smartContract.seal();
         smartContract.check();
         smartContract.traceErrors();
         assertTrue(smartContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), smartContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), smartContract.get("definition.extended_type"));
 
         assertEquals(2, ((SlotContract) smartContract).getKeepRevisions());
 
@@ -119,6 +120,38 @@ public class SlotContractTest extends ContractTestBase {
             }
         }
     }
+    private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
+
+        Config config = new Config();
+        @Override
+        public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
+            return config.getTransactionUnitsIssuerKeys();
+        }
+
+        @Override
+        public String getTUIssuerName() {
+            return config.getTUIssuerName();
+        }
+
+        @Override
+        public int getMinPayment(String extendedType) {
+            return config.getMinPayment(extendedType);
+        }
+
+        @Override
+        public double getRate(String extendedType) {
+            return config.getRate(extendedType);
+        }
+
+        @Override
+        public Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType) {
+            Set<PublicKey> set = new HashSet<>();
+            if(extendedType.equals(NSmartContract.SmartContractType.UNS1)) {
+                set.add(config.getAuthorizedNameServiceCenterKey());
+            }
+            return set;
+        }
+    };
 
     @Test
     public void serializeSmartContract() throws Exception {
@@ -133,7 +166,7 @@ public class SlotContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof SlotContract);
 
         ((SlotContract)smartContract).putTrackingContract(simpleContract);
-        ((SlotContract)smartContract).setNodeConfig(nodeConfig);
+        ((SlotContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
         smartContract.addNewItems(paymentDecreased);
         smartContract.seal();
         smartContract.check();
@@ -143,8 +176,8 @@ public class SlotContractTest extends ContractTestBase {
         Binder b = BossBiMapper.serialize(smartContract);
         Contract desContract = DefaultBiMapper.deserialize(b);
         assertSameContracts(smartContract, desContract);
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), desContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), desContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), desContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), desContract.get("definition.extended_type"));
         assertTrue(desContract instanceof SlotContract);
 
         Multimap<String, Permission> permissions = desContract.getPermissions();
@@ -166,8 +199,8 @@ public class SlotContractTest extends ContractTestBase {
 
         Contract copiedContract = smartContract.copy();
         assertSameContracts(smartContract, copiedContract);
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), copiedContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.SLOT1.name(), copiedContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), copiedContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.SLOT1.name(), copiedContract.get("definition.extended_type"));
         assertTrue(copiedContract instanceof SlotContract);
 
         permissions = copiedContract.getPermissions();
@@ -203,7 +236,7 @@ public class SlotContractTest extends ContractTestBase {
         assertTrue(smartContract instanceof SlotContract);
 
         ((SlotContract)smartContract).putTrackingContract(simpleContract);
-        ((SlotContract)smartContract).setNodeConfig(nodeConfig);
+        ((SlotContract)smartContract).setNodeInfoProvider(nodeInfoProvider);
         ((SlotContract)smartContract).setKeepRevisions(2);
         smartContract.addNewItems(paymentDecreased);
         smartContract.seal();

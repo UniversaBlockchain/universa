@@ -22,7 +22,7 @@ import static com.icodici.universa.contract.Reference.conditionsModeType.any_of;
 
 public class Reference implements BiSerializable {
 
-    enum conditionsModeType {
+    public enum conditionsModeType {
         all_of,
         any_of,
         simple_condition
@@ -922,62 +922,114 @@ public class Reference implements BiSerializable {
         return false;
     }
 
+    /**
+     * Get the name from the reference
+     * @return name reference
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Set the name for the reference
+     * @return this reference
+     */
     public Reference setName(String name) {
         this.name = name;
         return this;
     }
 
+    /**
+     * Get the list of roles from the reference
+     * @return roles from reference
+     */
     public List<String> getRoles() {
         return roles;
     }
 
+    /**
+     * Add the roles for the reference
+     * @return this reference
+     */
     public Reference addRole(String role) {
         this.roles.add(role);
         return this;
     }
 
+    /**
+     * Set the list of roles for the reference
+     * @return this reference
+     */
     public Reference setRoles(List<String> roles) {
         this.roles = roles;
         return this;
     }
 
+    /**
+     * Get the list of fields from the reference
+     * @return list of fields reference
+     */
     public List<String> getFields() {
         return fields;
     }
 
+    /**
+     * Add the field for the reference
+     * @return this reference
+     */
     public Reference addField(String field) {
         this.fields.add(field);
         return this;
     }
 
+    /**
+     * Set the list of fields for the reference
+     * @return this reference
+     */
     public Reference setFields(List<String> fields) {
         this.fields = fields;
         return this;
     }
 
+    /**
+     * Get the conditions from the reference
+     * @return conditions reference
+     */
     public Binder getConditions() {
         return conditions;
     }
 
+    /**
+     * Set the conditions from the reference
+     * @return this reference
+     */
     public Reference setConditions(Binder conditions) {
         this.conditions = conditions;
         return this;
     }
 
     //TODO: The method allows to mark the contract as matching reference, bypassing the validation
+    /**
+     * Add the matching item for the reference
+     * @return this reference
+     */
     public Reference addMatchingItem(Approvable a) {
         this.matchingItems.add(a);
         return this;
     }
 
+    /**
+     * Get the base contract in which the reference is located
+     * @return base contract
+     */
     public Contract getContract() {
         return baseContract;
     }
 
+    /**
+     * Set the base contract from the reference
+     * @return this reference
+     */
     public Reference setContract(Contract contract) {
         baseContract = contract;
         return this;

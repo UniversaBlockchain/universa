@@ -23,11 +23,10 @@ public class NSmartContractTest extends ContractTestBase {
         smartContract.traceErrors();
         assertTrue(smartContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
 
         assertTrue(smartContract instanceof NSmartContract);
-        assertTrue(smartContract instanceof NodeContract);
         assertTrue(smartContract instanceof NContract);
     }
 
@@ -40,11 +39,10 @@ public class NSmartContractTest extends ContractTestBase {
         smartContract.traceErrors();
         assertTrue(smartContract.isOk());
 
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), smartContract.get("definition.extended_type"));
 
         assertTrue(smartContract instanceof NSmartContract);
-        assertTrue(smartContract instanceof NodeContract);
         assertTrue(smartContract instanceof NContract);
     }
 
@@ -60,18 +58,16 @@ public class NSmartContractTest extends ContractTestBase {
         Binder b = BossBiMapper.serialize(smartContract);
         Contract desContract = DefaultBiMapper.deserialize(b);
         assertSameContracts(smartContract, desContract);
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), desContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), desContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), desContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), desContract.get("definition.extended_type"));
         assertTrue(desContract instanceof NSmartContract);
-        assertTrue(desContract instanceof NodeContract);
         assertTrue(smartContract instanceof NContract);
 
         Contract copiedContract = smartContract.copy();
         assertSameContracts(smartContract, copiedContract);
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), copiedContract.getDefinition().getExtendedType());
-        assertEquals(SmartContract.SmartContractType.N_SMART_CONTRACT.name(), copiedContract.get("definition.extended_type"));
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), copiedContract.getDefinition().getExtendedType());
+        assertEquals(NSmartContract.SmartContractType.N_SMART_CONTRACT.name(), copiedContract.get("definition.extended_type"));
         assertTrue(copiedContract instanceof NSmartContract);
-        assertTrue(copiedContract instanceof NodeContract);
         assertTrue(smartContract instanceof NContract);
     }
 }

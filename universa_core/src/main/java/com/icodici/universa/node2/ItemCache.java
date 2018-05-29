@@ -21,22 +21,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ItemCache {
 
-    private final Thread cleaner;
+    private final Timer cleanerTimer = new Timer();
     private final Duration maxAge;
 
     public ItemCache(Duration maxAge) {
         this.maxAge = maxAge;
-        cleaner = new Thread( ()-> {
-            try {
-                Thread.sleep(5000);
+        cleanerTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
                 cleanUp();
-            } catch (InterruptedException e) {
             }
-        });
-        cleaner.setName("item-cache-cleaner");
-        cleaner.setDaemon(true);
-        cleaner.setPriority(Thread.MIN_PRIORITY);
-        cleaner.start();
+        }, 5000, 5000);
     }
 
     final void cleanUp() {
@@ -46,7 +41,8 @@ public class ItemCache {
     }
 
     public void shutdown() {
-        cleaner.interrupt();
+        cleanerTimer.cancel();
+        cleanerTimer.purge();
     }
 
     public @Nullable Approvable get(HashId itemId) {

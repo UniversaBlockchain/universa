@@ -7,25 +7,17 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.AbstractKey;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.roles.ListRole;
-import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
-import com.icodici.universa.contract.services.SlotContract;
-import com.icodici.universa.node2.Config;
-import com.icodici.universa.node2.Quantiser;
+import com.icodici.universa.contract.services.*;
 import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
 import com.icodici.universa.contract.permissions.*;
-import java.time.Instant;
-import java.io.IOException;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+
 import java.util.*;
 
 /**
@@ -502,18 +494,18 @@ public class ContractsService {
      * Service creates a contract that should be send to partner,
      * then partner should sign it and return back for final sign from calling part.
      *<br><br>
-     * @param BaseContract is base contract
+     * @param baseContract is base contract
      * @param fromKeys is own private keys
      * @param toKeys is foreign public keys
      * @param createNewRevision create new revision if true
      * @return contract with two signatures that should be send from first part to partner.
      */
-    public synchronized static Contract createTwoSignedContract(Contract BaseContract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
+    public synchronized static Contract createTwoSignedContract(Contract baseContract, Set<PrivateKey> fromKeys, Set<PublicKey> toKeys, boolean createNewRevision) {
 
-        Contract twoSignContract = BaseContract;
+        Contract twoSignContract = baseContract;
 
         if (createNewRevision) {
-            twoSignContract = BaseContract.createRevision(fromKeys);
+            twoSignContract = baseContract.createRevision(fromKeys);
             twoSignContract.getKeysToSignWith().clear();
         }
 
@@ -628,6 +620,80 @@ public class ContractsService {
         return createTokenContract(issuerKeys, ownerKeys, amount, 0.01);
     }
 
+    /**
+     * Creates a token contract with possible additional emission.
+     *<br><br>
+     * The service creates a simple token contract with issuer, creator and owner roles;
+     * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
+     * Split_join permission has by default following params: "minValue" for min_value and min_unit, "amount" for field_name,
+     * "state.origin" for join_match_fields.
+     * Modify_data permission has by default following params: fields: "amount".
+     * By default expires at time is set to 60 months from now.
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param amount is start token number.
+     * @param minValue is minimum token value.
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+
+        Contract tokenContract = createTokenContract(issuerKeys, ownerKeys, amount, minValue);
+
+        RoleLink issuerLink = new RoleLink("issuer_link", "issuer");
+        tokenContract.registerRole(issuerLink);
+
+        HashMap<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("amount", null);
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPermission = new ModifyDataPermission(issuerLink, modifyDataParams);
+        tokenContract.addPermission(modifyDataPermission);
+
+        tokenContract.seal();
+        tokenContract.addSignatureToSeal(issuerKeys);
+
+        return tokenContract;
+    }
+
+    /**
+     * @see #createTokenContractWithEmission(Set, Set, String, Double)
+     */
+    public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
+        return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, 0.01);
+    }
+
+    /**
+     * Creates a revision of token contract and emitted new tokens.
+     *<br><br>
+     * The service creates a revision of token contract possible for additional emission.
+     * New revision contains additional emitted tokens.
+     * @param tokenContract is token contract possible for additional emission.
+     * @param amount is emitted token number.
+     * @param keys is keys to sign new contract.
+     * @param fieldName is name of token field (usually "amount").
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys, String fieldName) {
+
+        Contract emittedToken = tokenContract.createRevision();
+
+        for (PrivateKey key : keys)
+            emittedToken.addSignerKey(key);
+
+        Binder stateData = emittedToken.getStateData();
+        Decimal value = new Decimal(stateData.getStringOrThrow(fieldName));
+        stateData.set(fieldName, value.add(new Decimal(amount)));
+
+        emittedToken.seal();
+
+        return emittedToken;
+    }
+
+    /**
+     * @see #createTokenEmission(Contract, String, Set, String)
+     */
+    public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys) {
+        return createTokenEmission(tokenContract, amount, keys, "amount");
+    }
 
     /**
      * Creates a share contract for given keys.
@@ -773,10 +839,12 @@ public class ContractsService {
      * <br><br>
      * @param issuerKeys is issuer private keys.
      * @param ownerKeys is owner public keys.
+     * @param nodeInfoProvider
      * @return ready {@link SlotContract}
      */
-    public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys){
+    public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider){
         SlotContract slotContract = new SlotContract();
+        slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.setApiLevel(3);
 
         Contract.Definition cd = slotContract.getDefinition();
@@ -823,6 +891,274 @@ public class ContractsService {
         return slotContract;
     }
 
+    /**
+     * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
+     * used for control and for payment for register some names in the distributed store.
+     * <br><br>
+     * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link UnsContract#addUnsName(UnsName)}
+     * for putting uns name should be register.
+     * <br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param nodeInfoProvider
+     * @return ready {@link UnsContract}
+     */
+    public synchronized static UnsContract createUnsContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider) {
+        UnsContract UnsContract = new UnsContract();
+        UnsContract.setNodeInfoProvider(nodeInfoProvider);
+        UnsContract.setApiLevel(3);
+
+        Contract.Definition cd = UnsContract.getDefinition();
+        cd.setExpiresAt(UnsContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default UNS contract");
+        data.set("description", "Default UNS contrac description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        UnsContract.registerRole(issuerRole);
+        UnsContract.createRole("issuer", issuerRole);
+        UnsContract.createRole("creator", issuerRole);
+
+        UnsContract.registerRole(ownerRole);
+        UnsContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        UnsContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        UnsContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        UnsContract.addPermission(revokePerm2);
+
+        UnsContract.addUnsSpecific();
+
+        UnsContract.seal();
+        UnsContract.addSignatureToSeal(issuerKeys);
+
+        return UnsContract;
+    }
+
+    /**
+     * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
+     * used for control and for payment for register some names in the distributed store.
+     * <br><br>
+     * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner.
+     * Also added uns name for registration associated with contract (by origin).
+     * Use {@link UnsContract#addUnsName(UnsName)} for putting additional uns name should be register.
+     * <br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param nodeInfoProvider
+     * @param nameReduced is reduced name for registration.
+     * @param name is name for registration.
+     * @param description is description associated with name for registration.
+     * @param URL is URL associated with name for registration.
+     * @param namedContract is named contract.
+     * @return ready {@link UnsContract}
+     */
+    public synchronized static UnsContract createUnsContractForRegisterContractName(
+            Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider,
+            String nameReduced, String name, String description, String URL, Contract namedContract) {
+
+        UnsContract UnsContract = new UnsContract();
+        UnsContract.setNodeInfoProvider(nodeInfoProvider);
+        UnsContract.setApiLevel(3);
+
+        Contract.Definition cd = UnsContract.getDefinition();
+        cd.setExpiresAt(UnsContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default UNS contract");
+        data.set("description", "Default UNS contract description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        UnsContract.registerRole(issuerRole);
+        UnsContract.createRole("issuer", issuerRole);
+        UnsContract.createRole("creator", issuerRole);
+
+        UnsContract.registerRole(ownerRole);
+        UnsContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        UnsContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        UnsContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        UnsContract.addPermission(revokePerm2);
+
+        UnsContract.addUnsSpecific();
+
+        UnsName unsName = new UnsName(nameReduced, name, description, URL);
+        UnsRecord unsRecord = new UnsRecord(namedContract.getId());
+        unsName.addUnsRecord(unsRecord);
+        UnsContract.addUnsName(unsName);
+        UnsContract.addOriginContract(namedContract);
+
+        UnsContract.seal();
+        UnsContract.addSignatureToSeal(issuerKeys);
+
+        return UnsContract;
+    }
+
+    /**
+     * Create and return ready {@link UnsContract} contract with need permissions and values. {@link UnsContract} is
+     * used for control and for payment for register some names in the distributed store.
+     * <br><br>
+     * Created {@link UnsContract} has <i>change_owner</i>, <i>revoke</i> and <i>modify_data</i> with special uns
+     * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner.
+     * Also added uns name for registration associated with key (by addresses).
+     * Use {@link UnsContract#addUnsName(UnsName)} for putting additional uns name should be register.
+     * <br><br>
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param nodeInfoProvider
+     * @param nameReduced is reduced name for registration.
+     * @param name is name for registration.
+     * @param description is description associated with name for registration.
+     * @param URL is URL associated with name for registration.
+     * @param namedKey is named key.
+     * @return ready {@link UnsContract}
+     */
+    public synchronized static UnsContract createUnsContractForRegisterKeyName(
+            Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider,
+            String nameReduced, String name, String description, String URL, AbstractKey namedKey) {
+
+        UnsContract UnsContract = new UnsContract();
+        UnsContract.setNodeInfoProvider(nodeInfoProvider);
+        UnsContract.setApiLevel(3);
+
+        Contract.Definition cd = UnsContract.getDefinition();
+        cd.setExpiresAt(UnsContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("name", "Default UNS contract");
+        data.set("description", "Default UNS contract description.");
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        UnsContract.registerRole(issuerRole);
+        UnsContract.createRole("issuer", issuerRole);
+        UnsContract.createRole("creator", issuerRole);
+
+        UnsContract.registerRole(ownerRole);
+        UnsContract.createRole("owner", ownerRole);
+
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        UnsContract.addPermission(changeOwnerPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        UnsContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        UnsContract.addPermission(revokePerm2);
+
+        UnsContract.addUnsSpecific();
+
+        UnsName unsName = new UnsName(nameReduced, name, description, URL);
+        UnsRecord unsRecord = new UnsRecord(namedKey);
+        unsName.addUnsRecord(unsRecord);
+        UnsContract.addUnsName(unsName);
+
+        UnsContract.seal();
+        UnsContract.addSignatureToSeal(issuerKeys);
+
+        return UnsContract;
+    }
+
+    /**
+     * Add to base {@link Contract} reference and referenced contract.
+     * When the returned {@link Contract} is unpacking referenced contract verifies
+     * the compliance with the conditions of reference in base contract.
+     * <br><br>
+     * Also reference to base contract may be added by {@link Contract#addReference(Reference)}.
+     * <br><br>
+     * @param baseContract is base contract fro adding reference.
+     * @param refContract is referenced contract (which must satisfy the conditions of the reference).
+     * @param refName is name of reference.
+     * @param refType is type of reference (section, may be {@link Reference#TYPE_TRANSACTIONAL}, {@link Reference#TYPE_EXISTING_DEFINITION}, or {@link Reference#TYPE_EXISTING_STATE}).
+     * @param conditions is conditions of the reference.
+     * @return ready {@link Contract}
+     */
+    public synchronized static Contract addReferenceToContract(
+            Contract baseContract, Contract refContract, String refName, int refType, Binder conditions) {
+
+        Reference reference = new Reference(baseContract);
+        reference.name = refName;
+        reference.type = refType;
+
+        reference.setConditions(conditions);
+        reference.addMatchingItem(refContract);
+
+        baseContract.addReference(reference);
+        baseContract.seal();
+
+        return baseContract;
+    }
+
+    /**
+     * Add to base {@link Contract} reference and referenced contract.
+     * When the returned {@link Contract} is unpacking referenced contract verifies
+     * the compliance with the conditions of reference in base contract.
+     * <br><br>
+     * Also reference to base contract may be added by {@link Contract#addReference(Reference)}.
+     * <br><br>
+     * @param baseContract is base contract fro adding reference.
+     * @param refContract is referenced contract (which must satisfy the conditions of the reference).
+     * @param refName is name of reference.
+     * @param refType is type of reference (section, may be {@link Reference#TYPE_TRANSACTIONAL}, {@link Reference#TYPE_EXISTING_DEFINITION}, or {@link Reference#TYPE_EXISTING_STATE}).
+     * @param listConditions is list of strings with conditions of the reference.
+     * @param isAllOfConditions is flag used if all conditions in list must be fulfilled (else - any of conditions).
+     * @return ready {@link Contract}
+     */
+    public synchronized static Contract addReferenceToContract(
+            Contract baseContract, Contract refContract, String refName, int refType, List <String> listConditions, boolean isAllOfConditions) {
+
+        Binder conditions = new Binder();
+        conditions.set(isAllOfConditions ? "all_of" : "any_of", listConditions);
+
+        return addReferenceToContract(baseContract, refContract, refName, refType, conditions);
+    }
 
     /**
      * Create paid transaction, which consist from contract you want to register and payment contract that will be

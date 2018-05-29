@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.db.DbPool;
@@ -14,20 +15,26 @@ import com.icodici.db.PooledDb;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.services.ContractStorageSubscription;
-import com.icodici.universa.contract.services.SlotContractStorageSubscription;
+import com.icodici.universa.contract.services.*;
+import com.icodici.universa.node.models.NameEntryModel;
+import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
+import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 
 import java.lang.ref.WeakReference;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * The basic SQL-based ledger.
@@ -284,6 +291,8 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+
+
     private <T> T protect(Callable<T> block) {
         try {
             return block.call();
@@ -428,6 +437,7 @@ public class PostgresLedger implements Ledger {
         });
 
     }
+
 
 
     @Override
@@ -740,7 +750,7 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    @Override
+    /*@Override
     public void addContractToStorage(HashId contractId, byte[] binData, long forTimeInSecs, HashId origin) {
         try (PooledDb db = dbPool.db()) {
             ZonedDateTime expiresAt = ZonedDateTime.now().plusSeconds(forTimeInSecs);
@@ -767,50 +777,341 @@ public class PostgresLedger implements Ledger {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
+    }*/
 
-    @Override
-    public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                PreparedStatement statement =
-                    db.statement("" +
-                            "INSERT INTO contract_storage (hash_id,bin_data,origin,expires_at) VALUES (?,?,?,?) " +
-                            "ON CONFLICT(hash_id) DO UPDATE SET hash_id=EXCLUDED.hash_id " +
-                            "RETURNING id")
-            ) {
-                statement.setBytes(1, contractId.getDigest());
-                statement.setBytes(2, binData);
-                statement.setBytes(3, origin.getDigest());
-                statement.setLong(4, StateRecord.unixTime(expiresAt));
-                //db.updateWithStatement(statement);
-                statement.closeOnCompletion();
-                ResultSet rs = statement.executeQuery();
+
+
+    private List<byte[]> getSmartContractForEnvironmentId(long environmentId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT transaction_pack, kv_storage, ncontract_hash_id FROM environments " +
+                    "WHERE id=?", environmentId))) {
                 if (rs == null)
-                    throw new Failure("saveContractInStorage failed: returning null");
-                rs.next();
-                long resId = rs.getLong(1);
-                rs.close();
-                return resId;
+                    return null;
+                List<byte[]> res = new ArrayList<>();
+                res.add(rs.getBytes(1));
+                res.add(rs.getBytes(2));
+                res.add(rs.getBytes(3));
+                return res;
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
             }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("saveContractInStorage failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return 0;
+        });
     }
 
-    @Override
-    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt) {
+
+
+    private Collection<ContractStorageSubscription> getContractStorageSubscriptions(long environmentId) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
-                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at) VALUES(?,?) RETURNING id")
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  contract_storage.bin_data, " +
+                                            "  contract_subscription.expires_at, " +
+                                            "  contract_subscription.id " +
+                                            "FROM contract_subscription " +
+                                            "JOIN contract_storage ON contract_subscription.contract_storage_id=contract_storage.id " +
+                                            "WHERE environment_id=? "
+                            )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getContractStorageSubscriptions failed: returning null");
+                List<ContractStorageSubscription> res = new ArrayList<>();
+                while (rs.next()) {
+                    NContractStorageSubscription css = new NContractStorageSubscription(rs.getBytes(1), StateRecord.getTime(rs.getLong(2)));
+                    css.setId(rs.getLong(3));
+                    res.add(css);
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getContractStorageSubscriptions failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getContractStorageSubscriptions failed: " + e);
+        }
+    }
+
+
+    private List<String> getReducedNames(long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT DISTINCT name_storage.name_reduced AS name_reduced " +
+                                            "FROM name_storage JOIN name_entry ON name_storage.id=name_entry.name_storage_id " +
+                                            "WHERE name_storage.environment_id=?"
+                            )
+            ) {
+                statement.setLong(1, environmentId);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getNames failed: returning null");
+                List<String> res = new ArrayList<>();
+                while (rs.next()) {
+                    res.add(rs.getString(1));
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getNames failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getNames failed: " + e);
+        }
+    }
+
+
+    private Long getEnvironmentIdForSmartContractHashId(HashId smartContractHashId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("" +
+                    "SELECT id FROM environments " +
+                    "WHERE ncontract_hash_id=?", smartContractHashId.getDigest()))) {
+                if (rs == null)
+                    return null;
+                return rs.getLong(1);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+
+    @Override
+    public NImmutableEnvironment getEnvironment(long environmentId) {
+        return protect(() -> {
+            List<byte[]> smkv = getSmartContractForEnvironmentId(environmentId);
+            HashId nContractHashId = HashId.withDigest(smkv.get(2));
+            Contract contract = NSmartContract.fromPackedTransaction(smkv.get(0));
+            Contract findNContract = contract.getTransactionPack().getSubItem(nContractHashId);
+            contract = findNContract == null ? contract : findNContract;
+            NSmartContract nSmartContract = (NSmartContract) contract;
+            Binder kvBinder = Boss.unpack(smkv.get(1));
+            Collection<ContractStorageSubscription> contractStorageSubscriptions = getContractStorageSubscriptions(environmentId);
+            List<String> reducedNames = getReducedNames(environmentId);
+            List<NameRecord> nameRecords = new ArrayList<>();
+            for (String reducedName : reducedNames) {
+                NameRecordModel nrModel = getNameRecord(reducedName);
+                UnsName unsName = new UnsName(nrModel.name_reduced, nrModel.name_full, nrModel.description, nrModel.url);
+                for (NameEntryModel nameEntryModel : nrModel.entries) {
+                    if (nameEntryModel.origin != null)
+                        unsName.addUnsRecord(new UnsRecord(HashId.withDigest(nameEntryModel.origin)));
+                    else
+                        unsName.addUnsRecord(new UnsRecord(Arrays.asList(new KeyAddress(nameEntryModel.short_addr), new KeyAddress(nameEntryModel.long_addr))));
+                }
+                NNameRecord nr = new NNameRecord(unsName, nrModel.expires_at);
+                nr.setId(nrModel.id);
+                nameRecords.add(nr);
+            }
+            NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder, contractStorageSubscriptions, nameRecords, this);
+            nImmutableEnvironment.setId(environmentId);
+            return nImmutableEnvironment;
+        });
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(HashId contractId) {
+        Long envId = getEnvironmentIdForSmartContractHashId(contractId);
+        if (envId != null)
+            return getEnvironment(envId);
+        return null;
+    }
+
+    @Override
+    public NImmutableEnvironment getEnvironment(NSmartContract smartContract) {
+        NImmutableEnvironment nim = getEnvironment(smartContract.getId());
+
+        if(nim == null && smartContract.getParent() != null)
+            nim = getEnvironment(smartContract.getParent());
+
+        if (nim == null) {
+            long envId = saveEnvironmentToStorage(smartContract.getExtendedType(), smartContract.getId(), Boss.pack(new Binder()), smartContract.getPackedTransaction());
+            nim = getEnvironment(envId);
+        } else {
+            nim.setContract(smartContract);
+        }
+        return nim;
+    }
+
+    @Override
+    public void updateSubscriptionInStorage(long subscriptionId, ZonedDateTime expiresAt) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "UPDATE contract_subscription  SET expires_at = ? WHERE id = ?"
+                            )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setLong(2, subscriptionId);
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("updateEnvironment failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("updateEnvironment failed: " + e);
+        }
+    }
+
+    @Override
+    public void updateNameRecord(long nameRecordId, ZonedDateTime expiresAt) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "UPDATE name_storage SET expires_at = ? WHERE id = ?"
+                            )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(expiresAt));
+                statement.setLong(2, nameRecordId);
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("updateNameRecord failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("updateNameRecord failed: " + e);
+        }
+    }
+
+    private Set<HashId> saveEnvironment_getConflicts(NImmutableEnvironment environment) {
+        HashId ownSmartContractId = environment.getContract().getId();
+
+        List<String> namesToCheck = new ArrayList<>();
+        List<HashId> originsToCheck = new ArrayList<>();
+        List<String> addressesToCheck = new ArrayList<>();
+        for (NameRecord nameRecord : environment.nameRecords()) {
+            namesToCheck.add(nameRecord.getNameReduced());
+            for (NameRecordEntry nameRecordEntry : nameRecord.getEntries()) {
+                if (nameRecordEntry.getOrigin() != null)
+                    originsToCheck.add(nameRecordEntry.getOrigin());
+                if (nameRecordEntry.getShortAddress() != null)
+                    addressesToCheck.add(nameRecordEntry.getShortAddress());
+                if (nameRecordEntry.getLongAddress() != null)
+                    addressesToCheck.add(nameRecordEntry.getLongAddress());
+            }
+        }
+
+        String qpNames = String.join(",", Collections.nCopies(namesToCheck.size(),"?"));
+        String qpOrigins = String.join(",", Collections.nCopies(originsToCheck.size(),"?"));
+        String qpAddresses = String.join(",", Collections.nCopies(addressesToCheck.size(),"?"));
+
+        String sqlNames = "(SELECT environments.ncontract_hash_id " +
+                "FROM name_storage JOIN environments ON name_storage.environment_id=environments.id " +
+                "WHERE name_storage.name_reduced IN ("+qpNames+") AND environments.ncontract_hash_id<>?) ";
+        String sqlOrigins = "(SELECT environments.ncontract_hash_id " +
+                "FROM name_entry JOIN name_storage ON name_entry.name_storage_id=name_storage.id " +
+                "JOIN environments ON name_storage.environment_id=environments.id " +
+                "WHERE name_entry.origin IN ("+qpOrigins+") AND environments.ncontract_hash_id<>?)";
+        String sqlAddresses = "(SELECT environments.ncontract_hash_id " +
+                "FROM name_entry JOIN name_storage ON name_entry.name_storage_id=name_storage.id " +
+                "JOIN environments ON name_storage.environment_id=environments.id " +
+                "WHERE (name_entry.short_addr IN ("+qpAddresses+") OR name_entry.long_addr IN ("+qpAddresses+")) AND environments.ncontract_hash_id<>?)";
+
+        List<String> queries = new ArrayList<>();
+        if (namesToCheck.size() > 0)
+            queries.add(sqlNames);
+        if (originsToCheck.size() > 0)
+            queries.add(sqlOrigins);
+        if (addressesToCheck.size() > 0)
+            queries.add(sqlAddresses);
+
+        if (queries.size() == 0)
+            return new HashSet<>();
+
+        String sqlQuery = String.join(" UNION ", queries);
+
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(sqlQuery)
+            ) {
+                int i = 1;
+                for (String name : namesToCheck)
+                    statement.setString(i++, name);
+                if (namesToCheck.size() > 0)
+                    statement.setBytes(i++, ownSmartContractId.getDigest());
+                for (HashId origin : originsToCheck )
+                    statement.setBytes(i++, origin.getDigest());
+                if (originsToCheck.size() > 0)
+                    statement.setBytes(i++, ownSmartContractId.getDigest());
+                for (String address : addressesToCheck)
+                    statement.setString(i++, address);
+                for (String address : addressesToCheck)
+                    statement.setString(i++, address);
+                if (addressesToCheck.size() > 0)
+                    statement.setBytes(i++, ownSmartContractId.getDigest());
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getNames failed: returning null");
+                Set<HashId> result = new HashSet<>();
+                while (rs.next()) {
+                    result.add(HashId.withDigest(rs.getBytes(1)));
+                }
+                rs.close();
+                return result;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveEnvironment_getConflicts failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("saveEnvironment_getConflicts failed: " + e);
+        }
+    }
+
+
+    @Override
+    public Set<HashId> saveEnvironment(NImmutableEnvironment environment) {
+        Set<HashId> conflicts = saveEnvironment_getConflicts(environment);
+        if (conflicts.size() == 0) {
+            NSmartContract nsc = environment.getContract();
+            removeEnvironment(nsc.getId());
+            long envId = saveEnvironmentToStorage(nsc.getExtendedType(), nsc.getId(), Boss.pack(environment.getMutable().getKVStore()), nsc.getPackedTransaction());
+            for (NameRecord nr : environment.nameRecords()) {
+                NNameRecord nnr = (NNameRecord)nr;
+                nnr.setEnvironmentId(envId);
+                addNameRecord(nnr);
+            }
+            for (ContractStorageSubscription css : environment.storageSubscriptions()) {
+                NContractStorageSubscription ncss = (NContractStorageSubscription) css;
+                long contractStorageId = saveContractInStorage(ncss.getContract().getId(), ncss.getPackedContract(), ncss.expiresAt(), ncss.getContract().getOrigin());
+                saveSubscriptionInStorage(contractStorageId, ncss.expiresAt(), envId);
+            }
+        }
+        return conflicts;
+    }
+
+
+    @Override
+    public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement("INSERT INTO contract_subscription (contract_storage_id,expires_at,environment_id) VALUES(?,?,?) RETURNING id")
             ) {
                 statement.setLong(1, contractStorageId);
                 statement.setLong(2, StateRecord.unixTime(expiresAt));
+                statement.setLong(3, environmentId);
                 //db.updateWithStatement(statement);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
@@ -882,14 +1183,39 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
-    public long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
+    public void updateEnvironment(long id, String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "UPDATE environments  SET ncontract_type = ?,ncontract_hash_id = ?,kv_storage = ?,transaction_pack = ? WHERE id = ?"
+                            )
+            ) {
+                statement.setString(1, ncontractType);
+                statement.setBytes(2, ncontractHashId.getDigest());
+                statement.setBytes(3, kvStorage);
+                statement.setBytes(4, transactionPack);
+                statement.setLong(5, id);
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("updateEnvironment failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("updateEnvironment failed: " + e);
+        }
+    }
+
+    private long saveEnvironmentToStorage(String ncontractType, HashId ncontractHashId, byte[] kvStorage, byte[] transactionPack) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
                             db.statement(
                                     "INSERT INTO environments (ncontract_type,ncontract_hash_id,kv_storage,transaction_pack) VALUES (?,?,?,?) " +
-                                           "ON CONFLICT (ncontract_hash_id) DO UPDATE SET ncontract_type=EXCLUDED.ncontract_type, kv_storage=EXCLUDED.kv_storage, transaction_pack=EXCLUDED.transaction_pack " +
-                                           "RETURNING id"
+                                            "ON CONFLICT (ncontract_hash_id) DO UPDATE SET ncontract_type=EXCLUDED.ncontract_type, kv_storage=EXCLUDED.kv_storage, transaction_pack=EXCLUDED.transaction_pack " +
+                                            "RETURNING id"
                             )
             ) {
                 statement.setString(1, ncontractType);
@@ -910,148 +1236,35 @@ public class PostgresLedger implements Ledger {
             throw new Failure("addEnvironmentToStorage failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-        }
-        return 0;
-    }
-
-    @Override
-    public void saveEnvironmentSubscription(long subscriptionId, long environmentId) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement("" +
-                                    "INSERT INTO environment_subscription (subscription_id,environemtn_id) VALUES (?,?) " +
-                                    "ON CONFLICT(subscription_id) DO UPDATE SET environemtn_id=EXCLUDED.environemtn_id "
-                            )
-            ) {
-                statement.setLong(1, subscriptionId);
-                statement.setLong(2, environmentId);
-                db.updateWithStatement(statement);
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("addEnvironmentToStorage failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
+            throw new Failure("addEnvironmentToStorage failed: " + e);
         }
     }
 
-    @Override
-    public byte[] getEnvironmentFromStorage(HashId ncontractHashId) {
-        return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("SELECT kv_storage FROM environments WHERE ncontract_hash_id=?", ncontractHashId.getDigest()))) {
-                if (rs == null)
-                    return null;
-                return rs.getBytes("kv_storage");
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
-            }
-        });
-    }
 
     @Override
-    public Set<byte[]> getEnvironmentsForContractId(HashId contractId) {
+    public Set<Long> getSubscriptionEnviromentIdsForContractId(HashId contractId) {
         return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT environments.kv_storage FROM contract_storage " +
-                    "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id " +
-                    "LEFT JOIN environment_subscription ON contract_subscription.id=environment_subscription.subscription_id " +
-                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id " +
-                    "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
-                if (rs == null)
-                    return null;
-                HashSet<byte[]> res = new HashSet<>();
-                do {
-                    res.add(rs.getBytes(1));
-                } while (rs.next());
-                return res;
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
-            }
-        });
-    }
+            HashSet<Long> environmentIds = new HashSet<>();
 
-    @Override
-    public Set<byte[]> getEnvironmentsForSubscriptionStorageId(long subscriptionStorageId) {
-        return protect(() -> {
             try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT environments.kv_storage FROM contract_subscription " +
-                    "LEFT JOIN environment_subscription ON contract_subscription.id=environment_subscription.subscription_id " +
-                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id " +
-                    "WHERE contract_subscription.id=?", subscriptionStorageId))) {
-                if (rs == null)
-                    return null;
-                HashSet<byte[]> res = new HashSet<>();
-                do {
-                    res.add(rs.getBytes(1));
-                } while (rs.next());
-                return res;
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
-            }
-        });
-    }
-
-    @Override
-    public byte[] getSlotForSubscriptionStorageId(long subscriptionStorageId) {
-        return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT environments.transaction_pack FROM environment_subscription " +
-                    "LEFT JOIN environments ON environment_subscription.environemtn_id=environments.id " +
-                    "WHERE environment_subscription.subscription_id=?", subscriptionStorageId))) {
-                if (rs == null)
-                    return null;
-                return rs.getBytes(1);
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
-            }
-        });
-    }
-
-    @Override
-    public Set<ContractStorageSubscription> getStorageSubscriptionsForContractId(HashId contractId) {
-        return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT contract_subscription.id, contract_subscription.expires_at, contract_subscription.contract_storage_id FROM contract_storage " +
+                    "SELECT contract_subscription.environment_id FROM contract_storage " +
                     "LEFT JOIN contract_subscription ON contract_storage.id=contract_subscription.contract_storage_id " +
                     "WHERE contract_storage.hash_id=?", contractId.getDigest()))) {
                 if (rs == null)
-                    return null;
-                HashSet<ContractStorageSubscription> res = new HashSet<>();
+                    return new HashSet<>();
                 do {
-                    SlotContractStorageSubscription css = new SlotContractStorageSubscription();
-                    css.setId(rs.getLong(1));
-                    css.setExpiresAt(StateRecord.getTime(rs.getLong(2)));
-                    css.setContractStorageId(rs.getLong(3));
-                    res.add(css);
+                    environmentIds.add(rs.getLong(1));
                 } while (rs.next());
-                return res;
+
             } catch (Exception e) {
                 e.printStackTrace();
                 throw e;
             }
+
+            return environmentIds;
         });
     }
 
-    @Override
-    public byte[] getSlotContractByEnvironmentId(long environmentId) {
-        return protect(() -> {
-            try (ResultSet rs = inPool(db -> db.queryRow("" +
-                    "SELECT transaction_pack FROM environments " +
-                    "WHERE id=?", environmentId))) {
-                if (rs == null)
-                    return null;
-                return rs.getBytes(1);
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw e;
-            }
-        });
-    }
 
     @Override
     public byte[] getSlotContractBySlotId(HashId slotId) {
@@ -1091,7 +1304,7 @@ public class PostgresLedger implements Ledger {
             try (
                 PreparedStatement statement =
                     db.statement(
-                "DELETE FROM environment_subscription WHERE subscription_id=?"
+                "DELETE FROM contract_subscription WHERE id=?"
                     )
             ) {
                 statement.setLong(1, subscriptionId);
@@ -1102,37 +1315,10 @@ public class PostgresLedger implements Ledger {
             throw new Failure("removeEnvironmentSubscription failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
+            throw new Failure("removeEnvironmentSubscription failed: " + e);
         }
     }
 
-    @Override
-    public List<Long> removeEnvironmentSubscriptionsByEnvId(long environmentId) {
-        try (PooledDb db = dbPool.db()) {
-            try (
-                    PreparedStatement statement =
-                            db.statement(
-                                    "DELETE FROM environment_subscription WHERE environemtn_id=? RETURNING subscription_id"
-                            )
-            ) {
-                statement.setLong(1, environmentId);
-                statement.closeOnCompletion();
-                ResultSet rs = statement.executeQuery();
-                if (rs == null)
-                    throw new Failure("removeEnvironmentSubscriptionsByEnvId failed: returning null");
-                List<Long> resList = new ArrayList<>();
-                while (rs.next())
-                    resList.add(rs.getLong(1));
-                rs.close();
-                return resList;
-            }
-        } catch (SQLException se) {
-            se.printStackTrace();
-            throw new Failure("removeEnvironmentSubscriptionsByEnvId failed: " + se);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     public List<Long> getEnvironmentSubscriptionsByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
@@ -1162,8 +1348,7 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    @Override
-    public long removeEnvironment(HashId ncontractHashId) {
+    private long removeEnvironmentEx(HashId ncontractHashId) {
         try (PooledDb db = dbPool.db()) {
             try (
                 PreparedStatement statement =
@@ -1189,6 +1374,14 @@ public class PostgresLedger implements Ledger {
             e.printStackTrace();
             return 0;
         }
+    }
+
+    @Override
+    public long removeEnvironment(HashId ncontractHashId) {
+        long envId = getEnvironmentId(ncontractHashId);
+        removeStorageSubscriptionsByEnvId(envId);
+        clearExpiredStorageContracts();
+        return removeEnvironmentEx(ncontractHashId);
     }
 
     public long getEnvironmentId(HashId ncontractHashId) {
@@ -1219,20 +1412,15 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    public List<Long> removeStorageSubscriptionsByIds(List<Long> subscriptionIds) {
+    public List<Long> removeStorageSubscriptionsByEnvId(long environmentId) {
         try (PooledDb db = dbPool.db()) {
-            List<String> queryPatterns = new ArrayList<>();
-            for (int i = 0; i < subscriptionIds.size(); ++i)
-                queryPatterns.add("?");
-            String queryPatternStr = String.join(",", queryPatterns);
             try (
                     PreparedStatement statement =
                             db.statement(
-                                    "DELETE FROM contract_subscription WHERE id IN ("+queryPatternStr+") RETURNING contract_storage_id"
+                                    "DELETE FROM contract_subscription WHERE environment_id=? RETURNING contract_storage_id"
                             )
             ) {
-                for (int i = 0; i < subscriptionIds.size(); ++i)
-                    statement.setLong(i+1, subscriptionIds.get(i));
+                statement.setLong(1, environmentId);
                 statement.closeOnCompletion();
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
@@ -1248,7 +1436,7 @@ public class PostgresLedger implements Ledger {
             throw new Failure("removeStorageSubscriptionsByIds failed: " + se);
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
+            throw new Failure("removeStorageSubscriptionsByIds failed: " + e);
         }
     }
 
@@ -1276,17 +1464,13 @@ public class PostgresLedger implements Ledger {
         }
     }
 
-    @Override
     public void removeSlotContractWithAllSubscriptions(HashId slotHashId) {
         long environmentId = getEnvironmentId(slotHashId);
-        List<Long> subscriptionIdList = getEnvironmentSubscriptionsByEnvId(environmentId);
         removeEnvironment(slotHashId);
         if (environmentId != 0) {
-            if ((subscriptionIdList != null) && (subscriptionIdList.size() > 0)) {
-                List<Long> contracts = removeStorageSubscriptionsByIds(subscriptionIdList);
-                if ((contracts != null) && (contracts.size() > 0))
-                    removeStorageContractsForIds(contracts);
-            }
+            List<Long> contracts = removeStorageSubscriptionsByEnvId(environmentId);
+            if ((contracts != null) && (contracts.size() > 0))
+                removeStorageContractsForIds(contracts);
         }
     }
 
@@ -1295,6 +1479,438 @@ public class PostgresLedger implements Ledger {
         List<Long> contracts = clearExpiredStorageSubscriptions();
         if ((contracts != null) && (contracts.size() > 0))
             removeStorageContractsForIds(contracts);
+    }
+
+    private long addNameStorage(final NNameRecord nameRecord) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement("" +
+                                    "INSERT INTO name_storage (name_reduced,name_full,description,url,expires_at,environment_id) " +
+                                    "VALUES (?,?,?,?,?,?) " +
+                                    "ON CONFLICT (name_reduced) DO UPDATE SET " +
+                                    "  name_full=EXCLUDED.name_full, " +
+                                    "  description=EXCLUDED.description, " +
+                                    "  url=EXCLUDED.url, " +
+                                    "  expires_at=EXCLUDED.expires_at, " +
+                                    "  environment_id=EXCLUDED.environment_id " +
+                                    "RETURNING id")
+            ) {
+                statement.setString(1, nameRecord.getNameReduced());
+                statement.setString(2, nameRecord.getName());
+                statement.setString(3, nameRecord.getDescription());
+                statement.setString(4, nameRecord.getUrl());
+                statement.setLong(5, StateRecord.unixTime(nameRecord.expiresAt()));
+                statement.setLong(6, nameRecord.getEnvironmentId());
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("addNameStorage failed: returning null");
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addNameStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("addNameStorage failed: " + e);
+        }
+    }
+
+    private long addNameEntry(final NNameRecordEntry nameRecordEntry) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement("" +
+                                    "INSERT INTO name_entry (name_storage_id,short_addr,long_addr,origin) " +
+                                    "VALUES (?,?,?,?) " +
+                                    "RETURNING entry_id")
+            ) {
+                statement.setLong(1, nameRecordEntry.getNameRecordId());
+                statement.setString(2, nameRecordEntry.getShortAddress());
+                statement.setString(3, nameRecordEntry.getLongAddress());
+                statement.setBytes(4, nameRecordEntry.getOrigin()==null ? null : nameRecordEntry.getOrigin().getDigest());
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("addNameEntry failed: returning null");
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("addNameEntry failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("addNameEntry failed: " + e);
+        }
+    }
+
+    @Override
+    public void addNameRecord(final NNameRecord nameRecord) {
+        long nameStorageId = addNameStorage(nameRecord);
+        if (nameStorageId != 0) {
+            nameRecord.setId(nameStorageId);
+            removeNameRecordEntries(nameStorageId);
+            for (NameRecordEntry nameRecordEntry : nameRecord.getEntries()) {
+                ((NNameRecordEntry) nameRecordEntry).setNameRecordId(nameStorageId);
+                addNameEntry((NNameRecordEntry) nameRecordEntry);
+            }
+        } else {
+            throw new Failure("addNameRecord failed");
+        }
+    }
+
+
+    @Override
+    public long saveContractInStorage(HashId contractId, byte[] binData, ZonedDateTime expiresAt, HashId origin) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement("" +
+                                    "INSERT INTO contract_storage (hash_id,bin_data,origin,expires_at) VALUES (?,?,?,?) " +
+                                    "ON CONFLICT(hash_id) DO UPDATE SET hash_id=EXCLUDED.hash_id " +
+                                    "RETURNING id")
+            ) {
+                statement.setBytes(1, contractId.getDigest());
+                statement.setBytes(2, binData);
+                statement.setBytes(3, origin.getDigest());
+                statement.setLong(4, StateRecord.unixTime(expiresAt));
+                //db.updateWithStatement(statement);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("saveContractInStorage failed: returning null");
+                rs.next();
+                long resId = rs.getLong(1);
+                rs.close();
+                return resId;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("saveContractInStorage failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    @Override
+    public void removeNameRecord(final String nameReduced) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM name_storage WHERE name_reduced=?"
+                            )
+            ) {
+                statement.setString(1, nameReduced);
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("removeNameRecord failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("removeNameRecord failed: " + e);
+        }
+    }
+
+    private void removeNameRecordEntries(final long nameStorageId) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM name_entry WHERE name_storage_id=?"
+                            )
+            ) {
+                statement.setLong(1, nameStorageId);
+                db.updateWithStatement(statement);
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("removeNameRecordEntries failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("removeNameRecordEntries failed: " + e);
+        }
+    }
+
+
+    @Override
+    public boolean isAllNameRecordsAvailable(final Collection<String> reducedNames) {
+
+        try (PooledDb db = dbPool.db()) {
+            String queryPart = String.join(",", Collections.nCopies(reducedNames.size(),"?"));
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  COUNT(id) " +
+                                            "FROM name_storage " +
+                                            "WHERE name_reduced IN ("+queryPart+")"
+                            )
+            ) {
+                AtomicInteger idx = new AtomicInteger(1);
+                reducedNames.forEach(s -> {
+                    try {
+                        statement.setString(idx.getAndIncrement(), s);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        throw new Failure("isNameRecordBusy failed: " + e);
+                    }
+                });
+
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("isNameRecordBusy failed: returning null");
+                boolean res = false;
+                if (rs.next()) {
+                    if (rs.getLong(1) == 0)
+                        res = true;
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("isNameRecordBusy failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("isNameRecordBusy failed: " + e);
+        }
+
+    }
+
+
+    @Override
+    public boolean isAllOriginsAvailable(final Collection<HashId> origins) {
+        try (PooledDb db = dbPool.db()) {
+            String queryPart = String.join(",", Collections.nCopies(origins.size(),"?"));
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  COUNT(entry_id) " +
+                                            "FROM name_entry " +
+                                            "WHERE origin IN ("+queryPart+")"
+                            )
+            ) {
+                AtomicInteger idx = new AtomicInteger(1);
+                origins.forEach(o -> {
+                    try {
+                        statement.setBytes(idx.getAndIncrement(), o.getDigest());
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        throw new Failure("isAllOriginsAvailable failed: " + e);
+                    }
+                });
+
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("isAllOriginsAvailable failed: returning null");
+                boolean res = false;
+                if (rs.next()) {
+                    if (rs.getLong(1) == 0)
+                        res = true;
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("isAllOriginsAvailable failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("isAllOriginsAvailable failed: " + e);
+        }
+    }
+
+
+    @Override
+    public boolean isAllAddressesAvailable(final Collection<String> addresses) {
+        try (PooledDb db = dbPool.db()) {
+            String queryPart = String.join(",", Collections.nCopies(addresses.size(),"?"));
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  COUNT(entry_id) " +
+                                            "FROM name_entry " +
+                                            "WHERE " +
+                                            "  short_addr IN ("+queryPart+") " +
+                                            "OR " +
+                                            "  long_addr IN ("+queryPart+") "
+                            )
+            ) {
+                AtomicInteger idx = new AtomicInteger(1);
+                addresses.forEach(s -> {
+                    try {
+                        statement.setString(idx.get(), s);
+                        statement.setString(idx.getAndIncrement()+addresses.size(), s);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        throw new Failure("isAllAddressesAvailable failed: " + e);
+                    }
+                });
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("isAllAddressesAvailable failed: returning null");
+                boolean res = false;
+                if (rs.next()) {
+                    if (rs.getLong(1) == 0)
+                        res = true;
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("isAllAddressesAvailable failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("isAllAddressesAvailable failed: " + e);
+        }
+    }
+
+
+
+    public void clearExpiredNameRecords(Duration holdDuration) {
+        try (PooledDb db = dbPool.db()) {
+            ZonedDateTime before = ZonedDateTime.now().minus(holdDuration);
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "DELETE FROM name_storage WHERE expires_at < ? "
+                            )
+            ) {
+                statement.setLong(1, StateRecord.unixTime(before));
+                statement.closeOnCompletion();
+                statement.executeUpdate();
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("clearExpiredNameRecords failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("clearExpiredNameRecords failed: " + e);
+        }
+    }
+
+
+
+    private NameRecordModel getNameBy (String whereQueryPard, Consumer<PreparedStatement> paramsFromLambda) {
+        try (PooledDb db = dbPool.db()) {
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  name_storage.id AS id, " +
+                                            "  name_storage.name_reduced AS name_reduced, " +
+                                            "  name_storage.name_full AS name_full, " +
+                                            "  name_storage.description AS description, " +
+                                            "  name_storage.url AS url, " +
+                                            "  name_storage.expires_at AS expires_at, " +
+                                            "  name_storage.environment_id AS environment_id, " +
+                                            "  name_entry.entry_id AS entry_id, " +
+                                            "  name_entry.short_addr AS short_addr, " +
+                                            "  name_entry.long_addr AS long_addr, " +
+                                            "  name_entry.origin AS origin " +
+                                            "FROM name_storage JOIN name_entry ON name_storage.id=name_entry.name_storage_id " +
+                                            whereQueryPard
+                            )
+            ) {
+                paramsFromLambda.accept(statement);
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("getNameBy failed: returning null");
+                NameRecordModel nameRecordModel = new NameRecordModel();
+                nameRecordModel.entries = new ArrayList<>();
+                boolean firstRow = true;
+                int rowsCount = 0;
+                while (rs.next()) {
+                    ++ rowsCount;
+                    if (firstRow) {
+                        nameRecordModel.id = rs.getLong("id");
+                        nameRecordModel.name_reduced = rs.getString("name_reduced");
+                        nameRecordModel.name_full = rs.getString("name_full");
+                        nameRecordModel.description = rs.getString("description");
+                        nameRecordModel.url = rs.getString("url");
+                        nameRecordModel.expires_at = StateRecord.getTime(rs.getLong("expires_at"));
+                        nameRecordModel.environment_id = rs.getLong("environment_id");
+                        firstRow = false;
+                    }
+                    NameEntryModel nameEntryModel = new NameEntryModel();
+                    nameEntryModel.name_storage_id = nameRecordModel.id;
+                    nameEntryModel.entry_id = rs.getLong("entry_id");
+                    nameEntryModel.short_addr = rs.getString("short_addr");
+                    nameEntryModel.long_addr = rs.getString("long_addr");
+                    nameEntryModel.origin = rs.getBytes("origin");
+                    nameRecordModel.entries.add(nameEntryModel);
+                }
+                if (rowsCount == 0)
+                    nameRecordModel = null;
+                rs.close();
+                return nameRecordModel;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("getNameBy failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("getNameBy failed: " + e);
+        }
+    }
+
+
+
+    @Override
+    public NameRecordModel getNameRecord(final String nameReduced) {
+        return getNameBy("WHERE name_storage.name_reduced=? ", (statement)-> {
+            try {
+                statement.setString(1, nameReduced);
+            } catch (SQLException e) {
+                throw new Failure("getNameRecord failed: " + e);
+            }
+        });
+    }
+
+
+    @Override
+    public NameRecordModel getNameByAddress (String address) {
+        return getNameBy("WHERE name_storage.id=(SELECT name_storage_id FROM name_entry WHERE short_addr=? OR long_addr=? LIMIT 1) ", (statement)-> {
+            try {
+                statement.setString(1, address);
+                statement.setString(2, address);
+            } catch (SQLException e) {
+                throw new Failure("getNameByAddress failed: " + e);
+            }
+        });
+    }
+
+
+    @Override
+    public NameRecordModel getNameByOrigin (byte[] origin) {
+        return getNameBy("WHERE name_storage.id=(SELECT name_storage_id FROM name_entry WHERE origin=?) ", (statement)-> {
+            try {
+                statement.setBytes(1, origin);
+            } catch (SQLException e) {
+                throw new Failure("getNameByOrigin failed: " + e);
+            }
+        });
     }
 
 }

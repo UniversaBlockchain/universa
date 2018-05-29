@@ -8,23 +8,29 @@ import net.sergeych.boss.Boss;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class ItemResyncNotification extends ItemNotification {
 
     private static final int CODE_ITEM_RESYNC_NOTIFICATION = 1;
 
     private HashMap<HashId, ItemState> itemsToResync;
+    private Set<HashId> itemsWithEnvironment;
 
-    public ItemResyncNotification(NodeInfo from, HashId itemId, HashMap<HashId, ItemState> itemsToResync, boolean requestResult) {
+
+    public ItemResyncNotification(NodeInfo from, HashId itemId, HashMap<HashId, ItemState> itemsToResync, Set<HashId> itemsWithEnvironment, boolean requestResult) {
         // itemResult not use.
         super(from, itemId, new ItemResult(new StateRecord(itemId)), requestResult);
         this.itemsToResync = itemsToResync;
+        this.itemsWithEnvironment = itemsWithEnvironment;
     }
 
     protected ItemResyncNotification() {
         super();
         itemsToResync = new HashMap<>();
+        itemsWithEnvironment = new HashSet<>();
     }
 
     @Override
@@ -33,6 +39,13 @@ public class ItemResyncNotification extends ItemNotification {
         Map<String, Object> packingMap = new HashMap<>();
         for (HashId hid : itemsToResync.keySet()) {
             packingMap.put(hid.toBase64String(), itemsToResync.get(hid).ordinal());
+        }
+        bw.writeObject(packingMap);
+
+
+        packingMap = new HashMap<>();
+        for (HashId hid : itemsWithEnvironment) {
+            packingMap.put(hid.toBase64String(), true);
         }
         bw.writeObject(packingMap);
     }
@@ -45,6 +58,12 @@ public class ItemResyncNotification extends ItemNotification {
             HashId hid = HashId.withDigest(s);
             ItemState state = ItemState.values()[(int)packingMap.get(s)];
             itemsToResync.put(hid, state);
+        }
+
+        packingMap = br.readMap();
+        for (String s : packingMap.keySet()) {
+            HashId hid = HashId.withDigest(s);
+            itemsWithEnvironment.add(hid);
         }
     }
 
@@ -68,5 +87,9 @@ public class ItemResyncNotification extends ItemNotification {
 
     static public void init() {
         registerClass(CODE_ITEM_RESYNC_NOTIFICATION, ItemResyncNotification.class);
+    }
+
+    public Set<HashId> getItemsWithEnvironment() {
+        return itemsWithEnvironment;
     }
 }
