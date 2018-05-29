@@ -1652,6 +1652,7 @@ public class MainTest {
         PrivateKey randomPrivKey1 = new PrivateKey(2048);
         PrivateKey randomPrivKey2 = new PrivateKey(2048);
         PrivateKey randomPrivKey3 = new PrivateKey(2048);
+        PrivateKey randomPrivKey4 = new PrivateKey(2048);
 
 
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
@@ -1829,7 +1830,7 @@ public class MainTest {
         assertNotEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
         assertNotEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
 
-        Thread.sleep(8000);
+        Thread.sleep(4000);
 
         nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
 
@@ -1842,6 +1843,378 @@ public class MainTest {
 
     }
 
+    @Test(timeout = 90000)
+    public void checkUnsNodeMissedRevision() throws Exception {
+
+
+        PrivateKey randomPrivKey1 = new PrivateKey(2048);
+        PrivateKey randomPrivKey2 = new PrivateKey(2048);
+        PrivateKey randomPrivKey3 = new PrivateKey(2048);
+        PrivateKey randomPrivKey4 = new PrivateKey(2048);
+
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+
+        TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+
+        String name = "test"+Instant.now().getEpochSecond();
+
+
+        UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName = new UnsName(name, name, "test description", "http://test.com");
+        UnsRecord unsRecord = new UnsRecord(randomPrivKey1.getPublicKey());
+        unsName.addUnsRecord(unsRecord);
+        uns.addUnsName(unsName);
+
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        uns.seal();
+        uns.addSignatureToSeal(randomPrivKey1);
+        uns.addSignatureToSeal(TestKeys.privateKey(8));
+        uns.check();
+        uns.traceErrors();
+
+
+        UnsContract uns2 = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns2.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName2 = new UnsName(name, name, "test description", "http://test.com");
+        UnsRecord unsRecord2 = new UnsRecord(randomPrivKey2.getPublicKey());
+        unsName2.addUnsRecord(unsRecord2);
+        uns2.addUnsName(unsName2);
+
+        uns2.setNodeInfoProvider(nodeInfoProvider);
+        uns2.seal();
+        uns2.addSignatureToSeal(randomPrivKey2);
+        uns2.addSignatureToSeal(TestKeys.privateKey(8));
+        uns2.check();
+        uns2.traceErrors();
+
+        UnsContract uns3 = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns3.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName3 = new UnsName(name, name, "test description", "http://test.com");
+        UnsRecord unsRecord3 = new UnsRecord(randomPrivKey3.getPublicKey());
+        unsName3.addUnsRecord(unsRecord3);
+        uns3.addUnsName(unsName3);
+
+        uns3.setNodeInfoProvider(nodeInfoProvider);
+        uns3.seal();
+        uns3.addSignatureToSeal(randomPrivKey3);
+        uns3.addSignatureToSeal(TestKeys.privateKey(8));
+        uns3.check();
+        uns3.traceErrors();
+
+        //REGISTER UNS1
+        Contract paymentContract = getApprovedTUContract(testSpace);
+
+
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(payingParcel);
+        synchronized (testSpace.tuContractLock) {
+            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).entries.size(),1);
+
+
+        //REVOKE UNS1
+        Contract revokingContract = new Contract(manufacturePrivateKeys.iterator().next());
+        revokingContract.addRevokingItems(uns);
+        revokingContract.seal();
+
+        paymentContract = getApprovedTUContract(testSpace);
+        Parcel parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(parcel);
+        synchronized (testSpace.tuContractLock) {
+            testSpace.tuContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(parcel.getId(), 8000);
+
+        ItemResult ir = testSpace.node.node.waitItem(parcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(uns.getId(), 8000).state);
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
+
+        //REGISTER UNS2
+        paymentContract = getApprovedTUContract(testSpace);
+        payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(payingParcel);
+        synchronized (testSpace.tuContractLock) {
+            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
+
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).entries.size(),1);
+
+        //SHUTDOWN LAST NODE
+        testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
+        Thread.sleep(4000);
+
+        //UPDATE UNS2
+
+
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(TestKeys.privateKey(2));
+        keys.add(randomPrivKey4);
+        keys.add(manufacturePrivateKeys.iterator().next());
+        keys.add(authorizedNameServiceKey);
+
+        uns2 = (UnsContract) uns2.createRevision(keys);
+        uns2.removeName(name);
+        UnsName unsName2_1 = new UnsName(name+"2", name+"2", "test description", "http://test.com");
+        UnsRecord unsRecord2_1 = new UnsRecord(randomPrivKey4.getPublicKey());
+        unsName2_1.addUnsRecord(unsRecord2_1);
+        uns2.addUnsName(unsName2_1);
+
+        uns2.setNodeInfoProvider(nodeInfoProvider);
+        uns2.seal();
+
+        parcel = ContractsService.createParcel(uns2,getApprovedTUContract(testSpace),1,manufacturePrivateKeys);
+        testSpace.node.node.registerParcel(parcel);
+        synchronized (testSpace.tuContractLock) {
+            testSpace.tuContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(parcel.getId(), 8000);
+
+        ir = testSpace.node.node.waitItem(uns2.getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
+
+        //RECREATE NODES
+        testSpace.nodes.forEach(m->m.shutdown());
+        Thread.sleep(4000);
+        testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
+        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
+        //LAST NODE MISSED UNS2 REVISION
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName()));
+
+        //REGISTER UNS3
+        paymentContract = getApprovedTUContract(testSpace);
+
+        payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(payingParcel);
+        synchronized (testSpace.tuContractLock) {
+            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        ir = testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
+
+        NameRecordModel nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
+        NameRecordModel nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
+        assertEquals(nrm.entries.size(),1);
+        assertEquals(nrmLast.entries.size(),1);
+        assertNotEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
+        assertNotEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
+
+        Thread.sleep(4000);
+
+        nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
+
+        assertEquals(nrm.entries.size(),1);
+        assertEquals(nrmLast.entries.size(),1);
+        assertEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
+        assertEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
+
+        testSpace.nodes.forEach(m->m.shutdown());
+
+    }
+
+
+    @Test(timeout = 90000)
+    public void checkUnsNodeMissedSelfRevision() throws Exception {
+
+
+        PrivateKey randomPrivKey1 = new PrivateKey(2048);
+        PrivateKey randomPrivKey2 = new PrivateKey(2048);
+        PrivateKey randomPrivKey3 = new PrivateKey(2048);
+
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+
+        TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+
+        String name = "test"+Instant.now().getEpochSecond();
+        String name2 = "test2"+Instant.now().getEpochSecond();
+
+
+        UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
+
+        UnsName unsName = new UnsName(name, name, "test description", "http://test.com");
+        UnsRecord unsRecord = new UnsRecord(randomPrivKey1.getPublicKey());
+        unsName.addUnsRecord(unsRecord);
+        uns.addUnsName(unsName);
+
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        uns.seal();
+        uns.addSignatureToSeal(randomPrivKey1);
+        uns.addSignatureToSeal(TestKeys.privateKey(8));
+        uns.check();
+        uns.traceErrors();
+
+
+
+        //REGISTER UNS1
+        Contract paymentContract = getApprovedTUContract(testSpace);
+
+
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
+
+        testSpace.node.node.registerParcel(payingParcel);
+        synchronized (testSpace.tuContractLock) {
+            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
+        // check payment and payload contracts
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).entries.size(),1);
+
+
+        //SHUTDOWN LAST NODE
+        testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
+        Thread.sleep(4000);
+
+        //UPDATE UNS
+
+        Set<PrivateKey> keys = new HashSet<>();
+        keys.add(TestKeys.privateKey(2));
+        keys.add(randomPrivKey2);
+        keys.add(manufacturePrivateKeys.iterator().next());
+        keys.add(authorizedNameServiceKey);
+
+        uns = (UnsContract) uns.createRevision(keys);
+        uns.removeName(name);
+        UnsName unsName2 = new UnsName(name2, name2, "test description", "http://test.com");
+        UnsRecord unsRecord2 = new UnsRecord(randomPrivKey2.getPublicKey());
+        unsName2.addUnsRecord(unsRecord2);
+        uns.addUnsName(unsName2);
+
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        uns.seal();
+
+        Parcel parcel = ContractsService.createParcel(uns, getApprovedTUContract(testSpace), 1, manufacturePrivateKeys);
+        testSpace.node.node.registerParcel(parcel);
+        synchronized (testSpace.tuContractLock) {
+            testSpace.tuContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(parcel.getId(), 8000);
+
+        ItemResult ir = testSpace.node.node.waitItem(uns.getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
+
+        //RECREATE NODES
+        testSpace.nodes.forEach(m->m.shutdown());
+        Thread.sleep(4000);
+        testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
+        testSpace.nodes.forEach( m -> m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack())));
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(name));
+        assertNotNull(testSpace.node.node.getLedger().getNameRecord(name2));
+        //LAST NODE MISSED UNS REVISION
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name));
+        assertNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name2));
+
+        //REGISTER UNS
+
+
+        keys = new HashSet<>();
+        keys.add(TestKeys.privateKey(2));
+        keys.add(randomPrivKey3);
+        keys.add(manufacturePrivateKeys.iterator().next());
+        keys.add(authorizedNameServiceKey);
+
+        uns = (UnsContract) uns.createRevision(keys);
+        uns.removeName(name2);
+        UnsName unsName3 = new UnsName(name, name, "test description", "http://test.com");
+        UnsRecord unsRecord3 = new UnsRecord(randomPrivKey3.getPublicKey());
+        unsName3.addUnsRecord(unsRecord3);
+        uns.addUnsName(unsName3);
+
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        uns.seal();
+
+        parcel = ContractsService.createParcel(uns, getApprovedTUContract(testSpace), 1, manufacturePrivateKeys);
+        testSpace.node.node.registerParcel(parcel);
+        synchronized (testSpace.tuContractLock) {
+            testSpace.tuContract = parcel.getPaymentContract();
+        }
+        // wait parcel
+        testSpace.node.node.waitParcel(parcel.getId(), 8000);
+
+        ir = testSpace.node.node.waitItem(uns.getId(), 8000);
+        assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+
+
+        KeyAddress long1 = unsRecord.getAddresses().get(0).isLong() ? unsRecord.getAddresses().get(0) : unsRecord.getAddresses().get(1);
+        KeyAddress long3 = unsRecord3.getAddresses().get(0).isLong() ? unsRecord3.getAddresses().get(0) : unsRecord3.getAddresses().get(1);
+
+
+        assertNull(testSpace.node.node.getLedger().getNameRecord(name2));
+        assertNotNull(testSpace.node.node.getLedger().getNameRecord(name));
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(name).entries.get(0).long_addr,long3.toString());
+
+        //LAST NODE MISSED UNS REVISION
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name));
+        assertNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name2));
+        assertEquals(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name).entries.get(0).long_addr,long1.toString());
+
+        Thread.sleep(4000);
+        assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name));
+        assertNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name2));
+        assertEquals(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name).entries.get(0).long_addr,long3.toString());
+
+
+
+        testSpace.nodes.forEach(m->m.shutdown());
+
+    }
 
     @Test
     public void environmentSerializationTest() throws Exception{

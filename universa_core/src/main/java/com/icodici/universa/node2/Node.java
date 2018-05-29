@@ -3074,11 +3074,12 @@ public class Node {
                         //TODO: OPTIMIZE GETTING STATE RECORD
                         addItemToResync(id, ledger.getRecord(id));
                     });
-                    //                processingState = ItemProcessingState.RESYNCING;
                     pulseResync(true);
                 } else {
-                    //TODO: add condition here. Should it be just close or?
-                    close();
+                    if(justResycnNoFurtherVoting) {
+                        processingState = ItemProcessingState.FINISHED;
+                        close();
+                    }
                 }
             }
         }
