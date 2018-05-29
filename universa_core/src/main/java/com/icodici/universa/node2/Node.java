@@ -1749,9 +1749,6 @@ public class Node {
             if (this.item != null) {
                 executorService.submit(() -> itemDownloaded(),
                         Node.this.toString() + toString() + " :: ItemProcessor -> itemDownloaded");
-            } else {
-                int a = 0;
-                a++;
             }
         }
 
@@ -3044,42 +3041,45 @@ public class Node {
             return !envSources.isEmpty();
         }
         private void saveResyncedEnvironents() {
-            HashSet<HashId> itemsToReResync = new HashSet<>();
-            envSources.keySet().forEach(id ->{
-                Random random = new Random(Instant.now().toEpochMilli()*myInfo.getNumber());
-                Object[] array = envSources.get(id).toArray();
-                NodeInfo from = (NodeInfo) array[(int)(array.length*random.nextFloat())];
-                try {
-                    NImmutableEnvironment environment = network.getEnvironment(id, from, config.getMaxGetItemTime());
-                    if(environment != null) {
-                        Set<HashId> conflicts = ledger.saveEnvironment(environment);
-                        if (conflicts.size() > 0) {
-                            //TODO: remove in release
-                            boolean resyncConflicts = true;
-                            if(resyncConflicts) {
-                                itemsToReResync.addAll(conflicts);
-                            } else {
-                                conflicts.forEach(conflict -> removeEnvironment(conflict));
-                                assert ledger.saveEnvironment(environment).isEmpty();
+            if(!envSources.isEmpty()) {
+                HashSet<HashId> itemsToReResync = new HashSet<>();
+                envSources.keySet().forEach(id -> {
+                    Random random = new Random(Instant.now().toEpochMilli() * myInfo.getNumber());
+                    Object[] array = envSources.get(id).toArray();
+                    NodeInfo from = (NodeInfo) array[(int) (array.length * random.nextFloat())];
+                    try {
+                        NImmutableEnvironment environment = network.getEnvironment(id, from, config.getMaxGetItemTime());
+                        if (environment != null) {
+                            Set<HashId> conflicts = ledger.saveEnvironment(environment);
+                            if (conflicts.size() > 0) {
+                                //TODO: remove in release
+                                boolean resyncConflicts = true;
+                                if (resyncConflicts) {
+                                    itemsToReResync.addAll(conflicts);
+                                } else {
+                                    conflicts.forEach(conflict -> removeEnvironment(conflict));
+                                    assert ledger.saveEnvironment(environment).isEmpty();
+                                }
                             }
                         }
+                    } catch (InterruptedException e) {
+                        return;
                     }
-                } catch (InterruptedException e) {
-                    return;
-                }
-            });
-
-            if(itemsToReResync.size() > 0) {
-                itemsToReResync.addAll(resyncingItems.keySet());
-                resyncingItems.clear();
-                itemsToReResync.forEach(id -> {
-                    //TODO: OPTIMIZE GETTING STATE RECORD
-                    addItemToResync(id,ledger.getRecord(id));
                 });
-//                processingState = ItemProcessingState.RESYNCING;
-                pulseResync(true);
-            } else {
-                close();
+
+                if (itemsToReResync.size() > 0) {
+                    itemsToReResync.addAll(resyncingItems.keySet());
+                    resyncingItems.clear();
+                    itemsToReResync.forEach(id -> {
+                        //TODO: OPTIMIZE GETTING STATE RECORD
+                        addItemToResync(id, ledger.getRecord(id));
+                    });
+                    //                processingState = ItemProcessingState.RESYNCING;
+                    pulseResync(true);
+                } else {
+                    //TODO: add condition here. Should it be just close or?
+                    close();
+                }
             }
         }
 
