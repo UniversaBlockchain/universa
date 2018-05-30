@@ -1541,6 +1541,79 @@ public class MainTest {
         assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
     }
 
+    @Test
+    public void testUnsApi() throws Exception {
+
+        Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
+        manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        Set<PublicKey> manufacturePublicKeys = new HashSet<>();
+        manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
+
+        TestSpace testSpace = prepareTestSpace(manufacturePrivateKeys.iterator().next());
+
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        testSpace.nodes.forEach( m -> {
+            m.config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+            m.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        });
+
+        Decimal namesAndDaysPerU = testSpace.client.unsRate();
+        System.out.println("unsRate: " + namesAndDaysPerU);
+        assertEquals(testSpace.node.config.getRate("UNS1"), namesAndDaysPerU.doubleValue(), 0.000001);
+
+        Contract simpleContract = new Contract(manufacturePrivateKeys.iterator().next());
+        simpleContract.seal();
+        ItemResult itemResult = testSpace.client.register(simpleContract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        String unsTestName = "testContractName" + Instant.now().getEpochSecond();
+
+        UnsContract unsContract = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys,
+                manufacturePublicKeys, nodeInfoProvider, unsTestName, unsTestName, "test contract name", "http://test.com", simpleContract);
+        unsContract.addSignerKey(authorizedNameServiceKey);
+        unsContract.seal();
+        unsContract.check();
+        unsContract.traceErrors();
+
+        Contract paymentContract = getApprovedTUContract(testSpace);
+
+        Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 2000, manufacturePrivateKeys, false);
+
+        Binder nameInfo = testSpace.client.queryNameRecord(simpleContract.getId());
+        String name = nameInfo.getString("name", null);
+        System.out.println("name info is null: " + (name == null));
+        assertNull(name);
+
+        /*byte[] simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
+        System.out.println("simpleContractBytes (by contractId): " + simpleContractBytes);
+        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
+        System.out.println("simpleContractBytes (by originId): " + simpleContractBytes);
+        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));*/
+
+        testSpace.client.registerParcel(payingParcel.pack(), 8000);
+        itemResult = testSpace.client.getState(unsContract.getId());
+        System.out.println("Uns itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        nameInfo = testSpace.client.queryNameRecord(simpleContract.getId());
+        assertNotNull(nameInfo);
+        System.out.println("name info size: " + nameInfo.size());
+        System.out.println("Name: " + nameInfo.getString("name", ""));
+        System.out.println("Description: " + nameInfo.getString("description", ""));
+        System.out.println("URL: " + nameInfo.getString("url", ""));
+        assertEquals(unsTestName, nameInfo.getString("name", ""));
+
+        /*simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
+        System.out.println("simpleContractBytes (by contractId) length: " + simpleContractBytes.length);
+        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
+        System.out.println("simpleContractBytes (by originId) length: " + simpleContractBytes.length);
+        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));*/
+    }
+
 
     @Test
     public void paymentTest1() throws Exception {
