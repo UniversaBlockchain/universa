@@ -12,7 +12,6 @@ import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.services.*;
-import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 
@@ -224,9 +223,9 @@ public interface Ledger {
 
     void addNameRecord(final NNameRecord nameRecordModel);
     void removeNameRecord(final String nameReduced);
-    NameRecordModel getNameRecord(final String nameReduced);
-    NameRecordModel getNameByAddress (String address);
-    NameRecordModel getNameByOrigin (byte[] origin);
+    NNameRecord getNameRecord(final String nameReduced);
+    NNameRecord getNameByAddress (String address);
+    NNameRecord getNameByOrigin (byte[] origin);
     boolean isAllNameRecordsAvailable(final Collection<String> reducedNames);
     boolean isAllOriginsAvailable(final Collection<HashId> origins);
     boolean isAllAddressesAvailable(final Collection<String> addresses);

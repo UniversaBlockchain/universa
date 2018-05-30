@@ -16,8 +16,6 @@ import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.services.*;
-import com.icodici.universa.node.models.NameEntryModel;
-import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
@@ -904,17 +902,8 @@ public class PostgresLedger implements Ledger {
             List<String> reducedNames = getReducedNames(environmentId);
             List<NameRecord> nameRecords = new ArrayList<>();
             for (String reducedName : reducedNames) {
-                NameRecordModel nrModel = getNameRecord(reducedName);
-                UnsName unsName = new UnsName(nrModel.name_full, nrModel.description, nrModel.url);
-                unsName.setUnsReducedName(nrModel.name_reduced);
-                for (NameEntryModel nameEntryModel : nrModel.entries) {
-                    if (nameEntryModel.origin != null)
-                        unsName.addUnsRecord(new UnsRecord(HashId.withDigest(nameEntryModel.origin)));
-                    else
-                        unsName.addUnsRecord(new UnsRecord(Arrays.asList(new KeyAddress(nameEntryModel.short_addr), new KeyAddress(nameEntryModel.long_addr))));
-                }
-                NNameRecord nr = new NNameRecord(unsName, nrModel.expires_at);
-                nr.setId(nrModel.id);
+                NNameRecord nr = getNameRecord(reducedName);
+                //nr.setId(nrModel.id);
                 nameRecords.add(nr);
             }
             NImmutableEnvironment nImmutableEnvironment = new NImmutableEnvironment(nSmartContract, kvBinder, contractStorageSubscriptions, nameRecords, this);
@@ -1811,7 +1800,7 @@ public class PostgresLedger implements Ledger {
 
 
 
-    private NameRecordModel getNameBy (String whereQueryPard, Consumer<PreparedStatement> paramsFromLambda) {
+    private NNameRecord getNameBy (String whereQueryPard, Consumer<PreparedStatement> paramsFromLambda) {
         try (PooledDb db = dbPool.db()) {
             try (
                     PreparedStatement statement =
@@ -1838,34 +1827,40 @@ public class PostgresLedger implements Ledger {
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("getNameBy failed: returning null");
-                NameRecordModel nameRecordModel = new NameRecordModel();
-                nameRecordModel.entries = new ArrayList<>();
+
+                UnsName unsName = new UnsName();
+                long nameRecord_id = 0;
+                ZonedDateTime nameRecord_expiresAt = ZonedDateTime.now();
+                long nameRecord_environmentId = 0;
+                Set<NNameRecordEntry> entries = new HashSet<>();
                 boolean firstRow = true;
                 int rowsCount = 0;
                 while (rs.next()) {
-                    ++ rowsCount;
+                    ++rowsCount;
                     if (firstRow) {
-                        nameRecordModel.id = rs.getLong("id");
-                        nameRecordModel.name_reduced = rs.getString("name_reduced");
-                        nameRecordModel.name_full = rs.getString("name_full");
-                        nameRecordModel.description = rs.getString("description");
-                        nameRecordModel.url = rs.getString("url");
-                        nameRecordModel.expires_at = StateRecord.getTime(rs.getLong("expires_at"));
-                        nameRecordModel.environment_id = rs.getLong("environment_id");
+                        nameRecord_id = rs.getLong("id");
+                        unsName.setUnsReducedName(rs.getString("name_reduced"));
+                        unsName.setUnsName(rs.getString("name_full"));
+                        unsName.setUnsDescription(rs.getString("description"));
+                        unsName.setUnsURL(rs.getString("url"));
+                        nameRecord_expiresAt = StateRecord.getTime(rs.getLong("expires_at"));
+                        nameRecord_environmentId = rs.getLong("environment_id");
                         firstRow = false;
                     }
-                    NameEntryModel nameEntryModel = new NameEntryModel();
-                    nameEntryModel.name_storage_id = nameRecordModel.id;
-                    nameEntryModel.entry_id = rs.getLong("entry_id");
-                    nameEntryModel.short_addr = rs.getString("short_addr");
-                    nameEntryModel.long_addr = rs.getString("long_addr");
-                    nameEntryModel.origin = rs.getBytes("origin");
-                    nameRecordModel.entries.add(nameEntryModel);
+                    long entry_id = rs.getLong("entry_id");
+                    String short_addr = rs.getString("short_addr");
+                    String long_addr = rs.getString("long_addr");
+                    byte[] origin = rs.getBytes("origin");
+                    NNameRecordEntry nameRecordEntry = new NNameRecordEntry(HashId.withDigest(origin), short_addr, long_addr);
+                    nameRecordEntry.setId(entry_id);
+                    nameRecordEntry.setNameRecordId(nameRecord_id);
+                    entries.add(nameRecordEntry);
                 }
+                NNameRecord nameRecord = new NNameRecord(unsName, nameRecord_expiresAt, entries, nameRecord_id, nameRecord_environmentId);
                 if (rowsCount == 0)
-                    nameRecordModel = null;
+                    nameRecord = null;
                 rs.close();
-                return nameRecordModel;
+                return nameRecord;
             }
         } catch (SQLException se) {
             se.printStackTrace();
@@ -1879,7 +1874,7 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public NameRecordModel getNameRecord(final String nameReduced) {
+    public NNameRecord getNameRecord(final String nameReduced) {
         return getNameBy("WHERE name_storage.name_reduced=? ", (statement)-> {
             try {
                 statement.setString(1, nameReduced);
@@ -1891,7 +1886,7 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public NameRecordModel getNameByAddress (String address) {
+    public NNameRecord getNameByAddress (String address) {
         return getNameBy("WHERE name_storage.id=(SELECT name_storage_id FROM name_entry WHERE short_addr=? OR long_addr=? LIMIT 1) ", (statement)-> {
             try {
                 statement.setString(1, address);
@@ -1904,7 +1899,7 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public NameRecordModel getNameByOrigin (byte[] origin) {
+    public NNameRecord getNameByOrigin (byte[] origin) {
         return getNameBy("WHERE name_storage.id=(SELECT name_storage_id FROM name_entry WHERE origin=?) ", (statement)-> {
             try {
                 statement.setBytes(1, origin);

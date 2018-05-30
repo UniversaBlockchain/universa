@@ -1,10 +1,8 @@
 package com.icodici.universa.contract.services;
 
-import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.Ledger;
-import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.NameCache;
 import net.sergeych.biserializer.BiDeserializer;
@@ -21,7 +19,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**

@@ -50,6 +50,14 @@ public class NNameRecord implements NameRecord,BiSerializable {
         });
     }
 
+    public NNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt, Set<NNameRecordEntry> entries, long id, long environmentId) {
+        this(unsName, expiresAt);
+        this.entries.clear();
+        this.entries.addAll(entries);
+        this.id = id;
+        this.environmentId = environmentId;
+    }
+
 
     @Override
     public ZonedDateTime expiresAt() {

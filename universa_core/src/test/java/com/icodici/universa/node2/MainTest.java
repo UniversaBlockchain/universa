@@ -23,7 +23,6 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.*;
 import net.sergeych.boss.Boss;
@@ -1754,7 +1753,7 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).entries.size(),1);
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
 
 
         //REVOKE UNS1
@@ -1794,7 +1793,7 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).entries.size(),1);
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
 
         //SHUTDOWN LAST NODE
         testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
@@ -1848,21 +1847,21 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
 
-        NameRecordModel nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
-        NameRecordModel nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
-        assertEquals(nrm.entries.size(),1);
-        assertEquals(nrmLast.entries.size(),1);
-        assertNotEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
-        assertNotEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
+        NNameRecord nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
+        NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
+        assertEquals(nrm.getEntries().size(),1);
+        assertEquals(nrmLast.getEntries().size(),1);
+        assertNotEquals(nrm.getEntries().iterator().next().getShortAddress(),nrmLast.getEntries().iterator().next().getShortAddress());
+        assertNotEquals(nrm.getEntries().iterator().next().getLongAddress(),nrmLast.getEntries().iterator().next().getLongAddress());
 
         Thread.sleep(4000);
 
         nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
 
-        assertEquals(nrm.entries.size(),1);
-        assertEquals(nrmLast.entries.size(),1);
-        assertEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
-        assertEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
+        assertEquals(nrm.getEntries().size(),1);
+        assertEquals(nrmLast.getEntries().size(),1);
+        assertEquals(nrm.getEntries().iterator().next().getShortAddress(),nrmLast.getEntries().iterator().next().getShortAddress());
+        assertEquals(nrm.getEntries().iterator().next().getLongAddress(),nrmLast.getEntries().iterator().next().getLongAddress());
 
         testSpace.nodes.forEach(m->m.shutdown());
 
@@ -1955,7 +1954,7 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).entries.size(),1);
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
 
 
         //REVOKE UNS1
@@ -1995,7 +1994,7 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).entries.size(),1);
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
 
         //SHUTDOWN LAST NODE
         testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
@@ -2062,21 +2061,21 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns3.getNew().get(0).getId(), 8000).state);
 
-        NameRecordModel nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
-        NameRecordModel nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
-        assertEquals(nrm.entries.size(),1);
-        assertEquals(nrmLast.entries.size(),1);
-        assertNotEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
-        assertNotEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
+        NNameRecord nrm = testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName());
+        NNameRecord nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
+        assertEquals(nrm.getEntries().size(),1);
+        assertEquals(nrmLast.getEntries().size(),1);
+        assertNotEquals(nrm.getEntries().iterator().next().getShortAddress(),nrmLast.getEntries().iterator().next().getShortAddress());
+        assertNotEquals(nrm.getEntries().iterator().next().getLongAddress(),nrmLast.getEntries().iterator().next().getLongAddress());
 
         Thread.sleep(4000);
 
         nrmLast = testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName());
 
-        assertEquals(nrm.entries.size(),1);
-        assertEquals(nrmLast.entries.size(),1);
-        assertEquals(nrm.entries.get(0).short_addr,nrmLast.entries.get(0).short_addr);
-        assertEquals(nrm.entries.get(0).long_addr,nrmLast.entries.get(0).long_addr);
+        assertEquals(nrm.getEntries().size(),1);
+        assertEquals(nrmLast.getEntries().size(),1);
+        assertEquals(nrm.getEntries().iterator().next().getShortAddress(),nrmLast.getEntries().iterator().next().getShortAddress());
+        assertEquals(nrm.getEntries().iterator().next().getLongAddress(),nrmLast.getEntries().iterator().next().getLongAddress());
 
         testSpace.nodes.forEach(m->m.shutdown());
 
@@ -2139,7 +2138,7 @@ public class MainTest {
         assertEquals(ItemState.REVOKED, testSpace.node.node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, testSpace.node.node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).entries.size(),1);
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()).getEntries().size(),1);
 
 
         //SHUTDOWN LAST NODE
@@ -2230,17 +2229,17 @@ public class MainTest {
 
         assertNull(testSpace.node.node.getLedger().getNameRecord(name2));
         assertNotNull(testSpace.node.node.getLedger().getNameRecord(name));
-        assertEquals(testSpace.node.node.getLedger().getNameRecord(name).entries.get(0).long_addr,long3.toString());
+        assertEquals(testSpace.node.node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(),long3.toString());
 
         //LAST NODE MISSED UNS REVISION
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name));
         assertNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name2));
-        assertEquals(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name).entries.get(0).long_addr,long1.toString());
+        assertEquals(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(),long1.toString());
 
         Thread.sleep(4000);
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name));
         assertNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name2));
-        assertEquals(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name).entries.get(0).long_addr,long3.toString());
+        assertEquals(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(name).getEntries().iterator().next().getLongAddress(),long3.toString());
 
 
 

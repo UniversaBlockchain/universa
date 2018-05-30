@@ -11,11 +11,9 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.db.Db;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.HashId;
-import com.icodici.universa.contract.services.ContractStorageSubscription;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
 import com.icodici.universa.contract.services.NNameRecord;
 import com.icodici.universa.contract.services.NSmartContract;
-import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import org.sqlite.SQLiteConfig;
@@ -392,13 +390,13 @@ public class SqliteLedger implements Ledger {
     public void removeNameRecord(final String nameReduced) {}
 
     @Override
-    public NameRecordModel getNameRecord(final String nameReduced) {return null;}
+    public NNameRecord getNameRecord(final String nameReduced) {return null;}
 
     @Override
-    public NameRecordModel getNameByAddress (String address) {return null;}
+    public NNameRecord getNameByAddress (String address) {return null;}
 
     @Override
-    public NameRecordModel getNameByOrigin (byte[] origin) {return null;}
+    public NNameRecord getNameByOrigin (byte[] origin) {return null;}
 
     @Override
     public boolean isAllNameRecordsAvailable(Collection<String> reducedNames) {

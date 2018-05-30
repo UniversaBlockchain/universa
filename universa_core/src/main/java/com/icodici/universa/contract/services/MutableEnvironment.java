@@ -1,7 +1,6 @@
 package com.icodici.universa.contract.services;
 
 import com.icodici.universa.HashId;
-import com.icodici.universa.node.models.NameRecordModel;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 

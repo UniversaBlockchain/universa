@@ -19,7 +19,6 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node.*;
-import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
@@ -9789,7 +9788,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).entries.size(),2);
+        assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(),2);
     }
 
     @Test(timeout = 90000)
@@ -9855,13 +9854,13 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(name).entries.size(),1);
+        assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
         nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
         Thread.sleep(11000);
         nodes.forEach((n) -> n.getLedger().clearExpiredNameRecords(config.getHoldDuration()));
-        NameRecordModel nr = ledger.getNameRecord(name);
-        assertEquals(nr.entries.size(),1);
-        assertTrue(nr.expires_at.isBefore(ZonedDateTime.now()));
+        NNameRecord nr = ledger.getNameRecord(name);
+        assertEquals(nr.getEntries().size(),1);
+        assertTrue(nr.expiresAt().isBefore(ZonedDateTime.now()));
 
         paymentContract = getApprovedTUContract();
 
@@ -9958,7 +9957,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(name).entries.size(),1);
+        assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
 
 
         //REVOKE UNS1
@@ -9998,7 +9997,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(name).entries.size(),1);
+        assertEquals(ledger.getNameRecord(name).getEntries().size(),1);
     }
 
     @Test(timeout = 90000)
@@ -10101,8 +10100,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).entries.size(),2);
-        assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()).entries.size(),1);
+        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
+        assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()).getEntries().size(),1);
 
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(TestKeys.privateKey(2));
@@ -10153,8 +10152,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).entries.size(),2);
-        assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsReducedName()).entries.size(),1);
+        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
+        assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),1);
         assertNull(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()));
     }
 
@@ -10215,7 +10214,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(1, ledger.getNameRecord(reducedName).entries.size());
+        assertEquals(1, ledger.getNameRecord(reducedName).getEntries().size());
 
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(TestKeys.privateKey(1));
@@ -10262,7 +10261,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(reducedName).entries.size(),1);
+        assertEquals(ledger.getNameRecord(reducedName).getEntries().size(),1);
 
 
         //Create revision to add payment without any changes. Should be declined
@@ -10287,7 +10286,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(reducedName).entries.size(),1);
+        assertEquals(ledger.getNameRecord(reducedName).getEntries().size(),1);
     }
 
     @Test(timeout = 90000)
@@ -10917,17 +10916,17 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).entries.size(), 2);
+        assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(), 2);
 
         // check calculation expiration time
         double days = (double) 1470 * config.getRate(NSmartContract.SmartContractType.UNS1.name()) / uns.getUnsName(reducedName).getRecordsCount();
         long seconds = (long) (days * 24 * 3600);
         ZonedDateTime calculateExpires = timeReg1.plusSeconds(seconds);
 
-        NameRecordModel nrModel = node.getLedger().getNameRecord(reducedName);
+        NNameRecord nrModel = node.getLedger().getNameRecord(reducedName);
         if(nrModel != null) {
-            System.out.println(nrModel.expires_at);
-            assertAlmostSame(calculateExpires, nrModel.expires_at, 5);
+            System.out.println(nrModel.expiresAt());
+            assertAlmostSame(calculateExpires, nrModel.expiresAt(), 5);
         } else {
             fail("NameRecordModel was not found");
         }
@@ -10974,7 +10973,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(refilledUnsContract.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(reducedName).entries.size(), 2);
+        assertEquals(ledger.getNameRecord(reducedName).getEntries().size(), 2);
         assertEquals(refilledUnsContract.getUnsName(reducedName).getRecordsCount(), 2);
 
         // check prolongation
@@ -10987,8 +10986,8 @@ public class BaseNetworkTest extends TestCase {
 
         nrModel = node.getLedger().getNameRecord(reducedName);
         if(nrModel != null) {
-            System.out.println(nrModel.expires_at);
-            assertAlmostSame(calculateExpires, nrModel.expires_at, 5);
+            System.out.println(nrModel.expiresAt());
+            assertAlmostSame(calculateExpires, nrModel.expiresAt(), 5);
         } else {
             fail("NameRecordModel was not found");
         }

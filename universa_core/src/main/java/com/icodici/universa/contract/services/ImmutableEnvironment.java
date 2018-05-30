@@ -2,13 +2,11 @@ package com.icodici.universa.contract.services;
 
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.node.models.NameRecordModel;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.ZonedDateTime;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * The environment accessible to readonly {@link NContract} methods, e.g. {@link

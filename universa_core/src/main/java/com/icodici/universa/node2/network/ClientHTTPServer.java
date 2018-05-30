@@ -8,18 +8,17 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.PrivateKey;
-import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.services.NImmutableEnvironment;
+import com.icodici.universa.contract.services.NNameRecord;
 import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
-import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
@@ -218,7 +217,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder queryNameRecord(Binder params, Session session) throws IOException {
         Binder b = new Binder();
-        NameRecordModel loadedNameRecord;
+        NNameRecord loadedNameRecord;
         String address = params.getStringOrThrow("address");
         byte[] origin = params.getBinaryOrThrow("origin");
 
@@ -238,7 +237,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         Binder b = new Binder();
         String nameContract = params.getStringOrThrow("contract name");
 
-        NameRecordModel packedContract = node.getLedger().getNameRecord(nameContract);
+        NNameRecord packedContract = node.getLedger().getNameRecord(nameContract);
         b.put("packedContract", packedContract);
 
         return b;
