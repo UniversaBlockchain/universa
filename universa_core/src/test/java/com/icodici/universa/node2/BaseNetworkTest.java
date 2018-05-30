@@ -11817,7 +11817,8 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey randomPrivKey = new PrivateKey(2048);
 
         String name = HashId.createRandom().toBase64String();
-        UnsName unsName = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName = new UnsName(name, "test description", "http://test.com");
+        unsName.setUnsReducedName(name);
         UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
