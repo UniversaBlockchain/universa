@@ -3,7 +3,6 @@ package com.icodici.universa.contract.services;
 import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
-import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Approvable;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
@@ -11,14 +10,10 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.Reference;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
-import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.roles.RoleLink;
-import com.icodici.universa.node.models.NameEntryModel;
-import com.icodici.universa.node.models.NameRecordModel;
 import com.icodici.universa.node2.Config;
 import net.sergeych.biserializer.*;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -458,7 +453,7 @@ public class UnsContract extends NSmartContract {
     private List<String> getReducedNamesToCheck() {
         Set<String> reducedNames = new HashSet<>();
         for (UnsName unsName : storedNames)
-            reducedNames.add(unsName.getUnsNameReduced());
+            reducedNames.add(unsName.getUnsReducedName());
         for (Approvable revoked : getRevokingItems())
             removeRevokedNames(revoked, reducedNames);
         return new ArrayList<>(reducedNames);
@@ -468,7 +463,7 @@ public class UnsContract extends NSmartContract {
         if (approvable instanceof UnsContract) {
             UnsContract unsContract = (UnsContract) approvable;
             for (UnsName unsName : unsContract.storedNames)
-                set.remove(unsName.getUnsNameReduced());
+                set.remove(unsName.getUnsReducedName());
         }
         for (Approvable revoked : approvable.getRevokingItems())
             removeRevokedNames(revoked, set);

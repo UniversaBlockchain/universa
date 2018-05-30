@@ -905,7 +905,8 @@ public class PostgresLedger implements Ledger {
             List<NameRecord> nameRecords = new ArrayList<>();
             for (String reducedName : reducedNames) {
                 NameRecordModel nrModel = getNameRecord(reducedName);
-                UnsName unsName = new UnsName(nrModel.name_reduced, nrModel.name_full, nrModel.description, nrModel.url);
+                UnsName unsName = new UnsName(nrModel.name_full, nrModel.description, nrModel.url);
+                unsName.setUnsReducedName(nrModel.name_reduced);
                 for (NameEntryModel nameEntryModel : nrModel.entries) {
                     if (nameEntryModel.origin != null)
                         unsName.addUnsRecord(new UnsRecord(HashId.withDigest(nameEntryModel.origin)));

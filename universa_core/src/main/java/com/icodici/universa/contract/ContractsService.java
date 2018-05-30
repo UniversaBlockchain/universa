@@ -1018,7 +1018,8 @@ public class ContractsService {
 
         UnsContract.addUnsSpecific();
 
-        UnsName unsName = new UnsName(nameReduced, name, description, URL);
+        UnsName unsName = new UnsName(name, description, URL);
+        unsName.setUnsReducedName(nameReduced);
         UnsRecord unsRecord = new UnsRecord(namedContract.getId());
         unsName.addUnsRecord(unsRecord);
         UnsContract.addUnsName(unsName);
@@ -1095,7 +1096,8 @@ public class ContractsService {
 
         UnsContract.addUnsSpecific();
 
-        UnsName unsName = new UnsName(nameReduced, name, description, URL);
+        UnsName unsName = new UnsName(name, description, URL);
+        unsName.setUnsReducedName(nameReduced);
         UnsRecord unsRecord = new UnsRecord(namedKey);
         unsName.addUnsRecord(unsRecord);
         UnsContract.addUnsName(unsName);

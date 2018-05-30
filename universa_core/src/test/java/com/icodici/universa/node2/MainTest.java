@@ -30,7 +30,6 @@ import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
-import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.junit.After;
@@ -45,11 +44,9 @@ import java.sql.PreparedStatement;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalField;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -1694,7 +1691,8 @@ public class MainTest {
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName = new UnsName(name, "test description", "http://test.com");
+        unsName.setUnsReducedName(name);
         UnsRecord unsRecord = new UnsRecord(randomPrivKey1.getPublicKey());
         unsName.addUnsRecord(unsRecord);
         uns.addUnsName(unsName);
@@ -1710,7 +1708,8 @@ public class MainTest {
         UnsContract uns2 = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns2.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName2 = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName2 = new UnsName( name, "test description", "http://test.com");
+        unsName2.setUnsReducedName(name);
         UnsRecord unsRecord2 = new UnsRecord(randomPrivKey2.getPublicKey());
         unsName2.addUnsRecord(unsRecord2);
         uns2.addUnsName(unsName2);
@@ -1725,7 +1724,8 @@ public class MainTest {
         UnsContract uns3 = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns3.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName3 = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName3 = new UnsName( name, "test description", "http://test.com");
+        unsName3.setUnsReducedName(name);
         UnsRecord unsRecord3 = new UnsRecord(randomPrivKey3.getPublicKey());
         unsName3.addUnsRecord(unsRecord3);
         uns3.addUnsName(unsName3);
@@ -1892,7 +1892,8 @@ public class MainTest {
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName = new UnsName(name, "test description", "http://test.com");
+        unsName.setUnsReducedName(name);
         UnsRecord unsRecord = new UnsRecord(randomPrivKey1.getPublicKey());
         unsName.addUnsRecord(unsRecord);
         uns.addUnsName(unsName);
@@ -1908,7 +1909,8 @@ public class MainTest {
         UnsContract uns2 = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns2.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName2 = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName2 = new UnsName(name, "test description", "http://test.com");
+        unsName2.setUnsReducedName(name);
         UnsRecord unsRecord2 = new UnsRecord(randomPrivKey2.getPublicKey());
         unsName2.addUnsRecord(unsRecord2);
         uns2.addUnsName(unsName2);
@@ -1923,7 +1925,8 @@ public class MainTest {
         UnsContract uns3 = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns3.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName3 = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName3 = new UnsName(name, "test description", "http://test.com");
+        unsName3.setUnsReducedName(name);
         UnsRecord unsRecord3 = new UnsRecord(randomPrivKey3.getPublicKey());
         unsName3.addUnsRecord(unsRecord3);
         uns3.addUnsName(unsName3);
@@ -2009,7 +2012,8 @@ public class MainTest {
 
         uns2 = (UnsContract) uns2.createRevision(keys);
         uns2.removeName(name);
-        UnsName unsName2_1 = new UnsName(name+"2", name+"2", "test description", "http://test.com");
+        UnsName unsName2_1 = new UnsName(name+"2", "test description", "http://test.com");
+        unsName2_1.setUnsReducedName(name+"2");
         UnsRecord unsRecord2_1 = new UnsRecord(randomPrivKey4.getPublicKey());
         unsName2_1.addUnsRecord(unsRecord2_1);
         uns2.addUnsName(unsName2_1);
@@ -2103,7 +2107,8 @@ public class MainTest {
         UnsContract uns = new UnsContract(manufacturePrivateKeys.iterator().next());
         uns.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName = new UnsName(name, "test description", "http://test.com");
+        unsName.setUnsReducedName(name);
         UnsRecord unsRecord = new UnsRecord(randomPrivKey1.getPublicKey());
         unsName.addUnsRecord(unsRecord);
         uns.addUnsName(unsName);
@@ -2151,7 +2156,8 @@ public class MainTest {
 
         uns = (UnsContract) uns.createRevision(keys);
         uns.removeName(name);
-        UnsName unsName2 = new UnsName(name2, name2, "test description", "http://test.com");
+        UnsName unsName2 = new UnsName(name2, "test description", "http://test.com");
+        unsName2.setUnsReducedName(name2);
         UnsRecord unsRecord2 = new UnsRecord(randomPrivKey2.getPublicKey());
         unsName2.addUnsRecord(unsRecord2);
         uns.addUnsName(unsName2);
@@ -2196,7 +2202,8 @@ public class MainTest {
 
         uns = (UnsContract) uns.createRevision(keys);
         uns.removeName(name2);
-        UnsName unsName3 = new UnsName(name, name, "test description", "http://test.com");
+        UnsName unsName3 = new UnsName(name, "test description", "http://test.com");
+        unsName3.setUnsReducedName(name);
         UnsRecord unsRecord3 = new UnsRecord(randomPrivKey3.getPublicKey());
         unsName3.addUnsRecord(unsRecord3);
         uns.addUnsName(unsName3);
@@ -2245,7 +2252,7 @@ public class MainTest {
     public void environmentSerializationTest() throws Exception{
         UnsName unsName = new UnsName();
         unsName.setUnsName("test");
-        unsName.setUnsNameReduced("test");
+        unsName.setUnsReducedName("test");
 
         PrivateKey privateKey = new PrivateKey(2048);
         Contract contract = new Contract(privateKey);
@@ -2270,7 +2277,7 @@ public class MainTest {
         assertTrue(nnr2.getEntries().stream().anyMatch(nre -> unsName.getUnsRecords().stream().anyMatch(ur -> ur.equalsTo(nre))));
         assertEquals(nnr2.getEntries().size(),unsName.getRecordsCount());
         assertEquals(nnr2.getName(),unsName.getUnsName());
-        assertEquals(nnr2.getNameReduced(),unsName.getUnsNameReduced());
+        assertEquals(nnr2.getNameReduced(),unsName.getUnsReducedName());
         assertEquals(nnr2.getDescription(),unsName.getUnsDescription());
         assertEquals(nnr2.getUrl(),unsName.getUnsURL());
         assertEquals(nnr.expiresAt().toEpochSecond(),nnr2.expiresAt().toEpochSecond());

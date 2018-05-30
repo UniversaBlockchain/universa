@@ -1,7 +1,6 @@
 package com.icodici.universa.contract.services;
 
 import com.icodici.crypto.KeyAddress;
-import com.icodici.universa.contract.Contract;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializable;
 import net.sergeych.biserializer.BiSerializer;
@@ -9,7 +8,6 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.HashSet;
@@ -35,7 +33,7 @@ public class NNameRecord implements NameRecord,BiSerializable {
 
     public NNameRecord(@NonNull UnsName unsName, @NonNull ZonedDateTime expiresAt) {
         name = unsName.getUnsName();
-        nameReduced = unsName.getUnsNameReduced();
+        nameReduced = unsName.getUnsReducedName();
         description = unsName.getUnsDescription();
         url = unsName.getUnsURL();
         this.expiresAt = expiresAt;

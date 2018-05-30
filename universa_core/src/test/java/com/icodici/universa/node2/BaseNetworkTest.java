@@ -24,7 +24,6 @@ import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
@@ -9746,7 +9745,8 @@ public class BaseNetworkTest extends TestCase {
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
-        UnsName unsName = new UnsName("test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsName unsName = new UnsName("test"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsName.setUnsReducedName("test"+Instant.now().getEpochSecond());
         UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -9789,7 +9789,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsNameReduced()).entries.size(),2);
+        assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).entries.size(),2);
     }
 
     @Test(timeout = 90000)
@@ -10034,9 +10034,12 @@ public class BaseNetworkTest extends TestCase {
 
         uns.seal();
 
-        UnsName unsNameToChange = new UnsName("change"+Instant.now().getEpochSecond(), "change"+Instant.now().getEpochSecond(), "test description", "http://test.com");
-        UnsName unsNameToAdd = new UnsName("add"+Instant.now().getEpochSecond(), "add"+Instant.now().getEpochSecond(), "test description", "http://test.com");
-        UnsName unsNameToRemove = new UnsName("remove"+Instant.now().getEpochSecond(), "remove"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsName unsNameToChange = new UnsName("change"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsNameToChange.setUnsReducedName("change"+Instant.now().getEpochSecond());
+        UnsName unsNameToAdd = new UnsName("add"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsNameToAdd.setUnsReducedName("add"+Instant.now().getEpochSecond());
+        UnsName unsNameToRemove = new UnsName("remove"+Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsNameToRemove.setUnsReducedName("remove"+Instant.now().getEpochSecond());
 
         UnsRecord unsRecordToChange = new UnsRecord(randomPrivKey1.getPublicKey());
         UnsRecord unsRecordToAdd = new UnsRecord(randomPrivKey2.getPublicKey());
@@ -10098,8 +10101,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsNameReduced()).entries.size(),2);
-        assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsNameReduced()).entries.size(),1);
+        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).entries.size(),2);
+        assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()).entries.size(),1);
 
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(TestKeys.privateKey(2));
@@ -10150,9 +10153,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsNameReduced()).entries.size(),2);
-        assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsNameReduced()).entries.size(),1);
-        assertNull(ledger.getNameRecord(unsNameToRemove.getUnsNameReduced()));
+        assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).entries.size(),2);
+        assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsReducedName()).entries.size(),1);
+        assertNull(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()));
     }
 
 
@@ -10521,7 +10524,8 @@ public class BaseNetworkTest extends TestCase {
 
         String name = "testname"+Instant.now().getEpochSecond();
 
-        UnsName unsName = new UnsName(name, name, "testname description", "http://testname.com");
+        UnsName unsName = new UnsName(name, "testname description", "http://testname.com");
+        unsName.setUnsReducedName(name);
         UnsRecord unsRecord1 = new UnsRecord(randomPrivateKey1.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(nameContract1.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -10573,7 +10577,8 @@ public class BaseNetworkTest extends TestCase {
         uns2.seal();
 
         PrivateKey randomPrivateKey2 = new PrivateKey(2048);
-        unsName = new UnsName(name, name, "testname description", "http://testname.com");
+        unsName = new UnsName(name, "testname description", "http://testname.com");
+        unsName.setUnsReducedName(name);
         unsRecord1 = new UnsRecord(randomPrivateKey2.getPublicKey());
         unsRecord2 = new UnsRecord(nameContract2.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -10641,7 +10646,8 @@ public class BaseNetworkTest extends TestCase {
         UnsContract uns1 = ContractsService.createUnsContract(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider);
         uns1.addSignerKey(authorizedNameServiceKey);
 
-        UnsName unsName = new UnsName("testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress description", "http://testbusyaddress.com");
+        UnsName unsName = new UnsName("testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress description", "http://testbusyaddress.com");
+        unsName.setUnsReducedName("testbusyaddress"+Instant.now().getEpochSecond());
         UnsRecord unsRecord1 = new UnsRecord(randomPrivateKey.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(nameContract1.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -10691,7 +10697,8 @@ public class BaseNetworkTest extends TestCase {
         uns2.addSignerKey(authorizedNameServiceKey);
         uns2.seal();
 
-        unsName = new UnsName("testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress description", "http://testbusyaddress.com");
+        unsName = new UnsName("testbusyaddress"+Instant.now().getEpochSecond(), "testbusyaddress description", "http://testbusyaddress.com");
+        unsName.setUnsReducedName("testbusyaddress"+Instant.now().getEpochSecond());
         unsRecord1 = new UnsRecord(randomPrivateKey.getPublicKey());
         unsRecord2 = new UnsRecord(nameContract2.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -10760,7 +10767,8 @@ public class BaseNetworkTest extends TestCase {
         uns1.addSignerKey(authorizedNameServiceKey);
         uns1.seal();
 
-        UnsName unsName = new UnsName("testbusyorigin"+Instant.now().getEpochSecond(), "testbusyorigin"+Instant.now().getEpochSecond(), "testbusyorigin description", "http://testbusyorigin.com");
+        UnsName unsName = new UnsName("testbusyorigin"+Instant.now().getEpochSecond(), "testbusyorigin description", "http://testbusyorigin.com");
+        unsName.setUnsReducedName("testbusyorigin"+Instant.now().getEpochSecond());
         UnsRecord unsRecord1 = new UnsRecord(randomPrivateKey1.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(nameContract.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -10808,7 +10816,8 @@ public class BaseNetworkTest extends TestCase {
         uns2.seal();
 
         PrivateKey randomPrivateKey2 = new PrivateKey(2048);
-        unsName = new UnsName("testbusyorigin"+Instant.now().getEpochSecond(), "testbusyorigin"+Instant.now().getEpochSecond(), "testbusyorigin description", "http://testbusyorigin.com");
+        unsName = new UnsName("testbusyorigin"+Instant.now().getEpochSecond(), "testbusyorigin description", "http://testbusyorigin.com");
+        unsName.setUnsReducedName("testbusyorigin"+Instant.now().getEpochSecond());
         unsRecord1 = new UnsRecord(randomPrivateKey2.getPublicKey());
         unsRecord2 = new UnsRecord(nameContract.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -10861,7 +10870,8 @@ public class BaseNetworkTest extends TestCase {
 
         String reducedName = "testTime" + Instant.now().getEpochSecond();
 
-        UnsName unsName = new UnsName(reducedName, reducedName, "test description", "http://test.com");
+        UnsName unsName = new UnsName(reducedName, "test description", "http://test.com");
+        unsName.setUnsReducedName(reducedName);
         UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -10907,7 +10917,7 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
-        assertEquals(ledger.getNameRecord(unsName.getUnsNameReduced()).entries.size(), 2);
+        assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).entries.size(), 2);
 
         // check calculation expiration time
         double days = (double) 1470 * config.getRate(NSmartContract.SmartContractType.UNS1.name()) / uns.getUnsName(reducedName).getRecordsCount();
@@ -11491,7 +11501,8 @@ public class BaseNetworkTest extends TestCase {
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
-        UnsName unsName = new UnsName("test_stat" + Instant.now().getEpochSecond(), "test_stat" + Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsName unsName = new UnsName("test_stat" + Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsName.setUnsReducedName("test_stat" + Instant.now().getEpochSecond());
         UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
@@ -11591,7 +11602,8 @@ public class BaseNetworkTest extends TestCase {
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
-        UnsName unsName = new UnsName("test_stat_declined" + Instant.now().getEpochSecond(), "test_stat_declined" + Instant.now().getEpochSecond(), "test description", "http://test.com");
+        UnsName unsName = new UnsName("test_stat_declined" + Instant.now().getEpochSecond(), "test description", "http://test.com");
+        unsName.setUnsReducedName("test_stat_declined" + Instant.now().getEpochSecond());
         UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
         UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
         unsName.addUnsRecord(unsRecord1);
