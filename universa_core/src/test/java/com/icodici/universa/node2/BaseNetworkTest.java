@@ -11795,4 +11795,144 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(true, itemResult.errors.size() > 0);
     }
 
+
+    @Test
+    public void removeEnvironment_uns1() throws Exception {
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>(Arrays.asList(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"))));
+
+        UnsContract uns = ContractsService.createUnsContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), new HashSet<>(Arrays.asList(TestKeys.publicKey(0))), nodeInfoProvider);
+        uns.addSignerKey(authorizedNameServiceKey);
+        uns.seal();
+
+        Contract paymentContract = getApprovedTUContract();
+        Contract referencesContract = new Contract(TestKeys.privateKey(8));
+        referencesContract.seal();
+        Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {tuContract = parcel.getPaymentContract();}
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
+
+        PrivateKey randomPrivKey = new PrivateKey(2048);
+
+        String name = HashId.createRandom().toBase64String();
+        UnsName unsName = new UnsName(name, name, "test description", "http://test.com");
+        UnsRecord unsRecord1 = new UnsRecord(randomPrivKey.getPublicKey());
+        UnsRecord unsRecord2 = new UnsRecord(referencesContract.getId());
+        unsName.addUnsRecord(unsRecord1);
+        unsName.addUnsRecord(unsRecord2);
+        uns.addUnsName(unsName);
+        uns.addOriginContract(referencesContract);
+
+        uns.setNodeInfoProvider(nodeInfoProvider);
+        uns.seal();
+        uns.addSignatureToSeal(randomPrivKey);
+        uns.addSignatureToSeal(TestKeys.privateKey(8));
+        uns.check();
+        uns.traceErrors();
+        paymentContract = getApprovedTUContract();
+        parcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {tuContract = parcel.getPayloadContract().getNew().get(0);}
+        node.waitParcel(parcel.getId(), 8000);
+
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        for (Node n : nodes) {
+            // check environments table
+            assertNotNull(n.getLedger().getSlotContractBySlotId(uns.getId()));
+            // check name_storage table
+            assertNotNull(n.getLedger().getNameRecord(name));
+            // check name_entry table
+            PreparedStatement ps =  ((PostgresLedger)n.getLedger()).getDb().statement(
+                    "select count(*) from name_entry where origin=? or short_addr=? or long_addr=?",
+                    referencesContract.getId().getDigest(),
+                    randomPrivKey.getPublicKey().getShortAddress().toString(),
+                    randomPrivKey.getPublicKey().getLongAddress().toString());
+            ResultSet rs = ps.executeQuery();
+            assertTrue(rs.next());
+            assertEquals(2, rs.getInt(1));
+
+            // now remove environment
+            n.getLedger().removeEnvironment(uns.getId());
+
+            // check environments table
+            assertNull(n.getLedger().getSlotContractBySlotId(uns.getId()));
+            // check name_storage table
+            assertNull(n.getLedger().getNameRecord(name));
+            // check name_entry table
+            ps =  ((PostgresLedger)n.getLedger()).getDb().statement(
+                    "select count(*) from name_entry where origin=? or short_addr=? or long_addr=?",
+                    referencesContract.getId().getDigest(),
+                    randomPrivKey.getPublicKey().getShortAddress().toString(),
+                    randomPrivKey.getPublicKey().getLongAddress().toString());
+            rs = ps.executeQuery();
+            assertTrue(rs.next());
+            assertEquals(0, rs.getInt(1));
+        }
+
+    }
+
+
+    @Test
+    public void removeEnvironment_slot1() throws Exception {
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>(Arrays.asList(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"))));
+
+        Contract paymentContract = getApprovedTUContract();
+        Contract trackingContract = new Contract(TestKeys.privateKey(0));
+        trackingContract.seal();
+        Parcel parcel = ContractsService.createParcel(trackingContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {tuContract = parcel.getPaymentContract();}
+        node.waitParcel(parcel.getId(), 8000);
+        assertEquals(ItemState.APPROVED, node.waitItem(trackingContract.getId(), 8000).state);
+
+        SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), new HashSet<>(Arrays.asList(TestKeys.publicKey(0))), nodeInfoProvider);
+        slotContract.putTrackingContract(trackingContract);
+        slotContract.seal();
+        paymentContract = getApprovedTUContract();
+        parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        node.registerParcel(parcel);
+        synchronized (tuContractLock) {tuContract = parcel.getPayloadContract().getNew().get(0);}
+        node.waitParcel(parcel.getId(), 8000);
+
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(parcel.getPayment().getContract().getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(slotContract.getNew().get(0).getId(), 8000).state);
+
+        for (Node n : nodes) {
+            NImmutableEnvironment env  = n.getLedger().getEnvironment(slotContract.getId());
+            // check environments table
+            assertNotNull(n.getLedger().getSlotContractBySlotId(slotContract.getId()));
+            // check contract_storage table
+            assertNotNull(n.getLedger().getContractInStorage(trackingContract.getId()));
+            // check contract_subscription table
+            PreparedStatement ps =  ((PostgresLedger)n.getLedger()).getDb().statement(
+                    "select count(*) from contract_subscription where contract_storage_id=?",
+                    ((NContractStorageSubscription)env.storageSubscriptions().iterator().next()).getId());
+            ResultSet rs = ps.executeQuery();
+            assertTrue(rs.next());
+            assertEquals(1, rs.getInt(1));
+
+            // now remove environment
+            n.getLedger().removeEnvironment(slotContract.getId());
+
+            // check environments table
+            assertNull(n.getLedger().getSlotContractBySlotId(slotContract.getId()));
+            // check contract_storage table
+            assertNull(n.getLedger().getContractInStorage(trackingContract.getId()));
+            // check contract_subscription table
+            ps =  ((PostgresLedger)n.getLedger()).getDb().statement(
+                    "select count(*) from contract_subscription where contract_storage_id=?",
+                    ((NContractStorageSubscription)env.storageSubscriptions().iterator().next()).getId());
+            rs = ps.executeQuery();
+            assertTrue(rs.next());
+            assertEquals(0, rs.getInt(1));
+        }
+
+    }
+
 }
