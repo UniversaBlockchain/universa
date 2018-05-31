@@ -263,7 +263,7 @@ public class UnsContract extends NSmartContract {
         storedNames = deserializer.deserialize(getStateData().getList(NAMES_FIELD_NAME, null));
 
         paidU = getStateData().getInt(PAID_U_FIELD_NAME, 0);
-        prepaidNamesForDays = getStateData().getInt(PREPAID_ND_FIELD_NAME, 0);
+        prepaidNamesForDays = getStateData().getDouble(PREPAID_ND_FIELD_NAME);
 
         long prepaidFromSeconds = getStateData().getLong(PREPAID_ND_FROM_TIME_FIELD_NAME, 0);
         prepaidFrom = ZonedDateTime.ofInstant(Instant.ofEpochSecond(prepaidFromSeconds), ZoneId.systemDefault());
