@@ -49,64 +49,57 @@ public class NameCache {
         records.remove(name_reduced);
     }
 
-    private boolean lockStringList(Collection<String> reducedNameList) {
-        boolean isAllNamesLocked = true;
+    private List<String> lockStringList(String prefix, Collection<String> stringList) {
+        List<String> unavailableStrings = new ArrayList<>();
         List<String> lockedByThisCall = new ArrayList<>();
-        for (String reducedName : reducedNameList) {
-            if (lockStringValue(reducedName)) {
-                lockedByThisCall.add(reducedName);
+        for (String str : stringList) {
+            String strWithPrefix = prefix + str;
+            if (lockStringValue(strWithPrefix)) {
+                lockedByThisCall.add(strWithPrefix);
             } else {
-                isAllNamesLocked = false;
-                break;
+                unavailableStrings.add(str);
             }
         }
-        if (!isAllNamesLocked) {
+        if (unavailableStrings.size() > 0) {
             for (String rn : lockedByThisCall)
                 unlockStringValue(rn);
         }
-        return isAllNamesLocked;
+        return unavailableStrings;
     }
 
-    private void unlockStringList(Collection<String> reducedNameList) {
-        for (String reducedName : reducedNameList)
-            unlockStringValue(reducedName);
+    private void unlockStringList(String prefix, Collection<String> stringList) {
+        for (String str : stringList)
+            unlockStringValue(prefix + str);
     }
 
-    private List<String> getSringListWithPrefix(String prefix, Collection<String> srcList) {
-        List<String> list = new ArrayList<>(srcList);
-        for (int i = 0; i < list.size(); ++i)
-            list.set(i, prefix + list.get(i));
-        return list;
-    }
-
-    public boolean lockNameList(Collection<String> reducedNameList) {
-        return lockStringList(getSringListWithPrefix(NAME_PREFIX, reducedNameList));
+    public List<String> lockNameList(Collection<String> reducedNameList) {
+        return lockStringList(NAME_PREFIX, reducedNameList);
     }
 
     public void unlockNameList(Collection<String> reducedNameList) {
-        unlockStringList(getSringListWithPrefix(NAME_PREFIX, reducedNameList));
+        unlockStringList(NAME_PREFIX, reducedNameList);
     }
 
-    public boolean lockOriginList(Collection<HashId> originList) {
+    public List<String> lockOriginList(Collection<HashId> originList) {
         List<String> stringList = new ArrayList<>();
         for (HashId origin : originList)
-            stringList.add(ORIGIN_PREFIX + origin.toBase64String());
-        return lockStringList(stringList);
+            stringList.add(origin.toBase64String());
+        return lockStringList(ORIGIN_PREFIX, stringList);
     }
 
     public void unlockOriginList(Collection<HashId> originList) {
         List<String> stringList = new ArrayList<>();
         for (HashId origin : originList)
-            stringList.add(ORIGIN_PREFIX + origin.toBase64String());
-        unlockStringList(stringList);
+            stringList.add(origin.toBase64String());
+        unlockStringList(ORIGIN_PREFIX, stringList);
     }
 
-    public boolean lockAddressList(Collection<String> addressList) {
-        return lockStringList(getSringListWithPrefix(ADDRESS_PREFIX, addressList));
+    public List<String> lockAddressList(Collection<String> addressList) {
+        return lockStringList(ADDRESS_PREFIX, addressList);
     }
 
     public void unlockAddressList(Collection<String> addressList) {
-        unlockStringList(getSringListWithPrefix(ADDRESS_PREFIX, addressList));
+        unlockStringList(ADDRESS_PREFIX, addressList);
     }
 
     private ConcurrentHashMap<String,Record> records = new ConcurrentHashMap();

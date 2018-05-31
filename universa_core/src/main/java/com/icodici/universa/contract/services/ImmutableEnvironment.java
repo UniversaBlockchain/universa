@@ -1,5 +1,6 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import net.sergeych.tools.Binder;
@@ -7,6 +8,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * The environment accessible to readonly {@link NContract} methods, e.g. {@link
@@ -53,5 +55,5 @@ public interface ImmutableEnvironment {
     Iterable<ContractStorageSubscription> storageSubscriptions();
     Iterable<NameRecord> nameRecords();
 
-    boolean tryAllocate(Collection<String> reducedNamesToAllocate, Collection<HashId> originsToAllocate, Collection<String> addressesToAllocate);
+    List<ErrorRecord> tryAllocate(Collection<String> reducedNamesToAllocate, Collection<HashId> originsToAllocate, Collection<String> addressesToAllocate);
 }

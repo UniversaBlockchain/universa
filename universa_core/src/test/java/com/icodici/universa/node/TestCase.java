@@ -9,6 +9,7 @@ package com.icodici.universa.node;
 
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.contract.Contract;
 
 import java.io.IOException;
@@ -17,15 +18,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThan;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class TestCase {
     public void assertAlmostSame(ZonedDateTime t1, ZonedDateTime t2) {
@@ -56,6 +56,17 @@ public class TestCase {
             t.printStackTrace();
             fail("Expected exception of class " + exClass.getName() + "instead " + t.getClass().getName() + " was thrown");
         }
+    }
+
+    protected void assertErrorsContainsSubstr(Collection<ErrorRecord> errors, String substr) {
+        boolean contains = false;
+        for (ErrorRecord er : errors) {
+            if (er.getMessage().contains(substr)) {
+                contains = true;
+                break;
+            }
+        }
+        assertTrue(contains);
     }
 
     protected void assertThrows(Callable<?> callable) {

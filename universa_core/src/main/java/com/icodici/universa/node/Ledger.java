@@ -226,9 +226,9 @@ public interface Ledger {
     NNameRecord getNameRecord(final String nameReduced);
     NNameRecord getNameByAddress (String address);
     NNameRecord getNameByOrigin (byte[] origin);
-    boolean isAllNameRecordsAvailable(final Collection<String> reducedNames);
-    boolean isAllOriginsAvailable(final Collection<HashId> origins);
-    boolean isAllAddressesAvailable(final Collection<String> addresses);
+    List<String> isAllNameRecordsAvailable(final Collection<String> reducedNames);
+    List<String> isAllOriginsAvailable(final Collection<HashId> origins);
+    List<String> isAllAddressesAvailable(final Collection<String> addresses);
     void clearExpiredNameRecords(Duration holdDuration);
 
     void cleanup();

@@ -399,18 +399,18 @@ public class SqliteLedger implements Ledger {
     public NNameRecord getNameByOrigin (byte[] origin) {return null;}
 
     @Override
-    public boolean isAllNameRecordsAvailable(Collection<String> reducedNames) {
-        return false;
+    public List<String> isAllNameRecordsAvailable(Collection<String> reducedNames) {
+        return Arrays.asList("not_implemented");
     }
 
     @Override
-    public boolean isAllOriginsAvailable(Collection<HashId> origins) {
-        return false;
+    public List<String> isAllOriginsAvailable(Collection<HashId> origins) {
+        return Arrays.asList("not_implemented");
     }
 
     @Override
-    public boolean isAllAddressesAvailable(Collection<String> addresses) {
-        return false;
+    public List<String> isAllAddressesAvailable(Collection<String> addresses) {
+        return Arrays.asList("not_implemented");
     }
 
 

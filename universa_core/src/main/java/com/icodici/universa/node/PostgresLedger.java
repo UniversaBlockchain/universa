@@ -1633,7 +1633,7 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public boolean isAllNameRecordsAvailable(final Collection<String> reducedNames) {
+    public List<String> isAllNameRecordsAvailable(final Collection<String> reducedNames) {
 
         try (PooledDb db = dbPool.db()) {
             String queryPart = String.join(",", Collections.nCopies(reducedNames.size(),"?"));
@@ -1642,7 +1642,7 @@ public class PostgresLedger implements Ledger {
                             db.statement(
                                     "" +
                                             "SELECT " +
-                                            "  COUNT(id) " +
+                                            "  name_reduced " +
                                             "FROM name_storage " +
                                             "WHERE name_reduced IN ("+queryPart+")"
                             )
@@ -1661,10 +1661,9 @@ public class PostgresLedger implements Ledger {
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("isNameRecordBusy failed: returning null");
-                boolean res = false;
-                if (rs.next()) {
-                    if (rs.getLong(1) == 0)
-                        res = true;
+                List<String> res = new ArrayList<>();
+                while (rs.next()) {
+                    res.add(rs.getString(1));
                 }
                 rs.close();
                 return res;
@@ -1681,7 +1680,7 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public boolean isAllOriginsAvailable(final Collection<HashId> origins) {
+    public List<String> isAllOriginsAvailable(final Collection<HashId> origins) {
         try (PooledDb db = dbPool.db()) {
             String queryPart = String.join(",", Collections.nCopies(origins.size(),"?"));
             try (
@@ -1689,7 +1688,7 @@ public class PostgresLedger implements Ledger {
                             db.statement(
                                     "" +
                                             "SELECT " +
-                                            "  COUNT(entry_id) " +
+                                            "  origin " +
                                             "FROM name_entry " +
                                             "WHERE origin IN ("+queryPart+")"
                             )
@@ -1708,10 +1707,9 @@ public class PostgresLedger implements Ledger {
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("isAllOriginsAvailable failed: returning null");
-                boolean res = false;
-                if (rs.next()) {
-                    if (rs.getLong(1) == 0)
-                        res = true;
+                List<String> res = new ArrayList<>();
+                while (rs.next()) {
+                    res.add(HashId.withDigest(rs.getBytes(1)).toBase64String());
                 }
                 rs.close();
                 return res;
@@ -1727,7 +1725,7 @@ public class PostgresLedger implements Ledger {
 
 
     @Override
-    public boolean isAllAddressesAvailable(final Collection<String> addresses) {
+    public List<String> isAllAddressesAvailable(final Collection<String> addresses) {
         try (PooledDb db = dbPool.db()) {
             String queryPart = String.join(",", Collections.nCopies(addresses.size(),"?"));
             try (
@@ -1735,7 +1733,8 @@ public class PostgresLedger implements Ledger {
                             db.statement(
                                     "" +
                                             "SELECT " +
-                                            "  COUNT(entry_id) " +
+                                            "  short_addr, " +
+                                            "  long_addr " +
                                             "FROM name_entry " +
                                             "WHERE " +
                                             "  short_addr IN ("+queryPart+") " +
@@ -1757,10 +1756,10 @@ public class PostgresLedger implements Ledger {
                 ResultSet rs = statement.executeQuery();
                 if (rs == null)
                     throw new Failure("isAllAddressesAvailable failed: returning null");
-                boolean res = false;
-                if (rs.next()) {
-                    if (rs.getLong(1) == 0)
-                        res = true;
+                List<String> res = new ArrayList<>();
+                while (rs.next()) {
+                    res.add(rs.getString(1));
+                    res.add(rs.getString(2));
                 }
                 rs.close();
                 return res;

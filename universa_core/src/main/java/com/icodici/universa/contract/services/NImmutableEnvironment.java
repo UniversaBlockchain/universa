@@ -1,5 +1,7 @@
 package com.icodici.universa.contract.services;
 
+import com.icodici.universa.ErrorRecord;
+import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.node.Ledger;
@@ -17,9 +19,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Implements {@link ImmutableEnvironment} interface for slot contract.
@@ -108,88 +108,83 @@ public class NImmutableEnvironment implements ImmutableEnvironment, BiSerializab
     }
 
     @Override
-    public boolean tryAllocate(Collection<String> reducedNamesToAllocate, Collection<HashId> originsToAllocate, Collection<String> addressesToAllocate) {
-        boolean checkResultNames;
-        boolean checkResult = checkResultNames = isNamesAvailable(reducedNamesToAllocate);
-
-        boolean checkResultOrigins = false;
-        if (checkResult)
-            checkResult = checkResultOrigins = isOriginsAvailable(originsToAllocate);
-
-        boolean checkResultAddresses = false;
-        if (checkResult)
-            checkResult = checkResultAddresses = isAddressesAvailable(addressesToAllocate);
+    public List<ErrorRecord> tryAllocate(Collection<String> reducedNamesToAllocate, Collection<HashId> originsToAllocate, Collection<String> addressesToAllocate) {
+        List<String> namesErrors = isNamesAvailable(reducedNamesToAllocate);
+        List<String> originsErrors = isOriginsAvailable(originsToAllocate);
+        List<String> addressesErros = isAddressesAvailable(addressesToAllocate);
+        boolean checkResult = namesErrors.isEmpty() && originsErrors.isEmpty() && addressesErros.isEmpty();
 
         if (!checkResult) {
-            if (checkResultNames)
+            if (namesErrors.isEmpty())
                 nameCache.unlockNameList(reducedNamesToAllocate);
-            if (checkResultOrigins)
+            if (originsErrors.isEmpty())
                 nameCache.unlockOriginList(originsToAllocate);
-            if (checkResultAddresses)
+            if (addressesErros.isEmpty())
                 nameCache.unlockAddressList(addressesToAllocate);
         }
 
-        return checkResult;
+        List<ErrorRecord> res = new ArrayList<>();
+        for (String s : namesErrors)
+            res.add(new ErrorRecord(Errors.FAILED_CHECK, "names", "name '"+s+"' is not available"));
+        for (String s : originsErrors)
+            res.add(new ErrorRecord(Errors.FAILED_CHECK, "origins", "origin '"+s+"' is not available"));
+        for (String s : addressesErros)
+            res.add(new ErrorRecord(Errors.FAILED_CHECK, "addresses", "address '"+s+"' is not available"));
+        return res;
     }
 
-    private boolean isNamesAvailable(Collection<String> reducedNames) {
-        boolean checkResult;
-
+    private List<String> isNamesAvailable(Collection<String> reducedNames) {
         if (reducedNames.size() == 0)
-            return true;
+            return new ArrayList<>();
 
-        checkResult = nameCache.lockNameList(reducedNames);
-        if (!checkResult) {
-            return checkResult;
+        List<String> unavailableNamesCache = nameCache.lockNameList(reducedNames);
+        if (unavailableNamesCache.size() > 0) {
+            return unavailableNamesCache;
         }
 
-        checkResult = ledger.isAllNameRecordsAvailable(reducedNames);
-        if (!checkResult) {
+        List<String> unavailableNamesLedger = ledger.isAllNameRecordsAvailable(reducedNames);
+        if (unavailableNamesLedger.size() > 0) {
             nameCache.unlockNameList(reducedNames);
-            return checkResult;
+            return unavailableNamesLedger;
         }
 
-        return checkResult;
+        return new ArrayList<>();
     }
 
-    private boolean isOriginsAvailable(Collection<HashId> origins) {
-        boolean checkResult;
-
+    private List<String> isOriginsAvailable(Collection<HashId> origins) {
         if (origins.size() == 0)
-            return true;
+            return new ArrayList<>();
 
-        checkResult = nameCache.lockOriginList(origins);
-        if (!checkResult) {
-            return checkResult;
+        List<String> unavailableOriginsCache = nameCache.lockOriginList(origins);
+        if (unavailableOriginsCache.size() > 0) {
+            return unavailableOriginsCache;
         }
 
-        checkResult = ledger.isAllOriginsAvailable(origins);
-        if (!checkResult) {
+        List<String> unavailableOriginsLedger = ledger.isAllOriginsAvailable(origins);
+        if (unavailableOriginsLedger.size() > 0) {
             nameCache.unlockOriginList(origins);
-            return checkResult;
+            return unavailableOriginsLedger;
         }
 
-        return checkResult;
+        return new ArrayList<>();
     }
 
-    private boolean isAddressesAvailable(Collection<String> addresses) {
-        boolean checkResult;
-
+    private List<String> isAddressesAvailable(Collection<String> addresses) {
         if (addresses.size() == 0)
-            return true;
+            return new ArrayList<>();
 
-        checkResult = nameCache.lockAddressList(addresses);
-        if (!checkResult) {
-            return checkResult;
+        List<String> unavailableAddressesCache = nameCache.lockAddressList(addresses);
+        if (unavailableAddressesCache.size() > 0) {
+            return unavailableAddressesCache;
         }
 
-        checkResult = ledger.isAllAddressesAvailable(addresses);
-        if (!checkResult) {
+        List<String> unavailableAddressesLedger = ledger.isAllAddressesAvailable(addresses);
+        if (unavailableAddressesLedger.size() > 0) {
             nameCache.unlockAddressList(addresses);
-            return checkResult;
+            return unavailableAddressesLedger;
         }
 
-        return checkResult;
+        return new ArrayList<>();
     }
 
     public NMutableEnvironment getMutable() {

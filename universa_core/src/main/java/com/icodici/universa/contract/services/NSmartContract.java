@@ -5,6 +5,7 @@ import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
+import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.node.Ledger;

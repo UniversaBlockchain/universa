@@ -10616,7 +10616,9 @@ public class BaseNetworkTest extends TestCase {
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
-        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        ItemResult irPayload = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.DECLINED, irPayload.state);
+        assertErrorsContainsSubstr(irPayload.errors, "name '"+unsName.getUnsReducedName()+"' is not available");
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
@@ -10736,7 +10738,10 @@ public class BaseNetworkTest extends TestCase {
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
-        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        ItemResult irPayload = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.DECLINED, irPayload.state);
+        assertErrorsContainsSubstr(irPayload.errors, "address '"+unsRecord1.getAddresses().get(0)+"' is not available");
+        assertErrorsContainsSubstr(irPayload.errors, "address '"+unsRecord1.getAddresses().get(1)+"' is not available");
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
 
@@ -10826,8 +10831,8 @@ public class BaseNetworkTest extends TestCase {
 
         uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
-        uns1.addSignatureToSeal(randomPrivateKey2);
-        uns1.addSignatureToSeal(TestKeys.privateKey(8));
+        uns2.addSignatureToSeal(randomPrivateKey2);
+        uns2.addSignatureToSeal(TestKeys.privateKey(8));
         uns2.check();
         uns2.traceErrors();
 
@@ -10842,7 +10847,9 @@ public class BaseNetworkTest extends TestCase {
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
         // check payment and payload contracts
-        assertEquals(ItemState.DECLINED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
+        ItemResult irPayload = node.waitItem(payingParcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.DECLINED, irPayload.state);
+        assertErrorsContainsSubstr(irPayload.errors, "origin '"+unsRecord2.getOrigin().toBase64String()+"' is not available");
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.UNDEFINED, node.waitItem(uns2.getNew().get(0).getId(), 8000).state);
     }

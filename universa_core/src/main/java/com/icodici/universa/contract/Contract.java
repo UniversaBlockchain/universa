@@ -1006,11 +1006,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
+    @Override
     public void addError(Errors code, String field, String text) {
         Errors code1 = code;
         String field1 = field;
         String text1 = text;
         errors.add(new ErrorRecord(code1, field1, text1));
+    }
+
+    @Override
+    public void addError(ErrorRecord er) {
+        errors.add(er);
     }
 
     private void checkChangedContract() throws Quantiser.QuantiserException {

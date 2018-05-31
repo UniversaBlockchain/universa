@@ -4,6 +4,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Approvable;
+import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
@@ -440,9 +441,11 @@ public class UnsContract extends NSmartContract {
         List<HashId> originsToCheck = getOriginsToCheck();
         List<String> addressesToCheck = getAddressesToCheck();
 
-        checkResult = ime.tryAllocate(reducedNamesToCkeck,originsToCheck,addressesToCheck);
-        if (!checkResult) {
-            addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"tryAllocate fails");
+        List<ErrorRecord> allocationErrors = ime.tryAllocate(reducedNamesToCkeck,originsToCheck,addressesToCheck);
+        if (allocationErrors.size() > 0) {
+            checkResult = false;
+            for (ErrorRecord errorRecord : allocationErrors)
+                addError(errorRecord);
             return checkResult;
         }
 
