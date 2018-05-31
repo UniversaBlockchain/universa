@@ -263,4 +263,8 @@ public class NSmartContract extends Contract implements NContract {
         return nodeInfoProvider.getAdditionalKeysToSignWith(getExtendedType());
     }
 
+    public Binder getExtraResultForApprove() {
+        return new Binder();
+    }
+
 }

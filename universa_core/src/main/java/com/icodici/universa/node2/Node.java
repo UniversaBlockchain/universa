@@ -2544,6 +2544,8 @@ public class Node {
                                     }
                                 }
                             }
+
+                            ((NSmartContract)item).getExtraResultForApprove().forEach((k, v) -> extraResult.putAll(k, v));
                         }
 
                         // update item's smart contracts link to

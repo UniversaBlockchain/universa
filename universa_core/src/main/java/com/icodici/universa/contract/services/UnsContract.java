@@ -528,8 +528,12 @@ public class UnsContract extends NSmartContract {
 
     @Override
     public @Nullable Binder onCreated(MutableEnvironment me) {
+        ZonedDateTime expiresAt = calcExpiresAt();
+        storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
+        return Binder.fromKeysValues("status", "ok");
+    }
 
-
+    private ZonedDateTime calcExpiresAt () {
         // get number of entries
         int entries = 0;
         for (UnsName sn: storedNames)
@@ -539,25 +543,12 @@ public class UnsContract extends NSmartContract {
 
         final int finalEntries = entries;
 
-        ZonedDateTime expiresAt = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600 / finalEntries));
-
-        storedNames.forEach(sn -> me.createNameRecord(sn,expiresAt));
-
-        return Binder.fromKeysValues("status", "ok");
+        return prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600 / finalEntries));
     }
 
     @Override
     public Binder onUpdated(MutableEnvironment me) {
-        // get number of entries
-        int entries = 0;
-        for (UnsName sn: storedNames)
-            entries += sn.getRecordsCount();
-        if (entries == 0)
-            entries = 1;
-
-        final int finalEntries = entries;
-
-        ZonedDateTime expiresAt = prepaidFrom.plusSeconds((long) (prepaidNamesForDays * 24 * 3600 / finalEntries));
+        ZonedDateTime expiresAt = calcExpiresAt();
 
         Map<String, UnsName> newNames = storedNames.stream().collect(Collectors.toMap(UnsName::getUnsName, un -> un));
         me.nameRecords().forEach( nameRecord -> {
@@ -581,6 +572,12 @@ public class UnsContract extends NSmartContract {
     public void onRevoked(ImmutableEnvironment ime) {
 
     }
+
+    @Override
+    public Binder getExtraResultForApprove() {
+        return Binder.of("expires_at", calcExpiresAt().toEpochSecond());
+    }
+
 
 
 
