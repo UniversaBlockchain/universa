@@ -1568,6 +1568,7 @@ public class MainTest {
 
         String unsTestName = "testContractName" + Instant.now().getEpochSecond();
 
+        // check uns contract with origin record
         UnsContract unsContract = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys,
                 manufacturePublicKeys, nodeInfoProvider, unsTestName, unsTestName, "test contract name", "http://test.com", simpleContract);
         unsContract.addSignerKey(authorizedNameServiceKey);
@@ -1584,13 +1585,9 @@ public class MainTest {
         System.out.println("name info is null: " + (name == null));
         assertNull(name);
 
-        /*byte[] simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
-        System.out.println("simpleContractBytes (by contractId): " + simpleContractBytes);
-        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
-
-        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
-        System.out.println("simpleContractBytes (by originId): " + simpleContractBytes);
-        assertEquals(false, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));*/
+        byte[] unsContractBytes = testSpace.client.queryNameContract(unsTestName);
+        System.out.println("unsContractBytes: " + unsContractBytes);
+        assertEquals(false, Arrays.equals(unsContract.getPackedTransaction(), unsContractBytes));
 
         testSpace.client.registerParcel(payingParcel.pack(), 8000);
         itemResult = testSpace.client.getState(unsContract.getId());
@@ -1605,13 +1602,51 @@ public class MainTest {
         System.out.println("URL: " + nameInfo.getString("url", ""));
         assertEquals(unsTestName, nameInfo.getString("name", ""));
 
-        /*simpleContractBytes = client.queryContract(slotContract.getId(), null, simpleContract.getId());
-        System.out.println("simpleContractBytes (by contractId) length: " + simpleContractBytes.length);
-        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+        unsContractBytes = testSpace.client.queryNameContract(unsTestName);
+        System.out.println("unsContractBytes: " + unsContractBytes);
+        assertEquals(true, Arrays.equals(unsContract.getPackedTransaction(), unsContractBytes));
 
-        simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
-        System.out.println("simpleContractBytes (by originId) length: " + simpleContractBytes.length);
-        assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));*/
+        // check uns contract with address record
+        unsTestName = "testAddressContractName" + Instant.now().getEpochSecond();
+
+        UnsContract unsContract2 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys,
+                manufacturePublicKeys, nodeInfoProvider, unsTestName, unsTestName, "test address name", "http://test.com", TestKeys.publicKey(1));
+        unsContract2.addSignerKey(authorizedNameServiceKey);
+        unsContract2.addSignerKey(TestKeys.privateKey(1));
+        unsContract2.seal();
+        unsContract2.check();
+        unsContract2.traceErrors();
+
+        paymentContract = getApprovedTUContract(testSpace);
+
+        payingParcel = ContractsService.createPayingParcel(unsContract2.getTransactionPack(), paymentContract, 1, 2000, manufacturePrivateKeys, false);
+
+        KeyAddress keyAddr = new KeyAddress(TestKeys.publicKey(1), 0, true);
+        nameInfo = testSpace.client.queryNameRecord(keyAddr.toString());
+        name = nameInfo.getString("name", null);
+        System.out.println("name info is null: " + (name == null));
+        assertNull(name);
+
+        unsContractBytes = testSpace.client.queryNameContract(unsTestName);
+        System.out.println("unsContractBytes: " + unsContractBytes);
+        assertEquals(false, Arrays.equals(unsContract2.getPackedTransaction(), unsContractBytes));
+
+        testSpace.client.registerParcel(payingParcel.pack(), 8000);
+        itemResult = testSpace.client.getState(unsContract2.getId());
+        System.out.println("Uns itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        nameInfo = testSpace.client.queryNameRecord(keyAddr.toString());
+        assertNotNull(nameInfo);
+        System.out.println("name info size: " + nameInfo.size());
+        System.out.println("Name: " + nameInfo.getString("name", ""));
+        System.out.println("Description: " + nameInfo.getString("description", ""));
+        System.out.println("URL: " + nameInfo.getString("url", ""));
+        assertEquals(unsTestName, nameInfo.getString("name", ""));
+
+        unsContractBytes = testSpace.client.queryNameContract(unsTestName);
+        System.out.println("unsContractBytes: " + unsContractBytes);
+        assertEquals(true, Arrays.equals(unsContract2.getPackedTransaction(), unsContractBytes));
     }
 
 

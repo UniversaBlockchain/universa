@@ -246,7 +246,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         if (nr != null) {
             NImmutableEnvironment env = node.getLedger().getEnvironment(nr.environment_id);
             if (env != null) {
-                byte[] packedContract = node.getLedger().getContractInStorage(env.getContract().getId());
+                byte[] packedContract = env.getContract().getPackedTransaction();
                 b.put("packedContract", packedContract);
             }
         }
