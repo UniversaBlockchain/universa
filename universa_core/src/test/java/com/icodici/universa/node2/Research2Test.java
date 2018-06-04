@@ -15,6 +15,7 @@ import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
+import net.sergeych.tools.FileTool;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.junit.After;
@@ -22,6 +23,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -711,6 +713,14 @@ public class Research2Test {
             for (int i = 0; i < 100; ++i)
                 HashId.of(randBytes);
         });
+    }
+
+    @Test
+    public void testFiles() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+        String newFilename = FileTool.writeFileContentsWithRenaming(System.getProperty("java.io.tmpdir")+"/testFile_2.file", contract.getPackedTransaction());
+        System.out.println("write done, new filename=" + newFilename);
     }
 
 }
