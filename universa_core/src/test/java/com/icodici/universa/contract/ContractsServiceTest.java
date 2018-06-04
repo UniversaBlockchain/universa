@@ -274,28 +274,28 @@ public class ContractsServiceTest extends ContractTestBase {
         for (PrivateKey pk : martyPrivateKeys)
             martyPublicKeys.add(pk.getPublicKey());
 
-        Contract notaryContract = ContractsService.createTokenContract(martyPrivateKeys, stepaPublicKeys, "100");
+        Contract tokenContract = ContractsService.createTokenContract(martyPrivateKeys, stepaPublicKeys, "100");
 
-        notaryContract.check();
-        notaryContract.traceErrors();
-        assertTrue(notaryContract.isOk());
+        tokenContract.check();
+        tokenContract.traceErrors();
+        assertTrue(tokenContract.isOk());
 
-        assertTrue(notaryContract.getOwner().isAllowedForKeys(stepaPublicKeys));
-        assertTrue(notaryContract.getIssuer().isAllowedForKeys(martyPrivateKeys));
-        assertTrue(notaryContract.getCreator().isAllowedForKeys(martyPrivateKeys));
+        assertTrue(tokenContract.getOwner().isAllowedForKeys(stepaPublicKeys));
+        assertTrue(tokenContract.getIssuer().isAllowedForKeys(martyPrivateKeys));
+        assertTrue(tokenContract.getCreator().isAllowedForKeys(martyPrivateKeys));
 
-        assertFalse(notaryContract.getOwner().isAllowedForKeys(martyPrivateKeys));
-        assertFalse(notaryContract.getIssuer().isAllowedForKeys(stepaPublicKeys));
-        assertFalse(notaryContract.getCreator().isAllowedForKeys(stepaPublicKeys));
+        assertFalse(tokenContract.getOwner().isAllowedForKeys(martyPrivateKeys));
+        assertFalse(tokenContract.getIssuer().isAllowedForKeys(stepaPublicKeys));
+        assertFalse(tokenContract.getCreator().isAllowedForKeys(stepaPublicKeys));
 
-        assertTrue(notaryContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
-        assertTrue(notaryContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+        assertTrue(tokenContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(tokenContract.getCreatedAt().isBefore(ZonedDateTime.now()));
 
-        assertEquals(InnerContractsService.getDecimalField(notaryContract, "amount"), new Decimal(100));
+        assertEquals(InnerContractsService.getDecimalField(tokenContract, "amount"), new Decimal(100));
 
-        assertEquals(notaryContract.getPermissions().get("split_join").size(), 1);
+        assertEquals(tokenContract.getPermissions().get("split_join").size(), 1);
 
-        Binder splitJoinParams = notaryContract.getPermissions().get("split_join").iterator().next().getParams();
+        Binder splitJoinParams = tokenContract.getPermissions().get("split_join").iterator().next().getParams();
         assertEquals(splitJoinParams.get("min_value"), 0.01);
         assertEquals(splitJoinParams.get("min_unit"), 0.01);
         assertEquals(splitJoinParams.get("field_name"), "amount");
@@ -303,14 +303,14 @@ public class ContractsServiceTest extends ContractTestBase {
         assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
 
 
-        assertTrue(notaryContract.isPermitted("revoke", stepaPublicKeys));
-        assertTrue(notaryContract.isPermitted("revoke", martyPublicKeys));
+        assertTrue(tokenContract.isPermitted("revoke", stepaPublicKeys));
+        assertTrue(tokenContract.isPermitted("revoke", martyPublicKeys));
 
-        assertTrue(notaryContract.isPermitted("change_owner", stepaPublicKeys));
-        assertFalse(notaryContract.isPermitted("change_owner", martyPublicKeys));
+        assertTrue(tokenContract.isPermitted("change_owner", stepaPublicKeys));
+        assertFalse(tokenContract.isPermitted("change_owner", martyPublicKeys));
 
-        assertTrue(notaryContract.isPermitted("split_join", stepaPublicKeys));
-        assertFalse(notaryContract.isPermitted("split_join", martyPublicKeys));
+        assertTrue(tokenContract.isPermitted("split_join", stepaPublicKeys));
+        assertFalse(tokenContract.isPermitted("split_join", martyPublicKeys));
     }
 
     @Test
@@ -330,28 +330,28 @@ public class ContractsServiceTest extends ContractTestBase {
         for (PrivateKey pk : martyPrivateKeys)
             martyPublicKeys.add(pk.getPublicKey());
 
-        Contract notaryContract = ContractsService.createShareContract(martyPrivateKeys, stepaPublicKeys, "100");
+        Contract shareContract = ContractsService.createShareContract(martyPrivateKeys, stepaPublicKeys, "100");
 
-        notaryContract.check();
-        notaryContract.traceErrors();
-        assertTrue(notaryContract.isOk());
+        shareContract.check();
+        shareContract.traceErrors();
+        assertTrue(shareContract.isOk());
 
-        assertTrue(notaryContract.getOwner().isAllowedForKeys(stepaPublicKeys));
-        assertTrue(notaryContract.getIssuer().isAllowedForKeys(martyPrivateKeys));
-        assertTrue(notaryContract.getCreator().isAllowedForKeys(martyPrivateKeys));
+        assertTrue(shareContract.getOwner().isAllowedForKeys(stepaPublicKeys));
+        assertTrue(shareContract.getIssuer().isAllowedForKeys(martyPrivateKeys));
+        assertTrue(shareContract.getCreator().isAllowedForKeys(martyPrivateKeys));
 
-        assertFalse(notaryContract.getOwner().isAllowedForKeys(martyPrivateKeys));
-        assertFalse(notaryContract.getIssuer().isAllowedForKeys(stepaPublicKeys));
-        assertFalse(notaryContract.getCreator().isAllowedForKeys(stepaPublicKeys));
+        assertFalse(shareContract.getOwner().isAllowedForKeys(martyPrivateKeys));
+        assertFalse(shareContract.getIssuer().isAllowedForKeys(stepaPublicKeys));
+        assertFalse(shareContract.getCreator().isAllowedForKeys(stepaPublicKeys));
 
-        assertTrue(notaryContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
-        assertTrue(notaryContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+        assertTrue(shareContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(shareContract.getCreatedAt().isBefore(ZonedDateTime.now()));
 
-        assertEquals(InnerContractsService.getDecimalField(notaryContract, "amount"), new Decimal(100));
+        assertEquals(InnerContractsService.getDecimalField(shareContract, "amount"), new Decimal(100));
 
-        assertEquals(notaryContract.getPermissions().get("split_join").size(), 1);
+        assertEquals(shareContract.getPermissions().get("split_join").size(), 1);
 
-        Binder splitJoinParams = notaryContract.getPermissions().get("split_join").iterator().next().getParams();
+        Binder splitJoinParams = shareContract.getPermissions().get("split_join").iterator().next().getParams();
         assertEquals(splitJoinParams.get("min_value"), 1);
         assertEquals(splitJoinParams.get("min_unit"), 1);
         assertEquals(splitJoinParams.get("field_name"), "amount");
@@ -359,13 +359,13 @@ public class ContractsServiceTest extends ContractTestBase {
         assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
 
 
-        assertTrue(notaryContract.isPermitted("revoke", stepaPublicKeys));
-        assertTrue(notaryContract.isPermitted("revoke", martyPublicKeys));
+        assertTrue(shareContract.isPermitted("revoke", stepaPublicKeys));
+        assertTrue(shareContract.isPermitted("revoke", martyPublicKeys));
 
-        assertTrue(notaryContract.isPermitted("change_owner", stepaPublicKeys));
-        assertFalse(notaryContract.isPermitted("change_owner", martyPublicKeys));
+        assertTrue(shareContract.isPermitted("change_owner", stepaPublicKeys));
+        assertFalse(shareContract.isPermitted("change_owner", martyPublicKeys));
 
-        assertTrue(notaryContract.isPermitted("split_join", stepaPublicKeys));
-        assertFalse(notaryContract.isPermitted("split_join", martyPublicKeys));
+        assertTrue(shareContract.isPermitted("split_join", stepaPublicKeys));
+        assertFalse(shareContract.isPermitted("split_join", martyPublicKeys));
     }
 }

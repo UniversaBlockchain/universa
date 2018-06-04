@@ -687,6 +687,7 @@ public class MainTest {
         return contract;
     }
 
+    @Ignore
     @Test
     public void checkVerbose() throws Exception {
         List<Main> mm = new ArrayList<>();
@@ -1355,6 +1356,8 @@ public class MainTest {
             int target = i < 15 ? (i+1)*2 : 30;
             assertTrue(binder.getIntOrThrow("bigIntervalApproved") <= target && binder.getIntOrThrow("bigIntervalApproved") >= target-2);
         }
+
+        testSpace.nodes.forEach(x -> x.shutdown());
     }
 
 
@@ -1420,9 +1423,9 @@ public class MainTest {
         contract = new Contract(TestKeys.privateKey(3));
         contract.seal();
         testSpace.client.register(contract.getPackedTransaction(),8000);
+
+        testSpace.nodes.forEach(x -> x.shutdown());
     }
-
-
 
 
     @Test(timeout = 30000)
@@ -1446,7 +1449,6 @@ public class MainTest {
 
         mm.forEach(x -> x.shutdown());
     }
-
 
 
     @Test(timeout = 30000)
@@ -1481,6 +1483,340 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
+    @Test
+    public void testTokenContractApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+
+        Contract tokenContract = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, "1000000");
+        tokenContract.check();
+        tokenContract.traceErrors();
+
+        assertTrue(tokenContract.getOwner().isAllowedForKeys(ownerPublicKeys));
+        assertTrue(tokenContract.getIssuer().isAllowedForKeys(issuerPrivateKeys));
+        assertTrue(tokenContract.getCreator().isAllowedForKeys(issuerPrivateKeys));
+
+        assertFalse(tokenContract.getOwner().isAllowedForKeys(issuerPrivateKeys));
+        assertFalse(tokenContract.getIssuer().isAllowedForKeys(ownerPublicKeys));
+        assertFalse(tokenContract.getCreator().isAllowedForKeys(ownerPublicKeys));
+
+        assertTrue(tokenContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(tokenContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+
+        assertEquals(InnerContractsService.getDecimalField(tokenContract, "amount"), new Decimal(1000000));
+
+        assertEquals(tokenContract.getPermissions().get("split_join").size(), 1);
+
+        Binder splitJoinParams = tokenContract.getPermissions().get("split_join").iterator().next().getParams();
+        assertEquals(splitJoinParams.get("min_value"), 0.01);
+        assertEquals(splitJoinParams.get("min_unit"), 0.01);
+        assertEquals(splitJoinParams.get("field_name"), "amount");
+        assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
+        assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
+
+        assertTrue(tokenContract.isPermitted("revoke", ownerPublicKeys));
+        assertTrue(tokenContract.isPermitted("revoke", issuerPublicKeys));
+
+        assertTrue(tokenContract.isPermitted("change_owner", ownerPublicKeys));
+        assertFalse(tokenContract.isPermitted("change_owner", issuerPublicKeys));
+
+        assertTrue(tokenContract.isPermitted("split_join", ownerPublicKeys));
+        assertFalse(tokenContract.isPermitted("split_join", issuerPublicKeys));
+
+        ItemResult itemResult = client.register(tokenContract.getPackedTransaction(), 5000);
+        System.out.println("token contract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
+    public void testMintableTokenContractApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+
+        Contract mintableTokenContract = ContractsService.createTokenContractWithEmission(issuerPrivateKeys, ownerPublicKeys, "300000000000");
+
+        mintableTokenContract.check();
+        mintableTokenContract.traceErrors();
+
+        ItemResult itemResult = client.register(mintableTokenContract.getPackedTransaction(), 5000);
+        System.out.println("mintableTokenContract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Contract emittedContract = ContractsService.createTokenEmission(mintableTokenContract, "100000000000", issuerPrivateKeys);
+
+        emittedContract.check();
+        emittedContract.traceErrors();
+
+        assertEquals(emittedContract.getPermissions().get("split_join").size(), 1);
+
+        Binder splitJoinParams = emittedContract.getPermissions().get("split_join").iterator().next().getParams();
+        assertEquals(splitJoinParams.get("min_value"), 0.01);
+        assertEquals(splitJoinParams.get("min_unit"), 0.01);
+        assertEquals(splitJoinParams.get("field_name"), "amount");
+        assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
+        assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
+
+
+        assertTrue(emittedContract.isPermitted("revoke", ownerPublicKeys));
+        assertTrue(emittedContract.isPermitted("revoke", issuerPublicKeys));
+
+        assertTrue(emittedContract.isPermitted("change_owner", ownerPublicKeys));
+        assertFalse(emittedContract.isPermitted("change_owner", issuerPublicKeys));
+
+        assertTrue(emittedContract.isPermitted("split_join", ownerPublicKeys));
+        assertFalse(emittedContract.isPermitted("split_join", issuerPublicKeys));
+
+
+        itemResult = client.register(emittedContract.getPackedTransaction(), 5000);
+        System.out.println("emittedContract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        assertEquals(emittedContract.getStateData().getString("amount"), "400000000000");
+        assertEquals(ItemState.REVOKED, main.node.waitItem(mintableTokenContract.getId(), 8000).state);
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
+    public void testSplitAndJoinApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+        Set<PrivateKey> issuerPrivateKeys2 = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+
+        Contract contractC = ContractsService.createTokenContract(issuerPrivateKeys,ownerPublicKeys, "100");
+        contractC.check();
+        contractC.traceErrors();
+
+        ItemResult itemResult = client.register(contractC.getPackedTransaction(), 5000);
+        System.out.println("contractC itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // 100 - 30 = 70
+        Contract сontractA = ContractsService.createSplit(contractC, "30", "amount", issuerPrivateKeys2, true);
+        Contract contractB = сontractA.getNew().get(0);
+        assertEquals("70", сontractA.getStateData().get("amount").toString());
+        assertEquals("30", contractB.getStateData().get("amount").toString());
+
+        itemResult = client.register(сontractA.getPackedTransaction(), 5000);
+        System.out.println("сontractA itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        assertEquals("70", сontractA.getStateData().get("amount").toString());
+        assertEquals("30", contractB.getStateData().get("amount").toString());
+
+        assertEquals(ItemState.REVOKED, main.node.waitItem(contractC.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, main.node.waitItem(сontractA.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, main.node.waitItem(contractB.getId(), 5000).state);
+
+        // join 70 + 30 = 100
+        Contract contractC2 = ContractsService.createJoin(сontractA, contractB, "amount", issuerPrivateKeys2);
+        contractC2.check();
+        contractC2.traceErrors();
+        assertTrue(contractC2.isOk());
+
+        itemResult = client.register(contractC2.getPackedTransaction(), 5000);
+        System.out.println("contractC2 itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        assertEquals(new Decimal(100), contractC2.getStateData().get("amount"));
+
+        assertEquals(ItemState.REVOKED, main.node.waitItem(contractC.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, main.node.waitItem(сontractA.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, main.node.waitItem(contractB.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, main.node.waitItem(contractC2.getId(), 5000).state);
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
+    public void testShareContractApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+
+        Contract shareContract = ContractsService.createShareContract(issuerPrivateKeys,ownerPublicKeys,"100");
+
+        shareContract.check();
+        shareContract.traceErrors();
+
+        assertTrue(shareContract.getOwner().isAllowedForKeys(ownerPublicKeys));
+        assertTrue(shareContract.getIssuer().isAllowedForKeys(issuerPrivateKeys));
+        assertTrue(shareContract.getCreator().isAllowedForKeys(issuerPrivateKeys));
+
+        assertFalse(shareContract.getOwner().isAllowedForKeys(issuerPrivateKeys));
+        assertFalse(shareContract.getIssuer().isAllowedForKeys(ownerPublicKeys));
+        assertFalse(shareContract.getCreator().isAllowedForKeys(ownerPublicKeys));
+
+        assertTrue(shareContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(shareContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+
+        assertEquals(InnerContractsService.getDecimalField(shareContract, "amount"), new Decimal(100));
+
+        assertEquals(shareContract.getPermissions().get("split_join").size(), 1);
+
+        Binder splitJoinParams = shareContract.getPermissions().get("split_join").iterator().next().getParams();
+        assertEquals(splitJoinParams.get("min_value"), 1);
+        assertEquals(splitJoinParams.get("min_unit"), 1);
+        assertEquals(splitJoinParams.get("field_name"), "amount");
+        assertTrue(splitJoinParams.get("join_match_fields") instanceof List);
+        assertEquals(((List)splitJoinParams.get("join_match_fields")).get(0), "state.origin");
+
+        assertTrue(shareContract.isPermitted("revoke", ownerPublicKeys));
+        assertTrue(shareContract.isPermitted("revoke", issuerPublicKeys));
+
+        assertTrue(shareContract.isPermitted("change_owner", ownerPublicKeys));
+        assertFalse(shareContract.isPermitted("change_owner", issuerPublicKeys));
+
+        assertTrue(shareContract.isPermitted("split_join", ownerPublicKeys));
+        assertFalse(shareContract.isPermitted("split_join", issuerPublicKeys));
+
+        ItemResult itemResult = client.register(shareContract.getPackedTransaction(), 5000);
+        System.out.println("shareContract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
+    public void testNotaryContractApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PublicKey> issuerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+
+        Contract notaryContract = ContractsService.createNotaryContract(issuerPrivateKeys, ownerPublicKeys);
+
+        notaryContract.check();
+        notaryContract.traceErrors();
+
+        assertTrue(notaryContract.getOwner().isAllowedForKeys(ownerPublicKeys));
+        assertTrue(notaryContract.getIssuer().isAllowedForKeys(issuerPrivateKeys));
+        assertTrue(notaryContract.getCreator().isAllowedForKeys(issuerPrivateKeys));
+
+        assertFalse(notaryContract.getOwner().isAllowedForKeys(issuerPrivateKeys));
+        assertFalse(notaryContract.getIssuer().isAllowedForKeys(ownerPublicKeys));
+        assertFalse(notaryContract.getCreator().isAllowedForKeys(ownerPublicKeys));
+
+        assertTrue(notaryContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(notaryContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+
+        assertTrue(notaryContract.isPermitted("revoke", ownerPublicKeys));
+        assertTrue(notaryContract.isPermitted("revoke", issuerPublicKeys));
+
+        assertTrue(notaryContract.isPermitted("change_owner", ownerPublicKeys));
+        assertFalse(notaryContract.isPermitted("change_owner", issuerPublicKeys));
+
+        ItemResult itemResult = client.register(notaryContract.getPackedTransaction(), 5000);
+        System.out.println("notaryContract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
+    public void testTwoSignedContractApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+        Set<PublicKey> stepaPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+
+        Contract baseContract = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
+
+        baseContract.addSignerKey(manufacturePrivateKey);
+        baseContract.seal();
+
+        baseContract.check();
+        baseContract.traceErrors();
+
+        Contract twoSignContract = ContractsService.createTwoSignedContract(baseContract, martyPrivateKeys, stepaPublicKeys, false);
+
+        //now emulate sending transaction pack through network ---->
+
+        twoSignContract = Contract.fromPackedTransaction(twoSignContract.getPackedTransaction());
+
+        twoSignContract.addSignatureToSeal(stepaPrivateKeys);
+
+        twoSignContract.check();
+        twoSignContract.traceErrors();
+
+        ItemResult itemResult = client.register(twoSignContract.getPackedTransaction(), 5000);
+        System.out.println("twoSignContract itemResult: " + itemResult);
+        assertEquals(ItemState.DECLINED, itemResult.state);
+
+
+        //now emulate sending transaction pack through network <----
+
+        twoSignContract = Contract.fromPackedTransaction(twoSignContract.getPackedTransaction());
+
+        twoSignContract.addSignatureToSeal(martyPrivateKeys);
+
+        twoSignContract.check();
+        twoSignContract.traceErrors();
+        System.out.println("Contract with two signature is valid: " + twoSignContract.isOk());
+
+        itemResult = client.register(twoSignContract.getPackedTransaction(), 5000);
+        System.out.println("twoSignContract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+
+    }
 
     @Test
     public void testSlotApi() throws Exception {
@@ -1539,6 +1875,9 @@ public class MainTest {
         simpleContractBytes = client.queryContract(slotContract.getId(), simpleContract.getOrigin(), null);
         System.out.println("simpleContractBytes (by originId) length: " + simpleContractBytes.length);
         assertEquals(true, Arrays.equals(simpleContract.getPackedTransaction(), simpleContractBytes));
+
+        mm.forEach(x -> x.shutdown());
+
     }
 
     @Test
@@ -1647,8 +1986,320 @@ public class MainTest {
         unsContractBytes = testSpace.client.queryNameContract(unsTestName);
         System.out.println("unsContractBytes: " + unsContractBytes);
         assertEquals(true, Arrays.equals(unsContract2.getPackedTransaction(), unsContractBytes));
+
+        testSpace.nodes.forEach(x -> x.shutdown());
+
     }
 
+    @Test
+    public void testRevocationContractsApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+
+        Set<PublicKey> ownerPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+
+        Contract sourceContract = ContractsService.createShareContract(issuerPrivateKeys,ownerPublicKeys,"100");
+
+        sourceContract.check();
+        sourceContract.traceErrors();
+
+        ItemResult itemResult = client.register(sourceContract.getPackedTransaction(), 5000);
+        System.out.println("sourceContract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, client.getState(sourceContract.getId()).state);
+
+        Contract revokeContract = ContractsService.createRevocation(sourceContract, TestKeys.privateKey(1));
+
+        revokeContract.check();
+        revokeContract.traceErrors();
+
+        itemResult = client.register(revokeContract.getPackedTransaction(), 5000);
+        System.out.println("revokeContract itemResult: " + itemResult);
+
+        assertEquals(ItemState.APPROVED, client.getState(revokeContract.getId()).state);
+        assertEquals(ItemState.REVOKED, client.getState(sourceContract.getId()).state);
+
+        mm.forEach(x -> x.shutdown());
+
+     }
+
+    @Test
+    public void testSwapContractsApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+        Set<PublicKey> martyPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(1)));
+        Set<PublicKey> stepaPublicKeys = new HashSet<>(Arrays.asList(TestKeys.publicKey(2)));
+
+
+        Contract delorean = ContractsService.createTokenContract(martyPrivateKeys, martyPublicKeys, "100", 0.0001);
+        delorean.seal();
+
+        delorean.check();
+        delorean.traceErrors();
+
+        ItemResult itemResult = client.register(delorean.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        Contract lamborghini = ContractsService.createTokenContract(stepaPrivateKeys, stepaPublicKeys, "100", 0.0001);
+        lamborghini.seal();
+
+        lamborghini.check();
+        lamborghini.traceErrors();
+
+        itemResult = client.register(lamborghini.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKeys, stepaPublicKeys);
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        swapContract = Contract.fromPackedTransaction(swapContract.getPackedTransaction());
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign Stepa's new contract and send to approving
+        swapContract = Contract.fromPackedTransaction(swapContract.getPackedTransaction());
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+
+        itemResult = client.register(swapContract.getPackedTransaction(), 10000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+
+        // check old revisions for ownership contracts
+        System.out.println("--- check old revisions for ownership contracts ---");
+
+        ItemResult deloreanResult = main.node.waitItem(delorean.getId(), 5000);
+        System.out.println("DeLorean revoked ownership contract revision " + delorean.getRevision() + " is " + deloreanResult + " by Network");
+        System.out.println("DeLorean revoked ownership was belongs to Marty: " + delorean.getOwner().isAllowedForKeys(martyPublicKeys));
+        assertEquals(ItemState.REVOKED, deloreanResult.state);
+
+        ItemResult lamborghiniResult = main.node.waitItem(lamborghini.getId(), 5000);
+        System.out.println("Lamborghini revoked ownership contract revision " + lamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
+        System.out.println("Lamborghini revoked ownership was belongs to Stepa: " + lamborghini.getOwner().isAllowedForKeys(stepaPublicKeys));
+        assertEquals(ItemState.REVOKED, lamborghiniResult.state);
+
+        // check new revisions for ownership contracts
+        System.out.println("--- check new revisions for ownership contracts ---");
+
+        Contract newDelorean = null;
+        Contract newLamborghini = null;
+        for (Contract c : swapContract.getNew()) {
+            if(c.getParent().equals(delorean.getId())) {
+                newDelorean = c;
+            }
+            if(c.getParent().equals(lamborghini.getId())) {
+                newLamborghini = c;
+            }
+        }
+
+        deloreanResult = main.node.waitItem(newDelorean.getId(), 5000);
+        System.out.println("DeLorean ownership contract revision " + newDelorean.getRevision() + " is " + deloreanResult + " by Network");
+        System.out.println("DeLorean ownership is now belongs to Stepa: " + newDelorean.getOwner().isAllowedForKeys(stepaPublicKeys));
+        assertEquals(ItemState.APPROVED, deloreanResult.state);
+        assertTrue(newDelorean.getOwner().isAllowedForKeys(stepaPublicKeys));
+
+        lamborghiniResult = main.node.waitItem(newLamborghini.getId(), 5000);
+        System.out.println("Lamborghini ownership contract revision " + newLamborghini.getRevision() + " is " + lamborghiniResult + " by Network");
+        System.out.println("Lamborghini ownership is now belongs to Marty: " + newLamborghini.getOwner().isAllowedForKeys(martyPublicKeys));
+        assertEquals(ItemState.APPROVED, lamborghiniResult.state);
+        assertTrue(newLamborghini.getOwner().isAllowedForKeys(martyPublicKeys));
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
+    public void testSwapSplitJoin_Api2() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> user1PrivateKeySet = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> user2PrivateKeySet = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+        Set<PublicKey> user1PublicKeySet = user1PrivateKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
+        Set<PublicKey> user2PublicKeySet = user2PrivateKeySet.stream().map(prv -> prv.getPublicKey()).collect(Collectors.toSet());
+
+
+        Contract contractTOK92 = ContractsService.createTokenContract(user1PrivateKeySet, user1PublicKeySet, "100", 0.0001);
+        Contract contractTOK93 = ContractsService.createTokenContract(user2PrivateKeySet, user2PublicKeySet, "100", 0.001);
+
+        contractTOK92.seal();
+        contractTOK92.check();
+        contractTOK92.traceErrors();
+
+        ItemResult itemResult = client.register(contractTOK92.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+
+        contractTOK93.seal();
+        contractTOK93.check();
+        contractTOK93.traceErrors();
+
+        itemResult = client.register(contractTOK93.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        System.out.println("--- tokens created ---");
+
+        // TOK92: 100 - 8.02 = 91.98
+        Contract user1CoinsSplit = ContractsService.createSplit(contractTOK92, "8.02", "amount", user1PrivateKeySet);
+        Contract user1CoinsSplitToUser2 = user1CoinsSplit.getNew().get(0);
+        // TOK93: 100 - 10.01 = 89.99
+        Contract user2CoinsSplit = ContractsService.createSplit(contractTOK93, "10.01", "amount", user2PrivateKeySet);
+        Contract user2CoinsSplitToUser1 = user2CoinsSplit.getNew().get(0);
+
+        user1CoinsSplitToUser2.check();
+        user1CoinsSplitToUser2.traceErrors();
+        user2CoinsSplitToUser1.check();
+        user2CoinsSplitToUser1.traceErrors();
+
+        // exchanging the contracts
+
+        System.out.println("--- procedure for exchange of contracts ---");
+
+        // Step one
+
+        Contract swapContract;
+        swapContract = ContractsService.startSwap(user1CoinsSplitToUser2, user2CoinsSplitToUser1, user1PrivateKeySet, user2PublicKeySet, false);
+
+        // Step two
+
+        ContractsService.signPresentedSwap(swapContract, user2PrivateKeySet);
+
+        // Final step
+
+        ContractsService.finishSwap(swapContract, user1PrivateKeySet);
+
+        user1CoinsSplit.seal();
+        user2CoinsSplit.seal();
+        swapContract.getNewItems().clear();
+        swapContract.addNewItems(user1CoinsSplit, user2CoinsSplit);
+        swapContract.seal();
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+
+        //now emulate sending transaction pack through network
+
+        swapContract = Contract.fromPackedTransaction(swapContract.getPackedTransaction());
+
+        main.node.registerItem(swapContract);
+
+        assertEquals(ItemState.APPROVED, main.node.waitItem(swapContract.getId(), 5000).state);
+
+        assertEquals(ItemState.APPROVED, main.node.waitItem(user1CoinsSplit.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, main.node.waitItem(user2CoinsSplit.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, main.node.waitItem(user1CoinsSplitToUser2.getId(), 5000).state);
+        assertEquals(ItemState.APPROVED, main.node.waitItem(user2CoinsSplitToUser1.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, main.node.waitItem(contractTOK92.getId(), 5000).state);
+        assertEquals(ItemState.REVOKED, main.node.waitItem(contractTOK93.getId(), 5000).state);
+        assertEquals("8.02", user1CoinsSplitToUser2.getStateData().getStringOrThrow("amount"));
+        assertEquals("10.01", user2CoinsSplitToUser1.getStateData().getStringOrThrow("amount"));
+        assertFalse(user1CoinsSplitToUser2.getOwner().isAllowedForKeys(user1PublicKeySet));
+        assertTrue(user1CoinsSplitToUser2.getOwner().isAllowedForKeys(user2PublicKeySet));
+        assertTrue(user2CoinsSplitToUser1.getOwner().isAllowedForKeys(user1PublicKeySet));
+        assertFalse(user2CoinsSplitToUser1.getOwner().isAllowedForKeys(user2PublicKeySet));
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
+    public void testAddReferenceApi() throws Exception {
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+        Main main = mm.get(0);
+        main.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        Client client = new Client(TestKeys.privateKey(20), main.myInfo, null);
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();//manager -
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>(); //issuer
+        Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+
+        llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        for (PrivateKey pk : stepaPrivateKeys) {
+            stepaPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> thirdPartyPublicKeys = new HashSet<>();
+        for (PrivateKey pk : thirdPartyPrivateKeys) {
+            thirdPartyPublicKeys.add(pk.getPublicKey());
+        }
+
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "ApricoT");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
+        jobCertificate.check();
+        jobCertificate.traceErrors();
+
+        ItemResult itemResult = client.register(jobCertificate.getPackedTransaction(), 5000);
+        System.out.println("sourceContract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, client.getState(jobCertificate.getId()).state);
+
+        Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
+
+        List <String> listConditions = new ArrayList<>();
+        listConditions.add("ref.definition.issuer == \"HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0WsmcAt5\n" +
+                "          a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOytaICE01bkOkf6M\n" +
+                "          z5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJUZi66iu9e0SXupOr/+\n" +
+                "          BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/naIaf2yuxiQNz3uFMTn0IpULCM\n" +
+                "          vLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ/4wNBUveBDLFLlOcMpCzWlO/D7M2Iy\n" +
+                "          Na8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzFbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZc\n" +
+                "          hxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GLy+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8\n" +
+                "          LyIqeM7dSyaHFTBII/sLuFru6ffoKxBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwal\n" +
+                "          MexOc3/kPEEdfjH/GcJU0Mw6DgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c=\"");
+        listConditions.add("ref.definition.data.issuer == \"ApricoT\"");
+        listConditions.add("ref.definition.data.type == \"chief accountant assignment\"");
+
+        ContractsService.addReferenceToContract(llcProperty, jobCertificate, "certification_contract", Reference.TYPE_EXISTING_DEFINITION, listConditions, true);
+
+        llcProperty.check();
+        llcProperty.traceErrors();
+
+        itemResult = client.register(llcProperty.getPackedTransaction(), 5000);
+        System.out.println("sourceContract itemResult: " + itemResult);
+        assertEquals(ItemState.APPROVED, client.getState(llcProperty.getId()).state);
+
+        mm.forEach(x -> x.shutdown());
+
+    }
 
     @Test
     public void paymentTest1() throws Exception {
@@ -1672,6 +2323,8 @@ public class MainTest {
         Parcel parcel = ContractsService.createParcel(simpleContract, stepaTU, 1, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
         client.registerParcel(parcel.pack(), 5000);
         assertEquals(ItemState.APPROVED, client.getState(simpleContract.getId()).state);
+
+        mm.forEach(x -> x.shutdown());
 
     }
     protected static final String ROOT_PATH = "./src/test_contracts/";
@@ -1951,6 +2604,7 @@ public class MainTest {
 
     }
 
+
     @Test(timeout = 90000)
     public void checkUnsNodeMissedRevision() throws Exception {
 
@@ -2082,7 +2736,6 @@ public class MainTest {
         Thread.sleep(4000);
 
         //UPDATE UNS2
-
 
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(TestKeys.privateKey(2));

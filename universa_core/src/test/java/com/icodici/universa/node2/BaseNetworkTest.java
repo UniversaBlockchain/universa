@@ -7123,6 +7123,7 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();//manager -
         Set<PrivateKey>  llcPrivateKeys = new HashSet<>(); //issuer
         Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+
         llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
