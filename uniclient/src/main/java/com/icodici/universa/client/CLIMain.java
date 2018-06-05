@@ -724,7 +724,7 @@ public class CLIMain {
                         report("registering the paid contract " + contract.getId() + " from " + source
                                 + " for " + tuAmount + " TU");
                         report("cnotactId: "+contract.getId().toBase64String());
-                        Parcel parcel = registerContract(contract, tu, tuAmount, tuKeys, tutest, (int) options.valueOf("wait"));
+                        Parcel parcel = prepareForRegisterContract(contract, tu, tuAmount, tuKeys, tutest);
                         if (parcel != null) {
                             report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
 
@@ -734,14 +734,17 @@ public class CLIMain {
                             };
                             String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
                             tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
-                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                            saveContract(parcel.getPaymentContract(), tuSource, true, false);
+                            if (tuDest != null) {
+                                Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
+                                if (saveContract(parcel.getPaymentContract(), tuSource, true, false))
+                                    registerParcel(parcel, (int) options.valueOf("wait"));
+                            }
                         }
                     } else { // if storage payment
                         report("registering the paid contract " + contract.getId() + " from " + source
                                 + " for " + tuAmount + " TU (and " + tuAmountStorage + " TU for storage)");
                         report("cnotactId: "+contract.getId().toBase64String());
-                        Parcel parcel = registerPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest, (int) options.valueOf("wait"));
+                        Parcel parcel = prepareForRegisterPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest);
                         if (parcel != null) {
                             report("save payment revision: " + parcel.getPayloadContract().getNew().get(0).getState().getRevision() + " id: " + parcel.getPayloadContract().getNew().get(0).getId());
 
@@ -751,8 +754,11 @@ public class CLIMain {
                             };
                             String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
                             tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
-                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                            saveContract(parcel.getPayloadContract().getNew().get(0), tuSource, true, false);
+                            if (tuDest != null) {
+                                Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
+                                if (saveContract(parcel.getPayloadContract().getNew().get(0), tuSource, true, false))
+                                    registerParcel(parcel, (int) options.valueOf("wait"));
+                            }
                         }
                     }
                 } else {
@@ -1960,7 +1966,7 @@ public class CLIMain {
      * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
      * @param addSigners - do adding signs to contract from keysMap() or not.
      */
-    public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction, Boolean addSigners) throws IOException {
+    public static boolean saveContract(Contract contract, String fileName, Boolean fromPackedTransaction, Boolean addSigners) throws IOException {
         if (fileName == null) {
             fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:ss").format(contract.getCreatedAt()) + ".unicon";
         }
@@ -1993,6 +1999,7 @@ public class CLIMain {
         } catch (Quantiser.QuantiserException e) {
             addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
         }
+        return (newFileName!=null);
     }
 
     /**
@@ -2103,7 +2110,9 @@ public class CLIMain {
         report("keys num: " + key.length);
 
         Contract tc = ContractsService.createRevocation(contract, key);
-        Parcel parcel = registerContract(tc, tu, amount, tuKeys, withTestPayment, 0);
+        Parcel parcel = prepareForRegisterContract(tc, tu, amount, tuKeys, withTestPayment);
+        if (parcel != null)
+            registerParcel(parcel, 0);
 
         return parcel;
     }
@@ -2159,9 +2168,8 @@ public class CLIMain {
      * Register a specified contract.
      *
      * @param contract              must be a sealed binary.
-     * @param waitTime - wait time for responce.
      */
-    public static Parcel registerContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, boolean withTestPayment, int waitTime) throws IOException {
+    public static Parcel prepareForRegisterContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, boolean withTestPayment) throws IOException {
 
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
@@ -2170,13 +2178,6 @@ public class CLIMain {
             addErrors(errors);
         } else {
             Parcel parcel = ContractsService.createParcel(contract, tu, amount,  tuKeys, withTestPayment);
-            getClientNetwork().registerParcel(parcel.pack(), waitTime);
-            ItemResult r = getClientNetwork().check(contract.getId());
-            report("paid contract " + contract.getId() +  " submitted with result: " + r.toString());
-            report("payment was " + tu.getId());
-            report("payment became " + parcel.getPaymentContract().getId());
-            report("payment rev " + parcel.getPaymentContract().getRevoking().get(0).getId());
-
             return parcel;
         }
 
@@ -2188,9 +2189,8 @@ public class CLIMain {
      * Register a paying parcel.
      *
      * @param contract              must be a sealed binary.
-     * @param waitTime - wait time for responce.
      */
-    public static Parcel registerPayingParcel(Contract contract, Contract tu, int amount, int amountStorage, Set<PrivateKey> tuKeys, boolean withTestPayment, int waitTime) throws IOException {
+    public static Parcel prepareForRegisterPayingParcel(Contract contract, Contract tu, int amount, int amountStorage, Set<PrivateKey> tuKeys, boolean withTestPayment) throws IOException {
 
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
@@ -2203,18 +2203,26 @@ public class CLIMain {
                 contract.addSignerKeys(keys);
 
             Parcel parcel = ContractsService.createPayingParcel(contract.getTransactionPack(), tu, amount, amountStorage, tuKeys, withTestPayment);
-            getClientNetwork().registerParcel(parcel.pack(), waitTime);
-            ItemResult r = getClientNetwork().check(contract.getId());
-            report("paid contract " + contract.getId() +  " submitted with result: " + r.toString());
-            report("payment was " + tu.getId());
-            report("payment became " + parcel.getPayloadContract().getNew().get(0).getId());
-            report("payment rev 1 " + parcel.getPaymentContract().getRevoking().get(0).getId());
-            report("payment rev 2 " + parcel.getPayloadContract().getNew().get(0).getRevoking().get(0).getId());
-
             return parcel;
         }
 
         return null;
+    }
+
+    /**
+     * Register a specified parcel.
+     * @param parcel   must be ready for register
+     * @param waitTime wait time for responce.
+     * @return ItemResult for parcel's payload
+     * @throws IOException
+     */
+    public static ItemResult registerParcel(Parcel parcel, int waitTime) throws IOException {
+        getClientNetwork().registerParcel(parcel.pack(), waitTime);
+        ItemResult r = getClientNetwork().check(parcel.getPayloadContract().getId());
+        report("paid contract " + parcel.getPayloadContract().getId() +  " submitted with result: " + r.toString());
+        report("payment became " + parcel.getPaymentContract().getId());
+        report("payment rev 1 " + parcel.getPaymentContract().getRevoking().get(0).getId());
+        return r;
     }
 
     /**
