@@ -2293,21 +2293,24 @@ public class CLIMain {
             reporter.message("found wallet: " + wallet.toString());
             reporter.verbose("");
 
-            HashMap<String, Integer> balance = new HashMap<String, Integer>();
-            Integer numcoins;
-            String currency;
+            HashMap<String, WalletValueModel> balance = new HashMap<>();
+            String currencyKey;
             for (Contract contract : wallet.getContracts()) {
                 try {
-                    numcoins = contract.getStateData().getIntOrThrow(AMOUNT_FIELD_NAME);
-                    currency = contract.getDefinition().getData().getOrThrow("currency_code");
-                    if (balance.containsKey(currency)) {
-                        balance.replace(currency, balance.get(currency) + numcoins);
-                    } else {
-                        balance.put(currency, numcoins);
-                    }
-                    reporter.verbose("found coins: " +
-                                             contract.getDefinition().getData().getOrThrow("name") +
-                                             " -> " + numcoins + " (" + currency + ") ");
+                    Decimal numcoins = new Decimal(contract.getStateData().getStringOrThrow(AMOUNT_FIELD_NAME));
+                    currencyKey = contract.getOrigin().toBase64String();
+                    WalletValueModel walletValueModel = balance.getOrDefault(currencyKey, new WalletValueModel());
+                    walletValueModel.value = walletValueModel.value.add(numcoins);
+                    String currencyTag = contract.getDefinition().getData().getString("currency_code", null);
+                    if (currencyTag == null)
+                        currencyTag = contract.getDefinition().getData().getString("unit_short_name", null);
+                    if (currencyTag == null)
+                        currencyTag = contract.getDefinition().getData().getString("unit_name", null);
+                    if (currencyTag == null)
+                        currencyTag = contract.getOrigin().toString();
+                    walletValueModel.currency = currencyTag;
+                    balance.put(currencyKey, walletValueModel);
+                    reporter.verbose("found coins: " + contract.getOrigin().toString() + " -> " + numcoins + " (" + currencyTag + ") ");
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -2315,9 +2318,15 @@ public class CLIMain {
             reporter.verbose("");
             reporter.message("total in the wallet: ");
             for (String c : balance.keySet()) {
-                reporter.message(balance.get(c) + " (" + c + ") ");
+                WalletValueModel w = balance.get(c);
+                reporter.message(w.value + " (" + w.currency + ") ");
             }
         }
+    }
+
+    private static class WalletValueModel {
+        public String currency = "";
+        public Decimal value = new Decimal(0);
     }
 
     /**
@@ -2331,11 +2340,17 @@ public class CLIMain {
         reporter.verbose("");
         for (String key : contracts.keySet()) {
             try {
+                String description;
+                try {
+                    description = contracts.get(key).getDefinition().getData().getString("description");
+                } catch (Exception e) {
+                    description = "";
+                }
                 reporter.verbose(key + ": " +
                                          "contract created at " +
                                          DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contracts.get(key).getCreatedAt()) +
                                          ": " +
-                                         contracts.get(key).getDefinition().getData().getString("description")
+                                         description
                 );
             } catch (Exception e) {
                 e.printStackTrace();

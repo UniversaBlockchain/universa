@@ -35,6 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.nio.file.Files;
@@ -1092,7 +1093,7 @@ public class CLIMainTest {
         dirFile = new File(rootPath + "contract_subfolder/contract_subfolder_level2/");
         if (!dirFile.exists()) dirFile.mkdir();
 
-        List<Integer> coinValues = Arrays.asList(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60);
+        List<String> coinValues = Arrays.asList("5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55", "60", "0.3");
         List<Contract> listOfCoinsWithAmount = createListOfCoinsWithAmount(coinValues);
         for (Contract coin : listOfCoinsWithAmount) {
             int rnd = new Random().nextInt(2);
@@ -1105,7 +1106,7 @@ public class CLIMainTest {
                     dir += "contract_subfolder/contract_subfolder_level2/";
                     break;
             }
-            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
+            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getStringOrThrow(FIELD_NAME) + ".unicon");
         }
 
         Contract nonCoin = Contract.fromDslFile("./src/test_files/simple_root_contract_v2.yml");
@@ -1131,10 +1132,11 @@ public class CLIMainTest {
             file.delete();
         }
 
-        Integer total = 0;
-        for (Integer i : coinValues) {
-            total += i;
+        Decimal total = new Decimal(0);
+        for (String i : coinValues) {
+            total = total.add(new Decimal(i));
         }
+        System.out.println(output);
         assertTrue (output.indexOf(total + " (TUNC)") >= 0);
     }
 
@@ -1272,7 +1274,7 @@ public class CLIMainTest {
         dirFile = new File(rootPath + "contract_subfolder/contract_subfolder_level2/");
         if (!dirFile.exists()) dirFile.mkdir();
 
-        List<Integer> coinValues = Arrays.asList(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60);
+        List<String> coinValues = Arrays.asList("5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55", "60");
         List<Contract> listOfCoinsWithAmount = createListOfCoinsWithAmount(coinValues);
         for (Contract coin : listOfCoinsWithAmount) {
             int rnd = new Random().nextInt(2);
@@ -1285,7 +1287,7 @@ public class CLIMainTest {
                     dir += "contract_subfolder/contract_subfolder_level2/";
                     break;
             }
-            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
+            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getStringOrThrow(FIELD_NAME) + ".unicon");
         }
 
         Contract nonCoin = Contract.fromDslFile("./src/test_files/simple_root_contract_v2.yml");
@@ -2329,6 +2331,16 @@ public class CLIMainTest {
         assertTrue (output.indexOf("Matching result: true") >= 0);
     }
 
+    @Ignore
+    @Test
+    public void printWallets() throws Exception {
+
+        System.out.println("\n\n");
+        callMain("-f", "/home/flint/w/uniclient-test", "--verbose");
+        System.out.println(output);
+        System.out.println("\n\n");
+    }
+
     @Test
     public void matchingAddressTestPositive() throws Exception {
 
@@ -2930,22 +2942,20 @@ public class CLIMainTest {
 ////        assertTrue (output.indexOf("payment contract or private keys for payment contract is missing") >= 0);
 //    }
 
-    private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
-        List<Contract> contracts = new ArrayList<>();
+    private List<Contract> createListOfCoinsWithAmount(List<String> values) throws Exception {
+        Contract money = createCoin();
+        money.getStateData().set(FIELD_NAME, new Decimal(100500));
+        money.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        money.seal();
+        sealCheckTrace(money, true);
 
-
-        for (Integer value : values) {
-            Contract contract = createCoin();
-            contract.getStateData().set(FIELD_NAME, new Decimal(value));
+        List<Contract> res = new ArrayList<>();
+        for (String value : values) {
+            Contract contract = ContractsService.createSplit(money, value, FIELD_NAME, new HashSet<PrivateKey>());
             contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-            contract.seal();
-
-            sealCheckTrace(contract, true);
-
-            contracts.add(contract);
+            res.add(contract.getNew().get(0));
         }
-
-        return contracts;
+        return res;
     }
 
 //    private void saveContract(Contract contract, String fileName) throws IOException {
