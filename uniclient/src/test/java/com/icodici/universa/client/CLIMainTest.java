@@ -2053,6 +2053,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
+        Files.deleteIfExists(Paths.get(basePath + "contract_for_register_and_cost.unicon"));
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
         System.out.println("--- get tu ---");
@@ -2088,6 +2089,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
+        Files.deleteIfExists(Paths.get(basePath + "contract_for_register_and_cost.unicon"));
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
         System.out.println("--- get tu ---");
@@ -2119,6 +2121,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
+        Files.deleteIfExists(Paths.get(basePath + "contract_for_register_and_cost.unicon"));
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
         System.out.println("--- get tu ---");
@@ -2157,6 +2160,7 @@ public class CLIMainTest {
         stepaTU.check();
         //stepaTU.setIsTU(true);
         stepaTU.traceErrors();
+        Files.deleteIfExists(Paths.get(basePath + "save_and_load.unicon"));
         CLIMain.saveContract(stepaTU, basePath + "save_and_load.unicon");
         callMain2("--register", basePath + "save_and_load.unicon", "--cost");
 
@@ -2173,6 +2177,7 @@ public class CLIMainTest {
         paymentDecreased.getStateData().set("transaction_units", 99);
 
         paymentDecreased.seal();
+        Files.deleteIfExists(Paths.get(basePath + "save_and_load.unicon"));
         CLIMain.saveContract(paymentDecreased, basePath + "save_and_load.unicon");
 
         System.out.println("--- save 2 --- " + paymentDecreased.getId());
@@ -2197,6 +2202,7 @@ public class CLIMainTest {
                 stepaTU.check();
                 //stepaTU.setIsTU(true);
                 stepaTU.traceErrors();
+                Files.deleteIfExists(Paths.get(basePath + "stepaTU.unicon"));
                 CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
 
                 System.out.println("--- register new tu --- " + stepaTU.getId());
@@ -2364,6 +2370,7 @@ public class CLIMainTest {
         contract.addSignerKey(TestKeys.privateKey(0));
         contract.seal();
 
+        Files.deleteIfExists(Paths.get(basePath + "contractWithAddresses.unicon"));
         CLIMain.saveContract(contract, basePath + "contractWithAddresses.unicon");
 
         callMain("-e", basePath + "contractWithAddresses.unicon", "-name", basePath + "contractWithAddresses.json");
@@ -2549,12 +2556,18 @@ public class CLIMainTest {
     @Test
     public void anonymizeAllRolesForTwoContracts() throws Exception {
 
+        Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing1.unicon"));
+        Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing2.unicon"));
+
         callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing1.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "forRoleAnonymizing1.unicon").exists());
         assertTrue (new File(basePath + "forRoleAnonymizing2.unicon").exists());
+
+        Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing1_anonymized.unicon"));
+        Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing2_anonymized.unicon"));
 
         callMain("-anonymize", basePath + "forRoleAnonymizing1.unicon", basePath + "forRoleAnonymizing2.unicon");
 

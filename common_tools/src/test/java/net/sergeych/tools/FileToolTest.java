@@ -25,11 +25,11 @@ public class FileToolTest {
         String path_2 = tempDir + "/" + "test_file_33_2.unicon";
         String path_2_1 = tempDir + "/" + "test_file_33_2_1.unicon";
         String path_3 = tempDir + "/" + "test_file_33_3.unicon";
-        silent(() -> {Files.delete(Paths.get(path));return 0;});
-        silent(() -> {Files.delete(Paths.get(path_1));return 0;});
-        silent(() -> {Files.delete(Paths.get(path_2));return 0;});
-        silent(() -> {Files.delete(Paths.get(path_2_1));return 0;});
-        silent(() -> {Files.delete(Paths.get(path_3));return 0;});
+        Files.deleteIfExists(Paths.get(path));
+        Files.deleteIfExists(Paths.get(path_1));
+        Files.deleteIfExists(Paths.get(path_2));
+        Files.deleteIfExists(Paths.get(path_2_1));
+        Files.deleteIfExists(Paths.get(path_3));
         assertEquals(path, FileTool.writeFileContentsWithRenaming(path, contents));
         assertEquals(path_1, FileTool.writeFileContentsWithRenaming(path, contents_1));
         assertEquals(path_2, FileTool.writeFileContentsWithRenaming(path, contents_2));
@@ -42,14 +42,6 @@ public class FileToolTest {
         assertEquals(false, Files.exists(Paths.get(path_1)));
         assertArrayEquals(contents_2, Files.readAllBytes(Paths.get(path_2)));
         assertArrayEquals(contents_1, Files.readAllBytes(Paths.get(path_2_1)));
-    }
-
-    private static <T> T silent(Callable<T> block) {
-        try {
-            return block.call();
-        } catch (Exception ex) {
-        }
-        return null;
     }
 
 }

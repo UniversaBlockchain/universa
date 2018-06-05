@@ -42,6 +42,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.tools.FileTool;
 import net.sergeych.tools.Reporter;
 import net.sergeych.utils.Base64;
 import org.yaml.snakeyaml.Yaml;
@@ -729,12 +730,11 @@ public class CLIMain {
 
                             CopyOption[] copyOptions = new CopyOption[]{
                                     StandardCopyOption.REPLACE_EXISTING,
-                                    StandardCopyOption.COPY_ATTRIBUTES
+                                    StandardCopyOption.ATOMIC_MOVE
                             };
-                            Files.copy(
-                                    Paths.get(tuSource),
-                                    Paths.get(tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon")),
-                                    copyOptions);
+                            String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
+                            tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
+                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
                             saveContract(parcel.getPaymentContract(), tuSource, true, false);
                         }
                     } else { // if storage payment
@@ -747,12 +747,11 @@ public class CLIMain {
 
                             CopyOption[] copyOptions = new CopyOption[]{
                                     StandardCopyOption.REPLACE_EXISTING,
-                                    StandardCopyOption.COPY_ATTRIBUTES
+                                    StandardCopyOption.ATOMIC_MOVE
                             };
-                            Files.copy(
-                                    Paths.get(tuSource),
-                                    Paths.get(tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon")),
-                                    copyOptions);
+                            String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
+                            tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
+                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
                             saveContract(parcel.getPayloadContract().getNew().get(0), tuSource, true, false);
                         }
                     }
@@ -873,12 +872,11 @@ public class CLIMain {
 
                         CopyOption[] copyOptions = new CopyOption[]{
                                 StandardCopyOption.REPLACE_EXISTING,
-                                StandardCopyOption.COPY_ATTRIBUTES
+                                StandardCopyOption.ATOMIC_MOVE
                         };
-                        Files.copy(
-                                Paths.get(tuSource),
-                                Paths.get(tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon")),
-                                copyOptions);
+                        String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
+                        tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
+                        Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
                         saveContract(parcel.getPaymentContract(), tuSource,true, false);
                     }
                 } else {
@@ -1984,12 +1982,9 @@ public class CLIMain {
         int count = contract.getKeysToSignWith().size();
         if (count > 0)
             report("Contract is sealed with " + count + " key(s)");
-        report("Contract is saved to: " + fileName);
+        String newFileName = FileTool.writeFileContentsWithRenaming(fileName, data);
+        report("Contract is saved to: " + newFileName);
         report("Sealed contract size: " + data.length);
-        try (FileOutputStream fs = new FileOutputStream(fileName)) {
-            fs.write(data);
-            fs.close();
-        }
         try {
             if (contract.check()) {
                 report("Sealed contract has no errors");

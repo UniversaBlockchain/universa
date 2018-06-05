@@ -1,5 +1,7 @@
 package net.sergeych.tools;
 
+import net.sergeych.utils.Bytes;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
@@ -19,9 +21,9 @@ public class FileTool {
      * @return new file name if success, null if fails
      */
     public static String writeFileContentsWithRenaming(String path, byte[] contents) {
+        List<String> fileParts = getFileParts(path);
         try {
             if (!writeFileContents(path, contents)) {
-                List<String> fileParts = getFileParts(path);
                 for (int iSuf = 1; iSuf <= 9000; ++iSuf) {
                     String newFilename = fileParts.get(0) + "_" + iSuf + fileParts.get(1);
                     if (writeFileContents(newFilename, contents)) {
@@ -32,9 +34,17 @@ public class FileTool {
                 return path;
             }
         } catch (Exception e) {
-            return null;
+            //do nothing
         }
-        //writeFileContentsWithRenaming failed: to many files like {path}
+        //to many files like {path}, or exception. try to create random unique filename
+        String randomFilename = fileParts.get(0) + "_" + Bytes.random(32).toHex().replaceAll(" ", "") + fileParts.get(1);
+        try {
+            if (writeFileContents(randomFilename, contents))
+                return randomFilename;
+        } catch (Exception e) {
+            //do nothing
+        }
+        //can't save file
         return null;
     }
 
