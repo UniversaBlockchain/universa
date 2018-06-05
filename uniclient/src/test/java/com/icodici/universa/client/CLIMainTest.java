@@ -227,6 +227,7 @@ public class CLIMainTest {
         String path = rootPath + "/testtranspack.unicon";
 //        path = "/Users/sergeych/dev/!/e7810197-d148-4936-866b-44daae182e83.transaction";
         c.seal();
+        Files.deleteIfExists(Paths.get(path));
         CLIMain.saveContract(c, path, true, true);
 //        try (FileOutputStream fs = new FileOutputStream(path)) {
 //            fs.write(c.getPackedTransaction());
