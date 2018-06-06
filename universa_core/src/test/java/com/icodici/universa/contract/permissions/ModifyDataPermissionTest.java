@@ -342,14 +342,14 @@ public class ModifyDataPermissionTest extends TestCase {
         changed.traceErrors();
         assertTrue(changed.isOk());
 
-        // we create first revision with initially bad data
+        // we create first revision with initially bad data, should be ok as we do not modify anything
         Contract trickContract = new Contract(TestKeys.privateKey(0));
         trickContract.addPermission(modifyDataPermission);
         trickContract.getStateData().set("value", "2");
         trickContract.seal();
         trickContract.check();
         trickContract.traceErrors();
-        assertFalse(trickContract.isOk());
+        assertTrue(trickContract.isOk());
     }
 
 }

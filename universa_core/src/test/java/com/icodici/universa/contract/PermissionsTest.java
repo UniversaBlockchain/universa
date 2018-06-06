@@ -13,6 +13,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
+import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -23,6 +24,7 @@ import com.icodici.universa.wallet.Wallet;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashSet;
@@ -827,5 +829,74 @@ public class PermissionsTest extends ContractTestBase {
 
         assertTrue(c.check());
         return c;
+    }
+
+    @Test
+    public void badRevokeAnother() throws Exception {
+        Contract c1 = new Contract(ownerKey1);
+        RoleLink rl = new RoleLink("@revoke", "owner");
+        rl.setContract(c1);
+        c1.addPermission(new RevokePermission(rl));
+        c1.seal();
+        Contract c2 = new Contract(ownerKey2);
+        c2.seal();
+        Assert.assertTrue(c2.check());
+        Contract c3 = c2.createRevision(ownerKey2);
+        //to prevent "state is identical"
+        c3.setOwnerKeys(ownerKey3);
+        c3.addRevokingItems(c1);
+        c3.seal();
+        assertFalse(c3.check());
+    }
+
+    @Test
+    public void goodRevokeAnother() throws Exception {
+        Contract c1 = new Contract(ownerKey1);
+        RoleLink rl = new RoleLink("@revoke", "owner");
+        rl.setContract(c1);
+        c1.addPermission(new RevokePermission(rl));
+        c1.seal();
+        Contract c2 = new Contract(ownerKey2);
+        c2.seal();
+        Assert.assertTrue(c2.check());
+        Contract c3 = c2.createRevision(ownerKey2);
+        //to prevent "state is identical"
+        c3.setOwnerKeys(ownerKey3);
+        c3.addSignerKey(ownerKey1);
+        c3.addRevokingItems(c1);
+        c3.seal();
+        assertTrue(c3.check());
+    }
+
+    @Test
+    public void revokeAnotherAfterSplit() throws Exception {
+        Contract c1 = new Contract(ownerKey1);
+        RoleLink rl = new RoleLink("@revoke", "owner");
+        rl.setContract(c1);
+        c1.addPermission(new RevokePermission(rl));
+        c1.seal();
+        Assert.assertTrue(c1.check());
+
+        Contract[] array = c1.split(2);
+        Contract c2 = array[0];
+        Contract c3 = array[1];
+        c2.addSignerKey(ownerKey1);
+        c3.addSignerKey(ownerKey1);
+        //change owner of c3
+        c3.setOwnerKeys(ownerKey2);
+        c2.seal();
+        c3.seal();
+
+        Assert.assertTrue(c2.check());
+        Assert.assertTrue(c3.check());
+
+        Contract c4 = c2.createRevision(ownerKey1);
+        //change owner of c4 to prevent "state is identical"
+        c4.setOwnerKeys(ownerKey3);
+        c4.addSignerKey(ownerKey1);
+        //try revoke c3 (requires ownerKey2)
+        c4.addRevokingItems(c3);
+        c4.seal();
+        assertFalse(c4.check());
     }
 }
