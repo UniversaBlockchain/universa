@@ -587,7 +587,9 @@ public class ContractsService {
 
         tokenContract.getStateData().set("amount", amount);
 
-        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerRole);
+        RoleLink ownerLink = new RoleLink("@owner_link","owner");
+        ownerLink.setContract(tokenContract);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerLink);
         tokenContract.addPermission(changeOwnerPerm);
 
         Binder params = new Binder();
@@ -598,7 +600,7 @@ public class ContractsService {
         listFields.add("state.origin");
         params.set("join_match_fields", listFields);
 
-        SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerRole, params);
+        SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerLink, params);
         tokenContract.addPermission(splitJoinPerm);
 
         RevokePermission revokePerm1 = new RevokePermission(ownerRole);

@@ -21,6 +21,7 @@ import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node2.Quantiser;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
@@ -234,6 +235,30 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("file.unicon");
+                acceptsAll(asList("split-off"), "Joins specified contract with ones passed as non-optional arguments" +
+                        "and splits parts  off the result and transfers ownership of these parts to specified addresses. " +
+                        "Use with --parts and --owners to specify the amounts and new owners")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("file.unicon");
+
+                accepts("field-name", "Use with split-off to specify the field name to split. ")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .defaultsTo("amount")
+                        .describedAs("field_name");
+
+                accepts("parts", "Use with split-off to specify the ammount to split of the main contract. ")
+                        .withRequiredArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("amount");
+                accepts("owners", "Use with split-off to specify new owners of the parts. ")
+                        .withRequiredArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("address");
+
                 acceptsAll(asList("pack-with"), "Pack contract with counterparts (new, revoking). " +
                         "Use -add-sibling option to add sibling and -add-revoke to add revoke item.")
                         .withOptionalArg()
@@ -250,6 +275,16 @@ public class CLIMain {
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("file.unicon");
+                accepts("add-referenced", "Use with --pack-with command. " +
+                        "Option add referenced item to transaction pack.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("file.unicon");
+                accepts("revision-of", "Use with --import command. " +
+                        "Option adds parent to revokes.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("parent.unicon");
                 acceptsAll(asList("unpack"), "Extracts revoking and new items from contracts and save them.")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
@@ -394,6 +429,11 @@ public class CLIMain {
             if (options.has("revoke")) {
                 doRevoke();
             }
+
+            if (options.has("split-off")) {
+                doSplit();
+            }
+
             if (options.has("pack-with")) {
                 doPackWith();
             }
@@ -588,6 +628,7 @@ public class CLIMain {
     private static void doImport() throws IOException {
 
         List<String> sources = new ArrayList<String>((List) options.valuesOf("i"));
+        List parentItems = options.valuesOf("revision-of");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -620,6 +661,12 @@ public class CLIMain {
                 if (name == null) {
                     name = source.replaceAll("(?i)\\.(json|xml|yml|yaml)$", ".unicon");
                 }
+
+                if(parentItems.size() > 0) {
+                    Contract parent = loadContract((String) parentItems.get(0));
+                    contract.addRevokingItems(parent);
+                }
+
                 contract.seal();
                 saveContract(contract, name);
             }
@@ -900,6 +947,76 @@ public class CLIMain {
     }
 
 
+    private static void doSplit() throws IOException {
+        String source = (String) options.valueOf("split-off");
+        String fieldName = (String) options.valueOf("field-name");
+
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+
+        List parts = options.valuesOf("parts");
+        if(parts == null)
+            parts = new ArrayList();
+        List owners = options.valuesOf("owners");
+        if(owners == null)
+            owners = new ArrayList();
+
+        if (parts.size() != owners.size()) {
+            System.out.println("Specify the same number of parts and owners to split the contract");
+            finish();
+        }
+
+
+        Contract contract = loadContract(source, true);
+        if (contract != null) {
+            try {
+                contract = contract.createRevision();
+
+                Decimal value = new Decimal(contract.getStateData().getStringOrThrow(fieldName));
+                for(String filename : nonOptions) {
+                    Contract contractToJoin = loadContract(filename,true);
+                    value = value.add(new Decimal(contractToJoin.getStateData().getStringOrThrow(fieldName)));
+                    contract.addRevokingItems(contractToJoin);
+                }
+                Contract[] partContracts = null;
+                if(parts.size() > 0) {
+                    partContracts = contract.split(parts.size());
+                    for (int i = 0; i < partContracts.length; i++) {
+                        Decimal partSize = new Decimal((String) parts.get(i));
+                        value = value.subtract(partSize);
+                        partContracts[i].getStateData().set(fieldName, partSize);
+                        try {
+                            SimpleRole role = new SimpleRole("owner", asList(new KeyAddress((String) owners.get(i))));
+                            partContracts[i].registerRole(role);
+                            partContracts[i].setCreatorKeys(keysMap().values());
+                        } catch (KeyAddress.IllegalAddressException e) {
+                            System.out.println("Not a valid address: " + owners.get(i));
+                            finish();
+                        }
+                    }
+                }
+
+                contract.getStateData().set(fieldName,value);
+                contract.setCreatorKeys(keysMap().values());
+
+                String name;
+                if(partContracts != null) {
+                    for (int i = 0; i < partContracts.length; i++) {
+                        name = source + "_" + i;
+                        saveContract(partContracts[i], name, true, true);
+                    }
+                }
+
+                name = source+"_main";
+                saveContract(contract, name, true, true);
+
+            } catch (Quantiser.QuantiserException e) {
+                addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+            }
+        }
+
+        finish();
+    }
+
     private static void doPackWith() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("pack-with"));
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
@@ -910,6 +1027,7 @@ public class CLIMain {
         cleanNonOptionalArguments(sources);
         List siblingItems = options.valuesOf("add-sibling");
         List revokeItems = options.valuesOf("add-revoke");
+        List referencedItems = options.valuesOf("add-referenced");
         List<String> names = (List) options.valuesOf("name");
 
         for (int s = 0; s < sources.size(); s++) {
@@ -920,32 +1038,39 @@ public class CLIMain {
             Contract contract = loadContract(source, true);
             try {
                 if (contract != null) {
-                    if (contract.check()) {
-                        report("pack contract from " + source);
-                        if (siblingItems != null) {
-                            for (Object sibFile : siblingItems) {
-                                Contract siblingContract = loadContract((String) sibFile, true);
-                                report("add sibling from " + sibFile);
-                                contract.addNewItems(siblingContract);
-                            }
+                    report("pack contract from " + source);
+                    if (siblingItems != null) {
+                        for (Object sibFile : siblingItems) {
+                            Contract siblingContract = loadContract((String) sibFile, true);
+                            report("add sibling from " + sibFile);
+                            contract.addNewItems(siblingContract);
                         }
-                        if (revokeItems != null) {
-                            for (Object revokeFile : revokeItems) {
-                                Contract revokeContract = loadContract((String) revokeFile, true);
-                                report("add revoke from " + revokeFile);
-                                contract.addRevokingItems(revokeContract);
-                            }
-                        }
-                        if (name == null) {
-                            name = source;
-                        }
-                        if (siblingItems != null || revokeItems != null) {
-                            contract.seal();
-                            saveContract(contract, name, true, true);
-                        }
-                    } else {
-                        addErrors(contract.getErrors());
                     }
+                    if (revokeItems != null) {
+                        for (Object revokeFile : revokeItems) {
+                            Contract revokeContract = loadContract((String) revokeFile, true);
+                            report("add revoke from " + revokeFile);
+                            contract.addRevokingItems(revokeContract);
+                        }
+                    }
+                    if (name == null) {
+                        name = source;
+                    }
+                    if (siblingItems != null || revokeItems != null) {
+                        contract.seal();
+                    }
+
+                    Set<Contract> referencedContracts = null;
+                    if(referencedItems != null) {
+                        referencedContracts = new HashSet<>();
+                        for (Object referencedFile : referencedItems) {
+                            Contract referencedContract = loadContract((String) referencedFile, true);
+                            report("add referenced item from " + referencedFile);
+                            referencedContracts.add(referencedContract);
+                        }
+                    }
+                    saveContract(contract, name, true, true,referencedContracts);
+
                 }
             } catch (Quantiser.QuantiserException e) {
                 addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
@@ -1963,6 +2088,18 @@ public class CLIMain {
      * @param addSigners - do adding signs to contract from keysMap() or not.
      */
     public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction, Boolean addSigners) throws IOException {
+        saveContract(contract,fileName,fromPackedTransaction,addSigners,null);
+    }
+    /**
+     * Save specified contract to file.
+     *
+     * @param contract              - contract for update.
+     * @param fileName              - name of file to save to.
+     * @param fromPackedTransaction - register contract with Contract.getPackedTransaction()
+     * @param addSigners - do adding signs to contract from keysMap() or not.
+     * @param referencedItems - referenced contracts to add to transaction pack.
+     */
+    public static void saveContract(Contract contract, String fileName, Boolean fromPackedTransaction, Boolean addSigners, Set<Contract> referencedItems) throws IOException {
         if (fileName == null) {
             fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:ss").format(contract.getCreatedAt()) + ".unicon";
         }
@@ -1972,6 +2109,11 @@ public class CLIMain {
             if (keysMap().values().size() > 0) {
                 contract.seal();
             }
+        }
+
+        if(referencedItems != null) {
+            TransactionPack tp = contract.getTransactionPack();
+            referencedItems.forEach(c -> tp.addReferencedItem(c));
         }
 
         byte[] data;
