@@ -284,6 +284,7 @@ public class CLIMain {
                 accepts("revision-of", "Use with --import command. " +
                         "Option adds parent to revokes.")
                         .withRequiredArg()
+                        .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("parent.unicon");
                 acceptsAll(asList("unpack"), "Extracts revoking and new items from contracts and save them.")
@@ -663,8 +664,8 @@ public class CLIMain {
                     name = source.replaceAll("(?i)\\.(json|xml|yml|yaml)$", ".unicon");
                 }
 
-                if(parentItems.size() > 0) {
-                    Contract parent = loadContract((String) parentItems.get(0));
+                if(parentItems.size() > s) {
+                    Contract parent = loadContract((String) parentItems.get(s));
                     contract.addRevokingItems(parent);
                 }
 
@@ -1005,12 +1006,12 @@ public class CLIMain {
                 String name;
                 if(partContracts != null) {
                     for (int i = 0; i < partContracts.length; i++) {
-                        name = source + "_" + i;
+                        name = source.replace(".unicon","") + "_" + i +".unicon";
                         saveContract(partContracts[i], name, true, true);
                     }
                 }
 
-                name = source+"_main";
+                name = source.replace(".unicon","")+"_main.unicon";
                 saveContract(contract, name, true, true);
 
             } catch (Quantiser.QuantiserException e) {
