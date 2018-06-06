@@ -35,6 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.nio.file.Files;
@@ -227,6 +228,7 @@ public class CLIMainTest {
         String path = rootPath + "/testtranspack.unicon";
 //        path = "/Users/sergeych/dev/!/e7810197-d148-4936-866b-44daae182e83.transaction";
         c.seal();
+        Files.deleteIfExists(Paths.get(path));
         CLIMain.saveContract(c, path, true, true);
 //        try (FileOutputStream fs = new FileOutputStream(path)) {
 //            fs.write(c.getPackedTransaction());
@@ -1091,7 +1093,7 @@ public class CLIMainTest {
         dirFile = new File(rootPath + "contract_subfolder/contract_subfolder_level2/");
         if (!dirFile.exists()) dirFile.mkdir();
 
-        List<Integer> coinValues = Arrays.asList(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60);
+        List<String> coinValues = Arrays.asList("5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55", "60", "0.3");
         List<Contract> listOfCoinsWithAmount = createListOfCoinsWithAmount(coinValues);
         for (Contract coin : listOfCoinsWithAmount) {
             int rnd = new Random().nextInt(2);
@@ -1104,7 +1106,7 @@ public class CLIMainTest {
                     dir += "contract_subfolder/contract_subfolder_level2/";
                     break;
             }
-            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
+            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getStringOrThrow(FIELD_NAME) + ".unicon");
         }
 
         Contract nonCoin = Contract.fromDslFile("./src/test_files/simple_root_contract_v2.yml");
@@ -1130,10 +1132,11 @@ public class CLIMainTest {
             file.delete();
         }
 
-        Integer total = 0;
-        for (Integer i : coinValues) {
-            total += i;
+        Decimal total = new Decimal(0);
+        for (String i : coinValues) {
+            total = total.add(new Decimal(i));
         }
+        System.out.println(output);
         assertTrue (output.indexOf(total + " (TUNC)") >= 0);
     }
 
@@ -1271,7 +1274,7 @@ public class CLIMainTest {
         dirFile = new File(rootPath + "contract_subfolder/contract_subfolder_level2/");
         if (!dirFile.exists()) dirFile.mkdir();
 
-        List<Integer> coinValues = Arrays.asList(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60);
+        List<String> coinValues = Arrays.asList("5", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55", "60");
         List<Contract> listOfCoinsWithAmount = createListOfCoinsWithAmount(coinValues);
         for (Contract coin : listOfCoinsWithAmount) {
             int rnd = new Random().nextInt(2);
@@ -1284,7 +1287,7 @@ public class CLIMainTest {
                     dir += "contract_subfolder/contract_subfolder_level2/";
                     break;
             }
-            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getIntOrThrow(FIELD_NAME) + ".unicon");
+            CLIMain.saveContract(coin, rootPath + dir + "Coin_" + coin.getStateData().getStringOrThrow(FIELD_NAME) + ".unicon");
         }
 
         Contract nonCoin = Contract.fromDslFile("./src/test_files/simple_root_contract_v2.yml");
@@ -2053,6 +2056,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
+        Files.deleteIfExists(Paths.get(basePath + "contract_for_register_and_cost.unicon"));
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
         System.out.println("--- get tu ---");
@@ -2088,6 +2092,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
+        Files.deleteIfExists(Paths.get(basePath + "contract_for_register_and_cost.unicon"));
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
         System.out.println("--- get tu ---");
@@ -2119,6 +2124,7 @@ public class CLIMainTest {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         contract.seal();
 
+        Files.deleteIfExists(Paths.get(basePath + "contract_for_register_and_cost.unicon"));
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
         System.out.println("--- get tu ---");
@@ -2157,6 +2163,7 @@ public class CLIMainTest {
         stepaTU.check();
         //stepaTU.setIsTU(true);
         stepaTU.traceErrors();
+        Files.deleteIfExists(Paths.get(basePath + "save_and_load.unicon"));
         CLIMain.saveContract(stepaTU, basePath + "save_and_load.unicon");
         callMain2("--register", basePath + "save_and_load.unicon", "--cost");
 
@@ -2173,6 +2180,7 @@ public class CLIMainTest {
         paymentDecreased.getStateData().set("transaction_units", 99);
 
         paymentDecreased.seal();
+        Files.deleteIfExists(Paths.get(basePath + "save_and_load.unicon"));
         CLIMain.saveContract(paymentDecreased, basePath + "save_and_load.unicon");
 
         System.out.println("--- save 2 --- " + paymentDecreased.getId());
@@ -2197,6 +2205,7 @@ public class CLIMainTest {
                 stepaTU.check();
                 //stepaTU.setIsTU(true);
                 stepaTU.traceErrors();
+                Files.deleteIfExists(Paths.get(basePath + "stepaTU.unicon"));
                 CLIMain.saveContract(stepaTU, basePath + "stepaTU.unicon");
 
                 System.out.println("--- register new tu --- " + stepaTU.getId());
@@ -2322,6 +2331,16 @@ public class CLIMainTest {
         assertTrue (output.indexOf("Matching result: true") >= 0);
     }
 
+    @Ignore
+    @Test
+    public void printWallets() throws Exception {
+
+        System.out.println("\n\n");
+        callMain("-f", "/home/flint/w/uniclient-test", "--verbose");
+        System.out.println(output);
+        System.out.println("\n\n");
+    }
+
     @Test
     public void matchingAddressTestPositive() throws Exception {
 
@@ -2364,6 +2383,7 @@ public class CLIMainTest {
         contract.addSignerKey(TestKeys.privateKey(0));
         contract.seal();
 
+        Files.deleteIfExists(Paths.get(basePath + "contractWithAddresses.unicon"));
         CLIMain.saveContract(contract, basePath + "contractWithAddresses.unicon");
 
         callMain("-e", basePath + "contractWithAddresses.unicon", "-name", basePath + "contractWithAddresses.json");
@@ -2549,12 +2569,18 @@ public class CLIMainTest {
     @Test
     public void anonymizeAllRolesForTwoContracts() throws Exception {
 
+        Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing1.unicon"));
+        Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing2.unicon"));
+
         callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing1.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "forRoleAnonymizing1.unicon").exists());
         assertTrue (new File(basePath + "forRoleAnonymizing2.unicon").exists());
+
+        Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing1_anonymized.unicon"));
+        Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing2_anonymized.unicon"));
 
         callMain("-anonymize", basePath + "forRoleAnonymizing1.unicon", basePath + "forRoleAnonymizing2.unicon");
 
@@ -2916,22 +2942,20 @@ public class CLIMainTest {
 ////        assertTrue (output.indexOf("payment contract or private keys for payment contract is missing") >= 0);
 //    }
 
-    private List<Contract> createListOfCoinsWithAmount(List<Integer> values) throws Exception {
-        List<Contract> contracts = new ArrayList<>();
+    private List<Contract> createListOfCoinsWithAmount(List<String> values) throws Exception {
+        Contract money = createCoin();
+        money.getStateData().set(FIELD_NAME, new Decimal(100500));
+        money.addSignerKeyFromFile(PRIVATE_KEY_PATH);
+        money.seal();
+        sealCheckTrace(money, true);
 
-
-        for (Integer value : values) {
-            Contract contract = createCoin();
-            contract.getStateData().set(FIELD_NAME, new Decimal(value));
+        List<Contract> res = new ArrayList<>();
+        for (String value : values) {
+            Contract contract = ContractsService.createSplit(money, value, FIELD_NAME, new HashSet<PrivateKey>());
             contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-            contract.seal();
-
-            sealCheckTrace(contract, true);
-
-            contracts.add(contract);
+            res.add(contract.getNew().get(0));
         }
-
-        return contracts;
+        return res;
     }
 
 //    private void saveContract(Contract contract, String fileName) throws IOException {
