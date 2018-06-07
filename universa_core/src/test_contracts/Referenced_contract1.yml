@@ -108,7 +108,7 @@ definition:
      where:
        all_of:
        - this.definition.references.ref_cont defined
-       - inherit this.definition.references.ref_cont
+       - inherits this.definition.references.ref_cont
        - this.definition.origin == ref.definition.origin
 
  # required key, if left empty, the contract can not be changed or revoked. Be careful.

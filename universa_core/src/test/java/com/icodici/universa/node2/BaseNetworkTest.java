@@ -4833,7 +4833,7 @@ public class BaseNetworkTest extends TestCase {
         List <String> listConditionsForDefinition = new ArrayList<>();
         listConditionsForDefinition.add("ref.definition.data.type == \"Good Bank\"");
         listConditionsForDefinition.add("this.state.references.account_in_bank_certificate defined");
-        listConditionsForDefinition.add("this.state.references.account_in_bank_certificate is_inherit this.definition.references.bank_certificate");
+        listConditionsForDefinition.add("this.state.references.account_in_bank_certificate is_a this.definition.references.bank_certificate");
 
         ContractsService.addReferenceToContract(llcProperty, oldAccountCertificate, "bank_certificate", Reference.TYPE_EXISTING_DEFINITION, listConditionsForDefinition, true);
 
@@ -4841,7 +4841,7 @@ public class BaseNetworkTest extends TestCase {
 
         List <String> listConditionsForState = new ArrayList<>();
         listConditionsForState.add("ref.state.origin == \"" + oldAccountCertificate.getOrigin().toBase64String() + "\"");
-        listConditionsForState.add("inherit this.definition.references.bank_certificate");
+        listConditionsForState.add("inherits this.definition.references.bank_certificate");
 
         ContractsService.addReferenceToContract(llcProperty, oldAccountCertificate, "account_in_bank_certificate", Reference.TYPE_EXISTING_STATE, listConditionsForState, true);
 
@@ -4855,7 +4855,7 @@ public class BaseNetworkTest extends TestCase {
 
         List <String> newListConditions = new ArrayList<>();
         newListConditions.add("ref.state.origin == \"" + newAccountCertificate.getOrigin().toBase64String() + "\"");
-        newListConditions.add("inherit this.definition.references.bank_certificate");
+        newListConditions.add("inherits this.definition.references.bank_certificate");
 
         llcProperty2.getState().getReferences().remove(llcProperty2.getReferences().get("account_in_bank_certificate"));
         llcProperty2.getReferences().remove("account_in_bank_certificate");
