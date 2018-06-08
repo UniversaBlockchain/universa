@@ -7,7 +7,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import java.time.ZonedDateTime;
 
 /**
- * The RW envitonment for {@link NodeContract} instance, where it can change its server state.
+ * The RW envitonment for {@link NContract} instance, where it can change its server state.
  * <p>
  * It implemets KV store for the server-state. It is created automatically first time {@link #set(String, Object)} is
  * called and must commit any changes to the ledger when the new contract state is being approved. Before this the
