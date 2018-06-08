@@ -483,8 +483,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public Set<Approvable> getReferencedItems() {
 
         Set<Approvable> referencedItems = new HashSet<>();
-//        if (transactional != null && transactional.references != null)
-//            referencedItems.addAll(transactional.references);
+        if (transactional != null && transactional.getReferences() != null) {
+            for (Reference r : transactional.getReferences()) {
+                referencedItems.addAll(r.matchingItems);
+            }
+        }
         if (definition != null && definition.getReferences() != null) {
             for (Reference r : definition.getReferences()) {
                 referencedItems.addAll(r.matchingItems);
@@ -647,7 +650,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // check each reference, all must be ok
         boolean allRefs_check = true;
         for (final Reference rm : getReferences().values()) {
-            //TODO: Do not check the conditions of the reference (and result of check in the constructors of the Contract class is not used)
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
             if(rm.type == Reference.TYPE_TRANSACTIONAL) {
@@ -655,7 +657,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     Contract neighbour = neighbourContracts.get(j);
                     if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
                             (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
-                        if (checkOneReference(rm, neighbour)) {
+                        if (checkOneReference(rm, neighbour) && rm.isMatchingWith(neighbour, neighbourContracts)) {
                             rm_check = true;
                         }
                 }
@@ -1948,6 +1950,21 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                         return state.data.getOrNull(name.substring(5));
                     if (name.startsWith("references."))
                         return (T) findReferenceByName(name.substring(11), "state");
+            }
+        } else if (name.startsWith("transactional.")) {
+            if (transactional != null) {
+                name = name.substring(14);
+                switch (name) {
+                    case "id":
+                        return (T) transactional.id;
+                    case "validUntil":
+                        return (T) transactional.validUntil;
+                    default:
+                        if (name.startsWith("data."))
+                            return transactional.data.getOrNull(name.substring(5));
+                        if (name.startsWith("references."))
+                            return (T) findReferenceByName(name.substring(11), "transactional");
+                }
             }
         } else switch (name) {
             case "id":

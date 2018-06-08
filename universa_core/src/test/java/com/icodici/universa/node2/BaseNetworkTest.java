@@ -9814,8 +9814,9 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns3 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns3.getUnsName(name).setUnsReducedName(name);
         uns3.addSignatureToSeal(authorizedNameServiceKey);
         uns3.addSignatureToSeal(randomPrivKey);
         uns3.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9823,8 +9824,9 @@ public class BaseNetworkTest extends TestCase {
         uns3.traceErrors();
 
         UnsContract uns2 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns2.getUnsName(name).setUnsReducedName(name);
         uns2.addSignatureToSeal(authorizedNameServiceKey);
         uns2.addSignatureToSeal(randomPrivKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9832,8 +9834,9 @@ public class BaseNetworkTest extends TestCase {
         uns2.traceErrors();
 
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignatureToSeal(authorizedNameServiceKey);
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9924,8 +9927,9 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignatureToSeal(authorizedNameServiceKey);
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9933,8 +9937,9 @@ public class BaseNetworkTest extends TestCase {
         uns.traceErrors();
 
         UnsContract uns2 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns2.getUnsName(name).setUnsReducedName(name);
         uns2.addSignatureToSeal(authorizedNameServiceKey);
         uns2.addSignatureToSeal(randomPrivKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -10174,12 +10179,14 @@ public class BaseNetworkTest extends TestCase {
         referencesContract1.seal();
 
         String reducedName = "name"+Instant.now().getEpochSecond();
+        String name = "change"+Instant.now().getEpochSecond();
 
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                reducedName, "change"+Instant.now().getEpochSecond(), "test description", "http://test.com", referencesContract1);
+                name, "test description", "http://test.com", referencesContract1);
 
+        uns.getUnsName(name).setUnsReducedName(reducedName);
         uns.addSignerKey(TestKeys.privateKey(1));
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
@@ -10304,11 +10311,14 @@ public class BaseNetworkTest extends TestCase {
         Contract referencesContract = new Contract(TestKeys.privateKey(8));
         referencesContract.seal();
 
+        String name = "test"+Instant.now().getEpochSecond();
+
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                "test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com", referencesContract);
+                name, "test description", "http://test.com", referencesContract);
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(TestKeys.privateKey(8));
         uns.seal();
@@ -10346,11 +10356,14 @@ public class BaseNetworkTest extends TestCase {
         Contract referencesContract = new Contract(TestKeys.privateKey(8));
         referencesContract.seal();
 
+        String name = "test"+Instant.now().getEpochSecond();
+
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                "test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com", referencesContract);
+                name, "test description", "http://test.com", referencesContract);
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(TestKeys.privateKey(8));
         uns.seal();
@@ -10388,11 +10401,14 @@ public class BaseNetworkTest extends TestCase {
         Contract referencesContract = new Contract(TestKeys.privateKey(9));
         referencesContract.seal();
 
+        String name = "test"+Instant.now().getEpochSecond();
+
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                "test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com", referencesContract);
+                name, "test description", "http://test.com", referencesContract);
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
         uns.check();
@@ -10439,10 +10455,14 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
+        String name = "test"+Instant.now().getEpochSecond();
+
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                "test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+
+        uns.getUnsName(name).setUnsReducedName(name);
 
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
