@@ -94,9 +94,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private static int testQuantaLimit = -1;
 
     /**
-     * Extract contract from v2 or v3 sealed form, getting revokein and new items from the transaction pack supplied. If
-     * the transaction pack fails to resove a link, no error will be reported - not sure it's a good idea. If need, the
-     * exception could be generated with the transaction pack.
+     * Extract contract from v2 or v3 sealed form, getting revoking and new items from sealed unicapsule and referenced items from
+     * the transaction pack supplied.
      * <p>
      * It is recommended to call {@link #check()} after construction to see the errors.
      *
@@ -249,6 +248,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
+    /**
+     * Extract contract from v2 or v3 sealed form, getting revoking and new items from sealed unicapsule.
+     * <p>
+     * It is recommended to call {@link #check()} after construction to see the errors.
+     *
+     * @param data binary sealed contract.
+     *
+     * @throws IOException on the various format errors
+     */
     public Contract(byte[] data) throws IOException {
         this(data, new TransactionPack());
     }
@@ -382,7 +390,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
-
+    /**
+     * Create an empty new contract
+     */
     public Contract() {
         this.quantiser.reset(testQuantaLimit); // debug const. need to get quantaLimit from TransactionPack here
 
@@ -392,12 +402,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     /**
      * Create a default empty new contract using a provided key as issuer and owner and sealer. Default expiration is
-     * set to 5 years.
+     * set to 90 days.
      * <p>
      * This constructor adds key as sealing signature so it is ready to {@link #seal()} just after construction, thought
      * it is necessary to put real data to it first. It is allowed to change owner, expiration and data fields after
      * creation (but before sealing).
-     *
+     * <p>
+     * Change owner permission is added by default
      * @param key is {@link PrivateKey} for creating roles "issuer", "owner", "creator" and sign contract
      */
     public Contract(PrivateKey key) {
@@ -405,16 +416,22 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // default expiration date
         setExpiresAt(ZonedDateTime.now().plusDays(90));
         // issuer role is a key for a new contract
-        Role r = setIssuerKeys(key.getPublicKey());
+        setIssuerKeys(key.getPublicKey());
         // issuer is owner, link roles
         registerRole(new RoleLink("owner", "issuer"));
         registerRole(new RoleLink("creator", "issuer"));
+        RoleLink roleLink = new RoleLink("@change_ower_role","owner");
+        roleLink.setContract(this);
         // owner can change permission
-        addPermission(new ChangeOwnerPermission(r));
+        addPermission(new ChangeOwnerPermission(roleLink));
         // issuer should sign
         addSignerKey(key);
     }
 
+    /**
+     * Get list of errors found during contract check
+     * @return lsit of {@link ErrorRecord} containg errors found
+     */
     public List<ErrorRecord> getErrors() {
         return errors;
     }
@@ -446,6 +463,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return this;
     }
 
+    /**
+     * Create contract importing its parameters with passed .yaml file. No signatures are added automatically. It is required to add signatures before check.
+     * @param fileName path to file containing Yaml representation of contract.
+     */
     public static Contract fromDslFile(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         try (FileReader r = new FileReader(fileName)) {
@@ -454,22 +475,42 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
+    /**
+     * Get state of a contract
+     * @return object containing contract state
+     */
     public State getState() {
         return state;
     }
 
+    /**
+     * @return {@link Transactional} object containing contract transacitonal.
+     */
     public Transactional getTransactional() {
         return transactional;
     }
 
+    /**
+     * Get current api level of the contract
+     * @return api level of the contract.
+     */
     public int getApiLevel() {
         return apiLevel;
     }
 
+    /**
+     * Set  api level of the contract
+     * @param  apiLevel api level to be set
+     */
     public void setApiLevel(int apiLevel) {
         this.apiLevel = apiLevel;
     }
 
+
+    /**
+     * Get map contract's references
+     * @return contract's references
+     */
     @Override
     public HashMap<String, Reference> getReferences() {
         return references;
@@ -498,6 +539,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return referencedItems;
     }
 
+
     public void removeReferencedItem(Contract removed) {
 
         for (Reference ref: getReferences().values())
@@ -523,17 +565,29 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         for (Contract c: getReferenced())
             removeReferencedItem(c);
     }
-
+    /**
+     * Get contracts to be revoked within current contract registration. Revoking items require to be either parent of current contract
+     * or have special {@link RevokePermission} that is allowed for keys contract is signed with
+     * @return revoking items
+     */
     @Override
     public Set<Approvable> getRevokingItems() {
         return (Set) revokingItems;
     }
 
+    /**
+     * Get contracts to be registered within current contract registration.
+     * @return revoking items
+     */
     @Override
     public Set<Approvable> getNewItems() {
         return (Set) newItems;
     }
 
+    /**
+     * Get all contracts involved in current contract registration: contract itself, new items and revoking items
+     * @return contracts tree
+     */
     public List<Contract> getAllContractInTree() {
 
         List<Contract> contracts = new ArrayList<>();
@@ -550,6 +604,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return contracts;
     }
 
+    /**
+     * Check contract for errors. This includes checking contract state modification, checking new items, revoke permissions and references acceptance.
+     * Errors found can be accessed with {@link #getErrors()} ()}
+     *
+     * @param prefix is included in errors text. Used to differ errors found in contract from errors of subcontracts (revoking,new)
+     * @throws Quantiser.QuantiserException when quantas limit was reached during check
+     * @return if check was successful
+     */
     @Override
     public boolean check(String prefix) throws Quantiser.QuantiserException {
         return check(prefix, null);
@@ -799,6 +861,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return res;
     }
 
+    /**
+     * Check contract to be a valid "U" payment. This includes standard contract check and additiona payment related checks
+     *
+     * @param issuerKeys addresses of keys used by the network to issue "U"
+     * @throws Quantiser.QuantiserException when quantas limit was reached during check
+     * @return if check was successful
+     */
+
     @Override
     public boolean paymentCheck(Set<KeyAddress> issuerKeys) throws Quantiser.QuantiserException {
         boolean res = true;
@@ -931,12 +1001,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return res;
     }
 
+    /**
+     * Get the cost used for contract processing
+     * @return cost in quantas
+     */
     public int getProcessedCost() {
         return quantiser.getQuantaSum();
     }
 
+    /**
+     * Get the cost used for contract processing
+     * @return cost in "U"
+     */
     public int getProcessedCostTU() {
-        return (int) Math.floor(quantiser.getQuantaSum() / Quantiser.quantaPerU) + 1;
+        return (int) Math.ceil(quantiser.getQuantaSum() / Quantiser.quantaPerU);
     }
 
     /**
@@ -959,6 +1037,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
+    /**
+     * Gets complex "id" of current revision
+     * @return revision "id" in format ORIGIN/PARENT/REVISION/BRANCH
+     */
     public String getRevisionId() {
         String parentId = getParent() == null ? "" : (getParent().toBase64String() + "/");
         StringBuilder sb = new StringBuilder(getOrigin().toBase64String() + "/" + parentId + state.revision);
@@ -1010,6 +1092,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
+    /**
+     * Add error to contract
+     * @param code error code
+     * @param field path to contract field error found in
+     * @param text error message
+     */
+
     @Override
     public void addError(Errors code, String field, String text) {
         Errors code1 = code;
@@ -1017,7 +1106,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         String text1 = text;
         errors.add(new ErrorRecord(code1, field1, text1));
     }
-
+    /**
+     * Add error to contract
+     * @param er error record containing code, erroneous object and message
+     */
     @Override
     public void addError(ErrorRecord er) {
         errors.add(er);
@@ -1188,6 +1280,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         throw new IllegalArgumentException("cant make role from " + roleObject);
     }
 
+
+    /**
+     * Get registered role from the contract
+     * @param roleName name of the role to get
+     * @return role or null if not exist
+     */
     public Role getRole(String roleName) {
         return roles.get(roleName);
     }
@@ -1207,6 +1305,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return getId();
     }
 
+    /**
+     * Get the id of the contract
+     *
+     * @return contract id.
+     */
+
     @Override
     public HashId getId() {
         if (id == null) {
@@ -1218,11 +1322,21 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return id;
     }
 
+    /**
+     * Get issuer of the contract
+     * @return issuer role
+     */
 
     public Role getIssuer() {
         // maybe we should cache it
         return getRole("issuer");
     }
+
+
+    /**
+     * Get contract creation time
+     * @return contract creation time
+     */
 
     @Override
     public ZonedDateTime getCreatedAt() {
@@ -1231,14 +1345,29 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return definition.createdAt;
     }
 
+    /**
+     * Get contract expiration time
+     * @return contract expiration time
+     */
+
     @Override
     public ZonedDateTime getExpiresAt() {
         return state.expiresAt != null ? state.expiresAt : definition.expiresAt;
     }
 
+    /**
+     * Get roles of the contract
+     * @return roles map
+     */
+
     public Map<String, Role> getRoles() {
         return roles;
     }
+
+    /**
+     * Get definition of a contract
+     * @return object containing contract definition
+     */
 
     public Definition getDefinition() {
         return definition;
@@ -1248,6 +1377,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return getRole("owner").getKeyRecords().iterator().next();
     }
 
+    /**
+     * Register new role. Name must be unique otherwise existing role will be overwritten
+     * @param role
+     * @return registered role
+     */
+
     public Role registerRole(Role role) {
         String name = role.getName();
         roles.put(name, role);
@@ -1255,11 +1390,24 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return role;
     }
 
+    /**
+     * Anonymize existing role. If role contains {@link PublicKey} it will be replaced with {@link AnonymousId}
+     * @param roleName name of the role to anonymize
+     */
+
     public void anonymizeRole(String roleName) {
         Role role = roles.get(roleName);
         if (role != null)
             role.anonymize();
     }
+
+    /**
+     * Checks if permission of given type exists and is allowed for given key record
+     * @param permissionName type of permission to check for
+     * @param keyRecord key record to check permission with
+     * @return permission allowed for keyRecord is found
+     * @throws Quantiser.QuantiserException if quantas limit was reached during check
+     */
 
     public boolean isPermitted(String permissionName, KeyRecord keyRecord) throws Quantiser.QuantiserException {
         return isPermitted(permissionName, keyRecord.getPublicKey());
@@ -1288,6 +1436,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         permissions.put(perm.getName(), perm);
     }
 
+    /**
+     * Checks if permission of given type that is allowed for given key exists
+     * @param permissionName type of permission to check for
+     * @param key public key to check permission with
+     * @return permission allowed for key is found
+     * @throws Quantiser.QuantiserException if quantas limit was reached during check
+     */
+
     public boolean isPermitted(String permissionName, PublicKey key) throws Quantiser.QuantiserException {
         Collection<Permission> cp = permissions.get(permissionName);
         if (cp != null) {
@@ -1300,6 +1456,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         return false;
     }
+
+    /**
+     * Checks if permission of given type that is allowed for given keys exists
+     * @param permissionName type of permission to check for
+     * @param keys collection of keys to check with
+     * @return permission allowed for keys is found
+     * @throws Quantiser.QuantiserException if quantas limit was reached during check
+     */
 
     public boolean isPermitted(String permissionName, Collection<PublicKey> keys) throws Quantiser.QuantiserException {
         Collection<Permission> cp = permissions.get(permissionName);
@@ -1314,9 +1478,23 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return false;
     }
 
+    /**
+     * Checks if permission of given type that is allowed for given role exists
+     * @param permissionName type of permission to check for
+     * @param role role to check permission with
+     * @return permission allowed for role is found
+     * @throws Quantiser.QuantiserException if quantas limit was reached during check
+     */
+
     public boolean isPermitted(String permissionName, Role role) throws Quantiser.QuantiserException {
         return isPermitted(permissionName, role.getKeys());
     }
+
+    /**
+     * Add error with empty message to contract
+     * @param code error code
+     * @param field path to contract field error found in
+     */
 
     protected void addError(Errors code, String field) {
         Errors code1 = code;
@@ -1324,37 +1502,66 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         errors.add(new ErrorRecord(code1, field1, ""));
     }
 
+    /**
+     * Get earliest possible creation time of a contract. Network will check if contract being registered was created after earliest time
+     * @return earliest creation time
+     */
     public ChronoZonedDateTime<?> getEarliestCreationTime() {
         return ZonedDateTime.now().minusDays(10);
     }
 
+
+    /**
+     * Get set of public keys contract binary signed with
+     * @return keys contract binary signed with
+     */
     public Set<PublicKey> getSealedByKeys() {
         return sealedByKeys.keySet();
     }
 
+    /**
+     * Get private keys contract binary to be signed with when sealed next time. It is called before seal()
+     * @return keys contract binary to be signed with
+     */
     public Set<PrivateKey> getKeysToSignWith() {
         return keysToSignWith;
     }
 
+    /**
+     * Set private keys contract binary to be signed with when sealed next time. It is called before seal()
+     * @param keysToSignWith key contract binary to be signed with
+     */
     public void setKeysToSignWith(Set<PrivateKey> keysToSignWith) {
         this.keysToSignWith = keysToSignWith;
     }
 
+    /**
+     * Add private key from file to keys contract binary to be signed with when sealed next time. It is called before seal()
+     * @param fileName path to file containing private key
+     */
     public void addSignerKeyFromFile(String fileName) throws IOException {
         addSignerKey(new PrivateKey(Do.read(fileName)));
     }
 
+    /**
+     * Add private key to keys contract binary to be signed with when sealed next time. It is called before seal()
+     * @param privateKey key to sign with
+     */
     public void addSignerKey(PrivateKey privateKey) {
         keysToSignWith.add(privateKey);
     }
 
+    /**
+     * Add collection of private keys to keys contract binary to be signed with when sealed next time. It is called before seal()
+     * @param keys key to sign with
+     */
     public void addSignerKeys(Collection<PrivateKey> keys) {
         keys.forEach(k -> keysToSignWith.add(k));
     }
 
     /**
      * Add reference to the references list of the contract
-     *
+     * @param reference reference to add
      */
     public void addReference(Reference reference) {
         if(reference.type == Reference.TYPE_TRANSACTIONAL) {
@@ -1367,6 +1574,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         references.put(reference.name, reference);
     }
+
+    /**
+     * Remove reference to the references list of the contract
+     * @param reference reference to remove
+     */
 
     public void removeReference(Reference reference) {
         reference.matchingItems.forEach(approvable -> {
@@ -1428,6 +1640,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return sealedBinary;
     }
 
+    /**
+     * Seal contract to binary. This call adds signatures from {@link #getKeysToSignWith()}
+     * @return contract's sealed unicapsule
+     */
     public byte[] seal() {
         Object forPack = BossBiMapper.serialize(
                 Binder.of(
@@ -1459,6 +1675,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return sealedBinary;
     }
 
+    /**
+     * Add signature to sealed (before) contract. Do not deserializing or changing contract bytes,
+     * but will change sealed and hashId.
+     *
+     * Useful if you got contracts from third-party (another computer) and need to sign it.
+     * F.e. contracts that should be sign with two persons.
+     *
+     * @param privateKey - key to sign contract will with
+     */
     public void addSignatureToSeal(PrivateKey privateKey) {
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(privateKey);
@@ -1470,7 +1695,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * but will change sealed and hashId.
      *
      * Useful if you got contracts from third-party (another computer) and need to sign it.
-     * F.e. contracts that shoul be sign with two persons.
+     * F.e. contracts that should be sign with two persons.
      *
      * @param privateKeys - key to sign contract will with
      */
@@ -1498,6 +1723,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         setOwnBinary(data);
     }
 
+    /**
+     * Remove all signatures from sealed binary
+     */
     public void removeAllSignatures() {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to add signature: sealed binary does not exist");
@@ -1509,6 +1737,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         setOwnBinary(data);
     }
 
+    /**
+     * Checks if signature present in sealed binary
+     * @param publicKey public key to check signature of
+     * @return if signature present
+     * @throws Quantiser.QuantiserException if quantas limit was reached during check
+     */
     public boolean findSignatureInSeal(PublicKey publicKey) throws Quantiser.QuantiserException {
         if (sealedBinary == null)
             throw new IllegalStateException("failed to create revision");
@@ -1522,6 +1756,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         return false;
     }
+
+    /**
+     * Extract contract binary from sealed unicapsule
+     * @return contract binary
+     */
 
     public byte[] extractTheContract() {
         if (sealedBinary == null)
@@ -1550,6 +1789,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         transactionPack = null;
         this.id = HashId.of(sealedBinary);
     }
+
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
 
     public Contract createRevision() {
         return createRevision((Transactional)null);
@@ -1595,35 +1842,89 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
+    /**
+     * Get current revision number of the contract
+     * @return revision number
+     */
     public int getRevision() {
         return state.revision;
     }
+
+    /**
+     * Get the id of the parent contract
+     * @return id of the parent contract
+     */
 
     public HashId getParent() {
         return state.parent;
     }
 
+    /**
+     * Get the id of origin contract from state.origin field. It could be null if the contract is first revision
+     * @return id of the origin contract
+     */
+
     public HashId getRawOrigin() {
         return state.origin;
     }
+
+    /**
+     * Get the id of origin contract. In case the contract is origin itself return its id.
+     * @return id of the origin contract
+     */
 
     public HashId getOrigin() {
         HashId o = state.origin;
         return o == null ? getId() : o;
     }
 
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @param keys initially added and signer keys. Role "creator" is set to these keys for new revision
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
     public Contract createRevision(PrivateKey... keys) {
         return createRevision(null, keys);
     }
 
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @param keys initially added and signer keys. Role "creator" is set to these keys for new revision
+     * @param transactional is {@link Transactional} section to create new revision with
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
     public Contract createRevision(Transactional transactional, PrivateKey... keys) {
         return createRevision(Do.list(keys), transactional);
     }
+
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @param keys initially added and signer keys. Role "creator" is set to these keys for new revision
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
 
     public synchronized Contract createRevision(Collection<PrivateKey> keys) {
         return createRevision(keys, null);
     }
 
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @param keys initially added and signer keys. Role "creator" is set to these keys for new revision
+     * @param transactional is {@link Transactional} section to create new revision with
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
     public synchronized Contract createRevision(Collection<PrivateKey> keys, Transactional transactional) {
         Contract newRevision = createRevision(transactional);
         Set<KeyRecord> krs = new HashSet<>();
@@ -1635,10 +1936,28 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return newRevision;
     }
 
+
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @param keys initially added and signer keys. Role "creator" is set to anonymous ids of these keys
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
     public synchronized Contract createRevisionAnonymously(Collection<?> keys) {
         return createRevisionAnonymously(keys, null);
     }
 
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @param keys initially added and signer keys. Role "creator" is set to anonymous ids of these keys
+     * @param transactional is {@link Transactional} section to create new revision with
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
     public synchronized Contract createRevisionAnonymously(Collection<?> keys, Transactional transactional) {
         Contract newRevision = createRevision(transactional);
         Set<AnonymousId> aids = new HashSet<>();
@@ -1657,9 +1976,28 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return newRevision;
     }
 
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @param keys initially added and signer keys. Role "creator" is set to addresses of these keys
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
+
     public synchronized Contract createRevisionWithAddress(Collection<?> keys) {
         return createRevisionWithAddress(keys, null);
     }
+
+    /**
+     * Create new revision to be changed, signed sealed and then ready to approve. Created "revision" contract is a copy
+     * of this contract, with all fields and references correctly set. After this call one need to change mutable
+     * fields, add signing keys, seal it and then apss to Universa network for approval.
+     *
+     * @param keys initially added and signer keys. Role "creator" is set to addresses of these keys
+     * @param transactional is {@link Transactional} section to create new revision with
+     * @return new revision of this contract, identical to this one, to be modified.
+     */
 
     public synchronized Contract createRevisionWithAddress(Collection<?> keys, Transactional transactional) {
         Contract newRevision = createRevision(transactional);
@@ -1680,69 +2018,133 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
 
+    /**
+     * Set "creator" role to given key records
+     * @param records key records to set "creator" role to
+     * @return creator role
+     */
+
     public Role setCreator(Collection<KeyRecord> records) {
         return setRole("creator", records);
     }
 
+
     public Role setCreator(Role role) {
         return registerRole(role);
     }
+
+
+    /**
+     * Set "creator" role to given keys
+     * @param keys keys to set "creator" role to
+     * @return creator role
+     */
 
     @NonNull
     public Role setCreatorKeys(Object... keys) {
         return setRole("creator", asList(keys));
     }
 
+    /**
+     * Set "creator" role to given keys
+     * @param keys keys to set "creator" role to
+     * @return creator role
+     */
     @NonNull
     public Role setCreatorKeys(Collection<?> keys) {
         return setRole("creator", keys);
     }
 
+    /**
+     * Get owner role
+     * @return owner role
+     */
     public Role getOwner() {
         return getRole("owner");
     }
+
+    /**
+     * Set "owner" role to given key or key record
+     * @param keyOrRecord key or key record to set "creator" role to
+     * @return owner role
+     */
 
     @NonNull
     public Role setOwnerKey(Object keyOrRecord) {
         return setRole("owner", Do.listOf(keyOrRecord));
     }
 
+    /**
+     * Set "owner" role to given keys
+     * @param keys keys to set "creator" role to
+     * @return owner role
+     */
     @NonNull
     public Role setOwnerKeys(Collection<?> keys) {
         return setRole("owner", keys);
     }
 
+    /**
+     * Set "owner" role to given keys
+     * @param keys keys to set "creator" role to
+     * @return owner role
+     */
     @NonNull
     public Role setOwnerKeys(Object... keys) {
         return setOwnerKeys(asList(keys));
     }
 
+    /**
+     * Set role with given name to given keys
+     * @param name role name
+     * @param keys keys to set role to
+     * @return registened role
+     */
     @NonNull
     private Role setRole(String name, Collection keys) {
         return registerRole(new SimpleRole(name, keys));
     }
 
+    /**
+     * Get creator role
+     * @return creator role
+     */
     public Role getCreator() {
         return getRole("creator");
     }
 
+    /**
+     * Get contract permissions
+     * @return contract permisisons
+     */
     public Multimap<String, Permission> getPermissions() {
         return permissions;
     }
 
+    /**
+     * Get data section of contract state
+     * @return data section of contract state
+     */
     public Binder getStateData() {
         return state.getData();
     }
+
+    /**
+     * Set "issuer" role to given keys
+     * @param keys keys to set "issuer" role to
+     * @return issuer role
+     */
 
     public Role setIssuerKeys(Object... keys) {
         return setRole("issuer", asList(keys));
     }
 
-    public void setExpiresAt(ZonedDateTime dateTime) {
-        state.setExpiresAt(dateTime);
-    }
+    /**
+     * Set expiration date of contract
+     * @param dateTime expiration date to set
+     */
 
-    public void getExpiresAt(ZonedDateTime dateTime) {
+    public void setExpiresAt(ZonedDateTime dateTime) {
         state.setExpiresAt(dateTime);
     }
 
@@ -2064,10 +2466,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 //        return resultWrap;
 //    }
 
+    /**
+     * Construct contract from sealed binary stored in given file name
+     * @param contractFileName file name to get binary from
+     * @return extracted contract
+     * @throws IOException
+     */
     public static Contract fromSealedFile(String contractFileName) throws IOException {
         return new Contract(Do.read(contractFileName), new TransactionPack());
     }
 
+    /**
+     * Get contract issue time
+     * @return date contract issued at
+     */
     public ZonedDateTime getIssuedAt() {
         return definition.createdAt;
     }
@@ -2132,9 +2544,18 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return tp.getContract();
     }
 
+    /**
+     * Set transaction pack for the contract
+     * @param transactionPack transaction pack to set
+     */
     public void setTransactionPack(TransactionPack transactionPack) {
         this.transactionPack = transactionPack;
     }
+
+    /**
+     * Get transaction pack of the contract
+     * @return  transaction pack of the contract
+     */
 
     public synchronized TransactionPack getTransactionPack() {
         if (transactionPack == null)
@@ -2162,14 +2583,27 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return ContractsService.createRevocation(this, keys);
     }
 
+    /**
+     * Get contracts current contract revokes upon registration
+     * @return contracts to be revoked
+     */
     public List<Contract> getRevoking() {
         return new ArrayList<Contract>((Collection) getRevokingItems());
     }
 
+    /**
+     * Get contracts current contract creates upon registration
+     * @return contracts to be created
+     */
     public List<? extends Contract> getNew() {
         return new ArrayList<Contract>((Collection) getNewItems());
     }
 
+
+    /**
+     * Get contracts referenced by current contract. See {@link Reference}.
+     * @return referenced contracts
+     */
     public List<? extends Contract> getReferenced() {
         return new ArrayList<Contract>((Collection) getReferencedItems());
     }
@@ -2190,7 +2624,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return false;
     }
 
-
+    /**
+     * Create new transactional section for the contract
+     * @return created transactional
+     */
     public Transactional createTransactionalSection() {
         transactional = new Transactional();
         return transactional;
@@ -2248,12 +2685,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         quantiser.addWorkCostFrom(contract.quantiser);
     }
 
+
+    /**
+     * Get contract reference with given name
+     * @param name name of the reference
+     * @return found reference or null
+     */
     public Reference findReferenceByName(String name) {
         if (getReferences() == null)
             return null;
 
         return getReferences().get(name);
     }
+
+    /**
+     * Get contract reference with given name in given section
+     * @param name name of the reference
+     * @param section section to search in
+     * @return found reference or null
+     */
 
     public Reference findReferenceByName(String name, String section) {
         if (section.equals("definition")) {
