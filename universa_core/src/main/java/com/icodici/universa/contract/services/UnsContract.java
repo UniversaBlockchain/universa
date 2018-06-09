@@ -90,6 +90,9 @@ public class UnsContract extends NSmartContract {
         addUnsSpecific();
     }
 
+    /**
+     * Initialize UnsContract internal data structure with specific UNS1 parameters.
+     */
     public void addUnsSpecific() {
         if(getDefinition().getExtendedType() == null || !getDefinition().getExtendedType().equals(SmartContractType.UNS1.name()))
             getDefinition().setExtendedType(SmartContractType.UNS1.name());
@@ -286,6 +289,10 @@ public class UnsContract extends NSmartContract {
         return this;
     }
 
+    /**
+     * Method creates {@link UnsContract} contract from dsl file where contract is described.
+     * @param fileName is path to dsl file with yaml structure of data for contract.
+     */
     public static UnsContract fromDslFile(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         try (FileReader r = new FileReader(fileName)) {
@@ -595,16 +602,26 @@ public class UnsContract extends NSmartContract {
 
     }
 
+    /**
+     * If {@link UnsName} references to origin contract, this contract should be placed into UnsContract with this method.
+     * @param contract
+     */
     public void addOriginContract(Contract contract) {
         originContracts.put(contract.getOrigin() != null ? contract.getOrigin() : contract.getId(),contract);
     }
 
 
-
+    /**
+     * Add {@link UnsName} record that describes name that will be stored by this UnsContract.
+     * @param unsName
+     */
     public void addUnsName(UnsName unsName) {
         storedNames.add(unsName);
     }
 
+    /**
+     * Returns {@link UnsName} record by it's name.
+     */
     public UnsName getUnsName(String name) {
         for(UnsName unsName : storedNames) {
             if(unsName.getUnsName().equals(name)) {
@@ -623,6 +640,10 @@ public class UnsContract extends NSmartContract {
         DefaultBiMapper.registerClass(UnsContract.class);
     }
 
+    /**
+     * Remove {@link UnsName} record from names collection of stored by this UnsContract.
+     * @param name
+     */
     public void removeName(String name) {
         UnsName nameToRemove = null;
         for(UnsName unsName : storedNames) {

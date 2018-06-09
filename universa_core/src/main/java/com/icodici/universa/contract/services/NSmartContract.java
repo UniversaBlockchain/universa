@@ -31,10 +31,17 @@ public class NSmartContract extends Contract implements NContract {
 
     public static final String PAID_U_FIELD_NAME = "paid_U";
 
+    /**
+     * Provide info about payment rates, transaction units issuer and some other data required by smart contract.
+     * @param nodeInfoProvider instance of {@link NodeInfoProvider}
+     */
     public void setNodeInfoProvider(NodeInfoProvider nodeInfoProvider) {
         this.nodeInfoProvider = nodeInfoProvider;
     }
 
+    /**
+     * Instance of this provider should be passed into setNodeInfoProvider of smart contract.
+     */
     public interface NodeInfoProvider {
 
         Set<KeyAddress> getTransactionUnitsIssuerKeys();
@@ -187,6 +194,10 @@ public class NSmartContract extends Contract implements NContract {
         return this;
     }
 
+    /**
+     * Method creates smart contract from dsl file where contract is described.
+     * @param fileName is path to dsl file with yaml structure of data for contract.
+     */
     public static NSmartContract fromDslFile(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         try (FileReader r = new FileReader(fileName)) {
@@ -263,6 +274,10 @@ public class NSmartContract extends Contract implements NContract {
         return nodeInfoProvider.getAdditionalKeysToSignWith(getExtendedType());
     }
 
+    /**
+     * Creates {@link Binder} that will be returned to client after smart contract have been approved.
+     * @return
+     */
     public Binder getExtraResultForApprove() {
         return new Binder();
     }
