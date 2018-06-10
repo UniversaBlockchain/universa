@@ -18,8 +18,18 @@ import net.sergeych.diff.MapDelta;
 
 import java.util.Map;
 
+/**
+ * Permission allows to change and remove owner role of contract.
+ */
+
 @BiType(name="ChangeOwnerPermission")
 public class ChangeOwnerPermission extends Permission {
+
+    /**
+     * Create new permission for change owner role.
+     *
+     * @param role allows to permission
+     */
     public ChangeOwnerPermission(Role role) {
         super("change_owner", role);
     }
@@ -28,7 +38,8 @@ public class ChangeOwnerPermission extends Permission {
 
     /**
      * Check and remove change of state.owner, if any.
-     *  @param contract, valid contracr state
+     *
+     * @param contract valid contract state
      * @param changed is contract for checking
      * @param stateChanges changes in its state section
      */

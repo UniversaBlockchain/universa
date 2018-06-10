@@ -37,6 +37,12 @@ public class SimpleRole extends Role {
     private final Set<AnonymousId> anonymousIds = new HashSet<>();
     private final Set<KeyAddress> keyAddresses = new HashSet<>();
 
+    /**
+     * Create new {@link SimpleRole} and add one {@link KeyRecord} associated with role.
+     *
+     * @param name is name of role
+     * @param keyRecord is {@link KeyRecord} associated with role
+     */
     public SimpleRole(String name, @NonNull KeyRecord keyRecord) {
         super(name);
         keyRecords.put(keyRecord.getPublicKey(), keyRecord);
@@ -44,10 +50,22 @@ public class SimpleRole extends Role {
 
     private SimpleRole() {}
 
+    /**
+     * Create new empty {@link SimpleRole}. Keys or records to role may be added with {@link #addKeyRecord(KeyRecord)}.
+     *
+     * @param name is name of role
+     */
     public SimpleRole(String name) {
         super(name);
     }
 
+    /**
+     * Create new {@link SimpleRole}. Records are initialized from the collection and can have the following types:
+     * {@link PublicKey}, {@link PrivateKey}, {@link KeyRecord}, {@link KeyAddress}, {@link AnonymousId}.
+     *
+     * @param name is name of role
+     * @param records is collection of records to initialize role
+     */
     public SimpleRole(String name, @NonNull Collection records) {
         super(name);
         initWithRecords(records);
@@ -77,6 +95,11 @@ public class SimpleRole extends Role {
         });
     }
 
+    /**
+     * Adds {@link KeyRecord} to role.
+     *
+     * @param keyRecord is {@link KeyRecord}
+     */
     public void addKeyRecord(KeyRecord keyRecord) {
         keyRecords.put(keyRecord.getPublicKey(), keyRecord);
     }
@@ -93,25 +116,51 @@ public class SimpleRole extends Role {
         return keyRecords.values().iterator().next();
     }
 
+    /**
+     * Get set of all key records in role.
+     *
+     * @return set of key records (see {@link KeyRecord})
+     */
     public Set<KeyRecord> getKeyRecords() {
         return new HashSet(keyRecords.values());
     }
 
+    /**
+     * Get set of all keys in role.
+     *
+     * @return set of public keys (see {@link PublicKey})
+     */
     @Override
     public Set<PublicKey> getKeys() {
         return keyRecords.keySet();
     }
 
+    /**
+     * Get set of all anonymous identifiers in role.
+     *
+     * @return set of anonymous identifiers (see {@link AnonymousId})
+     */
     @Override
     public Set<AnonymousId> getAnonymousIds() {
         return anonymousIds;
     }
 
+    /**
+     * Get set of all key addresses in role.
+     *
+     * @return set of key addresses (see {@link KeyAddress})
+     */
     @Override
     public Set<KeyAddress> getKeyAddresses() {
         return keyAddresses;
     }
 
+    /**
+     * Check role is allowed to keys
+     *
+     * @param keys is set of keys
+     * @return true if role is allowed to keys
+     */
     @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         // any will go logic
@@ -135,10 +184,21 @@ public class SimpleRole extends Role {
         });
     }
 
+    /**
+     * Check validity of role. Valid {@link SimpleRole} contains keys, addresses or anonymous identifiers.
+     *
+     * @return true if role is valid
+     */
     public boolean isValid() {
         return !keyRecords.isEmpty() || !anonymousIds.isEmpty() || !keyAddresses.isEmpty();
     }
 
+    /**
+     * Role equality is different: it only checks that it points to the same role.
+     *
+     * @param obj is object to be checked with
+     * @return true if equals
+     */
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof SimpleRole) {
@@ -187,6 +247,11 @@ public class SimpleRole extends Role {
         return false;
     }
 
+    /**
+     * Initializes role from dsl.
+     *
+     * @param serializedRole is {@link Binder} from dsl with data of role
+     */
     @Override
     public void initWithDsl(Binder serializedRole) {
         boolean keysFound = true;
@@ -256,12 +321,23 @@ public class SimpleRole extends Role {
         return r;
     }
 
+    /**
+     * Get role as string.
+     *
+     * @return string with data of role
+     */
     @Override
     public String toString() {
         return "SimpleRole<" + System.identityHashCode(this) + ":" + getName() + ":anyOf:" + keyRecords.keySet() + "|" +
                 anonymousIds +  ":requiredAll:" + requiredAllReferences + ":requiredAny:" + requiredAnyReferences + ">";
     }
 
+    /**
+     * Check role is allowed to keys from other {@link SimpleRole}
+     *
+     * @param anotherRole is other {@link SimpleRole} with keys
+     * @return true if role is allowed to keys from other {@link SimpleRole}
+     */
     public boolean isAllowedForKeys(SimpleRole anotherRole) {
         return isAllowedForKeys(anotherRole.keyRecords.keySet());
     }
@@ -305,6 +381,9 @@ public class SimpleRole extends Role {
         );
     }
 
+    /**
+     * If this role has public keys, they will be replaced with {@link AnonymousId}.
+     */
     @Override
     public void anonymize() {
         for (PublicKey publicKey : keyRecords.keySet())

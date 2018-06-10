@@ -30,7 +30,7 @@ import java.util.Set;
  * com.icodici.universa.contract.roles.Role} player (e.g. Universa party, set of keys used in signing the contract) to
  * perform some change over the contract state. The real permissions are all superclasses of it.
  * <p>
- * The actualy permission implementation must implement {@link #checkChanges(Contract, Contract, Map)}, see this method for
+ * The actually permission implementation must implement {@link #checkChanges(Contract, Contract, Map)}, see this method for
  * information on how to approve changes with the permission.
  */
 public abstract class Permission implements BiSerializable, Comparable<Permission> {
@@ -41,7 +41,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
     /**
      * Get the permission id or null if is not yet set.
      *
-     * @return identificator
+     * @return identifier
      */
     @Nullable
     public String getId() {
@@ -52,7 +52,7 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * Set the permission id. Id is used to simplify detection of the permission changes. Each permission must have a unique per-contract
      * id set while serializing the contract. Once permission id is set, it must never bbe changed.
      *
-     * @param id is identificator
+     * @param id is identifier
      */
     public void setId(@NonNull String id) {
         if( this.id != null && !this.id.equals(id) )
@@ -62,6 +62,11 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
 
     private String id;
 
+    /**
+     * Get params of permission or null if is not yet set.
+     *
+     * @return params of permission
+     */
     public Binder getParams() {
         return params;
     }
@@ -83,6 +88,14 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         this.params = params;
     }
 
+    /**
+     * Create new permission of a specific type by type name
+     *
+     * @param name is specific type name
+     * @param role allows to permission
+     * @param params is parameters of permission, set of parameters depends on the type of permission
+     * @return permission of a specific type
+     */
     public static Permission forName(String name, Role role, Binder params) {
         switch (name) {
             case "revoke":
@@ -109,6 +122,12 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         }
     }
 
+    /**
+     * Check permission is allowed to keys
+     *
+     * @param keys is public keys
+     * @return true if permission is allowed to keys
+     */
     public boolean isAllowedForKeys(PublicKey... keys) {
         Set<PublicKey> keySet = new HashSet<>();
         for (PublicKey k : keys)
@@ -116,11 +135,24 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         return isAllowedFor(keySet, null);
     }
 
+    /**
+     * Check permission is allowed to keys
+     *
+     * @param keys is collection of public keys
+     * @return true if permission is allowed to keys
+     */
     public boolean isAllowedForKeys(Collection<PublicKey> keys) {
 //        return keys instanceof Set ? role.isAllowedForKeys((Set) keys) : role.isAllowedForKeys(new HashSet<>(keys));
         return isAllowedFor(keys, null);
     }
 
+    /**
+     * Check permission is allowed to keys and references
+     *
+     * @param keys is collection of public keys
+     * @param references is collection of references names
+     * @return true if permission is allowed to keys and references
+     */
     public boolean isAllowedFor(Collection<PublicKey> keys, Collection<String> references) {
         return role.isAllowedFor(keys, references);
     }
@@ -152,25 +184,47 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * could be specified several times for different roles and with different parameter, implementation should do
      * nothing on the error and let others porceed. Unprocessed changes will cause error if no permission will clear
      * it.
-     *  @param contract     source (valid) contract
+     *
+     * @param contract source (valid) contract
      * @param changed is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
      */
     public abstract void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges);
 
+    /**
+     * Get permission as string.
+     *
+     * @return string with data of permission
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + "<" + name + ":" + role + ">";
     }
 
+    /**
+     * Get role allows to permission.
+     *
+     * @return allowed role
+     */
     public Role getRole() {
         return role;
     }
 
+    /**
+     * Get name of permission.
+     *
+     * @return name of permission
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Compares permission with obj.
+     *
+     * @param obj is compared object
+     * @return true if permission is equals obj
+     */
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof Permission)
@@ -178,6 +232,12 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
         return super.equals(obj);
     }
 
+    /**
+     * Compares permissions by name.
+     *
+     * @param o is compared permission
+     * @return result of comparison
+     */
     @Override
     public int compareTo(Permission o) {
         return name.compareTo(o.name);
