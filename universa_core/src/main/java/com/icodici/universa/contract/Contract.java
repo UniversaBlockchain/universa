@@ -659,6 +659,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                             (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
                         if (checkOneReference(rm, neighbour) && rm.isMatchingWith(neighbour, neighbourContracts)) {
                             rm_check = true;
+                            break;
                         }
                 }
             } else if ((rm.type == Reference.TYPE_EXISTING_DEFINITION) || (rm.type == Reference.TYPE_EXISTING_STATE)) {

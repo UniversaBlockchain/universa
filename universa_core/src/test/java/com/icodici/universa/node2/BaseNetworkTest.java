@@ -1802,6 +1802,130 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
+    public void swapContractsViaTransactionWithConditionsAllGood() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+
+        prepareContractsForSwap(martyPrivateKeys, martyPublicKeys, stepaPrivateKeys, stepaPublicKeys, delorean, lamborghini);
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKeys, stepaPublicKeys);
+
+        List <String> listConditions1 = new ArrayList<>();
+        List <String> listConditions2 = new ArrayList<>();
+        listConditions1.add("ref.state.data.registration_number == \"m777cc39ru\"");
+        listConditions2.add("ref.state.data.registration_number == \"e777kx39ru\"");
+
+        Binder conditions1 = new Binder();
+        Binder conditions2 = new Binder();
+        conditions1.set("all_of", listConditions1);
+        conditions2.set("all_of", listConditions2);
+
+        boolean firstLamborghini = swapContract.getNew().get(0).getStateData().getString("registration_number", "").equals("m777cc39ru");
+        Contract first = swapContract.getNew().get(0);
+        Contract second = swapContract.getNew().get(1);
+
+        first.getTransactional().getReferences().get(0).setConditions(firstLamborghini ? conditions2 : conditions1);
+        first.seal();
+        second.getTransactional().getReferences().get(0).setConditions(firstLamborghini ? conditions1 : conditions2);
+        second.seal();
+        swapContract.seal();
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign Stepa's new contract and send to approving
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+        registerAndCheckApproved(swapContract);
+
+        checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
+    }
+
+
+    @Test(timeout = 90000)
+    public void swapContractsViaTransactionWithWrongCondition() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+
+        prepareContractsForSwap(martyPrivateKeys, martyPublicKeys, stepaPrivateKeys, stepaPublicKeys, delorean, lamborghini);
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKeys, stepaPublicKeys);
+
+        List <String> listConditions1 = new ArrayList<>();
+        List <String> listConditions2 = new ArrayList<>();
+        listConditions1.add("ref.state.data.registration_number == \"x777cc39ru\"");
+        listConditions2.add("ref.state.data.registration_number == \"e777kx39ru\"");
+
+        Binder conditions1 = new Binder();
+        Binder conditions2 = new Binder();
+        conditions1.set("all_of", listConditions1);
+        conditions2.set("all_of", listConditions2);
+
+        boolean firstLamborghini = swapContract.getNew().get(0).getStateData().getString("registration_number", "").equals("m777cc39ru");
+        Contract first = swapContract.getNew().get(0);
+        Contract second = swapContract.getNew().get(1);
+
+        first.getTransactional().getReferences().get(0).setConditions(firstLamborghini ? conditions2 : conditions1);
+        first.seal();
+        second.getTransactional().getReferences().get(0).setConditions(firstLamborghini ? conditions1 : conditions2);
+        second.seal();
+        swapContract.seal();
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign Stepa's new contract and send to approving
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+        registerAndCheckDeclined(swapContract);
+    }
+
+
+    @Test(timeout = 90000)
     public void swapManyContractsViaTransactionAllGood() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
