@@ -1802,6 +1802,130 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
+    public void swapContractsViaTransactionWithConditionsAllGood() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+
+        prepareContractsForSwap(martyPrivateKeys, martyPublicKeys, stepaPrivateKeys, stepaPublicKeys, delorean, lamborghini);
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKeys, stepaPublicKeys);
+
+        List <String> listConditions1 = new ArrayList<>();
+        List <String> listConditions2 = new ArrayList<>();
+        listConditions1.add("ref.state.data.registration_number == \"m777cc39ru\"");
+        listConditions2.add("ref.state.data.registration_number == \"e777kx39ru\"");
+
+        Binder conditions1 = new Binder();
+        Binder conditions2 = new Binder();
+        conditions1.set("all_of", listConditions1);
+        conditions2.set("all_of", listConditions2);
+
+        boolean firstLamborghini = swapContract.getNew().get(0).getStateData().getString("registration_number", "").equals("m777cc39ru");
+        Contract first = swapContract.getNew().get(0);
+        Contract second = swapContract.getNew().get(1);
+
+        first.getTransactional().getReferences().get(0).setConditions(firstLamborghini ? conditions2 : conditions1);
+        first.seal();
+        second.getTransactional().getReferences().get(0).setConditions(firstLamborghini ? conditions1 : conditions2);
+        second.seal();
+        swapContract.seal();
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign Stepa's new contract and send to approving
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+        registerAndCheckApproved(swapContract);
+
+        checkSwapResultSuccess(swapContract, delorean, lamborghini, martyPublicKeys, stepaPublicKeys);
+    }
+
+
+    @Test(timeout = 90000)
+    public void swapContractsViaTransactionWithWrongCondition() throws Exception {
+        if(node == null) {
+            System.out.println("network not inited");
+            return;
+        }
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        Contract delorean = Contract.fromDslFile(ROOT_PATH + "DeLoreanOwnership.yml");
+        Contract lamborghini = Contract.fromDslFile(ROOT_PATH + "LamborghiniOwnership.yml");
+
+        prepareContractsForSwap(martyPrivateKeys, martyPublicKeys, stepaPrivateKeys, stepaPublicKeys, delorean, lamborghini);
+
+        // register swapped contracts using ContractsService
+        System.out.println("--- register swapped contracts using ContractsService ---");
+
+        Contract swapContract;
+
+        // first Marty create transaction, add both contracts and swap owners, sign own new contract
+        swapContract = ContractsService.startSwap(delorean, lamborghini, martyPrivateKeys, stepaPublicKeys);
+
+        List <String> listConditions1 = new ArrayList<>();
+        List <String> listConditions2 = new ArrayList<>();
+        listConditions1.add("ref.state.data.registration_number == \"x777cc39ru\"");
+        listConditions2.add("ref.state.data.registration_number == \"e777kx39ru\"");
+
+        Binder conditions1 = new Binder();
+        Binder conditions2 = new Binder();
+        conditions1.set("all_of", listConditions1);
+        conditions2.set("all_of", listConditions2);
+
+        boolean firstLamborghini = swapContract.getNew().get(0).getStateData().getString("registration_number", "").equals("m777cc39ru");
+        Contract first = swapContract.getNew().get(0);
+        Contract second = swapContract.getNew().get(1);
+
+        first.getTransactional().getReferences().get(0).setConditions(firstLamborghini ? conditions2 : conditions1);
+        first.seal();
+        second.getTransactional().getReferences().get(0).setConditions(firstLamborghini ? conditions1 : conditions2);
+        second.seal();
+        swapContract.seal();
+
+        // then Marty send new revisions to Stepa
+        // and Stepa sign own new contract, Marty's new contract
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
+
+        // then Stepa send draft transaction back to Marty
+        // and Marty sign Stepa's new contract and send to approving
+        swapContract = imitateSendingTransactionToPartner(swapContract);
+        ContractsService.finishSwap(swapContract, martyPrivateKeys);
+
+        swapContract.check();
+        swapContract.traceErrors();
+        System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
+        registerAndCheckDeclined(swapContract);
+    }
+
+
+    @Test(timeout = 90000)
     public void swapManyContractsViaTransactionAllGood() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -9814,8 +9938,9 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns3 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns3.getUnsName(name).setUnsReducedName(name);
         uns3.addSignatureToSeal(authorizedNameServiceKey);
         uns3.addSignatureToSeal(randomPrivKey);
         uns3.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9823,8 +9948,9 @@ public class BaseNetworkTest extends TestCase {
         uns3.traceErrors();
 
         UnsContract uns2 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns2.getUnsName(name).setUnsReducedName(name);
         uns2.addSignatureToSeal(authorizedNameServiceKey);
         uns2.addSignatureToSeal(randomPrivKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9832,8 +9958,9 @@ public class BaseNetworkTest extends TestCase {
         uns2.traceErrors();
 
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignatureToSeal(authorizedNameServiceKey);
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9924,8 +10051,9 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignatureToSeal(authorizedNameServiceKey);
         uns.addSignatureToSeal(randomPrivKey);
         uns.addSignatureToSeal(TestKeys.privateKey(8));
@@ -9933,8 +10061,9 @@ public class BaseNetworkTest extends TestCase {
         uns.traceErrors();
 
         UnsContract uns2 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
 
+        uns2.getUnsName(name).setUnsReducedName(name);
         uns2.addSignatureToSeal(authorizedNameServiceKey);
         uns2.addSignatureToSeal(randomPrivKey);
         uns2.addSignatureToSeal(TestKeys.privateKey(8));
@@ -10174,12 +10303,14 @@ public class BaseNetworkTest extends TestCase {
         referencesContract1.seal();
 
         String reducedName = "name"+Instant.now().getEpochSecond();
+        String name = "change"+Instant.now().getEpochSecond();
 
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                reducedName, "change"+Instant.now().getEpochSecond(), "test description", "http://test.com", referencesContract1);
+                name, "test description", "http://test.com", referencesContract1);
 
+        uns.getUnsName(name).setUnsReducedName(reducedName);
         uns.addSignerKey(TestKeys.privateKey(1));
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
@@ -10304,11 +10435,14 @@ public class BaseNetworkTest extends TestCase {
         Contract referencesContract = new Contract(TestKeys.privateKey(8));
         referencesContract.seal();
 
+        String name = "test"+Instant.now().getEpochSecond();
+
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                "test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com", referencesContract);
+                name, "test description", "http://test.com", referencesContract);
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(TestKeys.privateKey(8));
         uns.seal();
@@ -10346,11 +10480,14 @@ public class BaseNetworkTest extends TestCase {
         Contract referencesContract = new Contract(TestKeys.privateKey(8));
         referencesContract.seal();
 
+        String name = "test"+Instant.now().getEpochSecond();
+
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                "test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com", referencesContract);
+                name, "test description", "http://test.com", referencesContract);
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.addSignerKey(TestKeys.privateKey(8));
         uns.seal();
@@ -10388,11 +10525,14 @@ public class BaseNetworkTest extends TestCase {
         Contract referencesContract = new Contract(TestKeys.privateKey(9));
         referencesContract.seal();
 
+        String name = "test"+Instant.now().getEpochSecond();
+
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                "test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com", referencesContract);
+                name, "test description", "http://test.com", referencesContract);
 
+        uns.getUnsName(name).setUnsReducedName(name);
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
         uns.check();
@@ -10439,10 +10579,14 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
+        String name = "test"+Instant.now().getEpochSecond();
+
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                "test"+Instant.now().getEpochSecond(), "test"+Instant.now().getEpochSecond(), "test description", "http://test.com", randomPrivKey.getPublicKey());
+                name, "test description", "http://test.com", randomPrivKey.getPublicKey());
+
+        uns.getUnsName(name).setUnsReducedName(name);
 
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();

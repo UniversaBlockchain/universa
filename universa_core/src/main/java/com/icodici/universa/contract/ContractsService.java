@@ -967,7 +967,6 @@ public class ContractsService {
      * @param issuerKeys is issuer private keys.
      * @param ownerKeys is owner public keys.
      * @param nodeInfoProvider
-     * @param nameReduced is reduced name for registration.
      * @param name is name for registration.
      * @param description is description associated with name for registration.
      * @param URL is URL associated with name for registration.
@@ -976,7 +975,7 @@ public class ContractsService {
      */
     public synchronized static UnsContract createUnsContractForRegisterContractName(
             Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider,
-            String nameReduced, String name, String description, String URL, Contract namedContract) {
+            String name, String description, String URL, Contract namedContract) {
 
         UnsContract UnsContract = new UnsContract();
         UnsContract.setNodeInfoProvider(nodeInfoProvider);
@@ -1021,7 +1020,6 @@ public class ContractsService {
         UnsContract.addUnsSpecific();
 
         UnsName unsName = new UnsName(name, description, URL);
-        unsName.setUnsReducedName(nameReduced);
         UnsRecord unsRecord = new UnsRecord(namedContract.getId());
         unsName.addUnsRecord(unsRecord);
         UnsContract.addUnsName(unsName);
@@ -1045,7 +1043,6 @@ public class ContractsService {
      * @param issuerKeys is issuer private keys.
      * @param ownerKeys is owner public keys.
      * @param nodeInfoProvider
-     * @param nameReduced is reduced name for registration.
      * @param name is name for registration.
      * @param description is description associated with name for registration.
      * @param URL is URL associated with name for registration.
@@ -1054,7 +1051,7 @@ public class ContractsService {
      */
     public synchronized static UnsContract createUnsContractForRegisterKeyName(
             Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider,
-            String nameReduced, String name, String description, String URL, AbstractKey namedKey) {
+            String name, String description, String URL, AbstractKey namedKey) {
 
         UnsContract UnsContract = new UnsContract();
         UnsContract.setNodeInfoProvider(nodeInfoProvider);
@@ -1099,7 +1096,6 @@ public class ContractsService {
         UnsContract.addUnsSpecific();
 
         UnsName unsName = new UnsName(name, description, URL);
-        unsName.setUnsReducedName(nameReduced);
         UnsRecord unsRecord = new UnsRecord(namedKey);
         unsName.addUnsRecord(unsRecord);
         UnsContract.addUnsName(unsName);
