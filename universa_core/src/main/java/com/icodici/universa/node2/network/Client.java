@@ -55,6 +55,10 @@ public class Client {
 
     private String version;
 
+    /**
+     *  Get nodes count in network.
+     * @return loaded nodes count if constructor with someNodeUrl used otherwise 0
+     */
     public final int size() {
         return nodes.size();
     }
@@ -107,7 +111,7 @@ public class Client {
     final BasicHttpClient httpClient;
 
     /**
-     * Start new client protocol session.
+     * Start new client protocol session. It doesn't load network configuration. Only creates client protocol session with given node
      * @param rootUrlString node url
      * @param clientPrivateKey client private key
      * @param nodePublicKey node key
@@ -122,6 +126,14 @@ public class Client {
         httpClient.start(clientPrivateKey, nodePublicKey, session);
     }
 
+    /**
+     * Start new client protocol session. It doesn't load network configuration. Only creates client protocol session with given node
+
+     * @param myPrivateKey client private key
+     * @param nodeInfo node info specifying node public key and url
+     * @param session set to null or to the reconstructed instance
+     * @throws IOException
+     */
     public Client(PrivateKey myPrivateKey, NodeInfo nodeInfo, BasicHttpClientSession session) throws IOException {
         httpClient = new BasicHttpClient(nodeInfo.publicUrlString());
         this.clientPrivateKey = myPrivateKey;
@@ -129,9 +141,28 @@ public class Client {
         httpClient.start(myPrivateKey, nodeInfo.getPublicKey(), session);
     }
 
+    /**
+     * Start new client protocol session. It loads network configuration and creates client protocol session with random node
+
+     * @param someNodeUrl url on some node in network
+     * @param clientPrivateKey client private key
+     * @param session set to null or to the reconstructed instance
+     * @throws IOException
+     */
+
     public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session) throws IOException {
         this(someNodeUrl, clientPrivateKey, session, false);
     }
+
+    /**
+     * Create new client protocol session. It loads network configuration and creates client protocol session with random node. Allows delayed start of http client
+
+     * @param someNodeUrl url on some node in network
+     * @param clientPrivateKey client private key
+     * @param session set to null or to the reconstructed instance
+     * @param delayedStart indicates if start of http client should be delayed
+     * @throws IOException
+     */
 
     public Client(String someNodeUrl, PrivateKey clientPrivateKey, BasicHttpClientSession session, boolean delayedStart) throws IOException {
         this.clientPrivateKey = clientPrivateKey;
@@ -147,27 +178,58 @@ public class Client {
             httpClient.start(clientPrivateKey, r.key, session);
     }
 
+
+    /**
+     * Start http client (used with constructor passing delayedStart = true)
+
+     * @param session set to null or to the reconstructed instance
+     * @throws IOException
+     */
     public void start(BasicHttpClientSession session) throws IOException {
         httpClient.start(clientPrivateKey, nodePublicKey, session);
     }
 
+    /**
+     * Restart http client
+     * @throws IOException
+     */
     public void restart() throws IOException {
         httpClient.restart();
     }
 
+    /**
+     * Get url of the node client is connected to
+     *
+     * @return url of the node
+     */
     public String getUrl() {
         return httpClient.getUrl();
     }
 
 
+    /**
+     * Get session of http client
+     *
+     * @return session
+     */
+
     public BasicHttpClientSession getSession() throws IllegalStateException {
         return httpClient.getSession();
     }
 
+    /**
+     * Get session of http client connected to node with given number
+     *
+     * @param i number of the node to return session with
+     * @return session
+     */
     public BasicHttpClientSession getSession(int i) throws IllegalStateException, IOException {
         return getClient(i).httpClient.getSession();
     }
 
+    /**
+     * Class that stores minimal node information such as url and public key
+     */
     public class NodeRecord {
         public final String url;
         public final PublicKey key;
@@ -187,12 +249,20 @@ public class Client {
         }
     }
 
+    /**
+     * Get list of nodes in
+     * @return list of network nodes if constructor loading network configuration was used. Empty list otherwise
+     */
     public List<NodeRecord> getNodes() {
         return nodes;
     }
 
     private List<NodeRecord> nodes = new ArrayList<>();
 
+    /**
+     * Get network version
+     * @return client version if constructor loading network configuration was used otherwise null
+     */
     public String getVersion() {
         return version;
     }
@@ -215,10 +285,25 @@ public class Client {
             nodes.add(new NodeRecord(b));
     }
 
+    /**
+     * Register contract on the network without payment. May require special client key / network configuration
+     * @param packed {@link com.icodici.universa.contract.TransactionPack} binary
+     * @return result of registration
+     * @throws ClientError
+     */
+
     public ItemResult register(byte[] packed) throws ClientError {
         return register(packed, 0);
     }
 
+    /**
+     * Register contract on the network without payment. May require special client key / network configuration and wait for some of the final {@link ItemState}
+     * no longer that time given
+     * @param packed {@link com.icodici.universa.contract.TransactionPack} binary
+     * @param millisToWait maximum time to wait for final {@link ItemState}
+     * @return result of registration
+     * @throws ClientError
+     */
     public ItemResult register(byte[] packed, long millisToWait) throws ClientError {
         Object binderResult = protect(() -> httpClient.command("approve", "packedItem", packed)
                 .get("itemResult"));
@@ -248,9 +333,23 @@ public class Client {
         return ItemResult.UNDEFINED;
     }
 
+    /**
+     * Register contract on the network with parcel (includes payment)
+     * @param packed {@link Parcel} binary
+     * @return result of registration
+     * @throws ClientError
+     */
     public boolean registerParcel(byte[] packed) throws ClientError {
         return registerParcel(packed, 0);
     }
+
+    /**
+     * Register contract on the network with parcel (includes payment) and wait for some of the final {@link ItemState}
+     * @param packed {@link Parcel} binary
+     * @param millisToWait maximum time to wait for final {@link ItemState}
+     * @return result of registration
+     * @throws ClientError
+     */
 
     public boolean registerParcel(byte[] packed, long millisToWait) throws ClientError {
         Object result = protect(() -> httpClient.command("approveParcel", "packedItem", packed)
@@ -289,9 +388,24 @@ public class Client {
         return false;
     }
 
+
+    /**
+     * Look for known state of approvable item on the network
+     * @param item to find state of
+     * @return known {@link ItemState} if exist or ItemState.UNDEFINED
+     * @throws ClientError
+     */
+
     public final ItemResult getState(@NonNull Approvable item) throws ClientError {
         return getState(item.getId());
     }
+
+    /**
+     * Look for known state of item by given id
+     * @param itemId to find state of
+     * @return known {@link ItemState} if exist or ItemState.UNDEFINED
+     * @throws ClientError
+     */
 
     public ItemResult getState(HashId itemId) throws ClientError {
         return protect(() -> {
@@ -316,6 +430,12 @@ public class Client {
         });
     }
 
+    /**
+     * Force synchronization with the rest of the network of given item by its id. May require special client key / network configuration
+     * @param itemId to synchronize
+     * @return known {@link ItemState} before synchronization. Query the state later to get it synchronized
+     * @throws ClientError
+     */
     public ItemResult resyncItem(HashId itemId) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("resyncItem",
@@ -332,15 +452,31 @@ public class Client {
         });
     }
 
-
+    /**
+     * Get statistics of the node. Accessible to node owners (with node {@link PrivateKey} as session key) and network admins
+     * @return dictionary containing uptime, ledger size, and number of contracts approved for a minute, hour and since restart
+     * @throws ClientError
+     */
     public Binder getStats() throws ClientError {
         return getStats(null);
     }
 
+    /**
+     * Get extended statistics of the node including by-day payments in "U". Accessible to node owners (with node {@link PrivateKey} as session key) and network admins
+     * @return dictionary containing uptime, ledger size, and number of contracts approved for a minute, hour and since restart. it also contains by-day payments information
+     * @param showPaymentsDays the number of days to provide payments volume for
+     * @throws ClientError
+     */
     public Binder getStats(Integer showPaymentsDays) throws ClientError {
         return protect(() -> httpClient.command("getStats","showDays",showPaymentsDays));
     }
 
+    /**
+     * Get processing state of given parcel
+     * @param parcelId id of the parcel to get state of
+     * @return processing state of the parcel
+     * @throws ClientError
+     */
     public Node.ParcelProcessingState getParcelProcessingState(HashId parcelId) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("getParcelProcessingState",
@@ -445,10 +581,19 @@ public class Client {
         });
     }
 
+    /**
+     * Get number of node cliet connection is established with
+     * @return number of node
+     */
     public int getNodeNumber() {
         return httpClient.getNodeNumber();
     }
-
+    /**
+     * Execude custom command on the node
+     * @param name name of the command
+     * @param params parameters of the command
+     * @return execution result
+     */
     public Binder command(String name, Object... params) throws IOException {
         return httpClient.command(name, params);
     }
@@ -468,12 +613,18 @@ public class Client {
 
     private int positiveConsensus = -1;
 
+    //TODO: get it from the node
     public int getPositiveConsensus() {
         if (positiveConsensus < 1)
             positiveConsensus = (int) Math.floor(nodes.size() * 0.90);
         return positiveConsensus;
     }
 
+    /**
+     * Get current network rate for operating SLOT1 contracts
+     * @return kilobyte-days per U rate
+     * @throws ClientError
+     */
     public Decimal storageGetRate() throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("storageGetRate");
@@ -481,6 +632,13 @@ public class Client {
             return new Decimal(BigDecimal.valueOf(U));
         });
     }
+
+    /**
+     * Look for state data of slot contract
+     * @param slotId slot contract id
+     * @return state data of slot contract
+     * @throws ClientError
+     */
 
     public Binder querySlotInfo(HashId slotId) throws ClientError {
         return protect(() -> {
@@ -490,6 +648,14 @@ public class Client {
         });
     }
 
+    /**
+     * Look for contract stored by given slot contract id. Contract is specified by either id or origin
+     * @param slotId id of slot contract storing queried contract
+     * @param originId queried contract origin
+     * @param contractId queried contract id
+     * @return {@link com.icodici.universa.contract.TransactionPack} of stored contract or null
+     * @throws ClientError
+     */
     public byte[] queryContract(HashId slotId, HashId originId, HashId contractId) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("queryContract",
@@ -506,6 +672,11 @@ public class Client {
         });
     }
 
+    /**
+     * Get current network rate for operating UNS1 contracts
+     * @return name-days per U rate
+     * @throws ClientError
+     */
     public Decimal unsRate() throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("unsRate");
@@ -514,6 +685,12 @@ public class Client {
         });
     }
 
+    /**
+     * Look for the name assosiated with a given origin
+     * @param origin to look for
+     * @return binder containing name, description and url associated with origin or null
+     * @throws ClientError
+     */
     public Binder queryNameRecord(HashId origin) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("queryNameRecord", "origin", origin.getDigest());
@@ -521,6 +698,12 @@ public class Client {
         });
     }
 
+    /**
+     * Look for the name assosiated with a given address
+     * @param address to look for
+     * @return binder containing name, description and url associated with address or null
+     * @throws ClientError
+     */
     public Binder queryNameRecord(String address) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("queryNameRecord", "address", address);
@@ -528,6 +711,12 @@ public class Client {
         });
     }
 
+    /**
+     * Look for {@link com.icodici.universa.contract.services.UnsContract} that registers the name given
+     * @param name to look for
+     * @return packed {@link com.icodici.universa.contract.services.UnsContract} if found. Otherwise null
+     * @throws ClientError
+     */
     public byte[] queryNameContract(String name) throws ClientError {
         return protect(() -> {
             Binder result = httpClient.command("queryNameContract", "name", name);
