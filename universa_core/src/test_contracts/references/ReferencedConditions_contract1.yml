@@ -1492,25 +1492,25 @@ state:
      name: ref_inherited
      where:
        all_of:
-         - inherit this.definition.references.ref_roles
-         - inherit this.definition.references.ref_float
-         - inherit this.definition.references.ref_string
-         - inherit this.definition.references.ref_boolean
+         - inherits this.definition.references.ref_roles
+         - inherits this.definition.references.ref_float
+         - inherits this.definition.references.ref_string
+         - inherits this.definition.references.ref_boolean
          - this.definition.references.ref_roles defined
          - ref.state.references.ref_roles undefined
-         - this.state.references.ref_inherited is_inherit this.definition.references.ref_float
-         - this.state.references.ref_inherited is_inherit this.definition.references.ref_boolean
+         - this.state.references.ref_inherited is_a this.definition.references.ref_float
+         - this.state.references.ref_inherited is_a this.definition.references.ref_boolean
          - any_of:
-           - this.state.references.ref_inherited is_inherit this.definition.references.ref_integer
+           - this.state.references.ref_inherited is_a this.definition.references.ref_integer
            - all_of:
-             -  inherit   this.definition.references.ref_roles
-             -  inherit   this.definition.references.ref_float
-             -  inherit  this.definition.references.ref_string
-             -  inherit  this.definition.references.ref_boolean
+             -  inherits   this.definition.references.ref_roles
+             -  inherits   this.definition.references.ref_float
+             -  inherits  this.definition.references.ref_string
+             -  inherits  this.definition.references.ref_boolean
              -  this.definition.references.ref_roles   defined
              -  ref.state.references.ref_roles   undefined
-             -  this.state.references.ref_inherited  is_inherit   this.definition.references.ref_float
-             -  this.state.references.ref_inherited is_inherit   this.definition.references.ref_boolean
+             -  this.state.references.ref_inherited  is_a   this.definition.references.ref_float
+             -  this.state.references.ref_inherited is_a   this.definition.references.ref_boolean
 
  - reference:
      name: ref_hashes
