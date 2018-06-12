@@ -1985,7 +1985,7 @@ public class CLIMainTest {
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerU) + 1;
+        int costShouldBe = (int) Math.ceil((double)28 / Quantiser.quantaPerU);
         callMain("--cost", basePath + "contract_for_cost.unicon");
         System.out.println(output);
 
@@ -2011,7 +2011,7 @@ public class CLIMainTest {
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerU) + 1;
+        int costShouldBe = (int) Math.ceil((double)28 / Quantiser.quantaPerU);
         callMain("--cost",
                 basePath + "contract_for_cost1.unicon",
                 basePath + "contract_for_cost2.unicon");
@@ -2038,7 +2038,7 @@ public class CLIMainTest {
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerU) + 1;
+        int costShouldBe = (int) Math.ceil((double) 28 / Quantiser.quantaPerU);
         callMain("--register", basePath + "contract_for_register_and_cost.unicon",
                 "--cost");
         System.out.println(output);
@@ -2293,7 +2293,7 @@ public class CLIMainTest {
 
         // Check 4096 bits signature (8) +
         // Register a version (20)
-        int costShouldBe = (int) Math.floor(28 / Quantiser.quantaPerU) + 1;
+        int costShouldBe = (int) Math.ceil((double)28 / Quantiser.quantaPerU);
         callMain("--register",
                 basePath + "contract_for_register_and_cost0.unicon",
                 basePath + "contract_for_register_and_cost1.unicon",

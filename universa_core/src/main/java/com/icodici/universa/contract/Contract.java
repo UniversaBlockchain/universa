@@ -1017,7 +1017,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return cost in "U"
      */
     public int getProcessedCostTU() {
-        return (int) Math.ceil(quantiser.getQuantaSum() / Quantiser.quantaPerU);
+        return (int) Math.ceil( (double) quantiser.getQuantaSum() / Quantiser.quantaPerU);
     }
 
     /**
