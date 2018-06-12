@@ -7245,6 +7245,7 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();//manager -
         Set<PrivateKey>  llcPrivateKeys = new HashSet<>(); //issuer
         Set<PrivateKey>  thirdPartyPrivateKeys = new HashSet<>();
+
         llcPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         thirdPartyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
@@ -9913,6 +9914,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
+        ItemResult itemResult = node.waitItem(uns.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
         assertEquals(ledger.getNameRecord(unsName.getUnsReducedName()).getEntries().size(),2);
     }
 
@@ -10230,6 +10234,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
+        ItemResult itemResult = node.waitItem(uns.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
         assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
         assertEquals(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()).getEntries().size(),1);
 
@@ -10282,6 +10289,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
+        itemResult = node.waitItem(uns.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
+
         assertEquals(ledger.getNameRecord(unsNameToChange.getUnsReducedName()).getEntries().size(),2);
         assertEquals(ledger.getNameRecord(unsNameToAdd.getUnsReducedName()).getEntries().size(),1);
         assertNull(ledger.getNameRecord(unsNameToRemove.getUnsReducedName()));
@@ -10308,9 +10318,9 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> manufacturePublicKeys = new HashSet<>();
         manufacturePublicKeys.add(manufacturePrivateKeys.iterator().next().getPublicKey());
         UnsContract uns = ContractsService.createUnsContractForRegisterContractName(manufacturePrivateKeys, manufacturePublicKeys, nodeInfoProvider,
-                name, "test description", "http://test.com", referencesContract1);
+                reducedName, "test description", "http://test.com", referencesContract1);
 
-        uns.getUnsName(name).setUnsReducedName(reducedName);
+        uns.getUnsName(reducedName).setUnsReducedName(reducedName);
         uns.addSignerKey(TestKeys.privateKey(1));
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
@@ -10329,9 +10339,7 @@ public class BaseNetworkTest extends TestCase {
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract1.getId(), 8000).state);
 
-
         paymentContract = getApprovedTUContract();
-
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
@@ -10346,13 +10354,15 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
 
+        ItemResult itemResult = node.waitItem(uns.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
+
         assertEquals(1, ledger.getNameRecord(reducedName).getEntries().size());
 
         Set<PrivateKey> keys = new HashSet<>();
         keys.add(TestKeys.privateKey(1));
         keys.add(manufacturePrivateKeys.iterator().next());
         keys.add(authorizedNameServiceKey);
-
 
         Contract referencesContract2 = referencesContract1.createRevision(TestKeys.privateKey(1));
         referencesContract2.setOwnerKeys(TestKeys.privateKey(8));
@@ -10395,8 +10405,6 @@ public class BaseNetworkTest extends TestCase {
 
         assertEquals(ledger.getNameRecord(reducedName).getEntries().size(),1);
 
-
-        //Create revision to add payment without any changes. Should be declined
         uns = (UnsContract) unsOriginal.createRevision(keys);
         uns.addOriginContract(referencesContract2);
         uns.setNodeInfoProvider(nodeInfoProvider);
@@ -10405,6 +10413,8 @@ public class BaseNetworkTest extends TestCase {
         paymentContract = getApprovedTUContract();
 
         payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
+
+        payingParcel = Parcel.unpack(payingParcel.pack());
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -10417,6 +10427,8 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, ir.state);
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        assertEquals("ok", ir.extraDataBinder.getBinder("onUpdateResult").getString("status", null));
 
         assertEquals(ledger.getNameRecord(reducedName).getEntries().size(),1);
     }
@@ -10610,25 +10622,37 @@ public class BaseNetworkTest extends TestCase {
 
     }
 
-    @Ignore
     @Test(timeout = 90000)
     public void registerUnsContractFromDsl() throws Exception {
 
+        PrivateKey randomPrivKey = new PrivateKey(2048);
         Set<PrivateKey> manufacturePrivateKeys = new HashSet<>();
         manufacturePrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
+        PrivateKey authorizedNameServiceKey = TestKeys.privateKey(3);
+        config.setAuthorizedNameServiceCenterKeyData(new Bytes(authorizedNameServiceKey.getPublicKey().pack()));
+
         UnsContract uns = UnsContract.fromDslFile(ROOT_PATH + "uns/simple_uns_contract.yml");
+
+        UnsName unsName = uns.getUnsName("test_from_dsl");
+        unsName.removeUnsRecord(0);
+        unsName.setUnsName("test_from_dsl" + Instant.now().getEpochSecond());
+        unsName.setUnsReducedName("test_from_dsl" + Instant.now().getEpochSecond());
+        unsName.addUnsRecord(new UnsRecord(randomPrivKey.getPublicKey()));
+
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.addSignerKey(manufacturePrivateKeys.iterator().next());
+        uns.addSignerKey(authorizedNameServiceKey);
+        uns.addSignerKey(randomPrivKey);
         uns.seal();
         uns.check();
         uns.traceErrors();
 
         Contract paymentContract = getApprovedTUContract();
 
-        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
+        Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 2000, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
         synchronized (tuContractLock) {
@@ -10640,6 +10664,9 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.REVOKED, node.waitItem(payingParcel.getPayment().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(payingParcel.getPayload().getContract().getId(), 8000).state);
         assertEquals(ItemState.APPROVED, node.waitItem(uns.getNew().get(0).getId(), 8000).state);
+
+        ItemResult itemResult = node.waitItem(uns.getId(), 8000);
+        assertEquals("ok", itemResult.extraDataBinder.getBinder("onCreatedResult").getString("status", null));
     }
 
     @Test(timeout =  90000)

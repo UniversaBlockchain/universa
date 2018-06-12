@@ -218,28 +218,37 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder queryNameRecord(Binder params, Session session) throws IOException {
         Binder b = new Binder();
         NNameRecord loadedNameRecord;
-        String address = params.getStringOrThrow("address");
-        byte[] origin = params.getBinaryOrThrow("origin");
+        String address = params.getString("address",null);
+        byte[] origin = params.getBinary("origin");
 
         if (((address == null) && (origin == null)) || ((address != null) && (origin != null)))
             throw new IOException("invalid arguments");
+
         if (address != null)
             loadedNameRecord = node.getLedger().getNameByAddress(address);
         else
             loadedNameRecord = node.getLedger().getNameByOrigin(origin);
 
-        b.put("name record",loadedNameRecord);
-
+        if (loadedNameRecord != null) {
+            b.put("name", loadedNameRecord.getName());
+            b.put("description", loadedNameRecord.getDescription());
+            b.put("url", loadedNameRecord.getUrl());
+        }
         return b;
     }
 
     private Binder queryNameContract(Binder params, Session session) throws IOException {
         Binder b = new Binder();
-        String nameContract = params.getStringOrThrow("contract name");
 
-        NNameRecord packedContract = node.getLedger().getNameRecord(nameContract);
-        b.put("packedContract", packedContract);
-
+        String nameContract = params.getStringOrThrow("name");
+        NNameRecord nr = node.getLedger().getNameRecord(nameContract);
+        if (nr != null) {
+            NImmutableEnvironment env = node.getLedger().getEnvironment(nr.getEnvironmentId());
+            if (env != null) {
+                byte[] packedContract = env.getContract().getPackedTransaction();
+                b.put("packedContract", packedContract);
+            }
+        }
         return b;
     }
 

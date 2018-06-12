@@ -506,4 +506,37 @@ public class Client {
         });
     }
 
+    public Decimal unsRate() throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("unsRate");
+            Double U = result.getDouble("U");
+            return new Decimal(BigDecimal.valueOf(U));
+        });
+    }
+
+    public Binder queryNameRecord(HashId origin) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("queryNameRecord", "origin", origin.getDigest());
+            return result;
+        });
+    }
+
+    public Binder queryNameRecord(String address) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("queryNameRecord", "address", address);
+            return result;
+        });
+    }
+
+    public byte[] queryNameContract(String name) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("queryNameContract", "name", name);
+            try {
+                Bytes bytes = result.getBytesOrThrow("packedContract");
+                return bytes.getData();
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        });
+    }
 }
