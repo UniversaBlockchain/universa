@@ -170,7 +170,13 @@ public class SplitJoinPermission extends Permission {
         return splitJoinSum.compareTo(rSum) == 0;
     }
 
-    private boolean validateMergeFields(Contract changed, Contract c) {
+    /**
+     * Check matching fields of two contracts.
+     * @param changed contract to check
+     * @param c contract to check
+     * @return true if all fields are matching, else false
+     */
+    public boolean validateMergeFields(Contract changed, Contract c) {
         // check matching fields
         for (String name : mergeFields) {
             Object v1 = changed.get(name);
