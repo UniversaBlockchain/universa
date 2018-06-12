@@ -36,8 +36,17 @@ import static com.icodici.universa.contract.roles.Role.RequiredMode.ANY_OF;
 @BiType(name = "Role")
 public abstract class Role implements BiSerializable {
 
+    /**
+    /* Mode of combining references
+     */
     public enum RequiredMode {
+        /**
+        /* In this mode, all references must be allowed for allows role
+         */
         ALL_OF,
+        /**
+         * In this mode, at least one of the references must be allowed for allows role
+         */
         ANY_OF
     }
 
@@ -46,21 +55,45 @@ public abstract class Role implements BiSerializable {
     protected Set<String> requiredAllReferences = new HashSet<>();
     protected Set<String> requiredAnyReferences = new HashSet<>();
 
-
-
-
+    /**
+     * Adds required references to role. The references is added to the set corresponding
+     * to the specified mode of combining references ({@link RequiredMode}).
+     *
+     * @param references is collection of added references
+     * @param requiredMode is mode of combining references
+     */
     public void addAllRequiredReferences(Collection<Reference> references, RequiredMode requiredMode) {
         (requiredMode == ALL_OF ? requiredAllReferences : requiredAnyReferences).addAll(references.stream().map(reference -> reference.getName()).collect(Collectors.toSet()));
     }
 
+    /**
+     * Get set of references corresponding to the specified mode of combining references ({@link RequiredMode}).
+     *
+     * @param requiredMode is mode of combining references
+     * @return set of references
+     */
     public Set<String> getReferences(RequiredMode requiredMode) {
         return requiredMode == ALL_OF ? requiredAllReferences : requiredAnyReferences;
     }
 
+    /**
+     * Adds required reference to role. The reference is added to the set corresponding
+     * to the specified mode of combining references ({@link RequiredMode}).
+     *
+     * @param reference is added reference
+     * @param requiredMode is mode of combining references
+     */
     public void addRequiredReference(Reference reference,RequiredMode requiredMode) {
         addRequiredReference(reference.getName(), requiredMode);
     }
 
+    /**
+     * Adds required reference to role. The reference is added to the set corresponding
+     * to the specified mode of combining references ({@link RequiredMode}).
+     *
+     * @param refName is name of reference in contract
+     * @param requiredMode is mode of combining references
+     */
     public void addRequiredReference(String refName,RequiredMode requiredMode) {
         (requiredMode == ALL_OF ? requiredAllReferences : requiredAnyReferences).add(refName);
     }
@@ -72,12 +105,30 @@ public abstract class Role implements BiSerializable {
         this.name = name;
     }
 
+    /**
+     * Get name of role
+     *
+     * @return name of role
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Check role is allowed to keys
+     *
+     * @param keys is set of keys
+     * @return true if role is allowed to keys
+     */
     public abstract boolean isAllowedForKeys(Set<? extends AbstractKey> keys);
 
+    /**
+     * Check role is allowed to keys and references
+     *
+     * @param keys is collection of keys
+     * @param references is collection of references names
+     * @return true if role is allowed to keys and references
+     */
     public boolean isAllowedFor(Collection<? extends AbstractKey> keys, Collection<String> references) {
         if(!isAllowedForKeys(keys instanceof Set ? (Set<? extends AbstractKey>) keys : new HashSet<>(keys)))
             return false;
@@ -115,13 +166,29 @@ public abstract class Role implements BiSerializable {
         return false;
     }
 
+    /**
+     * Check validity of role
+     *
+     * @return true if role is valid
+     */
     public abstract boolean isValid();
 
+    /**
+     * Get hash code of role name
+     *
+     * @return hash code
+     */
     @Override
     public int hashCode() {
         return name.hashCode();
     }
 
+    /**
+     * Role equality is different: it only checks that it points to the same role.
+     *
+     * @param obj is object to be checked with
+     * @return true if equals
+     */
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof Role) {
@@ -132,8 +199,8 @@ public abstract class Role implements BiSerializable {
     }
 
     /**
-     * A role has exactly same set of keys as in the supplied role. It does not check the logik, only that list of all
-     * keys is exactly same.
+     * A role has exactly same set of keys as in the supplied role. It does not check the logic,
+     * only that list of all keys is exactly same.
      * <p>
      * To check that the role can be performed by some other role, use {@link #isAllowedForKeys(Set)}.
      *
@@ -144,9 +211,19 @@ public abstract class Role implements BiSerializable {
         return otherRole.getKeys().equals(getKeys());
     }
 
-
+    /**
+     * Initializes role from dsl.
+     *
+     * @param serializedRole is {@link Binder} from dsl with data of role
+     */
     public abstract void initWithDsl(Binder serializedRole);
 
+    /**
+     * Create new role from dsl.
+     *
+     * @param name is role name
+     * @param serializedRole is {@link Binder} from dsl with data of role
+     */
     static public Role fromDslBinder(String name, Binder serializedRole) {
         if (name == null)
             name = serializedRole.getStringOrThrow("name");
@@ -177,10 +254,25 @@ public abstract class Role implements BiSerializable {
         return result;
     }
 
+    /**
+     * Get set of all keys in sub-roles.
+     *
+     * @return set of public keys (see {@link PublicKey})
+     */
     public abstract Set<PublicKey> getKeys();
 
+    /**
+     * Get set of all anonymous identifiers in sub-roles.
+     *
+     * @return set of anonymous identifiers (see {@link AnonymousId})
+     */
     public abstract Set<AnonymousId> getAnonymousIds();
 
+    /**
+     * Get set of all key addresses in sub-roles.
+     *
+     * @return set of key addresses (see {@link KeyAddress})
+     */
     public abstract Set<KeyAddress> getKeyAddresses();
 
     public Set<KeyRecord> getKeyRecords() {
@@ -212,10 +304,20 @@ public abstract class Role implements BiSerializable {
         return kr.iterator().next();
     }
 
+    /**
+     * Set role contract.
+     *
+     * @param contract is role contract
+     */
     public void setContract(Contract contract) {
         this.contract = contract;
     }
 
+    /**
+     * Get role contract.
+     *
+     * @return role contract
+     */
     public Contract getContract() {
         return contract;
     }
@@ -277,7 +379,7 @@ public abstract class Role implements BiSerializable {
     }
 
     /**
-     * If this role has public keys, they will be replaced with AnonymousIds.
+     * If this role has public keys, they will be replaced with {@link AnonymousId}.
      */
     public abstract void anonymize();
 }

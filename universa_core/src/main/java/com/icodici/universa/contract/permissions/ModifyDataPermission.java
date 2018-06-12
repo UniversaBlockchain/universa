@@ -17,6 +17,9 @@ import java.util.*;
 
 import static java.util.Arrays.asList;
 
+/**
+ * Permission allows to change some set of fields. Field values can be limited to a list of values.
+ */
 
 @BiType(name = "ModifyDataPermission")
 public class ModifyDataPermission extends Permission {
@@ -27,9 +30,14 @@ public class ModifyDataPermission extends Permission {
 
     private Set<String> rootFields = new HashSet<>(asList("references", "expires_at"));
 
-    public ModifyDataPermission() {
-    }
+    public ModifyDataPermission() {}
 
+    /**
+     * Create new permission for change some set of fields.
+     *
+     * @param role allows to permission
+     * @param params is parameters of permission: fields is map of field names and lists of allowed values
+     */
     public ModifyDataPermission(Role role, Binder params) {
         super(FIELD_NAME, role, params);
         Object fields = params.get("fields");
@@ -38,11 +46,22 @@ public class ModifyDataPermission extends Permission {
         }
     }
 
+    /**
+     * Adds field to the allowed for change.
+     *
+     * @param fieldName is name of field allowed for change
+     * @param values is list of allowed values for adding field
+     */
     public ModifyDataPermission addField(String fieldName, List<String> values) {
         this.fields.put(fieldName, values);
         return this;
     }
 
+    /**
+     * Adds some set of fields to the allowed for change.
+     *
+     * @param fields is map of field names and lists of allowed values
+     */
     public void addAllFields(Map<String, List<String>> fields) {
         this.fields.putAll(fields);
     }
@@ -50,7 +69,7 @@ public class ModifyDataPermission extends Permission {
     /**
      * checkChanges processes the map of changes with the list of fields with predefined data options for a role.
      *
-     * @param contract     source (valid) contract
+     * @param contract source (valid) contract
      * @param changedContract is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
      */
@@ -123,6 +142,11 @@ public class ModifyDataPermission extends Permission {
         return (value == null || "".equals(value)) && (data.contains(null) || data.contains(""));
     }
 
+    /**
+     * Get fields allowed for change.
+     *
+     * @return map of field names and lists of allowed values
+     */
     public Map<String, List<String>> getFields() {
         return fields;
     }

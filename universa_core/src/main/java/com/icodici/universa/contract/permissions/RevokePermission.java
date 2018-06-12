@@ -15,11 +15,20 @@ import net.sergeych.diff.Delta;
 
 import java.util.Map;
 
+/**
+ * Permission allows to revoke contract.
+ */
+
 @BiType(name="RevokePermission")
 public class RevokePermission extends Permission {
 
     private RevokePermission() {}
 
+    /**
+     * Create new permission for revoke contract.
+     *
+     * @param role allows to permission
+     */
     public RevokePermission(Role role) {
         super("revoke", role);
     }

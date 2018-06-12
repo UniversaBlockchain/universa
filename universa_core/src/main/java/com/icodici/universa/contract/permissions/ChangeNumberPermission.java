@@ -29,6 +29,12 @@ public class ChangeNumberPermission extends Permission {
     private String fieldName;
     private int newValue;
 
+    /**
+     * Create new permission for change some numeric field.
+     *
+     * @param role allows to permission
+     * @param params is parameters of permission: field_name, range (min_value, max_value) and delta (min_step, max_step)
+     */
     public ChangeNumberPermission(Role role, Binder params) {
         super("decrement_permission", role, params);
         initFromParams();
@@ -56,7 +62,8 @@ public class ChangeNumberPermission extends Permission {
      * Check and remove changes that this permission allow. Note that it does not add errors itself,
      * to allow using several such permission, from which some may allow the change, and some may not. If a check
      * will add error, though, it will prevent subsequent permission objects to allow the change.
-     *  @param contract     source (valid) contract
+     *
+     * @param contract source (valid) contract
      * @param changed is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
      */

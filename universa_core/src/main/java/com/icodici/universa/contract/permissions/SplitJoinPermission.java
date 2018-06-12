@@ -38,6 +38,12 @@ public class SplitJoinPermission extends Permission {
     private int newValue;
     private List<String> mergeFields;
 
+    /**
+     * Create new permission for change some numeric field.
+     *
+     * @param role allows to permission
+     * @param params is parameters of permission: field_name, min_value, min_unit, join_match_fields
+     */
     public SplitJoinPermission(Role role, Binder params) {
         super("split_join", role, params);
         initFromParams();
@@ -65,7 +71,7 @@ public class SplitJoinPermission extends Permission {
      * several such permission, from which some may allow the change, and some may not. If a check will add error,
      * though, it will prevent subsequent permission objects to allow the change.
      *
-     * @param contract     source (valid) contract
+     * @param contract source (valid) contract
      * @param changed is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
      */

@@ -37,19 +37,41 @@ public class ListRole extends Role {
 
     private int quorumSize = 0;
 
+    /**
+     * Create empty role combining other roles (sub-roles). To be initialized from dsl later.
+     */
     public ListRole() {
     }
 
+    /**
+     * Create empty role combining other roles (sub-roles). To be initialized from dsl later.
+     *
+     * @param name is role name
+     */
     public ListRole(String name) {
         super(name);
     }
 
+    /**
+     * Create new role combining other roles (sub-roles)
+     *
+     * @param name is role name
+     * @param mode is mode of sub-roles combining: "and", "or" and "any N of" principle
+     * @param roles is collection of sub-roles
+     */
     public ListRole(String name, Mode mode, @NonNull Collection<Role> roles) {
         super(name);
         setMode(mode);
         addAll(roles);
     }
 
+    /**
+     * Create new role combining other roles (sub-roles) in the "any N of" principle ({@link Mode#QUORUM}).
+     *
+     * @param name is role name
+     * @param quorumSize is N in "any N of" principle
+     * @param roles is collection of sub-roles
+     */
     public ListRole(String name, int quorumSize, @NonNull Collection<Role> roles) {
         super(name);
         this.mode = Mode.QUORUM;
@@ -57,14 +79,29 @@ public class ListRole extends Role {
         addAll(roles);
     }
 
+    /**
+     * Adds sub-roles to combining role.
+     *
+     * @param roles is collection of sub-roles
+     */
     public void addAll(Collection<Role> roles) {
         this.roles.addAll(roles);
     }
 
+    /**
+     * Get sub-roles of combining role.
+     *
+     * @return set of sub-roles
+     */
     public Set<Role> getRoles() {
         return roles;
     }
 
+    /**
+     * Adds sub-role to combining role.
+     *
+     * @param role is sub-role
+     */
     public ListRole addRole(Role role) {
         this.roles.add(role);
         return this;
@@ -101,7 +138,12 @@ public class ListRole extends Role {
             throw new IllegalArgumentException("Only ANY or ALL of the modes should be set.");
     }
 
-
+    /**
+     * Check role is allowed to keys
+     *
+     * @param keys is set of keys
+     * @return true if role is allowed to keys
+     */
     @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
         if(this.mode == null) {
@@ -113,10 +155,6 @@ public class ListRole extends Role {
                 this.mode == Mode.QUORUM && this.processQuorumMode(keys);
     }
 
-    /**
-     * @param keys to check the roles by mode
-     * @return
-     */
     private boolean processQuorumMode(Set<? extends AbstractKey> keys) {
         int counter = this.quorumSize;
         boolean result = counter == 0;
@@ -143,11 +181,21 @@ public class ListRole extends Role {
         return this.roles.stream().anyMatch(role -> role.isAllowedForKeys(keys));
     }
 
+    /**
+     * Check availability sub-roles of combining role.
+     *
+     * @return true if set of sub-roles is not empty
+     */
     @Override
     public boolean isValid() {
         return !this.roles.isEmpty();
     }
 
+    /**
+     * Initializes combining role from dsl.
+     *
+     * @param serializedRole is {@link Binder} from dsl with data of combining role
+     */
     @Override
     public void initWithDsl(Binder serializedRole) {
         List<Object> roleBinders = serializedRole.getListOrThrow("roles");
@@ -172,12 +220,22 @@ public class ListRole extends Role {
         });
     }
 
+    /**
+     * Set role contract.
+     *
+     * @param contract is role contract
+     */
     @Override
     public void setContract(Contract contract) {
         super.setContract(contract);
         roles.forEach(r -> r.setContract(contract));
     }
 
+    /**
+     * Get set of all keys in sub-roles.
+     *
+     * @return set of public keys (see {@link PublicKey})
+     */
     @Override
     public Set<PublicKey> getKeys() {
         return this.roles.stream()
@@ -186,6 +244,11 @@ public class ListRole extends Role {
                 .collect(Collectors.toSet());
     }
 
+    /**
+     * Get set of all anonymous identifiers in sub-roles.
+     *
+     * @return set of anonymous identifiers (see {@link AnonymousId})
+     */
     @Override
     public Set<AnonymousId> getAnonymousIds() {
         return this.roles.stream()
@@ -193,6 +256,11 @@ public class ListRole extends Role {
                 .collect(Collectors.toSet());
     }
 
+    /**
+     * Get set of all key addresses in sub-roles.
+     *
+     * @return set of key addresses (see {@link KeyAddress})
+     */
     @Override
     public Set<KeyAddress> getKeyAddresses() {
         return this.roles.stream()
@@ -219,6 +287,11 @@ public class ListRole extends Role {
         QUORUM
     }
 
+    /**
+     * Get role as string.
+     *
+     * @return string with data of role
+     */
     @Override
     public String toString() {
         return String.format("ListRole<%s:%s:%s:%s>", System.identityHashCode(this), getName(),
@@ -243,8 +316,6 @@ public class ListRole extends Role {
             this.roles.clear();
             roles.forEach(role -> addRole(deserializer.deserialize(role)));
         }
-
-
     }
 
     @Override
@@ -256,6 +327,9 @@ public class ListRole extends Role {
                 "roles", s.serialize(this.roles));
     }
 
+    /**
+     * If this role has public keys, they will be replaced with {@link AnonymousId}.
+     */
     @Override
     public void anonymize() {
         for (Role role : roles)
