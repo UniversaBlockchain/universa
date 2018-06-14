@@ -20,6 +20,7 @@ import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.Parcel;
 import com.icodici.universa.contract.TransactionPack;
 import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
@@ -2454,23 +2455,35 @@ public class CLIMain {
             reporter.message("found wallet: " + wallet.toString());
             reporter.verbose("");
 
-            HashMap<String, WalletValueModel> balance = new HashMap<>();
-            String currencyKey;
+            HashSet<WalletValueModel> balance = new HashSet<>();
             for (Contract contract : wallet.getContracts()) {
                 try {
                     Decimal numcoins = new Decimal(contract.getStateData().getStringOrThrow(AMOUNT_FIELD_NAME));
-                    currencyKey = contract.getOrigin().toBase64String();
-                    WalletValueModel walletValueModel = balance.getOrDefault(currencyKey, new WalletValueModel());
+                    SplitJoinPermission sjp = (SplitJoinPermission)contract.getPermissions().get("split_join").iterator().next();
+                    WalletValueModel walletValueModel = null;
+                    for (WalletValueModel wvm : balance) {
+                        if (sjp.validateMergeFields(contract, wvm.contract))
+                            walletValueModel = wvm;
+                    }
+                    if (walletValueModel == null)
+                        walletValueModel = new WalletValueModel();
                     walletValueModel.value = walletValueModel.value.add(numcoins);
                     String currencyTag = contract.getDefinition().getData().getString("currency_code", null);
                     if (currencyTag == null)
                         currencyTag = contract.getDefinition().getData().getString("unit_short_name", null);
                     if (currencyTag == null)
+                        currencyTag = contract.getDefinition().getData().getString("short_currency", null);
+                    if (currencyTag == null)
+                        currencyTag = contract.getDefinition().getData().getString("currency", null);
+                    if (currencyTag == null)
+                        currencyTag = contract.getDefinition().getData().getString("name", null);
+                    if (currencyTag == null)
                         currencyTag = contract.getDefinition().getData().getString("unit_name", null);
                     if (currencyTag == null)
                         currencyTag = contract.getOrigin().toString();
-                    walletValueModel.currency = currencyTag;
-                    balance.put(currencyKey, walletValueModel);
+                    walletValueModel.tag = currencyTag;
+                    walletValueModel.contract = contract;
+                    balance.add(walletValueModel);
                     reporter.verbose("found coins: " + contract.getOrigin().toString() + " -> " + numcoins + " (" + currencyTag + ") ");
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -2478,15 +2491,15 @@ public class CLIMain {
             }
             reporter.verbose("");
             reporter.message("total in the wallet: ");
-            for (String c : balance.keySet()) {
-                WalletValueModel w = balance.get(c);
-                reporter.message(w.value + " (" + w.currency + ") ");
+            for (WalletValueModel w : balance) {
+                reporter.message(w.value + " (" + w.tag + ") ");
             }
         }
     }
 
     private static class WalletValueModel {
-        public String currency = "";
+        public Contract contract;
+        public String tag;
         public Decimal value = new Decimal(0);
     }
 

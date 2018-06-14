@@ -1971,12 +1971,13 @@ public class MainTest {
 
         // check uns contract with address record
         unsTestName = "testAddressContractName" + Instant.now().getEpochSecond();
+        PrivateKey randomPrivKey = new PrivateKey(2048);
 
         UnsContract unsContract2 = ContractsService.createUnsContractForRegisterKeyName(manufacturePrivateKeys,
-                manufacturePublicKeys, nodeInfoProvider, unsTestName, "test address name", "http://test.com", TestKeys.publicKey(1));
+                manufacturePublicKeys, nodeInfoProvider, unsTestName, "test address name", "http://test.com", randomPrivKey.getPublicKey());
         unsContract2.getUnsName(unsTestName).setUnsReducedName(unsTestName);
         unsContract2.addSignerKey(authorizedNameServiceKey);
-        unsContract2.addSignerKey(TestKeys.privateKey(1));
+        unsContract2.addSignerKey(randomPrivKey);
         unsContract2.seal();
         unsContract2.check();
         unsContract2.traceErrors();
@@ -1985,7 +1986,7 @@ public class MainTest {
 
         payingParcel = ContractsService.createPayingParcel(unsContract2.getTransactionPack(), paymentContract, 1, 2000, manufacturePrivateKeys, false);
 
-        KeyAddress keyAddr = new KeyAddress(TestKeys.publicKey(1), 0, true);
+        KeyAddress keyAddr = new KeyAddress(randomPrivKey.getPublicKey(), 0, true);
         nameInfo = testSpace.client.queryNameRecord(keyAddr.toString());
         name = nameInfo.getString("name", null);
         System.out.println("name info is null: " + (name == null));
