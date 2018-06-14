@@ -41,6 +41,7 @@ import java.net.SocketTimeoutException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -3035,9 +3036,81 @@ public class CLIMainTest {
         return main;
     }
 
-//    @Test
-//    public void tempTest() throws Exception {
-//        callMain("--generate");
-//        System.out.println(output);
-//    }
+
+    @Test
+    public void splitJoin() throws Exception {
+        PrivateKey splitJoinKey1 = new PrivateKey(2048);
+        PrivateKey splitJoinKey2 = new PrivateKey(2048);
+        PrivateKey splitJoinKey3 = new PrivateKey(2048);
+
+        Files.write(Paths.get(basePath + "splitJoinKey1.privateKey.unikey"),splitJoinKey1.pack(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(basePath + "splitJoinKey2.privateKey.unikey"),splitJoinKey2.pack(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(basePath + "splitJoinKey3.privateKey.unikey"),splitJoinKey3.pack(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        HashSet<PrivateKey> issuers = new HashSet<>();
+        issuers.add(splitJoinKey1);
+
+        HashSet<PublicKey> owners = new HashSet<>();
+        owners.add(splitJoinKey2.getPublicKey());
+
+
+        Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", 0.01);
+        contract.seal();
+        contract.check();
+        assertTrue(contract.isOk());
+
+        Files.write(Paths.get(basePath + "origin.unicon"),contract.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        callMain("--split-of", basePath + "origin.unicon",
+                "--parts", "1000.50,300",
+                "--owners", splitJoinKey1.getPublicKey().getShortAddress()+","+splitJoinKey3.getPublicKey().getShortAddress(), "--keys", basePath+"splitJoinKey2.privateKey.unikey");
+
+        assertTrue (new File(basePath + "origin_main.unicon").exists());
+        assertTrue (new File(basePath + "origin_0.unicon").exists());
+        assertTrue (new File(basePath + "origin_1.unicon").exists());
+
+        Contract main = TransactionPack.unpack(Files.readAllBytes(Paths.get(basePath + "origin_main.unicon"))).getContract();
+        main.check();
+        assertTrue(main.isOk());
+
+        Contract part1 = TransactionPack.unpack(Files.readAllBytes(Paths.get(basePath + "origin_0.unicon"))).getContract();
+        Contract part2 = TransactionPack.unpack(Files.readAllBytes(Paths.get(basePath + "origin_1.unicon"))).getContract();
+        HashSet<PublicKey> part1Keys = new HashSet<>();
+        part1Keys.add(splitJoinKey1.getPublicKey());
+
+        HashSet<PublicKey> part2Keys = new HashSet<>();
+        part2Keys.add(splitJoinKey3.getPublicKey());
+
+        assertTrue(part1.getOwner().isAllowedForKeys(part1Keys));
+        assertEquals(part1.getStateData().getStringOrThrow("amount"),"1000.5");
+        assertTrue(part2.getOwner().isAllowedForKeys(part2Keys));
+        assertEquals(part2.getStateData().getStringOrThrow("amount"),"300.0");
+
+
+        callMain("--split-of", basePath + "origin_main.unicon", basePath + "origin_0.unicon", basePath + "origin_1.unicon", "--keys", basePath+"splitJoinKey1.privateKey.unikey"+","+basePath+"splitJoinKey3.privateKey.unikey","--name",basePath+"join_bad.unicon");
+        callMain("--split-of", basePath + "origin_0.unicon", basePath + "origin_1.unicon", "--keys", basePath+"splitJoinKey1.privateKey.unikey"+","+basePath+"splitJoinKey3.privateKey.unikey","--name",basePath+"join_good.unicon");
+
+
+        assertTrue (new File(basePath + "join_bad.unicon").exists());
+        assertTrue (new File(basePath + "join_good.unicon").exists());
+
+        Contract joinBad = TransactionPack.unpack(Files.readAllBytes(Paths.get(basePath + "join_bad.unicon"))).getContract();
+        joinBad.check();
+        assertFalse(joinBad.isOk());
+        Contract joinGood = TransactionPack.unpack(Files.readAllBytes(Paths.get(basePath + "join_good.unicon"))).getContract();
+        assertTrue(joinGood.getOwner().isAllowedForKeys(part1Keys));
+        assertEquals(joinGood.getStateData().getString("amount"),"1300.5");
+        joinGood.check();
+        assertTrue(joinGood.isOk());
+
+
+        callMain("--split-of", basePath + "join_good.unicon",
+                "--parts", "1,1",
+                "--owners", splitJoinKey2.getPublicKey().getShortAddress()+","+splitJoinKey3.getPublicKey().getShortAddress(), "--keys", basePath+"splitJoinKey1.privateKey.unikey","--name",basePath+"join_good_split.unicon","--name",basePath+"join_good_split_part.unicon");
+
+        assertTrue (new File(basePath + "join_good_split.unicon").exists());
+        assertTrue (new File(basePath + "join_good_split_part.unicon").exists());
+        assertTrue (new File(basePath + "join_good_split_1.unicon").exists());
+
+    }
 }

@@ -367,8 +367,10 @@ public class CLIMain {
                 keyFileNames = (List<String>) options.valuesOf("k");
             } else {
                 keyFileNames = new ArrayList<>();
-                keyFiles = null;
             }
+
+            keyFiles = null;
+
             if (options.has("k-contract")) {
                 keyFileNamesContract = (List<String>) options.valuesOf("k-contract");
             } else {
@@ -958,6 +960,8 @@ public class CLIMain {
 
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
 
+        List<String> names = (List) options.valuesOf("name");
+
         List parts = options.valuesOf("parts");
         if(parts == null)
             parts = new ArrayList();
@@ -1006,12 +1010,26 @@ public class CLIMain {
                 String name;
                 if(partContracts != null) {
                     for (int i = 0; i < partContracts.length; i++) {
-                        name = source.replace(".unicon","") + "_" + i +".unicon";
+                        if(names.size() > i + 1) {
+                            name = names.get(i+1);
+                        } else {
+                            if(names.size() > 0) {
+                                name = names.get(0);
+                            } else {
+                                name = source;
+                            }
+                            name = name.replace(".unicon","") + "_" + i +".unicon";
+                        }
                         saveContract(partContracts[i], name, true, true);
                     }
                 }
 
-                name = source.replace(".unicon","")+"_main.unicon";
+                if(names.size() > 0) {
+                    name = names.get(0);
+                } else {
+                    name = source.replace(".unicon","")+"_main.unicon";
+                }
+
                 saveContract(contract, name, true, true);
 
             } catch (Quantiser.QuantiserException e) {
