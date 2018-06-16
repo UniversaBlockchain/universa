@@ -93,7 +93,7 @@ public class Reporter {
                 msg += ": " + object;
             if (text != null && !text.isEmpty())
                 msg += ": " + text;
-            System.out.println(msg);
+            System.err.println(msg);
         }
     }
 

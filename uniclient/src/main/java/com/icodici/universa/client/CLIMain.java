@@ -9,6 +9,7 @@ package com.icodici.universa.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.icodici.crypto.Error;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -24,6 +25,7 @@ import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
+import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Quantiser;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
 import com.icodici.universa.wallet.Wallet;
@@ -135,6 +137,7 @@ public class CLIMain {
                         .defaultsTo(0)
                         .describedAs("tu amount-storage");
                 accepts("tutest", "Use with -register and -tu. Key is point to use test transaction units.");
+                accepts("no-exit", "Used for tests. Uniclient d");
                 accepts("probe", "query the state of the document in the Universa network")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
@@ -151,7 +154,8 @@ public class CLIMain {
                 accepts("skey", "used with to specify session private key file")
                         .withRequiredArg()
                         .ofType(String.class)
-                        .describedAs("file");;
+                        .describedAs("file");
+                ;
                 acceptsAll(asList("k", "keys"), "List of comma-separated private key files to" +
                         "use to sign contract with, if appropriated.")
                         .withRequiredArg().ofType(String.class)
@@ -470,9 +474,12 @@ public class CLIMain {
         } catch (Finished e) {
             if (reporter.isQuiet())
                 System.out.println(reporter.reportJson());
+            if(!options.has("no-exit")) {
+                System.exit(e.getStatus());
+            }
         } catch (Exception e) {
-            System.err.println("Error: "+e.toString());
-            if( options.has("verbose"))
+            System.err.println("Error: " + e.toString());
+            if (options.has("verbose"))
                 e.printStackTrace();
             System.out.println("\nShow usage: uniclient --help");
 //            usage("Error: " + e.getMessage());
@@ -771,52 +778,55 @@ public class CLIMain {
             Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
             if(contract != null) {
                 if(tu != null && tuKeys != null && tuKeys.size() > 0) {
+                    Parcel parcel;
+                    Contract newTUContract;
                     if(tuAmountStorage == 0) {
                         report("registering the paid contract " + contract.getId() + " from " + source
                                 + " for " + tuAmount + " TU");
                         report("cnotactId: "+contract.getId().toBase64String());
-                        Parcel parcel = prepareForRegisterContract(contract, tu, tuAmount, tuKeys, tutest);
-                        if (parcel != null) {
-                            report("save payment revision: " + parcel.getPaymentContract().getState().getRevision() + " id: " + parcel.getPaymentContract().getId());
-
-                            CopyOption[] copyOptions = new CopyOption[]{
-                                    StandardCopyOption.REPLACE_EXISTING,
-                                    StandardCopyOption.ATOMIC_MOVE
-                            };
-                            String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
-                            tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
-                            if (tuDest != null) {
-                                Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                                if (saveContract(parcel.getPaymentContract(), tuSource, true, false))
-                                    registerParcel(parcel, (int) options.valueOf("wait"));
-                            }
-                        }
+                        parcel = prepareForRegisterContract(contract, tu, tuAmount, tuKeys, tutest);
+                        newTUContract = parcel.getPaymentContract();
                     } else { // if storage payment
                         report("registering the paid contract " + contract.getId() + " from " + source
                                 + " for " + tuAmount + " TU (and " + tuAmountStorage + " TU for storage)");
                         report("cnotactId: "+contract.getId().toBase64String());
-                        Parcel parcel = prepareForRegisterPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest);
-                        if (parcel != null) {
-                            report("save payment revision: " + parcel.getPayloadContract().getNew().get(0).getState().getRevision() + " id: " + parcel.getPayloadContract().getNew().get(0).getId());
-
-                            CopyOption[] copyOptions = new CopyOption[]{
-                                    StandardCopyOption.REPLACE_EXISTING,
-                                    StandardCopyOption.ATOMIC_MOVE
-                            };
-                            String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
-                            tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
-                            if (tuDest != null) {
-                                Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                                if (saveContract(parcel.getPayloadContract().getNew().get(0), tuSource, true, false))
-                                    registerParcel(parcel, (int) options.valueOf("wait"));
-                            }
-                        }
+                        parcel = prepareForRegisterPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest);
+                        newTUContract = parcel.getPayloadContract().getNew().get(0);
                     }
+
+                    if (parcel != null) {
+                        report("save payment revision: " + newTUContract.getState().getRevision() + " id: " + newTUContract.getId());
+
+                        CopyOption[] copyOptions = new CopyOption[]{
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.ATOMIC_MOVE
+                        };
+                        String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
+                        tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
+                        if (tuDest != null) {
+                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
+                            if (saveContract(newTUContract, tuSource, true, false)) {
+                                ItemResult ir = registerParcel(parcel, (int) options.valueOf("wait"));
+                                if(ir.state != ItemState.APPROVED) {
+                                    addErrors(ir.errors);
+                                }
+                            } else {
+                                addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                            }
+                        } else {
+                            addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                        }
+                    } else {
+                        addError(Errors.COMMAND_FAILED.name(),"parcel","unable to prepare parcel");
+                    }
+
                 } else {
 //                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
 //                    registerContract(contract, (int) options.valueOf("wait"));
                     addError(Errors.COMMAND_FAILED.name(), tuSource, "payment contract or private keys for payment contract is missing");
                 }
+            } else {
+                addError(Errors.NOT_FOUND.name(), source, "contract non found or failed to load");
             }
         }
 
@@ -984,8 +994,12 @@ public class CLIMain {
                 Decimal value = new Decimal(contract.getStateData().getStringOrThrow(fieldName));
                 for(String filename : nonOptions) {
                     Contract contractToJoin = loadContract(filename,true);
-                    value = value.add(new Decimal(contractToJoin.getStateData().getStringOrThrow(fieldName)));
-                    contract.addRevokingItems(contractToJoin);
+                    if(contractToJoin == null) {
+                        addError(Errors.NOT_FOUND.name(), filename, "contract non found or failed to load");
+                    } else {
+                        value = value.add(new Decimal(contractToJoin.getStateData().getStringOrThrow(fieldName)));
+                        contract.addRevokingItems(contractToJoin);
+                    }
                 }
                 Contract[] partContracts = null;
                 if(parts.size() > 0) {
@@ -1036,6 +1050,8 @@ public class CLIMain {
             } catch (Quantiser.QuantiserException e) {
                 addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
             }
+        } else {
+            addError(Errors.NOT_FOUND.name(), source, "contract non found or failed to load");
         }
 
         finish();
@@ -2542,14 +2558,18 @@ public class CLIMain {
     }
 
 
-    private static void finish() {
+    private static void finish(int status) {
         // print reports if need
         try {
             saveSession();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        throw new Finished();
+        throw new Finished(status);
+    }
+
+    private static void finish() {
+        finish(reporter.getErrors().size());
     }
 
     private static ContractFileTypes getFileType(String source) {
@@ -2699,6 +2719,19 @@ public class CLIMain {
     }
 
     public static class Finished extends RuntimeException {
+        private int status;
+
+        public int getStatus() {
+            return status;
+        }
+
+        public Finished() {
+            this.status = 0;
+        }
+
+        public Finished(int status) {
+            this.status = status;
+        }
     }
 
     static class ContractFilesFilter implements FileFilter {

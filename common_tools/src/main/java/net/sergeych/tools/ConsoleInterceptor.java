@@ -13,12 +13,15 @@ public class ConsoleInterceptor {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final PrintStream printStream = new PrintStream(bos, true);
         PrintStream oldStream = System.out;
+        PrintStream oldErr = System.err;
         System.setOut(printStream);
+        System.setErr(printStream);
         try {
             block.call();
         }
         finally {
             System.setOut(oldStream);
+            System.setErr(oldErr);
         }
         return bos.toString();
     }

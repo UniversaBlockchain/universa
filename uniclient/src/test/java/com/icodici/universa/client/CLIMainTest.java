@@ -3030,14 +3030,26 @@ public class CLIMainTest {
 
     private static Reporter callMain(String... args) throws Exception {
         output = ConsoleInterceptor.copyOut(() -> {
-            CLIMain.main(args);
+
+            String[] argsNew = new String[args.length+1];
+            for(int i =0; i< args.length;i++) {
+                argsNew[i] = args[i];
+            }
+            argsNew[args.length] = "--no-exit";
+
+            CLIMain.main(argsNew);
             errors = CLIMain.getReporter().getErrors();
         });
         return CLIMain.getReporter();
     }
 
     private static void callMain2(String... args) throws Exception {
-        CLIMain.main(args);
+        String[] argsNew = new String[args.length+1];
+        for(int i =0; i< args.length;i++) {
+            argsNew[i] = args[i];
+        }
+        argsNew[args.length] = "--no-exit";
+        CLIMain.main(argsNew);
     }
 
 
