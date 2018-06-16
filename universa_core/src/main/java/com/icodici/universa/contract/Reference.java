@@ -623,6 +623,19 @@ public class Reference implements BiSerializable {
      * @param iteration check inside references iteration number
      * @return true if match or false
      */
+    private boolean checkCondition(Condition condition, Contract ref, Collection<Contract> contracts, int iteration) {
+
+        return compareOperands(ref, condition.leftOperand, condition.rightOperand, condition.typeOfLeftOperand, condition.typeOfRightOperand, condition.operator, contracts, iteration);
+    }
+
+    /**
+     * Check not pre-parsed condition of reference (old version)
+     * @param condition condition to check for matching
+     * @param ref contract to check for matching
+     * @param contracts contract list to check for matching
+     * @param iteration check inside references iteration number
+     * @return true if match or false
+     */
     private boolean checkCondition(String condition, Contract ref, Collection<Contract> contracts, int iteration) {
 
         for (int i = 0; i < 2; i++) {
@@ -749,8 +762,10 @@ public class Reference implements BiSerializable {
 
             result = true;
             for (Object item: condList) {
-                if (item.getClass().getName().endsWith("String"))
-                    result = result && checkCondition((String) item, ref, contracts, iteration);
+                if (item.getClass().getName().endsWith("Condition"))
+                    result = result && checkCondition((Condition) item, ref, contracts, iteration);     // pre-parsed version
+                else if (item.getClass().getName().endsWith("String"))
+                    result = result && checkCondition((String) item, ref, contracts, iteration);        // not pre-parsed (old) version
                 else
                     //LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
                     //Binder insideBinder = new Binder(insideHashMap);
@@ -765,8 +780,10 @@ public class Reference implements BiSerializable {
 
             result = false;
             for (Object item: condList) {
-                if (item.getClass().getName().endsWith("String"))
-                    result = result || checkCondition((String) item, ref, contracts, iteration);
+                if (item.getClass().getName().endsWith("Condition"))
+                    result = result || checkCondition((Condition) item, ref, contracts, iteration);     // pre-parsed version
+                else if (item.getClass().getName().endsWith("String"))
+                    result = result || checkCondition((String) item, ref, contracts, iteration);        // not pre-parsed (old) version
                 else
                     //LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
                     //Binder insideBinder = new Binder(insideHashMap);
@@ -824,7 +841,6 @@ public class Reference implements BiSerializable {
             if (result) {
                 result = (origin == null || !(contract.getOrigin().equals(origin)));
             }
-
 
             //check fields
             if (result) {
@@ -1013,6 +1029,9 @@ public class Reference implements BiSerializable {
      * @return this reference
      */
     public Reference setConditions(Binder conditions) {
+        // Pre-parsing conditions
+        //...
+
         this.conditions = conditions;
         return this;
     }
@@ -1068,9 +1087,15 @@ public class Reference implements BiSerializable {
         return res;
     }
 
+    public class Condition {
+        int operator;
 
+        String leftOperand;
+        String rightOperand;
 
-
+        compareOperandType typeOfLeftOperand;
+        compareOperandType typeOfRightOperand;
+    }
 
     static {
         DefaultBiMapper.registerClass(Reference.class);
