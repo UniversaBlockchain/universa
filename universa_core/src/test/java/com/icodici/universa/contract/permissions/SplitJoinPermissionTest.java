@@ -7,16 +7,24 @@
 
 package com.icodici.universa.contract.permissions;
 
+import com.icodici.crypto.PrivateKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.ContractTestBase;
+import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.roles.Role;
+import com.icodici.universa.contract.roles.RoleLink;
+import com.icodici.universa.node2.Quantiser;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
+import java.util.HashSet;
+
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class SplitJoinPermissionTest extends ContractTestBase {
@@ -518,6 +526,42 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         c1.getStateData().set(FIELD_NAME, "500.00000001");
         sealCheckTrace(c1, false);
 
+    }
+
+
+    @Test
+    public void joinWithoutPermission() throws Exception {
+
+        Contract contract = new Contract(ownerKey1);
+        contract.getDefinition().getData().set("currency","UTN");
+
+        Binder params = Binder.of("field_name", "amount", "join_match_fields",asList("definition.data.currency","definition.issuer"));
+        Role ownerLink = new RoleLink("@onwer_link","owner");
+        contract.registerRole(ownerLink);
+        SplitJoinPermission  splitJoinPermission = new SplitJoinPermission(ownerLink,params);
+        contract.addPermission(splitJoinPermission);
+        contract.getStateData().set("amount","1000.5");
+        contract.seal();
+        contract.check();
+        assertTrue(contract.isOk());
+
+        Contract contractToJoin = new Contract(ownerKey1);
+        contractToJoin.getDefinition().getData().set("currency","UTN");
+        ownerLink = new RoleLink("@onwer_link","owner");
+        contractToJoin.getStateData().set("amount","100.0");
+        contractToJoin.registerRole(ownerLink);
+        RevokePermission revokePermission = new RevokePermission(ownerLink);
+        contractToJoin.addPermission(revokePermission);
+
+        contractToJoin.seal();
+        contractToJoin.check();
+        assertTrue(contractToJoin.isOk());
+
+        HashSet<PrivateKey> keys = new HashSet<>();
+        keys.add(ownerKey1);
+        Contract joinResult = ContractsService.createJoin(contract, contractToJoin, "amount", keys);
+        joinResult.check();
+        assertFalse(joinResult.isOk());
     }
 
 }
