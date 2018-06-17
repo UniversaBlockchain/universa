@@ -615,6 +615,132 @@ public class Reference implements BiSerializable {
         return ret;
     }
 
+    private Condition parseCondition(String condition, Contract ref, Collection<Contract> contracts, int iteration) {
+
+        Condition parcedCondition = new Condition();
+
+        for (int i = 0; i < 2; i++) {
+            int operPos = condition.lastIndexOf(operators[i]);
+
+            if ((operPos >= 0) && (condition.length() - operators[i].length() == operPos)) {
+
+                String leftOperand = condition.substring(0, operPos).replaceAll("\\s+", "");
+
+                parcedCondition.operator = i;
+                parcedCondition.leftOperand = leftOperand;
+                parcedCondition.rightOperand = null;
+                parcedCondition.typeOfLeftOperand = compareOperandType.FIELD;
+                parcedCondition.typeOfRightOperand = compareOperandType.CONSTOTHER;
+
+                return parcedCondition;
+            }
+        }
+
+        for (int i = 2; i < INHERITS; i++) {
+            int operPos = condition.indexOf(operators[i]);
+            int firstMarkPos = condition.indexOf("\"");
+            int lastMarkPos = condition.lastIndexOf("\"");
+
+            // Normal situation - operator without quotes
+            while ((operPos >= 0) && ((firstMarkPos >= 0) && (operPos > firstMarkPos) && (operPos < lastMarkPos)))
+                operPos = condition.indexOf(operators[i], operPos + 1);
+
+            // Operator not found
+            if (operPos < 0)
+                continue;
+
+            // Parsing left operand
+            String subStrL = condition.substring(0, operPos);
+            if (subStrL.length() == 0)
+                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing left operand.");
+
+            int lmarkPos1 = subStrL.indexOf("\"");
+            int lmarkPos2 = subStrL.lastIndexOf("\"");
+
+            if ((lmarkPos1 >= 0) && (lmarkPos1 == lmarkPos2))
+                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Only one quote is found for left operand.");
+
+            String leftOperand;
+            compareOperandType typeLeftOperand = compareOperandType.CONSTOTHER;
+
+            if ((lmarkPos1 >= 0) && (lmarkPos1 != lmarkPos2)) {
+                leftOperand = subStrL.substring(lmarkPos1 + 1, lmarkPos2);
+                typeLeftOperand = compareOperandType.CONSTSTR;
+            }
+            else {
+                leftOperand = subStrL.replaceAll("\\s+", "");
+                int firstPointPos;
+                if (((firstPointPos = leftOperand.indexOf(".")) > 0) &&
+                        (leftOperand.length() > firstPointPos + 1) &&
+                        ((leftOperand.charAt(firstPointPos + 1) < '0') ||
+                                (leftOperand.charAt(firstPointPos + 1) > '9')))
+                    typeLeftOperand = compareOperandType.FIELD;
+            }
+
+            // Parsing rigth operand
+            String subStrR = condition.substring(operPos + operators[i].length());
+            if (subStrR.length() == 0)
+                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing right operand.");
+
+            int rmarkPos1 = subStrR.indexOf("\"");
+            int rmarkPos2 = subStrR.lastIndexOf("\"");
+
+            if ((rmarkPos1 >= 0) && (rmarkPos1 == rmarkPos2))
+                throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Only one quote is found for rigth operand.");
+
+            String rightOperand;
+            compareOperandType typeRightOperand = compareOperandType.CONSTOTHER;
+
+            if ((rmarkPos1 >= 0) && (rmarkPos1 != rmarkPos2)) {
+                rightOperand = subStrR.substring(rmarkPos1 + 1, rmarkPos2);
+                typeRightOperand = compareOperandType.CONSTSTR;
+            }
+            else {
+                rightOperand = subStrR.replaceAll("\\s+", "");
+                int firstPointPos;
+                if (((firstPointPos = rightOperand.indexOf(".")) > 0) &&
+                        (rightOperand.length() > firstPointPos + 1) &&
+                        ((rightOperand.charAt(firstPointPos + 1) < '0') ||
+                                (rightOperand.charAt(firstPointPos + 1) > '9')))
+                    typeRightOperand = compareOperandType.FIELD;
+            }
+
+            if ((typeLeftOperand != compareOperandType.FIELD) && (typeRightOperand != compareOperandType.FIELD))
+                throw new IllegalArgumentException("At least one operand must be a field in condition: " + condition);
+
+            parcedCondition.operator = i;
+            parcedCondition.leftOperand = leftOperand;
+            parcedCondition.rightOperand = rightOperand;
+            parcedCondition.typeOfLeftOperand = typeLeftOperand;
+            parcedCondition.typeOfRightOperand = typeRightOperand;
+
+            return parcedCondition;
+
+        }
+
+        for (int i = INHERITS; i <= INHERIT; i++) {
+            int operPos = condition.indexOf(operators[i]);
+
+            if ((operPos == 0) || ((operPos > 0) && (condition.charAt(operPos - 1) != '_'))) {
+                String subStrR = condition.substring(operPos + operators[i].length());
+                if (subStrR.length() == 0)
+                    throw new IllegalArgumentException("Invalid format of condition: " + condition + ". Missing right operand.");
+
+                String rightOperand = subStrR.replaceAll("\\s+", "");
+
+                parcedCondition.operator = i;
+                parcedCondition.leftOperand = null;
+                parcedCondition.rightOperand = rightOperand;
+                parcedCondition.typeOfLeftOperand = compareOperandType.FIELD;
+                parcedCondition.typeOfRightOperand = compareOperandType.FIELD;
+
+                return parcedCondition;
+            }
+        }
+
+        throw new IllegalArgumentException("Invalid format of condition: " + condition);
+    }
+
     /**
      * Check condition of reference
      * @param condition condition to check for matching
