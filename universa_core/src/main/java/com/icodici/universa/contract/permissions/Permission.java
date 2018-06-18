@@ -30,7 +30,7 @@ import java.util.Set;
  * com.icodici.universa.contract.roles.Role} player (e.g. Universa party, set of keys used in signing the contract) to
  * perform some change over the contract state. The real permissions are all superclasses of it.
  * <p>
- * The actually permission implementation must implement {@link #checkChanges(Contract, Contract, Map)}, see this method for
+ * The actually permission implementation must implement {@link #checkChanges(Contract, Contract, Map,Set,Collection,Collection)}, see this method for
  * information on how to approve changes with the permission.
  */
 public abstract class Permission implements BiSerializable, Comparable<Permission> {
