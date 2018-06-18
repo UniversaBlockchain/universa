@@ -100,16 +100,16 @@ public class CLIMainTest {
                 "    seconds: " + zdt.toEpochSecond() + "\n" +
                 "    __type: unixtime";
 
-        callMain("-c", "-v", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract1.unicon",
+        callMain("-c", "-v", rootPath + "simple_root_contract_v2.yml", "--output", basePath + "contract1.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
                 "-set", field, "-value", value);
-        callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract2.unicon",
+        callMain("-c", rootPath + "simple_root_contract_v2.yml", "--output", basePath + "contract2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
                 "-set", field, "-value", value);
-        callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract3.unicon",
+        callMain("-c", rootPath + "simple_root_contract_v2.yml", "--output", basePath + "contract3.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
                 "-set", field, "-value", value);
-        callMain("-c", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contract_to_export.unicon",
+        callMain("-c", rootPath + "simple_root_contract_v2.yml", "--output", basePath + "contract_to_export.unicon",
                 "-set", field, "-value", value);
 
 
@@ -137,12 +137,12 @@ public class CLIMainTest {
         c3.seal();
         CLIMain.saveContract(c3, basePath + "contract_for_revoke3.unicon");
 
-        callMain("-e", basePath + "contract1.unicon", "-name", basePath + "contract_to_import.json");
-        callMain("-e", basePath + "contract1.unicon", "-name", basePath + "contract_to_import.xml");
-        callMain("-e", basePath + "contract1.unicon", "-name", basePath + "contract_to_import.XML");
-        callMain("-e", basePath + "contract1.unicon", "-name", basePath + "contract_to_import.yaml");
+        callMain("-e", basePath + "contract1.unicon", "--output", basePath + "contract_to_import.json");
+        callMain("-e", basePath + "contract1.unicon", "--output", basePath + "contract_to_import.xml");
+        callMain("-e", basePath + "contract1.unicon", "--output", basePath + "contract_to_import.XML");
+        callMain("-e", basePath + "contract1.unicon", "--output", basePath + "contract_to_import.yaml");
 
-        callMain("-i", basePath + "contract_to_import.json", "-name", basePath + "not_signed_contract.unicon");
+        callMain("-i", basePath + "contract_to_import.json", "--output", basePath + "not_signed_contract.unicon");
 
         Path path = Paths.get(rootPath + "packedContract.unicon");
         byte[] data = Files.readAllBytes(path);
@@ -242,7 +242,7 @@ public class CLIMainTest {
 
     @Test
     public void createContract() throws Exception {
-        callMain("-c", rootPath + "simple_root_contract.yml", "-j", "-name", basePath + "simple_root_contract.unicon");
+        callMain("-c", rootPath + "simple_root_contract.yml", "-j", "--output", basePath + "simple_root_contract.unicon");
         System.out.println(output);
         assertTrue (new File(basePath + "simple_root_contract.unicon").exists());
     }
@@ -256,7 +256,7 @@ public class CLIMainTest {
                 "    seconds: " + zdt.toEpochSecond() + "\n" +
                 "    __type: unixtime";
         callMain("-c", rootPath + "simple_root_contract.yml", "-v",
-                "-name", basePath + "simple_root_contract3.unicon",
+                "--output", basePath + "simple_root_contract3.unicon",
                 "-set", field, "-value", value);
         System.out.println(output);
         assertTrue (new File(basePath + "simple_root_contract3.unicon").exists());
@@ -266,8 +266,8 @@ public class CLIMainTest {
     @Test
     public void createTwoNotSignedContracts() throws Exception {
         callMain("-c", "-v",
-                rootPath + "simple_root_contract.yml", "-name", basePath + "simple_root_contract1.unicon",
-                rootPath + "simple_root_contract.yml", "-name", basePath + "simple_root_contract2.unicon");
+                rootPath + "simple_root_contract.yml", "--output", basePath + "simple_root_contract1.unicon",
+                rootPath + "simple_root_contract.yml", "--output", basePath + "simple_root_contract2.unicon");
         System.out.println(output);
         assertTrue (new File(basePath + "simple_root_contract1.unicon").exists());
         assertTrue (new File(basePath + "simple_root_contract2.unicon").exists());
@@ -276,8 +276,8 @@ public class CLIMainTest {
     @Test
     public void createTwoSignedContracts() throws Exception {
         callMain("-c", "-v",
-                rootPath + "simple_root_contract.yml", "-name", basePath + "simple_root_contract1.unicon",
-                rootPath + "simple_root_contract.yml", "-name", basePath + "simple_root_contract2.unicon",
+                rootPath + "simple_root_contract.yml", "--output", basePath + "simple_root_contract1.unicon",
+                rootPath + "simple_root_contract.yml", "--output", basePath + "simple_root_contract2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         System.out.println(output);
         assertTrue (new File(basePath + "simple_root_contract1.unicon").exists());
@@ -300,7 +300,7 @@ public class CLIMainTest {
         String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
         String contractFileName = basePath + "contract7.unicon";
         callMain("-c", rootPath + "simple_root_contract_v2.yml",
-                "-k", keyFileName, "-name", contractFileName
+                "-k", keyFileName, "--output", contractFileName
         );
         assertTrue(new File(contractFileName).exists());
         assertEquals(0, errors.size());
@@ -319,14 +319,14 @@ public class CLIMainTest {
         String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
 
         callMain("-c", rootPath + "simple_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "simple_root_contract_v2.unicon"
+                "-k", keyFileName, "--output", basePath + "simple_root_contract_v2.unicon"
         );
         String contractFileName = basePath + "simple_root_contract_v2.unicon";
         assertTrue(new File(contractFileName).exists());
         assertEquals(0, errors.size());
 
         callMain("-c", rootPath + "another_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "another_root_contract_v2.unicon"
+                "-k", keyFileName, "--output", basePath + "another_root_contract_v2.unicon"
         );
         String contractFileName2 = basePath + "another_root_contract_v2.unicon";
         assertTrue(new File(contractFileName2).exists());
@@ -346,14 +346,14 @@ public class CLIMainTest {
         String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
 
         callMain("-c", rootPath + "simple_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "simple_root_contract_v2.unicon"
+                "-k", keyFileName, "--output", basePath + "simple_root_contract_v2.unicon"
         );
         String contractFileName = basePath + "simple_root_contract_v2.unicon";
         assertTrue(new File(contractFileName).exists());
         assertEquals(0, errors.size());
 
         callMain("-c", rootPath + "another_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "another_root_contract_v2.unicon"
+                "-k", keyFileName, "--output", basePath + "another_root_contract_v2.unicon"
         );
         String contractFileName2 = basePath + "another_root_contract_v2.unicon";
         assertTrue(new File(contractFileName2).exists());
@@ -373,14 +373,14 @@ public class CLIMainTest {
         String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
 
         callMain("-c", rootPath + "simple_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "simple_root_contract_v2.unicon"
+                "-k", keyFileName, "--output", basePath + "simple_root_contract_v2.unicon"
         );
         String contractFileName = basePath + "simple_root_contract_v2.unicon";
         assertTrue(new File(contractFileName).exists());
         assertEquals(0, errors.size());
 
         callMain("-c", rootPath + "another_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "another_root_contract_v2.unicon"
+                "-k", keyFileName, "--output", basePath + "another_root_contract_v2.unicon"
         );
         String contractFileName2 = basePath + "another_root_contract_v2.unicon";
         assertTrue(new File(contractFileName2).exists());
@@ -400,14 +400,14 @@ public class CLIMainTest {
         String keyFileName = rootPath + "_xer0yfe2nn1xthc.private.unikey";
 
         callMain("-c", rootPath + "simple_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "simple_root_contract_v2.unicon"
+                "-k", keyFileName, "--output", basePath + "simple_root_contract_v2.unicon"
         );
         String contractFileName = basePath + "simple_root_contract_v2.unicon";
         assertTrue(new File(contractFileName).exists());
         assertEquals(0, errors.size());
 
         callMain("-c", rootPath + "another_root_contract_v2.yml",
-                "-k", keyFileName, "-name", basePath + "another_root_contract_v2.unicon"
+                "-k", keyFileName, "--output", basePath + "another_root_contract_v2.unicon"
         );
         String contractFileName2 = basePath + "another_root_contract_v2.unicon";
         assertTrue(new File(contractFileName2).exists());
@@ -463,7 +463,7 @@ public class CLIMainTest {
     public void createAndSign() throws Exception {
         callMain("-c", rootPath + "simple_root_contract_v2.yml",
                  "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey",
-                "-name", basePath + "simple_root_contract_v2.unicon"
+                "--output", basePath + "simple_root_contract_v2.unicon"
         );
         System.out.println(new File(basePath + "simple_root_contract_v2.unicon").getAbsolutePath());
         assertTrue (new File(basePath + "simple_root_contract_v2.unicon").exists());
@@ -508,7 +508,7 @@ public class CLIMainTest {
 //        System.out.println(c3.getId());
 //        callMain2("--probe", c3.getId().toBase64String());
 
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", rootPath + "realToken.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", rootPath + "realToken.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(rootPath + "realToken.unicon").exists());
         callMain2("-register", rootPath + "realToken.unicon",
@@ -569,7 +569,7 @@ public class CLIMainTest {
     public void exportWithNameTest() throws Exception {
         String name = "ExportedContract.json";
         callMain(
-                "-e", basePath + "contract_to_export.unicon", "-name", basePath + name);
+                "-e", basePath + "contract_to_export.unicon", "--output", basePath + name);
         System.out.println(output);
         assertTrue (output.indexOf(name + " export as json ok") >= 0);
         assertEquals(0, errors.size());
@@ -634,8 +634,8 @@ public class CLIMainTest {
     public void exportTwoContractsTest6() throws Exception {
         callMain(
                 "-e",
-                basePath + "contract1.unicon", "-name", basePath + "test6.XML",
-                basePath + "contract2.unicon", "-name", basePath + "test6.YML");
+                basePath + "contract1.unicon", "--output", basePath + "test6.XML",
+                basePath + "contract2.unicon", "--output", basePath + "test6.YML");
         System.out.println(output);
         assertTrue (output.indexOf("export as xml ok") >= 0);
         assertTrue (output.indexOf("export as yml ok") >= 0);
@@ -671,7 +671,7 @@ public class CLIMainTest {
                 "-e", basePath + "contract_to_export.unicon", "-extract-key", role);
         System.out.println(output);
         assertTrue (output.indexOf(role + " export public keys ok") < 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
     }
 
     @Test
@@ -889,7 +889,7 @@ public class CLIMainTest {
                 "-e", basePath + "contract_to_export.unicon", "-get", field, "-as", "json");
         System.out.println(output);
         assertTrue (output.indexOf("export fields as json ok") < 0);
-        assertEquals(0, errors.size());
+        assertEquals(1, errors.size());
     }
 
     @Test
@@ -982,9 +982,9 @@ public class CLIMainTest {
     @Test
     public void importTwoContractsTest2() throws Exception {
         callMain(
-                "-i", "-name", basePath + "contract_json.unicon", basePath + "contract_to_import.json",
-                "-name", basePath + "contract_xml.unicon", basePath + "contract_to_import.xml",
-                "-name", basePath + "contract_yaml.unicon", basePath + "contract_to_import.yaml");
+                "-i", "--output", basePath + "contract_json.unicon", basePath + "contract_to_import.json",
+                "--output", basePath + "contract_xml.unicon", basePath + "contract_to_import.xml",
+                "--output", basePath + "contract_yaml.unicon", basePath + "contract_to_import.yaml");
         System.out.println(output);
         assertTrue (output.indexOf("import from json ok") >= 0);
         assertTrue (output.indexOf("import from yaml ok") >= 0);
@@ -1077,7 +1077,7 @@ public class CLIMainTest {
     public void importWithNameTest() throws Exception {
         String name = "ImportedContract.unicon";
         callMain(
-                "-i", basePath + "contract_to_import.xml", "-name", basePath + name);
+                "-i", basePath + "contract_to_import.xml", "--output", basePath + name);
         System.out.println(output);
         assertTrue (output.indexOf("import from xml ok") >= 0);
         assertEquals(1, errors.size());
@@ -1997,7 +1997,7 @@ public class CLIMainTest {
         callMain2("-pack-with", contractFileName,
                 "-add-sibling", basePath + "contract2.unicon",
                 "-add-revoke", basePath + "contract_for_revoke1.unicon",
-                "-name", savingFileName,
+                "--output", savingFileName,
                 "-v");
 
         callMain("--check", savingFileName, "-v");
@@ -2428,7 +2428,7 @@ public class CLIMainTest {
     @Test
     public void testExportImportWithAddresses() throws Exception {
 
-        callMain2("-create", rootPath + "simple_root_contract_v2.yml", "-name", basePath + "contractWithAddresses.unicon",
+        callMain2("-create", rootPath + "simple_root_contract_v2.yml", "--output", basePath + "contractWithAddresses.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         Contract contract = CLIMain.loadContract(basePath + "contractWithAddresses.unicon", true);
 
@@ -2443,12 +2443,12 @@ public class CLIMainTest {
         Files.deleteIfExists(Paths.get(basePath + "contractWithAddresses.unicon"));
         CLIMain.saveContract(contract, basePath + "contractWithAddresses.unicon");
 
-        callMain("-e", basePath + "contractWithAddresses.unicon", "-name", basePath + "contractWithAddresses.json");
+        callMain("-e", basePath + "contractWithAddresses.unicon", "--output", basePath + "contractWithAddresses.json");
         System.out.println(output);
         assertTrue (output.indexOf("export as json ok") >= 0);
         assertEquals(0, errors.size());
 
-        callMain("-i", basePath + "contractWithAddresses.json", "-name", basePath + "contractWithAddressesImported.unicon");
+        callMain("-i", basePath + "contractWithAddresses.json", "--output", basePath + "contractWithAddressesImported.unicon");
         System.out.println(output);
         assertTrue (output.indexOf("import from json ok") >= 0);
         assertEquals(1, errors.size());
@@ -2482,7 +2482,7 @@ public class CLIMainTest {
     @Test
     public void anonymizeRole() throws Exception {
 
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "forRoleAnonymizing.unicon").exists());
         callMain("-anonymize", basePath + "forRoleAnonymizing.unicon",
@@ -2504,7 +2504,7 @@ public class CLIMainTest {
     @Test
     public void anonymizeAllRoles() throws Exception {
 
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "forRoleAnonymizing.unicon").exists());
         callMain("-anonymize", basePath + "forRoleAnonymizing.unicon");
@@ -2530,12 +2530,12 @@ public class CLIMainTest {
     @Test
     public void anonymizeRoleAndSaveWithName() throws Exception {
 
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "forRoleAnonymizing.unicon").exists());
         callMain("-anonymize", basePath + "forRoleAnonymizing.unicon",
                 "-role", "issuer",
-                "-name", basePath + "myAnon.unicon");
+                "--output", basePath + "myAnon.unicon");
         assertTrue (new File(basePath + "myAnon.unicon").exists());
         System.out.println(output);
 
@@ -2553,9 +2553,9 @@ public class CLIMainTest {
     @Test
     public void anonymizeRoleForTwoContracts() throws Exception {
 
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing1.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing1.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing2.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "forRoleAnonymizing1.unicon").exists());
         assertTrue (new File(basePath + "forRoleAnonymizing2.unicon").exists());
@@ -2589,16 +2589,16 @@ public class CLIMainTest {
     @Test
     public void anonymizeRoleForTwoContractsWithNames() throws Exception {
 
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing1.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing1.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing2.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "forRoleAnonymizing1.unicon").exists());
         assertTrue (new File(basePath + "forRoleAnonymizing2.unicon").exists());
 
         callMain("-anonymize", basePath + "forRoleAnonymizing1.unicon", basePath + "forRoleAnonymizing2.unicon",
                 "-role", "issuer",
-                "-name", basePath + "myAnon1.unicon", "-name", basePath + "myAnon2.unicon");
+                "--output", basePath + "myAnon1.unicon", "--output", basePath + "myAnon2.unicon");
         assertTrue (new File(basePath + "myAnon1.unicon").exists());
         assertTrue (new File(basePath + "myAnon2.unicon").exists());
         System.out.println(output);
@@ -2629,9 +2629,9 @@ public class CLIMainTest {
         Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing1.unicon"));
         Files.deleteIfExists(Paths.get(basePath + "forRoleAnonymizing2.unicon"));
 
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing1.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing1.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "forRoleAnonymizing2.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "forRoleAnonymizing2.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "forRoleAnonymizing1.unicon").exists());
         assertTrue (new File(basePath + "forRoleAnonymizing2.unicon").exists());
@@ -2685,7 +2685,7 @@ public class CLIMainTest {
 
         String tuContract = getApprovedTUContract();
 
-        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "-name", basePath + "realToken.unicon",
+        callMain2("-create", rootPath + "TokenDSLTemplate.yml", "--output", basePath + "realToken.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realToken.unicon").exists());
         callMain("-register", basePath + "realToken.unicon",
@@ -2703,7 +2703,7 @@ public class CLIMainTest {
 
         String tuContract = getApprovedTUContract();
 
-        callMain2("-create", rootPath + "NotaryDSLTemplate.yml", "-name", basePath + "realNotary.unicon",
+        callMain2("-create", rootPath + "NotaryDSLTemplate.yml", "--output", basePath + "realNotary.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realNotary.unicon").exists());
         callMain("--register", basePath + "realNotary.unicon",
@@ -2721,7 +2721,7 @@ public class CLIMainTest {
 
         String tuContract = getApprovedTUContract();
 
-        callMain2("-create", rootPath + "ShareDSLTemplate.yml", "-name", basePath + "realShare.unicon",
+        callMain2("-create", rootPath + "ShareDSLTemplate.yml", "--output", basePath + "realShare.unicon",
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(basePath + "realShare.unicon").exists());
         callMain("--register", basePath + "realShare.unicon",
@@ -3155,8 +3155,8 @@ public class CLIMainTest {
         assertEquals(part2.getStateData().getStringOrThrow("amount"),"300.0");
 
 
-        callMain("--split-of", basePath + "origin_main.unicon", basePath + "origin_0.unicon", basePath + "origin_1.unicon", "--keys", basePath+"splitJoinKey1.privateKey.unikey"+","+basePath+"splitJoinKey3.privateKey.unikey","--name",basePath+"join_bad.unicon");
-        callMain("--split-of", basePath + "origin_0.unicon", basePath + "origin_1.unicon", "--keys", basePath+"splitJoinKey1.privateKey.unikey"+","+basePath+"splitJoinKey3.privateKey.unikey","--name",basePath+"join_good.unicon");
+        callMain("--split-of", basePath + "origin_main.unicon", basePath + "origin_0.unicon", basePath + "origin_1.unicon", "--keys", basePath+"splitJoinKey1.privateKey.unikey"+","+basePath+"splitJoinKey3.privateKey.unikey","--output",basePath+"join_bad.unicon");
+        callMain("--split-of", basePath + "origin_0.unicon", basePath + "origin_1.unicon", "--keys", basePath+"splitJoinKey1.privateKey.unikey"+","+basePath+"splitJoinKey3.privateKey.unikey","--output",basePath+"join_good.unicon");
 
 
         assertTrue (new File(basePath + "join_bad.unicon").exists());
@@ -3174,7 +3174,7 @@ public class CLIMainTest {
 
         callMain("--split-of", basePath + "join_good.unicon",
                 "--parts", "1,1",
-                "--owners", splitJoinKey2.getPublicKey().getShortAddress()+","+splitJoinKey3.getPublicKey().getShortAddress(), "--keys", basePath+"splitJoinKey1.privateKey.unikey","--name",basePath+"join_good_split.unicon","--name",basePath+"join_good_split_part.unicon");
+                "--owners", splitJoinKey2.getPublicKey().getShortAddress()+","+splitJoinKey3.getPublicKey().getShortAddress(), "--keys", basePath+"splitJoinKey1.privateKey.unikey","--output",basePath+"join_good_split.unicon","--output",basePath+"join_good_split_part.unicon");
 
         assertTrue (new File(basePath + "join_good_split.unicon").exists());
         assertTrue (new File(basePath + "join_good_split_part.unicon").exists());
