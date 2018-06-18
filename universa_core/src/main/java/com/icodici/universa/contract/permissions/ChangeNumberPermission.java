@@ -1,6 +1,6 @@
 package com.icodici.universa.contract.permissions;
 
-import com.icodici.universa.Decimal;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
@@ -10,9 +10,9 @@ import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
 import net.sergeych.tools.Binder;
 
+import java.util.Collection;
 import java.util.Map;
-
-import static java.util.Arrays.asList;
+import java.util.Set;
 
 /**
  * Permission allows to change some numeric (as for now, integer) field, controlling it's range
@@ -62,13 +62,16 @@ public class ChangeNumberPermission extends Permission {
      * Check and remove changes that this permission allow. Note that it does not add errors itself,
      * to allow using several such permission, from which some may allow the change, and some may not. If a check
      * will add error, though, it will prevent subsequent permission objects to allow the change.
-     *
-     * @param contract source (valid) contract
+     *  @param contract source (valid) contract
      * @param changed is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
+     * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
+     * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
+     * @param checkingReferences are used to check other contracts permissions
+
      */
     @Override
-    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges) {
+    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences) {
         MapDelta<String,Binder,Binder> dataChanges = (MapDelta<String, Binder, Binder>) stateChanges.get("data");
         if( dataChanges == null)
             return;

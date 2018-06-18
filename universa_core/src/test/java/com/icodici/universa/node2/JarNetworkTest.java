@@ -201,7 +201,7 @@ public class JarNetworkTest extends TestCase {
     }
 
 
-
+    @Ignore
     @Test
     public void registerSimpleContractWithPayment() throws Exception {
         Contract contractToRegister = new Contract(TestKeys.privateKey(10));
@@ -224,7 +224,7 @@ public class JarNetworkTest extends TestCase {
     }
 
 
-
+    @Ignore
     @Test
     public void registerSeveralSimpleContractWithPayment() throws Exception {
         for (int i = 0; i < 20; ++i) {

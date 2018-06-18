@@ -7,16 +7,18 @@
 
 package com.icodici.universa.contract.permissions;
 
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Errors;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.biserializer.BiType;
-import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
 import net.sergeych.diff.MapDelta;
 
+import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Permission allows to change and remove owner role of contract.
@@ -38,13 +40,15 @@ public class ChangeOwnerPermission extends Permission {
 
     /**
      * Check and remove change of state.owner, if any.
-     *
-     * @param contract valid contract state
+     *  @param contract valid contract state
      * @param changed is contract for checking
      * @param stateChanges changes in its state section
+     * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
+     * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
+     * @param checkingReferences are used to check other contracts permissions
      */
     @Override
-    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges) {
+    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences) {
         Object x = stateChanges.get("owner");
         if( x != null ) {
             stateChanges.remove("owner");

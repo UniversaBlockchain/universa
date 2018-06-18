@@ -184,12 +184,14 @@ public abstract class Permission implements BiSerializable, Comparable<Permissio
      * could be specified several times for different roles and with different parameter, implementation should do
      * nothing on the error and let others porceed. Unprocessed changes will cause error if no permission will clear
      * it.
-     *
-     * @param contract source (valid) contract
+     *  @param contract source (valid) contract
      * @param changed is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
+     * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
+     * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
+     * @param checkingReferences are used to check other contracts permissions
      */
-    public abstract void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges);
+    public abstract void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences);
 
     /**
      * Get permission as string.

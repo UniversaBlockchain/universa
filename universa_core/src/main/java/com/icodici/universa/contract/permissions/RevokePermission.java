@@ -7,13 +7,16 @@
 
 package com.icodici.universa.contract.permissions;
 
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.biserializer.BiType;
 import net.sergeych.diff.Delta;
 
+import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Permission allows to revoke contract.
@@ -34,7 +37,7 @@ public class RevokePermission extends Permission {
     }
 
     @Override
-    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges) {
+    public void checkChanges(Contract contract, Contract changed, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences) {
         // this permission checks no changes, it's about the whole contract
     }
 

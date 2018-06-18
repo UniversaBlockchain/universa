@@ -34,6 +34,7 @@ public class ContractDelta {
     private final Contract changed;
     private MapDelta stateDelta;
     private Map<String, Delta> stateChanges;
+    private Set<Contract> revokingItems;
 
     public ContractDelta(Contract existing, Contract changed) {
         this.existing = existing;
@@ -80,6 +81,7 @@ public class ContractDelta {
                                                                                "origin"));
     private void checkStateChange() throws Quantiser.QuantiserException {
         stateChanges = stateDelta.getChanges();
+        revokingItems = new HashSet(changed.getRevokingItems());
         stateChanges.remove("created_by");
 
         // todo: check siblings have different and proper branch ids
@@ -144,7 +146,7 @@ public class ContractDelta {
                         changed.checkApplicablePermissionQuantized(permission);
                         permissionQuantized = true;
                     }
-                    permission.checkChanges(existing, changed, stateChanges);
+                    permission.checkChanges(existing, changed, stateChanges,revokingItems,checkingKeys,checkingReferences);
                 }
             }
         }
@@ -162,5 +164,9 @@ public class ContractDelta {
 
     private void addError(Errors code, String field, String text) {
         changed.addError(code, field, text);
+    }
+
+    public Set<Contract> getRevokingItems() {
+        return revokingItems;
     }
 }

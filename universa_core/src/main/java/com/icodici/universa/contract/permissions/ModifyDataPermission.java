@@ -4,6 +4,7 @@
 
 package com.icodici.universa.contract.permissions;
 
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
@@ -68,13 +69,15 @@ public class ModifyDataPermission extends Permission {
 
     /**
      * checkChanges processes the map of changes with the list of fields with predefined data options for a role.
-     *
-     * @param contract source (valid) contract
+     *  @param contract source (valid) contract
      * @param changedContract is contract for checking
      * @param stateChanges map of changes, see {@link Delta} for details
+     * @param revokingItems items to be revoked. The ones are getting joined will be removed during check
+     * @param keys keys contract is sealed with. Keys are used to check other contracts permissions
+     * @param checkingReferences are used to check other contracts permissions
      */
     @Override
-    public void checkChanges(Contract contract, Contract changedContract, Map<String, Delta> stateChanges) {
+    public void checkChanges(Contract contract, Contract changedContract, Map<String, Delta> stateChanges, Set<Contract> revokingItems, Collection<PublicKey> keys, Collection<String> checkingReferences) {
         Delta data = stateChanges.get("data");
         if (data != null && data instanceof MapDelta) {
             Map mapChanges = ((MapDelta) data).getChanges();

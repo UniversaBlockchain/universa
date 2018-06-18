@@ -550,8 +550,8 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         ownerLink = new RoleLink("@onwer_link","owner");
         contractToJoin.getStateData().set("amount","100.0");
         contractToJoin.registerRole(ownerLink);
-        RevokePermission revokePermission = new RevokePermission(ownerLink);
-        contractToJoin.addPermission(revokePermission);
+        //RevokePermission revokePermission = new RevokePermission(ownerLink);
+        //contractToJoin.addPermission(revokePermission);
 
         contractToJoin.seal();
         contractToJoin.check();
@@ -562,6 +562,17 @@ public class SplitJoinPermissionTest extends ContractTestBase {
         Contract joinResult = ContractsService.createJoin(contract, contractToJoin, "amount", keys);
         joinResult.check();
         assertFalse(joinResult.isOk());
+
+
+        splitJoinPermission = new SplitJoinPermission(ownerLink,params);
+        contractToJoin.addPermission(splitJoinPermission);
+        contractToJoin.seal();
+        contractToJoin.check();
+        assertTrue(contractToJoin.isOk());
+
+        joinResult = ContractsService.createJoin(contract, contractToJoin, "amount", keys);
+        joinResult.check();
+        assertTrue(joinResult.isOk());
     }
 
 }

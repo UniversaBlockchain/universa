@@ -657,7 +657,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             // common check for all cases
 //            errors.clear();
             basicCheck();
-            checkRevokePermissions();
+
 
             if (state.origin == null)
                 checkRootContract();
@@ -1078,13 +1078,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             addError(BAD_VALUE, "state.created_at", "invalid");
         if (state.origin != null)
             addError(BAD_VALUE, "state.origin", "must be empty in a root contract");
+
+        checkRevokePermissions(revokingItems);
     }
 
-    private void checkRevokePermissions() throws Quantiser.QuantiserException {
-        for (Approvable item : revokingItems) {
-            if (!(item instanceof Contract))
-                addError(BAD_REF, "revokingItem", "revoking item is not a Contract");
-            Contract rc = (Contract) item;
+    private void checkRevokePermissions(Set<Contract> revokes) throws Quantiser.QuantiserException {
+        for (Contract rc : revokes) {
 
             //check if revoking parent => no permission is needed
             if(getParent() != null && rc.getId().equals(getParent()))
@@ -1142,6 +1141,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
             ContractDelta delta = new ContractDelta(parent, this);
             delta.check();
+
+            checkRevokePermissions(delta.getRevokingItems());
         }
     }
 
