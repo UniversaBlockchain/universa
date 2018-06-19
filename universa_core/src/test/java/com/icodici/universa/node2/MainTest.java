@@ -17,6 +17,7 @@ import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
+import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
@@ -53,6 +54,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 @Ignore("start it manually")
@@ -3057,5 +3059,106 @@ public class MainTest {
 
         environment = Boss.load(Boss.pack(environment));
         assertEquals(environment.get("test",null),"test1");
+    }
+
+    @Test
+    public void concurrentResyncTest() throws Exception {
+        boolean doShutdown = true;
+        PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
+        TestSpace testSpace = prepareTestSpace(issuerKey);
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        Set<PrivateKey> issuerKeys = new HashSet<>();
+        Set<PublicKey> ownerKeys = new HashSet<>();
+        issuerKeys.add(issuerKey);
+        ownerKeys.add(issuerKey.getPublicKey());
+
+
+        ArrayList<Contract> contractsToJoin = new ArrayList<>();
+
+        for(int k = 0; k < 4; k++) {
+            if (doShutdown) {
+                //shutdown one of nodes
+                if (k < 3) {
+                    int absentNode = k + 1;
+                    testSpace.nodes.get(absentNode).shutdown();
+                    testSpace.nodes.remove(absentNode);
+                }
+            }
+
+            Contract contract = new Contract(issuerKey);
+            contract.getDefinition().getData().set("test","test1");
+            contract.getStateData().set("amount","100");
+            Binder params = Binder.of("field_name", "amount", "join_match_fields",asList("definition.issuer"));
+            Role ownerLink = new RoleLink("@owner_link","owner");
+            contract.registerRole(ownerLink);
+            SplitJoinPermission splitJoinPermission = new SplitJoinPermission(ownerLink,params);
+            contract.addPermission(splitJoinPermission);
+            contract.seal();
+            testSpace.client.register(contract.getPackedTransaction(),1500);
+            assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
+
+            if(doShutdown) {
+                testSpace.nodes.forEach(n -> n.shutdown());
+                Thread.sleep(2000);
+                testSpace = prepareTestSpace(issuerKey);
+                testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+            }
+            contractsToJoin.add(contract);
+        }
+
+
+        TestSpace finalTestSpace = testSpace;
+        contractsToJoin.forEach(c -> {
+            int count = 0;
+            for (Main main : finalTestSpace.nodes) {
+                try {
+                    if(main.node.waitItem(c.getId(),4000).state != ItemState.APPROVED) {
+                        count++;
+                    }
+                } catch (TimeoutException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            System.out.println("Contract " + c.getId() + " is unknown to " + count + "node(s)");
+        });
+
+        Contract c = contractsToJoin.remove(Do.randomInt(contractsToJoin.size()));
+        Contract main = c.createRevision(issuerKey);
+        main.getStateData().set("amount","400");
+        main.addRevokingItems(contractsToJoin.get(0),contractsToJoin.get(1),contractsToJoin.get(2));
+        main.addSignerKey(issuerKey);
+        main.seal();
+        contractsToJoin.add(c);
+        testSpace.client.register(main.getPackedTransaction(),1500);
+        ItemResult ir;
+        do {
+            ir = testSpace.client.getState(main.getId());
+            System.out.println(ir);
+            Thread.sleep(1000);
+        } while (ir.state.isPending());
+
+
+        contractsToJoin.forEach(c1 -> {
+            int count = 0;
+            for (Main main1 : finalTestSpace.nodes) {
+                try {
+                    if(main1.node.waitItem(c1.getId(),4000).state != ItemState.APPROVED) {
+                        count++;
+                    }
+                } catch (TimeoutException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            System.out.println("Contract " + c.getId() + " is unknown to " + count + "node(s)");
+        });
+
+        assertEquals(ir.state,ItemState.APPROVED);
+
+        testSpace.nodes.forEach(x -> x.shutdown());
+
     }
 }
