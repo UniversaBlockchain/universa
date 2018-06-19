@@ -44,10 +44,7 @@ import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
-import net.sergeych.tools.Binder;
-import net.sergeych.tools.Do;
-import net.sergeych.tools.FileTool;
-import net.sergeych.tools.Reporter;
+import net.sergeych.tools.*;
 import net.sergeych.utils.Base64;
 import org.yaml.snakeyaml.Yaml;
 
@@ -551,7 +548,7 @@ public class CLIMain {
 
             // try sign
             if (name == null) {
-                name = source.replaceAll("(?i)\\.(yml|yaml)$", ".unicon");
+                name = new FilenameTool(source).setExtension("unicon").toString();
             }
             contract.seal();
             saveContract(contract, name);
@@ -617,18 +614,18 @@ public class CLIMain {
                     for (int i = 0; i < extractKeyRoles.size(); i++) {
                         extractKeyRole = extractKeyRoles.get(i);
                         if (name == null) {
-                            name = source.replaceAll("(?i)\\.(unicon)$", ".pub");
+                            name = new FilenameTool(source).setExtension("pub").toString();
                         }
                         exportPublicKeys(contract, extractKeyRole, name, options.has("base64"));
                     }
                 } else if (extractFields != null && extractFields.size() > 0) {
                     if (name == null) {
-                        name = source.replaceAll("(?i)\\.(unicon)$", "_fields." + format);
+                        name = new FilenameTool(source).setExtension(format).addSuffixToBase("_fields").toString();
                     }
                     exportFields(contract, extractFields, name, format, options.has("pretty"));
                 } else {
                     if (name == null) {
-                        name = source.replaceAll("(?i)\\.(unicon)$", "." + format);
+                        name = new FilenameTool(source).setExtension(format).toString();
                     }
                     exportContract(contract, name, format, options.has("pretty"));
                 }
@@ -671,7 +668,7 @@ public class CLIMain {
                     updateFields(contract, updateFieldsHashMap);
                 }
                 if (name == null) {
-                    name = source.replaceAll("(?i)\\.(json|xml|yml|yaml)$", ".unicon");
+                    name = new FilenameTool(source).setExtension("unicon").toString();
                 }
 
                 if(parentItems.size() > s) {
@@ -803,7 +800,7 @@ public class CLIMain {
                                 StandardCopyOption.REPLACE_EXISTING,
                                 StandardCopyOption.ATOMIC_MOVE
                         };
-                        String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
+                        String tuDest = new FilenameTool(tuSource).addSuffixToBase("_rev" + tu.getRevision()).toString();
                         tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
                         if (tuDest != null) {
                             Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
@@ -942,7 +939,7 @@ public class CLIMain {
                                 StandardCopyOption.REPLACE_EXISTING,
                                 StandardCopyOption.ATOMIC_MOVE
                         };
-                        String tuDest = tuSource.replaceAll("(?i)\\.(unicon)$", "_rev" + tu.getRevision() + ".unicon");
+                        String tuDest = new FilenameTool(tuSource).addSuffixToBase("_rev" + tu.getRevision()).toString();
                         tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
                         if (tuDest != null) {
                             Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
@@ -1032,30 +1029,31 @@ public class CLIMain {
                 contract.getStateData().set(fieldName,value);
                 contract.setCreatorKeys(keysMap().values());
 
-                String name;
+                FilenameTool nameTool;
                 if(partContracts != null) {
                     for (int i = 0; i < partContracts.length; i++) {
                         if(names.size() > i + 1) {
-                            name = names.get(i+1);
+                            nameTool = new FilenameTool(names.get(i+1));
                         } else {
                             if(names.size() > 0) {
-                                name = names.get(0);
+                                nameTool = new FilenameTool(names.get(0));
                             } else {
-                                name = source;
+                                nameTool = new FilenameTool(source);
                             }
-                            name = name.replace(".unicon","") + "_" + i +".unicon";
+                            nameTool.addSuffixToBase("_"+i);
                         }
-                        saveContract(partContracts[i], name, true, true);
+                        saveContract(partContracts[i], nameTool.toString(), true, true);
                     }
                 }
 
                 if(names.size() > 0) {
-                    name = names.get(0);
+                    nameTool = new FilenameTool(names.get(0));
                 } else {
-                    name = source.replace(".unicon","")+"_main.unicon";
+                    nameTool = new FilenameTool(source);
+                    nameTool.addSuffixToBase("_main");
                 }
 
-                saveContract(contract, name, true, true);
+                saveContract(contract, nameTool.toString(), true, true);
 
             } catch (Quantiser.QuantiserException e) {
                 addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
@@ -1150,7 +1148,7 @@ public class CLIMain {
                         int i = 1;
                         if (contract.getNewItems() != null) {
                             for (Approvable newItem : contract.getNewItems()) {
-                                String newItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_new_item_" + i + ".unicon");
+                                String newItemFileName = new FilenameTool(source).addSuffixToBase("_new_item_" + i).toString();
                                 report("save newItem to " + newItemFileName);
     //                            ((Contract) newItem).seal();
                                 saveContract((Contract) newItem, newItemFileName);
@@ -1160,16 +1158,12 @@ public class CLIMain {
                         i = 1;
                         if (contract.getRevokingItems() != null) {
                             for (Approvable revokeItem : contract.getRevokingItems()) {
-                                String revokeItemFileName = source.replaceAll("(?i)\\.(unicon)$", "_revoke_" + i + ".unicon");
+                                String revokeItemFileName = new FilenameTool(source).addSuffixToBase("_revoke_" + i).toString();
                                 report("save revokeItem to " + revokeItemFileName);
-    //                            ((Contract) revokeItem).seal();
                                 saveContract((Contract) revokeItem, revokeItemFileName);
                                 i++;
                             }
                         }
-    //                    String parentFileName = source.replaceAll("(?i)\\.(unicon)$", "_parent.unicon");
-    //                    report("save parentFileName to " + parentFileName);
-    //                    saveContract(contract, parentFileName);
                     } else {
                         addErrors(contract.getErrors());
                     }
@@ -1260,7 +1254,7 @@ public class CLIMain {
                 if (names.size() > s) {
                     saveContract(contract, names.get(s), true, false);
                 } else {
-                    saveContract(contract, source.replaceAll("(?i)\\.(unicon)$", "_anonymized.unicon"), true, false);
+                    saveContract(contract, new FilenameTool(source).addSuffixToBase("_anonymized").toString(), true, false);
                 }
             }
         }

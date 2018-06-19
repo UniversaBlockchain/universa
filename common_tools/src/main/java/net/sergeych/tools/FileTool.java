@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -21,11 +22,11 @@ public class FileTool {
      * @return new file name if success, null if fails
      */
     public static String writeFileContentsWithRenaming(String path, byte[] contents) {
-        List<String> fileParts = getFileParts(path);
+
         try {
             if (!writeFileContents(path, contents)) {
                 for (int iSuf = 1; iSuf <= 9000; ++iSuf) {
-                    String newFilename = fileParts.get(0) + "_" + iSuf + fileParts.get(1);
+                    String newFilename = new FilenameTool(path).addSuffixToBase("_"+iSuf).toString();
                     if (writeFileContents(newFilename, contents)) {
                         return newFilename;
                     }
@@ -37,7 +38,7 @@ public class FileTool {
             //do nothing
         }
         //to many files like {path}, or exception. try to create random unique filename
-        String randomFilename = fileParts.get(0) + "_" + Bytes.random(32).toHex().replaceAll(" ", "") + fileParts.get(1);
+        String randomFilename = new FilenameTool(path).addSuffixToBase("_" + Bytes.random(32).toHex().replaceAll(" ", "")).toString();
         try {
             if (writeFileContents(randomFilename, contents))
                 return randomFilename;
@@ -77,16 +78,4 @@ public class FileTool {
         }
         return false;
     }
-
-    private static List<String> getFileParts(String filename) {
-        String ext = "";
-        int extPos = filename.lastIndexOf(".");
-        if (extPos >= 0)
-            ext = filename.substring(extPos);
-        String filenameHead = filename;
-        if (extPos >= 0)
-            filenameHead = filename.substring(0, extPos);
-        return Arrays.asList(filenameHead, ext);
-    }
-
 }
