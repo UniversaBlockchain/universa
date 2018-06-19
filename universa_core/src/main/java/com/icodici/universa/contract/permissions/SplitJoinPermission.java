@@ -25,8 +25,15 @@ import java.util.*;
 import static java.util.Arrays.asList;
 
 /**
- * Permission allows to change some numeric (as for now, integer) field, controlling it's range and delta. This
- * permission could be used more than once allowing for different roles to change in different range and directions.
+ * Permission to split and join contracts with the split and join of the value of a certain numeric field of contracts.
+ *
+ * For contracts with a certain number field ("amount") the following is allowed:
+ *
+ * - several multiple revisions can be legitimately derived (“split”) from any revision only if their total "amount"
+ * is the same as the "amount" of the base revision;
+ *
+ * - several multiple revisions can be legitimately “joined”  if the result "amount' is the same as the sum of "amounts"
+ * in the base revisions.
  */
 
 @BiType(name = "SplitJoinPermission")
