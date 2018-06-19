@@ -1101,7 +1101,9 @@ public class Node {
                 "ledgerSize", nodeStats.ledgerSize.isEmpty() ? 0 : nodeStats.ledgerSize.values().stream().reduce((i1, i2) -> i1 + i2).get(),
                 "smallIntervalApproved", nodeStats.smallIntervalApproved,
                 "bigIntervalApproved", nodeStats.bigIntervalApproved,
-                "uptimeApproved", nodeStats.uptimeApproved
+                "uptimeApproved", nodeStats.uptimeApproved,
+                "coreVersion", Core.VERSION,
+                "nodeNumber", myInfo.getNumber()
                 );
         if(showDays != null) {
             result.put("payments",nodeStats.getPaymentStats(ledger,showDays));
@@ -1128,6 +1130,10 @@ public class Node {
 
     public PublicKey getNodeKey() {
         return myInfo.getPublicKey();
+    }
+
+    public int getNumber() {
+        return myInfo.getNumber();
     }
 
     /// ParcelProcessor ///

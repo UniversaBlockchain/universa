@@ -164,13 +164,15 @@ public class ClientHTTPServer extends BasicHttpServer {
                 List<Binder> nodes = new ArrayList<Binder>();
                 result.putAll(
                         "version", Main.NODE_VERSION,
+                        "number", node.getNumber(),
                         "nodes", nodes
                 );
                 if (netConfig != null) {
                     netConfig.forEachNode(node -> {
                         nodes.add(Binder.of(
                                 "url", node.publicUrlString(),
-                                "key", node.getPublicKey().pack()
+                                "key", node.getPublicKey().pack(),
+                                "number", node.getNumber()
                         ));
                     });
                 }
