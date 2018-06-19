@@ -508,7 +508,7 @@ public class Client {
         final List<ErrorRecord> errors = new ArrayList<>();
 
         final AsyncEvent<Void> consensusFound = new AsyncEvent<>();
-        final int checkConsensus = getNodes().size();
+        final int checkConsensus = getNodes().size() / 3;
 
         final AtomicInteger nodesLeft = new AtomicInteger(nodes.size());
 
@@ -523,6 +523,7 @@ public class Client {
                             Client c = getClient(nn);
                             ItemResult r = c.command("getState", "itemId", itemId).getOrThrow("itemResult");
                             r.meta.put("url", c.getNodeNumber());
+//                            System.out.println(c.getUrl()+" #"+c.getNodeNumber()+" -> "+r);
                             synchronized (states) {
                                 List<ItemResult> list = states.get(r.state);
                                 if (list == null) {
@@ -551,7 +552,7 @@ public class Client {
                 });
             }
 
-            consensusFound.await(5000);
+            consensusFound.await(10000);
 
             pool.shutdownNow();
 
