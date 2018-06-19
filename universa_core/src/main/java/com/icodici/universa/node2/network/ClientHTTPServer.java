@@ -267,7 +267,7 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode(session);
         if (config.limitFreeRegistrations())
-            if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+            if(!(config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) || config.getKeysWhiteList().contains(session.getPublicKey()))) {
                 System.out.println("approve ERROR: command needs client key from whitelist");
 
                 return Binder.of(
@@ -349,7 +349,7 @@ public class ClientHTTPServer extends BasicHttpServer {
         checkNode(session);
 
         if (config.limitFreeRegistrations())
-            if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+            if(!(config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) || config.getKeysWhiteList().contains(session.getPublicKey()))) {
                 System.out.println("approve ERROR: command needs client key from whitelist");
 
                 return Binder.of(
