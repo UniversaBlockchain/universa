@@ -92,3 +92,5 @@ fabric.properties
 /universa_core/src/test_contracts/simple_root_contract.unc
 /universa_core/src/test_contracts/binaryContract.unc
 /docs/javadoc/
+/docs/**/javadoc/
+!/universa_core/ExcludeDoclet.jar
