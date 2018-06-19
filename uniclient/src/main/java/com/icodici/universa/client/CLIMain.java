@@ -140,11 +140,11 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("base64_id");
-//                accepts("resync", "start resync of the document in the Universa network")
-//                        .withOptionalArg()
-//                        .withValuesSeparatedBy(",")
-//                        .ofType(String.class)
-//                        .describedAs("base64_id");
+                accepts("resync", "start resync of the document in the Universa network")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("base64_id");
                 accepts("node", "used with to specify node number to connect to")
                         .withRequiredArg()
                         .ofType(Integer.class);
