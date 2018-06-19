@@ -3,6 +3,9 @@ package com.icodici.universa.node;
 import java.io.Serializable;
 import java.time.Duration;
 
+/**
+ * @exclude not yet used
+ */
 public class RateCounter extends AbstractRateCounter {
 
     private int limit;
@@ -54,7 +57,9 @@ public class RateCounter extends AbstractRateCounter {
         return currentTimeSlot.countPulse();
     }
 
-
+    /**
+     * @exclude
+     */
     public class TimeSlot implements Serializable {
 
         private int limit;
