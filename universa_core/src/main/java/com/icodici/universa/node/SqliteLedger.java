@@ -30,7 +30,10 @@ import java.util.*;
 import java.util.concurrent.Callable;
 
 /**
- * The basic SQL-based ledger.
+ * @exclude out of date, need updating to match postgres ledger
+ *
+ * The basic SQL-based ledger. At the moment its code is outdated and should not be used upon refresfing.
+ * reserved for some tests and small private networks on weak devices.
  * <p>
  * This implementation uses SQLite, but could be easily enhanced to use any jdbc provider.
  * <p>

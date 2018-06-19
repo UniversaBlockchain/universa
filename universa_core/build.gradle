@@ -122,7 +122,6 @@ task fatJarTestConfig(type: Task) {
     fatJar.finalizedBy testConfigRestore
 }
 
-
 task contractsServiceJavadoc(type: Javadoc) {
     source = sourceSets.main.allJava
     include("**/ContractsService.java")
@@ -138,5 +137,9 @@ task nodeJavadoc(type: Javadoc) {
 task allJavadoc(type: Javadoc) {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
+    options.doclet = "ExcludeDoclet"
+    options.docletpath = [file("ExcludeDoclet.jar")]
+    options.showFromProtected()
     destinationDir = file("../docs/javadoc")
+    delete fileTree("../docs/javadoc")
 }
