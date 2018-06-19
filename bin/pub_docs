@@ -1,0 +1,5 @@
+#!/bin/bash
+gradle allJavadoc
+pushd docs/javadoc
+rsync -avz . deploy@a01.kb.universa.io:/home/deploy/www/shared/public/system/static/node_jd
+popd
