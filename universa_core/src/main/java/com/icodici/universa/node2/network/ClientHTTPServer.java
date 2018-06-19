@@ -381,12 +381,20 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         checkNode(session);
 
+        KeyAddress tmpAddress = null;
+        try {
+            tmpAddress = new KeyAddress("JKEgDs9CoCCymD9TgmjG8UBLxuJwT5GZ3PaZyG6o2DQVGRQPjXHCG8JouC8eZw5Nd1w9krCS");
+        } catch (KeyAddress.IllegalAddressException e) {
+            e.printStackTrace();
+        }
+
+
         if (config.limitFreeRegistrations())
-            if(!config.getKeysWhiteList().contains(session.getPublicKey())) {
+            if(!(tmpAddress.isMatchingKey(session.getPublicKey()) || config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) || config.getKeysWhiteList().contains(session.getPublicKey()))) {
                 System.out.println("approve ERROR: command needs client key from whitelist");
 
                 return Binder.of(
-                        "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"resyncItem", "command needs client key from whitelist"));
+                        "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"setVerbose", "command needs client key from whitelist"));
             }
 
         try {

@@ -3759,7 +3759,8 @@ public class Node {
 
         private final void resyncVote(NodeInfo node, ItemState state) {
 
-            //System.out.println("resyncVote at " + myInfo.getNumber() + " from " +node.getNumber() + " item " + hashId + " state " + state);
+            report(getLabel(), () -> concatReportMessage("resyncVote at " + myInfo.getNumber() + " from " +node.getNumber() + " item " + hashId + " state " + state),
+                    DatagramAdapter.VerboseLevel.DETAILED);
 
             boolean approvedConsenus = false;
             boolean revokedConsenus = false;
