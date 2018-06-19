@@ -3758,9 +3758,13 @@ public class Node {
         }
 
         private final void resyncVote(NodeInfo node, ItemState state) {
+            //TODO: move to resyncNodes.get(ItemState.APPROVED).size() >= config.getPositiveConsensus()
+            if(state == ItemState.LOCKED)
+                state = ItemState.APPROVED;
 
-            report(getLabel(), () -> concatReportMessage("resyncVote at " + myInfo.getNumber() + " from " +node.getNumber() + " item " + hashId + " state " + state),
-                    DatagramAdapter.VerboseLevel.DETAILED);
+            //ItemState finalState = state;
+            //report(getLabel(), () -> concatReportMessage("resyncVote at " + myInfo.getNumber() + " from " +node.getNumber() + " item " + hashId + " state " + finalState),
+            //        DatagramAdapter.VerboseLevel.DETAILED);
 
             boolean approvedConsenus = false;
             boolean revokedConsenus = false;
