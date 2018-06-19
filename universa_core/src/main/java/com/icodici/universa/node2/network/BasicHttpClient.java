@@ -366,7 +366,7 @@ public class BasicHttpClient {
     int nodeNumber = -1;
     public int getNodeNumber() {
         if( nodeNumber < 0 ) {
-            Matcher matcher = Pattern.compile("node-(\\d+)-").matcher(getUrl());
+            Matcher matcher = Pattern.compile("node-?(\\d+)").matcher(getUrl());
             if( matcher.find() ) {
                 nodeNumber = Integer.valueOf(matcher.group(1));
             }
