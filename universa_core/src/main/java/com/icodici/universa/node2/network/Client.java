@@ -508,7 +508,7 @@ public class Client {
         final List<ErrorRecord> errors = new ArrayList<>();
 
         final AsyncEvent<Void> consensusFound = new AsyncEvent<>();
-        final int checkConsensus = getNodes().size() / 3;
+        final int checkConsensus = getNodes().size();
 
         final AtomicInteger nodesLeft = new AtomicInteger(nodes.size());
 
