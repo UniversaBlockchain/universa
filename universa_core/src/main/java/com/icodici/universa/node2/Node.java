@@ -2571,6 +2571,11 @@ public class Node {
                     }
 
                 } catch (TimeoutException | InterruptedException e) {
+                    report(getLabel(), () -> concatReportMessage("timeout ",
+                            itemId, " from parcel: ", parcelId,
+                            " :: downloadAndCommit timeoutException, state ", processingState, " itemState: ", getState()),
+                            DatagramAdapter.VerboseLevel.BASE);
+                    e.printStackTrace();
                     setState(ItemState.UNDEFINED);
                     try {
                         itemLock.synchronize(record.getId(), lock -> {
