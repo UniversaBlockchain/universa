@@ -21,6 +21,9 @@ import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
@@ -1359,4 +1362,86 @@ public class DatagramAdapterTest {
         d2.shutdown();
         d3.shutdown();
     }
+
+    @Test
+    public void twoAdapters() throws Exception {
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+        NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
+
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc);
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc);
+
+        AtomicLong d1receiveCounter = new AtomicLong(0);
+        AtomicLong d2receiveCounter = new AtomicLong(0);
+
+        d1.receive(d -> {
+            //System.out.println("d1.onReceive: " + new String(d));
+            d1receiveCounter.incrementAndGet();
+        });
+
+        d2.receive(d -> {
+            //System.out.println("d2.onReceive: " + new String(d));
+            d2receiveCounter.incrementAndGet();
+        });
+
+        AtomicBoolean node1senderStopFlag = new AtomicBoolean(false);
+        AtomicBoolean node2senderStopFlag = new AtomicBoolean(false);
+        AtomicLong node1senderCounter = new AtomicLong(0);
+        AtomicLong node2senderCounter = new AtomicLong(0);
+
+        Thread node1sender = new Thread(() -> {
+            while(true) {
+                try {
+                    node1senderCounter.incrementAndGet();
+                    d1.send(node2, "test_message_1_to_2".getBytes());
+                    //Thread.sleep(1);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (node1senderStopFlag.get())
+                    break;
+            }
+            System.out.println("node1sender has stopped");
+        });
+
+        Thread node2sender = new Thread(() -> {
+            while(true) {
+                try {
+                    node2senderCounter.incrementAndGet();
+                    d2.send(node1, "test_message_2_to_1".getBytes());
+                    //Thread.sleep(1);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (node2senderStopFlag.get())
+                    break;
+            }
+            System.out.println("node2sender has stopped");
+        });
+
+        node1sender.start();
+        node2sender.start();
+
+        Thread.sleep(1000);
+
+        node1senderStopFlag.set(true);
+        node2senderStopFlag.set(true);
+        d1.shutdown();
+        d2.shutdown();
+
+        System.out.println("node1senderCounter: " + node1senderCounter.get());
+        System.out.println("node2senderCounter: " + node2senderCounter.get());
+        System.out.println("d1receiveCounter: " + d1receiveCounter.get());
+        System.out.println("d2receiveCounter: " + d2receiveCounter.get());
+        assertEquals(node1senderCounter.get(), d2receiveCounter.get());
+        assertEquals(node2senderCounter.get(), d1receiveCounter.get());
+    }
+
 }
