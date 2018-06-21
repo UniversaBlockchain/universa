@@ -2503,6 +2503,7 @@ public class Node {
                         lockedToRevoke.clear();
 
                         try {
+                            record.setExpiresAt(item.getExpiresAt());
                             record.save();
 
                             if (item != null) {
