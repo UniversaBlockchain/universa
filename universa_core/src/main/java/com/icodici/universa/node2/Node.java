@@ -1932,8 +1932,9 @@ public class Node {
                         return;
                     } catch (Exception e) {
                         item.addError(Errors.FAILED_CHECK,item.getId().toString(), "Exception during check: " + e.getMessage());
-                        emergencyBreak();
-                        return;
+                        if(verboseLevel > DatagramAdapter.VerboseLevel.NOTHING) {
+                            e.printStackTrace();
+                        }
                     }
                     alreadyChecked = true;
 
