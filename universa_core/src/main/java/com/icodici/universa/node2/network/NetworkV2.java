@@ -37,7 +37,7 @@ public class NetworkV2 extends Network {
 //    private Map<NodeInfo, Node> nodes = new HashMap<>();
 
     private static LogPrinter log = new LogPrinter("TLN");
-    protected int verboseLevel = DatagramAdapter.VerboseLevel.DETAILED;
+    protected int verboseLevel = DatagramAdapter.VerboseLevel.NOTHING;
     private Consumer<Notification> consumer;
 
     public NetworkV2(NetConfig netConfig, NodeInfo myInfo, PrivateKey myKey) throws IOException {
@@ -167,8 +167,8 @@ public class NetworkV2 extends Network {
                         "->",
                         finalTo.getNumber(),
                         " IRN ",
-                        ((ItemResyncNotification)notification).getItemsToResync().keySet().isEmpty() ? "EMTRY RESYNC ITEMS" : ((ItemResyncNotification)notification).getItemsToResync().keySet().iterator().next().toString(),
-                        DatagramAdapter.VerboseLevel.DETAILED));
+                        ((ItemResyncNotification)notification).getItemsToResync().keySet()),
+                        DatagramAdapter.VerboseLevel.DETAILED);
             } else if(notification instanceof ParcelNotification && ((ParcelNotification)notification).getParcelId() != null) {
                 report(getLabel(), () -> concatReportMessage(
                         from.getNumber(),
