@@ -39,6 +39,8 @@ public class UnsContract extends NSmartContract {
     public static final String SPENT_ND_FIELD_NAME = "spent_ND";
     public static final String SPENT_ND_TIME_FIELD_NAME = "spent_ND_time";
     private static final String REFERENCE_CONDITION_PREFIX = "ref.state.origin==";
+    private static final String REFERENCE_CONDITION_LEFT = "ref.state.origin";
+    private static final int REFERENCE_CONDITION_OPERATOR = 7;       // EQUAL
 
     private List<UnsName> storedNames = new ArrayList<>();
     private int paidU = 0;
@@ -210,6 +212,28 @@ public class UnsContract extends NSmartContract {
         return super.seal();
     }
 
+    private boolean isOriginCondition(Object condition, HashId origin) {
+
+        if (condition instanceof String)
+            return condition.equals(REFERENCE_CONDITION_PREFIX + origin.toBase64String());
+        else if (((Binder) condition).containsKey("operator")) {
+            int operator = ((Binder) condition).getIntOrThrow("operator");
+
+            if (operator == REFERENCE_CONDITION_OPERATOR) {
+                String leftOperand = ((Binder) condition).getString("leftOperand", null);
+
+                if ((leftOperand != null) && leftOperand.equals(REFERENCE_CONDITION_LEFT)) {
+                    String rightOperand = ((Binder) condition).getString("rightOperand", null);
+
+                    if ((rightOperand != null) && rightOperand.equals(origin.toBase64String()))
+                        return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private void saveOriginReferencesToState() {
         Set<HashId> origins = new HashSet<>();
 
@@ -224,12 +248,27 @@ public class UnsContract extends NSmartContract {
         getReferences().values().forEach(ref -> {
             ArrayList conditions = ref.getConditions().getArray(Reference.conditionsModeType.all_of.name());
             conditions.forEach(condition -> {
-                if(condition instanceof String && ((String) condition).startsWith(REFERENCE_CONDITION_PREFIX)) {
-                    HashId o = HashId.withDigest(((String) condition).substring(REFERENCE_CONDITION_PREFIX.length()));
-                    if(!origins.contains(o)) {
-                        refsToRemove.add(ref);
+                HashId o = null;
+                if (condition instanceof String) {
+                    if (((String) condition).startsWith(REFERENCE_CONDITION_PREFIX))
+                        o = HashId.withDigest(((String) condition).substring(REFERENCE_CONDITION_PREFIX.length()));
+                } else if (((Binder) condition).containsKey("operator")) {
+                    int operator = ((Binder) condition).getIntOrThrow("operator");
+
+                    if (operator == REFERENCE_CONDITION_OPERATOR) {
+                        String leftOperand = ((Binder) condition).getString("leftOperand", null);
+
+                        if ((leftOperand != null) && leftOperand.equals(REFERENCE_CONDITION_LEFT)) {
+                            String rightOperand = ((Binder) condition).getString("rightOperand", null);
+
+                            if (rightOperand != null)
+                                o = HashId.withDigest(rightOperand);
+                        }
                     }
                 }
+
+                if ((o != null) && (!origins.contains(o)))
+                    refsToRemove.add(ref);
             });
         });
 
@@ -241,7 +280,7 @@ public class UnsContract extends NSmartContract {
             } else {
                 Reference reference = getReferences().values().stream().filter(ref ->
                         ref.getConditions().getArray(Reference.conditionsModeType.all_of.name()).stream().anyMatch(cond ->
-                                cond.equals(REFERENCE_CONDITION_PREFIX+origin.toBase64String()))).collect(Collectors.toList()).get(0);
+                                isOriginCondition(cond, origin))).collect(Collectors.toList()).get(0);
                 if(reference.matchingItems.isEmpty() && originContracts.containsKey(origin))
                     reference.addMatchingItem(originContracts.get(origin));
             }
@@ -530,7 +569,7 @@ public class UnsContract extends NSmartContract {
     private boolean isOriginReferenceExists(HashId origin) {
         return getReferences().values().stream().anyMatch(ref ->
                 ref.getConditions().getArray(Reference.conditionsModeType.all_of.name()).stream().anyMatch(cond ->
-                        cond.equals(REFERENCE_CONDITION_PREFIX+origin.toBase64String())));
+                        isOriginCondition(cond, origin)));
     }
 
     @Override
