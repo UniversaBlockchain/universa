@@ -270,7 +270,11 @@ public class ClientHTTPServer extends BasicHttpServer {
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         checkNode(session);
         if (config.limitFreeRegistrations())
-            if(!(config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) || config.getKeysWhiteList().contains(session.getPublicKey()))) {
+            if(!(
+                    config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
+                    config.getKeysWhiteList().contains(session.getPublicKey()) ||
+                    config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
+            )) {
                 System.out.println("approve ERROR: command needs client key from whitelist");
 
                 return Binder.of(
@@ -360,7 +364,12 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         if (config.limitFreeRegistrations())
 
-            if(!(tmpAddress.isMatchingKey(session.getPublicKey()) || config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) || config.getKeysWhiteList().contains(session.getPublicKey()))) {
+            if(!(
+                    tmpAddress.isMatchingKey(session.getPublicKey()) ||
+                    config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
+                    config.getKeysWhiteList().contains(session.getPublicKey()) ||
+                    config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
+            )) {
                 System.out.println("approve ERROR: command needs client key from whitelist");
 
                 return Binder.of(
@@ -392,7 +401,11 @@ public class ClientHTTPServer extends BasicHttpServer {
 
 
         if (config.limitFreeRegistrations())
-            if(!(tmpAddress.isMatchingKey(session.getPublicKey()) || config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) || config.getKeysWhiteList().contains(session.getPublicKey()))) {
+            if(!(tmpAddress.isMatchingKey(session.getPublicKey()) ||
+                    config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
+                    config.getKeysWhiteList().contains(session.getPublicKey()) ||
+                    config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
+            )) {
                 System.out.println("approve ERROR: command needs client key from whitelist");
 
                 return Binder.of(
@@ -444,8 +457,12 @@ public class ClientHTTPServer extends BasicHttpServer {
 
         checkNode(session);
 
-        if (config == null || node == null || !(config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
-                                                node.getNodeKey().equals(session.getPublicKey()))) {
+        if (config == null || node == null || !(
+                config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
+                node.getNodeKey().equals(session.getPublicKey()) ||
+                config.getKeysWhiteList().contains(session.getPublicKey()) ||
+                config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
+        )) {
             System.out.println("command needs admin key");
             return Binder.of(
                     "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"getStats", "command needs admin key"));
