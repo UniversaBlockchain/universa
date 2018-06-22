@@ -28,6 +28,8 @@ import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Quantiser;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
+import com.icodici.universa.node2.network.ClientError;
+import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.Converter;
@@ -71,7 +73,6 @@ public class CLIMain {
     private static OptionSet options;
     private static boolean testMode;
     private static String testRootPath;
-    private static String nodeUrl;
 
     private static Reporter reporter = new Reporter();
     private static ClientNetwork clientNetwork;
@@ -81,6 +82,7 @@ public class CLIMain {
     private static Map<String, PrivateKey> keyFilesContract;
 
     public static final String AMOUNT_FIELD_NAME = "amount";
+    private static int nodeNumber = -1;
 
     static public void main(String[] args) throws IOException {
         // when we run untit tests, it is important:
@@ -111,6 +113,7 @@ public class CLIMain {
                 acceptsAll(asList("j", "json"), "Return result in json format.");
                 acceptsAll(asList("v", "verbose"), "Provide more detailed information.");
                 acceptsAll(asList("network"), "Check network status.");
+                acceptsAll(asList("no-cache"), "Do not use session cache");
                 accepts("register", "register a specified contract, must be a sealed binary file")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
@@ -140,6 +143,17 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
                         .describedAs("base64_id");
+                accepts("probe-file", "query the state of the document in the Universa network")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("filename");
+
+                accepts("set-log-levels", "sets log levels of the node,network and udp adapter")
+                        .withRequiredArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class)
+                        .describedAs("level");
+
                 accepts("resync", "start resync of the document in the Universa network")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
@@ -397,6 +411,11 @@ public class CLIMain {
             if(options.has("id")) {
                 doShowId();
             }
+
+            if(options.has("probe-file")) {
+                doProbeFile();
+            }
+
             if (options.has("register")) {
                 doRegister();
             }
@@ -406,6 +425,11 @@ public class CLIMain {
             if (options.has("resync")) {
                 doResync();
             }
+
+            if(options.has("set-log-levels")) {
+                doSetLogLevels();
+            }
+
             if (options.has("g")) {
                 doGenerateKeyPair();
                 return;
@@ -484,6 +508,30 @@ public class CLIMain {
             System.exit(100);
         }
 
+    }
+
+    private static void doSetLogLevels() {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("set-log-levels"));
+        if(sources.size() != 3) {
+            addError(Errors.COMMAND_FAILED.name(),"levels", "specify 3 log levels: node,network,udp");
+        }
+
+        try {
+            ItemResult ir = getClientNetwork().client.setVerboseLevel(DatagramAdapter.VerboseLevel.stringToInt(sources.get(0)),
+                    DatagramAdapter.VerboseLevel.stringToInt(sources.get(1)),
+                    DatagramAdapter.VerboseLevel.stringToInt(sources.get(2)));
+            addErrors(ir.errors);
+        } catch (ClientError clientError) {
+            if (options.has("verbose"))
+                clientError.printStackTrace();
+            addError(Errors.COMMAND_FAILED.name(),"levels",clientError.getMessage());
+        } catch (IOException e) {
+            if (options.has("verbose"))
+                e.printStackTrace();
+            addError(Errors.COMMAND_FAILED.name(),"levels",e.getMessage());
+        }
+
+        finish();
     }
 
     private static String[] unescape(String[] args) {
@@ -805,6 +853,7 @@ public class CLIMain {
                         if (tuDest != null) {
                             Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
                             if (saveContract(newTUContract, tuSource, true, false)) {
+                                report("registering with parcel: " + parcel.getId());
                                 ItemResult ir = registerParcel(parcel, (int) options.valueOf("wait"));
                                 if(ir.state != ItemState.APPROVED) {
                                     addErrors(ir.errors);
@@ -857,6 +906,15 @@ public class CLIMain {
 //            report("Universa network has reported the state:");
 //            report(ir.toString());
         }
+        finish();
+    }
+
+    private static void doProbeFile() throws IOException {
+        String contractFile = (String) options.valueOf("probe-file");
+        Contract c = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractFile)));
+
+        ItemResult ir = getClientNetwork().check(c.getId());
+
         finish();
     }
 
@@ -2573,7 +2631,9 @@ public class CLIMain {
     private static void finish(int status) {
         // print reports if need
         try {
-            saveSession();
+            if(!options.has("no-cache")) {
+                saveSession();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -2654,15 +2714,12 @@ public class CLIMain {
         testRootPath = rootPath;
     }
 
-    public static void setNodeNumber(int nodeNumber) {
-        System.out.println("Connecting to node " + nodeNumber);
-        setNodeUrl("http://node-" + nodeNumber + "-com.universa.io:8080");
-    }
-
-    public static void setNodeUrl(String url) {
-        nodeUrl = url;
+    public static void setNodeNumber(int number) {
+        System.out.println("Connecting to node " + number);
+        nodeNumber = number;
         clientNetwork = null;
     }
+
 
     public static void setPrivateKey(PrivateKey key) {
         privateKey = key;
@@ -2678,16 +2735,18 @@ public class CLIMain {
             reporter.verbose("ClientNetwork not exist, create one");
 
             BasicHttpClientSession s = null;
-            reporter.verbose("ClientNetwork nodeUrl: " + nodeUrl);
-            if(nodeUrl != null) {
-                clientNetwork = new ClientNetwork(nodeUrl, null, true);
-            } else {
-                clientNetwork = new ClientNetwork(null, true);
-            }
+            clientNetwork = new ClientNetwork(null, true);
+
             if (clientNetwork.client == null)
                 throw new IOException("failed to connect to to the universa network");
 
-            s = getSession(clientNetwork.getNodeNumber());
+            if(nodeNumber != -1) {
+                clientNetwork.client = clientNetwork.client.getClient(nodeNumber-1);
+            }
+
+            if(!options.has("no-cache")) {
+                s = getSession(clientNetwork.getNodeNumber());
+            }
             reporter.verbose("Session for " + clientNetwork.getNodeNumber() + " is exist: " + (s != null));
             if(s != null) reporter.verbose("Session id is " + s.getSessionId());
             clientNetwork.start(s);

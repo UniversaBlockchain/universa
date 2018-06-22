@@ -76,7 +76,7 @@ public class Client {
         return true;
     }
 
-    Client getClient(int i) throws IOException {
+    public Client getClient(int i) throws IOException {
         Client c = clients.get(i);
         if (c == null) {
             NodeRecord r = nodes.get(i);
