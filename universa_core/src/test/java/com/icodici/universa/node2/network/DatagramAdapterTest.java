@@ -8,19 +8,20 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.SymmetricKey;
+import com.icodici.crypto.digest.Sha512;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Do;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -1375,8 +1376,11 @@ public class DatagramAdapterTest {
 
         NetConfig nc = new NetConfig(nodes);
 
-        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc);
-        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc);
+        DatagramAdapter d1 = new UDPAdapter2(TestKeys.privateKey(0), new SymmetricKey(), node1, nc);
+        DatagramAdapter d2 = new UDPAdapter2(TestKeys.privateKey(1), new SymmetricKey(), node2, nc);
+
+        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         AtomicLong d1receiveCounter = new AtomicLong(0);
         AtomicLong d2receiveCounter = new AtomicLong(0);
@@ -1433,6 +1437,7 @@ public class DatagramAdapterTest {
 
         node1senderStopFlag.set(true);
         node2senderStopFlag.set(true);
+        Thread.sleep(100);
         d1.shutdown();
         d2.shutdown();
 

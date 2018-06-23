@@ -32,34 +32,22 @@ import static java.util.Arrays.asList;
 
 public class UDPAdapter extends DatagramAdapter {
 
-    static private LogPrinter log = new LogPrinter("UDPA");
-
     private DatagramSocket socket;
-
     private SocketListenThread socketListenThread;
-
-    private Object lock = new Object();
-
-//    private ConcurrentHashMap<PublicKey, Session> sessionsByKey = new ConcurrentHashMap<>();
     private ConcurrentHashMap<Integer, Session> sessionsById = new ConcurrentHashMap<>();
 
     private Timer timer = new Timer();
     private Timer timerCleanup = new Timer();
     private Timer heartBeatTimer = new Timer();
 
-    /**
-     * Time between beats showed adapter health, in milliseconds
-     */
-    static public final int HEART_BEAT_TIME = 20000;
-
-    /**
-     * Time between internal calls of cleanup function.
-     */
-    static public final int CLEANUP_TIME = 15000;
+    private final int HEART_BEAT_TIME = 20000;
+    private final int CLEANUP_TIME = 15000;
 
     private boolean isShuttingDown = false;
+    private Integer nextBlockId = 1;
 
-    protected String label = null;
+    /** This adapter name for logging. */
+    private String label = null;
 
     /**
      * Create an instance that listens for the incoming datagrams using the specified configurations. The adapter should
@@ -74,7 +62,9 @@ public class UDPAdapter extends DatagramAdapter {
     public UDPAdapter(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo, NetConfig netConfig) throws IOException {
         super(ownPrivateKey, sessionKey, myNodeInfo, netConfig);
 
-        label = myNodeInfo.getNumber() + "-0: ";
+        label = "udp" + myNodeInfo.getNumber() + ": ";
+
+        nextBlockId = new Random().nextInt(Integer.MAX_VALUE);
 
         socket = new DatagramSocket(myNodeInfo.getNodeAddress().getPort());
         socket.setReuseAddress(true);
@@ -113,7 +103,7 @@ public class UDPAdapter extends DatagramAdapter {
             Session session = sessionsById.get(destination.getNumber());
 
             Block rawBlock = new Block(myNodeInfo.getNumber(), destination.getNumber(),
-                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.RAW_DATA,
+                    getNextBlockId(), PacketTypes.RAW_DATA,
                     destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
                     payload.clone());
 
@@ -247,6 +237,16 @@ public class UDPAdapter extends DatagramAdapter {
     public void report(String label, Callable<String> message)
     {
         report(label, message, VerboseLevel.DETAILED);
+    }
+
+
+    private Integer getNextBlockId() {
+        Integer res = nextBlockId;
+        if (nextBlockId == Integer.MAX_VALUE)
+            nextBlockId = 1;
+        else
+            ++nextBlockId;
+        return res;
     }
 
 
@@ -562,6 +562,7 @@ public class UDPAdapter extends DatagramAdapter {
         return session;
 
     }
+
 
     /**
      * Method checks blocks in the sending queue. If block still in the queue method increment it {@link Block#sendAttempts}
@@ -1490,17 +1491,9 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
         public Block(int senderNodeId, int receiverNodeId, int blockId, int type, InetAddress address, int port, byte[] payload) {
-            this.senderNodeId = senderNodeId;
-            this.receiverNodeId = receiverNodeId;
-            this.blockId = blockId;
-            this.type = type;
-            this.address = address;
-            this.port = port;
+            this(senderNodeId, receiverNodeId, blockId, type, address, port);
             this.payload = payload;
             this.crc32 = new Crc32().digest(payload);
-
-            packets = new ConcurrentHashMap<>();
-            datagrams = new ConcurrentHashMap<>();
         }
 
         public Block(int senderNodeId, int receiverNodeId, int blockId, int type, InetAddress address, int port) {
