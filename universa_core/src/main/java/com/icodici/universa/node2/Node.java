@@ -39,6 +39,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * The v2 Node.
@@ -3835,13 +3836,14 @@ public class Node {
 
             resyncingState = ResyncingItemProcessingState.IS_COMMITTING;
 
-            final Average startDateAvg = new Average();
-            final Average expiresAtAvg = new Average();
 
             executorService.submit(()->{
                 if(committingState.isConsensusFound()) {
                     Set<NodeInfo> rNodes = new HashSet<>();
                     Set<NodeInfo> nowNodes = resyncNodes.get(committingState);
+
+                    Map<Long,Set<ItemResult>> createdAtClusters = new HashMap<>();
+                    Map<Long,Set<ItemResult>> expiresAtClusters = new HashMap<>();
 
                     // make local set of nodes to prevent changing set of nodes while commiting
                     synchronized (resyncNodes) {
@@ -3854,35 +3856,73 @@ public class Node {
                             try {
                                 ItemResult r = network.getItemState(ni, hashId);
                                 if (r != null) {
-                                    startDateAvg.update(r.createdAt.toEpochSecond());
-                                    expiresAtAvg.update(r.expiresAt.toEpochSecond());
+                                    List<Long> list = createdAtClusters.keySet().stream()
+                                            .filter(ts -> Math.abs(ts - r.createdAt.toEpochSecond()) < config.getMaxElectionsTime().getSeconds()).collect(Collectors.toList());
 
-                                    ZonedDateTime createdAt = ZonedDateTime.ofInstant(
-                                            Instant.ofEpochSecond((long) startDateAvg.average()), ZoneId.systemDefault());
-                                    ZonedDateTime expiresAt = ZonedDateTime.ofInstant(
-                                            Instant.ofEpochSecond((long) expiresAtAvg.average()), ZoneId.systemDefault());
-
-                                    try {
-                                        itemLock.synchronize(hashId, lock -> {
-                                            StateRecord newRecord = ledger.findOrCreate(hashId);
-                                            newRecord.setState(committingState)
-                                                    .setCreatedAt(createdAt)
-                                                    .setExpiresAt(expiresAt)
-                                                    .save();
-                                            synchronized (cache) {
-                                                cache.update(newRecord.getId(), new ItemResult(newRecord));
-                                            }
-                                            return null;
-                                        });
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
+                                    if(list.isEmpty()) {
+                                        Set<ItemResult> itemSet = new HashSet<>();
+                                        itemSet.add(r);
+                                        createdAtClusters.put(r.createdAt.toEpochSecond(),itemSet);
+                                    } else {
+                                        Set<ItemResult> itemSet = createdAtClusters.remove(list.get(0));
+                                        for(int i = 1; i < list.size();++i) {
+                                            itemSet.addAll(createdAtClusters.remove(list.get(1)));
+                                        }
+                                        itemSet.add(r);
+                                        Average avg = new Average();
+                                        itemSet.forEach(item -> avg.update(item.createdAt.toEpochSecond()));
+                                        createdAtClusters.put((long) avg.average(),itemSet);
                                     }
+
+                                    list = expiresAtClusters.keySet().stream()
+                                            .filter(ts -> Math.abs(ts - r.expiresAt.toEpochSecond()) < config.getMaxElectionsTime().getSeconds()).collect(Collectors.toList());
+
+                                    if(list.isEmpty()) {
+                                        Set<ItemResult> itemSet = new HashSet<>();
+                                        itemSet.add(r);
+                                        expiresAtClusters.put(r.expiresAt.toEpochSecond(),itemSet);
+                                    } else {
+                                        Set<ItemResult> itemSet = expiresAtClusters.remove(list.get(0));
+                                        for(int i = 1; i < list.size();++i) {
+                                            itemSet.addAll(expiresAtClusters.remove(list.get(1)));
+                                        }
+                                        itemSet.add(r);
+                                        Average avg = new Average();
+                                        itemSet.forEach(item -> avg.update(item.expiresAt.toEpochSecond()));
+                                        expiresAtClusters.put((long) avg.average(),itemSet);
+                                    }
+
                                 }
                             } catch (IOException e) {
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
                         }
+                    }
+
+                    long createdTs = createdAtClusters.keySet().stream().max(Comparator.comparingInt(i -> createdAtClusters.get(i).size())).get();
+
+                    long expiresTs = expiresAtClusters.keySet().stream().max(Comparator.comparingInt(i -> expiresAtClusters.get(i).size())).get();
+
+                    ZonedDateTime createdAt = ZonedDateTime.ofInstant(
+                            Instant.ofEpochSecond(createdTs), ZoneId.systemDefault());
+                    ZonedDateTime expiresAt = ZonedDateTime.ofInstant(
+                            Instant.ofEpochSecond(expiresTs), ZoneId.systemDefault());
+
+                    try {
+                        itemLock.synchronize(hashId, lock -> {
+                            StateRecord newRecord = ledger.findOrCreate(hashId);
+                            newRecord.setState(committingState)
+                                    .setCreatedAt(createdAt)
+                                    .setExpiresAt(expiresAt)
+                                    .save();
+                            synchronized (cache) {
+                                cache.update(newRecord.getId(), new ItemResult(newRecord));
+                            }
+                            return null;
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
                     resyncingState = ResyncingItemProcessingState.COMMIT_SUCCESSFUL;
                 } else {

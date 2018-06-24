@@ -14,6 +14,7 @@ import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.Core;
 import com.icodici.universa.Decimal;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
@@ -27,6 +28,7 @@ import com.icodici.universa.node.*;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.*;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.Average;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
@@ -36,8 +38,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.spongycastle.util.encoders.Hex;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.sql.PreparedStatement;
@@ -1029,6 +1033,10 @@ public class MainTest {
         assertEquals("http://localhost:8080", testSpace.node.myInfo.publicUrlString());
         testSpace.myKey = key;
         testSpace.client = new Client(testSpace.myKey, testSpace.node.myInfo, null);
+
+        testSpace.clients = new ArrayList();
+        for (int i = 0; i < 4; i++)
+            testSpace.clients.add(new Client(testSpace.myKey, testSpace.nodes.get(i).myInfo, null));
         return testSpace;
     }
 
@@ -1039,6 +1047,7 @@ public class MainTest {
         Client client = null;
         Object tuContractLock = new Object();
         Contract tuContract = null;
+        public ArrayList<Client> clients;
     }
 
     private static final int MAX_PACKET_SIZE = 512;
@@ -1410,6 +1419,15 @@ public class MainTest {
         assertEquals(testSpace.client.getState(contract.getId()).state,ItemState.APPROVED);
 
 
+        StateRecord r0 = testSpace.nodes.get(0).node.getLedger().getRecord(contract.getId());
+        r0.setExpiresAt(r0.getExpiresAt().minusHours(1));
+        r0.save();
+
+
+        StateRecord r1 = testSpace.nodes.get(1).node.getLedger().getRecord(contract.getId());
+        r1.setCreatedAt(r1.getCreatedAt().plusHours(1));
+        r1.save();
+
         //create client with absent node and check the contract
         Client absentNodeClient = new Client(testSpace.myKey,testSpace.nodes.get(absentNode).myInfo,null);
         assertEquals(absentNodeClient.getState(contract.getId()).state,ItemState.UNDEFINED);
@@ -1430,6 +1448,23 @@ public class MainTest {
             Thread.sleep(100);
         }
         assertEquals(rr.state,ItemState.APPROVED);
+
+
+
+        Average createdAverage = new Average();
+        Average expiredAverage = new Average();
+        ItemResult ir0 = testSpace.nodes.get(0).node.checkItem(contract.getId());
+        ItemResult ir1 = testSpace.nodes.get(1).node.checkItem(contract.getId());
+        ItemResult ir2 = testSpace.nodes.get(2).node.checkItem(contract.getId());
+
+        createdAverage.update(ir0.createdAt.toEpochSecond());
+        createdAverage.update(ir2.createdAt.toEpochSecond());
+
+        expiredAverage.update(ir1.expiresAt.toEpochSecond());
+        expiredAverage.update(ir2.expiresAt.toEpochSecond());
+
+        assertEquals(rr.createdAt.toEpochSecond(),(long)createdAverage.average());
+        assertEquals(rr.expiresAt.toEpochSecond(),(long)expiredAverage.average());
 
         testSpace.nodes.forEach(x -> x.shutdown());
 
@@ -3161,4 +3196,135 @@ public class MainTest {
         testSpace.nodes.forEach(x -> x.shutdown());
 
     }
+
+    @Test
+    public void asdasd123() throws Exception {
+        Map<HashId,Map<ItemState,Set<Integer>>> results = new HashMap<>();
+        Map<HashId,Map<ItemState,Set<Integer>>> resultsRevoking = new HashMap<>();
+        Map<HashId,Map<ItemState,Set<Integer>>> resultsNew  = new HashMap<>();
+        TransactionPack tp = TransactionPack.unpack(Do.read("/Users/romanu/Downloads/ru/token90.unicon"));
+        tp.getContract().check();
+        System.out.println("Processing cost " + tp.getContract().getProcessedCostTU());
+
+
+        results.put(tp.getContract().getId(),new HashMap<>());
+        tp.getContract().getRevokingItems().forEach(a -> {
+            resultsRevoking.put(a.getId(),new HashMap<>());
+        });
+
+        tp.getContract().getNewItems().forEach(a -> {
+            resultsNew.put(a.getId(),new HashMap<>());
+        });
+
+        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
+        Client clients = new Client("http://node-" + 1 + "-com.universa.io:8080", key, null, false);
+        System.out.println(clients.getVersion());
+
+       /* for (int i = 0; i < 33;i++) {
+            Client c = clients.getClient(i);
+            System.out.println("VL:" + c.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING, DatagramAdapter.VerboseLevel.DETAILED, DatagramAdapter.VerboseLevel.NOTHING));
+
+        }*/
+
+       //System.out.println(clients.getClient(30).resyncItem(HashId.withDigest("NPo4dIkNdgYfGiNrdExoX003+lFT/d45OA6GifmcRoTzxSRSm5c5jDHBSTaAS+QleuN7ttX1rTvSQbHIIqkcK/zWjx/fCpP9ziwsgXbyyCtUhLqP9G4YZ+zEY/yL/GVE")));
+
+
+
+
+        for(int i = 0; i < 33;i++) {
+            try {
+
+                Client c = clients.getClient(i);
+                //System.out.println("VL:" + c.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING, DatagramAdapter.VerboseLevel.DETAILED, DatagramAdapter.VerboseLevel.NOTHING));
+                int finalI = i;
+
+                results.keySet().forEach(id -> {
+
+                    try {
+                        ItemResult ir = c.getState(id);
+                        System.out.println("this " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if(!results.get(id).containsKey(ir.state)) {
+                            results.get(id).put(ir.state,new HashSet<>());
+                        }
+                        results.get(id).get(ir.state).add(finalI+1);
+
+                    } catch (ClientError clientError) {
+                        clientError.printStackTrace();
+                    }
+                });
+
+                resultsRevoking.keySet().forEach(id -> {
+
+                    try {
+                        ItemResult ir = c.getState(id);
+                        System.out.println("revoking " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if(!resultsRevoking.get(id).containsKey(ir.state)) {
+                            resultsRevoking.get(id).put(ir.state,new HashSet<>());
+                        }
+                        resultsRevoking.get(id).get(ir.state).add(finalI+1);
+                    } catch (ClientError clientError) {
+                        clientError.printStackTrace();
+                    }
+                });
+
+                resultsNew.keySet().forEach(id -> {
+
+                    try {
+                        ItemResult ir = c.getState(id);
+                        System.out.println("new " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if(!resultsNew.get(id).containsKey(ir.state)) {
+                            resultsNew.get(id).put(ir.state,new HashSet<>());
+                        }
+                        resultsNew.get(id).get(ir.state).add(finalI+1);
+                    } catch (ClientError clientError) {
+                        clientError.printStackTrace();
+                    }
+                });
+            } catch (IOException e) {
+                System.out.println("failed to connect to " + i);
+                e.printStackTrace();
+            }
+
+        }
+        System.out.println("----THIS---");
+        results.keySet().forEach(id -> {
+            System.out.println(id);
+            results.get(id).keySet().forEach(state -> {
+                System.out.println(state + ": " + results.get(id).get(state).size() + " " + results.get(id).get(state));
+            });
+        });
+
+        System.out.println("----REVOKING---");
+        resultsRevoking.keySet().forEach(id -> {
+            System.out.println(id);
+            resultsRevoking.get(id).keySet().forEach(state -> {
+                System.out.println(state + ": " + resultsRevoking.get(id).get(state).size() + " " + resultsRevoking.get(id).get(state));
+            });
+        });
+
+        System.out.println("----NEW---");
+        resultsNew.keySet().forEach(id -> {
+            System.out.println(id);
+            resultsNew.get(id).keySet().forEach(state -> {
+                System.out.println(state + ": " + resultsNew.get(id).get(state).size() + " "+ resultsNew.get(id).get(state));
+            });
+        });
+
+    }
+
+    @Test
+    public void asd() throws Exception {
+        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
+        Set<PrivateKey> issuers = new HashSet<>();
+        issuers.add(key);
+        Set<PublicKey> owners = new HashSet<>();
+        owners.add(key.getPublicKey());
+        for(int i = 101; i < 101; i++) {
+            Contract c = ContractsService.createTokenContract(issuers, owners, "100000.9", 0.01);
+            c.setExpiresAt(ZonedDateTime.now().plusDays(10));
+            c.seal();
+            new FileOutputStream("/Users/romanu/Downloads/ru/token"+i+".unicon").write(c.getPackedTransaction());
+        }
+    }
+
 }
