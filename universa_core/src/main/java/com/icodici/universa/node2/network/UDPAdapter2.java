@@ -100,9 +100,12 @@ public class UDPAdapter2 extends DatagramAdapter {
             System.arraycopy(payload, 0, payloadWithRandomChunk, 0, payload.length);
             System.arraycopy(Bytes.random(2).toArray(), 0, payloadWithRandomChunk, payload.length, 2);
             byte[] encryptedPayload = session.sessionKey.etaEncrypt(payloadWithRandomChunk);
-            byte[] crc32 = new Crc32().digest(payload);
+            byte[] crc32 = new Crc32().digest(encryptedPayload);
+            byte[] dataToSend = new byte[encryptedPayload.length + crc32.length];
+            System.arraycopy(encryptedPayload, 0, dataToSend, 0, encryptedPayload.length);
+            System.arraycopy(crc32, 0, dataToSend, encryptedPayload.length, crc32.length);
             Packet packet = new Packet(1, 1, myNodeInfo.getNumber(),
-                    session.remoteNodeInfo.getNumber(), 0, PacketTypes.DATA, encryptedPayload);
+                    session.remoteNodeInfo.getNumber(), 0, PacketTypes.DATA, dataToSend);
             sendPacket(session.remoteNodeInfo, packet);
         } catch (EncryptionError e) {
             callErrorCallbacks("(sendPayload) EncryptionError: " + e);
@@ -482,30 +485,70 @@ public class UDPAdapter2 extends DatagramAdapter {
 
 
         private void onReceiveData(Packet packet) {
-            SessionReader sessionReader = getSessionReader(packet.senderNodeId);
-            if (sessionReader != null) {
-                if (sessionReader.sessionKey != null) {
-                    try {
-                        byte[] decrypted = sessionReader.sessionKey.etaDecrypt(packet.payload);
-                        if (decrypted.length > 2) {
-                            byte[] payload = new byte[decrypted.length - 2];
-                            System.arraycopy(decrypted, 0, payload, 0, payload.length);
-                            receiver.accept(decrypted);
+//            SessionReader sessionReader = getSessionReader(packet.senderNodeId);
+//            if (sessionReader != null) {
+//                if (sessionReader.sessionKey != null) {
+//                    try {
+//                        byte[] decrypted = sessionReader.sessionKey.etaDecrypt(packet.payload);
+//                        if (decrypted.length > 2) {
+//                            byte[] payload = new byte[decrypted.length - 2];
+//                            System.arraycopy(decrypted, 0, payload, 0, payload.length);
+//                            receiver.accept(decrypted);
+//                        } else {
+//                            callErrorCallbacks("(onReceiveData) decrypted payload too short");
+//                        }
+//                    } catch (EncryptionError e) {
+//                        callErrorCallbacks("(onReceiveData) EncryptionError: " + e);
+//                    } catch (SymmetricKey.AuthenticationFailed e) {
+//                        callErrorCallbacks("(onReceiveData) SymmetricKey.AuthenticationFailed: " + e);
+//                    }
+//                } else {
+//                    callErrorCallbacks("sessionReader.sessionKey is null");
+//                }
+//            } else {
+//                callErrorCallbacks("no sessionReader found for node " + packet.senderNodeId);
+//            }
+            onReceiveBlock(packet.senderNodeId, packet.payload);
+        }
+
+
+        private void onReceiveBlock(int senderNodeId, byte[] blockPayload) {
+            if (blockPayload.length > 4) {
+                byte[] encryptedPayload = new byte[blockPayload.length - 4];
+                byte[] crc32 = new byte[4];
+                System.arraycopy(blockPayload, 0, encryptedPayload, 0, blockPayload.length-4);
+                System.arraycopy(blockPayload, blockPayload.length-4, crc32, 0, 4);
+                byte[] calcCrc32 = new Crc32().digest(encryptedPayload);
+                if (Arrays.equals(crc32, calcCrc32)) {
+                    SessionReader sessionReader = getSessionReader(senderNodeId);
+                    if (sessionReader != null) {
+                        if (sessionReader.sessionKey != null) {
+                            try {
+                                byte[] decrypted = sessionReader.sessionKey.etaDecrypt(encryptedPayload);
+                                if (decrypted.length > 2) {
+                                    byte[] payload = new byte[decrypted.length - 2];
+                                    System.arraycopy(decrypted, 0, payload, 0, payload.length);
+                                    receiver.accept(payload);
+                                } else {
+                                    callErrorCallbacks("(onReceiveData) decrypted payload too short");
+                                }
+                            } catch (EncryptionError e) {
+                                callErrorCallbacks("(onReceiveData) EncryptionError: " + e);
+                            } catch (SymmetricKey.AuthenticationFailed e) {
+                                callErrorCallbacks("(onReceiveData) SymmetricKey.AuthenticationFailed: " + e);
+                            }
                         } else {
-                            callErrorCallbacks("(onReceiveData) decrypted payload too short");
+                            callErrorCallbacks("sessionReader.sessionKey is null");
                         }
-                    } catch (EncryptionError e) {
-                        callErrorCallbacks("(onReceiveData) EncryptionError: " + e);
-                    } catch (SymmetricKey.AuthenticationFailed e) {
-                        callErrorCallbacks("(onReceiveData) SymmetricKey.AuthenticationFailed: " + e);
+                    } else {
+                        callErrorCallbacks("no sessionReader found for node " + senderNodeId);
                     }
-                } else {
-                    callErrorCallbacks("sessionReader.sessionKey is null");
+                } else{
+                    callErrorCallbacks("(onReceiveBlock) crc32 mismatch");
                 }
             } else {
-                callErrorCallbacks("no sessionReader found for node " + packet.senderNodeId);
+                callErrorCallbacks("(onReceiveBlock) blockPayload too short");
             }
-
         }
 
     }
