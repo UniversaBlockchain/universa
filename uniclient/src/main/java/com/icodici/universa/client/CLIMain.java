@@ -28,6 +28,7 @@ import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Quantiser;
 import com.icodici.universa.node2.network.BasicHttpClientSession;
+import com.icodici.universa.node2.network.Client;
 import com.icodici.universa.node2.network.ClientError;
 import com.icodici.universa.node2.network.DatagramAdapter;
 import com.icodici.universa.wallet.Wallet;
@@ -62,6 +63,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
@@ -145,6 +147,11 @@ public class CLIMain {
                         .ofType(String.class)
                         .describedAs("base64_id");
                 accepts("probe-file", "query the state of the document in the Universa network")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("filename");
+
+                accepts("sign", "add signatures to contract. Use with --keys to specify keys to sign with")
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("filename");
@@ -415,6 +422,10 @@ public class CLIMain {
 
             if(options.has("probe-file")) {
                 doProbeFile();
+            }
+
+            if(options.has("sign")) {
+                doSign();
             }
 
             if (options.has("register")) {
@@ -913,11 +924,33 @@ public class CLIMain {
     private static void doProbeFile() throws IOException {
         String contractFile = (String) options.valueOf("probe-file");
         Contract c = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractFile)));
-
-        ItemResult ir = getClientNetwork().check(c.getId());
+        if(c != null) {
+            getClientNetwork().check(c.getId());
+        }
 
         finish();
     }
+
+    private static void doSign() throws IOException {
+        String source = (String) options.valueOf("sign");
+        List<String> names = (List) options.valuesOf("output");
+        Contract c = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(source)));
+
+        if(c != null) {
+            keysMap().values().forEach( k -> c.addSignatureToSeal(k));
+            String name;
+            if(names.size() > 0) {
+                name = names.get(0);
+            } else {
+                String suffix = "_signedby_"+String.join("_",c.getSealedByKeys().stream().map(k->k.getShortAddress().toString()).collect(Collectors.toSet()));
+                name = new FilenameTool(source).addSuffixToBase(suffix).toString();
+            }
+            saveContract(c,name,true,false);
+        }
+        finish();
+    }
+
+
 
     private static void doResync() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("resync"));
@@ -2754,7 +2787,9 @@ public class CLIMain {
                 throw new IOException("failed to connect to to the universa network");
 
             if(nodeNumber != -1) {
+                List<Client.NodeRecord> nodes = clientNetwork.client.getNodes();
                 clientNetwork.client = clientNetwork.client.getClient(nodeNumber-1);
+                clientNetwork.client.setNodes(nodes);
             }
 
             if(!options.has("no-cache")) {

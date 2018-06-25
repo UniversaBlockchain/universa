@@ -16,6 +16,7 @@ import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.ContractsService;
 import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
@@ -3179,6 +3180,71 @@ public class CLIMainTest {
         assertTrue (new File(basePath + "join_good_split.unicon").exists());
         assertTrue (new File(basePath + "join_good_split_part.unicon").exists());
         assertTrue (new File(basePath + "join_good_split_1.unicon").exists());
+
+    }
+
+    @Test
+    public void sign() throws Exception {
+
+        PrivateKey key1 = new PrivateKey(2048);
+        PrivateKey key2 = new PrivateKey(2048);
+
+        Files.write(Paths.get(basePath + "signKey1.privateKey.unikey"),key1.pack(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        Files.write(Paths.get(basePath + "signKey2.privateKey.unikey"),key2.pack(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        HashSet<PrivateKey> issuers = new HashSet<>();
+        issuers.add(key1);
+
+        HashSet<PublicKey> owners = new HashSet<>();
+        owners.add(key1.getPublicKey());
+
+
+
+        Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", 0.01);
+        SimpleRole issuer1 = new SimpleRole("issuer1",new KeyRecord(key1.getPublicKey()));
+        SimpleRole issuer2 = new SimpleRole("issuer2",new KeyRecord(key2.getPublicKey()));
+        ListRole issuer = new ListRole("issuer",ListRole.Mode.ALL,Do.listOf(issuer1,issuer2));
+        contract.registerRole(issuer);
+        contract.seal();
+        contract.check();
+        assertFalse(contract.isOk());
+
+        Files.write(Paths.get(basePath + "sign.unicon"),contract.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        assertFalse(CLIMain.loadContract(basePath + "sign.unicon").check());
+
+        callMain("--sign",basePath + "sign.unicon","--keys",basePath + "signKey2.privateKey.unikey");
+        callMain("--sign",basePath + "sign.unicon","--keys",basePath + "signKey2.privateKey.unikey","--output", basePath + "sign_2.unicon");
+        assertTrue(CLIMain.loadContract(basePath + "sign_2.unicon").check());
+    }
+
+    @Test
+    public void probeFile() throws Exception {
+
+        Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        c.addSignerKeyFromFile(rootPath + "keys/tu_key.private.unikey");
+        PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
+        // let's make this key among owners
+        ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.seal();
+
+        Files.write(Paths.get(basePath + "probeFile.unicon"),c.getPackedTransaction(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+
+        System.out.println("---");
+        System.out.println("register contract");
+        System.out.println("---");
+
+        CLIMain.registerContract(c);
+
+        Thread.sleep(1500);
+        System.out.println("---");
+        System.out.println("check contract");
+        System.out.println("---");
+
+        callMain("--probe-file", basePath + "probeFile.unicon");
+
+        System.out.println(output);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
 
     }
 }

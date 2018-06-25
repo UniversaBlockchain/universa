@@ -104,6 +104,12 @@ public class Client {
         });
     }
 
+    public void setNodes(List<NodeRecord> nodes) {
+        this.nodes = nodes;
+        clients = new ArrayList<>(size());
+        clients.addAll(Collections.nCopies(nodes.size(),null));
+    }
+
     protected interface Executor<T> {
         T execute() throws Exception;
     }
