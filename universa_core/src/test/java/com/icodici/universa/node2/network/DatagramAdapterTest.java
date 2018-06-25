@@ -1379,8 +1379,8 @@ public class DatagramAdapterTest {
         DatagramAdapter d1 = new UDPAdapter2(TestKeys.privateKey(0), new SymmetricKey(), node1, nc);
         DatagramAdapter d2 = new UDPAdapter2(TestKeys.privateKey(1), new SymmetricKey(), node2, nc);
 
-//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
-//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         AtomicLong d1receiveCounter = new AtomicLong(0);
         AtomicLong d2receiveCounter = new AtomicLong(0);

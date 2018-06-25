@@ -77,9 +77,7 @@ public class UDPAdapter2 extends DatagramAdapter {
             session.addPayloadToOutputQueue(payload);
             restartHandshakeIfNeeded(session, Instant.now());
         } else {
-            Packet packet = new Packet(1, 1, myNodeInfo.getNumber(),
-                    session.remoteNodeInfo.getNumber(), 0, PacketTypes.DATA, payload);
-            sendPacket(session.remoteNodeInfo, packet);
+            sendPayload(session, payload);
         }
     }
 
@@ -88,10 +86,26 @@ public class UDPAdapter2 extends DatagramAdapter {
         byte[] payload = packet.makeByteArray();
         DatagramPacket dp = new DatagramPacket(payload, payload.length, destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort());
         try {
-            report(logLabel, ()->"sendPacket datagram size: " + payload.length, VerboseLevel.BASE);
+            report(logLabel, ()->"sendPacket datagram size: " + payload.length, VerboseLevel.DETAILED);
             socket.send(dp);
         } catch (IOException e) {
             callErrorCallbacks("sendPacket exception: " + e);
+        }
+    }
+
+
+    private void sendPayload(Session session, byte[] payload) {
+        try {
+            byte[] payloadWithRandomChunk = new byte[payload.length + 2];
+            System.arraycopy(payload, 0, payloadWithRandomChunk, 0, payload.length);
+            System.arraycopy(Bytes.random(2).toArray(), 0, payloadWithRandomChunk, payload.length, 2);
+            byte[] encryptedPayload = session.sessionKey.etaEncrypt(payloadWithRandomChunk);
+            byte[] crc32 = new Crc32().digest(payload);
+            Packet packet = new Packet(1, 1, myNodeInfo.getNumber(),
+                    session.remoteNodeInfo.getNumber(), 0, PacketTypes.DATA, encryptedPayload);
+            sendPacket(session.remoteNodeInfo, packet);
+        } catch (EncryptionError e) {
+            callErrorCallbacks("(sendPayload) EncryptionError: " + e);
         }
     }
 
@@ -183,6 +197,11 @@ public class UDPAdapter2 extends DatagramAdapter {
     private void acceptSessionReaderCandidate(int remoteId, SessionReader sessionReader) {
         sessionReaders.put(remoteId, sessionReader);
         sessionReaderCandidates.remove(remoteId);
+    }
+
+
+    private SessionReader getSessionReader(int remoteId) {
+        return sessionReaders.get(remoteId);
     }
 
 
@@ -302,7 +321,6 @@ public class UDPAdapter2 extends DatagramAdapter {
                 try {
                     threadSocket.receive(receivedDatagram);
                 } catch (SocketTimeoutException e) {
-                    // received nothing
                     report(logLabel, ()->"received nothing", VerboseLevel.BASE);
                     isDatagramReceived = false;
                 } catch (IOException e) {
@@ -332,12 +350,13 @@ public class UDPAdapter2 extends DatagramAdapter {
                             case PacketTypes.SESSION_PART2:
                                 onReceiveSessionPart2(packet);
                                 break;
+                            case PacketTypes.DATA:
+                                onReceiveData(packet);
+                                break;
                             default:
                                 report(logLabel, () -> "received unknown packet type: " + packet.type, VerboseLevel.BASE);
                                 break;
                         }
-
-                        receiver.accept(data);
                     } catch (Exception e) {
                         callErrorCallbacks("SocketListenThread exception: " + e);
                     }
@@ -461,6 +480,34 @@ public class UDPAdapter2 extends DatagramAdapter {
             }
         }
 
+
+        private void onReceiveData(Packet packet) {
+            SessionReader sessionReader = getSessionReader(packet.senderNodeId);
+            if (sessionReader != null) {
+                if (sessionReader.sessionKey != null) {
+                    try {
+                        byte[] decrypted = sessionReader.sessionKey.etaDecrypt(packet.payload);
+                        if (decrypted.length > 2) {
+                            byte[] payload = new byte[decrypted.length - 2];
+                            System.arraycopy(decrypted, 0, payload, 0, payload.length);
+                            receiver.accept(decrypted);
+                        } else {
+                            callErrorCallbacks("(onReceiveData) decrypted payload too short");
+                        }
+                    } catch (EncryptionError e) {
+                        callErrorCallbacks("(onReceiveData) EncryptionError: " + e);
+                    } catch (SymmetricKey.AuthenticationFailed e) {
+                        callErrorCallbacks("(onReceiveData) SymmetricKey.AuthenticationFailed: " + e);
+                    }
+                } else {
+                    callErrorCallbacks("sessionReader.sessionKey is null");
+                }
+            } else {
+                callErrorCallbacks("no sessionReader found for node " + packet.senderNodeId);
+            }
+
+        }
+
     }
 
 
@@ -518,7 +565,7 @@ public class UDPAdapter2 extends DatagramAdapter {
         private byte[] localNonce;
         private byte[] remoteNonce;
         private NodeInfo remoteNodeInfo;
-        private SymmetricKey sessionKey;
+        private SymmetricKey sessionKey = null;
 
         private void generateNewLocalNonce() {
             localNonce = Do.randomBytes(64);
