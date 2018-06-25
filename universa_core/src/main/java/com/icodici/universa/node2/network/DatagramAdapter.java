@@ -45,7 +45,13 @@ public abstract class DatagramAdapter {
     /**
      * Max number of attempts to retransmit a block, defaults to 10
      */
-    static public final int RETRANSMIT_MAX_ATTEMPTS = 50;
+    static public final int RETRANSMIT_MAX_ATTEMPTS = 10;
+
+    /**
+     * Maxmimum number of data blocks in the sending queue after which oldest
+     * items are discarded and overflow flag is set. Defaults to 50.
+     */
+    static public final int MAX_QUEUE_SIZE = 50;
 
     /**
      * Time between attempts to retransmit a DATA block, in milliseconds
