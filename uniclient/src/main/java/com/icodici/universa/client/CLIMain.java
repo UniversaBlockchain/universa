@@ -73,6 +73,7 @@ public class CLIMain {
     private static OptionSet options;
     private static boolean testMode;
     private static String testRootPath;
+    private static String nodeUrl;
 
     private static Reporter reporter = new Reporter();
     private static ClientNetwork clientNetwork;
@@ -2718,7 +2719,14 @@ public class CLIMain {
         System.out.println("Connecting to node " + number);
         nodeNumber = number;
         clientNetwork = null;
+        setNodeUrl("http://node-" + nodeNumber + "-com.universa.io:8080");
     }
+
+    public static void setNodeUrl(String url) {
+        nodeUrl = url;
+        clientNetwork = null;
+    }
+
 
 
     public static void setPrivateKey(PrivateKey key) {
@@ -2735,7 +2743,12 @@ public class CLIMain {
             reporter.verbose("ClientNetwork not exist, create one");
 
             BasicHttpClientSession s = null;
-            clientNetwork = new ClientNetwork(null, true);
+            reporter.verbose("ClientNetwork nodeUrl: " + nodeUrl);
+            if(nodeUrl != null) {
+                clientNetwork = new ClientNetwork(nodeUrl, null, true);
+            } else {
+                clientNetwork = new ClientNetwork(null, true);
+            }
 
             if (clientNetwork.client == null)
                 throw new IOException("failed to connect to to the universa network");
