@@ -81,7 +81,7 @@ public class ParcelNotification extends ItemNotification {
         PAYMENT,
         PAYLOAD;
 
-        public boolean isTU() {
+        public boolean isU() {
             return this == PAYMENT;
         }
     }

@@ -55,14 +55,14 @@ public class BaseNetworkTest extends TestCase {
 
     protected static final String ROOT_PATH = "./src/test_contracts/";
     protected static final String CONFIG_2_PATH = "./src/test_config_2/";
-    protected static Contract tuContract = null;
+    protected static Contract uContract = null;
     protected Network network = null;
     protected Node node = null;
     protected List<Node> nodes = null;
     protected Map<NodeInfo,Node> nodesMap = null;
     protected Ledger ledger = null;
     protected Config config = null;
-    protected Object tuContractLock = new Object();
+    protected Object uContractLock = new Object();
 
 
 
@@ -146,12 +146,12 @@ public class BaseNetworkTest extends TestCase {
                 stepaCoins.check();
                 stepaCoins.traceErrors();
 
-                Parcel parcel = createParcelWithClassTU(stepaCoins, stepaPrivateKeys);
+                Parcel parcel = createParcelWithClassU(stepaCoins, stepaPrivateKeys);
 
 //                System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
                 node.registerParcel(parcel);
-                synchronized (tuContractLock) {
-                    tuContract = parcel.getPaymentContract();
+                synchronized (uContractLock) {
+                    uContract = parcel.getPaymentContract();
                 }
                 for (Node n : nodesMap.values()) {
                     try {
@@ -3168,7 +3168,7 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+        Parcel parcel = createParcelWithFreshU(stepaCoins, stepaPrivateKeys);
 
         parcel.getPayment().getContract().check();
         parcel.getPayment().getContract().traceErrors();
@@ -3179,8 +3179,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3207,20 +3207,20 @@ public class BaseNetworkTest extends TestCase {
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, stepaPublicKeys);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys.iterator().next());
-        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys.iterator().next());
+        paymentDecreased.getStateData().set("U", stepaU.getStateData().getIntOrThrow("U") - 1);
         paymentDecreased.seal();
 
         Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
-        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
+        secondPayment.getStateData().set("U", paymentDecreased.getStateData().getIntOrThrow("U") - 3);
         secondPayment.seal();
 
         stepaCoins.addNewItems(secondPayment);
@@ -3241,12 +3241,12 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(secondPayment.isOk());
 
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 1, paymentDecreased.getStateData().getIntOrThrow("U"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 4, secondPayment.getStateData().getIntOrThrow("U"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3274,21 +3274,21 @@ public class BaseNetworkTest extends TestCase {
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, stepaPublicKeys);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys.iterator().next());
-        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys.iterator().next());
+        paymentDecreased.getStateData().set("U", stepaU.getStateData().getIntOrThrow("U") - 1);
         paymentDecreased.getDefinition().getData().set("wrong_value", false);
         paymentDecreased.seal();
 
         Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
-        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
+        secondPayment.getStateData().set("U", paymentDecreased.getStateData().getIntOrThrow("U") - 3);
         secondPayment.seal();
 
         stepaCoins.addNewItems(secondPayment);
@@ -3309,12 +3309,12 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(secondPayment.isOk());
 
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 1, paymentDecreased.getStateData().getIntOrThrow("U"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 4, secondPayment.getStateData().getIntOrThrow("U"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3342,20 +3342,20 @@ public class BaseNetworkTest extends TestCase {
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, stepaPublicKeys);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys.iterator().next());
-        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys.iterator().next());
+        paymentDecreased.getStateData().set("U", stepaU.getStateData().getIntOrThrow("U") - 1);
         paymentDecreased.seal();
 
         Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
-        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
+        secondPayment.getStateData().set("U", paymentDecreased.getStateData().getIntOrThrow("U") - 3);
         secondPayment.getDefinition().getData().set("wrong_value", false);
         secondPayment.seal();
 
@@ -3377,12 +3377,12 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(parcel.getPayloadContract().isOk());
         assertFalse(secondPayment.isOk());
 
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 1, paymentDecreased.getStateData().getIntOrThrow("U"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 4, secondPayment.getStateData().getIntOrThrow("U"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3410,20 +3410,20 @@ public class BaseNetworkTest extends TestCase {
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, stepaPublicKeys);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys.iterator().next());
-        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys.iterator().next());
+        paymentDecreased.getStateData().set("U", stepaU.getStateData().getIntOrThrow("U") - 1);
         paymentDecreased.seal();
 
         Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
-        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
+        secondPayment.getStateData().set("U", paymentDecreased.getStateData().getIntOrThrow("U") - 3);
         secondPayment.seal();
 
         stepaCoins.addNewItems(secondPayment);
@@ -3448,12 +3448,12 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(parcel.getPayloadContract().isOk());
         assertTrue(secondPayment.isOk());
 
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 1, paymentDecreased.getStateData().getIntOrThrow("U"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 4, secondPayment.getStateData().getIntOrThrow("U"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -3479,14 +3479,14 @@ public class BaseNetworkTest extends TestCase {
         Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys);
-        stepaTU.check();
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, stepaPublicKeys);
+        stepaU.check();
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createPayingParcel(stepaCoins.getTransactionPack(), stepaTU, 3, 7, stepaPrivateKeys, false);
+        Parcel parcel = ContractsService.createPayingParcel(stepaCoins.getTransactionPack(), stepaU, 3, 7, stepaPrivateKeys, false);
 
         stepaCoins.getNew().get(0).check();
         stepaCoins.getNew().get(0).traceErrors();
@@ -3499,11 +3499,11 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(stepaCoins.getNew().get(0).isOk());
 
-        assertEquals(stepaTU.getStateData().getIntOrThrow("transaction_units") - 10, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("U") - 10, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3530,16 +3530,16 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
         stepaCoins.seal();
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, stepaPublicKeys, true);
-        stepaTU.setExpiresAt(stepaTU.getCreatedAt().plusMonths(6));
-        stepaTU.seal();
-        stepaTU.check();
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, stepaPublicKeys, true);
+        stepaU.setExpiresAt(stepaU.getCreatedAt().plusMonths(6));
+        stepaU.seal();
+        stepaU.check();
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createPayingParcel(stepaCoins.getTransactionPack(), stepaTU, 20, 60, stepaPrivateKeys, true);
+        Parcel parcel = ContractsService.createPayingParcel(stepaCoins.getTransactionPack(), stepaU, 20, 60, stepaPrivateKeys, true);
 
         stepaCoins.getNew().get(0).check();
         stepaCoins.getNew().get(0).traceErrors();
@@ -3552,11 +3552,11 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(stepaCoins.getNew().get(0).isOk());
 
-        assertEquals(stepaTU.getStateData().getIntOrThrow("test_transaction_units") - 80, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("test_transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("test_U") - 80, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("test_transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3588,15 +3588,15 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(paidContract, stepaTU, 1, stepaPrivateKeys, false);
+        Parcel parcel = ContractsService.createParcel(paidContract, stepaU, 1, stepaPrivateKeys, false);
         Contract payment = parcel.getPaymentContract();
         Contract payload = parcel.getPayloadContract();
 
@@ -3606,7 +3606,7 @@ public class BaseNetworkTest extends TestCase {
         payment.seal();
         parcel = new Parcel(payload.getTransactionPack(),payment.getTransactionPack());
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -3643,17 +3643,17 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, false);
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaU, 1, stepaPrivateKeys, false);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -3667,8 +3667,8 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
         //int todayPaidAmount = node.nodeStats.todayPaidAmount;//        reuse payment for another contract
         Contract contract = new Contract(TestKeys.privateKey(12));
@@ -3731,17 +3731,17 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, true);
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaU, 1, stepaPrivateKeys, true);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -3755,8 +3755,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 
         node.nodeStats.collect(ledger,config);
@@ -3826,16 +3826,16 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, true);
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaU, 1, stepaPrivateKeys, true);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -3855,9 +3855,9 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(subItemPayload.isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is U: " + subItemPayload.isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -3897,11 +3897,11 @@ public class BaseNetworkTest extends TestCase {
             }
         }
 
-        stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        itemResult = node.waitItem(stepaTU.getId(), 18000);
+        stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         subContract = subContract.createRevision();
@@ -3922,9 +3922,9 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, false);
+        parcel = ContractsService.createParcel(stepaCoins, stepaU, 1, stepaPrivateKeys, false);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -3944,9 +3944,9 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(subItemPayload.isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is U: " + subItemPayload.isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -4016,16 +4016,16 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, false);
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaU, 1, stepaPrivateKeys, false);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -4045,9 +4045,9 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(subItemPayload.isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is U: " + subItemPayload.isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -4087,11 +4087,11 @@ public class BaseNetworkTest extends TestCase {
             }
         }
 
-        stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        itemResult = node.waitItem(stepaTU.getId(), 18000);
+        stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         subContract = subContract.createRevision();
@@ -4112,9 +4112,9 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, true);
+        parcel = ContractsService.createParcel(stepaCoins, stepaU, 1, stepaPrivateKeys, true);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -4134,9 +4134,9 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(subItemPayload.isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is TU: " + subItemPayload.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload subitem contract: " + subItemPayload.getId() + " is U: " + subItemPayload.isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
         node.registerParcel(parcel);
         // wait parcel
@@ -4178,7 +4178,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 //    @Test(timeout = 90000)
-    public void declineParcelWithTooBigCostTUTestPayment() throws Exception {
+    public void declineParcelWithTooBigCostUTestPayment() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
@@ -4206,27 +4206,27 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        int processedCost = stepaCoins.getProcessedCostTU();
-        System.out.println("stepaCoins processed cost in TU: " + processedCost);
-        assertTrue(processedCost > Config.maxCostTUInTestMode);
+        int processedCost = stepaCoins.getProcessedCostU();
+        System.out.println("stepaCoins processed cost in U: " + processedCost);
+        assertTrue(processedCost > Config.maxCostUInTestMode);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, processedCost, stepaPrivateKeys, true);
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaU, processedCost, stepaPrivateKeys, true);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
-        assertEquals(10000 - processedCost, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("U"));
+        assertEquals(10000 - processedCost, parcel.getPaymentContract().getStateData().getIntOrThrow("test_U"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
@@ -4234,8 +4234,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -4270,17 +4270,17 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(coins, stepaTU, 1, stepaPrivateKeys, true);
+        Parcel parcel = ContractsService.createParcel(coins, stepaU, 1, stepaPrivateKeys, true);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -4294,8 +4294,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -4329,17 +4329,17 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys, true);
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaU, 1, stepaPrivateKeys, true);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -4353,8 +4353,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isLimitedForTestnet());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -4385,36 +4385,36 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100, stepaPublicKeys, true);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, stepaPublicKeys, true);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Contract paymentDecreased = stepaTU.createRevision(stepaPrivateKeys);
+        Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys);
 
-        paymentDecreased.getStateData().set("test_transaction_units", stepaTU.getStateData().getIntOrThrow("test_transaction_units") - 1);
-        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 1);
+        paymentDecreased.getStateData().set("test_U", stepaU.getStateData().getIntOrThrow("test_U") - 1);
+        paymentDecreased.getStateData().set("U", stepaU.getStateData().getIntOrThrow("U") - 1);
         paymentDecreased.seal();
 
         Parcel parcel = new Parcel(stepaCoins.getTransactionPack(), paymentDecreased.getTransactionPack());
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
-        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("U"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_U"));
 
         assertFalse(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -4427,7 +4427,7 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
-    public void registerParcelWithTestTUButRealPayment() throws Exception {
+    public void registerParcelWithTestUButRealPayment() throws Exception {
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
@@ -4446,30 +4446,30 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100, keys, true);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100, keys, true);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 1, stepaPrivateKeys);
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaU, 1, stepaPrivateKeys);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
-        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
+        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("U"));
+        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_U"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
 
         System.out.println("Parcel: " + parcel.getId());
-        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is TU: " + parcel.getPaymentContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
-        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is TU: " + parcel.getPayloadContract().isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName()));
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() + " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
 
 //        LogPrinter.showDebug(true);
         node.registerParcel(parcel);
@@ -4499,7 +4499,7 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+        Parcel parcel = createParcelWithFreshU(stepaCoins, stepaPrivateKeys);
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertFalse(parcel.getPayloadContract().isOk());
@@ -4533,15 +4533,15 @@ public class BaseNetworkTest extends TestCase {
 
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-        stepaTU.addSignerKey(manufacturePrivateKey);
-        stepaTU.seal();
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-//        registerAndCheckApproved(stepaTU);
+        Contract stepaU = Contract.fromDslFile(ROOT_PATH + "StepaU.yml");
+        stepaU.addSignerKey(manufacturePrivateKey);
+        stepaU.seal();
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+//        registerAndCheckApproved(stepaU);
 
-        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaTU, 50, stepaPrivateKeys);
+        Parcel parcel = ContractsService.createParcel(stepaCoins, stepaU, 50, stepaPrivateKeys);
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
@@ -4575,21 +4575,21 @@ public class BaseNetworkTest extends TestCase {
 
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
-        Contract stepaTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-        stepaTU.addSignerKey(manufacturePrivateKey);
-        stepaTU.seal();
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 8000);
+        Contract stepaU = Contract.fromDslFile(ROOT_PATH + "StepaU.yml");
+        stepaU.addSignerKey(manufacturePrivateKey);
+        stepaU.seal();
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 8000);
         assertEquals(ItemState.APPROVED, itemResult.state);
-//        registerAndCheckApproved(stepaTU);
+//        registerAndCheckApproved(stepaU);
 
-        Contract paymentDecreased = stepaTU.createRevision();
-        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 50);
+        Contract paymentDecreased = stepaU.createRevision();
+        paymentDecreased.getStateData().set("U", stepaU.getStateData().getIntOrThrow("U") - 50);
 
-        //paymentDecreased.setIsTU(true);
+        //paymentDecreased.setIsU(true);
         paymentDecreased.seal();
         paymentDecreased.check();
         paymentDecreased.traceErrors();
@@ -6198,9 +6198,9 @@ public class BaseNetworkTest extends TestCase {
                     stepaCoins.addSignerKey(stepaPrivateKeys.iterator().next());
                     stepaCoins.seal();
 
-                    Parcel parcel = createParcelWithClassTU(stepaCoins, stepaPrivateKeys);
-                    synchronized (tuContractLock) {
-                        tuContract = parcel.getPaymentContract();
+                    Parcel parcel = createParcelWithClassU(stepaCoins, stepaPrivateKeys);
+                    synchronized (uContractLock) {
+                        uContract = parcel.getPaymentContract();
                     }
 
                     System.out.println("-------------- register parcel " + parcel.getId() + " (iteration " + i + ") ------------");
@@ -6228,41 +6228,41 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    public synchronized Parcel createParcelWithFreshTU(Contract c, Set<PrivateKey> keys) throws Exception {
+    public synchronized Parcel createParcelWithFreshU(Contract c, Set<PrivateKey> keys) throws Exception {
 
         Set<PublicKey> ownerKeys = new HashSet();
         keys.stream().forEach(key -> ownerKeys.add(key.getPublicKey()));
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, ownerKeys);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
-        node.registerItem(stepaTU);
-        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        return ContractsService.createParcel(c, stepaTU, 150, keys);
+        return ContractsService.createParcel(c, stepaU, 150, keys);
     }
 
-    protected Contract getApprovedTUContract() throws Exception {
-        synchronized (tuContractLock) {
-            if (tuContract == null) {
+    protected Contract getApprovedUContract() throws Exception {
+        synchronized (uContractLock) {
+            if (uContract == null) {
                 PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
                 Set<PublicKey> keys = new HashSet();
                 keys.add(ownerKey.getPublicKey());
-                Contract stepaTU = InnerContractsService.createFreshTU(100000000, keys);
-                stepaTU.check();
-                stepaTU.traceErrors();
-                System.out.println("register new TU ");
-                node.registerItem(stepaTU);
-                tuContract = stepaTU;
+                Contract stepaU = InnerContractsService.createFreshU(100000000, keys);
+                stepaU.check();
+                stepaU.traceErrors();
+                System.out.println("register new U ");
+                node.registerItem(stepaU);
+                uContract = stepaU;
             }
             int needRecreateTuContractNum = 0;
             for (Node n : nodes) {
                 try {
-                    ItemResult itemResult = n.waitItem(tuContract.getId(), 15000);
+                    ItemResult itemResult = n.waitItem(uContract.getId(), 15000);
                     //assertEquals(ItemState.APPROVED, itemResult.state);
                     if (itemResult.state != ItemState.APPROVED) {
-                        System.out.println("TU: node " + n + " result: " + itemResult);
+                        System.out.println("U: node " + n + " result: " + itemResult);
                         needRecreateTuContractNum ++;
                     }
                 } catch (TimeoutException e) {
@@ -6271,7 +6271,7 @@ public class BaseNetworkTest extends TestCase {
 ////                    System.out.println(n.traceTasksPool());
 //                    System.out.println(n.traceParcelProcessors());
 //                    System.out.println(n.traceItemProcessors());
-                    System.out.println("TU: node " + n + " timeout: ");
+                    System.out.println("U: node " + n + " timeout: ");
                     needRecreateTuContractNum ++;
                 }
             }
@@ -6279,16 +6279,16 @@ public class BaseNetworkTest extends TestCase {
             if(recreateBorder < 0)
                 recreateBorder = 0;
             if (needRecreateTuContractNum > recreateBorder) {
-                tuContract = null;
+                uContract = null;
                 Thread.sleep(1000);
-                return getApprovedTUContract();
+                return getApprovedUContract();
             }
-            return tuContract;
+            return uContract;
         }
     }
 
-    public synchronized Parcel createParcelWithClassTU(Contract c, Set<PrivateKey> keys) throws Exception {
-        Contract tu = getApprovedTUContract();
+    public synchronized Parcel createParcelWithClassU(Contract c, Set<PrivateKey> keys) throws Exception {
+        Contract tu = getApprovedUContract();
         Parcel parcel =  ContractsService.createParcel(c, tu, 150, keys);
 //        System.out.println("create  parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
         return parcel;
@@ -6297,12 +6297,12 @@ public class BaseNetworkTest extends TestCase {
     protected synchronized Parcel registerWithNewParcel(Contract c) throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        Parcel parcel = createParcelWithClassTU(c, stepaPrivateKeys);
+        Parcel parcel = createParcelWithClassU(c, stepaPrivateKeys);
         System.out.println("register  parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         return parcel;
     }
@@ -6312,13 +6312,13 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
-        Contract tu = getApprovedTUContract();
+        Contract tu = getApprovedUContract();
         // stepaPrivateKeys - is also U keys
         Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
         System.out.println("-------------");
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
 
         return parcel;
@@ -7119,7 +7119,7 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.addSignerKey(privateKeys.iterator().next());
         stepaCoins.seal();
         registerAndCheckApproved(stepaCoins);
-        Parcel parcel = createParcelWithFreshTU(stepaCoins, privateKeys);
+        Parcel parcel = createParcelWithFreshU(stepaCoins, privateKeys);
         return parcel.getPaymentContract();
     }
 
@@ -7136,7 +7136,7 @@ public class BaseNetworkTest extends TestCase {
     @Test(timeout = 90000)
     public void checkPayment_good() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertTrue(res);
     }
@@ -7144,10 +7144,10 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
-    public void checkPayment_zeroTU() throws Exception {
+    public void checkPayment_zeroU() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
-        payment.getStateData().set("transaction_units", 0);
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        payment.getStateData().set("U", 0);
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
     }
@@ -7155,10 +7155,10 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
-    public void checkPayment_wrongTUtype() throws Exception {
+    public void checkPayment_wrongUtype() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
-        payment.getStateData().set("transaction_units", "33");
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        payment.getStateData().set("U", "33");
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
     }
@@ -7166,11 +7166,11 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
-    public void checkPayment_wrongTUname() throws Exception {
+    public void checkPayment_wrongUname() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
-        payment.getStateData().set("transacti0n_units", payment.getStateData().get("transaction_units"));
-        payment.getStateData().remove("transaction_units");
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        payment.getStateData().set("U", payment.getStateData().get("U"));
+        payment.getStateData().remove("U");
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
     }
@@ -7181,7 +7181,7 @@ public class BaseNetworkTest extends TestCase {
     public void checkPayment_missingDecrementPermission() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
         payment.getPermissions().remove("decrement_permission");
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
     }
@@ -7198,7 +7198,7 @@ public class BaseNetworkTest extends TestCase {
         issuerRole.addKeyRecord(kr);
         payment.registerRole(issuerRole);
 
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
     }
@@ -7211,7 +7211,7 @@ public class BaseNetworkTest extends TestCase {
         final Field field = payment.getState().getClass().getDeclaredField("revision");
         field.setAccessible(true);
         field.set(payment.getState(), 1);
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
     }
@@ -7227,7 +7227,7 @@ public class BaseNetworkTest extends TestCase {
         final Field field2 = payment.getRevoking().get(0).getState().getClass().getDeclaredField("origin");
         field2.setAccessible(true);
         field2.set(payment.getRevoking().get(0).getState(), payment.getId());
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
     }
@@ -7240,7 +7240,7 @@ public class BaseNetworkTest extends TestCase {
         final Field field2 = payment.getRevoking().get(0).getState().getClass().getDeclaredField("origin");
         field2.setAccessible(true);
         field2.set(payment.getRevoking().get(0).getState(), payment.getId());
-        boolean res = payment.paymentCheck(config.getTransactionUnitsIssuerKeys());
+        boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
     }
@@ -7252,7 +7252,7 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
-        Contract uContract = getApprovedTUContract();
+        Contract uContract = getApprovedUContract();
         Contract modifiedU = uContract.createRevision(stepaPrivateKeys);
         modifiedU.getPermissions().remove("revoke");
         modifiedU.seal();
@@ -7261,8 +7261,8 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("-------------");
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
 
         waitAndCheckState(parcel, ItemState.UNDEFINED);
@@ -7273,7 +7273,7 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
-        Contract uContract = getApprovedTUContract();
+        Contract uContract = getApprovedUContract();
         Contract modifiedU = uContract.createRevision(stepaPrivateKeys);
         modifiedU.getStateData().set("transaction_units", modifiedU.getStateData().getIntOrThrow("transaction_units") - 1);
         modifiedU.seal();
@@ -7282,8 +7282,8 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("-------------");
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
 
 
@@ -7295,7 +7295,7 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
-        Contract uContract = getApprovedTUContract();
+        Contract uContract = getApprovedUContract();
 
         // stepaPrivateKeys - is also U keys
         Contract paymentDecreased = uContract.createRevision(stepaPrivateKeys);
@@ -7310,8 +7310,8 @@ public class BaseNetworkTest extends TestCase {
         System.out.println("-------------");
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
 
 
@@ -8089,13 +8089,13 @@ public class BaseNetworkTest extends TestCase {
     private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
 
         @Override
-        public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
-            return config.getTransactionUnitsIssuerKeys();
+        public Set<KeyAddress> getUIssuerKeys() {
+            return config.getUIssuerKeys();
         }
 
         @Override
-        public String getTUIssuerName() {
-            return config.getTUIssuerName();
+        public String getUIssuerName() {
+            return config.getUIssuerName();
         }
 
         @Override
@@ -8144,7 +8144,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -8163,8 +8163,8 @@ public class BaseNetworkTest extends TestCase {
 //        }
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -8221,7 +8221,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
@@ -8235,8 +8235,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -8287,7 +8287,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
@@ -8301,8 +8301,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -8403,7 +8403,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -8422,8 +8422,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -8501,7 +8501,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
@@ -8524,8 +8524,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -8630,7 +8630,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
@@ -8653,8 +8653,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -8754,7 +8754,7 @@ public class BaseNetworkTest extends TestCase {
         refilledSlotContract3.seal();
 
         // payment contract
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
@@ -8775,8 +8775,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg4 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -8922,7 +8922,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -8941,8 +8941,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9098,7 +9098,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -9109,8 +9109,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(slotContract.isOk());
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9190,7 +9190,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -9201,8 +9201,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(slotContract.isOk());
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9248,7 +9248,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         // revision should be created without additional payments (only setKeepRevisions and putTrackingContract)
         payingParcel = ContractsService.createParcel(refilledSlotContract, paymentContract, 1, stepaPrivateKeys, false);
@@ -9258,8 +9258,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(refilledSlotContract.isOk());
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = paymentContract;
+        synchronized (uContractLock) {
+            uContract = paymentContract;
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9316,7 +9316,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -9327,8 +9327,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(slotContract.isOk());
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9373,7 +9373,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
@@ -9388,8 +9388,8 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(newSlotContract.isOk());
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9443,7 +9443,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -9459,8 +9459,8 @@ public class BaseNetworkTest extends TestCase {
             }
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = slotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = slotContract.getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9519,7 +9519,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
         for (Contract c: baseContract2.getNew())
@@ -9532,8 +9532,8 @@ public class BaseNetworkTest extends TestCase {
             }
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = refilledSlotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = refilledSlotContract.getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9638,7 +9638,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -9707,7 +9707,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -9723,8 +9723,8 @@ public class BaseNetworkTest extends TestCase {
             }
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = slotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = slotContract.getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9781,7 +9781,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
         for (Contract c: baseContract2.getNew())
@@ -9794,8 +9794,8 @@ public class BaseNetworkTest extends TestCase {
             }
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = refilledSlotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = refilledSlotContract.getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9850,7 +9850,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -9866,8 +9866,8 @@ public class BaseNetworkTest extends TestCase {
             }
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = slotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = slotContract.getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -9923,7 +9923,7 @@ public class BaseNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
         for (Contract c: baseContract2.getNew())
@@ -9936,8 +9936,8 @@ public class BaseNetworkTest extends TestCase {
             }
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = refilledSlotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = refilledSlotContract.getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10009,26 +10009,26 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10095,13 +10095,13 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10118,13 +10118,13 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(nr.getEntries().size(),1);
         assertTrue(nr.expiresAt().isBefore(ZonedDateTime.now()));
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10139,14 +10139,14 @@ public class BaseNetworkTest extends TestCase {
         assertNull(nr);
 
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10199,14 +10199,14 @@ public class BaseNetworkTest extends TestCase {
         uns2.traceErrors();
 
         //REGISTER UNS1
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10223,12 +10223,12 @@ public class BaseNetworkTest extends TestCase {
         revokingContract.addRevokingItems(uns);
         revokingContract.seal();
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
         Parcel parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
@@ -10241,12 +10241,12 @@ public class BaseNetworkTest extends TestCase {
         assertNull(ledger.getNameRecord(name));
 
         //REGISTER UNS2
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
         payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment(uns.getExtendedType()), stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10318,38 +10318,38 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(referencesContract1.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract1.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         parcel = ContractsService.createParcel(referencesContract2.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract2.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10397,14 +10397,14 @@ public class BaseNetworkTest extends TestCase {
         uns.seal();
 
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10451,25 +10451,25 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(referencesContract1.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract1.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10491,13 +10491,13 @@ public class BaseNetworkTest extends TestCase {
         Contract referencesContract2 = referencesContract1.createRevision(TestKeys.privateKey(1));
         referencesContract2.setOwnerKeys(TestKeys.privateKey(8));
         referencesContract2.seal();
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         parcel = ContractsService.createParcel(referencesContract2.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
@@ -10511,13 +10511,13 @@ public class BaseNetworkTest extends TestCase {
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10533,15 +10533,15 @@ public class BaseNetworkTest extends TestCase {
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         payingParcel = Parcel.unpack(payingParcel.pack());
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10584,13 +10584,13 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10629,13 +10629,13 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10673,26 +10673,26 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10728,13 +10728,13 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10773,13 +10773,13 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 2000, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10834,26 +10834,26 @@ public class BaseNetworkTest extends TestCase {
         uns1.check();
         uns1.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(nameContract1.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(nameContract1.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns1.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10887,26 +10887,26 @@ public class BaseNetworkTest extends TestCase {
         uns2.check();
         uns2.traceErrors();
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         parcel = ContractsService.createParcel(nameContract2.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(nameContract2.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -10957,26 +10957,26 @@ public class BaseNetworkTest extends TestCase {
         uns1.check();
         uns1.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(nameContract1.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(nameContract1.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns1.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -11009,26 +11009,26 @@ public class BaseNetworkTest extends TestCase {
         uns2.check();
         uns2.traceErrors();
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         parcel = ContractsService.createParcel(nameContract2.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(nameContract2.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -11081,26 +11081,26 @@ public class BaseNetworkTest extends TestCase {
         uns1.check();
         uns1.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(nameContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(nameContract.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns1.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -11131,13 +11131,13 @@ public class BaseNetworkTest extends TestCase {
         uns2.check();
         uns2.traceErrors();
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
         node.registerParcel(payingParcel);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -11187,19 +11187,19 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
 
@@ -11208,8 +11208,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -11253,7 +11253,7 @@ public class BaseNetworkTest extends TestCase {
         refilledUnsContract.addOriginContract(referencesContract);
         refilledUnsContract.seal();
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(refilledUnsContract.getTransactionPack(), paymentContract, 1, 1000, stepaPrivateKeys, false);
 
@@ -11266,8 +11266,8 @@ public class BaseNetworkTest extends TestCase {
 
         node.registerParcel(payingParcel);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         node.waitParcel(payingParcel.getId(), 8000);
@@ -11436,17 +11436,17 @@ public class BaseNetworkTest extends TestCase {
         PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract contractTU = InnerContractsService.createFreshTU(100, keys, true);
-        contractTU.check();
-        //stepaTU.setIsTU(true);
-        contractTU.traceErrors();
-        node.registerItem(contractTU);
-        ItemResult itemResult = node.waitItem(contractTU.getId(), 18000);
+        Contract contractU = InnerContractsService.createFreshU(100, keys, true);
+        contractU.check();
+        //stepaU.setIsU(true);
+        contractU.traceErrors();
+        node.registerItem(contractU);
+        ItemResult itemResult = node.waitItem(contractU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(contract, contractTU, 1, stepaPrivateKeys, false);
+        Parcel parcel = ContractsService.createParcel(contract, contractU, 1, stepaPrivateKeys, false);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -11512,16 +11512,16 @@ public class BaseNetworkTest extends TestCase {
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
 
-        Contract contractTU = InnerContractsService.createFreshTU(100, keys, true);
-        contractTU.check();
-        contractTU.traceErrors();
-        node.registerItem(contractTU);
-        ItemResult itemResult = node.waitItem(contractTU.getId(), 18000);
+        Contract contractU = InnerContractsService.createFreshU(100, keys, true);
+        contractU.check();
+        contractU.traceErrors();
+        node.registerItem(contractU);
+        ItemResult itemResult = node.waitItem(contractU.getId(), 18000);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createParcel(contract, contractTU, 1, stepaPrivateKeys, true);
+        Parcel parcel = ContractsService.createParcel(contract, contractU, 1, stepaPrivateKeys, true);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -11585,13 +11585,13 @@ public class BaseNetworkTest extends TestCase {
 
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey"));
-        Contract contractTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-        contractTU.addSignerKey(manufacturePrivateKey);
-        contractTU.seal();
-        contractTU.check();
-        contractTU.traceErrors();
+        Contract contractU = Contract.fromDslFile(ROOT_PATH + "StepaU.yml");
+        contractU.addSignerKey(manufacturePrivateKey);
+        contractU.seal();
+        contractU.check();
+        contractU.traceErrors();
 
-        Parcel parcel = ContractsService.createParcel(contract, contractTU, 1, stepaPrivateKeys);
+        Parcel parcel = ContractsService.createParcel(contract, contractU, 1, stepaPrivateKeys);
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
@@ -11653,13 +11653,13 @@ public class BaseNetworkTest extends TestCase {
 
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
         Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), paymentContract, 1, 170, stepaPrivateKeys, false);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -11683,8 +11683,8 @@ public class BaseNetworkTest extends TestCase {
         //System.out.println("today      :  " + today);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = slotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = slotContract.getNew().get(0);
         }
         node.waitParcel(parcel.getId(), 8000);
 
@@ -11729,17 +11729,17 @@ public class BaseNetworkTest extends TestCase {
         slotContract.putTrackingContract(simpleContract);
 
         // illegal payment contract
-        Contract contractTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-        contractTU.addSignerKey(key);
-        contractTU.seal();
-        contractTU.check();
-        contractTU.traceErrors();
+        Contract contractU = Contract.fromDslFile(ROOT_PATH + "StepaU.yml");
+        contractU.addSignerKey(key);
+        contractU.seal();
+        contractU.check();
+        contractU.traceErrors();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), contractTU, 1, 170, stepaPrivateKeys, false);
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), contractU, 1, 170, stepaPrivateKeys, false);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -11819,23 +11819,23 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         parcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1800, stepaPrivateKeys, false);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -11859,8 +11859,8 @@ public class BaseNetworkTest extends TestCase {
 //        System.out.println("today      :  " + today);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = uns.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = uns.getNew().get(0);
         }
         node.waitParcel(parcel.getId(), 8000);
 
@@ -11920,28 +11920,28 @@ public class BaseNetworkTest extends TestCase {
         uns.check();
         uns.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
 
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         // wait parcel
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
 
         // illegal payment contract
-        Contract contractTU = Contract.fromDslFile(ROOT_PATH + "StepaTU.yml");
-        contractTU.addSignerKey(manufacturePrivateKeys.iterator().next());
-        contractTU.seal();
-        contractTU.check();
-        contractTU.traceErrors();
+        Contract contractU = Contract.fromDslFile(ROOT_PATH + "StepaU.yml");
+        contractU.addSignerKey(manufacturePrivateKeys.iterator().next());
+        contractU.seal();
+        contractU.check();
+        contractU.traceErrors();
 
-        parcel = ContractsService.createPayingParcel(uns.getTransactionPack(), contractTU, 1, 1500, stepaPrivateKeys, false);
+        parcel = ContractsService.createPayingParcel(uns.getTransactionPack(), contractU, 1, 1500, stepaPrivateKeys, false);
 
-        parcel.getPayment().getContract().paymentCheck(config.getTransactionUnitsIssuerKeys());
+        parcel.getPayment().getContract().paymentCheck(config.getUIssuerKeys());
         parcel.getPayment().getContract().traceErrors();
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
@@ -12003,7 +12003,7 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+        Parcel parcel = createParcelWithFreshU(stepaCoins, stepaPrivateKeys);
         assertTrue(parcel.getPayloadContract().isOk());
 
         node.registerParcel(parcel);
@@ -12031,7 +12031,7 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+        Parcel parcel = createParcelWithFreshU(stepaCoins, stepaPrivateKeys);
         assertFalse(parcel.getPayloadContract().isOk());
 
         node.registerParcel(parcel);
@@ -12059,7 +12059,7 @@ public class BaseNetworkTest extends TestCase {
         stepaCoins.check();
         stepaCoins.traceErrors();
 
-        Parcel parcel = createParcelWithFreshTU(stepaCoins, stepaPrivateKeys);
+        Parcel parcel = createParcelWithFreshU(stepaCoins, stepaPrivateKeys);
         assertFalse(parcel.getPayloadContract().isOk());
 
         node.registerParcel(parcel);
@@ -12107,12 +12107,12 @@ public class BaseNetworkTest extends TestCase {
         uns.addSignerKey(authorizedNameServiceKey);
         uns.seal();
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
         Contract referencesContract = new Contract(TestKeys.privateKey(8));
         referencesContract.seal();
         Parcel parcel = ContractsService.createParcel(referencesContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {tuContract = parcel.getPaymentContract();}
+        synchronized (uContractLock) {uContract = parcel.getPaymentContract();}
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract.getId(), 8000).state);
 
@@ -12134,10 +12134,10 @@ public class BaseNetworkTest extends TestCase {
         uns.addSignatureToSeal(TestKeys.privateKey(8));
         uns.check();
         uns.traceErrors();
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
         parcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, 1470, stepaPrivateKeys, false);
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {tuContract = parcel.getPayloadContract().getNew().get(0);}
+        synchronized (uContractLock) {uContract = parcel.getPayloadContract().getNew().get(0);}
         node.waitParcel(parcel.getId(), 8000);
 
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);
@@ -12184,22 +12184,22 @@ public class BaseNetworkTest extends TestCase {
     public void removeEnvironment_slot1() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>(Arrays.asList(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"))));
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
         Contract trackingContract = new Contract(TestKeys.privateKey(0));
         trackingContract.seal();
         Parcel parcel = ContractsService.createParcel(trackingContract.getTransactionPack(), paymentContract, 1, stepaPrivateKeys, false);
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {tuContract = parcel.getPaymentContract();}
+        synchronized (uContractLock) {uContract = parcel.getPaymentContract();}
         node.waitParcel(parcel.getId(), 8000);
         assertEquals(ItemState.APPROVED, node.waitItem(trackingContract.getId(), 8000).state);
 
         SlotContract slotContract = ContractsService.createSlotContract(new HashSet<>(Arrays.asList(TestKeys.privateKey(0))), new HashSet<>(Arrays.asList(TestKeys.publicKey(0))), nodeInfoProvider);
         slotContract.putTrackingContract(trackingContract);
         slotContract.seal();
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
         parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
         node.registerParcel(parcel);
-        synchronized (tuContractLock) {tuContract = parcel.getPayloadContract().getNew().get(0);}
+        synchronized (uContractLock) {uContract = parcel.getPayloadContract().getNew().get(0);}
         node.waitParcel(parcel.getId(), 8000);
 
         assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPayload().getContract().getId(), 8000).state);

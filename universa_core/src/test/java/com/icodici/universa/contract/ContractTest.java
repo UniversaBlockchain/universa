@@ -613,7 +613,7 @@ public class ContractTest extends ContractTestBase {
 
         Contract processingContract = processContractAsItWillBeOnTheNode(forJoin);
         System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCost() + " (Quanta)");
-        System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCostTU() + " (TU)");
+        System.out.println("Calculated processing cost (forJoin): " + processingContract.getProcessedCostU() + " (U)");
         return processingContract;
     }
 
@@ -1037,7 +1037,7 @@ public class ContractTest extends ContractTestBase {
     }
 
     @Test
-    public void checkTestnetCostTUCriteria() throws Exception {
+    public void checkTestnetCostUCriteria() throws Exception {
 
         PrivateKey key = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
 
@@ -1055,9 +1055,9 @@ public class ContractTest extends ContractTestBase {
 
         sealCheckTrace(contract, true);
 
-        System.out.println("Processing cost is " + contract.getProcessedCostTU());
+        System.out.println("Processing cost is " + contract.getProcessedCostU());
 
-        assertTrue(contract.getProcessedCostTU() > Config.maxCostTUInTestMode);
+        assertTrue(contract.getProcessedCostU() > Config.maxCostUInTestMode);
 
         assertFalse(contract.isSuitableForTestnet());
 
@@ -1078,7 +1078,7 @@ public class ContractTest extends ContractTestBase {
         contract.addSignerKey(key);
         sealCheckTrace(contract, true);
 
-        System.out.println("Processing cost is " + contract.getProcessedCostTU());
+        System.out.println("Processing cost is " + contract.getProcessedCostU());
 
         assertTrue(contract.isSuitableForTestnet());
 

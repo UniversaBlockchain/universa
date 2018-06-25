@@ -97,7 +97,7 @@ public class MainTest {
             Contract testContract = new Contract(ts.myKey);
             testContract.seal();
             assertTrue(testContract.isOk());
-            Parcel parcel = createParcelWithFreshTU(ts.client, testContract, Do.listOf(ts.myKey));
+            Parcel parcel = createParcelWithFreshU(ts.client, testContract, Do.listOf(ts.myKey));
             ts.client.registerParcel(parcel.pack(), 18000);
 
             Contract testContract2 = new Contract(ts.myKey);
@@ -246,7 +246,7 @@ public class MainTest {
                     e.printStackTrace();
                 }
 
-                //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
+                //m.config.getKeysWhiteList().add(m.config.getUIssuerKey());
                 m.waitReady();
                 mm.add(m);
             } catch (InterruptedException e) {
@@ -282,7 +282,7 @@ public class MainTest {
                     e.printStackTrace();
                 }
 
-                //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
+                //m.config.getKeysWhiteList().add(m.config.getUIssuerKey());
                 m.waitReady();
                 mm.add(m);
             } catch (InterruptedException e) {
@@ -472,7 +472,7 @@ public class MainTest {
             Client client = new Client(TestKeys.privateKey(i), info, null);
             clients.add(client);
             clientSleeps.add(rand.nextInt(100));
-            Parcel parcel = createParcelWithFreshTU(client,contract,Do.listOf(myKey));
+            Parcel parcel = createParcelWithFreshU(client,contract,Do.listOf(myKey));
             parcels.add(parcel);
         }
 
@@ -597,7 +597,7 @@ public class MainTest {
 
         Client client = new Client(TestKeys.privateKey(0), mm.get(0).myInfo, null);
 
-        Parcel parcel = createParcelWithFreshTU(client, configContract,Do.listOf(issuerKey));
+        Parcel parcel = createParcelWithFreshU(client, configContract,Do.listOf(issuerKey));
         client.registerParcel(parcel.pack(),15000);
 
         ItemResult rr;
@@ -612,7 +612,7 @@ public class MainTest {
 
         configContract = createNetConfigContract(configContract,netConfigNew,nodeKeys);
 
-        parcel = createParcelWithFreshTU(client, configContract,nodeKeys);
+        parcel = createParcelWithFreshU(client, configContract,nodeKeys);
         client.registerParcel(parcel.pack(),15000);
         while (true) {
 
@@ -628,7 +628,7 @@ public class MainTest {
         }
         configContract = createNetConfigContract(configContract,netConfig,nodeKeys);
 
-        parcel = createParcelWithFreshTU(client, configContract,nodeKeys);
+        parcel = createParcelWithFreshU(client, configContract,nodeKeys);
         client.registerParcel(parcel.pack(),15000);
         while (true) {
 
@@ -723,7 +723,7 @@ public class MainTest {
         Contract testContract = new Contract(myKey);
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
         client.registerParcel(parcel.pack(), 1000);
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
 
@@ -733,7 +733,7 @@ public class MainTest {
         Contract testContract2 = new Contract(myKey);
         testContract2.seal();
         assertTrue(testContract2.isOk());
-        Parcel parcel2 = createParcelWithFreshTU(client, testContract2,Do.listOf(myKey));
+        Parcel parcel2 = createParcelWithFreshU(client, testContract2,Do.listOf(myKey));
         client.registerParcel(parcel2.pack(), 1000);
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
@@ -746,7 +746,7 @@ public class MainTest {
         Contract testContract3 = new Contract(myKey);
         testContract3.seal();
         assertTrue(testContract3.isOk());
-        Parcel parcel3 = createParcelWithFreshTU(client, testContract3,Do.listOf(myKey));
+        Parcel parcel3 = createParcelWithFreshU(client, testContract3,Do.listOf(myKey));
         client.registerParcel(parcel3.pack(), 1000);
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
@@ -779,7 +779,7 @@ public class MainTest {
         Contract testContract = new Contract(myKey);
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
         client.registerParcel(parcel.pack(), 1000);
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
 
@@ -789,7 +789,7 @@ public class MainTest {
         Contract testContract2 = new Contract(myKey);
         testContract2.seal();
         assertTrue(testContract2.isOk());
-        Parcel parcel2 = createParcelWithFreshTU(client, testContract2,Do.listOf(myKey));
+        Parcel parcel2 = createParcelWithFreshU(client, testContract2,Do.listOf(myKey));
         client.registerParcel(parcel2.pack(), 1000);
         ItemResult itemResult2 = client.getState(parcel2.getPayloadContract().getId());
 
@@ -803,7 +803,7 @@ public class MainTest {
         Contract testContract4 = new Contract(myKey);
         testContract4.seal();
         assertTrue(testContract4.isOk());
-        Parcel parcel4 = createParcelWithFreshTU(client, testContract4,Do.listOf(myKey));
+        Parcel parcel4 = createParcelWithFreshU(client, testContract4,Do.listOf(myKey));
         client.registerParcel(parcel4.pack(), 1000);
         ItemResult itemResult4 = client.getState(parcel4.getPayloadContract().getId());
 
@@ -815,7 +815,7 @@ public class MainTest {
         Contract testContract3 = new Contract(myKey);
         testContract3.seal();
         assertTrue(testContract3.isOk());
-        Parcel parcel3 = createParcelWithFreshTU(client, testContract3,Do.listOf(myKey));
+        Parcel parcel3 = createParcelWithFreshU(client, testContract3,Do.listOf(myKey));
         client.registerParcel(parcel3.pack(), 1000);
         ItemResult itemResult3 = client.getState(parcel3.getPayloadContract().getId());
 
@@ -848,7 +848,7 @@ public class MainTest {
         }
         testContract.seal();
         assertTrue(testContract.isOk());
-        Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
         client.registerParcel(parcel.pack());
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getId()));
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
@@ -933,7 +933,7 @@ public class MainTest {
         testContract.seal();
         assertTrue(testContract.isOk());
 
-        Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
         client.registerParcel(parcel.pack());
 
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
@@ -969,19 +969,19 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    public synchronized Parcel createParcelWithFreshTU(Client client, Contract c, Collection<PrivateKey> keys) throws Exception {
+    public synchronized Parcel createParcelWithFreshU(Client client, Contract c, Collection<PrivateKey> keys) throws Exception {
         Set<PublicKey> ownerKeys = new HashSet();
         keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, ownerKeys);
-        stepaTU.check();
-        stepaTU.traceErrors();
+        Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
+        stepaU.check();
+        stepaU.traceErrors();
 
         PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
         PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
         client.getSession().setPrivateKey(newPrivateKey);
         client.restart();
 
-        ItemResult itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
+        ItemResult itemResult = client.register(stepaU.getPackedTransaction(), 5000);
 
         client.getSession().setPrivateKey(clientPrivateKey);
         client.restart();
@@ -989,7 +989,7 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, itemResult.state);
         Set<PrivateKey> keySet = new HashSet<>();
         keySet.addAll(keys);
-        return ContractsService.createParcel(c, stepaTU, 150, keySet);
+        return ContractsService.createParcel(c, stepaU, 150, keySet);
     }
 
     @Test
@@ -1048,8 +1048,8 @@ public class MainTest {
         public Main node = null;
         PrivateKey myKey = null;
         Client client = null;
-        Object tuContractLock = new Object();
-        Contract tuContract = null;
+        Object uContractLock = new Object();
+        Contract uContract = null;
         public ArrayList<Client> clients;
     }
 
@@ -1181,7 +1181,7 @@ public class MainTest {
         Contract contract = new Contract(myKey);
         contract.seal();
 
-        Parcel parcel = createParcelWithFreshTU(client,contract,Do.listOf(myKey));
+        Parcel parcel = createParcelWithFreshU(client,contract,Do.listOf(myKey));
         client.registerParcel(parcel.pack(),60000);
         ItemResult rr;
         while(true) {
@@ -2071,12 +2071,12 @@ public class MainTest {
         slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.putTrackingContract(simpleContract);
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
-        itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
-        System.out.println("stepaTU itemResult: " + itemResult);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        itemResult = client.register(stepaU.getPackedTransaction(), 5000);
+        System.out.println("stepaU itemResult: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
-        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaTU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
 
         Binder slotInfo = client.querySlotInfo(slotContract.getId());
         System.out.println("slot info is null: " + (slotInfo == null));
@@ -2147,7 +2147,7 @@ public class MainTest {
         unsContract.check();
         unsContract.traceErrors();
 
-        Contract paymentContract = getApprovedTUContract(testSpace);
+        Contract paymentContract = getApprovedUContract(testSpace);
 
         Parcel payingParcel = ContractsService.createPayingParcel(unsContract.getTransactionPack(), paymentContract, 1, 2000, manufacturePrivateKeys, false);
 
@@ -2190,7 +2190,7 @@ public class MainTest {
         unsContract2.check();
         unsContract2.traceErrors();
 
-        paymentContract = getApprovedTUContract(testSpace);
+        paymentContract = getApprovedUContract(testSpace);
 
         payingParcel = ContractsService.createPayingParcel(unsContract2.getTransactionPack(), paymentContract, 1, 2000, manufacturePrivateKeys, false);
 
@@ -2548,13 +2548,13 @@ public class MainTest {
         Contract simpleContract = new Contract(TestKeys.privateKey(1));
         simpleContract.seal();
 
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
-        ItemResult itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
-        System.out.println("stepaTU itemResult: " + itemResult);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
+        ItemResult itemResult = client.register(stepaU.getPackedTransaction(), 5000);
+        System.out.println("stepaU itemResult: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
         main.config.setIsFreeRegistrationsAllowedFromYaml(false);
 
-        Parcel parcel = ContractsService.createParcel(simpleContract, stepaTU, 1, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
+        Parcel parcel = ContractsService.createParcel(simpleContract, stepaU, 1, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
         client.registerParcel(parcel.pack(), 5000);
         assertEquals(ItemState.APPROVED, client.getState(simpleContract.getId()).state);
 
@@ -2564,26 +2564,26 @@ public class MainTest {
     protected static final String ROOT_PATH = "./src/test_contracts/";
 
 
-    protected Contract getApprovedTUContract(TestSpace testSpace) throws Exception {
-        synchronized (testSpace.tuContractLock) {
-            if (testSpace.tuContract == null) {
+    protected Contract getApprovedUContract(TestSpace testSpace) throws Exception {
+        synchronized (testSpace.uContractLock) {
+            if (testSpace.uContract == null) {
 
                 Set<PublicKey> keys = new HashSet();
                 keys.add(testSpace.myKey.getPublicKey());
-                Contract stepaTU = InnerContractsService.createFreshTU(100000000, keys);
-                stepaTU.check();
-                stepaTU.traceErrors();
-                System.out.println("register new TU ");
-                testSpace.node.node.registerItem(stepaTU);
-                testSpace.tuContract = stepaTU;
+                Contract stepaU = InnerContractsService.createFreshU(100000000, keys);
+                stepaU.check();
+                stepaU.traceErrors();
+                System.out.println("register new U ");
+                testSpace.node.node.registerItem(stepaU);
+                testSpace.uContract = stepaU;
             }
             int needRecreateTuContractNum = 0;
             for (Main m : testSpace.nodes) {
                 try {
-                    ItemResult itemResult = m.node.waitItem(testSpace.tuContract.getId(), 15000);
+                    ItemResult itemResult = m.node.waitItem(testSpace.uContract.getId(), 15000);
                     //assertEquals(ItemState.APPROVED, itemResult.state);
                     if (itemResult.state != ItemState.APPROVED) {
-                        System.out.println("TU: node " + m.node + " result: " + itemResult);
+                        System.out.println("U: node " + m.node + " result: " + itemResult);
                         needRecreateTuContractNum ++;
                     }
                 } catch (TimeoutException e) {
@@ -2592,7 +2592,7 @@ public class MainTest {
 ////                    System.out.println(n.traceTasksPool());
 //                    System.out.println(n.traceParcelProcessors());
 //                    System.out.println(n.traceItemProcessors());
-                    System.out.println("TU: node " + m.node + " timeout: ");
+                    System.out.println("U: node " + m.node + " timeout: ");
                     needRecreateTuContractNum ++;
                 }
             }
@@ -2600,24 +2600,24 @@ public class MainTest {
             if(recreateBorder < 0)
                 recreateBorder = 0;
             if (needRecreateTuContractNum > recreateBorder) {
-                testSpace.tuContract = null;
+                testSpace.uContract = null;
                 Thread.sleep(1000);
-                return getApprovedTUContract(testSpace);
+                return getApprovedUContract(testSpace);
             }
-            return testSpace.tuContract;
+            return testSpace.uContract;
         }
     }
 
     private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
         Config config = new Config();
         @Override
-        public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
-            return config.getTransactionUnitsIssuerKeys();
+        public Set<KeyAddress> getUIssuerKeys() {
+            return config.getUIssuerKeys();
         }
 
         @Override
-        public String getTUIssuerName() {
-            return config.getTUIssuerName();
+        public String getUIssuerName() {
+            return config.getUIssuerName();
         }
 
         @Override
@@ -2711,14 +2711,14 @@ public class MainTest {
         uns3.traceErrors();
 
         //REGISTER UNS1
-        Contract paymentContract = getApprovedTUContract(testSpace);
+        Contract paymentContract = getApprovedUContract(testSpace);
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
@@ -2735,12 +2735,12 @@ public class MainTest {
         revokingContract.addRevokingItems(uns);
         revokingContract.seal();
 
-        paymentContract = getApprovedTUContract(testSpace);
+        paymentContract = getApprovedUContract(testSpace);
         Parcel parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(parcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = parcel.getPaymentContract();
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = parcel.getPaymentContract();
         }
         // wait parcel
         testSpace.node.node.waitParcel(parcel.getId(), 8000);
@@ -2753,12 +2753,12 @@ public class MainTest {
         assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
 
         //REGISTER UNS2
-        paymentContract = getApprovedTUContract(testSpace);
+        paymentContract = getApprovedUContract(testSpace);
         payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
@@ -2778,12 +2778,12 @@ public class MainTest {
         revokingContract.addRevokingItems(uns2);
         revokingContract.seal();
 
-        paymentContract = getApprovedTUContract(testSpace);
+        paymentContract = getApprovedUContract(testSpace);
         parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(parcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = parcel.getPaymentContract();
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = parcel.getPaymentContract();
         }
         // wait parcel
         testSpace.node.node.waitParcel(parcel.getId(), 8000);
@@ -2806,13 +2806,13 @@ public class MainTest {
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName()));
 
         //REGISTER UNS3
-        paymentContract = getApprovedTUContract(testSpace);
+        paymentContract = getApprovedUContract(testSpace);
 
         payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
@@ -2913,14 +2913,14 @@ public class MainTest {
         uns3.traceErrors();
 
         //REGISTER UNS1
-        Contract paymentContract = getApprovedTUContract(testSpace);
+        Contract paymentContract = getApprovedUContract(testSpace);
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
@@ -2937,12 +2937,12 @@ public class MainTest {
         revokingContract.addRevokingItems(uns);
         revokingContract.seal();
 
-        paymentContract = getApprovedTUContract(testSpace);
+        paymentContract = getApprovedUContract(testSpace);
         Parcel parcel = ContractsService.createParcel(revokingContract.getTransactionPack(), paymentContract, 1, manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(parcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = parcel.getPaymentContract();
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = parcel.getPaymentContract();
         }
         // wait parcel
         testSpace.node.node.waitParcel(parcel.getId(), 8000);
@@ -2955,12 +2955,12 @@ public class MainTest {
         assertNull(testSpace.node.node.getLedger().getNameRecord(unsName.getUnsName()));
 
         //REGISTER UNS2
-        paymentContract = getApprovedTUContract(testSpace);
+        paymentContract = getApprovedUContract(testSpace);
         payingParcel = ContractsService.createPayingParcel(uns2.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
@@ -2994,10 +2994,10 @@ public class MainTest {
         uns2.setNodeInfoProvider(nodeInfoProvider);
         uns2.seal();
 
-        parcel = ContractsService.createParcel(uns2,getApprovedTUContract(testSpace),1,manufacturePrivateKeys);
+        parcel = ContractsService.createParcel(uns2,getApprovedUContract(testSpace),1,manufacturePrivateKeys);
         testSpace.node.node.registerParcel(parcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = parcel.getPaymentContract();
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = parcel.getPaymentContract();
         }
         // wait parcel
         testSpace.node.node.waitParcel(parcel.getId(), 8000);
@@ -3019,13 +3019,13 @@ public class MainTest {
         assertNotNull(testSpace.nodes.get(testSpace.nodes.size()-1).node.getLedger().getNameRecord(unsName.getUnsName()));
 
         //REGISTER UNS3
-        paymentContract = getApprovedTUContract(testSpace);
+        paymentContract = getApprovedUContract(testSpace);
 
         payingParcel = ContractsService.createPayingParcel(uns3.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
@@ -3096,14 +3096,14 @@ public class MainTest {
 
 
         //REGISTER UNS1
-        Contract paymentContract = getApprovedTUContract(testSpace);
+        Contract paymentContract = getApprovedUContract(testSpace);
 
 
         Parcel payingParcel = ContractsService.createPayingParcel(uns.getTransactionPack(), paymentContract, 1, nodeInfoProvider.getMinPayment("UNS1"), manufacturePrivateKeys, false);
 
         testSpace.node.node.registerParcel(payingParcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         testSpace.node.node.waitParcel(payingParcel.getId(), 8000);
@@ -3138,10 +3138,10 @@ public class MainTest {
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
 
-        Parcel parcel = ContractsService.createParcel(uns, getApprovedTUContract(testSpace), 1, manufacturePrivateKeys);
+        Parcel parcel = ContractsService.createParcel(uns, getApprovedUContract(testSpace), 1, manufacturePrivateKeys);
         testSpace.node.node.registerParcel(parcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = parcel.getPaymentContract();
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = parcel.getPaymentContract();
         }
         // wait parcel
         testSpace.node.node.waitParcel(parcel.getId(), 8000);
@@ -3184,10 +3184,10 @@ public class MainTest {
         uns.setNodeInfoProvider(nodeInfoProvider);
         uns.seal();
 
-        parcel = ContractsService.createParcel(uns, getApprovedTUContract(testSpace), 1, manufacturePrivateKeys);
+        parcel = ContractsService.createParcel(uns, getApprovedUContract(testSpace), 1, manufacturePrivateKeys);
         testSpace.node.node.registerParcel(parcel);
-        synchronized (testSpace.tuContractLock) {
-            testSpace.tuContract = parcel.getPaymentContract();
+        synchronized (testSpace.uContractLock) {
+            testSpace.uContract = parcel.getPaymentContract();
         }
         // wait parcel
         testSpace.node.node.waitParcel(parcel.getId(), 8000);
@@ -3375,7 +3375,7 @@ public class MainTest {
         Map<HashId,Map<ItemState,Set<Integer>>> resultsNew  = new HashMap<>();
         TransactionPack tp = TransactionPack.unpack(Do.read("/Users/romanu/Downloads/ru/token106.unicon"));
         tp.getContract().check();
-        System.out.println("Processing cost " + tp.getContract().getProcessedCostTU());
+        System.out.println("Processing cost " + tp.getContract().getProcessedCostU());
 
 
         results.put(tp.getContract().getId(),new HashMap<>());

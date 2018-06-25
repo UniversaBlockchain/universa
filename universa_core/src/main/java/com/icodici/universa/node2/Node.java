@@ -110,13 +110,13 @@ public class Node {
     private NSmartContract.NodeInfoProvider nodeInfoProvider = new NSmartContract.NodeInfoProvider() {
 
         @Override
-        public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
-            return config.getTransactionUnitsIssuerKeys();
+        public Set<KeyAddress> getUIssuerKeys() {
+            return config.getUIssuerKeys();
         }
 
         @Override
-        public String getTUIssuerName() {
-            return config.getTUIssuerName();
+        public String getUIssuerName() {
+            return config.getUIssuerName();
         }
 
         @Override
@@ -723,7 +723,7 @@ public class Node {
                             pp.addToSources(from);
                         }
                         if (resultVote.state != ItemState.PENDING)
-                            pp.vote(from, resultVote.state, notification.getType().isTU());
+                            pp.vote(from, resultVote.state, notification.getType().isU());
                         else
                             log.e("pending vote on parcel " + notification.getParcelId()
                                     + " and item " + notification.getItemId() + " from " + from);
@@ -731,7 +731,7 @@ public class Node {
                         // We answer only if (1) answer is requested and (2) we have position on the subject:
                         if (notification.answerIsRequested()) {
                             // if notification type is payment, we use payment data from parcel, otherwise we use payload data
-                            if (notification.getType().isTU()) {
+                            if (notification.getType().isU()) {
                                 // parcel for payment
                                 if (pp.getPaymentState() != ItemState.PENDING) {
                                     network.deliver(
@@ -1465,12 +1465,12 @@ public class Node {
 
         //////////// polling section /////////////
 
-        private final void vote(NodeInfo node, ItemState state, boolean isTU) {
+        private final void vote(NodeInfo node, ItemState state, boolean isU) {
             if(processingState.canContinue()) {
 
                 // if we got vote but item processor not exist yet - we store that vote.
                 // Otherwise we give vote to item processor
-                if(isTU){
+                if(isU){
                     if (paymentProcessor != null) {
                         paymentProcessor.vote(node, state);
                     } else {
@@ -1867,12 +1867,12 @@ public class Node {
                         }
 
                         if(item.shouldBeU()) {
-                            if(item.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName())) {
-                                checkPassed = item.paymentCheck(config.getTransactionUnitsIssuerKeys());
+                            if(item.isU(config.getUIssuerKeys(), config.getUIssuerName())) {
+                                checkPassed = item.paymentCheck(config.getUIssuerKeys());
                             } else {
                                 checkPassed = false;
                                 item.addError(Errors.BADSTATE, item.getId().toString(),
-                                        "Item that should be TU contract is not TU contract");
+                                        "Item that should be U contract is not U contract");
                             }
                         } else {
                             checkPassed = item.check();

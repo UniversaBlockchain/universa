@@ -196,13 +196,13 @@ public class Config {
 
     private PublicKey authorizedNameServiceCenterKey = null;
 
-    public static String tuTemplatePath = "./src/test_contracts/TUTemplate.yml";
-    public static String testTUTemplatePath = "./src/test_contracts/TestTUTemplate.yml";
-    public static String tuKeyPath = "./src/test_contracts/keys/tu_key.private.unikey";
+    public static String uTemplatePath = "./src/test_contracts/UTemplate.yml";
+    public static String testUTemplatePath = "./src/test_contracts/TestUTemplate.yml";
+    public static String uKeyPath = "./src/test_contracts/keys/u_key.private.unikey";
 
     public static int maxExpirationMonthsInTestMode = 12;
 
-    public static int maxCostTUInTestMode = 3;
+    public static int maxCostUInTestMode = 3;
 
     public static int quantiser_quantaPerU = 200;
 
@@ -355,7 +355,7 @@ public class Config {
         return knownSubContractsToResync;
     }
 
-    public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
+    public Set<KeyAddress> getUIssuerKeys() {
         return transactionUnitsIssuerKeys;
     }
 
@@ -382,7 +382,7 @@ public class Config {
 
     }
 
-    public String getTUIssuerName() {
+    public String getUIssuerName() {
         return tuIssuerName;
     }
 

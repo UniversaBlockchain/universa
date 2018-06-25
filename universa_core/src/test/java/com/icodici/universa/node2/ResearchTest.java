@@ -268,7 +268,7 @@ public class ResearchTest extends TestCase {
             try {
                 Main m = new Main(args);
                 m.config.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-                //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
+                //m.config.getKeysWhiteList().add(m.config.getUIssuerKey());
                 m.config.getKeysWhiteList().add(new PublicKey(Bytes.fromHex("1E 08 1C 01 00 01 C4 00 01 CC 3F CA 82 7D CD 9F 61 7F 9E 16 4E 56 CA 5A EC B1 30 88 76 27 AF A3 C6 20 3E 3E EA 2B 50 71 A8 39 79 8E A5 46 0A 60 FC C1 8C 4F 42 77 4B 22 91 10 5A 34 BE B1 34 AB C3 87 39 EF 29 A8 11 2F FA 6D B8 56 8D DD 45 3D 6D 4C E4 A8 58 FA 46 73 CC 57 62 3F 58 D2 37 9E 33 2C 55 CF 1D AE BE D5 CC DD 21 F3 4B B6 1A 3F 86 35 CA 18 B5 2E 75 6A D4 CA 50 F5 C9 6C F4 A2 FE 7F C0 09 0A EA 99 F2 67 82 73 66 71 A3 F0 A0 12 E7 B6 E2 FE F3 F9 4B C1 F5 EA BC 8E 20 89 33 70 56 EA 10 CF 5B 86 F1 62 9F 67 6D 98 9B D8 0B 8C AB 35 4A FC 33 F6 D5 1E 68 55 DC 5F 59 82 9D D3 EF 44 ED 57 C0 93 EF 89 D7 F2 6D 51 B3 B8 43 5F 39 89 CD 90 12 F8 60 A9 89 F0 E0 92 53 4F 17 A0 96 A5 E4 C7 A1 9E E6 26 84 27 E1 AA 8B 09 D0 FF E2 B5 86 E5 F7 DE F3 11 32 F0 B4 05 BA 70 B5 3A EF 28 70 8E 29 AF A1 C1").getData()));
                 m.waitReady();
                 mm.add(m);

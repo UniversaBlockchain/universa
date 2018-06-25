@@ -18,42 +18,42 @@ public class InnerContractsService {
 
 
     /**
-     * Creates fresh contract in the first revision with transaction units.
+     * Creates fresh contract in the first revision with "U".
      *<br><br>
      * This contract should be registered and then should be used as payment for other contract's processing.
-     * TU contracts signs with special Universa keys and set as owner public keys from params.
+     * U contracts signs with special Universa keys and set as owner public keys from params.
      *<br><br>
-     * @param amount is initial number of TU that will be have an owner
-     * @param ownerKeys is public keys that will became an owner of TU     *
-     * @return sealed TU contract; should be registered in the Universa by simplified procedure.
+     * @param amount is initial number of U that will be have an owner
+     * @param ownerKeys is public keys that will became an owner of U     *
+     * @return sealed U contract; should be registered in the Universa by simplified procedure.
      * @throws IOException with exceptions while contract preparing
      */
-    public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys) throws IOException {
+    public synchronized static Contract createFreshU(int amount, Set<PublicKey> ownerKeys) throws IOException {
 
-        return createFreshTU(amount, ownerKeys, false);
+        return createFreshU(amount, ownerKeys, false);
     }
 
 
     /**
-     * Creates fresh contract in the first revision with transaction units.
+     * Creates fresh contract in the first revision with "U".
      *<br><br>
      * This contract should be registered and then should be used as payment for other contract's processing.
-     * TU contracts signs with special Universa keys and set as owner public keys from params.
+     * U contracts signs with special Universa keys and set as owner public keys from params.
      *<br><br>
-     * @param amount is initial number of TU that will be have an owner
-     * @param ownerKeys is public keys that will became an owner of TU
-     * @param withTestTU if true TU will be created with test transaction units
-     * @return sealed TU contract; should be registered in the Universa by simplified procedure.
+     * @param amount is initial number of U that will be have an owner
+     * @param ownerKeys is public keys that will became an owner of U
+     * @param withTestU if true U will be created with test transaction units
+     * @return sealed U contract; should be registered in the Universa by simplified procedure.
      * @throws IOException with exceptions while contract preparing
      */
-    public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys, boolean withTestTU) throws IOException {
+    public synchronized static Contract createFreshU(int amount, Set<PublicKey> ownerKeys, boolean withTestU) throws IOException {
 
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(Config.tuKeyPath));
-        Contract tu;
-        if(withTestTU) {
-            tu = Contract.fromDslFile(Config.testTUTemplatePath);
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(Config.uKeyPath));
+        Contract u;
+        if(withTestU) {
+            u = Contract.fromDslFile(Config.testUTemplatePath);
         } else {
-            tu = Contract.fromDslFile(Config.tuTemplatePath);
+            u = Contract.fromDslFile(Config.uTemplatePath);
         }
 
         SimpleRole ownerRole = new SimpleRole("owner");
@@ -62,18 +62,18 @@ public class InnerContractsService {
             ownerRole.addKeyRecord(kr);
         }
 
-        tu.registerRole(ownerRole);
-        tu.createRole("owner", ownerRole);
+        u.registerRole(ownerRole);
+        u.createRole("owner", ownerRole);
 
-        tu.getStateData().set("transaction_units", amount);
-        if(withTestTU) {
-            tu.getStateData().set("test_transaction_units", amount * 100);
+        u.getStateData().set("U", amount);
+        if(withTestU) {
+            u.getStateData().set("test_U", amount * 100);
         }
 
-        tu.addSignerKey(manufacturePrivateKey);
-        tu.seal();
+        u.addSignerKey(manufacturePrivateKey);
+        u.seal();
 
-        return tu;
+        return u;
     }
 
 

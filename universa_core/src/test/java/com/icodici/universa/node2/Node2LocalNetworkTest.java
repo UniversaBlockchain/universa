@@ -97,7 +97,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config_s.setNegativeConsensus(negCons);
         config_s.setResyncBreakConsensus(2);
         config_s.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-        //config_s.getKeysWhiteList().add(config_s.getTransactionUnitsIssuerKey());
+        //config_s.getKeysWhiteList().add(config_s.getUIssuerKey());
 
         //        config_s.setPollTime(Duration.ofMillis(2500));
 //        config_s.setConsensusReceivedCheckTime(Duration.ofMillis(2500));
@@ -653,7 +653,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        contract.addSignerKeyFromFile(Config.tuKeyPath);
+        contract.addSignerKeyFromFile(Config.uKeyPath);
         contract.seal();
         assertTrue(contract.check());
 
@@ -724,7 +724,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        contract.addSignerKeyFromFile(Config.tuKeyPath);
+        contract.addSignerKeyFromFile(Config.uKeyPath);
         contract.seal();
 
         addDetailsToAllLedgers(contract);
@@ -788,7 +788,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        contract.addSignerKeyFromFile(Config.tuKeyPath);
+        contract.addSignerKeyFromFile(Config.uKeyPath);
         contract.seal();
 
         addDetailsToAllLedgers(contract);

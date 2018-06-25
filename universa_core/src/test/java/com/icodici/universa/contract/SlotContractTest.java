@@ -124,13 +124,13 @@ public class SlotContractTest extends ContractTestBase {
 
         Config config = new Config();
         @Override
-        public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
-            return config.getTransactionUnitsIssuerKeys();
+        public Set<KeyAddress> getUIssuerKeys() {
+            return config.getUIssuerKeys();
         }
 
         @Override
-        public String getTUIssuerName() {
-            return config.getTUIssuerName();
+        public String getUIssuerName() {
+            return config.getUIssuerName();
         }
 
         @Override
@@ -309,9 +309,9 @@ public class SlotContractTest extends ContractTestBase {
         PrivateKey ownerKey = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
         Set<PublicKey> keys = new HashSet();
         keys.add(ownerKey.getPublicKey());
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, keys);
-        Contract paymentDecreased = stepaTU.createRevision(ownerKey);
-        paymentDecreased.getStateData().set("transaction_units", stepaTU.getStateData().getIntOrThrow("transaction_units") - 100);
+        Contract stepaU = InnerContractsService.createFreshU(100000000, keys);
+        Contract paymentDecreased = stepaU.createRevision(ownerKey);
+        paymentDecreased.getStateData().set("u", stepaU.getStateData().getIntOrThrow("u") - 100);
         paymentDecreased.seal();
 
         return paymentDecreased;

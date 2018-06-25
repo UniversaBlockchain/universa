@@ -86,7 +86,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
         config_s.setNegativeConsensus(4);
         config_s.setResyncBreakConsensus(2);
         config_s.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-        //config_s.getKeysWhiteList().add(config_s.getTransactionUnitsIssuerKey());
+        //config_s.getKeysWhiteList().add(config_s.getUIssuerKey());
 
         Properties properties = new Properties();
         File file = new File(CONFIG_2_PATH + "config/config.yaml");
@@ -283,7 +283,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        contract.addSignerKeyFromFile(Config.tuKeyPath);
+        contract.addSignerKeyFromFile(Config.uKeyPath);
         contract.seal();
 
         addDetailsToAllLedgers(contract);
@@ -341,7 +341,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-        contract.addSignerKeyFromFile(Config.tuKeyPath);
+        contract.addSignerKeyFromFile(Config.uKeyPath);
         contract.seal();
 
         addDetailsToAllLedgers(contract);
@@ -464,7 +464,7 @@ public class Node2EmulatedNetworkTest extends BaseNetworkTest {
 
         //good join
         Contract finalC = c50_1.createRevision(ownerKey2);
-        finalC.addSignerKeyFromFile(Config.tuKeyPath);
+        finalC.addSignerKeyFromFile(Config.uKeyPath);
         finalC.seal();
 
         finalC.getStateData().set(FIELD_NAME, new Decimal(100));

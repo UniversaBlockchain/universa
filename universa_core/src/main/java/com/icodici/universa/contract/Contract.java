@@ -828,7 +828,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private boolean checkTestPaymentLimitations() {
         boolean res = true;
-        // we won't check TU contract
+        // we won't check U contract
         if (!shouldBeU()) {
             isSuitableForTestnet = true;
             for (PublicKey key : getEffectiveKeys()) {
@@ -873,11 +873,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 }
             }
 
-            if (getProcessedCostTU() > Config.maxCostTUInTestMode) {
+            if (getProcessedCostU() > Config.maxCostUInTestMode) {
                 isSuitableForTestnet = false;
                 if (isLimitedForTestnet()) {
                     res = false;
-                    addError(Errors.FORBIDDEN, "Contract can cost not more then " + Config.maxCostTUInTestMode + " TU in the test payment mode.");
+                    addError(Errors.FORBIDDEN, "Contract can cost not more then " + Config.maxCostUInTestMode + " U in the test payment mode.");
                 }
             }
         }
@@ -897,33 +897,33 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public boolean paymentCheck(Set<KeyAddress> issuerKeys) throws Quantiser.QuantiserException {
         boolean res = true;
 
-        boolean hasTestTU = getStateData().get("test_transaction_units") != null;
+        boolean hasTestU = getStateData().get("test_U") != null;
 
         // Checks that there is a payment contract and the payment should be >= 1
-        int transaction_units = getStateData().getInt("transaction_units", -1);
-        int test_transaction_units = getStateData().getInt("test_transaction_units", -1);
-        if (transaction_units < 0) {
+        int u = getStateData().getInt("U", -1);
+        int test_u = getStateData().getInt("test_transaction_units", -1);
+        if (u < 0) {
             res = false;
-            addError(Errors.BAD_VALUE, "transaction_units < 0");
+            addError(Errors.BAD_VALUE, "u < 0");
         }
 
         // check valid name/type fields combination
-        Object o = getStateData().get("transaction_units");
+        Object o = getStateData().get("u");
         if (o == null || o.getClass() != Integer.class) {
             res = false;
-            addError(Errors.BAD_VALUE, "transaction_units name/type mismatch");
+            addError(Errors.BAD_VALUE, "u name/type mismatch");
         }
 
-        if(hasTestTU) {
+        if(hasTestU) {
             o = getStateData().get("test_transaction_units");
             if (o == null || o.getClass() != Integer.class) {
                 res = false;
                 addError(Errors.BAD_VALUE, "test_transaction_units name/type mismatch");
             }
 
-            if (test_transaction_units < 0) {
+            if (test_u < 0) {
                 res = false;
-                addError(Errors.BAD_VALUE, "test_transaction_units < 0");
+                addError(Errors.BAD_VALUE, "test_u < 0");
             }
 
             if(state.origin != null) {
@@ -935,17 +935,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 } else {
                     parent = getRevokingItem(getParent());
                 }
-                int was_transaction_units = parent.getStateData().getInt("transaction_units", -1);
-                int was_test_transaction_units = parent.getStateData().getInt("test_transaction_units", -1);
+                int was_u = parent.getStateData().getInt("u", -1);
+                int was_test_u = parent.getStateData().getInt("test_u", -1);
 
-                if (transaction_units != was_transaction_units && test_transaction_units != was_test_transaction_units) {
+                if (u != was_u && test_u != was_test_u) {
                     res = false;
-                    addError(Errors.BAD_VALUE, "transaction_units and test_transaction_units can not be spent both");
+                    addError(Errors.BAD_VALUE, "u and test_u can not be spent both");
                 }
 //                if(isLimitedForTestnet()) {
-//                    if (was_test_transaction_units - test_transaction_units > 3) {
+//                    if (was_test_u - test_u > 3) {
 //                        res = false;
-//                        addError(Errors.BAD_VALUE, "Cannot spend more then 3 test_transaction_units in the test payment mode.");
+//                        addError(Errors.BAD_VALUE, "Cannot spend more then 3 test_u in the test payment mode.");
 //                    }
 //                }
             } else {
@@ -957,7 +957,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         } else {
             if(isLimitedForTestnet()) {
                 res = false;
-                addError(Errors.BAD_VALUE, "Payment contract that marked as for testnet has not test_transaction_units.");
+                addError(Errors.BAD_VALUE, "Payment contract that marked as for testnet has not test_u.");
             }
         }
 
@@ -967,7 +967,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             addError(Errors.BAD_VALUE, "decrement_permission is missing");
         }
 
-        // The TU contract is checked to have valid issuer key (one of preset URS keys)
+        // The "U" contract is checked to have valid issuer key (one of preset URS keys)
         Set<KeyAddress> thisIssuerAddresses = new HashSet<>(getIssuer().getKeyAddresses());
         for (PublicKey publicKey : getIssuer().getKeys())
             thisIssuerAddresses.add(publicKey.getShortAddress());
@@ -1004,7 +1004,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 addError(Errors.BAD_VALUE, "revision must be greater than 1");
             }
 
-            // The TU is checked for its parent validness, it should be in the revoking items
+            // The "U" is checked for its parent validness, it should be in the revoking items
             if (revokingItems.size() != 1) {
                 res = false;
                 addError(Errors.BAD_REVOKE, "revokingItems.size != 1");
@@ -1037,7 +1037,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Get the cost used for contract processing
      * @return cost in "U"
      */
-    public int getProcessedCostTU() {
+    public int getProcessedCostU() {
         return (int) Math.ceil( (double) quantiser.getQuantaSum() / Quantiser.quantaPerU);
     }
 

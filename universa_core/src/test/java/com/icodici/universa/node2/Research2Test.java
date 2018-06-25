@@ -53,7 +53,7 @@ public class Research2Test {
                 } catch (KeyAddress.IllegalAddressException e) {
                     e.printStackTrace();
                 }
-                //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
+                //m.config.getKeysWhiteList().add(m.config.getUIssuerKey());
                 m.waitReady();
                 mm.add(m);
             } catch (InterruptedException e) {
@@ -82,7 +82,7 @@ public class Research2Test {
                 } catch (KeyAddress.IllegalAddressException e) {
                     e.printStackTrace();
                 }
-                //m.config.getKeysWhiteList().add(m.config.getTransactionUnitsIssuerKey());
+                //m.config.getKeysWhiteList().add(m.config.getUIssuerKey());
                 m.waitReady();
                 mm.add(m);
             } catch (InterruptedException e) {
@@ -98,24 +98,24 @@ public class Research2Test {
         return mm.get(0);
     }
 
-    public synchronized Parcel createParcelWithFreshTU(Client client, Contract c, Collection<PrivateKey> keys) throws Exception {
+    public synchronized Parcel createParcelWithFreshU(Client client, Contract c, Collection<PrivateKey> keys) throws Exception {
         Set<PublicKey> ownerKeys = new HashSet();
         keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
-        Contract stepaTU = InnerContractsService.createFreshTU(100000000, ownerKeys);
-        stepaTU.check();
-        //stepaTU.setIsTU(true);
-        stepaTU.traceErrors();
+        Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
+        stepaU.check();
+        //stepaU.setIsU(true);
+        stepaU.traceErrors();
 
         PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
-        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/u_key.private.unikey"));
         client.getSession().setPrivateKey(newPrivateKey);
         client.restart();
 
         Thread.sleep(8000);
 
-        ItemResult itemResult = client.register(stepaTU.getPackedTransaction(), 5000);
-//        node.registerItem(stepaTU);
-//        ItemResult itemResult = node.waitItem(stepaTU.getId(), 18000);
+        ItemResult itemResult = client.register(stepaU.getPackedTransaction(), 5000);
+//        node.registerItem(stepaU);
+//        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
 
         client.getSession().setPrivateKey(clientPrivateKey);
         client.restart();
@@ -125,7 +125,7 @@ public class Research2Test {
         assertEquals(ItemState.APPROVED, itemResult.state);
         Set<PrivateKey> keySet = new HashSet<>();
         keySet.addAll(keys);
-        return ContractsService.createParcel(c, stepaTU, 150, keySet);
+        return ContractsService.createParcel(c, stepaU, 150, keySet);
     }
 
     @After
@@ -486,7 +486,7 @@ public class Research2Test {
                     }
                     testContract.seal();
                     assertTrue(testContract.isOk());
-                    Parcel parcel = createParcelWithFreshTU(client, testContract,Do.listOf(myKey));
+                    Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
                     contractList.add(parcel);
                     contractHashesMap.put(parcel.getId(), parcel);
                 }

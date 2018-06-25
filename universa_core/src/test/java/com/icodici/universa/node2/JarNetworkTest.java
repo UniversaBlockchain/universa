@@ -267,32 +267,32 @@ public class JarNetworkTest extends TestCase {
 
     protected static final String ROOT_PATH = "./src/test_contracts/";
 
-    Contract tuContract;
-    Object tuContractLock = new Object();
+    Contract uContract;
+    Object uContractLock = new Object();
 
-    protected Contract getApprovedTUContract() throws Exception {
-        synchronized (tuContractLock) {
-            if (tuContract == null) {
+    protected Contract getApprovedUContract() throws Exception {
+        synchronized (uContractLock) {
+            if (uContract == null) {
                 PrivateKey ownerKey = new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey"));
                 Set<PublicKey> keys = new HashSet();
                 keys.add(ownerKey.getPublicKey());
-                Contract stepaTU = InnerContractsService.createFreshTU(100000000, keys);
-                stepaTU.check();
-                stepaTU.traceErrors();
-                System.out.println("register new TU ");
-                whiteClient.register(stepaTU.getPackedTransaction(),15000);
-                tuContract = stepaTU;
+                Contract stepaU = InnerContractsService.createFreshU(100000000, keys);
+                stepaU.check();
+                stepaU.traceErrors();
+                System.out.println("register new U ");
+                whiteClient.register(stepaU.getPackedTransaction(),15000);
+                uContract = stepaU;
             }
             int needRecreateTuContractNum = 0;
             for (Client client : normalClients) {
                 int attempts = 10;
-                ItemResult itemResult = client.getState(tuContract.getId());
+                ItemResult itemResult = client.getState(uContract.getId());
                 while(itemResult.state.isPending() && attempts-- > 0) {
-                    itemResult = client.getState(tuContract.getId());
+                    itemResult = client.getState(uContract.getId());
                     Thread.sleep(500);
                 }
                 if (itemResult.state != ItemState.APPROVED) {
-                    System.out.println("TU: node " + client.getNodeNumber() + " result: " + itemResult);
+                    System.out.println("U: node " + client.getNodeNumber() + " result: " + itemResult);
                     needRecreateTuContractNum ++;
                 }
             }
@@ -301,30 +301,30 @@ public class JarNetworkTest extends TestCase {
             if(recreateBorder < 0)
                 recreateBorder = 0;
             if (needRecreateTuContractNum > recreateBorder) {
-                tuContract = null;
+                uContract = null;
                 Thread.sleep(1000);
-                return getApprovedTUContract();
+                return getApprovedUContract();
             }
-            return tuContract;
+            return uContract;
         }
     }
 
 
-    public synchronized Parcel createParcelWithClassTU(Contract c, Set<PrivateKey> keys) throws Exception {
-        Contract tu = getApprovedTUContract();
-        Parcel parcel =  ContractsService.createParcel(c, tu, 150, keys);
+    public synchronized Parcel createParcelWithClassU(Contract c, Set<PrivateKey> keys) throws Exception {
+        Contract u = getApprovedUContract();
+        Parcel parcel =  ContractsService.createParcel(c, u, 150, keys);
         return parcel;
     }
 
     protected synchronized Parcel registerWithNewParcel(Contract c) throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
-        Parcel parcel = createParcelWithClassTU(c, stepaPrivateKeys);
+        Parcel parcel = createParcelWithClassU(c, stepaPrivateKeys);
         System.out.println("register  parcel: " + parcel.getId() + " " + parcel.getPaymentContract().getId() + " " + parcel.getPayloadContract().getId());
 
         normalClient.registerParcel(parcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
         return parcel;
     }
@@ -334,13 +334,13 @@ public class JarNetworkTest extends TestCase {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
 
-        Contract tu = getApprovedTUContract();
+        Contract tu = getApprovedUContract();
         // stepaPrivateKeys - is also U keys
         Parcel parcel =  ContractsService.createParcel(tp, tu, 150, stepaPrivateKeys);
         System.out.println("-------------");
         normalClient.registerParcel(parcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = parcel.getPaymentContract();
+        synchronized (uContractLock) {
+            uContract = parcel.getPaymentContract();
         }
 
         return parcel;
@@ -432,7 +432,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -451,8 +451,8 @@ public class JarNetworkTest extends TestCase {
 //        }
         normalClient.registerParcel(payingParcel.pack(),8000);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         slotContract.traceErrors();
@@ -508,7 +508,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
@@ -522,8 +522,8 @@ public class JarNetworkTest extends TestCase {
 
         normalClient.registerParcel(payingParcel.pack(),8000);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -572,7 +572,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract2.getTransactionPack(), paymentContract, 1, 300, stepaPrivateKeys, false);
 
@@ -586,8 +586,8 @@ public class JarNetworkTest extends TestCase {
 
         normalClient.registerParcel(payingParcel.pack(),8000);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // wait parcel
         // check payment and payload contracts
@@ -696,7 +696,7 @@ public class JarNetworkTest extends TestCase {
         registerAndCheckDeclined(slotContract);
 
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -743,7 +743,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -762,8 +762,8 @@ public class JarNetworkTest extends TestCase {
 
         normalClient.registerParcel(payingParcel.pack(),8000);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -839,7 +839,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
@@ -862,8 +862,8 @@ public class JarNetworkTest extends TestCase {
 
         normalClient.registerParcel(payingParcel.pack(),8000);
         ZonedDateTime timeReg2 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         refilledSlotContract.traceErrors();
         // check payment and payload contracts
@@ -964,7 +964,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
@@ -987,8 +987,8 @@ public class JarNetworkTest extends TestCase {
 
         normalClient.registerParcel(payingParcel.pack(),8000);
         ZonedDateTime timeReg3 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1085,7 +1085,7 @@ public class JarNetworkTest extends TestCase {
         refilledSlotContract3.seal();
 
         // payment contract
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         // note, that spent time is set while slot.seal() and seal calls from ContractsService.createPayingParcel
         // so sleep should be before seal for test calculations
@@ -1106,8 +1106,8 @@ public class JarNetworkTest extends TestCase {
 
         normalClient.registerParcel(payingParcel.pack(),8000);
         ZonedDateTime timeReg4 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1256,7 +1256,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -1275,8 +1275,8 @@ public class JarNetworkTest extends TestCase {
 
         normalClient.registerParcel(payingParcel.pack(),8000);
         ZonedDateTime timeReg1 = ZonedDateTime.ofInstant(Instant.ofEpochSecond(ZonedDateTime.now().toEpochSecond()), ZoneId.systemDefault());
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1428,7 +1428,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -1439,8 +1439,8 @@ public class JarNetworkTest extends TestCase {
         assertTrue(slotContract.isOk());
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1519,7 +1519,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -1530,8 +1530,8 @@ public class JarNetworkTest extends TestCase {
         assertTrue(slotContract.isOk());
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1575,7 +1575,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         // revision should be created without additional payments (only setKeepRevisions and putTrackingContract)
         payingParcel = ContractsService.createPayingParcel(refilledSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
@@ -1585,8 +1585,8 @@ public class JarNetworkTest extends TestCase {
         assertTrue(refilledSlotContract.isOk());
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1644,7 +1644,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -1655,8 +1655,8 @@ public class JarNetworkTest extends TestCase {
         assertTrue(slotContract.isOk());
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1699,7 +1699,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(newSlotContract.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
 
@@ -1712,8 +1712,8 @@ public class JarNetworkTest extends TestCase {
         assertFalse(newSlotContract.isOk());
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = payingParcel.getPayloadContract().getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = payingParcel.getPayloadContract().getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.APPROVED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1766,7 +1766,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -1782,8 +1782,8 @@ public class JarNetworkTest extends TestCase {
             }
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = slotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = slotContract.getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1840,7 +1840,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
         for (Contract c: baseContract2.getNew())
@@ -1853,8 +1853,8 @@ public class JarNetworkTest extends TestCase {
             }
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = refilledSlotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = refilledSlotContract.getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -1966,7 +1966,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -2034,7 +2034,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -2050,8 +2050,8 @@ public class JarNetworkTest extends TestCase {
             }
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = slotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = slotContract.getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -2106,7 +2106,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
         for (Contract c: baseContract2.getNew())
@@ -2119,8 +2119,8 @@ public class JarNetworkTest extends TestCase {
             }
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = refilledSlotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = refilledSlotContract.getNew().get(0);
         }
         payingParcel.getPayload().getContract().traceErrors();
 
@@ -2174,7 +2174,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        Contract paymentContract = getApprovedTUContract();
+        Contract paymentContract = getApprovedUContract();
 
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
@@ -2190,8 +2190,8 @@ public class JarNetworkTest extends TestCase {
             }
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = slotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = slotContract.getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);
@@ -2245,7 +2245,7 @@ public class JarNetworkTest extends TestCase {
         // payment contract
         // will create two revisions in the createPayingParcel, first is pay for register, second is pay for storing
 
-        paymentContract = getApprovedTUContract();
+        paymentContract = getApprovedUContract();
 
         payingParcel = ContractsService.createPayingParcel(baseContract2.getTransactionPack(), paymentContract, 1, 100, stepaPrivateKeys, false);
         for (Contract c: baseContract2.getNew())
@@ -2258,8 +2258,8 @@ public class JarNetworkTest extends TestCase {
             }
 
         normalClient.registerParcel(payingParcel.pack(),8000);
-        synchronized (tuContractLock) {
-            tuContract = refilledSlotContract.getNew().get(0);
+        synchronized (uContractLock) {
+            uContract = refilledSlotContract.getNew().get(0);
         }
         // check payment and payload contracts
         assertEquals(ItemState.REVOKED, normalClient.getState(payingParcel.getPayment().getContract().getId()).state);

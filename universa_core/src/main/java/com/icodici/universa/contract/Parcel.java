@@ -39,9 +39,9 @@ public class Parcel implements BiSerializable {
 
      <li><b>payload</b>: the client's transaction he or she needs to approve with the Universa</li>
 
-     <li><b>payment</b>: the client's transaction that spends one or more TU to pay for the payload processing.</li>
+     <li><b>payment</b>: the client's transaction that spends one or more U to pay for the payload processing.</li>
 
-     <li><b>cost</b>: payload processing cost in TU, positive integer.</li>
+     <li><b>cost</b>: payload processing cost in U, positive integer.</li>
 
      <li><b>payment</b>: transaction in U contracts owned by the client reducing its remaining value by some value, or this value.</li>
      </ul>
@@ -64,9 +64,9 @@ public class Parcel implements BiSerializable {
 
      <li><b>payload</b>: the client's transaction he or she needs to approve with the Universa</li>
 
-     <li><b>payment</b>: the client's transaction that spends one or more TU to pay for the payload processing.</li>
+     <li><b>payment</b>: the client's transaction that spends one or more U to pay for the payload processing.</li>
 
-     <li><b>cost</b>: payload processing cost in TU, positive integer.</li>
+     <li><b>cost</b>: payload processing cost in U, positive integer.</li>
 
      <li><b>payment</b>: transaction in U contracts owned by the client reducing its remaining value by some value, or this value.</li>
      </ul>
@@ -107,9 +107,9 @@ public class Parcel implements BiSerializable {
 
      <li><b>payload</b>: the client's transaction he or she needs to approve with the Universa</li>
 
-     <li><b>payment</b>: the client's transaction that spends one or more TU to pay for the payload processing.</li>
+     <li><b>payment</b>: the client's transaction that spends one or more U to pay for the payload processing.</li>
 
-     <li><b>cost</b>: payload processing cost in TU, positive integer.</li>
+     <li><b>cost</b>: payload processing cost in U, positive integer.</li>
 
      <li><b>payment</b>: transaction in U contracts owned by the client reducing its remaining value by some value, or this value.</li>
      </ul>

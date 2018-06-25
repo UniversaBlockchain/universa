@@ -44,8 +44,8 @@ public class NSmartContract extends Contract implements NContract {
      */
     public interface NodeInfoProvider {
 
-        Set<KeyAddress> getTransactionUnitsIssuerKeys();
-        String getTUIssuerName();
+        Set<KeyAddress> getUIssuerKeys();
+        String getUIssuerName();
         int getMinPayment(String extendedType);
         double getRate(String extendedType);
         Collection<PublicKey> getAdditionalKeysToSignWith(String extendedType);
@@ -229,7 +229,7 @@ public class NSmartContract extends Contract implements NContract {
 
         // first of all looking for U contract and calculate paid U amount.
         for (Contract nc : getNew()) {
-            if (nc.isU(nodeInfoProvider.getTransactionUnitsIssuerKeys(), nodeInfoProvider.getTUIssuerName())) {
+            if (nc.isU(nodeInfoProvider.getUIssuerKeys(), nodeInfoProvider.getUIssuerName())) {
                 int calculatedPayment = 0;
                 boolean isTestPayment = false;
                 Contract parent = null;
@@ -240,21 +240,21 @@ public class NSmartContract extends Contract implements NContract {
                     }
                 }
                 if (parent != null) {
-                    boolean hasTestTU = nc.getStateData().get("test_transaction_units") != null;
-                    if (hasTestTU) {
+                    boolean hasTestU = nc.getStateData().get("test_u") != null;
+                    if (hasTestU) {
                         isTestPayment = true;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
-                                - nc.getStateData().getIntOrThrow("test_transaction_units");
+                        calculatedPayment = parent.getStateData().getIntOrThrow("test_u")
+                                - nc.getStateData().getIntOrThrow("test_u");
 
                         if (calculatedPayment <= 0) {
                             isTestPayment = false;
-                            calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                    - nc.getStateData().getIntOrThrow("transaction_units");
+                            calculatedPayment = parent.getStateData().getIntOrThrow("u")
+                                    - nc.getStateData().getIntOrThrow("u");
                         }
                     } else {
                         isTestPayment = false;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
-                                - nc.getStateData().getIntOrThrow("transaction_units");
+                        calculatedPayment = parent.getStateData().getIntOrThrow("u")
+                                - nc.getStateData().getIntOrThrow("u");
                     }
                 }
 

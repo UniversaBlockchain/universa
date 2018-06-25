@@ -1297,19 +1297,19 @@ public class CLIMain {
             if(contract != null) {
                 if(tu != null && tuKeys != null && tuKeys.size() > 0) {
                     Parcel parcel;
-                    Contract newTUContract;
+                    Contract newUContract;
                     if(tuAmountStorage == 0) {
                         report("registering the paid contract " + contract.getId() + " from " + source
-                                + " for " + tuAmount + " TU");
+                                + " for " + tuAmount + " U");
                         report("cnotactId: "+contract.getId().toBase64String());
                         parcel = prepareForRegisterContract(contract, tu, tuAmount, tuKeys, tutest);
-                        newTUContract = parcel.getPaymentContract();
+                        newUContract = parcel.getPaymentContract();
                     } else { // if storage payment
                         report("registering the paid contract " + contract.getId() + " from " + source
-                                + " for " + tuAmount + " TU (and " + tuAmountStorage + " TU for storage)");
+                                + " for " + tuAmount + " U (and " + tuAmountStorage + " U for storage)");
                         report("cnotactId: "+contract.getId().toBase64String());
                         parcel = prepareForRegisterPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest);
-                        newTUContract = parcel.getPayloadContract().getNew().get(0);
+                        newUContract = parcel.getPayloadContract().getNew().get(0);
                     }
 
                     if (parcel != null) {
@@ -1324,7 +1324,7 @@ public class CLIMain {
                         tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
                         if (tuDest != null) {
                             Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                            if (saveContract(newTUContract, tuSource, true, false)) {
+                            if (saveContract(newUContract, tuSource, true, false)) {
                                 report("registering with parcel: " + parcel.getId());
                                 ItemResult ir = registerParcel(parcel, (int) options.valueOf("wait"));
                                 if(ir.state != ItemState.APPROVED) {
@@ -1883,7 +1883,7 @@ public class CLIMain {
             if (contract != null) {
                 if(tu != null && tuKeys != null && tuKeys.size() > 0) {
                     report("registering the paid contract " + contract.getId() + " from " + source
-                            + " for " + tuAmount + " TU");
+                            + " for " + tuAmount + " U");
                     Parcel parcel = null;
                     try {
                         if (contract.check()) {
@@ -1896,8 +1896,8 @@ public class CLIMain {
                         addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
                     }
                     if(parcel != null) {
-                        Contract newTUContract = parcel.getPaymentContract();
-                        report("save payment revision: " + newTUContract.getState().getRevision() + " id: " + newTUContract.getId());
+                        Contract newUContract = parcel.getPaymentContract();
+                        report("save payment revision: " + newUContract.getState().getRevision() + " id: " + newUContract.getId());
 
                         CopyOption[] copyOptions = new CopyOption[]{
                                 StandardCopyOption.REPLACE_EXISTING,
@@ -1907,7 +1907,7 @@ public class CLIMain {
                         tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
                         if (tuDest != null) {
                             Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                            if (saveContract(newTUContract, tuSource, true, false)) {
+                            if (saveContract(newUContract, tuSource, true, false)) {
                                 ItemResult ir = registerParcel(parcel, (int) options.valueOf("wait"));
                                 if(ir.state != ItemState.APPROVED) {
                                     addErrors(ir.errors);
@@ -3627,7 +3627,7 @@ public class CLIMain {
      * @param contract
      */
     private static void printProcessingCost(Contract contract) {
-        report("Contract processing cost is " + contract.getProcessedCostTU() + " TU");
+        report("Contract processing cost is " + contract.getProcessedCostU() + " U");
     }
 
 

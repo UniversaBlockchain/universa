@@ -72,7 +72,7 @@ public class Node2SingleTest extends BaseNetworkTest {
         config_s.setNegativeConsensus(negCons);
         config_s.setResyncBreakConsensus(1);
         config_s.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
-        //config_s.getKeysWhiteList().add(config_s.getTransactionUnitsIssuerKey());
+        //config_s.getKeysWhiteList().add(config_s.getUIssuerKey());
 
         NodeInfo myInfo = new NodeInfo(getNodePublicKey(0), 1, "node1", "localhost",
                 7101, 7102, 7104);
