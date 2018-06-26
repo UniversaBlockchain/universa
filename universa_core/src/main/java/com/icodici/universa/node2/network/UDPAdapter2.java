@@ -28,6 +28,8 @@ public class UDPAdapter2 extends DatagramAdapter {
     private String logLabel = "";
     private Integer nextPacketId = 1;
     private Timer timerHandshake = new Timer();
+    private Timer timerRetransmit = new Timer();
+    private Timer timerProtectionFromDuple = new Timer();
 
     private final static int HANDSHAKE_TIMEOUT_MILLIS = 1000;
 
@@ -62,6 +64,19 @@ public class UDPAdapter2 extends DatagramAdapter {
             }
         }, RETRANSMIT_TIME, RETRANSMIT_TIME);
 
+        timerRetransmit.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                pulseRetransmit();
+            }
+        }, RETRANSMIT_TIME, RETRANSMIT_TIME);
+
+        timerProtectionFromDuple.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                clearProtectionFromDupleBuffers();
+            }
+        }, RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS, RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS);
     }
 
 
@@ -88,7 +103,7 @@ public class UDPAdapter2 extends DatagramAdapter {
         try {
             report(logLabel, ()->"sendPacket datagram size: " + payload.length, VerboseLevel.DETAILED);
             socket.send(dp);
-        } catch (IOException e) {
+        } catch (Exception e) {
             callErrorCallbacks("sendPacket exception: " + e);
         }
     }
@@ -107,6 +122,7 @@ public class UDPAdapter2 extends DatagramAdapter {
             Packet packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
                     session.remoteNodeInfo.getNumber(), PacketTypes.DATA, dataToSend);
             sendPacket(session.remoteNodeInfo, packet);
+            session.addPacketToRetransmitMap(packet.packetId, packet);
         } catch (EncryptionError e) {
             callErrorCallbacks("(sendPayload) EncryptionError: " + e);
         }
@@ -129,6 +145,10 @@ public class UDPAdapter2 extends DatagramAdapter {
         socketListenThread.isActive.set(false);
         timerHandshake.cancel();
         timerHandshake.purge();
+        timerRetransmit.cancel();
+        timerRetransmit.purge();
+        timerProtectionFromDuple.cancel();
+        timerProtectionFromDuple.purge();
         try {
             socketListenThread.join();
         } catch (InterruptedException e) {
@@ -224,6 +244,29 @@ public class UDPAdapter2 extends DatagramAdapter {
     }
 
 
+    private void pulseRetransmit() {
+        sessionsByRemoteId.forEach((k, s)-> {
+            if (s.state.get() == Session.STATE_EXCHANGING) {
+                s.retransmitMap.forEach((itkey, item)-> {
+                    sendPacket(s.remoteNodeInfo, item.packet);
+                    if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                        s.retransmitMap.remove(itkey);
+                });
+            }
+        });
+    }
+
+
+    private void clearProtectionFromDupleBuffers() {
+        sessionReaders.forEach((k, sr)-> {
+            sr.protectionFromDuple1.clear();
+            Set<Integer> tmp = sr.protectionFromDuple1;
+            sr.protectionFromDuple1 = sr.protectionFromDuple0;
+            sr.protectionFromDuple0 = tmp;
+        });
+    }
+
+
     private void restartHandshakeIfNeeded(Session s, Instant now) {
         if (s.state.get() == Session.STATE_HANDSHAKE) {
             if (s.handshakeExpiresAt.isBefore(now)) {
@@ -233,6 +276,22 @@ public class UDPAdapter2 extends DatagramAdapter {
                 sendHello(s);
             }
         }
+    }
+
+
+    public void printInternalState() {
+        System.out.println("\nprintInternalState "+logLabel);
+        System.out.println("  inputQueue.size(): " + inputQueue.size());
+        sessionsByRemoteId.forEach((k, s)->{
+            System.out.println("  session with node="+k+":");
+            System.out.println("    outputQueue.size(): " + s.outputQueue.size());
+            System.out.println("    retransmitMap.size(): " + s.retransmitMap.size());
+        });
+        sessionReaders.forEach((k, sr)-> {
+            System.out.println("  sessionReader with node="+k+":");
+            System.out.println("    protectionFromDuple0.size(): " + sr.protectionFromDuple0.size());
+            System.out.println("    protectionFromDuple1.size(): " + sr.protectionFromDuple1.size());
+        });
     }
 
 
@@ -557,7 +616,10 @@ public class UDPAdapter2 extends DatagramAdapter {
                                     byte[] payload = new byte[decrypted.length - 2];
                                     System.arraycopy(decrypted, 0, payload, 0, payload.length);
                                     sendAck(sessionReader, packet.packetId);
-                                    receiver.accept(payload);
+                                    if (!sessionReader.protectionFromDuple0.contains(packet.packetId) && !sessionReader.protectionFromDuple1.contains(packet.packetId)) {
+                                        receiver.accept(payload);
+                                        sessionReader.protectionFromDuple0.add(packet.packetId);
+                                    }
                                 } else {
                                     callErrorCallbacks("(onReceiveData) decrypted payload too short");
                                 }
@@ -587,7 +649,7 @@ public class UDPAdapter2 extends DatagramAdapter {
             if (session != null) {
                 if (session.state.get() == Session.STATE_EXCHANGING) {
                     Integer ackPacketId = Boss.load(session.sessionKey.etaDecrypt(packet.payload));
-                    //System.out.println("received ack: " + ackPacketId);
+                    session.removePacketFromRetransmitMap(ackPacketId);
                 }
             }
         }
@@ -606,6 +668,7 @@ public class UDPAdapter2 extends DatagramAdapter {
         private byte[] remoteNonce;
         private NodeInfo remoteNodeInfo;
         private BlockingQueue<OutputQueueItem> outputQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
+        private ConcurrentHashMap<Integer,RetransmitItem> retransmitMap = new ConcurrentHashMap<>();
 
         private AtomicInteger state;
         private AtomicInteger handshakeStep;
@@ -654,6 +717,14 @@ public class UDPAdapter2 extends DatagramAdapter {
             }
         }
 
+        public void addPacketToRetransmitMap(Integer packetId, Packet packet) {
+            retransmitMap.put(packetId, new RetransmitItem(packet));
+        }
+
+        public void removePacketFromRetransmitMap(Integer packetId) {
+            retransmitMap.remove(packetId);
+        }
+
     }
 
 
@@ -664,6 +735,8 @@ public class UDPAdapter2 extends DatagramAdapter {
         private SymmetricKey sessionKey = null;
         private byte[] handshake_keyReqPart1 = null;
         private byte[] handshake_keyReqPart2 = null;
+        private Set<Integer> protectionFromDuple0 = new HashSet<>();
+        private Set<Integer> protectionFromDuple1 = new HashSet<>();
 
         private void generateNewLocalNonce() {
             localNonce = Do.randomBytes(64);
@@ -739,6 +812,16 @@ public class UDPAdapter2 extends DatagramAdapter {
         public OutputQueueItem(NodeInfo destination, byte[] payload) {
             this.destination = destination;
             this.payload = payload;
+        }
+    }
+
+
+    private class RetransmitItem {
+        public Packet packet;
+        public int retransmitCounter;
+        public RetransmitItem(Packet packet) {
+            this.packet = packet;
+            retransmitCounter = 0;
         }
     }
 

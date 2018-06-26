@@ -1400,7 +1400,7 @@ public class DatagramAdapterTest {
         AtomicLong node1senderCounter = new AtomicLong(0);
         AtomicLong node2senderCounter = new AtomicLong(0);
 
-        final int sendSpeed = 200;
+        final int sendSpeed = 40;
 
         Thread node1sender = new Thread(() -> {
             while(true) {
@@ -1445,13 +1445,18 @@ public class DatagramAdapterTest {
         node1sender.start();
         node2sender.start();
 
-        Thread.sleep(1000);
+        Thread.sleep(10000);
 
         node1senderStopFlag.set(true);
         node2senderStopFlag.set(true);
-        Thread.sleep(100);
+        ((UDPAdapter2)d1).printInternalState();
+        ((UDPAdapter2)d2).printInternalState();
+        Thread.sleep(3000);
         d1.shutdown();
         d2.shutdown();
+
+        ((UDPAdapter2)d1).printInternalState();
+        ((UDPAdapter2)d2).printInternalState();
 
         System.out.println("node1senderCounter: " + node1senderCounter.get());
         System.out.println("node2senderCounter: " + node2senderCounter.get());
