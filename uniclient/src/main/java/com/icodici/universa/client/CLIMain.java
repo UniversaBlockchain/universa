@@ -209,7 +209,7 @@ public class CLIMain {
                 acceptsAll(asList("network"), "Check network status.");
                 acceptsAll(asList("u-rate"), "Get how many U are given for 1 UTN at this time.");
                 acceptsAll(asList("no-cache"), "Do not use session cache");
-                accepts("register", "register a specified contract, must be a sealed binary file. Use with either --wallet or --tu with --keys to specify payment options. If none are specified default wallet will be used. If no default wallet exist command fails. Amount to pay is specified with --amount")
+                accepts("register", "register a specified contract, must be a sealed binary file. Use with either --wallet or --u with --keys to specify payment options. If none are specified default wallet will be used. If no default wallet exist command fails. Amount to pay is specified with --amount")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
@@ -219,7 +219,7 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
                         describedAs("parcel.uniparcel");
-                accepts("create-parcel", "prepare parcel for registering given contract. use with either --wallet or --tu with --keys to specify payment options. If none are specified default wallet will be used. If no default wallet exist command fails. Amount to pay is specified with --amount")
+                accepts("create-parcel", "prepare parcel for registering given contract. use with either --wallet or --u with --keys to specify payment options. If none are specified default wallet will be used. If no default wallet exist command fails. Amount to pay is specified with --amount")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
@@ -245,23 +245,23 @@ public class CLIMain {
                         .ofType(String.class).
                         describedAs("utn.unicon");
 
-                accepts("tu", "Use with --register and --create-parcel. Point to file with your transaction units. " +
+                accepts("u", "Use with --register and --create-parcel. Point to file with your U. " +
                         "Use it to pay for contract's register.")
                         .withRequiredArg()
                         .ofType(String.class)
-                        .describedAs("tu.unicon");
-                accepts("amount", "Use with --register, --create-parcel and -tu. " +
+                        .describedAs("u.unicon");
+                accepts("amount", "Use with --register, --create-parcel and -u. " +
                         "Command is set amount of transaction units will be pay for contract's register.")
                         .withRequiredArg()
                         .ofType(Integer.class)
                         .defaultsTo(1)
-                        .describedAs("tu amount");
-                accepts("amount-storage", "Use with --register, --create-parcel and -tu. " +
+                        .describedAs("u amount");
+                accepts("amount-storage", "Use with --register, --create-parcel and -u. " +
                         "Command is set amount-storage of storage units will be pay for contract's register.")
                         .withRequiredArg()
                         .ofType(Integer.class)
                         .defaultsTo(0)
-                        .describedAs("tu amount-storage");
+                        .describedAs("u amount-storage");
                 accepts("tutest", "Use with --register, --create-parcel and -tu. Key is point to use test transaction units.");
                 accepts("no-exit", "Used for tests. Uniclient d");
                 accepts("probe", "query the state of the document in the Universa network")
@@ -1269,10 +1269,10 @@ public class CLIMain {
 
     private static void doRegister() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("register"));
-        String tuSource = (String) options.valueOf("tu");
-        int tuAmount = (int) options.valueOf("amount");
-        int tuAmountStorage = (int) options.valueOf("amount-storage");
-        boolean tutest = options.has("tutest");
+        String uSource = (String) options.valueOf("u");
+        int uAmount = (int) options.valueOf("amount");
+        int uAmountStorage = (int) options.valueOf("amount-storage");
+        boolean utest = options.has("utest");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -1284,57 +1284,57 @@ public class CLIMain {
             String source = sources.get(s);
             Contract contract = loadContract(source);
 
-            Contract tu = null;
-            if(tuSource == null) {
-                tuSource = getUFromWallet(tuAmount+tuAmountStorage,tutest);
+            Contract u = null;
+            if(uSource == null) {
+                uSource = getUFromWallet(uAmount+uAmountStorage,utest);
             }
-            if(tuSource != null) {
-                tu = loadContract(tuSource, true);
-                report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
+            if(uSource != null) {
+                u = loadContract(uSource, true);
+                report("load payment revision: " + u.getState().getRevision() + " id: " + u.getId());
             }
 
-            Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
+            Set<PrivateKey> uKeys = new HashSet<>(keysMap().values());
             if(contract != null) {
-                if(tu != null && tuKeys != null && tuKeys.size() > 0) {
+                if(u != null && uKeys != null && uKeys.size() > 0) {
                     Parcel parcel;
                     Contract newUContract;
-                    if(tuAmountStorage == 0) {
+                    if(uAmountStorage == 0) {
                         report("registering the paid contract " + contract.getId() + " from " + source
-                                + " for " + tuAmount + " U");
-                        report("cnotactId: "+contract.getId().toBase64String());
-                        parcel = prepareForRegisterContract(contract, tu, tuAmount, tuKeys, tutest);
+                                + " for " + uAmount + " U");
+                        report("contractId: "+contract.getId().toBase64String());
+                        parcel = prepareForRegisterContract(contract, u, uAmount, uKeys, utest);
                         newUContract = parcel.getPaymentContract();
                     } else { // if storage payment
                         report("registering the paid contract " + contract.getId() + " from " + source
-                                + " for " + tuAmount + " U (and " + tuAmountStorage + " U for storage)");
-                        report("cnotactId: "+contract.getId().toBase64String());
-                        parcel = prepareForRegisterPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest);
+                                + " for " + uAmount + " U (and " + uAmountStorage + " U for storage)");
+                        report("contractId: "+contract.getId().toBase64String());
+                        parcel = prepareForRegisterPayingParcel(contract, u, uAmount, uAmountStorage, uKeys, utest);
                         newUContract = parcel.getPayloadContract().getNew().get(0);
                     }
 
                     if (parcel != null) {
                         saveParcel(parcel,new FilenameTool(source).setExtension("uniparcel").toString());
-                        report("save payment revision: " + newTUContract.getState().getRevision() + " id: " + newTUContract.getId());
+                        report("save payment revision: " + newUContract.getState().getRevision() + " id: " + newUContract.getId());
 
                         CopyOption[] copyOptions = new CopyOption[]{
                                 StandardCopyOption.REPLACE_EXISTING,
                                 StandardCopyOption.ATOMIC_MOVE
                         };
-                        String tuDest = new FilenameTool(tuSource).addSuffixToBase("_rev" + tu.getRevision()).toString();
-                        tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
-                        if (tuDest != null) {
-                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                            if (saveContract(newUContract, tuSource, true, false)) {
+                        String uDest = new FilenameTool(uSource).addSuffixToBase("_rev" + u.getRevision()).toString();
+                        uDest = FileTool.writeFileContentsWithRenaming(uDest, new byte[0]);
+                        if (uDest != null) {
+                            Files.move(Paths.get(uSource), Paths.get(uDest), copyOptions);
+                            if (saveContract(newUContract, uSource, true, false)) {
                                 report("registering with parcel: " + parcel.getId());
                                 ItemResult ir = registerParcel(parcel, (int) options.valueOf("wait"));
                                 if(ir.state != ItemState.APPROVED) {
                                     addErrors(ir.errors);
                                 }
                             } else {
-                                addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                                addError(Errors.COMMAND_FAILED.name(),uSource,"unable to backup u revision");
                             }
                         } else {
-                            addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                            addError(Errors.COMMAND_FAILED.name(),uSource,"unable to backup u revision");
                         }
                     } else {
                         addError(Errors.COMMAND_FAILED.name(),"parcel","unable to prepare parcel");
@@ -1343,7 +1343,7 @@ public class CLIMain {
                 } else {
 //                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
 //                    registerContract(contract, (int) options.valueOf("wait"));
-                    addError(Errors.COMMAND_FAILED.name(), tuSource, "payment contract or private keys for payment contract is missing");
+                    addError(Errors.COMMAND_FAILED.name(), uSource, "payment contract or private keys for payment contract is missing");
                 }
             }
         }
@@ -1362,7 +1362,7 @@ public class CLIMain {
             return null;
         }
 
-        String fieldName = isTest ? "test_transaction_units" : "transaction_units";
+        String fieldName = isTest ? "test_u" : "u";
 
         int minAcceptableBalance = 0;
         HashId acceptableContractId = null;
@@ -1427,9 +1427,9 @@ public class CLIMain {
                 if(contract == null)
                     return true;
 
-                int UAmount = contract.getStateData().getInt("transaction_units",0);
+                int UAmount = contract.getStateData().getInt("u",0);
                 uBalance.addAndGet(UAmount);
-                int testUAmount = contract.getStateData().getInt("test_transaction_units",0);
+                int testUAmount = contract.getStateData().getInt("test_u",0);
 
                 //if contract is empty - remove
                 if(testUAmount  + UAmount == 0)
@@ -1665,49 +1665,49 @@ public class CLIMain {
             String source = sources.get(s);
             Contract contract = loadContract(source);
 
-            Contract tu = null;
+            Contract u = null;
 
-            if(tuSource == null) {
-                tuSource = getUFromWallet(tuAmount+tuAmountStorage,tutest);
+            if(uSource == null) {
+                uSource = getUFromWallet(uAmount+uAmountStorage,utest);
             }
 
-            if(tuSource != null) {
-                tu = loadContract(tuSource, true);
-                report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
+            if(uSource != null) {
+                u = loadContract(uSource, true);
+                report("load payment revision: " + u.getState().getRevision() + " id: " + u.getId());
             }
 
-            Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
+            Set<PrivateKey> uKeys = new HashSet<>(keysMap().values());
             if(contract != null) {
-                if(tu != null && tuKeys != null && tuKeys.size() > 0) {
+                if(u != null && uKeys != null && uKeys.size() > 0) {
                     Parcel parcel;
-                    Contract newTUContract;
-                    if(tuAmountStorage == 0) {
+                    Contract newUContract;
+                    if(uAmountStorage == 0) {
                         report("registering the paid contract " + contract.getId() + " from " + source
-                                + " for " + tuAmount + " TU");
+                                + " for " + uAmount + " U");
                         report("cnotactId: "+contract.getId().toBase64String());
-                        parcel = prepareForRegisterContract(contract, tu, tuAmount, tuKeys, tutest);
-                        newTUContract = parcel.getPaymentContract();
+                        parcel = prepareForRegisterContract(contract, u, uAmount, uKeys, utest);
+                        newUContract = parcel.getPaymentContract();
                     } else { // if storage payment
                         report("registering the paid contract " + contract.getId() + " from " + source
-                                + " for " + tuAmount + " TU (and " + tuAmountStorage + " TU for storage)");
+                                + " for " + uAmount + " U (and " + uAmountStorage + " U for storage)");
                         report("cnotactId: "+contract.getId().toBase64String());
-                        parcel = prepareForRegisterPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest);
-                        newTUContract = parcel.getPayloadContract().getNew().get(0);
+                        parcel = prepareForRegisterPayingParcel(contract, u, uAmount, uAmountStorage, uKeys, utest);
+                        newUContract = parcel.getPayloadContract().getNew().get(0);
                     }
 
                     if (parcel != null) {
 
-                        report("save payment revision: " + newTUContract.getState().getRevision() + " id: " + newTUContract.getId());
+                        report("save payment revision: " + newUContract.getState().getRevision() + " id: " + newUContract.getId());
 
                         CopyOption[] copyOptions = new CopyOption[]{
                                 StandardCopyOption.REPLACE_EXISTING,
                                 StandardCopyOption.ATOMIC_MOVE
                         };
-                        String tuDest = new FilenameTool(tuSource).addSuffixToBase("_rev" + tu.getRevision()).toString();
-                        tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
-                        if (tuDest != null) {
-                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                            if (saveContract(newTUContract, tuSource, true, false)) {
+                        String uDest = new FilenameTool(uSource).addSuffixToBase("_rev" + u.getRevision()).toString();
+                        uDest = FileTool.writeFileContentsWithRenaming(uDest, new byte[0]);
+                        if (uDest != null) {
+                            Files.move(Paths.get(uSource), Paths.get(uDest), copyOptions);
+                            if (saveContract(newUContract, uSource, true, false)) {
                                 String name;
                                 if(names.size() > s) {
                                     name = names.get(s);
@@ -1716,10 +1716,10 @@ public class CLIMain {
                                 }
                                 saveParcel(parcel,name);
                             } else {
-                                addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                                addError(Errors.COMMAND_FAILED.name(),uSource,"unable to backup tu revision");
                             }
                         } else {
-                            addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                            addError(Errors.COMMAND_FAILED.name(),uSource,"unable to backup tu revision");
                         }
 
                     } else {
@@ -1729,7 +1729,7 @@ public class CLIMain {
                 } else {
 //                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
 //                    registerContract(contract, (int) options.valueOf("wait"));
-                    addError(Errors.COMMAND_FAILED.name(), tuSource, "payment contract or private keys for payment contract is missing");
+                    addError(Errors.COMMAND_FAILED.name(), uSource, "payment contract or private keys for payment contract is missing");
                 }
             }
         }
@@ -1856,9 +1856,9 @@ public class CLIMain {
 
     private static void doRevoke() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("revoke"));
-        String tuSource = (String) options.valueOf("tu");
-        int tuAmount = (int) options.valueOf("amount");
-        boolean tutest = options.has("tutest");
+        String uSource = (String) options.valueOf("u");
+        int uAmount = (int) options.valueOf("amount");
+        boolean utest = options.has("utest");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -1872,23 +1872,23 @@ public class CLIMain {
 
             Contract contract = loadContract(source);
             report("doRevoke " + contract);
-            Contract tu = null;
-            if(tuSource != null) {
-                tu = loadContract(tuSource, true);
-                report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
+            Contract u = null;
+            if(uSource != null) {
+                u = loadContract(uSource, true);
+                report("load payment revision: " + u.getState().getRevision() + " id: " + u.getId());
             }
 
-            Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
-            report("tuKeys num: " + tuKeys.size());
+            Set<PrivateKey> uKeys = new HashSet<>(keysMap().values());
+            report("uKeys num: " + uKeys.size());
             if (contract != null) {
-                if(tu != null && tuKeys != null && tuKeys.size() > 0) {
+                if(u != null && uKeys != null && uKeys.size() > 0) {
                     report("registering the paid contract " + contract.getId() + " from " + source
-                            + " for " + tuAmount + " U");
+                            + " for " + uAmount + " U");
                     Parcel parcel = null;
                     try {
                         if (contract.check()) {
                             report("revoke contract from " + source);
-                            parcel = revokeContract(contract, tu, tuAmount, tuKeys, tutest, keysMap().values().toArray(new PrivateKey[0]));
+                            parcel = revokeContract(contract, u, uAmount, uKeys, utest, keysMap().values().toArray(new PrivateKey[0]));
                         } else {
                             addErrors(contract.getErrors());
                         }
@@ -1903,20 +1903,20 @@ public class CLIMain {
                                 StandardCopyOption.REPLACE_EXISTING,
                                 StandardCopyOption.ATOMIC_MOVE
                         };
-                        String tuDest = new FilenameTool(tuSource).addSuffixToBase("_rev" + tu.getRevision()).toString();
-                        tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
-                        if (tuDest != null) {
-                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
-                            if (saveContract(newUContract, tuSource, true, false)) {
+                        String uDest = new FilenameTool(uSource).addSuffixToBase("_rev" + u.getRevision()).toString();
+                        uDest = FileTool.writeFileContentsWithRenaming(uDest, new byte[0]);
+                        if (uDest != null) {
+                            Files.move(Paths.get(uSource), Paths.get(uDest), copyOptions);
+                            if (saveContract(newUContract, uSource, true, false)) {
                                 ItemResult ir = registerParcel(parcel, (int) options.valueOf("wait"));
                                 if(ir.state != ItemState.APPROVED) {
                                     addErrors(ir.errors);
                                 }
                             } else {
-                                addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                                addError(Errors.COMMAND_FAILED.name(),uSource,"unable to backup u revision");
                             }
                         } else {
-                            addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                            addError(Errors.COMMAND_FAILED.name(),uSource,"unable to backup u revision");
                         }
                     }
                 } else {
@@ -2342,9 +2342,9 @@ public class CLIMain {
             sources.remove("-pretty");
             sources.remove("--pretty");
         }
-        if (options.has("tutest")) {
-            sources.remove("-tutest");
-            sources.remove("--tutest");
+        if (options.has("utest")) {
+            sources.remove("-utest");
+            sources.remove("--utest");
         }
         List<String> names = (List) options.valuesOf("output");
         if (names != null) {
@@ -3356,12 +3356,12 @@ public class CLIMain {
      *
      * @return Parcel - revoking transaction contract.
      */
-    public static Parcel revokeContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, boolean withTestPayment, PrivateKey... key) throws IOException {
+    public static Parcel revokeContract(Contract contract, Contract u, int amount, Set<PrivateKey> uKeys, boolean withTestPayment, PrivateKey... key) throws IOException {
 
         report("keys num: " + key.length);
 
         Contract tc = ContractsService.createRevocation(contract, key);
-        Parcel parcel = prepareForRegisterContract(tc, tu, amount, tuKeys, withTestPayment);
+        Parcel parcel = prepareForRegisterContract(tc, u, amount, uKeys, withTestPayment);
         if (parcel != null)
             registerParcel(parcel, 0);
 
@@ -3420,7 +3420,7 @@ public class CLIMain {
      *
      * @param contract              must be a sealed binary.
      */
-    public static Parcel prepareForRegisterContract(Contract contract, Contract tu, int amount, Set<PrivateKey> tuKeys, boolean withTestPayment) throws IOException {
+    public static Parcel prepareForRegisterContract(Contract contract, Contract u, int amount, Set<PrivateKey> uKeys, boolean withTestPayment) throws IOException {
 
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
@@ -3428,7 +3428,7 @@ public class CLIMain {
             report("contract id: " + contract.getId().toBase64String());
             addErrors(errors);
         } else {
-            Parcel parcel = ContractsService.createParcel(contract, tu, amount,  tuKeys, withTestPayment);
+            Parcel parcel = ContractsService.createParcel(contract, u, amount,  uKeys, withTestPayment);
             return parcel;
         }
 
@@ -3441,7 +3441,7 @@ public class CLIMain {
      *
      * @param contract              must be a sealed binary.
      */
-    public static Parcel prepareForRegisterPayingParcel(Contract contract, Contract tu, int amount, int amountStorage, Set<PrivateKey> tuKeys, boolean withTestPayment) throws IOException {
+    public static Parcel prepareForRegisterPayingParcel(Contract contract, Contract u, int amount, int amountStorage, Set<PrivateKey> uKeys, boolean withTestPayment) throws IOException {
 
         List<ErrorRecord> errors = contract.getErrors();
         if (errors.size() > 0) {
@@ -3453,7 +3453,7 @@ public class CLIMain {
             if (keys != null && keys.size() > 0)
                 contract.addSignerKeys(keys);
 
-            Parcel parcel = ContractsService.createPayingParcel(contract.getTransactionPack(), tu, amount, amountStorage, tuKeys, withTestPayment);
+            Parcel parcel = ContractsService.createPayingParcel(contract.getTransactionPack(), u, amount, amountStorage, uKeys, withTestPayment);
             return parcel;
         }
 

@@ -897,11 +897,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public boolean paymentCheck(Set<KeyAddress> issuerKeys) throws Quantiser.QuantiserException {
         boolean res = true;
 
-        boolean hasTestU = getStateData().get("test_U") != null;
+        boolean hasTestU = getStateData().get("test_u") != null;
 
         // Checks that there is a payment contract and the payment should be >= 1
-        int u = getStateData().getInt("U", -1);
-        int test_u = getStateData().getInt("test_transaction_units", -1);
+        int u = getStateData().getInt("u", -1);
+        int test_u = getStateData().getInt("test_u", -1);
         if (u < 0) {
             res = false;
             addError(Errors.BAD_VALUE, "u < 0");
@@ -915,10 +915,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         if(hasTestU) {
-            o = getStateData().get("test_transaction_units");
+            o = getStateData().get("test_u");
             if (o == null || o.getClass() != Integer.class) {
                 res = false;
-                addError(Errors.BAD_VALUE, "test_transaction_units name/type mismatch");
+                addError(Errors.BAD_VALUE, "test_u name/type mismatch");
             }
 
             if (test_u < 0) {
@@ -993,7 +993,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // check if payment contract not origin itself, means has revision more then 1
-        // don't make this check for initial transaction_units' contract
+        // don't make this check for initial u contract
         if ((getRevision() != 1) || (getParent()!=null)) {
             if (getOrigin().equals(getId())) {
                 res = false;

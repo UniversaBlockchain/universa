@@ -1428,7 +1428,7 @@ public class CLIMainTest {
 
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-        c.addSignerKeyFromFile(rootPath + "keys/tu_key.private.unikey");
+        c.addSignerKeyFromFile(rootPath + "keys/u_key.private.unikey");
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         c.setOwnerKeys(goodKey);
@@ -2132,7 +2132,7 @@ public class CLIMainTest {
         Files.deleteIfExists(Paths.get(basePath + "contract_for_register_and_cost.unicon"));
         CLIMain.saveContract(contract, basePath + "contract_for_register_and_cost.unicon");
 
-        System.out.println("--- get tu ---");
+        System.out.println("--- get u ---");
 
         String uContract = getApprovedUContract();
 
@@ -2228,13 +2228,13 @@ public class CLIMainTest {
 
         // Should register contracts and use -cost as key to print cost of processing it.
 
-        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/u_key.private.unikey"));
         PrivateKey stepaPrivateKey = new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey"));
-        Contract stepaU = Contract.fromDslFile(rootPath + "StepaTU.yml");
+        Contract stepaU = Contract.fromDslFile(rootPath + "StepaU.yml");
         stepaU.addSignerKey(manufacturePrivateKey);
         stepaU.seal();
         stepaU.check();
-        //stepaU.setIsTU(true);
+        //stepaU.setIsU(true);
         stepaU.traceErrors();
         Files.deleteIfExists(Paths.get(basePath + "save_and_load.unicon"));
         CLIMain.saveContract(stepaU, basePath + "save_and_load.unicon");
@@ -2250,7 +2250,7 @@ public class CLIMainTest {
 
 
         Contract paymentDecreased = loaded.createRevision(stepaPrivateKey);
-        paymentDecreased.getStateData().set("transaction_units", 99);
+        paymentDecreased.getStateData().set("u", 99);
 
         paymentDecreased.seal();
         Files.deleteIfExists(Paths.get(basePath + "save_and_load.unicon"));

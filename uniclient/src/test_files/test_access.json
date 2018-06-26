@@ -16,7 +16,7 @@
           "name": "issuer2"
         },
         "__type": "com.icodici.universa.contract.permissions.ChangeNumberPermission",
-        "field_name": "test_transaction_units"
+        "field_name": "test_u"
       },
       "4ptcX3": {
         "min_value": 0,
@@ -28,7 +28,7 @@
         "max_step": -1,
         "__type": "com.icodici.universa.contract.permissions.ChangeNumberPermission",
         "name": "decrement_permission",
-        "field_name": "transaction_units"
+        "field_name": "u"
       },
       "iPEjQd": {
         "min_value": 0,
@@ -40,7 +40,7 @@
         "max_step": -1,
         "__type": "com.icodici.universa.contract.permissions.ChangeNumberPermission",
         "name": "decrement_permission",
-        "field_name": "test_transaction_units"
+        "field_name": "test_u"
       },
       "qOwu9W": {
         "name": "change_owner",
@@ -113,8 +113,8 @@
       "__type": "unixtime"
     },
     "data": {
-      "transaction_units": 96,
-      "test_transaction_units": 9996
+      "u": 96,
+      "test_u": 9996
     },
     "origin": {
       "composite3": {

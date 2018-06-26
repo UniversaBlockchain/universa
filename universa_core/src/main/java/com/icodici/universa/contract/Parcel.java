@@ -158,26 +158,26 @@ public class Parcel implements BiSerializable {
             }
         }
         if(parent != null) {
-            boolean hasTestU = payment.getContract().getStateData().get("test_transaction_units") != null;
+            boolean hasTestU = payment.getContract().getStateData().get("test_u") != null;
             // set pay quantasLimit for payload processing
             if (hasTestU) {
                 isTestPayment = true;
                 quantasLimit = Quantiser.quantaPerU * (
-                        parent.getStateData().getIntOrThrow("test_transaction_units")
-                                - payment.getContract().getStateData().getIntOrThrow("test_transaction_units")
+                        parent.getStateData().getIntOrThrow("test_u")
+                                - payment.getContract().getStateData().getIntOrThrow("test_u")
                 );
                 if (quantasLimit <= 0) {
                     isTestPayment = false;
                     quantasLimit = Quantiser.quantaPerU * (
-                            parent.getStateData().getIntOrThrow("transaction_units")
-                                    - payment.getContract().getStateData().getIntOrThrow("transaction_units")
+                            parent.getStateData().getIntOrThrow("u")
+                                    - payment.getContract().getStateData().getIntOrThrow("u")
                     );
                 }
             } else {
                 isTestPayment = false;
                 quantasLimit = Quantiser.quantaPerU * (
-                        parent.getStateData().getIntOrThrow("transaction_units")
-                                - payment.getContract().getStateData().getIntOrThrow("transaction_units")
+                        parent.getStateData().getIntOrThrow("u")
+                                - payment.getContract().getStateData().getIntOrThrow("u")
                 );
             }
         }

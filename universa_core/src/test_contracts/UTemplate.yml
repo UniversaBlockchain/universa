@@ -18,11 +18,11 @@ definition:
           Tc17cesr/jE56eAkT1g6Ha4b2kHKjEIrGTVLES5FAq2qolVFMzmp/dHzH/r+VEwu7vF1ybQa
           J1zpwEJNCK0+ooiZo6KfcJ6To98cdeAZqx/ggk3/JNpdtCKgPKd5YUH9twJc+XRvLP6a3TZE
           mKI3ZxUo6YGsQM7vBaqeNo9W2pcQ5BBqMkYW0Dtv74BB88zaFHTRv2OsKODxBGlj9w==
-     # tu_key.public.unikey
+     # u_key.public.unikey
 
      # to show to the user
      description: >
-       TU.
+       U.
 
   # required. time of contract creation. must not be in the futute or too long in the past (few days are allowed,
   # consult current Universa state, maximum delayed contract creation time varies. This time we make a template
@@ -60,18 +60,18 @@ definition:
       - role: owner
         min_value: 1
         max_step: -1
-        field_name: transaction_units
+        field_name: u
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract
   # this data will be also copied without change during any contract changes.
   data:
     # optional, but almost always needed name or four currency
-    name: TU
+    name: U
 
-    # required for TU
+    # required for U
     issuerName: "Universa Reserve System"
 
-    description: TU.
+    description: U.
 
 # required section. Data that represent current contract state, could be modified in accordance with
 # 'permissions' section above
@@ -115,6 +115,6 @@ state:
 
   # required section. any application data that could be changed.
   data:
-    transaction_units : 1
+    u : 1
 
 
