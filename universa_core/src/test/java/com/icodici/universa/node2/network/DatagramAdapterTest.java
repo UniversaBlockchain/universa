@@ -1439,7 +1439,7 @@ public class DatagramAdapterTest {
         node1sender.start();
         node2sender.start();
 
-        Thread.sleep(2000);
+        Thread.sleep(1000);
 
         node1senderStopFlag.set(true);
         node2senderStopFlag.set(true);
