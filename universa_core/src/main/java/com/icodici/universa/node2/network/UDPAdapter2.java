@@ -74,7 +74,7 @@ public class UDPAdapter2 extends DatagramAdapter {
 
         Session session = getOrCreateSession(destination);
         if (session.state.get() == Session.STATE_HANDSHAKE) {
-            session.addPayloadToOutputQueue(payload);
+            session.addPayloadToOutputQueue(destination, payload);
             restartHandshakeIfNeeded(session, Instant.now());
         } else {
             sendPayload(session, payload);
@@ -530,6 +530,7 @@ public class UDPAdapter2 extends DatagramAdapter {
                             report(logLabel, () -> "session successfully verified", VerboseLevel.BASE);
                             session.reconstructSessionKey(sessionKey);
                             session.state.set(Session.STATE_EXCHANGING);
+                            session.sendAllFromOutputQueue();
                         }
                     }
                 }
@@ -604,7 +605,7 @@ public class UDPAdapter2 extends DatagramAdapter {
         private byte[] localNonce;
         private byte[] remoteNonce;
         private NodeInfo remoteNodeInfo;
-        private BlockingQueue<byte[]> outputQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
+        private BlockingQueue<OutputQueueItem> outputQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
 
         private AtomicInteger state;
         private AtomicInteger handshakeStep;
@@ -634,10 +635,22 @@ public class UDPAdapter2 extends DatagramAdapter {
             sessionKey = new SymmetricKey(key);
         }
 
-        private void addPayloadToOutputQueue(byte[] payload) {
-            if (!outputQueue.offer(payload)) {
+        public void addPayloadToOutputQueue(NodeInfo destination, byte[] payload) {
+            OutputQueueItem outputQueueItem = new OutputQueueItem(destination, payload);
+            if (!outputQueue.offer(outputQueueItem)) {
                 outputQueue.poll();
-                outputQueue.offer(payload);
+                outputQueue.offer(outputQueueItem);
+            }
+        }
+
+        public void sendAllFromOutputQueue() {
+            try {
+                OutputQueueItem queuedItem;
+                while ((queuedItem = outputQueue.poll()) != null) {
+                    send(queuedItem.destination, queuedItem.payload);
+                }
+            } catch (InterruptedException e) {
+                callErrorCallbacks("(sendAllFromOutputQueue) InterruptedException in node " + myNodeInfo.getNumber() + ": " + e);
             }
         }
 
@@ -716,6 +729,16 @@ public class UDPAdapter2 extends DatagramAdapter {
             receiverNodeId = (int) data.get(2);
             type = (int) data.get(3);
             payload = ((Bytes) data.get(4)).toArray();
+        }
+    }
+
+
+    private class OutputQueueItem {
+        public NodeInfo destination;
+        public byte[] payload;
+        public OutputQueueItem(NodeInfo destination, byte[] payload) {
+            this.destination = destination;
+            this.payload = payload;
         }
     }
 

@@ -1400,12 +1400,16 @@ public class DatagramAdapterTest {
         AtomicLong node1senderCounter = new AtomicLong(0);
         AtomicLong node2senderCounter = new AtomicLong(0);
 
+        final int sendSpeed = 200;
+
         Thread node1sender = new Thread(() -> {
             while(true) {
                 try {
-                    node1senderCounter.incrementAndGet();
-                    d1.send(node2, "test_message_1_to_2".getBytes());
-                    //Thread.sleep(1);
+                    for (int i = 0; i < sendSpeed; ++i) {
+                        node1senderCounter.incrementAndGet();
+                        d1.send(node2, "test_message_1_to_2".getBytes());
+                    }
+                    Thread.sleep(1);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -1418,9 +1422,11 @@ public class DatagramAdapterTest {
         Thread node2sender = new Thread(() -> {
             while(true) {
                 try {
-                    node2senderCounter.incrementAndGet();
-                    d2.send(node1, "test_message_2_to_1".getBytes());
-                    //Thread.sleep(1);
+                    for (int i = 0; i < sendSpeed; ++i) {
+                        node2senderCounter.incrementAndGet();
+                        d2.send(node1, "test_message_2_to_1".getBytes());
+                    }
+                    Thread.sleep(1);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
