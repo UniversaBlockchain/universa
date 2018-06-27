@@ -1400,7 +1400,7 @@ public class DatagramAdapterTest {
         AtomicLong node1senderCounter = new AtomicLong(0);
         AtomicLong node2senderCounter = new AtomicLong(0);
 
-        final int sendSpeed = 40;
+        final int sendSpeed = 20;
 
         Thread node1sender = new Thread(() -> {
             while(true) {

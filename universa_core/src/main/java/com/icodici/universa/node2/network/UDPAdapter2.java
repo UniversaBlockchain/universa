@@ -375,6 +375,25 @@ public class UDPAdapter2 extends DatagramAdapter {
     }
 
 
+    /**
+     * Each adapter will try to send blocks until have got special {@link Packet} with type {@link PacketTypes#ACK},
+     * that means receiver have got block. So when we got block, but something went wrong - call this method. Note that
+     * for success blocks needs to call {@link UDPAdapter2#sendAck(SessionReader, Integer)}
+     * @param sessionReader is {@link SessionReader} in which sending is.
+     * @param packetId is id of block we have got.
+     */
+    private void sendNack(SessionReader sessionReader, Integer packetId) {
+        report(logLabel, ()->"send ack to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.DETAILED);
+        try {
+            Packet packet = new Packet(0, myNodeInfo.getNumber(),
+                    sessionReader.remoteNodeInfo.getNumber(), PacketTypes.ACK, sessionReader.sessionKey.etaEncrypt(Boss.pack(packetId)));
+            sendPacket(sessionReader.remoteNodeInfo, packet);
+        } catch (EncryptionError e) {
+            callErrorCallbacks("(sendNack) can't send NACK, EncryptionError: " + e);
+        }
+    }
+
+
     private static int socketListenThreadNumber = 1;
 
     /**
@@ -622,14 +641,18 @@ public class UDPAdapter2 extends DatagramAdapter {
                                     }
                                 } else {
                                     callErrorCallbacks("(onReceiveData) decrypted payload too short");
+                                    sendNack(sessionReader, packet.packetId);
                                 }
                             } catch (EncryptionError e) {
                                 callErrorCallbacks("(onReceiveData) EncryptionError: " + e);
+                                sendNack(sessionReader, packet.packetId);
                             } catch (SymmetricKey.AuthenticationFailed e) {
                                 callErrorCallbacks("(onReceiveData) SymmetricKey.AuthenticationFailed: " + e);
+                                sendNack(sessionReader, packet.packetId);
                             }
                         } else {
                             callErrorCallbacks("sessionReader.sessionKey is null");
+                            sendNack(sessionReader, packet.packetId);
                         }
                     } else {
                         callErrorCallbacks("no sessionReader found for node " + packet.senderNodeId);
