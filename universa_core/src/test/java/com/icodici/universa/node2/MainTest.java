@@ -1042,19 +1042,13 @@ public class MainTest {
     }
 
     private static final int MAX_PACKET_SIZE = 512;
-    protected void sendBlock(UDPAdapter.Block block, DatagramSocket socket) throws InterruptedException {
+    protected void sendBlock(UDPAdapter.Packet packet, DatagramSocket socket, NodeInfo destination) throws InterruptedException {
 
-        if(!block.isValidToSend()) {
-            block.prepareToSend(MAX_PACKET_SIZE);
-        }
-
-        List<DatagramPacket> outs = new ArrayList(block.getDatagrams().values());
+        byte[] out = packet.makeByteArray();
+        DatagramPacket dp = new DatagramPacket(out, out.length, destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort());
 
         try {
-
-            for (DatagramPacket d : outs) {
-                socket.send(d);
-            }
+            socket.send(dp);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -1065,11 +1059,13 @@ public class MainTest {
         Binder binder = Binder.fromKeysValues(
                 "data", myNodeInfo.getNumber()
         );
-        UDPAdapter.Block block = udpAdapter.createTestBlock(myNodeInfo.getNumber(), destination.getNumber(),
-                new Random().nextInt(Integer.MAX_VALUE), UDPAdapter.PacketTypes.HELLO,
-                destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
+        UDPAdapter.Packet packet = udpAdapter.createTestPacket(
+                new Random().nextInt(Integer.MAX_VALUE),
+                myNodeInfo.getNumber(),
+                destination.getNumber(),
+                UDPAdapter.PacketTypes.HELLO,
                 Boss.pack(binder));
-        sendBlock(block, socket);
+        sendBlock(packet, socket, destination);
     }
 
     @Ignore

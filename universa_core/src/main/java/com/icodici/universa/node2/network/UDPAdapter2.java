@@ -1,38 +1,53 @@
+/*
+ * Copyright (c) 2017, iCodici S.n.C, All Rights Reserved
+ *
+ * Written by Stepan Mamontov <micromillioner@yahoo.com>
+ */
+
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.*;
 import com.icodici.crypto.digest.Crc32;
+import com.icodici.universa.Errors;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
+import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
-import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
+import net.sergeych.utils.LogPrinter;
 
-import java.io.IOException;
-import java.net.*;
+import java.io.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+
+import static java.util.Arrays.asList;
 
 public class UDPAdapter2 extends DatagramAdapter {
 
     private DatagramSocket socket;
     private SocketListenThread socketListenThread;
-    private ConcurrentHashMap<Integer, Session> sessionsByRemoteId = new ConcurrentHashMap<>();
-    private ConcurrentHashMap<Integer, SessionReader> sessionReaders = new ConcurrentHashMap<>();
-    private ConcurrentHashMap<Integer, SessionReader> sessionReaderCandidates = new ConcurrentHashMap<>();
-    private String logLabel = "";
-    private Integer nextPacketId = 1;
-    private Timer timerHandshake = new Timer();
-    private Timer timerRetransmit = new Timer();
-    private Timer timerProtectionFromDuple = new Timer();
+    private ConcurrentHashMap<Integer, Session> sessionsById = new ConcurrentHashMap<>();
 
-    private final static int HANDSHAKE_TIMEOUT_MILLIS = 1000;
+    private Timer timer = new Timer();
+    private Timer timerCleanup = new Timer();
+    private Timer heartBeatTimer = new Timer();
 
+    private final int HEART_BEAT_TIME = 20000;
+    private final int CLEANUP_TIME = 15000;
+
+    private boolean isShuttingDown = false;
+    private Integer nextBlockId = 1;
+
+    /** This adapter name for logging. */
+    private String label = null;
 
     /**
      * Create an instance that listens for the incoming datagrams using the specified configurations. The adapter should
@@ -47,9 +62,9 @@ public class UDPAdapter2 extends DatagramAdapter {
     public UDPAdapter2(PrivateKey ownPrivateKey, SymmetricKey sessionKey, NodeInfo myNodeInfo, NetConfig netConfig) throws IOException {
         super(ownPrivateKey, sessionKey, myNodeInfo, netConfig);
 
-        logLabel = "udp" + myNodeInfo.getNumber() + ": ";
+        label = "udp" + myNodeInfo.getNumber() + ": ";
 
-        nextPacketId = new Random().nextInt(Integer.MAX_VALUE)+1;
+        nextBlockId = new Random().nextInt(Integer.MAX_VALUE);
 
         socket = new DatagramSocket(myNodeInfo.getNodeAddress().getPort());
         socket.setReuseAddress(true);
@@ -57,749 +72,1362 @@ public class UDPAdapter2 extends DatagramAdapter {
         socketListenThread = new SocketListenThread(socket);
         socketListenThread.start();
 
-        timerHandshake.scheduleAtFixedRate(new TimerTask() {
+        timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                restartHandshakeIfNeeded();
+                checkUnsent();
             }
         }, RETRANSMIT_TIME, RETRANSMIT_TIME);
-
-        timerRetransmit.scheduleAtFixedRate(new TimerTask() {
+        timerCleanup.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                pulseRetransmit();
+                socketListenThread.cleanObtainedBlocks();
             }
-        }, RETRANSMIT_TIME, RETRANSMIT_TIME);
+        }, CLEANUP_TIME, CLEANUP_TIME);
 
-        timerProtectionFromDuple.scheduleAtFixedRate(new TimerTask() {
+        heartBeatTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                clearProtectionFromDupleBuffers();
+                heartBeat();
             }
-        }, RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS, RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS);
+        }, HEART_BEAT_TIME, HEART_BEAT_TIME);
     }
 
 
     @Override
-    public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
-        report(logLabel, () -> "send to "+destination.getNumber()+", isActive: "+socketListenThread.isActive.get(), VerboseLevel.DETAILED);
+    synchronized public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send to ", destination.getNumber(),
+                ", is shutting down: ", isShuttingDown), VerboseLevel.BASE);
 
-        if (!socketListenThread.isActive.get())
-            return;
+        if(!isShuttingDown) {
+            Session session = sessionsById.get(destination.getNumber());
 
-        Session session = getOrCreateSession(destination);
-        if (session.state.get() == Session.STATE_HANDSHAKE) {
-            session.addPayloadToOutputQueue(destination, payload);
-            restartHandshakeIfNeeded(session, Instant.now());
-        } else {
-            sendPayload(session, payload);
+            Block rawBlock = new Block(myNodeInfo.getNumber(), destination.getNumber(),
+                    getNextBlockId(), PacketTypes.RAW_DATA,
+                    destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
+                    payload.clone());
+
+            if (session != null) {
+                if (session.isValid()) {
+                    if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
+                        report(getLabel(), "session is ok", VerboseLevel.BASE);
+
+                        session.addBlockToWaitingQueue(rawBlock);
+                        sendAsDataBlock(rawBlock, session);
+                    } else {
+                        report(getLabel(), "session is handshaking", VerboseLevel.BASE);
+                        session.addBlockToWaitingQueue(rawBlock);
+                    }
+                } else {
+                    if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
+                        report(getLabel(), "session not valid for exchanging, recreate", VerboseLevel.BASE);
+                        if (sessionsById.containsKey(session.remoteNodeId)) {
+                            sessionsById.remove(session.remoteNodeId);
+                        }
+                        session = getOrCreateSession(destination.getNumber(),
+                                destination.getNodeAddress().getAddress(),
+                                destination.getNodeAddress().getPort());
+                        session.publicKey = destination.getPublicKey();
+                        session.remoteNodeId = destination.getNumber();
+                        session.addBlockToWaitingQueue(rawBlock);
+                        sendHello(session);
+                    } else {
+                        report(getLabel(), "session not valid yet, but it is handshaking", VerboseLevel.BASE);
+                        session.addBlockToWaitingQueue(rawBlock);
+                    }
+                }
+            } else {
+                report(getLabel(), "session not exist", VerboseLevel.BASE);
+                session = getOrCreateSession(destination.getNumber(),
+                        destination.getNodeAddress().getAddress(),
+                        destination.getNodeAddress().getPort());
+                session.publicKey = destination.getPublicKey();
+                session.remoteNodeId = destination.getNumber();
+                session.addBlockToWaitingQueue(rawBlock);
+                sendHello(session);
+            }
         }
-    }
-
-
-    private void sendPacket(NodeInfo destination, Packet packet) {
-        byte[] payload = packet.makeByteArray();
-        DatagramPacket dp = new DatagramPacket(payload, payload.length, destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort());
-        try {
-            report(logLabel, ()->"sendPacket datagram size: " + payload.length, VerboseLevel.DETAILED);
-            socket.send(dp);
-        } catch (Exception e) {
-            callErrorCallbacks("sendPacket exception: " + e);
-        }
-    }
-
-
-    private void sendPayload(Session session, byte[] payload) {
-        try {
-            byte[] payloadWithRandomChunk = new byte[payload.length + 2];
-            System.arraycopy(payload, 0, payloadWithRandomChunk, 0, payload.length);
-            System.arraycopy(Bytes.random(2).toArray(), 0, payloadWithRandomChunk, payload.length, 2);
-            byte[] encryptedPayload = session.sessionKey.etaEncrypt(payloadWithRandomChunk);
-            byte[] crc32 = new Crc32().digest(encryptedPayload);
-            byte[] dataToSend = new byte[encryptedPayload.length + crc32.length];
-            System.arraycopy(encryptedPayload, 0, dataToSend, 0, encryptedPayload.length);
-            System.arraycopy(crc32, 0, dataToSend, encryptedPayload.length, crc32.length);
-            Packet packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
-                    session.remoteNodeInfo.getNumber(), PacketTypes.DATA, dataToSend);
-            sendPacket(session.remoteNodeInfo, packet);
-            session.addPacketToRetransmitMap(packet.packetId, packet);
-        } catch (EncryptionError e) {
-            callErrorCallbacks("(sendPayload) EncryptionError: " + e);
-        }
-    }
-
-
-    private Integer getNextPacketId() {
-        Integer res = nextPacketId;
-        if (nextPacketId == Integer.MAX_VALUE)
-            nextPacketId = 1;
-        else
-            ++nextPacketId;
-        return res;
     }
 
 
     @Override
     public void shutdown() {
-        report(logLabel, ()->"shutting down...", VerboseLevel.BASE);
-        socketListenThread.isActive.set(false);
-        timerHandshake.cancel();
-        timerHandshake.purge();
-        timerRetransmit.cancel();
-        timerRetransmit.purge();
-        timerProtectionFromDuple.cancel();
-        timerProtectionFromDuple.purge();
+        isShuttingDown = true;
+
+        report(getLabel(), "shutting down...", VerboseLevel.BASE);
+        socketListenThread.shutdownThread();
+        socket.close();
+        socket.disconnect();
+        closeSessions();
+        timer.cancel();
+        timer.purge();
+        heartBeatTimer.cancel();
+        heartBeatTimer.purge();
+        timerCleanup.cancel();
+        timerCleanup.purge();
+
         try {
-            socketListenThread.join();
+            while (socket.isConnected()) {
+                report(getLabel(), () -> concatReportMessage("shutting down... ",
+                        socket.isClosed(), " ", socket.isConnected()), VerboseLevel.BASE);
+                Thread.sleep(100);
+            }
         } catch (InterruptedException e) {
-            report(logLabel, ()->"shutting down... InterruptedException: "+e, VerboseLevel.BASE);
+            e.printStackTrace();
         }
-        report(logLabel, ()->"shutting down... done", VerboseLevel.BASE);
+        report(getLabel(), "shutdown", VerboseLevel.BASE);
+    }
+
+    /**
+     * Just clear all sessions.
+     */
+    public void closeSessions() {
+        report(getLabel(), "closeSessions");
+        sessionsById.clear();
+    }
+
+
+    /**
+     * Method brake all seesions by set new empty public key.
+     */
+    public void brakeSessions() {
+        report(getLabel(), "brakeSessions");
+        for (Session s : sessionsById.values()) {
+            s.publicKey = new PublicKey();
+        }
+    }
+
+
+    public String getLabel()
+    {
+        return label;
+    }
+
+
+    public DatagramSocket getSocket()
+    {
+        return socket;
+    }
+
+
+    public void report(String label, String message, int level)
+    {
+        if(level <= verboseLevel)
+            System.out.println(label + message);
     }
 
 
     public void report(String label, Callable<String> message, int level)
     {
-        if(level <= verboseLevel) {
+        if(level <= verboseLevel)
             try {
                 System.out.println(label + message.call());
             } catch (Exception e) {
                 e.printStackTrace();
             }
+    }
+
+
+    public void report(String label, String message)
+    {
+        report(label, message, VerboseLevel.DETAILED);
+    }
+
+
+    public void report(String label, Callable<String> message)
+    {
+        report(label, message, VerboseLevel.DETAILED);
+    }
+
+
+    private Integer getNextBlockId() {
+        Integer res = nextBlockId;
+        if (nextBlockId == Integer.MAX_VALUE)
+            nextBlockId = 1;
+        else
+            ++nextBlockId;
+        return res;
+    }
+
+
+    /**
+     * Method extract list of {@link DatagramPacket} from sending {@link Block} and put all directly to the socket.
+     *
+     * @param block is {@link Block} to send.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
+    protected void sendBlock(Block block, Session session) throws InterruptedException {
+
+        if(!block.isValidToSend()) {
+            block.prepareToSend(MAX_PACKET_SIZE);
+        }
+
+        List<DatagramPacket> outs = new ArrayList(block.datagrams.values());
+
+        block.sendAttempts++;
+        if(block.type != PacketTypes.PACKET_ACK &&
+                block.type != PacketTypes.ACK &&
+                block.type != PacketTypes.NACK) {
+            session.addBlockToSendingQueue(block);
+        }
+        try {
+            if(testMode == TestModes.SHUFFLE_PACKETS || testMode == TestModes.LOST_AND_SHUFFLE_PACKETS) {
+                Collections.shuffle(outs);
+            }
+
+            report(getLabel(), () -> concatReportMessage("for block: ", block.blockId, " sending packets num:  ", outs.size()));
+            for (DatagramPacket d : outs) {
+                if(testMode == TestModes.LOST_PACKETS || testMode == TestModes.LOST_AND_SHUFFLE_PACKETS) {
+                    if (new Random().nextInt(100) < lostPacketsPercent) {
+                        report(getLabel(), () -> concatReportMessage("Lost packet in block: ", block.blockId));
+                        continue;
+                    }
+                }
+                socket.send(d);
+                report(getLabel(), () -> concatReportMessage("for block: ", block.blockId, " sent packets num:  ", outs.size()));
+            }
+        } catch (IOException e) {
+            report(getLabel(), "send block error, socket already closed");
+//            e.printStackTrace();
         }
     }
 
 
     /**
-     * Use {@link DatagramAdapter#addErrorsCallback(Function)} to add callback to catch errors. This method call this backs.
-     * @param message
+     * Method prepare and sends raw {@link Block} as {@link PacketTypes#DATA}. Session for this sending should be
+     * already in the {@link Session#EXCHANGING} mode.
+     * @param rawDataBlock is raw {@link Block} with data.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
      */
-    private void callErrorCallbacks(String message) {
-        report(logLabel, ()->"error: " + message, VerboseLevel.BASE);
-        for(Function<String, String> fn : errorCallbacks) {
-            fn.apply(message);
+    synchronized protected void sendAsDataBlock(Block rawDataBlock, Session session) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send data to ", session.remoteNodeId), VerboseLevel.BASE);
+        report(getLabel(), () -> concatReportMessage("sessionKey is ", session.sessionKey.hashCode(),
+                " for ", session.remoteNodeId));
+
+        byte[] crc32Local = new Crc32().digest(rawDataBlock.payload);
+        report(getLabel(), () -> concatReportMessage("sendAsDataBlock: Crc32 id is ",
+                Arrays.equals(rawDataBlock.crc32, crc32Local)));
+
+        try {
+            byte[] encrypted = session.sessionKey.etaEncrypt(rawDataBlock.payload.clone());
+
+            Binder binder = Binder.fromKeysValues(
+                    "data", encrypted,
+                    "crc32", rawDataBlock.crc32
+            );
+            byte[] packedData = Boss.pack(binder);
+            report(getLabel(), () -> concatReportMessage(" data size: ", rawDataBlock.payload.length,
+                    " for ", session.remoteNodeId));
+            Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                    rawDataBlock.blockId, PacketTypes.DATA,
+                    session.address, session.port,
+                    packedData);
+            sendBlock(block, session);
+        } catch (EncryptionError encryptionError) {
+            callErrorCallbacks("[sendAsDataBlock] EncryptionError in node "
+                    + myNodeInfo.getNumber() + ": " + encryptionError.getMessage());
+            if (sessionsById.containsKey(session.remoteNodeId)) {
+                sessionsById.remove(session.remoteNodeId);
+            }
+            Session newSession = getOrCreateSession(session.remoteNodeId,
+                    session.address,
+                    session.port);
+            newSession.publicKey = session.publicKey;
+            newSession.remoteNodeId = session.remoteNodeId;
+            newSession.addBlockToWaitingQueue(rawDataBlock);
+            sendHello(newSession);
         }
+    }
+
+
+    /**
+     * Method create {@link Block} of {@link Session#HELLO} type. This is first step of creation and installation of the session.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
+    protected void sendHello(Session session) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send hello to ", session.remoteNodeId), VerboseLevel.BASE);
+
+        session.state = Session.HELLO;
+        Binder binder = Binder.fromKeysValues(
+                "data", myNodeInfo.getNumber()
+        );
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.HELLO,
+                session.address, session.port,
+                Boss.pack(binder));
+        sendBlock(block, session);
+    }
+
+    /**
+     * Method create {@link Block} of {@link Session#WELCOME} type. When someone send us {@link Session#HELLO} typed {@link Block},
+     * we should call this method.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
+    protected void sendWelcome(Session session) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send welcome to ", session.remoteNodeId), VerboseLevel.BASE);
+
+        session.state = Session.WELCOME;
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.WELCOME,
+                session.address, session.port,
+                session.localNonce);
+        sendBlock(block, session);
+    }
+
+    /**
+     * Method create {@link Block} of {@link Session#KEY_REQ} type. We have sent {@link Session#HELLO} typed {@link Block},
+     * and have got {@link Session#WELCOME} typed {@link Block} - it means we can continue handshake and sen request for session's keys.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
+    synchronized protected void sendKeyRequest(Session session) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send key request to ", session.remoteNodeId), VerboseLevel.BASE);
+
+        session.state = Session.KEY_REQ;
+        List data = asList(session.localNonce, session.remoteNonce);
+        try {
+            byte[] packed = Boss.pack(data);
+            byte[] signed = ownPrivateKey.sign(packed, HashType.SHA512);
+
+            Binder binder = Binder.fromKeysValues(
+                    "data", packed,
+                    "signature", signed
+            );
+
+            Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.KEY_REQ,
+                    session.address, session.port,
+                    Boss.pack(binder));
+            sendBlock(block, session);
+        } catch (EncryptionError encryptionError) {
+            callErrorCallbacks("[sendKeyRequest] EncryptionError in node "
+                    + myNodeInfo.getNumber() + ": " + encryptionError.getMessage());
+//            encryptionError.printStackTrace();
+            if (sessionsById.containsKey(session.remoteNodeId)) {
+                sessionsById.remove(session.remoteNodeId);
+            }
+            Session newSession = getOrCreateSession(session.remoteNodeId,
+                    session.address,
+                    session.port);
+            newSession.publicKey = session.publicKey;
+            newSession.remoteNodeId = session.remoteNodeId;
+            for (Block b : session.waitingBlocksQueue) {
+                newSession.addBlockToWaitingQueue(b);
+            }
+            sendHello(newSession);
+        }
+    }
+
+    /**
+     * Method create {@link Block} of {@link Session#SESSION} type. Someone who sent {@link Session#HELLO} typed {@link Block},
+     * send us new {@link Session#KEY_REQ} typed {@link Block} - if all is ok we send session keys to.
+     * From now we ready to data exchange.
+     * @param session is {@link Session} in which sending is.
+     * @throws InterruptedException if something went wrong
+     */
+    synchronized protected void sendSessionKey(Session session) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send session key to ", session.remoteNodeId), VerboseLevel.BASE);
+        report(getLabel(), () -> concatReportMessage("sessionKey is ", session.sessionKey.hashCode(),
+                " for ", session.remoteNodeId));
+
+        List data = asList(session.sessionKey.getKey(), session.remoteNonce);
+        try {
+            byte[] packed = Boss.pack(data);
+            PublicKey sessionPublicKey = new PublicKey(session.publicKey.pack());
+            byte[] encrypted = sessionPublicKey.encrypt(packed);
+            byte[] signed = ownPrivateKey.sign(encrypted, HashType.SHA512);
+
+            Binder binder = Binder.fromKeysValues(
+                    "data", encrypted,
+                    "signature", signed
+            );
+
+            Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                    new Random().nextInt(Integer.MAX_VALUE), PacketTypes.SESSION,
+                    session.address, session.port,
+                    Boss.pack(binder));
+            sendBlock(block, session);
+            session.state = Session.SESSION;
+        } catch (EncryptionError encryptionError) {
+            callErrorCallbacks("[sendSessionKey] EncryptionError in node "
+                    + myNodeInfo.getNumber() + ": " + encryptionError.getMessage());
+
+//            encryptionError.printStackTrace();
+            if (sessionsById.containsKey(session.remoteNodeId)) {
+                sessionsById.remove(session.remoteNodeId);
+            }
+            Session newSession = getOrCreateSession(session.remoteNodeId,
+                    session.address,
+                    session.port);
+            newSession.publicKey = session.publicKey;
+            newSession.remoteNodeId = session.remoteNodeId;
+            for (Block b : session.waitingBlocksQueue) {
+                newSession.addBlockToWaitingQueue(b);
+            }
+            sendHello(newSession);
+        }
+    }
+
+    /**
+     * Each adapter will try to send packets until have got special {@link Block} with type {@link PacketTypes#PACKET_ACK},
+     * that means receiver have got packet. So when we got packet call this method. Note that block can consist from some packets.
+     * @param session is {@link Session} in which sending is.
+     * @param blockId is id of block the packet belongs to.
+     * @param packetId is packet we have got.
+     * @throws InterruptedException if something went wrong
+     */
+    protected void sendPacketAck(Session session, int blockId, int packetId) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send packet_ack to ", session.remoteNodeId));
+
+        List data = asList(blockId, packetId);
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.PACKET_ACK,
+                session.address, session.port,
+                Boss.pack(data));
+        sendBlock(block, session);
+    }
+
+    /**
+     * Each adapter will try to send blocks until have got special {@link Block} with type {@link PacketTypes#ACK},
+     * that means receiver have got block. So when we got block and all is ok - call this method. Note that block can consist from
+     * some packets and for got packets needs to call {@link UDPAdapter2#sendPacketAck(Session, int, int)}.
+     * @param session is {@link Session} in which sending is.
+     * @param blockId is id of block we have got.
+     * @throws InterruptedException if something went wrong
+     */
+    protected void sendAck(Session session, int blockId) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send ack to ", session.remoteNodeId), VerboseLevel.BASE);
+
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.ACK,
+                session.address, session.port,
+                Boss.pack(blockId));
+        sendBlock(block, session);
+    }
+
+    /**
+     * Each adapter will try to send blocks until have got special {@link Block} with type {@link PacketTypes#ACK},
+     * that means receiver have got block. So when we got block, but something went wrong - call this method. Note that
+     * for success blocks needs to call {@link UDPAdapter2#sendAck(Session, int)}
+     * @param session is {@link Session} in which sending is.
+     * @param blockId is id of block we have got.
+     * @throws InterruptedException if something went wrong
+     */
+    protected void sendNack(Session session, int blockId) throws InterruptedException {
+        report(getLabel(), () -> concatReportMessage("send nack to ", session.remoteNodeId), VerboseLevel.BASE);
+
+        Block block = new Block(myNodeInfo.getNumber(), session.remoteNodeId,
+                new Random().nextInt(Integer.MAX_VALUE), PacketTypes.NACK,
+                session.address, session.port,
+                Boss.pack(blockId));
+        sendBlock(block, session);
     }
 
 
     /**
      * If session for remote id is already created - returns it, otherwise creates new {@link Session}
+     * @param remoteId is id of remote party.
+     * @param address is {@link InetAddress} of remote party.
+     * @param port is port number of remote party.
      * @return
      */
-    private Session getOrCreateSession(NodeInfo destination) {
-        Session s = sessionsByRemoteId.computeIfAbsent(destination.getNumber(), (k)->{
-            Session session = new Session(destination);
-            report(logLabel, ()->"session created for nodeId "+destination.getNumber(), VerboseLevel.BASE);
-            session.sessionKey = sessionKey;
-            return session;
-        });
-        report(logLabel, ()->">>local node: "+myNodeInfo.getNumber()+" remote node: "+s.remoteNodeInfo.getNumber(), VerboseLevel.DETAILED);
-        report(logLabel, ()->">>local nonce: "+s.localNonce+" remote nonce: "+s.remoteNonce, VerboseLevel.DETAILED);
-        report(logLabel, ()->">>state: "+s.state, VerboseLevel.DETAILED);
-        report(logLabel, ()->">>session key: "+s.sessionKey.hashCode(), VerboseLevel.DETAILED);
-        return s;
-    }
+    protected Session getOrCreateSession(int remoteId, InetAddress address, int port) {
 
+        if(sessionsById.containsKey(remoteId)) {
+            Session s = sessionsById.get(remoteId);
+            report(getLabel(), () -> concatReportMessage(">>Session was exist for node ", remoteId, " at the node ", myNodeInfo.getNumber()), VerboseLevel.BASE);
+            report(getLabel(), () -> concatReportMessage(">>local node: ", myNodeInfo.getNumber(), " remote node: ", s.remoteNodeId), VerboseLevel.BASE);
+            report(getLabel(), () -> concatReportMessage(">>local nonce: ", s.localNonce, " remote nonce: ", s.remoteNonce), VerboseLevel.BASE);
+            report(getLabel(), () -> concatReportMessage(">>state: ", s.state), VerboseLevel.BASE);
+            report(getLabel(), () -> concatReportMessage(">>session key: ", s.sessionKey.hashCode()), VerboseLevel.BASE);
+//            report(getLabel(), ">>new local nonce: " + session.localNonce, VerboseLevel.BASE);
 
-    private Session getOrCreateSession(int remoteId) {
-        NodeInfo destination = netConfig.getInfo(remoteId);
-        if (destination == null) {
-            callErrorCallbacks("(getOrCreateSession) unknown nodeId has received: "+remoteId);
-            return null;
+            return s;
         }
-        return getOrCreateSession(destination);
-    }
 
+        Session session;
 
-    private SessionReader getOrCreateSessionReaderCandidate(int remoteId) {
-        NodeInfo destination = netConfig.getInfo(remoteId);
-        if (destination == null) {
-            callErrorCallbacks("(getOrCreateSessionReaderCandidate) unknown nodeId has received: "+remoteId);
-            return null;
-        }
-        SessionReader sr = sessionReaderCandidates.computeIfAbsent(destination.getNumber(), (k)-> {
-            SessionReader sessionReader = new SessionReader();
-            sessionReader.remoteNodeInfo = destination;
-            report(logLabel, ()->"sessionReader created for nodeId "+destination.getNumber(), VerboseLevel.BASE);
-            return sessionReader;
-        });
-        return sr;
-    }
+        session = new Session(address, port);
+        report(getLabel(), () -> concatReportMessage("session created for nodeId ", remoteId), VerboseLevel.BASE);
+        session.remoteNodeId = remoteId;
+        session.sessionKey = sessionKey;
+        report(getLabel(), () -> concatReportMessage("sessionKey is ", session.sessionKey.hashCode(),
+                " localNonce is ", session.localNonce, " for ", session.remoteNodeId), VerboseLevel.BASE);
+        sessionsById.putIfAbsent(remoteId, session);
 
+        return session;
 
-    private void acceptSessionReaderCandidate(int remoteId, SessionReader sessionReader) {
-        sessionReaders.put(remoteId, sessionReader);
-        sessionReaderCandidates.remove(remoteId);
-    }
-
-
-    private SessionReader getSessionReader(int remoteId) {
-        return sessionReaders.get(remoteId);
-    }
-
-
-    private void restartHandshakeIfNeeded() {
-        Instant now = Instant.now();
-        sessionsByRemoteId.forEach((k, s) -> restartHandshakeIfNeeded(s, now));
-    }
-
-
-    private void pulseRetransmit() {
-        sessionsByRemoteId.forEach((k, s)-> {
-            if (s.state.get() == Session.STATE_EXCHANGING) {
-                s.retransmitMap.forEach((itkey, item)-> {
-                    sendPacket(s.remoteNodeInfo, item.packet);
-                    if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
-                        s.retransmitMap.remove(itkey);
-                });
-            }
-        });
-    }
-
-
-    private void clearProtectionFromDupleBuffers() {
-        sessionReaders.forEach((k, sr)-> {
-            sr.protectionFromDuple1.clear();
-            Set<Integer> tmp = sr.protectionFromDuple1;
-            sr.protectionFromDuple1 = sr.protectionFromDuple0;
-            sr.protectionFromDuple0 = tmp;
-        });
-    }
-
-
-    private void restartHandshakeIfNeeded(Session s, Instant now) {
-        if (s.state.get() == Session.STATE_HANDSHAKE) {
-            if (s.handshakeExpiresAt.isBefore(now)) {
-                report(logLabel, ()->"handshaking with nodeId="+s.remoteNodeInfo.getNumber()+" is timed out, restart", VerboseLevel.BASE);
-                s.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME);
-                s.handshakeExpiresAt = Instant.now().plusMillis(HANDSHAKE_TIMEOUT_MILLIS);
-                sendHello(s);
-            }
-        }
-    }
-
-
-    public void printInternalState() {
-        System.out.println("\nprintInternalState "+logLabel);
-        System.out.println("  inputQueue.size(): " + inputQueue.size());
-        sessionsByRemoteId.forEach((k, s)->{
-            System.out.println("  session with node="+k+":");
-            System.out.println("    outputQueue.size(): " + s.outputQueue.size());
-            System.out.println("    retransmitMap.size(): " + s.retransmitMap.size());
-        });
-        sessionReaders.forEach((k, sr)-> {
-            System.out.println("  sessionReader with node="+k+":");
-            System.out.println("    protectionFromDuple0.size(): " + sr.protectionFromDuple0.size());
-            System.out.println("    protectionFromDuple1.size(): " + sr.protectionFromDuple1.size());
-        });
     }
 
 
     /**
-     * This is first step of creation and installation of the session.
+     * Method checks blocks in the sending queue. If block still in the queue method increment it {@link Block#sendAttempts}
+     * value. If that value become above {@link DatagramAdapter#RETRANSMIT_MAX_ATTEMPTS} block remove from queue. After that
+     * if some sessions was had that blocks and blocks was removed - remove that sessions as possible broken.
+     *
+     * Calls from timer.
+     */
+    protected void checkUnsent() {
+        List<Block> blocksToRemove;
+        List<Session> brokenSessions = new ArrayList<>();
+        for(Session session : sessionsById.values()) {
+            blocksToRemove = new ArrayList();
+            for (Block block : session.sendingBlocksQueue) {
+                if(!block.isDelivered()) {
+                    report(getLabel(), () -> concatReportMessage("block: ", block.blockId,
+                            " type: ", block.type, " sendAttempts: ", block.sendAttempts, " not delivered"));
+                    try {
+                        if(block.sendAttempts >= RETRANSMIT_MAX_ATTEMPTS) {
+                            report(getLabel(), () -> concatReportMessage("block ", block.blockId,
+                                    " type ", block.type, " will be removed"));
+                            blocksToRemove.add(block);
+                        } else {
+                            sendBlock(block, session);
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            for(Block rb : blocksToRemove) {
+                try {
+//                    if(rb.type == PacketTypes.DATA && session.sendingBlocksQueue.contains(rb)) {
+//                        System.err.println(getLabel() + "block " + rb.blockId + " type " + rb.type + " has not delivered and will be removed");
+//                        callErrorCallbacks("block " + rb.blockId + " type " + rb.type + " has not delivered and will be removed");
+//                    }
+                    session.removeBlockFromSendingQueue(rb);
+                    session.removeBlockFromWaitingQueue(rb.blockId);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if(blocksToRemove.size() > 0) {
+                report(getLabel(), () -> concatReportMessage("Session with remote ", session.remoteNodeId,
+                        " is possible broken, state: ",
+                        session.state,
+                        ", num sending: ", session.sendingBlocksQueue.size(),
+                        ", num waiting: ", session.waitingBlocksQueue.size()));
+
+                if(session.state != Session.EXCHANGING && session.state != Session.SESSION) {
+                    if(session.sendingBlocksQueue.isEmpty()) {
+
+                        report(getLabel(), () -> concatReportMessage("Session with remote ",
+                                session.remoteNodeId, " is broken, state: ",
+                                session.state,
+                                ", num sending: ", session.sendingBlocksQueue.size(),
+                                ", num waiting: ", session.waitingBlocksQueue.size(), ", will be removed"));
+                        brokenSessions.add(session);
+                    }
+                }
+            }
+        }
+
+
+        for(Session session : brokenSessions) {
+            if (sessionsById.containsKey(session.remoteNodeId)) {
+                sessionsById.remove(session.remoteNodeId);
+            }
+        }
+    }
+
+    /**
+     * Check unsent (or not delivered, i.e. without {@link PacketTypes#PACKET_ACK} answer) packets and try to resend it.
      * @param session is {@link Session} in which sending is.
      */
-    private void sendHello(Session session) {
-        report(logLabel, ()->"send hello to "+session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-        Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                session.remoteNodeInfo.getNumber(), PacketTypes.HELLO, new byte[0]);
-        sendPacket(session.remoteNodeInfo, packet);
+    protected void checkUnsentPackets(Session session) {
+        List<Block> blocksToResend = new ArrayList();
+        List<Packet> packetsToResend = new ArrayList();
+        List<DatagramPacket> datagramsToResend = new ArrayList();
+//        for(Session session : sessionsById.values()) {
+        for (Block block : session.sendingBlocksQueue) {
+            if(!block.isDelivered()) {
+                blocksToResend.add(block);
+                for(Packet packet : block.packets.values()) {
+                    if(packet.sendWaitIndex >= 3) {
+//                            packetsToResend.add(packet);
+                        datagramsToResend.add(block.datagrams.get(packet.packetId));
+                        report(getLabel(), () -> concatReportMessage("packet will be resend, blockId: ",
+                                packet.blockId, " packetId: ", packet.packetId, " type: ", packet.type,
+                                " sendWaitIndex: ", packet.sendWaitIndex));
+                    }
+                }
+            }
+        }
+//        }
+
+        for(DatagramPacket datagram : datagramsToResend) {
+            try {
+                if(datagram != null) {
+                    socket.send(datagram);
+                    report(getLabel(), " datagram was resent");
+                } else {
+                    report(getLabel(), " datagram unexpected became null");
+                }
+            } catch (IOException e) {
+//                e.printStackTrace();
+            }
+        }
+
     }
 
 
     /**
-     * When someone send us {@link PacketTypes#HELLO} typed {@link UDPAdapter2.Packet},
-     * we should respond with {@link PacketTypes#WELCOME}.
-     * @param sessionReader is {@link UDPAdapter2.SessionReader} in which sending is.
+     * Before sending high-level data (stored in the {@link Block} with type {@link PacketTypes#DATA}), we need to install session.
+     * So prepared {@link Block} with type {@link PacketTypes#DATA} is stored at waiting blcoks and wait until seesion
+     * will turn to {@link Session#EXCHANGING} mode. After that we call this method.
+     * @param session
      */
-    private void sendWelcome(SessionReader sessionReader) throws EncryptionError {
-        report(logLabel, ()->"send welcome to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-        Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.WELCOME, sessionReader.remoteNodeInfo.getPublicKey().encrypt(sessionReader.localNonce));
-        sendPacket(sessionReader.remoteNodeInfo, packet);
-    }
-
-
-    /**
-     * We have sent {@link PacketTypes#HELLO} typed {@link Packet},
-     * and have got {@link PacketTypes#WELCOME} typed {@link Packet} - it means we can continue handshake and send request for session's keys.
-     * @param session is {@link Session} in which sending is.
-     * @param payloadPart1 is prepared in {@link SocketListenThread#onReceiveWelcome(Packet)}
-     * @param payloadPart2 is prepared in {@link SocketListenThread#onReceiveWelcome(Packet)}
-     */
-    private void sendKeyReq(Session session, byte[] payloadPart1, byte[] payloadPart2) throws EncryptionError {
-        report(logLabel, ()->"send key_req to "+session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-        Packet packet1 = new Packet(0, myNodeInfo.getNumber(),
-                session.remoteNodeInfo.getNumber(), PacketTypes.KEY_REQ_PART1, payloadPart1);
-        Packet packet2 = new Packet(0, myNodeInfo.getNumber(),
-                session.remoteNodeInfo.getNumber(), PacketTypes.KEY_REQ_PART2, payloadPart2);
-        sendPacket(session.remoteNodeInfo, packet1);
-        sendPacket(session.remoteNodeInfo, packet2);
-    }
-
-
-    /**
-     * Someone who sent {@link PacketTypes#HELLO} typed {@link Packet},
-     * send us new KEY_REQ typed {@link Packet} - if all is ok we send session keys to.
-     * From now we ready to data exchange.
-     * @param sessionReader is {@link SessionReader} in which sending is.
-     */
-    private void sendSessionKey(SessionReader sessionReader) throws EncryptionError {
-        report(logLabel, ()->"send session_key to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-
-        List data = Arrays.asList(sessionReader.sessionKey.getKey(), sessionReader.remoteNonce);
-        byte[] packed = Boss.pack(data);
-        byte[] encrypted = sessionReader.remoteNodeInfo.getPublicKey().encrypt(packed);
-        byte[] sign = ownPrivateKey.sign(encrypted, HashType.SHA512);
-
-        Packet packet1 = new Packet(0, myNodeInfo.getNumber(),
-                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.SESSION_PART1, encrypted);
-        Packet packet2 = new Packet(0, myNodeInfo.getNumber(),
-                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.SESSION_PART2, sign);
-        sendPacket(sessionReader.remoteNodeInfo, packet1);
-        sendPacket(sessionReader.remoteNodeInfo, packet2);
-    }
-
-
-    /**
-     * Each adapter will try to send blocks until have got special {@link Packet} with type {@link PacketTypes#ACK},
-     * that means receiver have got block. So when we got packet and all is ok - call this method.
-     * @param sessionReader is {@link SessionReader} in which sending is.
-     * @param packetId is id of packet we have got.
-     */
-    private void sendAck(SessionReader sessionReader, Integer packetId) throws EncryptionError {
-        report(logLabel, ()->"send ack to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.DETAILED);
-        Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.ACK, sessionReader.sessionKey.etaEncrypt(Boss.pack(packetId)));
-        sendPacket(sessionReader.remoteNodeInfo, packet);
-    }
-
-
-    /**
-     * Each adapter will try to send blocks until have got special {@link Packet} with type {@link PacketTypes#ACK},
-     * that means receiver have got block. So when we got block, but something went wrong - call this method. Note that
-     * for success blocks needs to call {@link UDPAdapter2#sendAck(SessionReader, Integer)}
-     * @param sessionReader is {@link SessionReader} in which sending is.
-     * @param packetId is id of block we have got.
-     */
-    private void sendNack(SessionReader sessionReader, Integer packetId) {
-        report(logLabel, ()->"send ack to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.DETAILED);
-        try {
-            Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                    sessionReader.remoteNodeInfo.getNumber(), PacketTypes.ACK, sessionReader.sessionKey.etaEncrypt(Boss.pack(packetId)));
-            sendPacket(sessionReader.remoteNodeInfo, packet);
-        } catch (EncryptionError e) {
-            callErrorCallbacks("(sendNack) can't send NACK, EncryptionError: " + e);
+    protected void sendWaitingBlocks(Session session) {
+        if (session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+            report(getLabel(), () -> concatReportMessage("waiting blocks num ", session.waitingBlocksQueue.size()));
+            try {
+                for (Block waitingBlock : session.waitingBlocksQueue) {
+                    report(getLabel(), () -> concatReportMessage("waitingBlock ", waitingBlock.blockId,
+                            " type ", waitingBlock.type));
+                    if (waitingBlock.type == PacketTypes.RAW_DATA) {
+                        sendAsDataBlock(waitingBlock, session);
+                    } else {
+                        sendBlock(waitingBlock, session);
+                    }
+//                                            session.removeBlockFromWaitingQueue(waitingBlock);
+                }
+            } catch (InterruptedException e) {
+                System.out.println(Errors.FAILURE + " sending waiting blocks interrupted, " + e.getMessage());
+            }
         }
     }
 
+    /**
+     * Use {@link DatagramAdapter#addErrorsCallback(Function)} to add callback to catch errors. This method call this backs.
+     * @param message
+     */
+    protected void callErrorCallbacks(String message) {
+        for(Function<String, String> fn : errorCallbacks) {
+            fn.apply(message);
+        }
+    }
 
-    private static int socketListenThreadNumber = 1;
+    /**
+     * Method prints some info about UdpAdapter.
+     */
+    protected void heartBeat() {
+        int waitingBlocksNum = 0;
+        int sendingBlocksNum = 0;
+        int sendingPacketsNum = 0;
+        for (Session session : sessionsById.values()) {
+            waitingBlocksNum += session.waitingBlocksQueue.size();
+            sendingBlocksNum += session.sendingBlocksQueue.size();
+            sendingPacketsNum += session.sendingPacketsQueue.size();
+        }
+        final int finalwaitingBlocksNum = 0;
+        final int finalsendingBlocksNum = 0;
+        final int finalsendingPacketsNum = 0;
+        report(getLabel(), () -> concatReportMessage("heartbeat: [sessions: ", sessionsById.size(),
+                ", waiting blocks: ", finalwaitingBlocksNum,
+                ", sending blocks: ", finalsendingBlocksNum,
+                ", sending packets: ", finalsendingPacketsNum,
+                "]"), VerboseLevel.BASE);
+    }
+
+    protected String concatReportMessage(Object... messages) {
+        String returnMessage = "";
+        for (Object m : messages) {
+            returnMessage += m != null ? m.toString() : "null";
+        }
+        return returnMessage;
+    }
+
+
+    /// for debug
+
+    public Block createTestBlock(int senderNodeId, int receiverNodeId, int blockId, int type,
+                                 InetAddress address, int port, byte[] payload) {
+        return new Block(senderNodeId, receiverNodeId,
+                blockId, type,
+                address, port,
+                payload);
+    }
+
 
     /**
      * This thread listen socket for packets. From packets it construct blocks. And send anwer for blocks by creating
      * and sending oter blocks.
      */
-    private class SocketListenThread extends Thread {
+    class SocketListenThread extends Thread
+    {
+        private Boolean active = false;
 
-        private AtomicBoolean isActive = new AtomicBoolean(false);
         private final DatagramSocket threadSocket;
         private DatagramPacket receivedDatagram;
-        private String logLabel = "";
+
+        /**
+         * Blocks that waiting packets.
+         */
+        private ConcurrentHashMap<Integer, Block> waitingBlocks = new ConcurrentHashMap<>();
+
+        /**
+         * Blocks that already got all packets.
+         */
+        private ConcurrentHashMap<Integer, Instant> obtainedBlocks = new ConcurrentHashMap<>();
+        private ConcurrentLinkedQueue<BlockTime> obtainedBlocksQueue = new ConcurrentLinkedQueue<>();
+        private Duration maxObtainedBlockAge = Duration.ofMinutes(5);
+
+        protected String label = null;
+
+        private class BlockTime {
+            Integer blockId;
+            Instant expiresAt;
+            public BlockTime(Integer blockId, Instant expiresAt) {this.blockId=blockId; this.expiresAt=expiresAt;}
+        };
 
         public SocketListenThread(DatagramSocket socket){
+
             byte[] buf = new byte[DatagramAdapter.MAX_PACKET_SIZE];
             receivedDatagram = new DatagramPacket(buf, buf.length);
-            threadSocket = socket;
-            try {
-                threadSocket.setSoTimeout(500);
-            } catch (SocketException e) {
-                report(logLabel, ()->"setSoTimeout failed, exception: " + e, VerboseLevel.BASE);
+            this.threadSocket = socket;
+        }
+
+        public void cleanObtainedBlocks() {
+            // important: makes poll from obtainedBlocksQueue only here
+            final Instant now = Instant.now();
+            BlockTime blockTime = obtainedBlocksQueue.peek();
+            while(blockTime != null) {
+                if (blockTime.expiresAt.isBefore(now)) {
+                    obtainedBlocks.remove(blockTime.blockId);
+                    obtainedBlocksQueue.poll();
+                    blockTime = obtainedBlocksQueue.peek();
+                } else {
+                    break;
+                }
             }
         }
 
         @Override
-        public void run() {
-            setName("UDP-socket-listener-" + socketListenThreadNumber++);
-            logLabel = myNodeInfo.getNumber() + "-" + getName() + ": ";
+        public void run()
+        {
+            setName("UDP-socket-listener-" + Integer.toString(new Random().nextInt(100)));
+            label = myNodeInfo.getNumber() + "-" + getName() + ": ";
 
-            isActive.set(true);
-            while(isActive.get()) {
-                boolean isDatagramReceived = true;
+            report(getLabel(), () -> concatReportMessage(" UDPAdapter listen socket at ",
+                    myNodeInfo.getNodeAddress().getAddress(), ":", myNodeInfo.getNodeAddress().getPort()));
+            active = true;
+            while(active) {
                 try {
-                    threadSocket.receive(receivedDatagram);
-                } catch (SocketTimeoutException e) {
-                    report(logLabel, ()->"received nothing", VerboseLevel.BASE);
-                    isDatagramReceived = false;
+                    if(!threadSocket.isClosed()) {
+                        if(active) {
+                            threadSocket.receive(receivedDatagram);
+
+                            report(getLabel(), () -> concatReportMessage(">>>> got data"));
+                        }
+                    }
+                } catch (SocketException e) {
+//                    e.printStackTrace();
                 } catch (IOException e) {
                     e.printStackTrace();
-                    isDatagramReceived = false;
                 }
 
-                if (isDatagramReceived) {
+                if(active) {
+
+                    // first of all reconstruct packet from got bytes array
+                    byte[] data = Arrays.copyOfRange(receivedDatagram.getData(), 0, receivedDatagram.getLength());
+
+                    Packet packet = new Packet();
+                    Block waitingBlock = null;
                     try {
-                        byte[] data = Arrays.copyOfRange(receivedDatagram.getData(), 0, receivedDatagram.getLength());
-                        Packet packet = new Packet();
                         packet.parseFromByteArray(data);
 
-                        switch (packet.type) {
-                            case PacketTypes.HELLO:
-                                onReceiveHello(packet);
-                                break;
-                            case PacketTypes.WELCOME:
-                                onReceiveWelcome(packet);
-                                break;
-                            case PacketTypes.KEY_REQ_PART1:
-                                onReceiveKeyReqPart1(packet);
-                                break;
-                            case PacketTypes.KEY_REQ_PART2:
-                                onReceiveKeyReqPart2(packet);
-                                break;
-                            case PacketTypes.SESSION_PART1:
-                                onReceiveSessionPart1(packet);
-                                break;
-                            case PacketTypes.SESSION_PART2:
-                                onReceiveSessionPart2(packet);
-                                break;
-                            case PacketTypes.DATA:
-                                onReceiveData(packet);
-                                break;
-                            case PacketTypes.ACK:
-                                onReceiveAck(packet);
-                                break;
-                            default:
-                                report(logLabel, () -> "received unknown packet type: " + packet.type, VerboseLevel.BASE);
-                                break;
-                        }
-                    } catch (Exception e) {
-                        callErrorCallbacks("SocketListenThread exception: " + e);
-                    }
-                }
-            }
+                        report(getLabel(), () -> concatReportMessage("got packet with blockId: ",
+                                packet.blockId, " packetId: ", packet.packetId, " type: ", packet.type));
 
-            socket.close();
-            socket.disconnect();
-
-            report(logLabel, ()->"SocketListenThread has finished", VerboseLevel.BASE);
-        }
-
-
-        private void onReceiveHello(Packet packet) throws EncryptionError {
-            report(logLabel, ()->"received hello from " + packet.senderNodeId, VerboseLevel.BASE);
-            SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
-            if (sessionReader != null) {
-                sessionReader.generateNewLocalNonce();
-                sessionReader.handshake_keyReqPart1 = null;
-                sessionReader.handshake_keyReqPart2 = null;
-                sendWelcome(sessionReader);
-            }
-        }
-
-
-        private void onReceiveWelcome(Packet packet) {
-            report(logLabel, ()->"received welcome from " + packet.senderNodeId, VerboseLevel.BASE);
-            try {
-                Session session = getOrCreateSession(packet.senderNodeId);
-                if (session != null) {
-                    if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME)) {
-                        session.remoteNonce = ownPrivateKey.decrypt(packet.payload);
-
-                        // send key_req
-                        List data = Arrays.asList(session.localNonce, session.remoteNonce);
-                        byte[] packed = Boss.pack(data);
-                        byte[] encrypted = session.remoteNodeInfo.getPublicKey().encrypt(packed);
-                        byte[] sign = ownPrivateKey.sign(encrypted, HashType.SHA512);
-
-                        session.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_SESSION);
-                        session.handshake_sessionPart1 = null;
-                        session.handshake_sessionPart2 = null;
-
-                        sendKeyReq(session, encrypted, sign);
-                    }
-                }
-            } catch (EncryptionError e) {
-                callErrorCallbacks("(onReceiveWelcome) EncryptionError in node " + myNodeInfo.getNumber() + ": " + e);
-            }
-        }
-
-
-        private void onReceiveKeyReqPart1(Packet packet) {
-            report(logLabel, ()->"received key_req_part1 from " + packet.senderNodeId, VerboseLevel.BASE);
-            SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
-            if (sessionReader != null) {
-                sessionReader.handshake_keyReqPart1 = packet.payload;
-                onReceiveKeyReq(sessionReader);
-            }
-        }
-
-
-        private void onReceiveKeyReqPart2(Packet packet) {
-            report(logLabel, ()->"received key_req_part2 from " + packet.senderNodeId, VerboseLevel.BASE);
-            SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
-            if (sessionReader != null) {
-                sessionReader.handshake_keyReqPart2 = packet.payload;
-                onReceiveKeyReq(sessionReader);
-            }
-        }
-
-
-        private void onReceiveKeyReq(SessionReader sessionReader) {
-            try {
-                if ((sessionReader.handshake_keyReqPart1 != null) && (sessionReader.handshake_keyReqPart2 != null)) {
-                    report(logLabel, ()->"received both parts of key_req from " + sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-                    byte[] encrypted = sessionReader.handshake_keyReqPart1;
-                    byte[] packed = ownPrivateKey.decrypt(encrypted);
-                    byte[] sign = sessionReader.handshake_keyReqPart2;
-                    List nonceList = Boss.load(packed);
-                    byte[] packet_senderNonce = ((Bytes) nonceList.get(0)).toArray();
-                    byte[] packet_remoteNonce = ((Bytes) nonceList.get(1)).toArray();
-                    if (Arrays.equals(packet_remoteNonce, sessionReader.localNonce)) {
-                        if (sessionReader.remoteNodeInfo.getPublicKey().verify(encrypted, sign, HashType.SHA512)) {
-                            report(logLabel, ()->"key_req successfully verified", VerboseLevel.BASE);
-                            sessionReader.remoteNonce = packet_senderNonce;
-                            sessionReader.sessionKey = new SymmetricKey();
-                            acceptSessionReaderCandidate(sessionReader.remoteNodeInfo.getNumber(), sessionReader);
-                            sendSessionKey(sessionReader);
-                        }
-                    }
-                }
-            } catch (EncryptionError e) {
-                callErrorCallbacks("(onReceiveKeyReq) EncryptionError in node " + myNodeInfo.getNumber() + ": " + e);
-            }
-        }
-
-
-        private void onReceiveSessionPart1(Packet packet) {
-            report(logLabel, ()->"received session_part1 from " + packet.senderNodeId, VerboseLevel.BASE);
-            Session session = getOrCreateSession(packet.senderNodeId);
-            if (session != null) {
-                if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_SESSION)) {
-                    session.handshake_sessionPart1 = packet.payload;
-                    onReceiveSession(session);
-                }
-            }
-        }
-
-
-        private void onReceiveSessionPart2(Packet packet) {
-            report(logLabel, ()->"received session_part2 from " + packet.senderNodeId, VerboseLevel.BASE);
-            Session session = getOrCreateSession(packet.senderNodeId);
-            if (session != null) {
-                if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_SESSION)) {
-                    session.handshake_sessionPart2 = packet.payload;
-                    onReceiveSession(session);
-                }
-            }
-        }
-
-
-        private void onReceiveSession(Session session) {
-            try {
-                if ((session.handshake_sessionPart1 != null) && (session.handshake_sessionPart2 != null)) {
-                    report(logLabel, ()->"received both parts of session from " + session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-                    byte[] encrypted = session.handshake_sessionPart1;
-                    byte[] sign = session.handshake_sessionPart2;
-                    if (session.remoteNodeInfo.getPublicKey().verify(encrypted, sign, HashType.SHA512)) {
-                        byte[] decryptedData = ownPrivateKey.decrypt(encrypted);
-                        List data = Boss.load(decryptedData);
-                        byte[] sessionKey = ((Bytes) data.get(0)).toArray();
-                        byte[] nonce = ((Bytes) data.get(1)).toArray();
-                        if (Arrays.equals(nonce, session.localNonce)) {
-                            report(logLabel, () -> "session successfully verified", VerboseLevel.BASE);
-                            session.reconstructSessionKey(sessionKey);
-                            session.state.set(Session.STATE_EXCHANGING);
-                            session.sendAllFromOutputQueue();
-                        }
-                    }
-                }
-            } catch (EncryptionError e) {
-                callErrorCallbacks("(onReceiveSession) EncryptionError in node " + myNodeInfo.getNumber() + ": " + e);
-            }
-        }
-
-
-        private void onReceiveData(Packet packet) {
-            if (packet.payload.length > 4) {
-                byte[] encryptedPayload = new byte[packet.payload.length - 4];
-                byte[] crc32 = new byte[4];
-                System.arraycopy(packet.payload, 0, encryptedPayload, 0, packet.payload.length-4);
-                System.arraycopy(packet.payload, packet.payload.length-4, crc32, 0, 4);
-                byte[] calcCrc32 = new Crc32().digest(encryptedPayload);
-                if (Arrays.equals(crc32, calcCrc32)) {
-                    SessionReader sessionReader = getSessionReader(packet.senderNodeId);
-                    if (sessionReader != null) {
-                        if (sessionReader.sessionKey != null) {
-                            try {
-                                byte[] decrypted = sessionReader.sessionKey.etaDecrypt(encryptedPayload);
-                                if (decrypted.length > 2) {
-                                    byte[] payload = new byte[decrypted.length - 2];
-                                    System.arraycopy(decrypted, 0, payload, 0, payload.length);
-                                    sendAck(sessionReader, packet.packetId);
-                                    if (!sessionReader.protectionFromDuple0.contains(packet.packetId) && !sessionReader.protectionFromDuple1.contains(packet.packetId)) {
-                                        receiver.accept(payload);
-                                        sessionReader.protectionFromDuple0.add(packet.packetId);
-                                    }
-                                } else {
-                                    callErrorCallbacks("(onReceiveData) decrypted payload too short");
-                                    sendNack(sessionReader, packet.packetId);
-                                }
-                            } catch (EncryptionError e) {
-                                callErrorCallbacks("(onReceiveData) EncryptionError: " + e);
-                                sendNack(sessionReader, packet.packetId);
-                            } catch (SymmetricKey.AuthenticationFailed e) {
-                                callErrorCallbacks("(onReceiveData) SymmetricKey.AuthenticationFailed: " + e);
-                                sendNack(sessionReader, packet.packetId);
-                            }
+                        // check if we packet is from block we got earlier
+                        // if block already exist - we choose it
+                        // otherwise we create new block for packet
+                        if (waitingBlocks.containsKey(packet.blockId)) {
+                            waitingBlock = waitingBlocks.get(packet.blockId);
                         } else {
-                            callErrorCallbacks("sessionReader.sessionKey is null");
-                            sendNack(sessionReader, packet.packetId);
+                            if (obtainedBlocks.containsKey(packet.blockId)) {
+                                // Do nothing, cause we got and obtained this block already
+                                report(getLabel(), () -> concatReportMessage(" warning: repeated block given, with id ", packet.blockId));
+                            } else {
+                                waitingBlock = new Block(packet.senderNodeId, packet.receiverNodeId,
+                                        packet.blockId, packet.type,
+                                        receivedDatagram.getAddress(), receivedDatagram.getPort());
+                                waitingBlocks.put(waitingBlock.blockId, waitingBlock);
+                            }
+//                        waitingBlock = new Block(packet.senderNodeId, packet.receiverNodeId, packet.blockId, packet.type);
+//                        waitingBlocks.put(waitingBlock.blockId, waitingBlock);
                         }
-                    } else {
-                        callErrorCallbacks("no sessionReader found for node " + packet.senderNodeId);
+
+                        // if we found or create block - add packet to it
+                        // and if all packets is got by block start block obtaining
+                        if (waitingBlock != null) {
+                            waitingBlock.addToPackets(packet);
+
+                            // if all packets is got by block start block obtaining
+                            if (waitingBlock.isSolid()) {
+                                moveWaitingBlockToObtained(waitingBlock);
+                                waitingBlock.reconstruct();
+                                obtainSolidBlock(waitingBlock);
+                            } else {
+                                // if we got only part of block - send PACKET_ACK
+                                // and clean session's blocks according packet.type
+                                if (packet.type != PacketTypes.PACKET_ACK) {
+//                                    Session session = sessionsById.get(packet.senderNodeId);
+//                                    if (session == null) {
+//                                        session = getOrCreateSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
+//                                    }
+                                    report(getLabel(), () -> concatReportMessage("got packet type: ",
+                                            packet.type, " brotherPacketsNum: ", packet.brotherPacketsNum,
+                                            " from ", packet.senderNodeId), VerboseLevel.BASE);
+                                    Session session = getOrCreateSession(packet.senderNodeId, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                                    sendPacketAck(session, packet.blockId, packet.packetId);
+                                    switch (packet.type) {
+                                        case PacketTypes.HELLO:
+                                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                            break;
+                                        case PacketTypes.WELCOME:
+                                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                            session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                                            break;
+                                        case PacketTypes.KEY_REQ:
+                                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                            session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                                            session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                                            break;
+                                        case PacketTypes.SESSION:
+                                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                            session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                                            session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                                            session.makeBlockDeliveredByType(PacketTypes.SESSION);
+                                        case PacketTypes.DATA:
+                                            if(session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+                                                session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                                                session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                                                session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                                                session.makeBlockDeliveredByType(PacketTypes.SESSION);
+                                            }
+                                            break;
+                                    }
+                                }
+                            }
+                        }
+
+                    } catch (IllegalArgumentException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        report(getLabel(), "expected interrupted exception");
+//                        e.printStackTrace();
+                    } catch (SymmetricKey.AuthenticationFailed e) {
+                        callErrorCallbacks("SymmetricKey.AuthenticationFailed in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+                        e.printStackTrace();
+                    } catch (EncryptionError e) {
+                        callErrorCallbacks(getLabel() + " EncryptionError in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+
+                        report(getLabel(), () -> concatReportMessage("EncryptionError in node ",
+                                myNodeInfo.getNumber(), ": ", e.getMessage()), VerboseLevel.BASE);
+                        for (Session s : sessionsById.values()) {
+                            report(getLabel(), ">>---", VerboseLevel.BASE);
+                            report(getLabel(), () -> concatReportMessage(">>local node: ",
+                                    myNodeInfo.getNumber(), " remote node: ", s.remoteNodeId), VerboseLevel.BASE);
+                            report(getLabel(), () -> concatReportMessage(">>local nonce: ",
+                                    s.localNonce, " remote nonce: ", s.remoteNonce), VerboseLevel.BASE);
+                            report(getLabel(), () -> concatReportMessage(">>state: ", s.state), VerboseLevel.BASE);
+                            report(getLabel(), () -> concatReportMessage(">>session key: ",
+                                    s.sessionKey.hashCode()), VerboseLevel.BASE);
+                        }
+//                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (IllegalStateException e) {
+                        callErrorCallbacks("IllegalStateException in node " + myNodeInfo.getNumber() + ": " + e.getMessage());
+                        e.printStackTrace();
                     }
-                } else{
-                    callErrorCallbacks("(onReceiveBlock) crc32 mismatch");
-                }
-            } else {
-                callErrorCallbacks("(onReceiveBlock) blockPayload too short");
-            }
-        }
-
-
-        private void onReceiveAck(Packet packet) throws EncryptionError, SymmetricKey.AuthenticationFailed {
-            report(logLabel, ()->"received ack from " + packet.senderNodeId, VerboseLevel.DETAILED);
-            Session session = getOrCreateSession(packet.senderNodeId);
-            if (session != null) {
-                if (session.state.get() == Session.STATE_EXCHANGING) {
-                    Integer ackPacketId = Boss.load(session.sessionKey.etaDecrypt(packet.payload));
-                    session.removePacketFromRetransmitMap(ackPacketId);
+                } else {
+                    report(getLabel(), "socket will be closed");
+                    shutdownThread();
                 }
             }
         }
 
-    }
 
-
-    /**
-     * Two remote parties should create valid session before start data's exchanging. This class implement that session
-     * according with remote parties is handshaking and eexchanging.
-     */
-    private class Session {
-
-        private SymmetricKey sessionKey;
-        private byte[] localNonce;
-        private byte[] remoteNonce;
-        private NodeInfo remoteNodeInfo;
-        private BlockingQueue<OutputQueueItem> outputQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
-        private ConcurrentHashMap<Integer,RetransmitItem> retransmitMap = new ConcurrentHashMap<>();
-
-        private AtomicInteger state;
-        private AtomicInteger handshakeStep;
-        private Instant handshakeExpiresAt;
-        private byte[] handshake_sessionPart1 = null;
-        private byte[] handshake_sessionPart2 = null;
-
-        static public final int STATE_HANDSHAKE             = 1;
-        static public final int STATE_EXCHANGING            = 2;
-        static public final int HANDSHAKE_STEP_INIT                  = 1;
-        static public final int HANDSHAKE_STEP_WAIT_FOR_WELCOME      = 2;
-        static public final int HANDSHAKE_STEP_WAIT_FOR_SESSION      = 3;
-
-        Session(NodeInfo remoteNodeInfo) {
-            this.remoteNodeInfo = remoteNodeInfo;
-            localNonce = Do.randomBytes(64);
-            state = new AtomicInteger(STATE_HANDSHAKE);
-            handshakeStep = new AtomicInteger(HANDSHAKE_STEP_INIT);
-            handshakeExpiresAt = Instant.now().plusMillis(-HANDSHAKE_TIMEOUT_MILLIS);
+        public void shutdownThread()
+        {
+            active = false;
+            interrupt();
+            threadSocket.close();
         }
+
+
+        public String getLabel()
+        {
+            return label;
+        }
+
 
         /**
-         * Reconstruct key from got byte array. Calls when remote party sends key.
-         * @param key is byte array with packed key.
+         * MMethod processing solid {@link Block}. Continue handshake for session or exchanging with data.
+         * @param block is solid {@link Block}
+         * @throws SymmetricKey.AuthenticationFailed if session hasn't valid sessions key
+         * @throws EncryptionError if decode of data is fails
+         * @throws InterruptedException if something went wrong
          */
-        public void reconstructSessionKey(byte[] key) throws EncryptionError {
-            sessionKey = new SymmetricKey(key);
-        }
+        protected void obtainSolidBlock(Block block) throws SymmetricKey.AuthenticationFailed, EncryptionError, InterruptedException {
+            Session session = null;
+            Binder unbossedPayload;
+            byte[] signedUnbossed;
+            List ackList;
+            int ackBlockId;
+            int ackPacketId;
 
-        public void addPayloadToOutputQueue(NodeInfo destination, byte[] payload) {
-            OutputQueueItem outputQueueItem = new OutputQueueItem(destination, payload);
-            if (!outputQueue.offer(outputQueueItem)) {
-                outputQueue.poll();
-                outputQueue.offer(outputQueueItem);
+            switch (block.type) {
+
+                // we got HELLO block - create session and answer WELCOME
+                case PacketTypes.HELLO:
+                    report(getLabel(), () -> concatReportMessage("got hello from ",
+                            block.senderNodeId), VerboseLevel.BASE);
+//                    PublicKey key = new PublicKey(block.payload);
+                    NodeInfo senderNodeInfo = netConfig.getInfo(block.senderNodeId);
+                    if(senderNodeInfo != null) {
+                        PublicKey key = senderNodeInfo.getPublicKey();
+//                    session = sessionsById.get(block.senderNodeId);
+//                    if (session == null) {
+//                        session = getOrCreateSession(block.senderNodeId, block.address, block.port);
+//                    }
+                        session = getOrCreateSession(block.senderNodeId, block.address, block.port);
+                        session.publicKey = key;
+                        session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                        if (session.state == Session.HANDSHAKE ||
+                                session.state == Session.EXCHANGING ||
+                                // it's for nacks
+                                session.state == Session.SESSION) {
+
+                            sendWelcome(session);
+                        } else {
+                            final int sessionRemoteNodeId = session.remoteNodeId;
+                            final int sessionState = session.state;
+                            report(getLabel(), () -> concatReportMessage("node sent handshake too, to ",
+                                    sessionRemoteNodeId, " state: ", sessionState), VerboseLevel.BASE);
+
+                            // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
+                            if(session.state == Session.HELLO) {
+                                if(myNodeInfo.getNumber() < session.remoteNodeId ) {
+                                    sendWelcome(session);
+                                }
+                                // else do nothing
+                            } else {
+                                // if current node has higher state - downstate and resend
+                                downStateAndResend(session);
+                            }
+                        }
+                    } else {
+                        report(getLabel(), () -> concatReportMessage("Block from unknown node ",
+                                block.senderNodeId, " was already obtained, will remove from obtained"));
+                        if(obtainedBlocks.containsKey(block.blockId)) {
+                            obtainedBlocks.remove(block.blockId);
+                        }
+                        throw new EncryptionError(Errors.BAD_VALUE + ": block got from unknown node " + block.senderNodeId);
+                    }
+                    break;
+
+                // we got WELCOME - it means we sent HELLO, so continue handshake by sending KEY_REQ
+                case PacketTypes.WELCOME:
+                    report(getLabel(), () -> concatReportMessage("got welcome from ", block.senderNodeId), VerboseLevel.BASE);
+                    session = sessionsById.get(block.senderNodeId);
+                    if(session != null) {
+                        session.remoteNonce = block.payload;
+                        session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                        session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                        if (session.state == Session.HELLO) {
+
+                            sendKeyRequest(session);
+                        } else {
+                            final int sessionRemoteNodeId = session.remoteNodeId;
+                            final int sessionState = session.state;
+                            report(getLabel(), () -> concatReportMessage("node sent handshake too, to ",
+                                    sessionRemoteNodeId, " state: ", sessionState), VerboseLevel.BASE);
+
+                            // if current node sent hello or other handshake blocks choose who will continue handshake - whom id is greater
+                            if(session.state == Session.WELCOME) {
+                                if (myNodeInfo.getNumber() < session.remoteNodeId ) {
+                                    sendKeyRequest(session);
+                                }
+                                // else do nothing
+                            } else {
+                                downStateAndResend(session);
+                            }
+                        }
+                    } else {
+                        block.type = PacketTypes.HELLO;
+                        obtainSolidBlock(block);
+                    }
+                    break;
+
+                // we got KEY_REQ - so check that request got from same remote party as we send WELCOME
+                case PacketTypes.KEY_REQ:
+                    report(getLabel(), () -> concatReportMessage("got key request from ", block.senderNodeId), VerboseLevel.BASE);
+                    session = sessionsById.get(block.senderNodeId);
+                    if(session != null) {
+                        session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                        session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                        session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                        unbossedPayload = Boss.load(block.payload);
+                        signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
+                        if (session.publicKey != null) {
+                            if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
+
+                                report(getLabel(), "successfully verified ");
+
+                                List receivedData = Boss.load(signedUnbossed);
+                                byte[] senderNonce = ((Bytes) receivedData.get(0)).toArray();
+                                byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
+
+                                // if remote nonce from received data equals with own nonce
+                                // (means request sent after welcome from known and expected node)
+                                if (Arrays.equals(receiverNonce, session.localNonce)) {
+                                    session.remoteNonce = senderNonce;
+
+                                    if (session.state == Session.WELCOME) {
+
+                                        session.createSessionKey();
+                                        sendSessionKey(session);
+                                        final boolean sessionIsValid = session.isValid();
+                                        report(getLabel(), () -> concatReportMessage(" check session ",
+                                                sessionIsValid));
+
+                                    } else {
+                                        final int sessionRemoteNodeId = session.remoteNodeId;
+                                        final int sessionState = session.state;
+                                        report(getLabel(), () -> concatReportMessage("node sent handshake too, to ",
+                                                sessionRemoteNodeId, " state: ", sessionState), VerboseLevel.BASE);
+                                        if(session.state == Session.KEY_REQ) {
+                                            if (myNodeInfo.getNumber() < session.remoteNodeId ) {
+
+                                                session.createSessionKey();
+                                                sendSessionKey(session);
+                                                final boolean sessionIsValid = session.isValid();
+                                                report(getLabel(), () -> concatReportMessage(" check session ",
+                                                        sessionIsValid));
+                                            }
+                                            // else do nothing
+                                        } else {
+                                            downStateAndResend(session);
+                                        }
+                                    }
+//                                    session.makeBlockDeliveredByType(PacketTypes.SESSION);
+                                } else {
+                                    sendHello(session);
+                                    throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid (not equals with current). Got nonce: " + receiverNonce + " from node " + block.senderNodeId + " with sender nonce " + senderNonce);
+                                }
+                            } else {
+                                sendHello(session);
+                                throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
+                            }
+                        } else {
+                            sendHello(session);
+                            throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session is broken or does not exist");
+                        }
+                    } else {
+                        block.type = PacketTypes.HELLO;
+                        obtainSolidBlock(block);
+                    }
+                    break;
+
+                // we got SESSION - nice, check that session key is got from tha same remote party as we ask
+                // and if all is ok - finish handshake and start EXCHANGING
+                case PacketTypes.SESSION:
+                    report(getLabel(), () -> concatReportMessage("got session from ", block.senderNodeId), VerboseLevel.BASE);
+                    session = sessionsById.get(block.senderNodeId);
+                    if(session != null) {
+                        session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                        session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                        session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                        session.makeBlockDeliveredByType(PacketTypes.SESSION);
+                        unbossedPayload = Boss.load(block.payload);
+                        signedUnbossed = unbossedPayload.getBinaryOrThrow("data");
+                        if (session.publicKey != null) {
+                            if (session.publicKey.verify(signedUnbossed, unbossedPayload.getBinaryOrThrow("signature"), HashType.SHA512)) {
+
+                                report(getLabel(), " successfully verified ");
+
+                                byte[] decryptedData = ownPrivateKey.decrypt(signedUnbossed);
+                                List receivedData = Boss.load(decryptedData);
+                                byte[] sessionKey = ((Bytes) receivedData.get(0)).toArray();
+                                byte[] receiverNonce = ((Bytes) receivedData.get(1)).toArray();
+
+                                // if remote nonce from received data equals with own nonce
+                                // (means session sent as answer to key request from known and expected node)
+                                if (Arrays.equals(receiverNonce, session.localNonce)) {
+                                    session.reconstructSessionKey(sessionKey);
+                                    final boolean sessionIsValid = session.isValid();
+                                    report(getLabel(), () -> concatReportMessage(" check session ",
+                                            sessionIsValid));
+
+                                    // Tell remote nonce we got session or send own and no need to resend it.
+                                    answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
+
+                                    sendWaitingBlocks(session);
+                                } else {
+                                    sendHello(session);
+                                    throw new EncryptionError(Errors.BAD_VALUE + ": got nonce is not valid (not equals with current)");
+                                }
+                            } else {
+                                sendHello(session);
+                                throw new EncryptionError(Errors.BAD_VALUE + ": sign has not verified. Got data have signed with key not match with known public key.");
+                            }
+                        } else {
+                            sendHello(session);
+                            throw new EncryptionError(Errors.BAD_VALUE + ": public key for current session does not exist");
+                        }
+                    } else {
+                        block.type = PacketTypes.HELLO;
+                        obtainSolidBlock(block);
+                    }
+                    break;
+
+                // we got DATA - check if session is valid, decrypt data and just answer
+                case PacketTypes.DATA:
+                    report(getLabel(), () -> concatReportMessage("got data from ", block.senderNodeId), VerboseLevel.BASE);
+                    session = sessionsById.get(block.senderNodeId);
+                    try {
+                        if(session != null && session.isValid() &&
+                                (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+
+                            session.makeBlockDeliveredByType(PacketTypes.HELLO);
+                            session.makeBlockDeliveredByType(PacketTypes.WELCOME);
+                            session.makeBlockDeliveredByType(PacketTypes.KEY_REQ);
+                            session.makeBlockDeliveredByType(PacketTypes.SESSION);
+
+                            unbossedPayload = Boss.load(block.payload);
+                            final int sessionKeyHashCode = session.sessionKey.hashCode();
+                            final int sessionRemoteNodeId = session.remoteNodeId;
+                            report(getLabel(), () -> concatReportMessage("sessionKey is ",
+                                    sessionKeyHashCode, " for ", sessionRemoteNodeId));
+
+                            byte[] decrypted = session.sessionKey.etaDecrypt(unbossedPayload.getBinaryOrThrow("data"));
+                            byte[] crc32Remote = unbossedPayload.getBinaryOrThrow("crc32");
+                            byte[] crc32Local = new Crc32().digest(decrypted);
+
+                            if(Arrays.equals(crc32Remote, crc32Local)) {
+                                report(getLabel(), "Crc32 id ok", VerboseLevel.BASE);
+                                if(receiver != null) receiver.accept(decrypted);
+                            } else {
+                                final int sessionKeyHashCodeError = session.sessionKey.hashCode();
+                                final int sessionRemoteNodeIdError = session.remoteNodeId;
+                                report(getLabel(), () -> concatReportMessage("Crc32 Error, sessionKey is ",
+                                        sessionKeyHashCodeError, " for ", sessionRemoteNodeIdError), VerboseLevel.BASE);
+
+                                sendNack(session, block.blockId);
+                                throw new EncryptionError(Errors.BAD_VALUE +
+                                        ": Crc32 Error, decrypted length " + decrypted.length +
+                                        "\n sessionKey is " + session.sessionKey.hashCode() +
+                                        "\n own sessionKey is " + sessionKey.hashCode() +
+                                        "\n string: " + new String(decrypted) +
+                                        "\n remote id: " + session.remoteNodeId +
+                                        "\n reconstructered block id: " + block.blockId);
+                            }
+
+                        }
+                        answerAckOrNack(session, block, receivedDatagram.getAddress(), receivedDatagram.getPort());
+                    } catch (SymmetricKey.AuthenticationFailed e) {
+                        final int sessionKeyHashCodeError = session.sessionKey.hashCode();
+                        final int sessionRemoteNodeIdError = session.remoteNodeId;
+                        report(getLabel(), () -> concatReportMessage("SymmetricKey.AuthenticationFailed, sessionKey is ",
+                                sessionKeyHashCodeError, " for ", sessionRemoteNodeIdError), VerboseLevel.BASE);
+                        sendNack(session, block.blockId);
+                        throw e;
+                    }
+                    break;
+
+                // we got ACK - means DATA block we sent has delivered, so remove it
+                case PacketTypes.ACK:
+                    report(getLabel(), () -> concatReportMessage("got ack from ", block.senderNodeId), VerboseLevel.BASE);
+                    session = sessionsById.get(block.senderNodeId);
+                    ackBlockId = Boss.load(block.payload);
+                    report(getLabel(), () -> concatReportMessage("ackBlockId is: ", ackBlockId));
+                    if(session != null) {
+                        final int sendingPacketsQueueSize = session.sendingPacketsQueue.size();
+                        report(getLabel(), () -> concatReportMessage("num packets was in queue: ",
+                                sendingPacketsQueueSize));
+                        session.makeBlockDelivered(ackBlockId);
+                        session.removeBlockFromWaitingQueue(ackBlockId);
+                        session.incremetWaitIndexForPacketsFromSendingQueue();
+                        final int sendingPacketsQueueSize2 = session.sendingPacketsQueue.size();
+                        report(getLabel(), () -> concatReportMessage(" num packets in queue: ",
+                                sendingPacketsQueueSize2));
+                        checkUnsentPackets(session);
+
+                        if (session.state == Session.SESSION) {
+                            session.state = Session.EXCHANGING;
+                            sendWaitingBlocks(session);
+                        }
+                    }
+                    break;
+
+                // we got NACK - means DATA block we sent has not delivered, so start handshake again
+                case PacketTypes.NACK:
+                    report(getLabel(), () -> concatReportMessage("got nack from ", block.senderNodeId), VerboseLevel.BASE);
+                    ackBlockId = Boss.load(block.payload);
+                    report(getLabel(), () -> concatReportMessage("blockId: ", ackBlockId));
+
+                    session = sessionsById.get(block.senderNodeId);
+                    if(session != null && session.isValid() &&
+                            (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+                        session.moveBlocksFromSendingToWaiting();
+                        session.removeDataBlocksFromWaiting();
+                        session.state = Session.HANDSHAKE;
+                        final int sessionKeyHashCode = session.sessionKey.hashCode();
+                        final int sessionRemoteNodeId = session.remoteNodeId;
+                        report(getLabel(), () -> concatReportMessage("sessionKey was ",
+                                sessionKeyHashCode, " for ", sessionRemoteNodeId));
+                        session.sessionKey = sessionKey;
+                        final int sessionKeyHashCode2 = session.sessionKey.hashCode();
+                        final int sessionRemoteNodeId2 = session.remoteNodeId;
+                        report(getLabel(), () -> concatReportMessage("sessionKey now ",
+                                sessionKeyHashCode2, " for ", sessionRemoteNodeId2));
+                        sendHello(session);
+                    }
+                    break;
+
+                // we got PACKET_ACK - means packet we sent has delivered, so remove it
+                case PacketTypes.PACKET_ACK:
+                    ackList = Boss.load(block.payload);
+                    ackBlockId = (int) ackList.get(0);
+                    ackPacketId = (int) ackList.get(1);
+                    report(getLabel(), () -> concatReportMessage("got packet_ack from ",
+                            block.senderNodeId, " for block id ", ackBlockId, " for packet id ", ackPacketId));
+                    session = sessionsById.get(block.senderNodeId);
+                    if(session != null) {
+                        final int sendingPacketsQueueSize = session.sendingPacketsQueue.size();
+                        report(getLabel(), () -> concatReportMessage("num packets was in queue: ",
+                                sendingPacketsQueueSize));
+                        session.removePacketFromSendingQueue(ackBlockId, ackPacketId);
+                        session.incremetWaitIndexForPacketsFromSendingQueue();
+                        final int sendingPacketsQueueSize2 = session.sendingPacketsQueue.size();
+                        report(getLabel(), () -> concatReportMessage("num packets in queue: ",
+                                sendingPacketsQueueSize2));
+                        checkUnsentPackets(session);
+                    }
+                    break;
             }
         }
 
-        public void sendAllFromOutputQueue() {
-            try {
-                OutputQueueItem queuedItem;
-                while ((queuedItem = outputQueue.poll()) != null) {
-                    send(queuedItem.destination, queuedItem.payload);
+
+        /**
+         * Calls when block got all its packets.
+         * @param block to move.
+         */
+        public void moveWaitingBlockToObtained(Block block) {
+            waitingBlocks.remove(block.blockId);
+            Instant blockExpiresAt = Instant.now().plus(maxObtainedBlockAge);
+            obtainedBlocks.put(block.blockId, blockExpiresAt);
+            obtainedBlocksQueue.add(new BlockTime(block.blockId, blockExpiresAt));
+        }
+
+
+        /**
+         * Check session  and if session valid and has {@link Session#EXCHANGING} or {@link Session#SESSION} state -
+         * answer {@link PacketTypes#ACK}, otherwise answer {@link PacketTypes#NACK} or if session is in the handshake
+         * mode - answer nothing.
+         * @param session is {@link Session} in which sending is.
+         * @param block for answer
+         * @param address of remote party to answer
+         * @param port of remote party to answer
+         * @throws InterruptedException if something went wrong
+         */
+        public void answerAckOrNack(Session session, Block block, InetAddress address, int port) throws InterruptedException {
+            if(session != null && session.isValid() && (session.state == Session.EXCHANGING || session.state == Session.SESSION)) {
+                sendAck(session, block.blockId);
+            } else {
+                final String sessionToString = session != null ? session.toString() : "null";
+                report(getLabel(), () -> concatReportMessage("answerAckOrNack ", sessionToString), VerboseLevel.BASE);
+                // we remove block from obtained because it broken and will can be regiven with correct data
+                obtainedBlocks.remove(block.blockId);
+                if(session != null) {
+                    if (session.state == Session.EXCHANGING || session.state == Session.SESSION) {
+                        sendNack(session, block.blockId);
+                        if (sessionsById.containsKey(session.remoteNodeId)) {
+                            sessionsById.remove(session.remoteNodeId);
+                        }
+                    }
+                } else {
+                    session = getOrCreateSession(block.senderNodeId, address, port);
+                    sendNack(session, block.blockId);
                 }
-            } catch (InterruptedException e) {
-                callErrorCallbacks("(sendAllFromOutputQueue) InterruptedException in node " + myNodeInfo.getNumber() + ": " + e);
             }
         }
 
-        public void addPacketToRetransmitMap(Integer packetId, Packet packet) {
-            retransmitMap.put(packetId, new RetransmitItem(packet));
-        }
 
-        public void removePacketFromRetransmitMap(Integer packetId) {
-            retransmitMap.remove(packetId);
-        }
-
-    }
-
-
-    private class SessionReader {
-        private byte[] localNonce;
-        private byte[] remoteNonce;
-        private NodeInfo remoteNodeInfo;
-        private SymmetricKey sessionKey = null;
-        private byte[] handshake_keyReqPart1 = null;
-        private byte[] handshake_keyReqPart2 = null;
-        private Set<Integer> protectionFromDuple0 = new HashSet<>();
-        private Set<Integer> protectionFromDuple1 = new HashSet<>();
-
-        private void generateNewLocalNonce() {
-            localNonce = Do.randomBytes(64);
+        /**
+         * If handshaking starts by both remote party at one time - we need resolve it by downstating one of that sessions.
+         * @param session is {@link Session} in which sending is.
+         * @throws InterruptedException if something went wrong
+         */
+        public void downStateAndResend(Session session) throws InterruptedException {
+            switch (session.state) {
+                case Session.HELLO:
+                    sendHello(session);
+                case Session.WELCOME:
+                    sendHello(session);
+                    break;
+                case Session.KEY_REQ:
+                    sendWelcome(session);
+                    break;
+                case Session.SESSION:
+                    sendKeyRequest(session);
+                    break;
+            }
         }
     }
-
 
     /**
-     * Packet is atomary object for sending to socket. It has size that fit socket buffer size.
-     * Think about packet as about low-level structure. Has type, link to block (by id), num of packets in
+     * Packet is atomary object for sending to socket. It has size that fit socket buffer size. From packets consists
+     * {@link Block}. Think about packet as about low-level structure. Has type, link to block (by id), num of packets in
      * block at all, payload section and some other data.
      */
     public class PacketTypes
     {
-        static public final int DATA           = 0;
-        static public final int ACK            = 1;
-        static public final int NACK           = 2;
-        static public final int HELLO          = 3;
-        static public final int WELCOME        = 4;
-        static public final int KEY_REQ_PART1  = 5;
-        static public final int KEY_REQ_PART2  = 6;
-        static public final int SESSION_PART1  = 7;
-        static public final int SESSION_PART2  = 8;
+        static public final int RAW_DATA =     -1;
+        static public final int DATA =          0;
+        static public final int ACK =           1;
+        static public final int NACK =          2;
+        static public final int HELLO =         3;
+        static public final int WELCOME =       4;
+        static public final int KEY_REQ =       5;
+        static public final int SESSION =       6;
+        static public final int PACKET_ACK =    7;
     }
 
 
     public class Packet {
         private int senderNodeId;
         private int receiverNodeId;
+        private int blockId;
+        // id of packet if parent block is splitted to blocks sequence
         private int packetId = 0;
+        // Num of packets in parent sequence if parent block is splitted to blocks sequence
+        private int brotherPacketsNum = 0;
         private int type;
         private byte[] payload;
+        // How long packet wait in queue (in got other packets times)
+        private int sendWaitIndex = 0;
+
+        private Boolean delivered = false;
 
         public Packet() {
         }
 
-        public Packet(int packetId, int senderNodeId, int receiverNodeId, int type, byte[] payload) {
+        public Packet(int packetsNum, int packetId, int senderNodeId, int receiverNodeId, int blockId, int type, byte[] payload) {
+            this.brotherPacketsNum = packetsNum;
             this.packetId = packetId;
             this.senderNodeId = senderNodeId;
             this.receiverNodeId = receiverNodeId;
+            this.blockId = blockId;
             this.type = type;
             this.payload = payload;
         }
@@ -809,8 +1437,9 @@ public class UDPAdapter2 extends DatagramAdapter {
          * @return packed packet.
          */
         public byte[] makeByteArray() {
-            List data = Arrays.asList(packetId, senderNodeId, receiverNodeId, type, new Bytes(payload));
-            return Boss.dumpToArray(data);
+            List data = asList(brotherPacketsNum, packetId, senderNodeId, receiverNodeId, blockId, type, new Bytes(payload));
+            Bytes byteArray = Boss.dump(data);
+            return byteArray.toArray();
         }
 
         /**
@@ -818,34 +1447,413 @@ public class UDPAdapter2 extends DatagramAdapter {
          * @param byteArray is bytes array for reconstruction.
          * @throws IOException if something went wrong.
          */
-        public void parseFromByteArray(byte[] byteArray) {
+        public void parseFromByteArray(byte[] byteArray) throws IOException {
+
             List data = Boss.load(byteArray);
-            packetId = (int) data.get(0);
-            senderNodeId = (int) data.get(1);
-            receiverNodeId = (int) data.get(2);
-            type = (int) data.get(3);
-            payload = ((Bytes) data.get(4)).toArray();
+            brotherPacketsNum = (int) data.get(0);
+            packetId = (int) data.get(1);
+            senderNodeId = (int) data.get(2);
+            receiverNodeId = (int) data.get(3);
+            blockId = (int) data.get(4);
+            type = (int) data.get(5);
+            payload = ((Bytes) data.get(6)).toArray();
         }
     }
 
 
-    private class OutputQueueItem {
-        public NodeInfo destination;
-        public byte[] payload;
-        public OutputQueueItem(NodeInfo destination, byte[] payload) {
-            this.destination = destination;
+    /**
+     * Block is structure for sending between sessions (in other words between remotes parties). Block consists from
+     * {@link Packet}. Think about block as middle-level structure. Block has set of packets, own id, own type,
+     * receiver's info and some other control fields.
+     */
+    public class Block
+    {
+        private int senderNodeId;
+        private int receiverNodeId;
+        private int blockId;
+        private int type;
+        private byte[] payload;
+        private byte[] crc32;
+        private int sendAttempts;
+        private InetAddress address;
+        private int port;
+
+        private ConcurrentHashMap<Integer, Packet> packets;
+        private ConcurrentHashMap<Integer, DatagramPacket> datagrams;
+
+        private Boolean delivered = false;
+
+        private Boolean validToSend = false;
+
+        public Block() {
+            packets = new ConcurrentHashMap<>();
+            datagrams = new ConcurrentHashMap<>();
+        }
+
+        public Block(int senderNodeId, int receiverNodeId, int blockId, int type, InetAddress address, int port, byte[] payload) {
+            this(senderNodeId, receiverNodeId, blockId, type, address, port);
             this.payload = payload;
+            this.crc32 = new Crc32().digest(payload);
+        }
+
+        public Block(int senderNodeId, int receiverNodeId, int blockId, int type, InetAddress address, int port) {
+            this.senderNodeId = senderNodeId;
+            this.receiverNodeId = receiverNodeId;
+            this.blockId = blockId;
+            this.type = type;
+            this.address = address;
+            this.port = port;
+
+            packets = new ConcurrentHashMap<>();
+            datagrams = new ConcurrentHashMap<>();
+        }
+
+        public void prepareToSend(int packetSize) {
+            // TODO: resolve issue with magic digit
+            prepareToSend(packetSize,5);
+        }
+
+        /**
+         * Here block is cut to packets
+         * @param packetSize is packets size to cut
+         * @param bossArtefact magic
+         */
+        public void prepareToSend(int packetSize, int bossArtefact) {
+            packets = new ConcurrentHashMap<>();
+            datagrams = new ConcurrentHashMap<>();
+
+            List headerData = asList(0, 0, senderNodeId, receiverNodeId, blockId, type);
+
+            int headerSize = Boss.dump(headerData).size() + bossArtefact; // 5 - Boss artefact
+
+            byte[] blockByteArray;
+            DatagramPacket datagramPacket;
+            Packet packet;
+            byte[] cutPayload;
+            int offset = 0;
+            int copySize = 0;
+            int packetId = 0;
+            int packetsNum = payload.length / (packetSize - headerSize) + 1;
+            while(payload.length > offset) {
+                copySize = packetSize - headerSize;
+                if(offset + copySize >= payload.length) {
+                    copySize = payload.length - offset;
+                }
+                cutPayload = Arrays.copyOfRange(payload, offset, offset + copySize);
+                packet = new Packet(packetsNum, packetId, senderNodeId, receiverNodeId, blockId, type, cutPayload);
+                packets.put(packetId, packet);
+
+                blockByteArray = packet.makeByteArray();
+                if(blockByteArray.length > packetSize) {
+                    datagrams.clear();
+                    packets.clear();
+                    prepareToSend(packetSize,bossArtefact+1);
+                    return;
+                }
+
+                datagramPacket = new DatagramPacket(blockByteArray, blockByteArray.length, address, port);
+                datagrams.put(packetId, datagramPacket);
+
+                offset += copySize;
+                packetId++;
+            }
+
+            validToSend = true;
+        }
+
+        /**
+         * Reconstruct block from its packets.
+         * @throws IOException if something went wrong
+         */
+        public void reconstruct() throws IOException {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+            for (Packet packet : packets.values()) {
+                outputStream.write(packet.payload);
+            }
+            payload = outputStream.toByteArray();
+        }
+
+        /**
+         * Add packet that belong to block.
+         * @param packet for adding
+         */
+        public void addToPackets(Packet packet) {
+            if(!packets.containsKey(packet.packetId)) {
+                packets.put(packet.packetId, packet);
+            }
+            //report(getLabel(), " addToPackets: " + packets.size() + " from " + packet.brotherPacketsNum + ", blockId: " + packet.blockId + " packetId: " + packet.packetId + " type: " + packet.type);
+        }
+
+        public void markPacketAsDelivered(Packet packet) throws InterruptedException {
+            packet.delivered = true;
+            if(datagrams.containsKey(packet.packetId)) {
+                datagrams.remove(packet.packetId);
+            }
+        }
+
+        /**
+         * Check if block got all packets (added by {@link Block#addToPackets(Packet)}).
+         * @return true if all packets is added,otherwise return false
+         */
+        public Boolean isSolid() {
+            if(packets.size() > 0) {
+                // packets.get(0) may be null because packets can received in random order
+                if(packets.get(0) != null && packets.get(0).brotherPacketsNum == packets.size()) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public Boolean isValidToSend() {
+            if(packets.size() == 0) {
+                return false;
+            }
+//            if(datagrams.size() == 0) {
+//                return false;
+//            }
+
+            return validToSend;
+        }
+
+        public Boolean isDelivered() {
+            return delivered;
+        }
+
+        public ConcurrentHashMap<Integer, DatagramPacket> getDatagrams() {
+            return datagrams;
         }
     }
 
+    /**
+     * Two remote parties should create valid session before start data's exchanging. This class implement that session
+     * according with remote parties is handshaking and eexchanging.
+     */
+    private class Session {
 
-    private class RetransmitItem {
-        public Packet packet;
-        public int retransmitCounter;
-        public RetransmitItem(Packet packet) {
-            this.packet = packet;
-            retransmitCounter = 0;
+        private PublicKey publicKey;
+        private SymmetricKey sessionKey;
+        private InetAddress address;
+        private int port;
+        private byte[] localNonce;
+        private byte[] remoteNonce;
+        private int remoteNodeId = -1;
+
+        private int state;
+
+        static public final int NOT_EXIST =         0;
+        static public final int HANDSHAKE =         1;
+        static public final int EXCHANGING =        2;
+        static public final int HELLO =             3;
+        static public final int WELCOME =           4;
+        static public final int KEY_REQ =           5;
+        static public final int SESSION =           6;
+
+        /**
+         * Queue where store not sent yet Blocks.
+         */
+        private BlockingQueue<Block> waitingBlocksQueue = new LinkedBlockingQueue<>();
+
+        /**
+         * Queue where store sending Blocks.
+         */
+        private BlockingQueue<Block> sendingBlocksQueue = new LinkedBlockingQueue<>();
+
+        /**
+         * Queue where store sending Packets.
+         */
+        private BlockingQueue<Packet> sendingPacketsQueue = new LinkedBlockingQueue<>();
+
+
+        Session(InetAddress address, int port) {
+            this.address = address;
+            this.port = port;
+            localNonce = Do.randomBytes(64);
+            state = HANDSHAKE;
         }
-    }
 
+        /**
+         * Check if session has localNonce, remoteNonce, sessionKey and remoteNodeId.
+         * @return true if valid, otherwise false
+         */
+        public Boolean isValid() {
+            if (localNonce == null) {
+                report(getLabel(), "session validness check: localNonce is null");
+                return false;
+            }
+            if (remoteNonce == null) {
+                report(getLabel(), "session validness check: remoteNonce is null");
+                return false;
+            }
+            if (sessionKey == null) {
+                report(getLabel(), "session validness check: sessionKey is null");
+                return false;
+            }
+//            if (publicKey == null) {
+//                return false;
+//            }
+            if (remoteNodeId < 0) {
+                report(getLabel(), "session validness check: remoteNodeId is not defined");
+                return false;
+            }
+//            if (state != EXCHANGING) {
+//                return false;
+//            }
+
+            return true;
+        }
+
+        public void createSessionKey() throws EncryptionError {
+            if (sessionKey == null) {
+                sessionKey = new SymmetricKey();
+            }
+//            state = EXCHANGING;
+        }
+
+        /**
+         * Reconstruct key from got byte array. Calls when remote party sends key.
+         * @param key is byte array with packed key.
+         */
+        public void reconstructSessionKey(byte[] key) throws EncryptionError {
+            sessionKey = new SymmetricKey(key);
+            state = EXCHANGING;
+        }
+
+        public void addBlockToWaitingQueue(Block block) throws InterruptedException {
+            if(!waitingBlocksQueue.contains(block))
+                waitingBlocksQueue.put(block);
+        }
+
+        public void addBlockToSendingQueue(Block block) throws InterruptedException {
+            if(!sendingBlocksQueue.contains(block))
+                sendingBlocksQueue.put(block);
+
+            for (Packet p : block.packets.values()) {
+                addPacketToSendingQueue(p);
+            }
+        }
+
+        public void addPacketToSendingQueue(Packet packet) throws InterruptedException {
+            if(!sendingPacketsQueue.contains(packet))
+                sendingPacketsQueue.put(packet);
+        }
+
+        public void removeBlockFromWaitingQueue(Block block) throws InterruptedException {
+            if(waitingBlocksQueue.contains(block))
+                waitingBlocksQueue.remove(block);
+        }
+
+        public void removeBlockFromWaitingQueue(int blockId) throws InterruptedException {
+            for (Block block : waitingBlocksQueue) {
+                if (block.blockId == blockId) {
+                    removeBlockFromWaitingQueue(block);
+                }
+            }
+        }
+
+        public void removeBlockFromSendingQueue(Block block) throws InterruptedException {
+            if(sendingBlocksQueue.contains(block))
+                sendingBlocksQueue.remove(block);
+
+            for (Packet p : block.packets.values()) {
+                removePacketFromSendingQueue(p);
+            }
+        }
+
+        public void removePacketFromSendingQueue(Packet packet) throws InterruptedException {
+            if(sendingPacketsQueue.contains(packet))
+                sendingPacketsQueue.remove(packet);
+
+            for (Block sendingBlock : sendingBlocksQueue) {
+                if (sendingBlock.blockId == packet.blockId) {
+                    sendingBlock.markPacketAsDelivered(packet);
+                    report(getLabel(), () -> concatReportMessage("markPacketAsDelivered, packets num: ",
+                            sendingBlock.packets.size(), " diagrams num: ", sendingBlock.datagrams.size()));
+                }
+            }
+            report(getLabel(), () -> concatReportMessage("remove packet from queue, blockId: ",
+                    packet.blockId, " packetId: ", packet.packetId, " type: ", packet.type, " sendWaitIndex: ",
+                    packet.sendWaitIndex, " delivered: ", packet.delivered));
+
+        }
+
+        public void incremetWaitIndexForPacketsFromSendingQueue() throws InterruptedException {
+//            if(sendingPacketsQueue.peek() != null)
+//                sendingPacketsQueue.peek().sendWaitIndex++;
+//            Object[] sp = sendingPacketsQueue.toArray();
+//            if(sp.length > 0) ((Packet) sp[0]).sendWaitIndex ++;
+//            if(sp.length > 1) ((Packet) sp[1]).sendWaitIndex ++;
+//            if(sp.length > 2) ((Packet) sp[2]).sendWaitIndex ++;
+
+//            if(sp.length > 0) {
+//                report(getLabel(), " incremet peek: " + sendingPacketsQueue.peek().blockId + " " + sendingPacketsQueue.peek().packetId);
+//                report(getLabel(), " incremet array: " + ((Packet) sp[0]).blockId + " " + ((Packet) sp[0]).packetId);
+//            }
+
+            for (Packet p : sendingPacketsQueue) {
+                p.sendWaitIndex++;
+                report(getLabel(), () -> concatReportMessage("packet, blockId: ", p.blockId,
+                        " packetId: ", p.packetId, " type: ", p.type, " sendWaitIndex: ", p.sendWaitIndex));
+            }
+        }
+
+        public void removePacketFromSendingQueue(int blockId, int packetId) throws InterruptedException {
+            for (Block sendingBlock : sendingBlocksQueue) {
+                if (sendingBlock.blockId == blockId) {
+                    for (Packet p : sendingBlock.packets.values()) {
+                        if(p.packetId == packetId) {
+                            removePacketFromSendingQueue(p);
+                        }
+                    }
+                }
+            }
+        }
+
+        public void makeBlockDelivered(int blockId) throws InterruptedException {
+            for (Block sendingBlock : sendingBlocksQueue) {
+                if (sendingBlock.blockId == blockId) {
+                    removeBlockFromSendingQueue(sendingBlock);
+                    sendingBlock.delivered = true;
+                    report(getLabel(), "block " + sendingBlock.blockId + " delivered");
+                }
+            }
+        }
+
+        public void moveBlocksFromSendingToWaiting() throws InterruptedException {
+            for (Block sendingBlock : sendingBlocksQueue) {
+                sendingBlock.validToSend = false;
+                removeBlockFromSendingQueue(sendingBlock);
+                addBlockToWaitingQueue(sendingBlock);
+            }
+        }
+
+        public void removeDataBlocksFromWaiting() throws InterruptedException {
+            for (Block block : waitingBlocksQueue) {
+                if(block.type == PacketTypes.DATA) {
+                    removeBlockFromWaitingQueue(block);
+                }
+            }
+        }
+
+        public void makeBlockDeliveredByType(int type) throws InterruptedException {
+            for (Block sendingBlock : sendingBlocksQueue) {
+                if (sendingBlock.type == type) {
+                    removeBlockFromSendingQueue(sendingBlock);
+                    sendingBlock.delivered = true;
+                }
+            }
+        }
+
+        public Block getRawDataBlockFromWaitingQueue(int blockId) throws InterruptedException {
+            for (Block block : waitingBlocksQueue) {
+                if (block.blockId == blockId && block.type == PacketTypes.RAW_DATA) {
+                    return block;
+                }
+            }
+
+            return null;
+        }
+
+    }
 }

@@ -15,6 +15,7 @@ import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Do;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -90,6 +91,7 @@ public class DatagramAdapterTest {
         d3.shutdown();
     }
 
+    @Ignore //support of big data was removed from UDPAdapter
     @Test
     public void sendBigData() throws Exception {
 
@@ -390,7 +392,7 @@ public class DatagramAdapterTest {
         }
 
         try {
-            ae.await(60000);
+            ae.await(20000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
@@ -630,13 +632,15 @@ public class DatagramAdapterTest {
 
         SymmetricKey symmetricKey1 = new SymmetricKey();
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1, nc); // create implemented class with node1
+        //d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         List symmetricKeyErrors = new ArrayList();
         d1.addErrorsCallback(m -> {
             System.err.println(m);
             if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
                 symmetricKeyErrors.add(m);
-            return m;});
+            return m;
+        });
 
         byte[] payload = "test data set 1".getBytes();
 
@@ -658,7 +662,7 @@ public class DatagramAdapterTest {
 
         for (int i = 0; i < numNodes; i++) {
 
-            int keyIndex = new Random().nextInt(2);
+            int keyIndex = new Random().nextInt(20);
             NodeInfo n = new NodeInfo(TestKeys.publicKey(keyIndex),2 + i, "test_node_r_" + i, "localhost", 16203 + i, 16204+i, 16302+i);
 
             nc.addNode(n);
@@ -701,7 +705,7 @@ public class DatagramAdapterTest {
         }
 
         try {
-            ae.await(30000);
+            ae.await(10000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
@@ -1113,6 +1117,7 @@ public class DatagramAdapterTest {
     }
 
 
+    @Ignore //support of big data was removed from UDPAdapter
     @Test
     public void shufflePackets() throws Exception {
         // create pair of connected adapters
@@ -1376,8 +1381,8 @@ public class DatagramAdapterTest {
 
         NetConfig nc = new NetConfig(nodes);
 
-        DatagramAdapter d1 = new UDPAdapter2(TestKeys.privateKey(0), new SymmetricKey(), node1, nc);
-        DatagramAdapter d2 = new UDPAdapter2(TestKeys.privateKey(1), new SymmetricKey(), node2, nc);
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc);
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc);
 
 //        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 //        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
@@ -1449,14 +1454,14 @@ public class DatagramAdapterTest {
 
         node1senderStopFlag.set(true);
         node2senderStopFlag.set(true);
-        ((UDPAdapter2)d1).printInternalState();
-        ((UDPAdapter2)d2).printInternalState();
+        ((UDPAdapter)d1).printInternalState();
+        ((UDPAdapter)d2).printInternalState();
         Thread.sleep(3000);
         d1.shutdown();
         d2.shutdown();
 
-        ((UDPAdapter2)d1).printInternalState();
-        ((UDPAdapter2)d2).printInternalState();
+        ((UDPAdapter)d1).printInternalState();
+        ((UDPAdapter)d2).printInternalState();
 
         System.out.println("node1senderCounter: " + node1senderCounter.get());
         System.out.println("node2senderCounter: " + node2senderCounter.get());
