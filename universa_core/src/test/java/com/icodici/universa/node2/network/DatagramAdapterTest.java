@@ -647,13 +647,13 @@ public class DatagramAdapterTest {
         int attempts = 5;
         int numSends = 5;
 
-        ArrayList<byte[]> receviedFor = new ArrayList<>();
+        AtomicLong receviedFor = new AtomicLong(0);
 
         AsyncEvent<Void> ae = new AsyncEvent<>();
 
         d1.receive(data-> {
-            receviedFor.add(data);
-            if((receviedFor.size()) == attempts * numSends * numNodes)
+            receviedFor.incrementAndGet();
+            if((receviedFor.get()) >= attempts * numSends * numNodes)
                 ae.fire();
         });
 
@@ -680,8 +680,8 @@ public class DatagramAdapterTest {
                 return m;});
 
             d.receive(data-> {
-                receviedFor.add(data);
-                if((receviedFor.size()) == attempts * numSends * numNodes)
+                receviedFor.incrementAndGet();
+                if((receviedFor.get()) >= attempts * numSends * numNodes)
                     ae.fire();
             });
         }
@@ -712,7 +712,7 @@ public class DatagramAdapterTest {
 
         assertEquals(0, symmetricKeyErrors.size());
 
-        System.out.println("all got: " + (receviedFor.size()));
+        System.out.println("all got: " + (receviedFor.get()));
 
         d1.shutdown();
 
@@ -720,7 +720,7 @@ public class DatagramAdapterTest {
             adapters.get(i).shutdown();
         }
 
-        assertEquals(attempts * numSends * numNodes, receviedFor.size());
+        assertEquals(attempts * numSends * numNodes, receviedFor.get());
     }
 
 
@@ -748,13 +748,13 @@ public class DatagramAdapterTest {
         int attempts = 5;
         int numSends = 5;
 
-        ArrayList<byte[]> receviedFor = new ArrayList<>();
+        AtomicLong receviedFor = new AtomicLong(0);
 
         AsyncEvent<Void> ae = new AsyncEvent<>();
 
         d1.receive(data-> {
-            receviedFor.add(data);
-            if((receviedFor.size()) == attempts * numSends * numNodes)
+            receviedFor.incrementAndGet();
+            if((receviedFor.get()) >= attempts * numSends * numNodes)
                 ae.fire();
         });
 
@@ -781,8 +781,8 @@ public class DatagramAdapterTest {
                 return m;});
 
             d.receive(data-> {
-                receviedFor.add(data);
-                if((receviedFor.size()) == attempts * numSends * numNodes)
+                receviedFor.incrementAndGet();
+                if((receviedFor.get()) >= attempts * numSends * numNodes)
                     ae.fire();
             });
         }
@@ -813,7 +813,7 @@ public class DatagramAdapterTest {
 
         assertEquals(0, symmetricKeyErrors.size());
 
-        System.out.println("all got: " + (receviedFor.size()));
+        System.out.println("all got: " + (receviedFor.get()));
 
         d1.shutdown();
 
@@ -821,7 +821,7 @@ public class DatagramAdapterTest {
             adapters.get(i).shutdown();
         }
 
-        assertEquals(attempts * numSends * numNodes, receviedFor.size());
+        assertEquals(attempts * numSends * numNodes, receviedFor.get());
     }
 
 
@@ -860,13 +860,13 @@ public class DatagramAdapterTest {
         for (int i = 0; i < attempts; i++) {
             System.out.println("Send part: " + i);
 
-            ArrayList<byte[]> receviedFor2 = new ArrayList<>();
+            AtomicLong receviedFor2 = new AtomicLong(0);
             BlockingQueue<String> waitStatusQueue = new ArrayBlockingQueue<String>(1, true);
 
             d2.receive(d-> {
-                receviedFor2.add(d);
+                receviedFor2.incrementAndGet();
                 try {
-                    if(receviedFor2.size() >= numSends) {
+                    if(receviedFor2.get() >= numSends) {
                         waitStatusQueue.put("DONE");
                     }
                 } catch (InterruptedException e) {
@@ -891,7 +891,7 @@ public class DatagramAdapterTest {
                 // wait until it is delivered
             }
 
-            assertEquals(numSends, receviedFor2.size());
+            assertEquals(numSends, receviedFor2.get());
 //            byte[] data1 = receviedFor2.get(0);
 //            byte[] data2 = receviedFor2.get(1);
 //            byte[] data3 = receviedFor2.get(2);
