@@ -103,7 +103,11 @@ public class UDPAdapter extends DatagramAdapter {
         DatagramPacket dp = new DatagramPacket(payload, payload.length, destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort());
         try {
             report(logLabel, ()->"sendPacket datagram size: " + payload.length, VerboseLevel.DETAILED);
-            socket.send(dp);
+            if ((testMode == TestModes.LOST_PACKETS || testMode == TestModes.LOST_AND_SHUFFLE_PACKETS)
+                && (new Random().nextInt(100) < lostPacketsPercent))
+                report(logLabel, ()->"test mode: skip socket.send", VerboseLevel.DETAILED);
+            else
+                socket.send(dp);
         } catch (Exception e) {
             callErrorCallbacks("sendPacket exception: " + e);
         }
