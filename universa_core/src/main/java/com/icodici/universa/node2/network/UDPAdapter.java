@@ -119,7 +119,7 @@ public class UDPAdapter extends DatagramAdapter {
             byte[] payloadWithRandomChunk = new byte[payload.length + 2];
             System.arraycopy(payload, 0, payloadWithRandomChunk, 0, payload.length);
             System.arraycopy(Bytes.random(2).toArray(), 0, payloadWithRandomChunk, payload.length, 2);
-            byte[] encryptedPayload = session.sessionKey.etaEncrypt(payloadWithRandomChunk);
+            byte[] encryptedPayload = new SymmetricKey(session.sessionKey.getKey()).etaEncrypt(payloadWithRandomChunk);
             byte[] crc32 = new Crc32().digest(encryptedPayload);
             byte[] dataToSend = new byte[encryptedPayload.length + crc32.length];
             System.arraycopy(encryptedPayload, 0, dataToSend, 0, encryptedPayload.length);
@@ -332,7 +332,7 @@ public class UDPAdapter extends DatagramAdapter {
     private void sendWelcome(SessionReader sessionReader) throws EncryptionError {
         report(logLabel, ()->"send welcome to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
         Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.WELCOME, sessionReader.remoteNodeInfo.getPublicKey().encrypt(sessionReader.localNonce));
+                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.WELCOME, new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(sessionReader.localNonce));
         sendPacket(sessionReader.remoteNodeInfo, packet);
     }
 
@@ -366,7 +366,7 @@ public class UDPAdapter extends DatagramAdapter {
 
         List data = Arrays.asList(sessionReader.sessionKey.getKey(), sessionReader.remoteNonce);
         byte[] packed = Boss.pack(data);
-        byte[] encrypted = sessionReader.remoteNodeInfo.getPublicKey().encrypt(packed);
+        byte[] encrypted = new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
         byte[] sign = ownPrivateKey.sign(encrypted, HashType.SHA512);
 
         Packet packet1 = new Packet(0, myNodeInfo.getNumber(),
@@ -387,7 +387,7 @@ public class UDPAdapter extends DatagramAdapter {
     private void sendAck(SessionReader sessionReader, Integer packetId) throws EncryptionError {
         report(logLabel, ()->"send ack to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.DETAILED);
         Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.ACK, sessionReader.sessionKey.etaEncrypt(Boss.pack(packetId)));
+                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.ACK, new SymmetricKey(sessionReader.sessionKey.getKey()).etaEncrypt(Boss.pack(packetId)));
         sendPacket(sessionReader.remoteNodeInfo, packet);
     }
 
@@ -403,7 +403,7 @@ public class UDPAdapter extends DatagramAdapter {
         report(logLabel, ()->"send nack to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.DETAILED);
         try {
             Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                    sessionReader.remoteNodeInfo.getNumber(), PacketTypes.NACK, sessionReader.remoteNodeInfo.getPublicKey().encrypt(Boss.pack(packetId)));
+                    sessionReader.remoteNodeInfo.getNumber(), PacketTypes.NACK, new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(Boss.pack(packetId)));
             sendPacket(sessionReader.remoteNodeInfo, packet);
         } catch (EncryptionError e) {
             callErrorCallbacks("(sendNack) can't send NACK, EncryptionError: " + e);
@@ -417,7 +417,7 @@ public class UDPAdapter extends DatagramAdapter {
             if (destination != null) {
                 report(logLabel, ()->"send nack to "+nodeNumber, VerboseLevel.DETAILED);
                 Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                        nodeNumber, PacketTypes.NACK, destination.getPublicKey().encrypt(Boss.pack(packetId)));
+                        nodeNumber, PacketTypes.NACK, new PublicKey(destination.getPublicKey().pack()).encrypt(Boss.pack(packetId)));
                 sendPacket(destination, packet);
             }
         } catch (EncryptionError e) {
@@ -543,12 +543,12 @@ public class UDPAdapter extends DatagramAdapter {
                 Session session = getOrCreateSession(packet.senderNodeId);
                 if (session != null) {
                     if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME)) {
-                        session.remoteNonce = ownPrivateKey.decrypt(packet.payload);
+                        session.remoteNonce = new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload);
 
                         // send key_req
                         List data = Arrays.asList(session.localNonce, session.remoteNonce);
                         byte[] packed = Boss.pack(data);
-                        byte[] encrypted = session.remoteNodeInfo.getPublicKey().encrypt(packed);
+                        byte[] encrypted = new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
                         byte[] sign = ownPrivateKey.sign(encrypted, HashType.SHA512);
 
                         session.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_SESSION);
@@ -589,13 +589,13 @@ public class UDPAdapter extends DatagramAdapter {
                 if ((sessionReader.handshake_keyReqPart1 != null) && (sessionReader.handshake_keyReqPart2 != null)) {
                     report(logLabel, ()->"received both parts of key_req from " + sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
                     byte[] encrypted = sessionReader.handshake_keyReqPart1;
-                    byte[] packed = ownPrivateKey.decrypt(encrypted);
+                    byte[] packed = new PrivateKey(ownPrivateKey.pack()).decrypt(encrypted);
                     byte[] sign = sessionReader.handshake_keyReqPart2;
                     List nonceList = Boss.load(packed);
                     byte[] packet_senderNonce = ((Bytes) nonceList.get(0)).toArray();
                     byte[] packet_remoteNonce = ((Bytes) nonceList.get(1)).toArray();
                     if (Arrays.equals(packet_remoteNonce, sessionReader.localNonce)) {
-                        if (sessionReader.remoteNodeInfo.getPublicKey().verify(encrypted, sign, HashType.SHA512)) {
+                        if (new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).verify(encrypted, sign, HashType.SHA512)) {
                             report(logLabel, ()->"key_req successfully verified", VerboseLevel.BASE);
                             sessionReader.remoteNonce = packet_senderNonce;
                             sessionReader.sessionKey = new SymmetricKey();
@@ -640,8 +640,8 @@ public class UDPAdapter extends DatagramAdapter {
                     report(logLabel, ()->"received both parts of session from " + session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
                     byte[] encrypted = session.handshake_sessionPart1;
                     byte[] sign = session.handshake_sessionPart2;
-                    if (session.remoteNodeInfo.getPublicKey().verify(encrypted, sign, HashType.SHA512)) {
-                        byte[] decryptedData = ownPrivateKey.decrypt(encrypted);
+                    if (new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).verify(encrypted, sign, HashType.SHA512)) {
+                        byte[] decryptedData = new PrivateKey(ownPrivateKey.pack()).decrypt(encrypted);
                         List data = Boss.load(decryptedData);
                         byte[] sessionKey = ((Bytes) data.get(0)).toArray();
                         byte[] nonce = ((Bytes) data.get(1)).toArray();
@@ -671,7 +671,7 @@ public class UDPAdapter extends DatagramAdapter {
                     if (sessionReader != null) {
                         if (sessionReader.sessionKey != null) {
                             try {
-                                byte[] decrypted = sessionReader.sessionKey.etaDecrypt(encryptedPayload);
+                                byte[] decrypted = new SymmetricKey(sessionReader.sessionKey.getKey()).etaDecrypt(encryptedPayload);
                                 if (decrypted.length > 2) {
                                     byte[] payload = new byte[decrypted.length - 2];
                                     System.arraycopy(decrypted, 0, payload, 0, payload.length);
@@ -713,7 +713,7 @@ public class UDPAdapter extends DatagramAdapter {
             Session session = getOrCreateSession(packet.senderNodeId);
             if (session != null) {
                 if (session.state.get() == Session.STATE_EXCHANGING) {
-                    Integer ackPacketId = Boss.load(session.sessionKey.etaDecrypt(packet.payload));
+                    Integer ackPacketId = Boss.load(new SymmetricKey(session.sessionKey.getKey()).etaDecrypt(packet.payload));
                     session.removePacketFromRetransmitMap(ackPacketId);
                 }
             }
@@ -725,7 +725,7 @@ public class UDPAdapter extends DatagramAdapter {
             Session session = getOrCreateSession(packet.senderNodeId);
             if (session != null) {
                 if (session.state.get() == Session.STATE_EXCHANGING) {
-                    Integer nackPacketId = Boss.load(ownPrivateKey.decrypt(packet.payload));
+                    Integer nackPacketId = Boss.load(new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload));
                     if (session.retransmitMap.containsKey(nackPacketId)) {
                         session.startHandshake();
                         restartHandshakeIfNeeded(session, Instant.now());

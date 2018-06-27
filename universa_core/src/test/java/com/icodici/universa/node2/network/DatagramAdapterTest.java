@@ -585,7 +585,7 @@ public class DatagramAdapterTest {
 
                 sender.send(receiverNode, payload);
             }
-            Thread.sleep(new Random().nextInt(200));
+            Thread.sleep(new Random().nextInt(20));
 //            if(new Random().nextBoolean()) ((UDPAdapter)d1).brakeSessions();
 //            if(new Random().nextBoolean()) ((UDPAdapter)d2).brakeSessions();
 //            if(new Random().nextBoolean()) ((UDPAdapter)d3).brakeSessions();
@@ -1405,7 +1405,7 @@ public class DatagramAdapterTest {
         AtomicLong node1senderCounter = new AtomicLong(0);
         AtomicLong node2senderCounter = new AtomicLong(0);
 
-        final int sendSpeed = 20;
+        final int sendSpeed = 50;
 
         Thread node1sender = new Thread(() -> {
             while(true) {
@@ -1450,13 +1450,13 @@ public class DatagramAdapterTest {
         node1sender.start();
         node2sender.start();
 
-        Thread.sleep(10000);
+        Thread.sleep(1000);
 
         node1senderStopFlag.set(true);
         node2senderStopFlag.set(true);
         ((UDPAdapter)d1).printInternalState();
         ((UDPAdapter)d2).printInternalState();
-        Thread.sleep(3000);
+        Thread.sleep(UDPAdapter.RETRANSMIT_MAX_ATTEMPTS*UDPAdapter.RETRANSMIT_TIME);
         d1.shutdown();
         d2.shutdown();
 
