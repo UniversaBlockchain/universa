@@ -367,7 +367,7 @@ public class UDPAdapter extends DatagramAdapter {
         List data = Arrays.asList(sessionReader.sessionKey.getKey(), sessionReader.remoteNonce);
         byte[] packed = Boss.pack(data);
         byte[] encrypted = new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
-        byte[] sign = ownPrivateKey.sign(encrypted, HashType.SHA512);
+        byte[] sign = new PrivateKey(ownPrivateKey.pack()).sign(encrypted, HashType.SHA512);
 
         Packet packet1 = new Packet(0, myNodeInfo.getNumber(),
                 sessionReader.remoteNodeInfo.getNumber(), PacketTypes.SESSION_PART1, encrypted);
@@ -549,7 +549,7 @@ public class UDPAdapter extends DatagramAdapter {
                         List data = Arrays.asList(session.localNonce, session.remoteNonce);
                         byte[] packed = Boss.pack(data);
                         byte[] encrypted = new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
-                        byte[] sign = ownPrivateKey.sign(encrypted, HashType.SHA512);
+                        byte[] sign = new PrivateKey(ownPrivateKey.pack()).sign(encrypted, HashType.SHA512);
 
                         session.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_SESSION);
                         session.handshake_sessionPart1 = null;
