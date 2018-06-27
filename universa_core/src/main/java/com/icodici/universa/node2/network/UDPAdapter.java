@@ -155,6 +155,7 @@ public class UDPAdapter extends DatagramAdapter {
     public void shutdown() {
         report(logLabel, ()->"shutting down...", VerboseLevel.BASE);
         socketListenThread.isActive.set(false);
+        socket.close();
         timerHandshake.cancel();
         timerHandshake.purge();
         timerRetransmit.cancel();
@@ -456,15 +457,16 @@ public class UDPAdapter extends DatagramAdapter {
 
             isActive.set(true);
             while(isActive.get()) {
-                boolean isDatagramReceived = true;
+                boolean isDatagramReceived = false;
                 try {
                     threadSocket.receive(receivedDatagram);
+                    isDatagramReceived = true;
+                } catch (SocketException e) {
+                    report(logLabel, ()->"received SocketException: " + e, VerboseLevel.BASE);
                 } catch (SocketTimeoutException e) {
                     report(logLabel, ()->"received nothing", VerboseLevel.BASE);
-                    isDatagramReceived = false;
                 } catch (IOException e) {
                     e.printStackTrace();
-                    isDatagramReceived = false;
                 }
 
                 if (isDatagramReceived) {
