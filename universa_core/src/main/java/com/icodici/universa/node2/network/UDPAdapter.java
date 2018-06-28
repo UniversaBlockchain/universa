@@ -299,6 +299,8 @@ public class UDPAdapter extends DatagramAdapter {
             System.out.println("  session with node="+k+":");
             System.out.println("    outputQueue.size(): " + s.outputQueue.size());
             System.out.println("    retransmitMap.size(): " + s.retransmitMap.size());
+            System.out.println("    protectionFromDuple0.size(): " + s.protectionFromDuple0.size());
+            System.out.println("    protectionFromDuple1.size(): " + s.protectionFromDuple1.size());
         });
         sessionReaders.forEach((k, sr)-> {
             System.out.println("  sessionReader with node="+k+":");
@@ -407,6 +409,14 @@ public class UDPAdapter extends DatagramAdapter {
         Packet packet = new Packet(0, myNodeInfo.getNumber(),
                 sessionReader.remoteNodeInfo.getNumber(), PacketTypes.ACK, new SymmetricKey(sessionReader.sessionKey.getKey()).etaEncrypt(Boss.pack(packetId)));
         sendPacket(sessionReader.remoteNodeInfo, packet);
+    }
+
+
+    private void sendSessionAck(Session session) throws EncryptionError {
+        report(logLabel, ()->"send session_ack to "+session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
+        Packet packet = new Packet(0, myNodeInfo.getNumber(),
+                session.remoteNodeInfo.getNumber(), PacketTypes.SESSION_ACK, new SymmetricKey(session.sessionKey.getKey()).etaEncrypt(Do.randomBytes(32)));
+        sendPacket(session.remoteNodeInfo, packet);
     }
 
 
@@ -520,6 +530,9 @@ public class UDPAdapter extends DatagramAdapter {
                                 break;
                             case PacketTypes.NACK:
                                 onReceiveNack(packet);
+                                break;
+                            case PacketTypes.SESSION_ACK:
+                                onReceiveSessionAck(packet);
                                 break;
                             default:
                                 report(logLabel, () -> "received unknown packet type: " + packet.type, VerboseLevel.BASE);
@@ -686,6 +699,7 @@ public class UDPAdapter extends DatagramAdapter {
                         byte[] nonce = ((Bytes) data.get(1)).toArray();
                         if (Arrays.equals(nonce, session.localNonce)) {
                             report(logLabel, () -> "session successfully verified", VerboseLevel.BASE);
+                            sendSessionAck(session);
                             session.reconstructSessionKey(sessionKey);
                             session.state.set(Session.STATE_EXCHANGING);
                             session.sendAllFromOutputQueue();
@@ -768,6 +782,15 @@ public class UDPAdapter extends DatagramAdapter {
                         restartHandshakeIfNeeded(session, Instant.now());
                     }
                 }
+            }
+        }
+
+
+        private void onReceiveSessionAck(Packet packet) {
+            report(logLabel, ()->"received session_ack from " + packet.senderNodeId, VerboseLevel.BASE);
+            SessionReader sessionReader = getSessionReader(packet.senderNodeId);
+            if (sessionReader != null) {
+                sessionReader.removeHandshakePacketsFromRetransmitMap();
             }
         }
     }
@@ -969,6 +992,7 @@ public class UDPAdapter extends DatagramAdapter {
         static public final int KEY_REQ_PART2  = 6;
         static public final int SESSION_PART1  = 7;
         static public final int SESSION_PART2  = 8;
+        static public final int SESSION_ACK    = 9;
     }
 
 

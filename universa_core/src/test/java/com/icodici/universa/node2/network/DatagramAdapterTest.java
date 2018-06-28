@@ -773,6 +773,8 @@ public class DatagramAdapterTest {
 
             SymmetricKey sk = new SymmetricKey();
             DatagramAdapter d = new UDPAdapter(TestKeys.privateKey(keyIndex), sk, n, nc); // create implemented class with node1
+//            if (i==500)
+//                d.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
             adapters.add(d);
 
