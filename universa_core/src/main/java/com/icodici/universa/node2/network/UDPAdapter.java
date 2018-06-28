@@ -306,7 +306,6 @@ public class UDPAdapter extends DatagramAdapter {
 
     private void restartHandshakeIfNeeded(Session s, Instant now) {
         if (s.state.get() == Session.STATE_HANDSHAKE) {
-            System.out.print(s.handshakeExpiresAt + " - " + now);
             if (s.handshakeExpiresAt.isBefore(now)) {
                 report(logLabel, ()->"handshaking with nodeId="+s.remoteNodeInfo.getNumber()+" is timed out, restart", VerboseLevel.BASE);
                 s.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME);
