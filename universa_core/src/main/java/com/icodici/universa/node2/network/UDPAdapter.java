@@ -32,7 +32,7 @@ public class UDPAdapter extends DatagramAdapter {
     private Timer timerRetransmit = new Timer();
     private Timer timerProtectionFromDuple = new Timer();
 
-    private final static int HANDSHAKE_TIMEOUT_MILLIS = 1000;
+    private final static int HANDSHAKE_TIMEOUT_MILLIS = 2000;
 
 
     /**
@@ -61,7 +61,7 @@ public class UDPAdapter extends DatagramAdapter {
         timerHandshake.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                restartHandshakeIfNeeded();
+                onHandshakeTimer();
             }
         }, RETRANSMIT_TIME, RETRANSMIT_TIME);
 
@@ -105,7 +105,7 @@ public class UDPAdapter extends DatagramAdapter {
             report(logLabel, ()->"sendPacket datagram size: " + payload.length, VerboseLevel.DETAILED);
             if ((testMode == TestModes.LOST_PACKETS || testMode == TestModes.LOST_AND_SHUFFLE_PACKETS)
                 && (new Random().nextInt(100) < lostPacketsPercent))
-                report(logLabel, ()->"test mode: skip socket.send", VerboseLevel.DETAILED);
+                report(logLabel, ()->"test mode: skip socket.send", VerboseLevel.BASE);
             else
                 socket.send(dp);
         } catch (Exception e) {
@@ -251,9 +251,29 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    private void restartHandshakeIfNeeded() {
+    private void onHandshakeTimer() {
         Instant now = Instant.now();
-        sessionsByRemoteId.forEach((k, s) -> restartHandshakeIfNeeded(s, now));
+        sessionsByRemoteId.forEach((k, s) -> {
+            onHandshakeTimer(s, now);
+        });
+    }
+
+
+    private void onHandshakeTimer(Session s, Instant now) {
+        try {
+            restartHandshakeIfNeeded(s, now);
+            switch (s.handshakeStep.get()) {
+                case Session.HANDSHAKE_STEP_INIT:
+                case Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME:
+                    sendHello(s);
+                    break;
+                case Session.HANDSHAKE_STEP_WAIT_FOR_SESSION:
+                    sendKeyReq(s, s.handshake_keyReqEncrypted, s.handshake_keyReqSign);
+                    break;
+            }
+        } catch (EncryptionError e) {
+            callErrorCallbacks("(onHandshakeTimer) EncryptionError: " + e);
+        }
     }
 
 
@@ -286,11 +306,13 @@ public class UDPAdapter extends DatagramAdapter {
 
     private void restartHandshakeIfNeeded(Session s, Instant now) {
         if (s.state.get() == Session.STATE_HANDSHAKE) {
+            System.out.print(s.handshakeExpiresAt + " - " + now);
             if (s.handshakeExpiresAt.isBefore(now)) {
                 report(logLabel, ()->"handshaking with nodeId="+s.remoteNodeInfo.getNumber()+" is timed out, restart", VerboseLevel.BASE);
                 s.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME);
+                s.handshake_helloNonce = Do.randomBytes(64);
+                s.localNonce = Do.randomBytes(64);
                 s.handshakeExpiresAt = Instant.now().plusMillis(HANDSHAKE_TIMEOUT_MILLIS);
-                sendHello(s);
             }
         }
     }
@@ -316,10 +338,10 @@ public class UDPAdapter extends DatagramAdapter {
      * This is first step of creation and installation of the session.
      * @param session is {@link Session} in which sending is.
      */
-    private void sendHello(Session session) {
+    private void sendHello(Session session) throws EncryptionError {
         report(logLabel, ()->"send hello to "+session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
         Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                session.remoteNodeInfo.getNumber(), PacketTypes.HELLO, new byte[0]);
+                session.remoteNodeInfo.getNumber(), PacketTypes.HELLO, new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(session.handshake_helloNonce));
         sendPacket(session.remoteNodeInfo, packet);
     }
 
@@ -526,9 +548,14 @@ public class UDPAdapter extends DatagramAdapter {
             if (nodeInfo != null) {
                 SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
                 if (sessionReader != null) {
-                    sessionReader.generateNewLocalNonce();
-                    sessionReader.handshake_keyReqPart1 = null;
-                    sessionReader.handshake_keyReqPart2 = null;
+                    byte[] receivedHelloNonce = new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload);
+                    if (!Arrays.equals(sessionReader.handshake_receivedHelloNonce, receivedHelloNonce)) {
+                        sessionReader.handshake_receivedHelloNonce = receivedHelloNonce;
+                        sessionReader.generateNewLocalNonce();
+                        sessionReader.sessionKey = new SymmetricKey();
+                        sessionReader.handshake_keyReqPart1 = null;
+                        sessionReader.handshake_keyReqPart2 = null;
+                    }
                     sendWelcome(sessionReader);
                 }
             } else {
@@ -555,7 +582,9 @@ public class UDPAdapter extends DatagramAdapter {
                         session.handshake_sessionPart1 = null;
                         session.handshake_sessionPart2 = null;
 
-                        sendKeyReq(session, encrypted, sign);
+                        session.handshake_keyReqEncrypted = encrypted;
+                        session.handshake_keyReqSign = sign;
+                        onHandshakeTimer(session, Instant.now());
                     }
                 }
             } catch (EncryptionError e) {
@@ -598,7 +627,6 @@ public class UDPAdapter extends DatagramAdapter {
                         if (new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).verify(encrypted, sign, HashType.SHA512)) {
                             report(logLabel, ()->"key_req successfully verified", VerboseLevel.BASE);
                             sessionReader.remoteNonce = packet_senderNonce;
-                            sessionReader.sessionKey = new SymmetricKey();
                             acceptSessionReaderCandidate(sessionReader.remoteNodeInfo.getNumber(), sessionReader);
                             sendSessionKey(sessionReader);
                         }
@@ -728,7 +756,7 @@ public class UDPAdapter extends DatagramAdapter {
                     Integer nackPacketId = Boss.load(new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload));
                     if (session.retransmitMap.containsKey(nackPacketId)) {
                         session.startHandshake();
-                        restartHandshakeIfNeeded(session, Instant.now());
+                        onHandshakeTimer(session, Instant.now());
                     }
                 }
             }
@@ -755,6 +783,9 @@ public class UDPAdapter extends DatagramAdapter {
         private Instant handshakeExpiresAt;
         private byte[] handshake_sessionPart1 = null;
         private byte[] handshake_sessionPart2 = null;
+        private byte[] handshake_helloNonce = Do.randomBytes(64);
+        private byte[] handshake_keyReqEncrypted = new byte[0];
+        private byte[] handshake_keyReqSign = new byte[0];
 
         static public final int STATE_HANDSHAKE             = 1;
         static public final int STATE_EXCHANGING            = 2;
@@ -767,7 +798,7 @@ public class UDPAdapter extends DatagramAdapter {
             localNonce = Do.randomBytes(64);
             state = new AtomicInteger(STATE_HANDSHAKE);
             handshakeStep = new AtomicInteger(HANDSHAKE_STEP_INIT);
-            handshakeExpiresAt = Instant.now().plusMillis(-HANDSHAKE_TIMEOUT_MILLIS);
+            handshakeExpiresAt = Instant.now().minusMillis(HANDSHAKE_TIMEOUT_MILLIS);
         }
 
         /**
@@ -811,7 +842,7 @@ public class UDPAdapter extends DatagramAdapter {
                 v.packet = null;
             });
             handshakeStep.set(HANDSHAKE_STEP_INIT);
-            handshakeExpiresAt = Instant.now().plusMillis(-HANDSHAKE_TIMEOUT_MILLIS);
+            handshakeExpiresAt = Instant.now().minusMillis(HANDSHAKE_TIMEOUT_MILLIS);
             state.set(STATE_HANDSHAKE);
         }
     }
@@ -826,6 +857,7 @@ public class UDPAdapter extends DatagramAdapter {
         private byte[] handshake_keyReqPart2 = null;
         private Set<Integer> protectionFromDuple0 = new HashSet<>();
         private Set<Integer> protectionFromDuple1 = new HashSet<>();
+        private byte[] handshake_receivedHelloNonce = Do.randomBytes(64);
 
         private void generateNewLocalNonce() {
             localNonce = Do.randomBytes(64);
