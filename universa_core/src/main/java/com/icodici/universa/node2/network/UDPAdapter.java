@@ -91,7 +91,7 @@ public class UDPAdapter extends DatagramAdapter {
         Session session = getOrCreateSession(destination);
         if (session.state.get() == Session.STATE_HANDSHAKE) {
             session.addPayloadToOutputQueue(destination, payload);
-            restartHandshakeIfNeeded(session, Instant.now());
+            onHandshakeTimer(session, Instant.now());
         } else {
             sendPayload(session, payload);
         }
@@ -677,6 +677,7 @@ public class UDPAdapter extends DatagramAdapter {
                             session.reconstructSessionKey(sessionKey);
                             session.state.set(Session.STATE_EXCHANGING);
                             session.sendAllFromOutputQueue();
+                            pulseRetransmit();
                         }
                     }
                 }
