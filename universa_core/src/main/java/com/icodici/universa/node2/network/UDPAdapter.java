@@ -79,7 +79,7 @@ public class UDPAdapter extends DatagramAdapter {
             public void run() {
                 clearProtectionFromDupleBuffers();
             }
-        }, RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS, RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS);
+        }, 5*RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS, 5*RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS);
     }
 
 
