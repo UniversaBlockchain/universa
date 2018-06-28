@@ -260,19 +260,8 @@ public class UDPAdapter extends DatagramAdapter {
 
     private void pulseRetransmit() {
         sessionsByRemoteId.forEach((k, s)->s.pulseRetransmit());
-
-        BiConsumer<Integer, SessionReader> sessionReaderBiConsumer = (k, sr)->{
-            sr.retransmitMap.forEach((itkey, item)->{
-                if (item.nextRetransmitTime.isBefore(Instant.now())) {
-                    item.updateNextRetransmitTime();
-                    sendPacket(sr.remoteNodeInfo, item.packet);
-                    if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
-                        sr.retransmitMap.remove(itkey);
-                }
-            });
-        };
-        sessionReaders.forEach(sessionReaderBiConsumer);
-        sessionReaderCandidates.forEach(sessionReaderBiConsumer);
+        sessionReaders.forEach((k, sr) -> sr.pulseRetransmit());
+        sessionReaderCandidates.forEach((k, sr) -> sr.pulseRetransmit());
     }
 
 
@@ -966,6 +955,17 @@ public class UDPAdapter extends DatagramAdapter {
             retransmitMap.forEach((k, v)-> {
                 if (v.type != PacketTypes.DATA)
                     retransmitMap.remove(k);
+            });
+        }
+
+        public void pulseRetransmit() {
+            retransmitMap.forEach((itkey, item)->{
+                if (item.nextRetransmitTime.isBefore(Instant.now())) {
+                    item.updateNextRetransmitTime();
+                    sendPacket(remoteNodeInfo, item.packet);
+                    if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                        retransmitMap.remove(itkey);
+                }
             });
         }
     }
