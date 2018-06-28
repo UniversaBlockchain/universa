@@ -17,6 +17,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class UDPAdapter extends DatagramAdapter {
@@ -32,7 +34,7 @@ public class UDPAdapter extends DatagramAdapter {
     private Timer timerRetransmit = new Timer();
     private Timer timerProtectionFromDuple = new Timer();
 
-    private final static int HANDSHAKE_TIMEOUT_MILLIS = 2000;
+    private final static int HANDSHAKE_TIMEOUT_MILLIS = 10000;
 
 
     /**
@@ -61,7 +63,7 @@ public class UDPAdapter extends DatagramAdapter {
         timerHandshake.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                onHandshakeTimer();
+                restartHandshakeIfNeeded();
             }
         }, RETRANSMIT_TIME, RETRANSMIT_TIME);
 
@@ -91,7 +93,6 @@ public class UDPAdapter extends DatagramAdapter {
         Session session = getOrCreateSession(destination);
         if (session.state.get() == Session.STATE_HANDSHAKE) {
             session.addPayloadToOutputQueue(destination, payload);
-            onHandshakeTimer(session, Instant.now());
         } else {
             sendPayload(session, payload);
         }
@@ -141,7 +142,7 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    private Integer getNextPacketId() {
+    synchronized private Integer getNextPacketId() {
         Integer res = nextPacketId;
         if (nextPacketId == Integer.MAX_VALUE)
             nextPacketId = 1;
@@ -251,58 +252,31 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    private void onHandshakeTimer() {
+    private void restartHandshakeIfNeeded() {
         Instant now = Instant.now();
-        sessionsByRemoteId.forEach((k, s) -> {
-            onHandshakeTimer(s, now);
-        });
-    }
-
-
-    private void onHandshakeTimer(Session s, Instant now) {
-        try {
-            restartHandshakeIfNeeded(s, now);
-            if (s.state.get() == Session.STATE_HANDSHAKE) {
-                switch (s.handshakeStep.get()) {
-                    case Session.HANDSHAKE_STEP_INIT:
-                    case Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME:
-                        sendHello(s);
-                        break;
-                    case Session.HANDSHAKE_STEP_WAIT_FOR_SESSION:
-                        sendKeyReq(s, s.handshake_keyReqEncrypted, s.handshake_keyReqSign);
-                        break;
-                }
-            }
-        } catch (EncryptionError e) {
-            callErrorCallbacks("(onHandshakeTimer) EncryptionError: " + e);
-        }
+        sessionsByRemoteId.forEach((k, s) -> restartHandshakeIfNeeded(s, now));
     }
 
 
     private void pulseRetransmit() {
-        sessionsByRemoteId.forEach((k, s)-> {
-            if (s.state.get() == Session.STATE_EXCHANGING) {
-                s.retransmitMap.forEach((itkey, item)-> {
-                    if (item.packet == null) {
-                        byte[] dataToSend = preparePayloadForSession(s, item.sourcePayload);
-                        item.packet = createTestPacket(item.packetId, myNodeInfo.getNumber(), item.receiverNodeId, item.type, dataToSend);
-                    }
-                    sendPacket(s.remoteNodeInfo, item.packet);
-                    if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
-                        s.retransmitMap.remove(itkey);
-                });
-            }
-        });
+        sessionsByRemoteId.forEach((k, s)->s.pulseRetransmit());
+
+        BiConsumer<Integer, SessionReader> sessionReaderBiConsumer = (k, sr)->{
+            sr.retransmitMap.forEach((itkey, item)->{
+                sendPacket(sr.remoteNodeInfo, item.packet);
+                if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                    sr.retransmitMap.remove(itkey);
+            });
+        };
+        sessionReaders.forEach(sessionReaderBiConsumer);
+        sessionReaderCandidates.forEach(sessionReaderBiConsumer);
     }
 
 
     private void clearProtectionFromDupleBuffers() {
-        sessionReaders.forEach((k, sr)-> {
-            sr.protectionFromDuple1.clear();
-            Set<Integer> tmp = sr.protectionFromDuple1;
-            sr.protectionFromDuple1 = sr.protectionFromDuple0;
-            sr.protectionFromDuple0 = tmp;
-        });
+        sessionReaders.forEach((k, sr)-> sr.clearProtectionFromDupleBuffers());
+        sessionReaderCandidates.forEach((k, sr)-> sr.clearProtectionFromDupleBuffers());
+        sessionsByRemoteId.forEach((k, s)-> s.clearProtectionFromDupleBuffers());
     }
 
 
@@ -311,9 +285,8 @@ public class UDPAdapter extends DatagramAdapter {
             if (s.handshakeExpiresAt.isBefore(now)) {
                 report(logLabel, ()->"handshaking with nodeId="+s.remoteNodeInfo.getNumber()+" is timed out, restart", VerboseLevel.BASE);
                 s.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME);
-                s.handshake_helloNonce = Do.randomBytes(64);
-                s.localNonce = Do.randomBytes(64);
                 s.handshakeExpiresAt = Instant.now().plusMillis(HANDSHAKE_TIMEOUT_MILLIS);
+                sendHello(s);
             }
         }
     }
@@ -329,6 +302,13 @@ public class UDPAdapter extends DatagramAdapter {
         });
         sessionReaders.forEach((k, sr)-> {
             System.out.println("  sessionReader with node="+k+":");
+            System.out.println("    retransmitMap.size(): " + sr.retransmitMap.size());
+            System.out.println("    protectionFromDuple0.size(): " + sr.protectionFromDuple0.size());
+            System.out.println("    protectionFromDuple1.size(): " + sr.protectionFromDuple1.size());
+        });
+        sessionReaderCandidates.forEach((k, sr)-> {
+            System.out.println("  sessionReaderCandidates with node="+k+":");
+            System.out.println("    retransmitMap.size(): " + sr.retransmitMap.size());
             System.out.println("    protectionFromDuple0.size(): " + sr.protectionFromDuple0.size());
             System.out.println("    protectionFromDuple1.size(): " + sr.protectionFromDuple1.size());
         });
@@ -339,11 +319,17 @@ public class UDPAdapter extends DatagramAdapter {
      * This is first step of creation and installation of the session.
      * @param session is {@link Session} in which sending is.
      */
-    private void sendHello(Session session) throws EncryptionError {
-        report(logLabel, ()->"send hello to "+session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-        Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                session.remoteNodeInfo.getNumber(), PacketTypes.HELLO, new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(session.handshake_helloNonce));
-        sendPacket(session.remoteNodeInfo, packet);
+    private void sendHello(Session session) {
+        try {
+            report(logLabel, () -> "send hello to " + session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
+            byte[] helloNonce = Do.randomBytes(64);
+            Packet packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
+                    session.remoteNodeInfo.getNumber(), PacketTypes.HELLO, new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(helloNonce));
+            sendPacket(session.remoteNodeInfo, packet);
+            session.addPacketToRetransmitMap(packet.packetId, packet, helloNonce);
+        } catch (EncryptionError e) {
+            callErrorCallbacks("(sendHello) EncryptionError: " + e);
+        }
     }
 
 
@@ -352,11 +338,16 @@ public class UDPAdapter extends DatagramAdapter {
      * we should respond with {@link PacketTypes#WELCOME}.
      * @param sessionReader is {@link UDPAdapter.SessionReader} in which sending is.
      */
-    private void sendWelcome(SessionReader sessionReader) throws EncryptionError {
-        report(logLabel, ()->"send welcome to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-        Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                sessionReader.remoteNodeInfo.getNumber(), PacketTypes.WELCOME, new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(sessionReader.localNonce));
-        sendPacket(sessionReader.remoteNodeInfo, packet);
+    private void sendWelcome(SessionReader sessionReader) {
+        try {
+            report(logLabel, () -> "send welcome to " + sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
+            Packet packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
+                    sessionReader.remoteNodeInfo.getNumber(), PacketTypes.WELCOME, new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(sessionReader.localNonce));
+            sendPacket(sessionReader.remoteNodeInfo, packet);
+            sessionReader.addPacketToRetransmitMap(packet.packetId, packet, sessionReader.localNonce);
+        } catch (EncryptionError e) {
+            callErrorCallbacks("(sendWelcome) EncryptionError: " + e);
+        }
     }
 
 
@@ -369,12 +360,14 @@ public class UDPAdapter extends DatagramAdapter {
      */
     private void sendKeyReq(Session session, byte[] payloadPart1, byte[] payloadPart2) throws EncryptionError {
         report(logLabel, ()->"send key_req to "+session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
-        Packet packet1 = new Packet(0, myNodeInfo.getNumber(),
+        Packet packet1 = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
                 session.remoteNodeInfo.getNumber(), PacketTypes.KEY_REQ_PART1, payloadPart1);
-        Packet packet2 = new Packet(0, myNodeInfo.getNumber(),
+        Packet packet2 = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
                 session.remoteNodeInfo.getNumber(), PacketTypes.KEY_REQ_PART2, payloadPart2);
         sendPacket(session.remoteNodeInfo, packet1);
         sendPacket(session.remoteNodeInfo, packet2);
+        session.addPacketToRetransmitMap(packet1.packetId, packet1, payloadPart1);
+        session.addPacketToRetransmitMap(packet2.packetId, packet2, payloadPart2);
     }
 
 
@@ -392,12 +385,14 @@ public class UDPAdapter extends DatagramAdapter {
         byte[] encrypted = new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
         byte[] sign = new PrivateKey(ownPrivateKey.pack()).sign(encrypted, HashType.SHA512);
 
-        Packet packet1 = new Packet(0, myNodeInfo.getNumber(),
+        Packet packet1 = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
                 sessionReader.remoteNodeInfo.getNumber(), PacketTypes.SESSION_PART1, encrypted);
-        Packet packet2 = new Packet(0, myNodeInfo.getNumber(),
+        Packet packet2 = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
                 sessionReader.remoteNodeInfo.getNumber(), PacketTypes.SESSION_PART2, sign);
         sendPacket(sessionReader.remoteNodeInfo, packet1);
         sendPacket(sessionReader.remoteNodeInfo, packet2);
+        sessionReader.addPacketToRetransmitMap(packet1.packetId, packet1, encrypted);
+        sessionReader.addPacketToRetransmitMap(packet2.packetId, packet2, sign);
     }
 
 
@@ -549,15 +544,12 @@ public class UDPAdapter extends DatagramAdapter {
             if (nodeInfo != null) {
                 SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
                 if (sessionReader != null) {
-                    byte[] receivedHelloNonce = new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload);
-                    if (!Arrays.equals(sessionReader.handshake_receivedHelloNonce, receivedHelloNonce)) {
-                        sessionReader.handshake_receivedHelloNonce = receivedHelloNonce;
+                    sessionReader.protectFromDuples(packet.packetId, ()->{
                         sessionReader.generateNewLocalNonce();
-                        sessionReader.sessionKey = new SymmetricKey();
                         sessionReader.handshake_keyReqPart1 = null;
                         sessionReader.handshake_keyReqPart2 = null;
-                    }
-                    sendWelcome(sessionReader);
+                        sendWelcome(sessionReader);
+                    });
                 }
             } else {
                 throw new EncryptionError(Errors.BAD_VALUE + ": block got from unknown node " + packet.senderNodeId);
@@ -567,49 +559,56 @@ public class UDPAdapter extends DatagramAdapter {
 
         private void onReceiveWelcome(Packet packet) {
             report(logLabel, ()->"received welcome from " + packet.senderNodeId, VerboseLevel.BASE);
-            try {
-                Session session = getOrCreateSession(packet.senderNodeId);
-                if (session != null) {
-                    if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME)) {
-                        session.remoteNonce = new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload);
+            Session session = getOrCreateSession(packet.senderNodeId);
+            if (session != null) {
+                session.protectFromDuples(packet.packetId, ()-> {
+                    try {
+                        if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME)) {
+                            session.removeHandshakePacketsFromRetransmitMap();
+                            session.remoteNonce = new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload);
 
-                        // send key_req
-                        List data = Arrays.asList(session.localNonce, session.remoteNonce);
-                        byte[] packed = Boss.pack(data);
-                        byte[] encrypted = new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
-                        byte[] sign = new PrivateKey(ownPrivateKey.pack()).sign(encrypted, HashType.SHA512);
+                            // send key_req
+                            session.localNonce = Do.randomBytes(64);
+                            List data = Arrays.asList(session.localNonce, session.remoteNonce);
+                            byte[] packed = Boss.pack(data);
+                            byte[] encrypted = new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
+                            byte[] sign = new PrivateKey(ownPrivateKey.pack()).sign(encrypted, HashType.SHA512);
 
-                        session.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_SESSION);
-                        session.handshake_sessionPart1 = null;
-                        session.handshake_sessionPart2 = null;
-
-                        session.handshake_keyReqEncrypted = encrypted;
-                        session.handshake_keyReqSign = sign;
-                        onHandshakeTimer(session, Instant.now());
+                            session.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_SESSION);
+                            session.handshake_sessionPart1 = null;
+                            session.handshake_sessionPart2 = null;
+                            sendKeyReq(session, encrypted, sign);
+                        }
+                    } catch (EncryptionError e) {
+                        callErrorCallbacks("(onReceiveWelcome) EncryptionError in node " + myNodeInfo.getNumber() + ": " + e);
                     }
-                }
-            } catch (EncryptionError e) {
-                callErrorCallbacks("(onReceiveWelcome) EncryptionError in node " + myNodeInfo.getNumber() + ": " + e);
+                });
             }
         }
 
 
         private void onReceiveKeyReqPart1(Packet packet) {
-            report(logLabel, ()->"received key_req_part1 from " + packet.senderNodeId, VerboseLevel.BASE);
+            report(logLabel, ()->"received key_req_part1 from " + packet.senderNodeId + " (packetId="+packet.packetId+")", VerboseLevel.BASE);
             SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
             if (sessionReader != null) {
-                sessionReader.handshake_keyReqPart1 = packet.payload;
-                onReceiveKeyReq(sessionReader);
+                sessionReader.protectFromDuples(packet.packetId, ()->{
+                    sessionReader.removeHandshakePacketsFromRetransmitMap();
+                    sessionReader.handshake_keyReqPart1 = packet.payload;
+                    onReceiveKeyReq(sessionReader);
+                });
             }
         }
 
 
         private void onReceiveKeyReqPart2(Packet packet) {
-            report(logLabel, ()->"received key_req_part2 from " + packet.senderNodeId, VerboseLevel.BASE);
+            report(logLabel, ()->"received key_req_part2 from " + packet.senderNodeId + " (packetId="+packet.packetId+")", VerboseLevel.BASE);
             SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
             if (sessionReader != null) {
-                sessionReader.handshake_keyReqPart2 = packet.payload;
-                onReceiveKeyReq(sessionReader);
+                sessionReader.protectFromDuples(packet.packetId, ()->{
+                    sessionReader.removeHandshakePacketsFromRetransmitMap();
+                    sessionReader.handshake_keyReqPart2 = packet.payload;
+                    onReceiveKeyReq(sessionReader);
+                });
             }
         }
 
@@ -628,9 +627,14 @@ public class UDPAdapter extends DatagramAdapter {
                         if (new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).verify(encrypted, sign, HashType.SHA512)) {
                             report(logLabel, ()->"key_req successfully verified", VerboseLevel.BASE);
                             sessionReader.remoteNonce = packet_senderNonce;
+                            sessionReader.sessionKey = new SymmetricKey();
                             acceptSessionReaderCandidate(sessionReader.remoteNodeInfo.getNumber(), sessionReader);
                             sendSessionKey(sessionReader);
+                        } else {
+                            callErrorCallbacks("(onReceiveKeyReq) verify fails");
                         }
+                    } else {
+                        report(logLabel, ()->"(onReceiveKeyReq) remoteNonce mismatch", VerboseLevel.BASE);
                     }
                 }
             } catch (EncryptionError e) {
@@ -643,10 +647,13 @@ public class UDPAdapter extends DatagramAdapter {
             report(logLabel, ()->"received session_part1 from " + packet.senderNodeId, VerboseLevel.BASE);
             Session session = getOrCreateSession(packet.senderNodeId);
             if (session != null) {
-                if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_SESSION)) {
-                    session.handshake_sessionPart1 = packet.payload;
-                    onReceiveSession(session);
-                }
+                session.protectFromDuples(packet.packetId, ()->{
+                    session.removeHandshakePacketsFromRetransmitMap();
+                    if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_SESSION)) {
+                        session.handshake_sessionPart1 = packet.payload;
+                        onReceiveSession(session);
+                    }
+                });
             }
         }
 
@@ -655,10 +662,13 @@ public class UDPAdapter extends DatagramAdapter {
             report(logLabel, ()->"received session_part2 from " + packet.senderNodeId, VerboseLevel.BASE);
             Session session = getOrCreateSession(packet.senderNodeId);
             if (session != null) {
-                if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_SESSION)) {
-                    session.handshake_sessionPart2 = packet.payload;
-                    onReceiveSession(session);
-                }
+                session.protectFromDuples(packet.packetId, ()->{
+                    session.removeHandshakePacketsFromRetransmitMap();
+                    if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_SESSION)) {
+                        session.handshake_sessionPart2 = packet.payload;
+                        onReceiveSession(session);
+                    }
+                });
             }
         }
 
@@ -679,7 +689,7 @@ public class UDPAdapter extends DatagramAdapter {
                             session.reconstructSessionKey(sessionKey);
                             session.state.set(Session.STATE_EXCHANGING);
                             session.sendAllFromOutputQueue();
-                            pulseRetransmit();
+                            session.pulseRetransmit();
                         }
                     }
                 }
@@ -706,10 +716,7 @@ public class UDPAdapter extends DatagramAdapter {
                                     byte[] payload = new byte[decrypted.length - 2];
                                     System.arraycopy(decrypted, 0, payload, 0, payload.length);
                                     sendAck(sessionReader, packet.packetId);
-                                    if (!sessionReader.protectionFromDuple0.contains(packet.packetId) && !sessionReader.protectionFromDuple1.contains(packet.packetId)) {
-                                        receiver.accept(payload);
-                                        sessionReader.protectionFromDuple0.add(packet.packetId);
-                                    }
+                                    sessionReader.protectFromDuples(packet.packetId, ()->receiver.accept(payload));
                                 } else {
                                     callErrorCallbacks("(onReceiveData) decrypted payload too short");
                                     sendNack(sessionReader, packet.packetId);
@@ -758,12 +765,11 @@ public class UDPAdapter extends DatagramAdapter {
                     Integer nackPacketId = Boss.load(new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload));
                     if (session.retransmitMap.containsKey(nackPacketId)) {
                         session.startHandshake();
-                        onHandshakeTimer(session, Instant.now());
+                        restartHandshakeIfNeeded(session, Instant.now());
                     }
                 }
             }
         }
-
     }
 
 
@@ -785,10 +791,9 @@ public class UDPAdapter extends DatagramAdapter {
         private Instant handshakeExpiresAt;
         private byte[] handshake_sessionPart1 = null;
         private byte[] handshake_sessionPart2 = null;
-        private byte[] handshake_helloNonce = Do.randomBytes(64);
-        private byte[] handshake_keyReqEncrypted = new byte[0];
-        private byte[] handshake_keyReqSign = new byte[0];
         private Instant lastHandshakeRestartTime = Instant.now();
+        private Set<Integer> protectionFromDuple0 = new HashSet<>();
+        private Set<Integer> protectionFromDuple1 = new HashSet<>();
 
         static public final int STATE_HANDSHAKE             = 1;
         static public final int STATE_EXCHANGING            = 2;
@@ -839,18 +844,68 @@ public class UDPAdapter extends DatagramAdapter {
             retransmitMap.remove(packetId);
         }
 
+        public void removeHandshakePacketsFromRetransmitMap() {
+            retransmitMap.forEach((k, v)-> {
+                if (v.type != PacketTypes.DATA)
+                    retransmitMap.remove(k);
+            });
+        }
+
         public void startHandshake() {
             if (lastHandshakeRestartTime.plusMillis(RETRANSMIT_TIME).isBefore(Instant.now())) {
                 retransmitMap.forEach((k, v) -> {
                     v.retransmitCounter = 0;
                     v.packet = null;
                 });
+                removeHandshakePacketsFromRetransmitMap();
                 handshakeStep.set(HANDSHAKE_STEP_INIT);
                 handshakeExpiresAt = Instant.now().minusMillis(HANDSHAKE_TIMEOUT_MILLIS);
                 state.set(STATE_HANDSHAKE);
                 lastHandshakeRestartTime = Instant.now();
             } else {
                 callErrorCallbacks("(startHandshake) too short time after previous startHandshake");
+            }
+        }
+
+        private void protectFromDuples(Integer packetId, Runnable runnable) {
+            if (!protectionFromDuple0.contains(packetId) && !protectionFromDuple1.contains(packetId)) {
+                runnable.run();
+                protectionFromDuple0.add(packetId);
+            }
+        }
+
+        private void clearProtectionFromDupleBuffers() {
+            protectionFromDuple1.clear();
+            Set<Integer> tmp = protectionFromDuple1;
+            protectionFromDuple1 = protectionFromDuple0;
+            protectionFromDuple0 = tmp;
+        }
+
+        public void pulseRetransmit() {
+            if (state.get() == Session.STATE_EXCHANGING) {
+                retransmitMap.forEach((itkey, item)-> {
+                    if (item.type == PacketTypes.DATA) {
+                        if (item.packet == null) {
+                            byte[] dataToSend = preparePayloadForSession(this, item.sourcePayload);
+                            item.packet = createTestPacket(item.packetId, myNodeInfo.getNumber(), item.receiverNodeId, item.type, dataToSend);
+                        }
+                        sendPacket(remoteNodeInfo, item.packet);
+                        if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                            retransmitMap.remove(itkey);
+                    }
+                });
+            } else {
+                retransmitMap.forEach((itkey, item)-> {
+                    if (item.type != PacketTypes.DATA) {
+                        if (item.packet != null) {
+                            sendPacket(remoteNodeInfo, item.packet);
+                            if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                                retransmitMap.remove(itkey);
+                        } else {
+                            retransmitMap.remove(itkey);
+                        }
+                    }
+                });
             }
         }
     }
@@ -865,10 +920,35 @@ public class UDPAdapter extends DatagramAdapter {
         private byte[] handshake_keyReqPart2 = null;
         private Set<Integer> protectionFromDuple0 = new HashSet<>();
         private Set<Integer> protectionFromDuple1 = new HashSet<>();
-        private byte[] handshake_receivedHelloNonce = Do.randomBytes(64);
+        private ConcurrentHashMap<Integer,RetransmitItem> retransmitMap = new ConcurrentHashMap<>();
 
         private void generateNewLocalNonce() {
             localNonce = Do.randomBytes(64);
+        }
+
+        public void addPacketToRetransmitMap(Integer packetId, Packet packet, byte[] sourcePayload) {
+            retransmitMap.put(packetId, new RetransmitItem(packet, sourcePayload));
+        }
+
+        public void removeHandshakePacketsFromRetransmitMap() {
+            retransmitMap.forEach((k, v)-> {
+                if (v.type != PacketTypes.DATA)
+                    retransmitMap.remove(k);
+            });
+        }
+
+        private void protectFromDuples(Integer packetId, Runnable runnable) {
+            if (!protectionFromDuple0.contains(packetId) && !protectionFromDuple1.contains(packetId)) {
+                runnable.run();
+                protectionFromDuple0.add(packetId);
+            }
+        }
+
+        private void clearProtectionFromDupleBuffers() {
+            protectionFromDuple1.clear();
+            Set<Integer> tmp = protectionFromDuple1;
+            protectionFromDuple1 = protectionFromDuple0;
+            protectionFromDuple0 = tmp;
         }
     }
 
