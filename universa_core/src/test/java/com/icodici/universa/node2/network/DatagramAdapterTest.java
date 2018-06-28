@@ -930,8 +930,8 @@ public class DatagramAdapterTest {
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
 
-//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
-//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2".getBytes();
@@ -1010,7 +1010,6 @@ public class DatagramAdapterTest {
                 System.out.println("DONE error");
             }
         });
-
 
         // send from adapter d1, to d3
         d1.send(node2, payload1);

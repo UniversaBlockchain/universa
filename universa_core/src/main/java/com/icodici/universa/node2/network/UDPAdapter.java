@@ -788,6 +788,7 @@ public class UDPAdapter extends DatagramAdapter {
         private byte[] handshake_helloNonce = Do.randomBytes(64);
         private byte[] handshake_keyReqEncrypted = new byte[0];
         private byte[] handshake_keyReqSign = new byte[0];
+        private Instant lastHandshakeRestartTime = Instant.now();
 
         static public final int STATE_HANDSHAKE             = 1;
         static public final int STATE_EXCHANGING            = 2;
@@ -839,13 +840,18 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
         public void startHandshake() {
-            retransmitMap.forEach((k, v)->{
-                v.retransmitCounter = 0;
-                v.packet = null;
-            });
-            handshakeStep.set(HANDSHAKE_STEP_INIT);
-            handshakeExpiresAt = Instant.now().minusMillis(HANDSHAKE_TIMEOUT_MILLIS);
-            state.set(STATE_HANDSHAKE);
+            if (lastHandshakeRestartTime.plusMillis(RETRANSMIT_TIME).isBefore(Instant.now())) {
+                retransmitMap.forEach((k, v) -> {
+                    v.retransmitCounter = 0;
+                    v.packet = null;
+                });
+                handshakeStep.set(HANDSHAKE_STEP_INIT);
+                handshakeExpiresAt = Instant.now().minusMillis(HANDSHAKE_TIMEOUT_MILLIS);
+                state.set(STATE_HANDSHAKE);
+                lastHandshakeRestartTime = Instant.now();
+            } else {
+                callErrorCallbacks("(startHandshake) too short time after previous startHandshake");
+            }
         }
     }
 
