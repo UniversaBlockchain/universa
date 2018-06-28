@@ -115,12 +115,12 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    private byte[] preparePayloadForSession(Session session, byte[] payload) {
+    private byte[] preparePayloadForSession(SymmetricKey sessionKey, byte[] payload) {
         try {
             byte[] payloadWithRandomChunk = new byte[payload.length + 2];
             System.arraycopy(payload, 0, payloadWithRandomChunk, 0, payload.length);
             System.arraycopy(Bytes.random(2).toArray(), 0, payloadWithRandomChunk, payload.length, 2);
-            byte[] encryptedPayload = new SymmetricKey(session.sessionKey.getKey()).etaEncrypt(payloadWithRandomChunk);
+            byte[] encryptedPayload = new SymmetricKey(sessionKey.getKey()).etaEncrypt(payloadWithRandomChunk);
             byte[] crc32 = new Crc32().digest(encryptedPayload);
             byte[] dataToSend = new byte[encryptedPayload.length + crc32.length];
             System.arraycopy(encryptedPayload, 0, dataToSend, 0, encryptedPayload.length);
@@ -134,7 +134,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     private void sendPayload(Session session, byte[] payload) {
-        byte[] dataToSend = preparePayloadForSession(session, payload);
+        byte[] dataToSend = preparePayloadForSession(session.sessionKey, payload);
         Packet packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
                 session.remoteNodeInfo.getNumber(), PacketTypes.DATA, dataToSend);
         sendPacket(session.remoteNodeInfo, packet);
@@ -806,18 +806,75 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    private class Retransmitter extends DupleProtection {
+        public ConcurrentHashMap<Integer,RetransmitItem> retransmitMap = new ConcurrentHashMap<>();
+        public NodeInfo remoteNodeInfo;
+        public SymmetricKey sessionKey;
+
+        public void addPacketToRetransmitMap(Integer packetId, Packet packet, byte[] sourcePayload) {
+            retransmitMap.put(packetId, new RetransmitItem(packet, sourcePayload));
+        }
+
+        public void removePacketFromRetransmitMap(Integer packetId) {
+            retransmitMap.remove(packetId);
+        }
+
+        public void removeHandshakePacketsFromRetransmitMap() {
+            retransmitMap.forEach((k, v)-> {
+                if (v.type != PacketTypes.DATA)
+                    retransmitMap.remove(k);
+            });
+        }
+
+        protected Integer getState() {
+            return Session.STATE_HANDSHAKE;
+        }
+
+        public void pulseRetransmit() {
+            if (getState() == Session.STATE_EXCHANGING) {
+                retransmitMap.forEach((itkey, item)-> {
+                    if (item.nextRetransmitTime.isBefore(Instant.now())) {
+                        item.updateNextRetransmitTime();
+                        if (item.type == PacketTypes.DATA) {
+                            if (item.packet == null) {
+                                byte[] dataToSend = preparePayloadForSession(sessionKey, item.sourcePayload);
+                                item.packet = createTestPacket(item.packetId, myNodeInfo.getNumber(), item.receiverNodeId, item.type, dataToSend);
+                            }
+                            sendPacket(remoteNodeInfo, item.packet);
+                            if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                                retransmitMap.remove(itkey);
+                        }
+                    }
+                });
+            } else {
+                retransmitMap.forEach((itkey, item)-> {
+                    if (item.nextRetransmitTime.isBefore(Instant.now())) {
+                        item.updateNextRetransmitTime();
+                        if (item.type != PacketTypes.DATA) {
+                            if (item.packet != null) {
+                                sendPacket(remoteNodeInfo, item.packet);
+                                if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                                    retransmitMap.remove(itkey);
+                            } else {
+                                retransmitMap.remove(itkey);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+
     /**
      * Two remote parties should create valid session before start data's exchanging. This class implement that session
      * according with remote parties is handshaking and eexchanging.
      */
-    private class Session extends DupleProtection {
+    private class Session extends Retransmitter {
 
-        private SymmetricKey sessionKey;
         private byte[] localNonce;
         private byte[] remoteNonce;
-        private NodeInfo remoteNodeInfo;
         private BlockingQueue<OutputQueueItem> outputQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
-        private ConcurrentHashMap<Integer,RetransmitItem> retransmitMap = new ConcurrentHashMap<>();
 
         private AtomicInteger state;
         private AtomicInteger handshakeStep;
@@ -848,6 +905,11 @@ public class UDPAdapter extends DatagramAdapter {
             sessionKey = new SymmetricKey(key);
         }
 
+        @Override
+        protected Integer getState() {
+            return state.get();
+        }
+
         public void addPayloadToOutputQueue(NodeInfo destination, byte[] payload) {
             OutputQueueItem outputQueueItem = new OutputQueueItem(destination, payload);
             if (!outputQueue.offer(outputQueueItem)) {
@@ -867,21 +929,6 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public void addPacketToRetransmitMap(Integer packetId, Packet packet, byte[] sourcePayload) {
-            retransmitMap.put(packetId, new RetransmitItem(packet, sourcePayload));
-        }
-
-        public void removePacketFromRetransmitMap(Integer packetId) {
-            retransmitMap.remove(packetId);
-        }
-
-        public void removeHandshakePacketsFromRetransmitMap() {
-            retransmitMap.forEach((k, v)-> {
-                if (v.type != PacketTypes.DATA)
-                    retransmitMap.remove(k);
-            });
-        }
-
         public void startHandshake() {
             if (lastHandshakeRestartTime.plusMillis(RETRANSMIT_TIME).isBefore(Instant.now())) {
                 retransmitMap.forEach((k, v) -> {
@@ -898,75 +945,17 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        public void pulseRetransmit() {
-            if (state.get() == Session.STATE_EXCHANGING) {
-                retransmitMap.forEach((itkey, item)-> {
-                    if (item.nextRetransmitTime.isBefore(Instant.now())) {
-                        item.updateNextRetransmitTime();
-                        if (item.type == PacketTypes.DATA) {
-                            if (item.packet == null) {
-                                byte[] dataToSend = preparePayloadForSession(this, item.sourcePayload);
-                                item.packet = createTestPacket(item.packetId, myNodeInfo.getNumber(), item.receiverNodeId, item.type, dataToSend);
-                            }
-                            sendPacket(remoteNodeInfo, item.packet);
-                            if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
-                                retransmitMap.remove(itkey);
-                        }
-                    }
-                });
-            } else {
-                retransmitMap.forEach((itkey, item)-> {
-                    if (item.nextRetransmitTime.isBefore(Instant.now())) {
-                        item.updateNextRetransmitTime();
-                        if (item.type != PacketTypes.DATA) {
-                            if (item.packet != null) {
-                                sendPacket(remoteNodeInfo, item.packet);
-                                if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
-                                    retransmitMap.remove(itkey);
-                            } else {
-                                retransmitMap.remove(itkey);
-                            }
-                        }
-                    }
-                });
-            }
-        }
     }
 
 
-    private class SessionReader extends DupleProtection {
+    private class SessionReader extends Retransmitter {
         private byte[] localNonce;
         private byte[] remoteNonce;
-        private NodeInfo remoteNodeInfo;
-        private SymmetricKey sessionKey = null;
         private byte[] handshake_keyReqPart1 = null;
         private byte[] handshake_keyReqPart2 = null;
-        private ConcurrentHashMap<Integer,RetransmitItem> retransmitMap = new ConcurrentHashMap<>();
 
         private void generateNewLocalNonce() {
             localNonce = Do.randomBytes(64);
-        }
-
-        public void addPacketToRetransmitMap(Integer packetId, Packet packet, byte[] sourcePayload) {
-            retransmitMap.put(packetId, new RetransmitItem(packet, sourcePayload));
-        }
-
-        public void removeHandshakePacketsFromRetransmitMap() {
-            retransmitMap.forEach((k, v)-> {
-                if (v.type != PacketTypes.DATA)
-                    retransmitMap.remove(k);
-            });
-        }
-
-        public void pulseRetransmit() {
-            retransmitMap.forEach((itkey, item)->{
-                if (item.nextRetransmitTime.isBefore(Instant.now())) {
-                    item.updateNextRetransmitTime();
-                    sendPacket(remoteNodeInfo, item.packet);
-                    if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
-                        retransmitMap.remove(itkey);
-                }
-            });
         }
     }
 
