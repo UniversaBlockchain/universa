@@ -263,9 +263,12 @@ public class UDPAdapter extends DatagramAdapter {
 
         BiConsumer<Integer, SessionReader> sessionReaderBiConsumer = (k, sr)->{
             sr.retransmitMap.forEach((itkey, item)->{
-                sendPacket(sr.remoteNodeInfo, item.packet);
-                if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
-                    sr.retransmitMap.remove(itkey);
+                if (item.nextRetransmitTime.isBefore(Instant.now())) {
+                    item.updateNextRetransmitTime();
+                    sendPacket(sr.remoteNodeInfo, item.packet);
+                    if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                        sr.retransmitMap.remove(itkey);
+                }
             });
         };
         sessionReaders.forEach(sessionReaderBiConsumer);
@@ -907,25 +910,31 @@ public class UDPAdapter extends DatagramAdapter {
         public void pulseRetransmit() {
             if (state.get() == Session.STATE_EXCHANGING) {
                 retransmitMap.forEach((itkey, item)-> {
-                    if (item.type == PacketTypes.DATA) {
-                        if (item.packet == null) {
-                            byte[] dataToSend = preparePayloadForSession(this, item.sourcePayload);
-                            item.packet = createTestPacket(item.packetId, myNodeInfo.getNumber(), item.receiverNodeId, item.type, dataToSend);
+                    if (item.nextRetransmitTime.isBefore(Instant.now())) {
+                        item.updateNextRetransmitTime();
+                        if (item.type == PacketTypes.DATA) {
+                            if (item.packet == null) {
+                                byte[] dataToSend = preparePayloadForSession(this, item.sourcePayload);
+                                item.packet = createTestPacket(item.packetId, myNodeInfo.getNumber(), item.receiverNodeId, item.type, dataToSend);
+                            }
+                            sendPacket(remoteNodeInfo, item.packet);
+                            if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                                retransmitMap.remove(itkey);
                         }
-                        sendPacket(remoteNodeInfo, item.packet);
-                        if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
-                            retransmitMap.remove(itkey);
                     }
                 });
             } else {
                 retransmitMap.forEach((itkey, item)-> {
-                    if (item.type != PacketTypes.DATA) {
-                        if (item.packet != null) {
-                            sendPacket(remoteNodeInfo, item.packet);
-                            if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                    if (item.nextRetransmitTime.isBefore(Instant.now())) {
+                        item.updateNextRetransmitTime();
+                        if (item.type != PacketTypes.DATA) {
+                            if (item.packet != null) {
+                                sendPacket(remoteNodeInfo, item.packet);
+                                if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
+                                    retransmitMap.remove(itkey);
+                            } else {
                                 retransmitMap.remove(itkey);
-                        } else {
-                            retransmitMap.remove(itkey);
+                            }
                         }
                     }
                 });
@@ -1061,6 +1070,7 @@ public class UDPAdapter extends DatagramAdapter {
         public int receiverNodeId;
         public int packetId = 0;
         public int type;
+        public Instant nextRetransmitTime;
         public RetransmitItem(Packet packet, byte[] sourcePayload) {
             this.packet = packet;
             this.sourcePayload = sourcePayload;
@@ -1068,6 +1078,10 @@ public class UDPAdapter extends DatagramAdapter {
             this.receiverNodeId = packet.receiverNodeId;
             this.packetId = packet.packetId;
             this.type = packet.type;
+            updateNextRetransmitTime();
+        }
+        public void updateNextRetransmitTime() {
+            nextRetransmitTime = Instant.now().plusMillis(new Random().nextInt(RETRANSMIT_TIME*5*(RETRANSMIT_MAX_ATTEMPTS+retransmitCounter)/RETRANSMIT_MAX_ATTEMPTS));
         }
     }
 
