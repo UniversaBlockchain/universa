@@ -82,7 +82,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     @Override
-    public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
+    synchronized public void send(NodeInfo destination, byte[] payload) throws InterruptedException {
         report(logLabel, () -> "send to "+destination.getNumber()+", isActive: "+socketListenThread.isActive.get(), VerboseLevel.DETAILED);
 
         if (!socketListenThread.isActive.get())
@@ -262,14 +262,16 @@ public class UDPAdapter extends DatagramAdapter {
     private void onHandshakeTimer(Session s, Instant now) {
         try {
             restartHandshakeIfNeeded(s, now);
-            switch (s.handshakeStep.get()) {
-                case Session.HANDSHAKE_STEP_INIT:
-                case Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME:
-                    sendHello(s);
-                    break;
-                case Session.HANDSHAKE_STEP_WAIT_FOR_SESSION:
-                    sendKeyReq(s, s.handshake_keyReqEncrypted, s.handshake_keyReqSign);
-                    break;
+            if (s.state.get() == Session.STATE_HANDSHAKE) {
+                switch (s.handshakeStep.get()) {
+                    case Session.HANDSHAKE_STEP_INIT:
+                    case Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME:
+                        sendHello(s);
+                        break;
+                    case Session.HANDSHAKE_STEP_WAIT_FOR_SESSION:
+                        sendKeyReq(s, s.handshake_keyReqEncrypted, s.handshake_keyReqSign);
+                        break;
+                }
             }
         } catch (EncryptionError e) {
             callErrorCallbacks("(onHandshakeTimer) EncryptionError: " + e);
