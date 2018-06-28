@@ -513,8 +513,8 @@ public class CLIMainTest {
                 "-k", rootPath + "_xer0yfe2nn1xthc.private.unikey");
         assertTrue (new File(rootPath + "realToken.unicon").exists());
         callMain2("-register", rootPath + "realToken.unicon",
-                "-tu", rootPath + "test_access.unicon",
-                "-tutest",
+                "-u", rootPath + "test_access.unicon",
+                "-utest",
                 "-k", rootPath + "at70.privateKey.unikey",
                 "-wait", "1000");
         callMain("-e", rootPath + "test_access.unicon", "-pretty");
@@ -2970,9 +2970,9 @@ public class CLIMainTest {
 //        // try to register with payment
         callMain2("--register",
                 rootPath + "root5.unicon",
-                "--tu", rootPath + "UUP.unicon",
+                "--u", rootPath + "UUP.unicon",
                 "-k", rootPath + "UKey.private.unikey",
-//                "-tutest",
+//                "-utest",
                 "-wait", "15000", "-v");
 
         // try to register without payment
