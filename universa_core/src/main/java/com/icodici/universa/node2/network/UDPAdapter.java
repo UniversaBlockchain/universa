@@ -79,7 +79,7 @@ public class UDPAdapter extends DatagramAdapter {
             public void run() {
                 clearProtectionFromDupleBuffers();
             }
-        }, 5*RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS, 5*RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS);
+        }, 6*RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS, 6*RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS);
     }
 
 
@@ -799,11 +799,29 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    private class DupleProtection {
+        public Set<Integer> protectionFromDuple0 = new HashSet<>();
+        public Set<Integer> protectionFromDuple1 = new HashSet<>();
+        public void protectFromDuples(Integer packetId, Runnable runnable) {
+            if (!protectionFromDuple0.contains(packetId) && !protectionFromDuple1.contains(packetId)) {
+                runnable.run();
+                protectionFromDuple0.add(packetId);
+            }
+        }
+        public void clearProtectionFromDupleBuffers() {
+            protectionFromDuple1.clear();
+            Set<Integer> tmp = protectionFromDuple1;
+            protectionFromDuple1 = protectionFromDuple0;
+            protectionFromDuple0 = tmp;
+        }
+    }
+
+
     /**
      * Two remote parties should create valid session before start data's exchanging. This class implement that session
      * according with remote parties is handshaking and eexchanging.
      */
-    private class Session {
+    private class Session extends DupleProtection {
 
         private SymmetricKey sessionKey;
         private byte[] localNonce;
@@ -818,8 +836,6 @@ public class UDPAdapter extends DatagramAdapter {
         private byte[] handshake_sessionPart1 = null;
         private byte[] handshake_sessionPart2 = null;
         private Instant lastHandshakeRestartTime = Instant.now();
-        private Set<Integer> protectionFromDuple0 = new HashSet<>();
-        private Set<Integer> protectionFromDuple1 = new HashSet<>();
 
         static public final int STATE_HANDSHAKE             = 1;
         static public final int STATE_EXCHANGING            = 2;
@@ -893,20 +909,6 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
-        private void protectFromDuples(Integer packetId, Runnable runnable) {
-            if (!protectionFromDuple0.contains(packetId) && !protectionFromDuple1.contains(packetId)) {
-                runnable.run();
-                protectionFromDuple0.add(packetId);
-            }
-        }
-
-        private void clearProtectionFromDupleBuffers() {
-            protectionFromDuple1.clear();
-            Set<Integer> tmp = protectionFromDuple1;
-            protectionFromDuple1 = protectionFromDuple0;
-            protectionFromDuple0 = tmp;
-        }
-
         public void pulseRetransmit() {
             if (state.get() == Session.STATE_EXCHANGING) {
                 retransmitMap.forEach((itkey, item)-> {
@@ -943,15 +945,13 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    private class SessionReader {
+    private class SessionReader extends DupleProtection {
         private byte[] localNonce;
         private byte[] remoteNonce;
         private NodeInfo remoteNodeInfo;
         private SymmetricKey sessionKey = null;
         private byte[] handshake_keyReqPart1 = null;
         private byte[] handshake_keyReqPart2 = null;
-        private Set<Integer> protectionFromDuple0 = new HashSet<>();
-        private Set<Integer> protectionFromDuple1 = new HashSet<>();
         private ConcurrentHashMap<Integer,RetransmitItem> retransmitMap = new ConcurrentHashMap<>();
 
         private void generateNewLocalNonce() {
@@ -967,20 +967,6 @@ public class UDPAdapter extends DatagramAdapter {
                 if (v.type != PacketTypes.DATA)
                     retransmitMap.remove(k);
             });
-        }
-
-        private void protectFromDuples(Integer packetId, Runnable runnable) {
-            if (!protectionFromDuple0.contains(packetId) && !protectionFromDuple1.contains(packetId)) {
-                runnable.run();
-                protectionFromDuple0.add(packetId);
-            }
-        }
-
-        private void clearProtectionFromDupleBuffers() {
-            protectionFromDuple1.clear();
-            Set<Integer> tmp = protectionFromDuple1;
-            protectionFromDuple1 = protectionFromDuple0;
-            protectionFromDuple0 = tmp;
         }
     }
 
@@ -1081,7 +1067,7 @@ public class UDPAdapter extends DatagramAdapter {
             updateNextRetransmitTime();
         }
         public void updateNextRetransmitTime() {
-            nextRetransmitTime = Instant.now().plusMillis(new Random().nextInt(RETRANSMIT_TIME*5*(RETRANSMIT_MAX_ATTEMPTS+retransmitCounter)/RETRANSMIT_MAX_ATTEMPTS));
+            nextRetransmitTime = Instant.now().plusMillis(new Random().nextInt(RETRANSMIT_TIME*(4*retransmitCounter+RETRANSMIT_MAX_ATTEMPTS)/RETRANSMIT_MAX_ATTEMPTS));
         }
     }
 
