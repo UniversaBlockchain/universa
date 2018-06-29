@@ -656,6 +656,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         checkReferencedItems(contractsTree);
 
+        for (Contract r : revokingItems) {
+            r.errors.clear();
+            r.checkReferencedItems(contractsTree);
+            if (!r.isOk()) {
+                r.errors.forEach(e -> {
+                    String name = e.getObjectName();
+                    addError(e.getError(), name, e.getMessage());
+                });
+            }
+        }
+        
         try {
             // common check for all cases
 //            errors.clear();
