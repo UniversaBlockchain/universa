@@ -73,6 +73,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private HashMap<String, Reference> references = new HashMap<>();
     private HashId id;
     private TransactionPack transactionPack;
+    private Set<String> validRoleReferences = new HashSet<>();
 
     public Quantiser getQuantiser() {
         return quantiser;
@@ -653,6 +654,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
         }
 
+        checkReferencedItems(contractsTree);
+
         try {
             // common check for all cases
 //            errors.clear();
@@ -684,7 +687,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         checkDupesCreation();
 
-        checkReferencedItems(contractsTree);
+
 
         for (Contract r : revokingItems) {
             r.errors.clear();
@@ -703,6 +706,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private boolean checkReferencedItems(List<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+        validRoleReferences.clear();
 
         if (getReferences().size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
@@ -712,6 +716,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // check each reference, all must be ok
         boolean allRefs_check = true;
         for (final Reference rm : getReferences().values()) {
+
+            boolean roleReference = roles.values().stream().anyMatch(role -> role.getReferences(Role.RequiredMode.ALL_OF).contains(rm.name) ||
+                    role.getReferences(Role.RequiredMode.ANY_OF).contains(rm.name));
+
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
             if(rm.type == Reference.TYPE_TRANSACTIONAL) {
@@ -747,8 +755,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
 
             if (rm_check == false) {
-                allRefs_check = false;
-                addError(Errors.FAILED_CHECK, "checkReferencedItems for contract (hashId="+getId().toString()+"): false");
+                if(!roleReference) {
+                    allRefs_check = false;
+                    addError(Errors.FAILED_CHECK, "checkReferencedItems for contract (hashId=" + getId().toString() + "): false");
+                }
+            } else {
+                if(roleReference) {
+                    validRoleReferences.add(rm.name);
+                }
             }
         }
 
@@ -1070,6 +1084,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         if (issuer != null && !issuer.equalKeys(createdBy))
             addError(ISSUER_MUST_CREATE, "state.created_by");
+
+        if (!issuer.isAllowedFor(createdBy.getKeys(), getValidRoleReferences())) {
+            addError(ISSUER_MUST_CREATE, "issuer.references");
+        }
+
         if (state.revision != 1)
             addError(BAD_VALUE, "state.revision", "must be 1 in a root contract");
         if (state.createdAt == null)
@@ -1473,7 +1492,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Collection<Permission> cp = permissions.get(permissionName);
         if (cp != null) {
             for (Permission p : cp) {
-                if (p.isAllowedFor(keys, getReferences().keySet())) {
+                if (p.isAllowedFor(keys, getValidRoleReferences())) {
                     checkApplicablePermissionQuantized(p);
                     return true;
                 }
@@ -2759,6 +2778,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         
         return null;
     }
+
+    public Set<String> getValidRoleReferences() {
+        return validRoleReferences;
+    }
+
 
     public class State {
         private int revision;

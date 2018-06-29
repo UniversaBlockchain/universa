@@ -3327,4 +3327,76 @@ public class MainTest {
         }
     }
 
+    private static final String REFERENCE_CONDITION_PREFIX = "ref.state.origin==";
+
+    @Test
+    public void tttt() throws Exception {
+        PrivateKey key = TestKeys.privateKey(1);
+        TestSpace testSpace = prepareTestSpace(key);
+
+        testSpace.nodes.forEach( m -> {
+            m.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        });
+
+        Contract contractMark = new Contract(key);
+        contractMark.seal();
+        HashId origin = contractMark.getId();
+
+
+        Contract contract = new Contract(key);
+
+        SimpleRole issuer = new SimpleRole("issuer");
+        issuer.addKeyRecord(new KeyRecord(key.getPublicKey()));
+
+        Reference ref = new Reference(contract);
+        ref.type = Reference.TYPE_EXISTING_STATE;
+        ref.setName(origin.toString());
+
+        List<Object> conditionsList = new ArrayList<>();
+        conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
+        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
+        ref.setConditions(conditions);
+
+
+        //???
+        contract.addReference(ref);
+        issuer.addRequiredReference(ref, Role.RequiredMode.ALL_OF);
+        contract.registerRole(issuer);
+        contract.setOwnerKeys(key);
+        contract.seal();
+        ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+
+        //NO matching item for issuer reference in transaction pack
+        assertEquals(ir.state,ItemState.DECLINED);
+
+        contract.seal();
+        contract.getTransactionPack().addReferencedItem(contractMark);
+        ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+
+        //matching item for issuer reference is not APPROVED
+        assertEquals(ir.state,ItemState.DECLINED);
+
+
+        testSpace.client.register(contractMark.getPackedTransaction(), 5000);
+
+        contract.seal();
+        contract.getTransactionPack().addReferencedItem(contractMark);
+        ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+
+        //all ok
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //no markContract is required referenced items of transaction pack
+        contract = contract.createRevision(key);
+        contract.addSignerKey(key);
+        contract.setOwnerKeys(TestKeys.privateKey(2).getPublicKey());
+        contract.seal();
+
+        ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+        //all ok
+
+        assertEquals(ir.state,ItemState.APPROVED);
+
+    }
 }
