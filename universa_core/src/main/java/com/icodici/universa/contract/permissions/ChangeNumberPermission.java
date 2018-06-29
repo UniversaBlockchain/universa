@@ -4,6 +4,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
+import net.sergeych.biserializer.BiType;
 import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.diff.ChangedItem;
 import net.sergeych.diff.Delta;
@@ -20,6 +21,7 @@ import java.util.Set;
  * change in different range and directions.
  */
 
+@BiType(name="ChangeNumberPermission")
 public class ChangeNumberPermission extends Permission {
 
     private int minValue;
