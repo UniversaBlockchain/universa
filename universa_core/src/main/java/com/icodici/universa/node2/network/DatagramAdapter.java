@@ -58,6 +58,16 @@ public abstract class DatagramAdapter {
      */
     static public final int RETRANSMIT_TIME = 250;
 
+    /**
+     * Each next retransmit delayed little bit more than previous. This factor uses in calculation of delay.
+     */
+    static public final int RETRANSMIT_TIME_GROW_FACTOR = 4;
+
+    /**
+     * Time limit for handshaking procedure. If handshake is not complete for this time, it will be restarted.
+     */
+    static public final int HANDSHAKE_TIMEOUT_MILLIS = 10000;
+
     protected NodeInfo myNodeInfo;
     protected NetConfig netConfig;
     protected Consumer<byte[]> receiver = null;

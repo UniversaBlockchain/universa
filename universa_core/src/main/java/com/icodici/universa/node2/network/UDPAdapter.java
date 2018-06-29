@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2018, iCodici S.n.C, All Rights Reserved
+ *
+ * Written by Stepan Mamontov <micromillioner@yahoo.com>
+ * refactored by Leonid Novikov <flint.emerald@gmail.com>
+ */
+
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.*;
@@ -33,8 +40,6 @@ public class UDPAdapter extends DatagramAdapter {
     private Timer timerHandshake = new Timer();
     private Timer timerRetransmit = new Timer();
     private Timer timerProtectionFromDuple = new Timer();
-
-    private final static int HANDSHAKE_TIMEOUT_MILLIS = 10000;
 
 
     /**
@@ -74,12 +79,13 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }, RETRANSMIT_TIME, RETRANSMIT_TIME);
 
+        int dupleProtectionPeriod = 2 * RETRANSMIT_TIME_GROW_FACTOR * RETRANSMIT_TIME * RETRANSMIT_MAX_ATTEMPTS;
         timerProtectionFromDuple.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
                 clearProtectionFromDupleBuffers();
             }
-        }, 6*RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS, 6*RETRANSMIT_TIME*RETRANSMIT_MAX_ATTEMPTS);
+        }, dupleProtectionPeriod, dupleProtectionPeriod);
     }
 
 
@@ -99,6 +105,11 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Method creates {@link DatagramPacket} from given {@link Packet} and sends it to address:port from destination.
+     * @param destination instance of {@link NodeInfo} with net address for sending.
+     * @param packet data to send. It's {@link Packet#makeByteArray()} should returns data with size less than {@link DatagramAdapter#MAX_PACKET_SIZE}
+     */
     private void sendPacket(NodeInfo destination, Packet packet) {
         byte[] payload = packet.makeByteArray();
         DatagramPacket dp = new DatagramPacket(payload, payload.length, destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort());
@@ -115,6 +126,14 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * All packets data ({@link Packet#payload}) of type {@link PacketTypes#DATA}
+     * must be encrypted with sessionKey ({@link SymmetricKey}).
+     * This method implements encryption procedure for it.
+     * @param sessionKey key for encryption
+     * @param payload data to encrypt
+     * @return encrypted data, ready for sending to network
+     */
     private byte[] preparePayloadForSession(SymmetricKey sessionKey, byte[] payload) {
         try {
             byte[] payloadWithRandomChunk = new byte[payload.length + 2];
@@ -133,6 +152,12 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Creates {@link Packet} of type {@link PacketTypes#DATA} and sends it to network, initiates retransmission.
+     * It is normal data sending procedure when {@link Session} with remote node is already established.
+     * @param session {@link Session} with remote node
+     * @param payload data to send
+     */
     private void sendPayload(Session session, byte[] payload) {
         byte[] dataToSend = preparePayloadForSession(session.sessionKey, payload);
         Packet packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
@@ -142,6 +167,11 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Generates next serial packetId from sequence [1..{@link Integer#MAX_VALUE}], with cycle.
+     * Used for packet confirmations, in retransmission algorithm.
+     * @return new packet id for sending
+     */
     synchronized private Integer getNextPacketId() {
         Integer res = nextPacketId;
         if (nextPacketId == Integer.MAX_VALUE)
@@ -172,6 +202,12 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Logging
+     * @param label each row starts with this label, pass here logLabel
+     * @param message lambda-message, like ()->"some text"
+     * @param level from enum {@link VerboseLevel}
+     */
     public void report(String label, Callable<String> message, int level)
     {
         if(level <= verboseLevel) {
@@ -197,8 +233,9 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     /**
-     * If session for remote id is already created - returns it, otherwise creates new {@link Session}
-     * @return
+     * If session for remote node is already created - returns it, otherwise creates new {@link Session}
+     * @param destination {@link NodeInfo} to remote node
+     * @return session
      */
     private Session getOrCreateSession(NodeInfo destination) {
         Session s = sessionsByRemoteId.computeIfAbsent(destination.getNumber(), (k)->{
@@ -215,6 +252,11 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * @see UDPAdapter#getOrCreateSession
+     * @param remoteId id of remote node, {@link NodeInfo} will be got from {@link UDPAdapter#netConfig}
+     * @return session
+     */
     private Session getOrCreateSession(int remoteId) {
         NodeInfo destination = netConfig.getInfo(remoteId);
         if (destination == null) {
@@ -225,6 +267,11 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * If sessionRader for remote node is already created - returns it, otherwise creates new {@link SessionReader}
+     * @param remoteId id of remote node, {@link NodeInfo} will be got from {@link UDPAdapter#netConfig}
+     * @return sessionReader
+     */
     private SessionReader getOrCreateSessionReaderCandidate(int remoteId) {
         NodeInfo destination = netConfig.getInfo(remoteId);
         if (destination == null) {
@@ -241,23 +288,38 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
-    private void acceptSessionReaderCandidate(int remoteId, SessionReader sessionReader) {
-        sessionReaders.put(remoteId, sessionReader);
-        sessionReaderCandidates.remove(remoteId);
+    /**
+     * When handshake completed, sessionReader moves from candidates list to working readers list.
+     * @param sessionReader
+     */
+    private void acceptSessionReaderCandidate(SessionReader sessionReader) {
+        sessionReaders.put(sessionReader.remoteNodeInfo.getNumber(), sessionReader);
+        sessionReaderCandidates.remove(sessionReader.remoteNodeInfo.getNumber());
     }
 
 
+    /**
+     * Returns {@link SessionReader} from working readers list.
+     * @param remoteId id of remote node
+     * @return sessionReader
+     */
     private SessionReader getSessionReader(int remoteId) {
         return sessionReaders.get(remoteId);
     }
 
 
+    /**
+     * Calls from {@link UDPAdapter#timerHandshake}
+     */
     private void restartHandshakeIfNeeded() {
         Instant now = Instant.now();
         sessionsByRemoteId.forEach((k, s) -> restartHandshakeIfNeeded(s, now));
     }
 
 
+    /**
+     * Calls from {@link UDPAdapter#timerRetransmit}
+     */
     private void pulseRetransmit() {
         sessionsByRemoteId.forEach((k, s)->s.pulseRetransmit());
         sessionReaders.forEach((k, sr) -> sr.pulseRetransmit());
@@ -265,6 +327,9 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Calls from {@link UDPAdapter#timerProtectionFromDuple}
+     */
     private void clearProtectionFromDupleBuffers() {
         sessionReaders.forEach((k, sr)-> sr.clearProtectionFromDupleBuffers());
         sessionReaderCandidates.forEach((k, sr)-> sr.clearProtectionFromDupleBuffers());
@@ -272,18 +337,26 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Checks time of active handshake procedures and restarts them if time is up {@link UDPAdapter#HANDSHAKE_TIMEOUT_MILLIS}
+     * @param s session
+     * @param now pass here Instant.now()
+     */
     private void restartHandshakeIfNeeded(Session s, Instant now) {
         if (s.state.get() == Session.STATE_HANDSHAKE) {
             if (s.handshakeExpiresAt.isBefore(now)) {
                 report(logLabel, ()->"handshaking with nodeId="+s.remoteNodeInfo.getNumber()+" is timed out, restart", VerboseLevel.BASE);
                 s.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME);
-                s.handshakeExpiresAt = Instant.now().plusMillis(HANDSHAKE_TIMEOUT_MILLIS);
+                s.handshakeExpiresAt = now.plusMillis(HANDSHAKE_TIMEOUT_MILLIS);
                 sendHello(s);
             }
         }
     }
 
 
+    /**
+     * for debug
+     */
     public void printInternalState() {
         System.out.println("\nprintInternalState "+logLabel);
         System.out.println("  inputQueue.size(): " + inputQueue.size());
@@ -347,7 +420,8 @@ public class UDPAdapter extends DatagramAdapter {
 
     /**
      * We have sent {@link PacketTypes#HELLO} typed {@link Packet},
-     * and have got {@link PacketTypes#WELCOME} typed {@link Packet} - it means we can continue handshake and send request for session's keys.
+     * and have got {@link PacketTypes#WELCOME} typed {@link Packet} - it means we can continue handshake and send
+     * request for session's keys. KEY_REQ's payload is more than 512 bytes, so used two parts here.
      * @param session is {@link Session} in which sending is.
      * @param payloadPart1 is prepared in {@link SocketListenThread#onReceiveWelcome(Packet)}
      * @param payloadPart2 is prepared in {@link SocketListenThread#onReceiveWelcome(Packet)}
@@ -368,6 +442,7 @@ public class UDPAdapter extends DatagramAdapter {
     /**
      * Someone who sent {@link PacketTypes#HELLO} typed {@link Packet},
      * send us new KEY_REQ typed {@link Packet} - if all is ok we send session keys to.
+     * SESSION's payload is more than 512 bytes, so used two parts here.
      * From now we ready to data exchange.
      * @param sessionReader is {@link SessionReader} in which sending is.
      */
@@ -404,6 +479,12 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * ACK packets are used only for respond to DATA packets. Retransmission of handshake's packet types stops on each
+     * next handshake step. But last step need to be ACK-ed. For this used {@link PacketTypes#SESSION_ACK} packet.
+     * @param session is {@link Session} in which sending is.
+     * @throws EncryptionError
+     */
     private void sendSessionAck(Session session) throws EncryptionError {
         report(logLabel, ()->"send session_ack to "+session.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
         Packet packet = new Packet(0, myNodeInfo.getNumber(),
@@ -431,6 +512,12 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * sessionReader will be got from {@link UDPAdapter#netConfig}
+     * @see UDPAdapter#sendNack(SessionReader, Integer)
+     * @param nodeNumber node id in which sending is
+     * @param packetId is id of block we have got.
+     */
     private void sendNack(Integer nodeNumber, Integer packetId) {
         try {
             NodeInfo destination = netConfig.getInfo(nodeNumber);
@@ -446,11 +533,11 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /** Uses for listen threads naming. (In local tests we can see many adapters running on one machine.) */
     private static int socketListenThreadNumber = 1;
 
     /**
-     * This thread listen socket for packets. From packets it construct blocks. And send anwer for blocks by creating
-     * and sending oter blocks.
+     * This thread listen socket for packets and processes them by types.
      */
     private class SocketListenThread extends Thread {
 
@@ -543,6 +630,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#HELLO} packet. Should create localNonce and send it in reply.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveHello(Packet packet) throws EncryptionError {
             report(logLabel, ()->"received hello from " + packet.senderNodeId, VerboseLevel.BASE);
             NodeInfo nodeInfo = netConfig.getInfo(packet.senderNodeId);
@@ -550,7 +641,7 @@ public class UDPAdapter extends DatagramAdapter {
                 SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
                 if (sessionReader != null) {
                     sessionReader.protectFromDuples(packet.packetId, ()->{
-                        sessionReader.generateNewLocalNonce();
+                        sessionReader.localNonce = Do.randomBytes(64);
                         sessionReader.handshake_keyReqPart1 = null;
                         sessionReader.handshake_keyReqPart2 = null;
                         sendWelcome(sessionReader);
@@ -562,6 +653,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#WELCOME} packet. Now we should request session key.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveWelcome(Packet packet) {
             report(logLabel, ()->"received welcome from " + packet.senderNodeId, VerboseLevel.BASE);
             Session session = getOrCreateSession(packet.senderNodeId);
@@ -592,6 +687,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#KEY_REQ_PART1} packet. Waiting for part2 or continue if it has got already.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveKeyReqPart1(Packet packet) {
             report(logLabel, ()->"received key_req_part1 from " + packet.senderNodeId + " (packetId="+packet.packetId+")", VerboseLevel.BASE);
             SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
@@ -605,6 +704,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#KEY_REQ_PART2} packet. Waiting for part1 or continue if it has got already.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveKeyReqPart2(Packet packet) {
             report(logLabel, ()->"received key_req_part2 from " + packet.senderNodeId + " (packetId="+packet.packetId+")", VerboseLevel.BASE);
             SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
@@ -618,6 +721,13 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * Here we checks that both parts of KEY_REQ are received.
+         * Now we should create sessionKey and send it to handshake's initiator.
+         * sessionReader is ready for receiving packets from remote session now,
+         * so remove it from candidates list by call {@link UDPAdapter#acceptSessionReaderCandidate(SessionReader)}
+         * @param sessionReader in which we have got our parts of KEY_REQ
+         */
         private void onReceiveKeyReq(SessionReader sessionReader) {
             try {
                 if ((sessionReader.handshake_keyReqPart1 != null) && (sessionReader.handshake_keyReqPart2 != null)) {
@@ -633,7 +743,7 @@ public class UDPAdapter extends DatagramAdapter {
                             report(logLabel, ()->"key_req successfully verified", VerboseLevel.BASE);
                             sessionReader.remoteNonce = packet_senderNonce;
                             sessionReader.sessionKey = new SymmetricKey();
-                            acceptSessionReaderCandidate(sessionReader.remoteNodeInfo.getNumber(), sessionReader);
+                            acceptSessionReaderCandidate(sessionReader);
                             sendSessionKey(sessionReader);
                         } else {
                             callErrorCallbacks("(onReceiveKeyReq) verify fails");
@@ -648,6 +758,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#SESSION_PART1} packet. Waiting for part2 or continue if it has got already.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveSessionPart1(Packet packet) {
             report(logLabel, ()->"received session_part1 from " + packet.senderNodeId, VerboseLevel.BASE);
             Session session = getOrCreateSession(packet.senderNodeId);
@@ -663,6 +777,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#SESSION_PART2} packet. Waiting for part1 or continue if it has got already.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveSessionPart2(Packet packet) {
             report(logLabel, ()->"received session_part2 from " + packet.senderNodeId, VerboseLevel.BASE);
             Session session = getOrCreateSession(packet.senderNodeId);
@@ -678,6 +796,13 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * Here we checks that both parts of SESSION are received.
+         * Now we should create sessionKey and send it to handshake's initiator.
+         * Handshake has completed now, so change session's state to {@link Session#STATE_EXCHANGING}.
+         * Also, reply with {@link PacketTypes#SESSION_ACK}
+         * @param session in which we have got our parts of SESSION
+         */
         private void onReceiveSession(Session session) {
             try {
                 if ((session.handshake_sessionPart1 != null) && (session.handshake_sessionPart2 != null)) {
@@ -705,6 +830,11 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#DATA} packet. Need to check crc32, decrypt payload with sessionKey,
+         * call our main consumer, and reply with ACK or NACK according to success or fail.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveData(Packet packet) {
             if (packet.payload.length > 4) {
                 byte[] encryptedPayload = new byte[packet.payload.length - 4];
@@ -751,6 +881,10 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#ACK} packet. Need to stop retransmitting of ack-ed packet.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveAck(Packet packet) throws EncryptionError, SymmetricKey.AuthenticationFailed {
             report(logLabel, ()->"received ack from " + packet.senderNodeId, VerboseLevel.DETAILED);
             Session session = getOrCreateSession(packet.senderNodeId);
@@ -763,6 +897,11 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#NACK} packet. Means that session is broken, e.g. remote node was
+         * rebooted. Need to restart handshake procedure immediately.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveNack(Packet packet) throws EncryptionError, SymmetricKey.AuthenticationFailed {
             report(logLabel, ()->"received nack from " + packet.senderNodeId, VerboseLevel.BASE);
             Session session = getOrCreateSession(packet.senderNodeId);
@@ -778,6 +917,11 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
 
+        /**
+         * We have received {@link PacketTypes#SESSION_ACK} packet.
+         * Need to stop retransmitting of any handshake packets.
+         * @param packet received {@link Packet}
+         */
         private void onReceiveSessionAck(Packet packet) {
             report(logLabel, ()->"received session_ack from " + packet.senderNodeId, VerboseLevel.BASE);
             SessionReader sessionReader = getSessionReader(packet.senderNodeId);
@@ -788,6 +932,9 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Implements protection from duplication received packets.
+     */
     private class DupleProtection {
         public Set<Integer> protectionFromDuple0 = new HashSet<>();
         public Set<Integer> protectionFromDuple1 = new HashSet<>();
@@ -806,6 +953,9 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Implements packet retransmission algorithm.
+     */
     private class Retransmitter extends DupleProtection {
         public ConcurrentHashMap<Integer,RetransmitItem> retransmitMap = new ConcurrentHashMap<>();
         public NodeInfo remoteNodeInfo;
@@ -838,7 +988,7 @@ public class UDPAdapter extends DatagramAdapter {
                         if (item.type == PacketTypes.DATA) {
                             if (item.packet == null) {
                                 byte[] dataToSend = preparePayloadForSession(sessionKey, item.sourcePayload);
-                                item.packet = createTestPacket(item.packetId, myNodeInfo.getNumber(), item.receiverNodeId, item.type, dataToSend);
+                                item.packet = new Packet(item.packetId, myNodeInfo.getNumber(), item.receiverNodeId, item.type, dataToSend);
                             }
                             sendPacket(remoteNodeInfo, item.packet);
                             if (item.retransmitCounter++ >= RETRANSMIT_MAX_ATTEMPTS)
@@ -867,8 +1017,10 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     /**
-     * Two remote parties should create valid session before start data's exchanging. This class implement that session
-     * according with remote parties is handshaking and eexchanging.
+     * For data exchanging, two remote parties should create two valid sessions. Each one initiates handshake from
+     * it's local {@link Session}, and remote creates {@link SessionReader} for responding.
+     * Session uses for handshaking and for transmit {@link PacketTypes#DATA}.
+     * SessionReader uses for handshaking and for receive {@link PacketTypes#DATA}
      */
     private class Session extends Retransmitter {
 
@@ -898,7 +1050,7 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
         /**
-         * Reconstruct key from got byte array. Calls when remote party sends key.
+         * Reconstruct key from got byte array. Calls when we receive session key from remote party.
          * @param key is byte array with packed key.
          */
         public void reconstructSessionKey(byte[] key) throws EncryptionError {
@@ -910,6 +1062,12 @@ public class UDPAdapter extends DatagramAdapter {
             return state.get();
         }
 
+        /**
+         * If we send some payload into session, but session state is
+         * {@link Session#STATE_HANDSHAKE} - it accumulates in {@link Session#outputQueue}.
+         * @param destination instance of {@link NodeInfo} with net address for sending.
+         * @param payload data to send
+         */
         public void addPayloadToOutputQueue(NodeInfo destination, byte[] payload) {
             OutputQueueItem outputQueueItem = new OutputQueueItem(destination, payload);
             if (!outputQueue.offer(outputQueueItem)) {
@@ -918,6 +1076,9 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
+        /**
+         * When handshake procedure completes, we should send all accumulated messages.
+         */
         public void sendAllFromOutputQueue() {
             try {
                 OutputQueueItem queuedItem;
@@ -929,6 +1090,9 @@ public class UDPAdapter extends DatagramAdapter {
             }
         }
 
+        /**
+         * Changes session's state to {@link Session#STATE_HANDSHAKE}.
+         */
         public void startHandshake() {
             if (lastHandshakeRestartTime.plusMillis(RETRANSMIT_TIME).isBefore(Instant.now())) {
                 retransmitMap.forEach((k, v) -> {
@@ -948,22 +1112,21 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * SessionReader uses for handshaking and for receive {@link PacketTypes#DATA}
+     * @see Session
+     */
     private class SessionReader extends Retransmitter {
         private byte[] localNonce;
         private byte[] remoteNonce;
         private byte[] handshake_keyReqPart1 = null;
         private byte[] handshake_keyReqPart2 = null;
-
-        private void generateNewLocalNonce() {
-            localNonce = Do.randomBytes(64);
-        }
     }
 
 
     /**
      * Packet is atomary object for sending to socket. It has size that fit socket buffer size.
-     * Think about packet as about low-level structure. Has type, link to block (by id), num of packets in
-     * block at all, payload section and some other data.
+     * Think about packet as about low-level structure. Has header and payload sections.
      */
     public class PacketTypes
     {
@@ -999,7 +1162,7 @@ public class UDPAdapter extends DatagramAdapter {
         }
 
         /**
-         * Pack packet.
+         * Pack header and payload to bytes array.
          * @return packed packet.
          */
         public byte[] makeByteArray() {
@@ -1010,7 +1173,6 @@ public class UDPAdapter extends DatagramAdapter {
         /**
          * Reconstruct packet from bytes array.
          * @param byteArray is bytes array for reconstruction.
-         * @throws IOException if something went wrong.
          */
         public void parseFromByteArray(byte[] byteArray) {
             List data = Boss.load(byteArray);
@@ -1023,11 +1185,17 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * for debug and testing
+     */
     public Packet createTestPacket(int packetId, int senderNodeId, int receiverNodeId, int type, byte[] payload) {
         return new Packet(packetId, senderNodeId, receiverNodeId, type, payload);
     }
 
 
+    /**
+     * Item for accumulating in {@link Session#outputQueue}
+     */
     private class OutputQueueItem {
         public NodeInfo destination;
         public byte[] payload;
@@ -1038,6 +1206,9 @@ public class UDPAdapter extends DatagramAdapter {
     }
 
 
+    /**
+     * Item for accumulating in {@link Retransmitter#retransmitMap}
+     */
     private class RetransmitItem {
         public Packet packet;
         public int retransmitCounter;
@@ -1056,7 +1227,11 @@ public class UDPAdapter extends DatagramAdapter {
             updateNextRetransmitTime();
         }
         public void updateNextRetransmitTime() {
-            nextRetransmitTime = Instant.now().plusMillis(new Random().nextInt(RETRANSMIT_TIME*(4*retransmitCounter+RETRANSMIT_MAX_ATTEMPTS)/RETRANSMIT_MAX_ATTEMPTS));
+            int maxRetransmitDelay = RETRANSMIT_TIME_GROW_FACTOR*retransmitCounter + RETRANSMIT_MAX_ATTEMPTS;
+            maxRetransmitDelay /= RETRANSMIT_MAX_ATTEMPTS;
+            maxRetransmitDelay *= RETRANSMIT_TIME;
+            maxRetransmitDelay += RETRANSMIT_TIME/2;
+            nextRetransmitTime = Instant.now().plusMillis(new Random().nextInt(maxRetransmitDelay));
         }
     }
 
