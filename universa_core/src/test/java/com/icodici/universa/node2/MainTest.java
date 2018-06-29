@@ -3331,7 +3331,7 @@ public class MainTest {
 
     @Test
     public void tttt() throws Exception {
-        boolean refAsNew = true;
+        boolean refAsNew = false;
 
         PrivateKey key = TestKeys.privateKey(1);
         TestSpace testSpace = prepareTestSpace(key);
@@ -3386,7 +3386,8 @@ public class MainTest {
         }
 
         contract.seal();
-//        contract.getTransactionPack().addReferencedItem(contractMark);
+        if (!refAsNew)
+            contract.getTransactionPack().addReferencedItem(contractMark);
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //all ok
