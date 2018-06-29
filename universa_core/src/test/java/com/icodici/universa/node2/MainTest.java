@@ -3327,7 +3327,8 @@ public class MainTest {
         }
     }
 
-    private static final String REFERENCE_CONDITION_PREFIX = "ref.state.origin==";
+    private static final String REFERENCE_CONDITION_PREFIX1 = "ref.id==";
+    private static final String REFERENCE_CONDITION_PREFIX2 = "ref.state.revision==";
 
     @Test
     public void tttt() throws Exception {
@@ -3355,7 +3356,8 @@ public class MainTest {
         ref.setName(origin.toString());
 
         List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX1+origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION_PREFIX2+"1");
         Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
         ref.setConditions(conditions);
 
