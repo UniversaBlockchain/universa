@@ -158,9 +158,14 @@ public class ListRole extends Role {
 
     @Override
     protected boolean isAllowedForReferences(Collection<String> references) {
+
+        if(!super.isAllowedForReferences(references))
+            return false;
+
         if(this.mode == null) {
             this.mode = Mode.ALL;
         }
+
 
         return this.mode == Mode.ANY && this.processAnyMode(references) ||
                 this.mode == Mode.ALL && this.processAllMode(references) ||

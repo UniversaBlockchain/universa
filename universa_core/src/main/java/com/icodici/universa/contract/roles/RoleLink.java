@@ -141,6 +141,11 @@ public class RoleLink extends Role {
 
     @Override
     protected boolean isAllowedForReferences(Collection<String> references) {
+
+        if(!super.isAllowedForReferences(references))
+            return false;
+
+
         final Role role = resolve();
         return (role == null) ? false : role.isAllowedForReferences( references);
     }
