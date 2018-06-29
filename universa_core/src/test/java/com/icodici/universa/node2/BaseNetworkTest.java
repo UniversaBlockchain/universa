@@ -4988,7 +4988,7 @@ public class BaseNetworkTest extends TestCase {
 
         llcProperty2.check();
         llcProperty2.traceErrors();
-        assertFalse(llcProperty2.isOk());
+        assertTrue(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
         // don't forget add all contracts needed for all references
