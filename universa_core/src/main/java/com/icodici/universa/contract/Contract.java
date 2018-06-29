@@ -717,8 +717,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         boolean allRefs_check = true;
         for (final Reference rm : getReferences().values()) {
 
-            boolean roleReference = roles.values().stream().anyMatch(role -> role.getReferences(Role.RequiredMode.ALL_OF).contains(rm.name) ||
-                    role.getReferences(Role.RequiredMode.ANY_OF).contains(rm.name));
+            boolean roleReference = roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || permissions.values().stream().anyMatch(p -> p.getRole().containReference(rm.name));
 
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;

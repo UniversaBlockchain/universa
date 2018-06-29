@@ -18,10 +18,7 @@ import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.icodici.universa.contract.roles.Role.RequiredMode.ALL_OF;
@@ -35,6 +32,21 @@ import static com.icodici.universa.contract.roles.Role.RequiredMode.ANY_OF;
  */
 @BiType(name = "Role")
 public abstract class Role implements BiSerializable {
+
+    public boolean containReference(String name) {
+        if(requiredAllReferences.contains(name) || requiredAnyReferences.contains(name))
+            return true;
+
+        if(this instanceof RoleLink) {
+            return ((RoleLink)this).getRole().containReference(name);
+        }
+
+        if(this instanceof ListRole) {
+            return ((ListRole)this).getRoles().stream().anyMatch(r -> r.containReference(name));
+        }
+
+        return false;
+    }
 
     /**
     /* Mode of combining references
