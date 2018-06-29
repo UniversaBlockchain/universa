@@ -155,6 +155,18 @@ public class ListRole extends Role {
                 this.mode == Mode.QUORUM && this.processQuorumMode(keys);
     }
 
+
+    @Override
+    protected boolean isAllowedForReferences(Collection<String> references) {
+        if(this.mode == null) {
+            this.mode = Mode.ALL;
+        }
+
+        return this.mode == Mode.ANY && this.processAnyMode(references) ||
+                this.mode == Mode.ALL && this.processAllMode(references) ||
+                this.mode == Mode.QUORUM && this.processQuorumMode(references);
+    }
+
     private boolean processQuorumMode(Set<? extends AbstractKey> keys) {
         int counter = this.quorumSize;
         boolean result = counter == 0;
@@ -165,6 +177,33 @@ public class ListRole extends Role {
             if (result) break;
 
             if (role != null && role.isAllowedForKeys(keys) && --counter == 0) {
+                result = true;
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    private boolean processAllMode(Collection<String> references) {
+        return this.roles.stream().allMatch(role -> role.isAllowedForReferences(references));
+    }
+
+    private boolean processAnyMode(Collection<String> references) {
+        return this.roles.stream().anyMatch(role -> role.isAllowedForReferences(references));
+    }
+
+
+    private boolean processQuorumMode(Collection<String> references) {
+        int counter = this.quorumSize;
+        boolean result = counter == 0;
+
+        Set<Role> roles = this.roles;
+
+        for (Role role : roles) {
+            if (result) break;
+
+            if (role != null && role.isAllowedForReferences(references) && --counter == 0) {
                 result = true;
                 break;
             }

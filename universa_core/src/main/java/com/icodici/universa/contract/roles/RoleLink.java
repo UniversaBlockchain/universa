@@ -139,17 +139,10 @@ public class RoleLink extends Role {
         return (role == null) ? null : role.getKeys();
     }
 
-    /**
-     * Check role is allowed to keys and references
-     *
-     * @param keys is collection of keys
-     * @param references is collection of references names
-     * @return true if role is allowed to keys and references
-     */
     @Override
-    public boolean isAllowedFor(Collection<? extends AbstractKey> keys, Collection<String> references) {
+    protected boolean isAllowedForReferences(Collection<String> references) {
         final Role role = resolve();
-        return (role == null) ? false : role.isAllowedFor(keys, references);
+        return (role == null) ? false : role.isAllowedForReferences( references);
     }
 
     /**
