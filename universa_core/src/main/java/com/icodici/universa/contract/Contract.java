@@ -190,9 +190,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }*/
 
         for(Reference ref : getReferences().values()) {
+            Set<Contract> referencedContracts = new HashSet<>(pack.getReferencedItems().values());
+            for(Approvable a : getNewItems()) {
+                if (a instanceof Contract) {
+                    referencedContracts.add((Contract) a);
+                }
+            }
+
             for(Contract c : pack.getReferencedItems().values()) {
-                if(ref.isMatchingWith(c, pack.getReferencedItems().values())) {
+                if(ref.isMatchingWith(c, referencedContracts)) {
                     ref.addMatchingItem(c);
+                }
+            }
+
+            for(Approvable a : getNewItems()) {
+                if(a instanceof Contract) {
+                    Contract c = (Contract) a;
+                    if (ref.isMatchingWith(c, referencedContracts)) {
+                        ref.addMatchingItem(c);
+                    }
                 }
             }
         }
@@ -332,9 +348,26 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }*/
 
         for(Reference ref : getReferences().values()) {
+
+            Set<Contract> referencedContracts = new HashSet<>(pack.getReferencedItems().values());
+            for(Approvable a : getNewItems()) {
+                if (a instanceof Contract) {
+                    referencedContracts.add((Contract) a);
+                }
+            }
+
             for(Contract c : pack.getReferencedItems().values()) {
-                if(ref.isMatchingWith(c, pack.getReferencedItems().values())) {
+                if(ref.isMatchingWith(c, referencedContracts)) {
                     ref.addMatchingItem(c);
+                }
+            }
+
+            for(Approvable a : getNewItems()) {
+                if(a instanceof Contract) {
+                    Contract c = (Contract) a;
+                    if (ref.isMatchingWith(c, referencedContracts)) {
+                        ref.addMatchingItem(c);
+                    }
                 }
             }
         }

@@ -1983,9 +1983,11 @@ public class Node {
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
                     for (Approvable ref : checkingItem.getReferencedItems()) {
-                        HashId id = ref.getId();
-                        if (!ledger.isApproved(id)) {
-                            checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
+                        if(!checkingItem.getNewItems().contains(ref)) {
+                            HashId id = ref.getId();
+                            if (!ledger.isApproved(id)) {
+                                checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
+                            }
                         }
                     }
                 }
