@@ -3327,11 +3327,12 @@ public class MainTest {
         }
     }
 
-    private static final String REFERENCE_CONDITION_PREFIX = "ref.state.origin==";
+    private static final String REFERENCE_CONDITION_PREFIX = "ref.id==";
+    private static final String REFERENCE_CONDITION2 = "ref.state.revision==1";
 
     @Test
     public void tttt() throws Exception {
-        boolean refAsNew = false;
+        boolean refAsNew = true;
 
         PrivateKey key = TestKeys.privateKey(1);
         TestSpace testSpace = prepareTestSpace(key);
@@ -3343,6 +3344,10 @@ public class MainTest {
         Contract contractMark = new Contract(key);
         contractMark.seal();
         HashId origin = contractMark.getId();
+
+        Contract contractMark2 = new Contract(key);
+        contractMark2.seal();
+        HashId origin2 = contractMark2.getId();
 
 
         Contract contract = new Contract(key);
@@ -3356,13 +3361,28 @@ public class MainTest {
 
         List<Object> conditionsList = new ArrayList<>();
         conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION2);
         Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
         ref.setConditions(conditions);
+
+
+        Reference ref2 = new Reference(contract);
+        ref2.type = Reference.TYPE_EXISTING_STATE;
+        ref2.setName(origin2.toString());
+
+        List<Object> conditionsList2 = new ArrayList<>();
+        conditionsList2.add(REFERENCE_CONDITION_PREFIX+origin2.toBase64String());
+        conditionsList2.add(REFERENCE_CONDITION2);
+        Binder conditions2 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList2);
+        ref2.setConditions(conditions2);
 
 
         //???
         contract.addReference(ref);
         issuer.addRequiredReference(ref, Role.RequiredMode.ALL_OF);
+        contract.addReference(ref2);
+        issuer.addRequiredReference(ref2, Role.RequiredMode.ALL_OF);
+
         contract.registerRole(issuer);
         contract.setOwnerKeys(key);
         contract.seal();
@@ -3373,6 +3393,7 @@ public class MainTest {
 
         contract.seal();
         contract.getTransactionPack().addReferencedItem(contractMark);
+        contract.getTransactionPack().addReferencedItem(contractMark2);
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //matching item for issuer reference is not APPROVED
@@ -3381,13 +3402,17 @@ public class MainTest {
 
         if(refAsNew) {
             contract.addNewItems(contractMark);
+            contract.addNewItems(contractMark2);
         } else {
             testSpace.client.register(contractMark.getPackedTransaction(), 5000);
+            testSpace.client.register(contractMark2.getPackedTransaction(), 5000);
         }
 
         contract.seal();
-        if (!refAsNew)
+        if (!refAsNew) {
             contract.getTransactionPack().addReferencedItem(contractMark);
+            contract.getTransactionPack().addReferencedItem(contractMark2);
+        }
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
 
         //all ok
