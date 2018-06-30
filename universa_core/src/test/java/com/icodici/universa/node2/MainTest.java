@@ -3431,4 +3431,160 @@ public class MainTest {
         assertEquals(ir.state,ItemState.APPROVED);
 
     }
+
+
+    @Test
+    public void testMarkReferences5() throws Exception {
+
+        PrivateKey key = TestKeys.privateKey(1);
+        TestSpace testSpace = prepareTestSpace(key);
+
+        testSpace.nodes.forEach( m -> {
+            m.config.setIsFreeRegistrationsAllowedFromYaml(true);
+        });
+
+        Contract contractMark = new Contract(key);
+        contractMark.seal();
+        HashId origin = contractMark.getId();
+
+        Contract contractMark2 = new Contract(key);
+        contractMark2.seal();
+        HashId origin2 = contractMark2.getId();
+
+        Contract contractMark3 = new Contract(key);
+        contractMark3.seal();
+        HashId origin3 = contractMark3.getId();
+
+        Contract contractMark4 = new Contract(key);
+        contractMark4.seal();
+        HashId origin4 = contractMark4.getId();
+
+        Contract contractMark5 = new Contract(key);
+        contractMark5.seal();
+        HashId origin5 = contractMark5.getId();
+
+
+        Contract contract = new Contract(key);
+
+        SimpleRole issuer = new SimpleRole("issuer");
+        issuer.addKeyRecord(new KeyRecord(key.getPublicKey()));
+
+        Reference ref = new Reference(contract);
+        ref.type = Reference.TYPE_EXISTING_STATE;
+        ref.setName(origin.toString());
+
+        List<Object> conditionsList = new ArrayList<>();
+        conditionsList.add(REFERENCE_CONDITION_PREFIX+origin.toBase64String());
+        conditionsList.add(REFERENCE_CONDITION2);
+        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
+        ref.setConditions(conditions);
+
+        contract.addReference(ref);
+        issuer.addRequiredReference(ref, Role.RequiredMode.ALL_OF);
+
+
+        Reference ref2 = new Reference(contract);
+        ref2.type = Reference.TYPE_EXISTING_STATE;
+        ref2.setName(origin2.toString());
+
+        List<Object> conditionsList2 = new ArrayList<>();
+        conditionsList2.add(REFERENCE_CONDITION_PREFIX+origin2.toBase64String());
+        conditionsList2.add(REFERENCE_CONDITION2);
+        Binder conditions2 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList2);
+        ref2.setConditions(conditions2);
+        
+        contract.addReference(ref2);
+        issuer.addRequiredReference(ref2, Role.RequiredMode.ALL_OF);
+
+
+        Reference ref3 = new Reference(contract);
+        ref3.type = Reference.TYPE_EXISTING_STATE;
+        ref3.setName(origin3.toString());
+
+        List<Object> conditionsList3 = new ArrayList<>();
+        conditionsList3.add(REFERENCE_CONDITION_PREFIX+origin3.toBase64String());
+        conditionsList3.add(REFERENCE_CONDITION2);
+        Binder conditions3 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList3);
+        ref3.setConditions(conditions3);
+
+        contract.addReference(ref3);
+        issuer.addRequiredReference(ref3, Role.RequiredMode.ALL_OF);
+
+        Reference ref4 = new Reference(contract);
+        ref4.type = Reference.TYPE_EXISTING_STATE;
+        ref4.setName(origin4.toString());
+
+        List<Object> conditionsList4 = new ArrayList<>();
+        conditionsList4.add(REFERENCE_CONDITION_PREFIX+origin4.toBase64String());
+        conditionsList4.add(REFERENCE_CONDITION2);
+        Binder conditions4 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList4);
+        ref4.setConditions(conditions4);
+
+        contract.addReference(ref4);
+        issuer.addRequiredReference(ref4, Role.RequiredMode.ALL_OF);
+
+
+        Reference ref5 = new Reference(contract);
+        ref5.type = Reference.TYPE_EXISTING_STATE;
+        ref5.setName(origin5.toString());
+
+        List<Object> conditionsList5 = new ArrayList<>();
+        conditionsList5.add(REFERENCE_CONDITION_PREFIX+origin5.toBase64String());
+        conditionsList5.add(REFERENCE_CONDITION2);
+        Binder conditions5 = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList5);
+        ref5.setConditions(conditions5);
+
+        contract.addReference(ref5);
+        issuer.addRequiredReference(ref5, Role.RequiredMode.ALL_OF);
+        
+        
+        
+
+        contract.registerRole(issuer);
+        contract.setOwnerKeys(key);
+        contract.seal();
+        ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+
+        //NO matching item for issuer reference in transaction pack
+        assertEquals(ir.state,ItemState.DECLINED);
+
+        contract.seal();
+        contract.getTransactionPack().addReferencedItem(contractMark);
+        contract.getTransactionPack().addReferencedItem(contractMark2);
+        ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+
+        //matching item for issuer reference is not APPROVED
+        assertEquals(ir.state,ItemState.DECLINED);
+
+
+            contract.addNewItems(contractMark);
+            contract.addNewItems(contractMark2);
+            contract.addNewItems(contractMark3);
+
+            testSpace.client.register(contractMark4.getPackedTransaction(), 5000);
+            testSpace.client.register(contractMark5.getPackedTransaction(), 5000);
+
+        contract.seal();
+
+        contract.getTransactionPack().addReferencedItem(contractMark4);
+        contract.getTransactionPack().addReferencedItem(contractMark5);
+
+        ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+
+        //all ok
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //no markContract is required referenced items of transaction pack
+        contract = contract.createRevision(key);
+        contract.addSignerKey(key);
+        contract.setOwnerKeys(TestKeys.privateKey(2).getPublicKey());
+        contract.seal();
+
+        ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+        //all ok
+
+        assertEquals(ir.state,ItemState.APPROVED);
+
+    }
 }
