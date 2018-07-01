@@ -54,6 +54,12 @@ public abstract class DatagramAdapter {
     static public final int MAX_QUEUE_SIZE = 50000;
 
     /**
+     * Maximum number of data blocks in the retransmit queue after which new
+     * sending blocks are delayed in output queue.
+     */
+    static public final int MAX_RETRANSMIT_QUEUE_SIZE = 5000;
+
+    /**
      * Time between attempts to retransmit a DATA block, in milliseconds
      */
     static public final int RETRANSMIT_TIME = 250;

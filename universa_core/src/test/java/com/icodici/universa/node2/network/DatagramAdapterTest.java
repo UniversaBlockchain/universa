@@ -18,10 +18,7 @@ import net.sergeych.tools.Do;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -174,6 +171,10 @@ public class DatagramAdapterTest {
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2222".getBytes();
         byte[] payload3 = "test data set 333333333333333".getBytes();
+        Set<String> dataToSend = new HashSet<>();
+        dataToSend.add(new String(payload1));
+        dataToSend.add(new String(payload2));
+        dataToSend.add(new String(payload3));
 
         ArrayList<byte[]> receviedFor2 = new ArrayList<>();
         BlockingQueue<String> waitStatusQueue = new ArrayBlockingQueue<String>(1, true);
@@ -201,14 +202,22 @@ public class DatagramAdapterTest {
         }
 
         assertEquals(3, receviedFor2.size());
-        byte[] data1 = receviedFor2.get(0);
-        byte[] data2 = receviedFor2.get(1);
-        byte[] data3 = receviedFor2.get(2);
+        String data1 = new String(receviedFor2.get(0));
+        String data2 = new String(receviedFor2.get(1));
+        String data3 = new String(receviedFor2.get(2));
+
+        System.out.println("data1: " + new String(data1));
+        System.out.println("data2: " + new String(data2));
+        System.out.println("data3: " + new String(data3));
 
         // receiver must s
-        assertArrayEquals(payload1, data1);
-        assertArrayEquals(payload2, data2);
-        assertArrayEquals(payload3, data3);
+        assertEquals(3, dataToSend.size());
+        dataToSend.remove(data1);
+        assertEquals(2, dataToSend.size());
+        dataToSend.remove(data2);
+        assertEquals(1, dataToSend.size());
+        dataToSend.remove(data3);
+        assertEquals(0, dataToSend.size());
 
         // And test it for all interfaceces and big arrays of data
 

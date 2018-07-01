@@ -14,7 +14,6 @@ import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Do;
-import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
@@ -24,8 +23,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class UDPAdapter extends DatagramAdapter {
@@ -100,7 +97,10 @@ public class UDPAdapter extends DatagramAdapter {
         if (session.state.get() == Session.STATE_HANDSHAKE) {
             session.addPayloadToOutputQueue(destination, payload);
         } else {
-            sendPayload(session, payload);
+            if (session.retransmitMap.size() > MAX_RETRANSMIT_QUEUE_SIZE)
+                session.addPayloadToOutputQueue(destination, payload);
+            else
+                sendPayload(session, payload);
         }
     }
 
@@ -324,6 +324,7 @@ public class UDPAdapter extends DatagramAdapter {
         sessionsByRemoteId.forEach((k, s)->s.pulseRetransmit());
         sessionReaders.forEach((k, sr) -> sr.pulseRetransmit());
         sessionReaderCandidates.forEach((k, sr) -> sr.pulseRetransmit());
+        sessionsByRemoteId.forEach((k, s)->s.sendAllFromOutputQueue());
     }
 
 
@@ -1082,8 +1083,12 @@ public class UDPAdapter extends DatagramAdapter {
         public void sendAllFromOutputQueue() {
             try {
                 OutputQueueItem queuedItem;
+                int maxOutputs = MAX_RETRANSMIT_QUEUE_SIZE - retransmitMap.size();
+                int i = 0;
                 while ((queuedItem = outputQueue.poll()) != null) {
                     send(queuedItem.destination, queuedItem.payload);
+                    if (i++ > maxOutputs)
+                        break;
                 }
             } catch (InterruptedException e) {
                 callErrorCallbacks("(sendAllFromOutputQueue) InterruptedException in node " + myNodeInfo.getNumber() + ": " + e);
