@@ -280,7 +280,7 @@ public class UDPAdapter extends DatagramAdapter {
         }
         SessionReader sr = sessionReaderCandidates.computeIfAbsent(destination.getNumber(), (k)-> {
             SessionReader sessionReader = new SessionReader();
-            sessionReader.remoteNodeInfo = Boss.load(Boss.dumpToArray(destination));
+            sessionReader.remoteNodeInfo = destination;
             report(logLabel, ()->"sessionReader created for nodeId "+destination.getNumber(), VerboseLevel.BASE);
             return sessionReader;
         });
@@ -1042,7 +1042,7 @@ public class UDPAdapter extends DatagramAdapter {
         static public final int HANDSHAKE_STEP_WAIT_FOR_SESSION      = 3;
 
         Session(NodeInfo remoteNodeInfo) {
-            this.remoteNodeInfo = Boss.load(Boss.dumpToArray(remoteNodeInfo));
+            this.remoteNodeInfo = remoteNodeInfo;
             localNonce = Do.randomBytes(64);
             state = new AtomicInteger(STATE_HANDSHAKE);
             handshakeStep = new AtomicInteger(HANDSHAKE_STEP_INIT);
