@@ -86,7 +86,7 @@ public class SimpleRole extends Role {
             else if (x instanceof KeyAddress)
                 keyAddresses.add((KeyAddress) x);
             else
-                throw new IllegalArgumentException("Cant create KeyRecord from " + x);
+                throw new IllegalArgumentException("Cant create KeyRecord from " + x + ": "+(x.getClass().getName()));
 
             if (anonId != null)
                 anonymousIds.add(anonId);

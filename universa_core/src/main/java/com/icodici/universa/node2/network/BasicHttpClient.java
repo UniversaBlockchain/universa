@@ -185,7 +185,7 @@ public class BasicHttpClient {
 
     public void restart() throws IOException {
         synchronized (this) {
-            System.err.println("RESTART");
+            System.err.println("Restarting connection to $"+this.nodeNumber+": "+this.getUrl());
             PrivateKey privateKey = session.getPrivateKey();
             PublicKey nodePublicKey = session.getNodePublicKey();
             session = null;
