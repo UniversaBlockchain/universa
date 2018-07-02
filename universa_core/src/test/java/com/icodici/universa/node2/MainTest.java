@@ -18,6 +18,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.ModifyDataPermission;
+import com.icodici.universa.contract.permissions.RevokePermission;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -34,6 +35,8 @@ import net.sergeych.tools.BufferedLogger;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.units.qual.A;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -43,6 +46,7 @@ import org.spongycastle.util.encoders.Hex;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.*;
 import java.sql.PreparedStatement;
 import java.time.Duration;
@@ -3584,6 +3588,164 @@ public class MainTest {
         ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
         //all ok
 
+        assertEquals(ir.state,ItemState.APPROVED);
+
+    }
+
+
+    @Test
+    public void conversionSchemeUtoUTN() throws Exception {
+        /////////////////////////////////////////////////
+        //PREPARATION
+        /////////////////////////////////////////////////
+        PrivateKey universaAdminKey = TestKeys.privateKey(10);
+        PrivateKey utnIssuerKey = TestKeys.privateKey(11);
+        PrivateKey uIssuerKey = new PrivateKey(Do.read(Config.tuKeyPath));
+        PrivateKey userKey = TestKeys.privateKey(12);
+        Set<PrivateKey> userKeys = new HashSet<>();
+        userKeys.add(userKey);
+
+        SimpleRole universaAdmin = new SimpleRole("universa_admin");
+        universaAdmin.addKeyRecord(new KeyRecord(universaAdminKey.getPublicKey()));
+
+        TestSpace testSpace = prepareTestSpace(userKey);
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        Set<PrivateKey> utnIssuer = new HashSet<>();
+        utnIssuer.add(utnIssuerKey);
+
+        Set<PublicKey> ownerKeys = new HashSet<>();
+        ownerKeys.add(userKey.getPublicKey());
+        Contract utnContract = ContractsService.createTokenContract(utnIssuer,ownerKeys,"100000");
+        @NonNull ItemResult ir = testSpace.client.register(utnContract.getPackedTransaction());
+
+        while(ir.state.isPending()) {
+            Thread.sleep(100);
+            ir = testSpace.client.getState(utnContract.getId());
+        }
+
+        assertEquals(ir.state, ItemState.APPROVED);
+        /////////////////////////////////////////////////
+        //PREPARATION END
+        /////////////////////////////////////////////////
+
+        //CREATE REFERENCING CONTRACT
+        //Define contract for blocking issuing U contract
+        Contract uIssueBlocker = new Contract(TestKeys.privateKey(21));
+        RoleLink roleLink = new RoleLink("@owner_link","owner");
+        uIssueBlocker.registerRole(roleLink);
+        RevokePermission revokePermission = new RevokePermission(roleLink);
+        uIssueBlocker.addPermission(revokePermission);
+        uIssueBlocker.seal();
+
+
+        //CREATE COMPOUND
+        Contract compound = ContractsService.createSplit(utnContract, "150", "amount", userKeys,true);
+        Contract paymentInUTNs = (Contract) compound.getNewItems().iterator().next();
+        paymentInUTNs.setOwnerKeys(universaAdminKey);
+
+        //CALCULATE AMOUNT OF U
+        BigDecimal utnsPayed = new BigDecimal(paymentInUTNs.getStateData().getString("amount"));
+        int unitsToIssue = utnsPayed.intValue()*100;
+
+        //CREATE U CONTRACT
+        //Create standart U contract
+        Contract uContract = InnerContractsService.createFreshTU(unitsToIssue, ownerKeys);
+        //Create reference to uIssueBlocker contract
+        Reference reference = new Reference(uContract);
+        reference.type = Reference.TYPE_EXISTING_DEFINITION;
+        reference.name = "issue_block";
+
+        List<Object> conditionsList = new ArrayList<>();
+        conditionsList.add("ref.id=="+uIssueBlocker.getId().toBase64String());
+        conditionsList.add("ref.state.revision==1");
+        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
+        reference.setConditions(conditions);
+        uContract.addReference(reference);
+
+        //Add created reference to U contract's issuer role. This prevents U contract being registered until uIssueBlocker is not registered as well
+        uContract.getIssuer().addRequiredReference(reference.getName(), Role.RequiredMode.ALL_OF);
+        uContract.seal();
+
+        //ADD U TO COMPOUND
+        compound.addNewItems(uContract);
+
+
+        //TRY TO REGISTER COMPOUND WITH INVALID ISSUING REFERENCE INSIDE U
+        compound.seal();
+        compound.getTransactionPack().addReferencedItem(uIssueBlocker);
+        //attempt to register
+        ir = testSpace.client.register(compound.getPackedTransaction());
+        while(ir.state.isPending()) {
+            Thread.sleep(100);
+            ir = testSpace.client.getState(compound.getId());
+        }
+        //blocked by uIssueBlocker reference
+        assertEquals(ir.state,ItemState.DECLINED);
+
+
+        //REGISTER REFENCING CONTRACT
+        //register uIssueBlocker
+        ir = testSpace.client.register(uIssueBlocker.getPackedTransaction());
+        while(ir.state.isPending()) {
+            Thread.sleep(100);
+            ir = testSpace.client.getState(uIssueBlocker.getId());
+        }
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+        //REGISTER U WITH VALID ISSUING REFERENCE
+        //reseal compound
+        compound.seal();
+        compound.getTransactionPack().addReferencedItem(uIssueBlocker);
+        //attempt to register (uIssueBlocker reference is now valid)
+        ir = testSpace.client.register(compound.getPackedTransaction());
+        while(ir.state.isPending()) {
+            Thread.sleep(100);
+            ir = testSpace.client.getState(compound.getId());
+        }
+        //so everything is fine
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+
+        //REGISTER SAMPLE CONTRACT WITH PAYMENT
+        //Try to register new contract and use uContract as payment
+        Contract sampleContract = new Contract(userKey);
+        sampleContract.seal();
+        Parcel parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
+        testSpace.client.registerParcel(parcel.pack());
+        do {
+            Thread.sleep(100);
+            ir = testSpace.client.getState(sampleContract.getId());
+        } while (ir.state.isPending());
+        //so everything is fine
+        assertEquals(ir.state,ItemState.APPROVED);
+        uContract = parcel.getPaymentContract();
+
+
+        //REVOKE uIssueBlocker
+        Contract revocation = ContractsService.createRevocation(uIssueBlocker, TestKeys.privateKey(21));
+        ir = testSpace.client.register(revocation.getPackedTransaction());
+        while(ir.state.isPending()) {
+            Thread.sleep(100);
+            ir = testSpace.client.getState(revocation.getId());
+        }
+        //uIssueBlocker is revoked
+        assertEquals(ir.state,ItemState.APPROVED);
+
+
+
+        //REGISTER ANOTHER SAMPLE CONTRACT WITH PAYMENT
+        //Try to register new contract and use uContract as payment
+        sampleContract = new Contract(userKey);
+        sampleContract.seal();
+        parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
+        testSpace.client.registerParcel(parcel.pack());
+        do {
+            Thread.sleep(100);
+            ir = testSpace.client.getState(sampleContract.getId());
+        } while (ir.state.isPending());
+        //so everything should be fine so revokation of uIssueBlocker should not affect later usage of U
         assertEquals(ir.state,ItemState.APPROVED);
 
     }
