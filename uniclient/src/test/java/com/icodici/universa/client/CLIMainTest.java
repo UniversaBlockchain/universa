@@ -899,7 +899,7 @@ public class CLIMainTest {
                 "-i", basePath + "contract_to_import.json");
         System.out.println(output);
         assertTrue (output.indexOf("import from json ok") >= 0);
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
         }
@@ -911,7 +911,7 @@ public class CLIMainTest {
                 "-i", basePath + "contract_to_import.json");
         System.out.println(output);
         assertTrue (output.indexOf("import from json ok") >= 0);
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
         }
@@ -923,7 +923,7 @@ public class CLIMainTest {
                 "-i", basePath + "contract_to_import.XML");
         System.out.println(output);
         assertTrue (output.indexOf("import from xml ok") >= 0);
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
         }
@@ -935,7 +935,7 @@ public class CLIMainTest {
                 "-i", basePath + "contract_to_import.yaml");
         System.out.println(output);
         assertTrue (output.indexOf("import from yaml ok") >= 0);
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
         }
@@ -953,7 +953,7 @@ public class CLIMainTest {
                 "-i", basePath + "contract_to_import.yaml",
                 "-set", field2, "-value", value2);
         System.out.println(output);
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
         assertTrue (output.indexOf("import from yaml ok") >= 0);
         assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
         assertTrue (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
@@ -972,11 +972,11 @@ public class CLIMainTest {
         assertTrue (output.indexOf("import from json ok") >= 0);
         assertTrue (output.indexOf("import from yaml ok") >= 0);
         assertTrue (output.indexOf("import from xml ok") >= 0);
-        assertEquals(3, errors.size());
+        assertEquals(6, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
-            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(4).get("code"));
         }
     }
 
@@ -990,11 +990,11 @@ public class CLIMainTest {
         assertTrue (output.indexOf("import from json ok") >= 0);
         assertTrue (output.indexOf("import from yaml ok") >= 0);
         assertTrue (output.indexOf("import from xml ok") >= 0);
-        assertEquals(3, errors.size());
+        assertEquals(6, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
-            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(4).get("code"));
         }
     }
 
@@ -1008,11 +1008,11 @@ public class CLIMainTest {
         assertTrue (output.indexOf("import from json ok") >= 0);
         assertTrue (output.indexOf("import from yaml ok") >= 0);
         assertTrue (output.indexOf("import from xml ok") >= 0);
-        assertEquals(3, errors.size());
+        assertEquals(6, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
-            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(4).get("code"));
         }
     }
 
@@ -1026,11 +1026,11 @@ public class CLIMainTest {
         assertTrue (output.indexOf("import from json ok") >= 0);
         assertTrue (output.indexOf("import from yaml ok") >= 0);
         assertTrue (output.indexOf("import from xml ok") >= 0);
-        assertEquals(3, errors.size());
+        assertEquals(6, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
-            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(4).get("code"));
         }
     }
 
@@ -1044,11 +1044,11 @@ public class CLIMainTest {
         assertTrue (output.indexOf("import from json ok") >= 0);
         assertTrue (output.indexOf("import from yaml ok") >= 0);
         assertTrue (output.indexOf("import from xml ok") >= 0);
-        assertEquals(3, errors.size());
+        assertEquals(6, errors.size());
         if(errors.size() > 2) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
-            assertEquals(Errors.NOT_SIGNED.name(), errors.get(1).get("code"));
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(2).get("code"));
+            assertEquals(Errors.NOT_SIGNED.name(), errors.get(4).get("code"));
         }
     }
 
@@ -1081,7 +1081,7 @@ public class CLIMainTest {
                 "-i", basePath + "contract_to_import.xml", "--output", basePath + name);
         System.out.println(output);
         assertTrue (output.indexOf("import from xml ok") >= 0);
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
         }
@@ -1413,7 +1413,7 @@ public class CLIMainTest {
     public void checkNotSignedContract() throws Exception {
         callMain("-ch", basePath + "not_signed_contract.unicon");
         System.out.println(output);
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
     }
 
     @Test
@@ -2452,7 +2452,7 @@ public class CLIMainTest {
         callMain("-i", basePath + "contractWithAddresses.json", "--output", basePath + "contractWithAddressesImported.unicon");
         System.out.println(output);
         assertTrue (output.indexOf("import from json ok") >= 0);
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
         if(errors.size() > 0) {
             assertEquals(Errors.NOT_SIGNED.name(), errors.get(0).get("code"));
         }
