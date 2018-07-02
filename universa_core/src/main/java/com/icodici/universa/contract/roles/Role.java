@@ -48,6 +48,7 @@ public abstract class Role implements BiSerializable {
         return false;
     }
 
+
     /**
     /* Mode of combining references
      */
@@ -228,6 +229,15 @@ public abstract class Role implements BiSerializable {
     public boolean equalKeys(@NonNull Role otherRole) {
         return otherRole.getKeys().equals(getKeys());
     }
+
+    public boolean equalAddresses(Role otherRole) {
+        return otherRole.getKeyAddresses().equals(getKeyAddresses());
+    }
+
+    public boolean equalAnonIds(Role otherRole) {
+        return otherRole.getAnonymousIds().equals(getAnonymousIds());
+    }
+
 
     /**
      * Initializes role from dsl.

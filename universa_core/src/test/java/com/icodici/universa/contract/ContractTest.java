@@ -7,6 +7,7 @@
 
 package com.icodici.universa.contract;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.*;
@@ -1397,6 +1398,20 @@ public class ContractTest extends ContractTestBase {
         Contract unpackedContract = Contract.fromPackedTransaction(packedData);
         System.out.println("unpackedContract.transactional.data.test_value: " + unpackedContract.getTransactionalData().getStringOrThrow("test_value"));
         assertEquals(testValue, unpackedContract.getTransactionalData().getStringOrThrow("test_value"));
+    }
+
+
+    @Test
+    public void issuerTest() throws Exception {
+        KeyAddress keyAddress1 = TestKeys.privateKey(0).getPublicKey().getShortAddress();
+        KeyAddress keyAddress2 = TestKeys.privateKey(1).getPublicKey().getShortAddress();
+
+        Contract contract = new Contract(TestKeys.privateKey(2));
+        contract.setCreatorKeys(keyAddress1);
+        contract.setIssuerKeys(keyAddress2);
+        contract.addSignerKey(TestKeys.privateKey(0));
+        contract.seal();
+        assertFalse(contract.check());
     }
 
 }
