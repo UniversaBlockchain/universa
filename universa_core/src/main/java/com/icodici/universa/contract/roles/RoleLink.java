@@ -140,7 +140,7 @@ public class RoleLink extends Role {
     }
 
     @Override
-    protected boolean isAllowedForReferences(Collection<String> references) {
+    public boolean isAllowedForReferences(Collection<String> references) {
 
         if(!super.isAllowedForReferences(references))
             return false;

@@ -150,7 +150,7 @@ public abstract class Role implements BiSerializable {
 
     }
 
-    protected boolean isAllowedForReferences(Collection<String> references) {
+    public boolean isAllowedForReferences(Collection<String> references) {
         if(requiredAllReferences.stream().anyMatch(ref -> references == null || !references.contains(ref))) {
             return false;
         }
