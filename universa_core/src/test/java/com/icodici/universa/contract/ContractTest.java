@@ -238,6 +238,7 @@ public class ContractTest extends ContractTestBase {
 
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         c.getErrors().clear();
+        c.seal();
         ok = c.check();
 
         if (errors.isEmpty()) {
