@@ -825,8 +825,8 @@ public class BaseNetworkTest extends TestCase {
 
         Contract c = Contract.fromDslFile(ROOT_PATH + "simple_root_contract.yml");
         c.addSignerKeyFromFile(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey");
-        assertTrue(c.check());
         c.seal();
+        assertTrue(c.check());
 
 //        LogPrinter.showDebug(true);
         registerAndCheckApproved(c);
@@ -894,8 +894,8 @@ public class BaseNetworkTest extends TestCase {
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         c.addSignerKey(key);
-        assertTrue(c.check());
         c.seal();
+        assertTrue(c.check());
 
 
         registerAndCheckApproved(c);
@@ -926,8 +926,8 @@ public class BaseNetworkTest extends TestCase {
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         c.addSignerKey(key);
-        assertTrue(c.check());
         c.seal();
+        assertTrue(c.check());
 
 
         registerAndCheckApproved(c);
@@ -958,8 +958,8 @@ public class BaseNetworkTest extends TestCase {
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         c.addSignerKey(key);
-        assertTrue(c.check());
         c.seal();
+        assertTrue(c.check());
 
 
         registerAndCheckApproved(c);
@@ -1006,8 +1006,8 @@ public class BaseNetworkTest extends TestCase {
         // 100
         Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         c.addSignerKey(key);
-        assertTrue(c.check());
         c.seal();
+        assertTrue(c.check());
 
         registerAndCheckApproved(c);
         assertEquals(100, c.getStateData().get("amount"));

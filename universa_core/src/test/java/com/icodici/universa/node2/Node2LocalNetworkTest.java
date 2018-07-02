@@ -302,8 +302,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         RunnableWithException<ItemState> addContract = (ItemState state) -> {
             Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
             c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            assertTrue(c.check());
             c.seal();
+            assertTrue(c.check());
             addToAllLedgers(c, state);
             subContracts.add(c);
         };
@@ -385,8 +385,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         RunnableWithException<ItemState> addContract = (ItemState state) -> {
             Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
             c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            assertTrue(c.check());
             c.seal();
+            assertTrue(c.check());
             addToAllLedgers(c, state);
             subContracts.add(c);
         };
@@ -475,8 +475,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         RunnableWithException<ItemState> addContract = (ItemState state) -> {
             Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
             c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            assertTrue(c.check());
             c.seal();
+            assertTrue(c.check());
             addToAllLedgers(c, state);
             subContracts.add(c);
         };
@@ -560,8 +560,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         for (int i = 0; i < numSubContracts; i++) {
             Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
             c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            assertTrue(c.check());
             c.seal();
+            assertTrue(c.check());
 
             if(i < config.getKnownSubContractsToResync())
                 addToAllLedgers(c, ItemState.APPROVED);
@@ -578,6 +578,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
+        contract.seal();
         assertTrue(contract.check());
 
         for (int i = 0; i < numSubContracts; i++) {
@@ -634,8 +635,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         for (int i = 0; i < numSubContracts; i++) {
             Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
             c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            assertTrue(c.check());
             c.seal();
+            assertTrue(c.check());
 
             if(i < config.getKnownSubContractsToResync())
                 addToAllLedgers(c, ItemState.APPROVED);
@@ -653,6 +654,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         Contract contract = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
         contract.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
         contract.addSignerKeyFromFile(Config.tuKeyPath);
+        contract.seal();
         assertTrue(contract.check());
 
         for (int i = 0; i < numSubContracts; i++) {
@@ -1214,8 +1216,8 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         for (int i = 0; i < numSubContracts; i++) {
             Contract c = Contract.fromDslFile(ROOT_PATH + "coin100.yml");
             c.addSignerKeyFromFile(ROOT_PATH +"_xer0yfe2nn1xthc.private.unikey");
-            assertTrue(c.check());
             c.seal();
+            assertTrue(c.check());
 
             if(i < config.getKnownSubContractsToResync())
                 addToAllLedgers(c, ItemState.APPROVED);

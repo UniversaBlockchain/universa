@@ -32,6 +32,7 @@ import static org.junit.Assert.*;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+@Ignore
 public class JarNetworkTest extends TestCase {
 
     private static final int NODES_COUNT = 8;
@@ -123,6 +124,7 @@ public class JarNetworkTest extends TestCase {
         System.out.println("whiteClient.getState(whiteContract): " + itemResult.state);
         assertEquals(ItemState.APPROVED, itemResult.state);
     }
+
 
     @Test
     public void registerSimpleContractNormal() throws Exception {

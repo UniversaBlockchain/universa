@@ -1127,8 +1127,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
 
-        if (issuer != null && (!issuer.equalKeys(createdBy) || !issuer.equalAddresses(createdBy) || !issuer.equalAnonIds(createdBy)))
-            addError(ISSUER_MUST_CREATE, "state.created_by");
+        if (!issuer.isAllowedForKeys(getSealedByKeys())) {
+            addError(ISSUER_MUST_CREATE, "issuer.keys");
+        }
 
         if (!issuer.isAllowedForReferences(getValidRoleReferences())) {
             addError(ISSUER_MUST_CREATE, "issuer.references");

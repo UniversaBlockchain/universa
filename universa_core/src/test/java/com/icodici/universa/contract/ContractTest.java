@@ -89,9 +89,9 @@ public class ContractTest extends ContractTestBase {
         keys.add(key);
         Contract c_1 = Contract.fromDslFile(rootPath + "coin100.yml");
         c_1.addSignerKey(key);
+        c_1.seal();
         assertTrue(c_1.check());
         c_1.traceErrors();
-        c_1.seal();
 
         Contract c_2_1 = ContractsService.createSplit(c_1, "20", "amount", keys);
         Contract c_2_2 = c_2_1.getNew().get(0);
@@ -117,9 +117,9 @@ public class ContractTest extends ContractTestBase {
         keys.add(key);
         Contract c_1 = Contract.fromDslFile(rootPath + "coin100.yml");
         c_1.addSignerKey(key);
+        c_1.seal();
         assertTrue(c_1.check());
         c_1.traceErrors();
-        c_1.seal();
 
         Contract c_2_1 = ContractsService.createSplit(c_1, "20", "amount", keys);
         Contract c_2_2 = c_2_1.getNew().get(0);
@@ -228,11 +228,12 @@ public class ContractTest extends ContractTestBase {
     @Test
     public void checkCreatingRootContract() throws Exception {
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
+        c.seal();
         boolean ok = c.check();
         assertFalse(ok);
         List<ErrorRecord> errors = c.getErrors();
         // It is just ok but not signed
-        assertEquals(1, errors.size());
+        assertEquals(2, errors.size());
         assertEquals(errors.get(0).getError(), Errors.NOT_SIGNED);
 
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
@@ -260,10 +261,8 @@ public class ContractTest extends ContractTestBase {
     public void checkSealingRootContract() throws Exception {
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
-        c.check();
-        c.traceErrors();
-        assertTrue(c.check());
         byte[] sealed = c.seal();
+        assertTrue(c.check());
 //        Bytes.dump(sealed);
 //        System.out.println(sealed.length);
         Contract c2 = new Contract(sealed);
@@ -1237,7 +1236,7 @@ public class ContractTest extends ContractTestBase {
         Contract futureContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         futureContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         futureContract.getDefinition().setExpiresAt(futureContract.getCreatedAt().plusMinutes(1));
-
+        futureContract.seal();
         assertTrue(futureContract.check());
         System.out.println("Contract is valid: " + futureContract.isOk());
     }
@@ -1248,7 +1247,7 @@ public class ContractTest extends ContractTestBase {
         Contract futureContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         futureContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         futureContract.getDefinition().setExpiresAt(futureContract.getCreatedAt().plusYears(50));
-
+        futureContract.seal();
         assertTrue(futureContract.check());
         System.out.println("Contract is valid: " + futureContract.isOk());
     }
@@ -1412,6 +1411,12 @@ public class ContractTest extends ContractTestBase {
         contract.addSignerKey(TestKeys.privateKey(0));
         contract.seal();
         assertFalse(contract.check());
+
+        contract.setIssuerKeys(keyAddress1);
+        contract.getErrors().clear();
+        contract.seal();
+        assertTrue(contract.check());
+
     }
 
 }
