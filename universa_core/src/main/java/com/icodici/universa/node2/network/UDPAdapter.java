@@ -206,7 +206,7 @@ public class UDPAdapter extends DatagramAdapter {
      * Logging
      * @param label each row starts with this label, pass here logLabel
      * @param message lambda-message, like ()->"some text"
-     * @param level from enum {@link VerboseLevel}
+     * @param level from enum {@link DatagramAdapter.VerboseLevel}
      */
     public void report(String label, Callable<String> message, int level)
     {
@@ -402,7 +402,7 @@ public class UDPAdapter extends DatagramAdapter {
 
 
     /**
-     * When someone send us {@link PacketTypes#HELLO} typed {@link UDPAdapter2.Packet},
+     * When someone send us {@link PacketTypes#HELLO} typed {@link UDPAdapter.Packet},
      * we should respond with {@link PacketTypes#WELCOME}.
      * @param sessionReader is {@link UDPAdapter.SessionReader} in which sending is.
      */
