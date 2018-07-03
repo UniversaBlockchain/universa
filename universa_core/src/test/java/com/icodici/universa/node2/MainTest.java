@@ -3783,4 +3783,76 @@ public class MainTest {
 
     }
 
+
+
+    @Test
+    public void randomReferences() throws Exception {
+        Random random = new Random();
+        TestSpace testSpace = prepareTestSpace();
+        testSpace.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        final int CONTRACTS_IN_BATCH = 20;
+        final int REFS_COUNT = 1000;
+
+        List<PrivateKey> keys100 = new ArrayList<>();
+        for (int i = 0; i < CONTRACTS_IN_BATCH; ++i)
+            keys100.add(new PrivateKey(2048));
+
+        List<Contract> contracts100 = new ArrayList<>();
+        for (int i = 0; i < CONTRACTS_IN_BATCH; ++i) {
+            Contract c = new Contract(keys100.get(i));
+            c.getStateData().put("some_value", 9000+random.nextInt(1000));
+            contracts100.add(c);
+        }
+
+        Map<Integer, Integer> refsCasesCounter = new HashMap<>();
+        for (int i = 1; i < REFS_COUNT; ++i) {
+            int refForContract = random.nextInt(keys100.size());
+            int refCase = random.nextInt(4);
+            refsCasesCounter.put(refCase, refsCasesCounter.getOrDefault(refCase, 0) + 1);
+            Reference ref = new Reference();
+            switch (refCase) {
+                case 0:
+                    ref.type = Reference.TYPE_EXISTING_STATE;
+                    ref.setConditions(Binder.of(Reference.conditionsModeType.all_of.name(),asList("ref.issuer=="+keys100.get(random.nextInt(keys100.size())).getPublicKey().getShortAddress())));
+                    break;
+                case 1:
+                    ref.type = Reference.TYPE_EXISTING_DEFINITION;
+                    ref.setConditions(Binder.of(Reference.conditionsModeType.all_of.name(),asList("ref.owner=="+keys100.get(random.nextInt(keys100.size())).getPublicKey().getLongAddress())));
+                    break;
+                case 2:
+                    ref.type = Reference.TYPE_EXISTING_STATE;
+                    ref.setConditions(Binder.of(
+                            Reference.conditionsModeType.all_of.name(),
+                            asList(
+                                    "ref.state.data.some_value=="+contracts100.get(random.nextInt(contracts100.size())).getStateData().getStringOrThrow("some_value")
+                            )));
+                    break;
+                case 3:
+                    ref.type = Reference.TYPE_EXISTING_STATE;
+                    ref.setConditions(Binder.of(
+                            Reference.conditionsModeType.all_of.name(),
+                            asList("ref.state.data.some_value<=1000")));
+                    break;
+            }
+            contracts100.get(refForContract).addReference(ref);
+        }
+        System.out.println("\nrefs cases:");
+        refsCasesCounter.forEach((k, v) -> System.out.println("  case " + k + ": " + v));
+
+        Contract batch = new Contract(new PrivateKey(2048));
+        for (int i = 0; i < keys100.size(); ++i)
+            batch.addNewItems(contracts100.get(i));
+        batch.seal();
+
+        ItemResult ir = testSpace.client.register(batch.getPackedTransaction(), 30000);
+        if (ir.errors.size() > 0) {
+            System.out.println("\n\nerrors:");
+            ir.errors.forEach(e -> System.out.println("  " + e));
+            System.out.println();
+        }
+        //assertEquals(ItemState.APPROVED, ir.state);
+        assertEquals(ItemState.DECLINED, ir.state); // must be declined due to ref.state.data.some_value<=1000
+    }
+
 }
