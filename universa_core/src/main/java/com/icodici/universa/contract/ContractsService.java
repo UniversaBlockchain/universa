@@ -8,6 +8,7 @@
 package com.icodici.universa.contract;
 
 import com.icodici.crypto.AbstractKey;
+import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
@@ -17,6 +18,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.*;
 
@@ -31,7 +33,8 @@ public class ContractsService {
      * Service create temp contract with given contract in revoking items and return it.
      * That temp contract should be send to Universa and given contract will be revoked.
      * <br><br>
-     * @param c is contract should revoked be
+     *
+     * @param c    is contract should revoked be
      * @param keys is keys from owner of c
      * @return working contract that should be register in the Universa to finish procedure.
      */
@@ -53,7 +56,7 @@ public class ContractsService {
         tc.createRole("owner", issuerRole);
         tc.createRole("creator", issuerRole);
 
-        if( !tc.getRevokingItems().contains(c)) {
+        if (!tc.getRevokingItems().contains(c)) {
             Binder data = tc.getDefinition().getData();
             List<Binder> actions = data.getOrCreateList("actions");
             tc.getRevokingItems().add(c);
@@ -72,31 +75,33 @@ public class ContractsService {
      * <br><br>
      * Given contract should have splitjoin permission for given keys.
      * <br><br>
-     * @param c is contract should split be
-     * @param amount is value that should be split from given contract
+     *
+     * @param c         is contract should split be
+     * @param amount    is value that should be split from given contract
      * @param fieldName is name of field that should be split
-     * @param keys is keys from owner of c
+     * @param keys      is keys from owner of c
      * @return working contract that should be register in the Universa to finish procedure.
      */
     public synchronized static Contract createSplit(Contract c, String amount, String fieldName,
                                                     Set<PrivateKey> keys) {
-        return createSplit(c, amount, fieldName,  keys, false);
+        return createSplit(c, amount, fieldName, keys, false);
     }
 
-        /**
-         * Implementing split procedure for token-type contracts.
-         * <br><br>
-         * Service create new revision of given contract, split it to a pair of contracts with split amount.
-         * <br><br>
-         * Given contract should have splitjoin permission for given keys.
-         * <br><br>
-         * @param c is contract should split be
-         * @param amount is value that should be split from given contract
-         * @param fieldName is name of field that should be split
-         * @param keys is keys from owner of c
-         * @param andSetCreator if true set owners as creator in both contarcts
-         * @return working contract that should be register in the Universa to finish procedure.
-         */
+    /**
+     * Implementing split procedure for token-type contracts.
+     * <br><br>
+     * Service create new revision of given contract, split it to a pair of contracts with split amount.
+     * <br><br>
+     * Given contract should have splitjoin permission for given keys.
+     * <br><br>
+     *
+     * @param c             is contract should split be
+     * @param amount        is value that should be split from given contract
+     * @param fieldName     is name of field that should be split
+     * @param keys          is keys from owner of c
+     * @param andSetCreator if true set owners as creator in both contarcts
+     * @return working contract that should be register in the Universa to finish procedure.
+     */
     public synchronized static Contract createSplit(Contract c, String amount, String fieldName,
                                                     Set<PrivateKey> keys, boolean andSetCreator) {
         Contract splitFrom = c.createRevision();
@@ -105,7 +110,7 @@ public class ContractsService {
         for (PrivateKey key : keys) {
             splitTo.addSignerKey(key);
         }
-        if(andSetCreator) {
+        if (andSetCreator) {
             splitTo.createRole("creator", splitTo.getRole("owner"));
             splitFrom.createRole("creator", splitFrom.getRole("owner"));
         }
@@ -123,10 +128,11 @@ public class ContractsService {
      * <br><br>
      * Given contract should have splitjoin permission for given keys.
      * <br><br>
+     *
      * @param contract1 is contract should be join to
      * @param contract2 is contract should be join
      * @param fieldName is name of field that should be join by
-     * @param keys is keys from owner of both contracts
+     * @param keys      is keys from owner of both contracts
      * @return working contract that should be register in the Universa to finish procedure.
      */
     public synchronized static Contract createJoin(Contract contract1, Contract contract2, String fieldName, Set<PrivateKey> keys) {
@@ -149,22 +155,23 @@ public class ContractsService {
 
     /**
      * First step of swap procedure. Calls from swapper1 part.
-     *<br><br>
+     * <br><br>
      * Get single contracts.
-     *<br><br>
+     * <br><br>
      * Service create new revisions of existing contracts, change owners,
      * added transactional sections with references to each other with asks two signs of swappers
      * and sign contract that was own for calling part.
-     *<br><br>
+     * <br><br>
      * Swap procedure consist from three steps:<br>
      * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
      * (2) sign contracts on the second swapper site;<br>
      * (3) sign lost contracts on the first swapper site and finishing swap.
-     *<br><br>
+     * <br><br>
+     *
      * @param contract1 is own for calling part (swapper1 owned), existing or new revision of contract
      * @param contract2 is foreign for calling part (swapper2 owned), existing or new revision contract
-     * @param fromKeys is own for calling part (swapper1 keys) private keys
-     * @param toKeys is foreign for calling part (swapper2 keys) public keys
+     * @param fromKeys  is own for calling part (swapper1 keys) private keys
+     * @param toKeys    is foreign for calling part (swapper2 keys) public keys
      * @return swap contract including new revisions of old contracts swapping between;
      * should be send to partner (swapper2) and he should go to step (2) of the swap procedure.
      */
@@ -175,22 +182,23 @@ public class ContractsService {
 
     /**
      * First step of swap procedure. Calls from swapper1 part.
-     *<br><br>
+     * <br><br>
      * Get lists of contracts.
-     *<br><br>
+     * <br><br>
      * Service create new revisions of existing contracts, change owners,
      * added transactional sections with references to each other with asks two signs of swappers
      * and sign contract that was own for calling part.
-     *<br><br>
+     * <br><br>
      * Swap procedure consist from three steps:<br>
      * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
      * (2) sign contracts on the second swapper site;<br>
      * (3) sign lost contracts on the first swapper site and finishing swap.
-     *<br><br>
+     * <br><br>
+     *
      * @param contracts1 is list of own for calling part (swapper1 owned), existing or new revision of contract
      * @param contracts2 is list of foreign for calling part (swapper2 owned), existing or new revision contract
-     * @param fromKeys is own for calling part (swapper1 keys) private keys
-     * @param toKeys is foreign for calling part (swapper2 keys) public keys
+     * @param fromKeys   is own for calling part (swapper1 keys) private keys
+     * @param toKeys     is foreign for calling part (swapper2 keys) public keys
      * @return swap contract including new revisions of old contracts swapping between;
      * should be send to partner (swapper2) and he should go to step (2) of the swap procedure.
      */
@@ -201,22 +209,23 @@ public class ContractsService {
 
     /**
      * First step of swap procedure. Calls from swapper1 part.
-     *<br><br>
+     * <br><br>
      * Get single contracts.
-     *<br><br>
+     * <br><br>
      * Service create new revisions of existing contracts, change owners,
      * added transactional sections with references to each other with asks two signs of swappers
      * and sign contract that was own for calling part.
-     *<br><br>
+     * <br><br>
      * Swap procedure consist from three steps:<br>
      * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
      * (2) sign contracts on the second swapper site;<br>
      * (3) sign lost contracts on the first swapper site and finishing swap.
-     *<br><br>
-     * @param contract1 is own for calling part (swapper1 owned), existing or new revision of contract
-     * @param contract2 is foreign for calling part (swapper2 owned), existing or new revision contract
-     * @param fromKeys is own for calling part (swapper1 keys) private keys
-     * @param toKeys is foreign for calling part (swapper2 keys) public keys
+     * <br><br>
+     *
+     * @param contract1         is own for calling part (swapper1 owned), existing or new revision of contract
+     * @param contract2         is foreign for calling part (swapper2 owned), existing or new revision contract
+     * @param fromKeys          is own for calling part (swapper1 keys) private keys
+     * @param toKeys            is foreign for calling part (swapper2 keys) public keys
      * @param createNewRevision if true - create new revision of given contracts. If false - use them as new revisions.
      * @return swap contract including new revisions of old contracts swapping between;
      * should be send to partner (swapper2) and he should go to step (2) of the swap procedure.
@@ -234,22 +243,23 @@ public class ContractsService {
 
     /**
      * First step of swap procedure. Calls from swapper1 part.
-     *<br><br>
+     * <br><br>
      * Get lists of contracts.
-     *<br><br>
+     * <br><br>
      * Service create new revisions of existing contracts, change owners,
      * added transactional sections with references to each other with asks two signs of swappers
      * and sign contract that was own for calling part.
-     *<br><br>
+     * <br><br>
      * Swap procedure consist from three steps:<br>
      * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
      * (2) sign contracts on the second swapper site;<br>
      * (3) sign lost contracts on the first swapper site and finishing swap.
-     *<br><br>
-     * @param contracts1 is list of own for calling part (swapper1 owned), existing or new revision of contract
-     * @param contracts2 is list of foreign for calling part (swapper2 owned), existing or new revision contract
-     * @param fromKeys is own for calling part (swapper1 keys) private keys
-     * @param toKeys is foreign for calling part (swapper2 keys) public keys
+     * <br><br>
+     *
+     * @param contracts1        is list of own for calling part (swapper1 owned), existing or new revision of contract
+     * @param contracts2        is list of foreign for calling part (swapper2 owned), existing or new revision contract
+     * @param fromKeys          is own for calling part (swapper1 keys) private keys
+     * @param toKeys            is foreign for calling part (swapper2 keys) public keys
      * @param createNewRevision if true - create new revision of given contracts. If false - use them as new revisions.
      * @return swap contract including new revisions of old contracts swapping between;
      * should be send to partner (swapper2) and he should go to step (2) of the swap procedure.
@@ -284,9 +294,9 @@ public class ContractsService {
         // create new revisions of contracts and create transactional sections in it
 
         List<Contract> newContracts1 = new ArrayList<>();
-        for(Contract c : contracts1) {
+        for (Contract c : contracts1) {
             Contract nc;
-            if(createNewRevision) {
+            if (createNewRevision) {
                 nc = c.createRevision(fromKeys);
             } else {
                 nc = c;
@@ -297,9 +307,9 @@ public class ContractsService {
         }
 
         List<Contract> newContracts2 = new ArrayList<>();
-        for(Contract c : contracts2) {
+        for (Contract c : contracts2) {
             Contract nc;
-            if(createNewRevision) {
+            if (createNewRevision) {
                 nc = c.createRevision();
             } else {
                 nc = c;
@@ -333,8 +343,8 @@ public class ContractsService {
         // create references for contracts that point to each other and asks correct signs
         // and add this references to existing transactional section
 
-        for(Contract nc1 : newContracts1) {
-            for(Contract nc2 : newContracts2) {
+        for (Contract nc1 : newContracts1) {
+            for (Contract nc2 : newContracts2) {
                 Reference reference = new Reference(nc1);
                 reference.transactional_id = nc2.getTransactional().getId();
                 reference.type = Reference.TYPE_TRANSACTIONAL;
@@ -346,7 +356,7 @@ public class ContractsService {
             }
         }
 
-        for(Contract nc2 : newContracts2) {
+        for (Contract nc2 : newContracts2) {
             for (Contract nc1 : newContracts1) {
                 Reference reference = new Reference(nc2);
                 reference.transactional_id = nc1.getTransactional().getId();
@@ -361,20 +371,20 @@ public class ContractsService {
 
 
         // swap owners in this contracts
-        for(Contract nc : newContracts1) {
+        for (Contract nc : newContracts1) {
             nc.setOwnerKeys(toKeys);
             nc.seal();
         }
-        for(Contract nc : newContracts2) {
+        for (Contract nc : newContracts2) {
             nc.setOwnerKeys(fromPublicKeys);
             nc.seal();
         }
 
         // finally on this step add created new revisions to main swap contract
-        for(Contract nc : newContracts1) {
+        for (Contract nc : newContracts1) {
             swapContract.addNewItems(nc);
         }
-        for(Contract nc : newContracts2) {
+        for (Contract nc : newContracts2) {
             swapContract.addNewItems(nc);
         }
         swapContract.seal();
@@ -385,20 +395,21 @@ public class ContractsService {
 
     /**
      * Second step of swap procedure. Calls from swapper2 part.
-     *<br><br>
+     * <br><br>
      * Swapper2 got swap contract from swapper1 and give it to service.
      * Service sign new contract where calling part was owner, store hashId of this contract.
      * Then add to reference of new contract, that will be own for calling part,
      * contract_id and point it to contract that was own for calling part.
      * Then sign second contract too.
-     *<br><br>
+     * <br><br>
      * Swap procedure consist from three steps:<br>
      * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
      * (2) sign contracts on the second swapper site;<br>
      * (3) sign lost contracts on the first swapper site and finishing swap.
-     *<br><br>
+     * <br><br>
+     *
      * @param swapContract is being processing swap contract, got from swapper1
-     * @param keys is own (belongs to swapper2) private keys
+     * @param keys         is own (belongs to swapper2) private keys
      * @return modified swapContract;
      * should be send back to partner (swapper1) and he should go to step (3) of the swap procedure.
      */
@@ -416,7 +427,7 @@ public class ContractsService {
         for (Contract c : swappingContracts) {
             boolean willBeMine = c.getOwner().isAllowedForKeys(publicKeys);
 
-            if(willBeMine) {
+            if (willBeMine) {
                 c.addSignatureToSeal(keys);
                 contractHashId.put(c.getTransactional().getId(), c.getId());
             }
@@ -426,15 +437,15 @@ public class ContractsService {
         for (Contract c : swappingContracts) {
             boolean willBeNotMine = (!c.getOwner().isAllowedForKeys(publicKeys));
 
-            if(willBeNotMine) {
+            if (willBeNotMine) {
 
                 Set<KeyRecord> krs = new HashSet<>();
-                for (PublicKey k: publicKeys) {
+                for (PublicKey k : publicKeys) {
                     krs.add(new KeyRecord(k));
                 }
                 c.setCreator(krs);
 
-                if(c.getTransactional() != null && c.getTransactional().getReferences() != null) {
+                if (c.getTransactional() != null && c.getTransactional().getReferences() != null) {
                     for (Reference rm : c.getTransactional().getReferences()) {
                         rm.contract_id = contractHashId.get(rm.transactional_id);
                     }
@@ -454,17 +465,18 @@ public class ContractsService {
 
     /**
      * Third and final step of swap procedure. Calls from swapper1 part.
-     *<br><br>
+     * <br><br>
      * Swapper1 got swap contract from swapper2, give it to service and
      * service finally sign contract (that is inside swap contract) that will be own for calling part.
-     *<br><br>
+     * <br><br>
      * Swap procedure consist from three steps:<br>
      * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
      * (2) sign contracts on the second swapper site;<br>
      * (3) sign lost contracts on the first swapper site and finishing swap.
-     *<br><br>
+     * <br><br>
+     *
      * @param swapContract is being processing swap contract, now got back from swapper2
-     * @param keys is own (belongs to swapper1) private keys
+     * @param keys         is own (belongs to swapper1) private keys
      * @return ready and sealed swapContract that should be register in the Universa to finish procedure.
      */
     public synchronized static Contract finishSwap(Contract swapContract, Set<PrivateKey> keys) {
@@ -475,7 +487,7 @@ public class ContractsService {
         for (Contract c : swappingContracts) {
             boolean willBeMine = c.getOwner().isAllowedForKeys(keys);
 
-            if(willBeMine) {
+            if (willBeMine) {
                 c.addSignatureToSeal(keys);
             }
         }
@@ -488,15 +500,16 @@ public class ContractsService {
 
     /**
      * Creates a contract with two signatures.
-     *<br><br>
+     * <br><br>
      * The service creates a contract which asks two signatures.
      * It can not be registered without both parts of deal, so it is make sure both parts that they agreed with contract.
      * Service creates a contract that should be send to partner,
      * then partner should sign it and return back for final sign from calling part.
-     *<br><br>
-     * @param baseContract is base contract
-     * @param fromKeys is own private keys
-     * @param toKeys is foreign public keys
+     * <br><br>
+     *
+     * @param baseContract      is base contract
+     * @param fromKeys          is own private keys
+     * @param toKeys            is foreign public keys
      * @param createNewRevision create new revision if true
      * @return contract with two signatures that should be send from first part to partner.
      */
@@ -541,18 +554,19 @@ public class ContractsService {
 
     /**
      * Creates a token contract for given keys.
-     *<br><br>
+     * <br><br>
      * The service creates a simple token contract with issuer, creator and owner roles;
      * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
      * Split_join permission has by default following params: "minValue" for min_value and min_unit, "amount" for field_name,
      * "state.origin" for join_match_fields.
      * By default expires at time is set to 60 months from now.
+     *
      * @param ownerKeys is owner public keys.
-     * @param amount is maximum token number.
-     * @param minValue is minimum token value
+     * @param amount    is maximum token number.
+     * @param minValue  is minimum token value
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue){
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
         Contract tokenContract = new Contract();
         tokenContract.setApiLevel(3);
 
@@ -587,7 +601,7 @@ public class ContractsService {
 
         tokenContract.getStateData().set("amount", amount);
 
-        RoleLink ownerLink = new RoleLink("@owner_link","owner");
+        RoleLink ownerLink = new RoleLink("@owner_link", "owner");
         ownerLink.setContract(tokenContract);
         ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerLink);
         tokenContract.addPermission(changeOwnerPerm);
@@ -596,7 +610,7 @@ public class ContractsService {
         params.set("min_value", minValue);
         params.set("min_unit", minValue);
         params.set("field_name", "amount");
-        List <String> listFields = new ArrayList<>();
+        List<String> listFields = new ArrayList<>();
         listFields.add("state.origin");
         params.set("join_match_fields", listFields);
 
@@ -624,17 +638,18 @@ public class ContractsService {
 
     /**
      * Creates a token contract with possible additional emission.
-     *<br><br>
+     * <br><br>
      * The service creates a simple token contract with issuer, creator and owner roles;
      * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
      * Split_join permission has by default following params: "minValue" for min_value and min_unit, "amount" for field_name,
      * "state.origin" for join_match_fields.
      * Modify_data permission has by default following params: fields: "amount".
      * By default expires at time is set to 60 months from now.
+     *
      * @param issuerKeys is issuer private keys.
-     * @param ownerKeys is owner public keys.
-     * @param amount is start token number.
-     * @param minValue is minimum token value.
+     * @param ownerKeys  is owner public keys.
+     * @param amount     is start token number.
+     * @param minValue   is minimum token value.
      * @return signed and sealed contract, ready for register.
      */
     public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
@@ -665,13 +680,14 @@ public class ContractsService {
 
     /**
      * Creates a revision of token contract and emitted new tokens.
-     *<br><br>
+     * <br><br>
      * The service creates a revision of token contract possible for additional emission.
      * New revision contains additional emitted tokens.
+     *
      * @param tokenContract is token contract possible for additional emission.
-     * @param amount is emitted token number.
-     * @param keys is keys to sign new contract.
-     * @param fieldName is name of token field (usually "amount").
+     * @param amount        is emitted token number.
+     * @param keys          is keys to sign new contract.
+     * @param fieldName     is name of token field (usually "amount").
      * @return signed and sealed contract, ready for register.
      */
     public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys, String fieldName) {
@@ -699,19 +715,20 @@ public class ContractsService {
 
     /**
      * Creates a share contract for given keys.
-     *<br><br>
+     * <br><br>
      * The service creates a simple share contract with issuer, creator and owner roles;
      * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
      * Split_join permission has by default following params: 1 for min_value, 1 for min_unit, "amount" for field_name,
      * "state.origin" for join_match_fields.
      * By default expires at time is set to 60 months from now.
-     *<br><br>
+     * <br><br>
+     *
      * @param issuerKeys is issuer private keys.
-     * @param ownerKeys is owner public keys.
-     * @param amount is maximum shares number.
+     * @param ownerKeys  is owner public keys.
+     * @param amount     is maximum shares number.
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createShareContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount){
+    public synchronized static Contract createShareContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
         Contract shareContract = new Contract();
         shareContract.setApiLevel(3);
 
@@ -753,7 +770,7 @@ public class ContractsService {
         params.set("min_value", 1);
         params.set("min_unit", 1);
         params.set("field_name", "amount");
-        List <String> listFields = new ArrayList<>();
+        List<String> listFields = new ArrayList<>();
         listFields.add("state.origin");
         params.set("join_match_fields", listFields);
 
@@ -775,16 +792,17 @@ public class ContractsService {
 
     /**
      * Creates a simple notary contract for given keys.
-     *<br><br>
+     * <br><br>
      * The service creates a notary contract with issuer, creator and owner roles;
      * with change_owner permission for owner and revoke permissions for owner and issuer.
      * By default expires at time is set to 60 months from now.
-     *<br><br>
+     * <br><br>
+     *
      * @param issuerKeys is issuer private keys.
-     * @param ownerKeys is owner public keys.
+     * @param ownerKeys  is owner public keys.
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createNotaryContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys){
+    public synchronized static Contract createNotaryContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys) {
         Contract notaryContract = new Contract();
         notaryContract.setApiLevel(3);
 
@@ -839,12 +857,13 @@ public class ContractsService {
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link SlotContract#putTrackingContract(Contract)}
      * for putting contract should be add to storage.
      * <br><br>
-     * @param issuerKeys is issuer private keys.
-     * @param ownerKeys is owner public keys.
+     *
+     * @param issuerKeys       is issuer private keys.
+     * @param ownerKeys        is owner public keys.
      * @param nodeInfoProvider
      * @return ready {@link SlotContract}
      */
-    public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider){
+    public synchronized static SlotContract createSlotContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, NSmartContract.NodeInfoProvider nodeInfoProvider) {
         SlotContract slotContract = new SlotContract();
         slotContract.setNodeInfoProvider(nodeInfoProvider);
         slotContract.setApiLevel(3);
@@ -901,8 +920,9 @@ public class ContractsService {
      * fields permissions. Sets issuerKeys as issuer, ownerKeys as owner. Use {@link UnsContract#addUnsName(UnsName)}
      * for putting uns name should be register.
      * <br><br>
-     * @param issuerKeys is issuer private keys.
-     * @param ownerKeys is owner public keys.
+     *
+     * @param issuerKeys       is issuer private keys.
+     * @param ownerKeys        is owner public keys.
      * @param nodeInfoProvider
      * @return ready {@link UnsContract}
      */
@@ -964,13 +984,14 @@ public class ContractsService {
      * Also added uns name for registration associated with contract (by origin).
      * Use {@link UnsContract#addUnsName(UnsName)} for putting additional uns name should be register.
      * <br><br>
-     * @param issuerKeys is issuer private keys.
-     * @param ownerKeys is owner public keys.
+     *
+     * @param issuerKeys       is issuer private keys.
+     * @param ownerKeys        is owner public keys.
      * @param nodeInfoProvider
-     * @param name is name for registration.
-     * @param description is description associated with name for registration.
-     * @param URL is URL associated with name for registration.
-     * @param namedContract is named contract.
+     * @param name             is name for registration.
+     * @param description      is description associated with name for registration.
+     * @param URL              is URL associated with name for registration.
+     * @param namedContract    is named contract.
      * @return ready {@link UnsContract}
      */
     public synchronized static UnsContract createUnsContractForRegisterContractName(
@@ -1040,13 +1061,14 @@ public class ContractsService {
      * Also added uns name for registration associated with key (by addresses).
      * Use {@link UnsContract#addUnsName(UnsName)} for putting additional uns name should be register.
      * <br><br>
-     * @param issuerKeys is issuer private keys.
-     * @param ownerKeys is owner public keys.
+     *
+     * @param issuerKeys       is issuer private keys.
+     * @param ownerKeys        is owner public keys.
      * @param nodeInfoProvider
-     * @param name is name for registration.
-     * @param description is description associated with name for registration.
-     * @param URL is URL associated with name for registration.
-     * @param namedKey is named key.
+     * @param name             is name for registration.
+     * @param description      is description associated with name for registration.
+     * @param URL              is URL associated with name for registration.
+     * @param namedKey         is named key.
      * @return ready {@link UnsContract}
      */
     public synchronized static UnsContract createUnsContractForRegisterKeyName(
@@ -1113,11 +1135,12 @@ public class ContractsService {
      * <br><br>
      * Also reference to base contract may be added by {@link Contract#addReference(Reference)}.
      * <br><br>
+     *
      * @param baseContract is base contract fro adding reference.
-     * @param refContract is referenced contract (which must satisfy the conditions of the reference).
-     * @param refName is name of reference.
-     * @param refType is type of reference (section, may be {@link Reference#TYPE_TRANSACTIONAL}, {@link Reference#TYPE_EXISTING_DEFINITION}, or {@link Reference#TYPE_EXISTING_STATE}).
-     * @param conditions is conditions of the reference.
+     * @param refContract  is referenced contract (which must satisfy the conditions of the reference).
+     * @param refName      is name of reference.
+     * @param refType      is type of reference (section, may be {@link Reference#TYPE_TRANSACTIONAL}, {@link Reference#TYPE_EXISTING_DEFINITION}, or {@link Reference#TYPE_EXISTING_STATE}).
+     * @param conditions   is conditions of the reference.
      * @return ready {@link Contract}
      */
     public synchronized static Contract addReferenceToContract(
@@ -1143,16 +1166,17 @@ public class ContractsService {
      * <br><br>
      * Also reference to base contract may be added by {@link Contract#addReference(Reference)}.
      * <br><br>
-     * @param baseContract is base contract fro adding reference.
-     * @param refContract is referenced contract (which must satisfy the conditions of the reference).
-     * @param refName is name of reference.
-     * @param refType is type of reference (section, may be {@link Reference#TYPE_TRANSACTIONAL}, {@link Reference#TYPE_EXISTING_DEFINITION}, or {@link Reference#TYPE_EXISTING_STATE}).
-     * @param listConditions is list of strings with conditions of the reference.
+     *
+     * @param baseContract      is base contract fro adding reference.
+     * @param refContract       is referenced contract (which must satisfy the conditions of the reference).
+     * @param refName           is name of reference.
+     * @param refType           is type of reference (section, may be {@link Reference#TYPE_TRANSACTIONAL}, {@link Reference#TYPE_EXISTING_DEFINITION}, or {@link Reference#TYPE_EXISTING_STATE}).
+     * @param listConditions    is list of strings with conditions of the reference.
      * @param isAllOfConditions is flag used if all conditions in list must be fulfilled (else - any of conditions).
      * @return ready {@link Contract}
      */
     public synchronized static Contract addReferenceToContract(
-            Contract baseContract, Contract refContract, String refName, int refType, List <String> listConditions, boolean isAllOfConditions) {
+            Contract baseContract, Contract refContract, String refName, int refType, List<String> listConditions, boolean isAllOfConditions) {
 
         Binder conditions = new Binder();
         conditions.set(isAllOfConditions ? "all_of" : "any_of", listConditions);
@@ -1163,11 +1187,12 @@ public class ContractsService {
     /**
      * Create paid transaction, which consist from contract you want to register and payment contract that will be
      * spend to process transaction.
-     *<br><br>
+     * <br><br>
+     *
      * @param payload is prepared contract you want to register in the Universa.
      * @param payment is approved contract with transaction units belongs to you.
-     * @param amount is number of transaction units you want to spend to register payload contract.
-     * @param keys is own private keys, which are set as owner of payment contract
+     * @param amount  is number of transaction units you want to spend to register payload contract.
+     * @param keys    is own private keys, which are set as owner of payment contract
      * @return parcel, it ready to send to the Universa.
      */
     public synchronized static Parcel createParcel(Contract payload, Contract payment, int amount, Set<PrivateKey> keys) {
@@ -1178,11 +1203,12 @@ public class ContractsService {
     /**
      * Create paid transaction, which consist from contract you want to register and payment contract that will be
      * spend to process transaction.
-     *<br><br>
-     * @param payload is prepared contract you want to register in the Universa.
-     * @param payment is approved contract with transaction units belongs to you.
-     * @param amount is number of transaction units you want to spend to register payload contract.
-     * @param keys is own private keys, which are set as owner of payment contract
+     * <br><br>
+     *
+     * @param payload         is prepared contract you want to register in the Universa.
+     * @param payment         is approved contract with transaction units belongs to you.
+     * @param amount          is number of transaction units you want to spend to register payload contract.
+     * @param keys            is own private keys, which are set as owner of payment contract
      * @param withTestPayment if true {@link Parcel} will be created with test payment
      * @return parcel, it ready to send to the Universa.
      */
@@ -1191,7 +1217,7 @@ public class ContractsService {
 
         Contract paymentDecreased = payment.createRevision(keys);
 
-        if(withTestPayment) {
+        if (withTestPayment) {
             paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
         } else {
             paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
@@ -1209,11 +1235,12 @@ public class ContractsService {
      * Create paid transaction, which consist from prepared TransactionPack you want to register
      * and payment contract that will be
      * spend to process transaction.
-     *<br><br>
+     * <br><br>
+     *
      * @param payload is prepared TransactionPack you want to register in the Universa.
      * @param payment is approved contract with transaction units belongs to you.
-     * @param amount is number of transaction units you want to spend to register payload contract.
-     * @param keys is own private keys, which are set as owner of payment contract
+     * @param amount  is number of transaction units you want to spend to register payload contract.
+     * @param keys    is own private keys, which are set as owner of payment contract
      * @return parcel, it ready to send to the Universa.
      */
     public synchronized static Parcel createParcel(TransactionPack payload, Contract payment, int amount, Set<PrivateKey> keys) {
@@ -1225,11 +1252,12 @@ public class ContractsService {
      * Create paid transaction, which consist from prepared TransactionPack you want to register
      * and payment contract that will be
      * spend to process transaction.
-     *<br><br>
-     * @param payload is prepared TransactionPack you want to register in the Universa.
-     * @param payment is approved contract with transaction units belongs to you.
-     * @param amount is number of transaction units you want to spend to register payload contract.
-     * @param keys is own private keys, which are set as owner of payment contract
+     * <br><br>
+     *
+     * @param payload         is prepared TransactionPack you want to register in the Universa.
+     * @param payment         is approved contract with transaction units belongs to you.
+     * @param amount          is number of transaction units you want to spend to register payload contract.
+     * @param keys            is own private keys, which are set as owner of payment contract
      * @param withTestPayment if true {@link Parcel} will be created with test payment
      * @return parcel, it ready to send to the Universa.
      */
@@ -1238,7 +1266,7 @@ public class ContractsService {
 
         Contract paymentDecreased = payment.createRevision(keys);
 
-        if(withTestPayment) {
+        if (withTestPayment) {
             paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
         } else {
             paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
@@ -1260,24 +1288,25 @@ public class ContractsService {
      * <br><br>
      * Creates 2 U payment blocks:
      * <ul>
-     *     <li><i>first</i> (this is mandatory) is transaction payment, that will always be accepted, as it is now</li>
-     *     <li><i>second</i> extra payment block for the same U that is accepted with the transaction inside it. </li>
+     * <li><i>first</i> (this is mandatory) is transaction payment, that will always be accepted, as it is now</li>
+     * <li><i>second</i> extra payment block for the same U that is accepted with the transaction inside it. </li>
      * </ul>
      * Technically it done by adding second payment to the new items of payload transaction.
      * <br><br>
      * Node processing logic logic is:
      * <ul>
-     *     <li>if the first payment fails, no further action is taking (no changes)</li>
-     *     <li>if the first payments is OK, the transaction is evaluated and the second payment should be the part of it</li>
-     *     <li>if the transaction including the second payment is OK, the transaction and the second payment are registered altogether.</li>
-     *     <li>if any of the latest fail, the whole transaction is not accepted, e.g. the second payment is not accepted too</li>
+     * <li>if the first payment fails, no further action is taking (no changes)</li>
+     * <li>if the first payments is OK, the transaction is evaluated and the second payment should be the part of it</li>
+     * <li>if the transaction including the second payment is OK, the transaction and the second payment are registered altogether.</li>
+     * <li>if any of the latest fail, the whole transaction is not accepted, e.g. the second payment is not accepted too</li>
      * </ul>
      * <br><br>
-     * @param payload is prepared TransactionPack you want to register in the Universa.
-     * @param payment is approved contract with transaction units belongs to you.
-     * @param amount is number of transaction units you want to spend to register payload contract.
-     * @param amountSecond is number of transaction units you want to spend from second payment.
-     * @param keys is own private keys, which are set as owner of payment contract
+     *
+     * @param payload         is prepared TransactionPack you want to register in the Universa.
+     * @param payment         is approved contract with transaction units belongs to you.
+     * @param amount          is number of transaction units you want to spend to register payload contract.
+     * @param amountSecond    is number of transaction units you want to spend from second payment.
+     * @param keys            is own private keys, which are set as owner of payment contract
      * @param withTestPayment if true {@link Parcel} will be created with test payment
      * @return parcel, it ready to send to the Universa.
      */
@@ -1286,7 +1315,7 @@ public class ContractsService {
 
         Contract paymentDecreased = payment.createRevision(keys);
 
-        if(withTestPayment) {
+        if (withTestPayment) {
             paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
         } else {
             paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
@@ -1296,7 +1325,7 @@ public class ContractsService {
 
         Contract paymentDecreasedSecond = paymentDecreased.createRevision(keys);
 
-        if(withTestPayment) {
+        if (withTestPayment) {
             paymentDecreasedSecond.getStateData().set("test_transaction_units", paymentDecreased.getStateData().getIntOrThrow("test_transaction_units") - amountSecond);
         } else {
             paymentDecreasedSecond.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - amountSecond);
@@ -1314,4 +1343,32 @@ public class ContractsService {
 
         return parcel;
     }
+
+    /**
+     * Create a batch contract, which registers all the included contracts, possibily referencing each other,
+     * in the single transaction, saving time and reducing U cost. Note that if any of the batched contracts
+     * fails, the whole batch is rejected.
+     *
+     * @param contracts to register all in one batch. Shuld be prepared and sealed.
+     * @return batch contract that includes all contracts as new items.
+     */
+    public Contract createBatch(Contract... contracts) {
+        throw new Error("not implemented");
+    }
+
+    /**
+     * Update source contract so it can not be registered without valid Consent contract, created in this call.
+     * To register the source contract therefore it is needed to sign the consent with all keys which addresses
+     * are specified with the call, and register consent contract separately or in the same batch with the source
+     * contract.
+     *
+     * @param source              contract to update. Nust not be registered (new root or new revision)
+     * @param consentKeyAddresses addresses that are required in the consent contract. Consent contract should
+     *                            be then signed with corresponding keys.
+     * @return
+     */
+    public Contract addConsent(Contract source, KeyAddress... consentKeyAddresses) {
+        throw new Error("not implemented");
+    }
 }
+
