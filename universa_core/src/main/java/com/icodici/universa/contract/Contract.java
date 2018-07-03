@@ -691,7 +691,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         for (Contract r : revokingItems) {
             r.errors.clear();
-            r.checkReferencedItems(contractsTree);
+            r.checkReferencedItems(contractsTree,true);
             if (!r.isOk()) {
                 r.errors.forEach(e -> {
                     String name = e.getObjectName();
@@ -731,25 +731,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
         checkDupesCreation();
 
-
-
-        for (Contract r : revokingItems) {
-            r.errors.clear();
-            r.checkReferencedItems(contractsTree);
-            if (!r.isOk()) {
-                r.errors.forEach(e -> {
-                    String name = e.getObjectName();
-                    addError(e.getError(), name, e.getMessage());
-                });
-            }
-        }
-
         checkTestPaymentLimitations();
 
         return errors.size() == 0;
     }
 
     private boolean checkReferencedItems(List<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+        return checkReferencedItems(neighbourContracts,false);
+    }
+
+
+    private boolean checkReferencedItems(List<Contract> neighbourContracts, boolean roleRefsOnly) throws Quantiser.QuantiserException {
         validRoleReferences.clear();
 
         if (getReferences().size() == 0) {
@@ -762,6 +754,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         for (final Reference rm : getReferences().values()) {
 
             boolean roleReference = roles.values().stream().anyMatch(role -> role.containReference(rm.name)) || permissions.values().stream().anyMatch(p -> p.getRole().containReference(rm.name));
+
+            if(roleRefsOnly && !roleReference)
+                continue;
 
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
@@ -2145,7 +2140,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     /**
      * Set "owner" role to given keys
-     * @param keys keys to set "creator" role to
+     * @param keys keys to set "owner" role to
      * @return owner role
      */
     @NonNull
@@ -2155,7 +2150,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     /**
      * Set "owner" role to given keys
-     * @param keys keys to set "creator" role to
+     * @param keys keys to set "owner" role to
      * @return owner role
      */
     @NonNull
@@ -2196,6 +2191,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public Binder getStateData() {
         return state.getData();
+    }
+
+    /**
+     * Set "issuer" role to given keys
+     * @param keys keys to set "issuer" role to
+     * @return issuer role
+     */
+
+    public Role setIssuerKeys(Collection<?> keys) {
+        return setRole("issuer", keys);
     }
 
     /**

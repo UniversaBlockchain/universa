@@ -13,6 +13,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
@@ -20,6 +21,7 @@ import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import java.time.ZonedDateTime;
 import java.util.*;
 
 /**
@@ -1350,10 +1352,23 @@ public class ContractsService {
      * fails, the whole batch is rejected.
      *
      * @param contracts to register all in one batch. Shuld be prepared and sealed.
+     * @param keys to sign batch with.
      * @return batch contract that includes all contracts as new items.
      */
-    public Contract createBatch(Contract... contracts) {
-        throw new Error("not implemented");
+    public static Contract createBatch(Collection<PrivateKey> keys, Contract... contracts) {
+        Contract batch = new Contract();
+        batch.setIssuerKeys(keys);
+        batch.registerRole(new RoleLink("creator","issuer"));
+        batch.registerRole(new RoleLink("owner","issuer"));
+        batch.setExpiresAt(ZonedDateTime.now().plusDays(3));
+
+        for(Contract c : contracts) {
+            batch.addNewItems(c);
+        }
+
+        batch.addSignerKeys(keys);
+        batch.seal();
+        return batch;
     }
 
     /**
@@ -1362,13 +1377,37 @@ public class ContractsService {
      * are specified with the call, and register consent contract separately or in the same batch with the source
      * contract.
      *
-     * @param source              contract to update. Nust not be registered (new root or new revision)
+     * @param source              contract to update. Must not be registered (new root or new revision)
      * @param consentKeyAddresses addresses that are required in the consent contract. Consent contract should
      *                            be then signed with corresponding keys.
      * @return
      */
-    public Contract addConsent(Contract source, KeyAddress... consentKeyAddresses) {
-        throw new Error("not implemented");
+    public static Contract addConsent(Contract source, KeyAddress... consentKeyAddresses) {
+        Contract consent = new Contract();
+        consent.setExpiresAt(ZonedDateTime.now().plusDays(10));
+        consent.setIssuerKeys(consentKeyAddresses);
+        consent.registerRole(new RoleLink("creator","issuer"));
+        consent.registerRole(new RoleLink("owner","issuer"));
+        RoleLink ownerLink = new RoleLink("@owner_link","owner");
+        consent.registerRole(ownerLink);
+        consent.addPermission(new RevokePermission(ownerLink));
+        consent.addPermission(new ChangeOwnerPermission(ownerLink));
+        consent.createTransactionalSection();
+        consent.getTransactional().setId(HashId.createRandom().toBase64String());
+        consent.seal();
+
+        Reference reference = new Reference();
+        reference.setName("consent_"+consent.getId());
+        reference.type = Reference.TYPE_TRANSACTIONAL;
+        reference.transactional_id = consent.getTransactional().getId();
+        reference.signed_by.add(consent.getIssuer());
+
+        if(source.getTransactional() == null)
+            source.createTransactionalSection();
+
+        source.addReference(reference);
+
+        return consent;
     }
 }
 
