@@ -8,6 +8,7 @@ import org.junit.Test;
 import java.util.List;
 
 import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class ReferenceConditionsTest {
@@ -97,5 +98,57 @@ public class ReferenceConditionsTest {
         System.out.println("Check parent conditions");
         assertTrue(refContract.getReferences().get("ref_parent").matchingItems.contains(contract3));
      }
+
+    @Test
+    public void refLessOrEquals() throws Exception {
+        Contract contractA = new Contract(new PrivateKey(2048));
+        contractA.getStateData().put("val", 100);
+
+        Contract contractB = new Contract(new PrivateKey(2048));
+        Reference ref = new Reference();
+        ref.type = Reference.TYPE_EXISTING_STATE;
+        ref.setConditions(Binder.of(
+                Reference.conditionsModeType.all_of.name(),
+                asList("ref.state.data.val<10")
+        ));
+        contractB.addReference(ref);
+
+        Contract batch = new Contract(new PrivateKey(2048));
+        batch.addNewItems(contractA);
+        batch.addNewItems(contractB);
+        batch.seal();
+        Boolean res = batch.check();
+        batch.traceErrors();
+        assertEquals(false, res);
+    }
+
+    @Test
+    public void refMissingField() throws Exception {
+        Contract contractA = new Contract(new PrivateKey(2048));
+        contractA.getStateData().put("val", 100);
+
+        Contract contractB = new Contract(new PrivateKey(2048));
+        Reference ref = new Reference();
+        ref.type = Reference.TYPE_EXISTING_STATE;
+        ref.setConditions(Binder.of(
+                Reference.conditionsModeType.all_of.name(),
+                asList("ref.state.data.val>90")
+        ));
+        contractB.addReference(ref);
+
+        Contract batch = new Contract(new PrivateKey(2048));
+        batch.addNewItems(contractA);
+        batch.addNewItems(contractB);
+        batch.seal();
+        Boolean res = batch.check();
+        batch.traceErrors();
+        assertEquals(true, res);
+
+        contractA.getStateData().remove("val");
+        batch.seal();
+        res = batch.check();
+        batch.traceErrors();
+        assertEquals(false, res);
+    }
 
 }
