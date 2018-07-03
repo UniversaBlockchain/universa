@@ -125,14 +125,14 @@ public class ReferenceConditionsTest {
     @Test
     public void refMissingField() throws Exception {
         Contract contractA = new Contract(new PrivateKey(2048));
-        contractA.getStateData().put("val", 100);
+        contractA.getStateData().put("another_val", 100);
 
         Contract contractB = new Contract(new PrivateKey(2048));
         Reference ref = new Reference();
         ref.type = Reference.TYPE_EXISTING_STATE;
         ref.setConditions(Binder.of(
                 Reference.conditionsModeType.all_of.name(),
-                asList("ref.state.data.val>90")
+                asList("ref.state.data.val>-100")
         ));
         contractB.addReference(ref);
 
@@ -141,12 +141,6 @@ public class ReferenceConditionsTest {
         batch.addNewItems(contractB);
         batch.seal();
         Boolean res = batch.check();
-        batch.traceErrors();
-        assertEquals(true, res);
-
-        contractA.getStateData().remove("val");
-        batch.seal();
-        res = batch.check();
         batch.traceErrors();
         assertEquals(false, res);
     }
