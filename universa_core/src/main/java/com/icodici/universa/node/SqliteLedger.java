@@ -204,6 +204,11 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public Set<HashId> findBadReferencesOf(Set<HashId> ids) {
+        return null;
+    }
+
+    @Override
     public void saveConfig(NodeInfo myInfo, NetConfig netConfig, PrivateKey nodeKey) {
 
     }

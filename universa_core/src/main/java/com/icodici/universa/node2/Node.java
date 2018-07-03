@@ -1884,7 +1884,15 @@ public class Node {
                     boolean needToResync = false;
 
                     try {
-                        boolean checkPassed = false;
+                        boolean checkPassed;
+
+                        if(item instanceof Contract) {
+                            Map<HashId, Contract> referencedItems = ((Contract) item).getTransactionPack().getReferencedItems();
+                            if(!referencedItems.isEmpty()) {
+                                Set<HashId> invalidItems = ledger.findBadReferencesOf(referencedItems.keySet());
+                                invalidItems.forEach(id -> referencedItems.remove(id));
+                            }
+                        }
 
                         if(item.shouldBeU()) {
                             if(item.isU(config.getTransactionUnitsIssuerKeys(), config.getTUIssuerName())) {
@@ -1933,9 +1941,9 @@ public class Node {
                         return;
                     } catch (Exception e) {
                         item.addError(Errors.FAILED_CHECK,item.getId().toString(), "Exception during check: " + e.getMessage());
-                        if(verboseLevel > DatagramAdapter.VerboseLevel.NOTHING) {
+                        //if(verboseLevel > DatagramAdapter.VerboseLevel.NOTHING) {
                             e.printStackTrace();
-                        }
+                        //}
                     }
                     alreadyChecked = true;
 
@@ -1967,7 +1975,7 @@ public class Node {
                 if (!processingState.isProcessedToConsensus()) {
 
                     // check referenced items
-                    checkReferencesOf(checkingItem);
+                    //checkReferencesOf(checkingItem);
 
                     // check revoking items
                     checkRevokesOf(checkingItem);
@@ -1978,13 +1986,14 @@ public class Node {
             }
         }
 
-        private final synchronized void checkReferencesOf(Approvable checkingItem) {
+        /*private final synchronized void checkReferencesOf(Approvable checkingItem) {
 
             if(processingState.canContinue()) {
                 if (!processingState.isProcessedToConsensus()) {
                     for (Approvable ref : checkingItem.getReferencedItems()) {
-                        if(!checkingItem.getNewItems().contains(ref)) {
-                            HashId id = ref.getId();
+                        HashId id = ref.getId();
+                        //Only check ledger if referenced items is not a part of transaction
+                        if(!(item instanceof Contract && ((Contract) item).getTransactionPack().getSubItems().containsKey(id) || item.getId().equals(id))) {
                             if (!ledger.isApproved(id)) {
                                 checkingItem.addError(Errors.BAD_REF, id.toString(), "reference not approved");
                             }
@@ -1992,7 +2001,7 @@ public class Node {
                     }
                 }
             }
-        }
+        }*/
 
         private final synchronized void checkRevokesOf(Approvable checkingItem) {
 
@@ -2004,7 +2013,7 @@ public class Node {
                         if (revokingItem instanceof Contract)
                             ((Contract)revokingItem).getErrors().clear();
 
-                        checkReferencesOf(revokingItem);
+                        //checkReferencesOf(revokingItem);
 
                         // if revoking item is smart contract node additionally check it
                         if(revokingItem instanceof NSmartContract) {

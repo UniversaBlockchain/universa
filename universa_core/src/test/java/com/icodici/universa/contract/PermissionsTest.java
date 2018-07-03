@@ -437,6 +437,7 @@ public class PermissionsTest extends ContractTestBase {
         references.add("certification_contract");
 
         Contract referencedItem = new Contract();
+        referencedItem.seal();
 
         Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
@@ -511,7 +512,7 @@ public class PermissionsTest extends ContractTestBase {
         references.add("certification_contract");
 
         Contract referencedItem = new Contract();
-
+        referencedItem.seal();
         Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         c.findReferenceByName("certification_contract").addMatchingItem(referencedItem);
@@ -583,7 +584,9 @@ public class PermissionsTest extends ContractTestBase {
 
         Contract c = Contract.fromDslFile(rootPath + "TokenWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        c.findReferenceByName("certification_contract").addMatchingItem(new Contract());
+        Contract mi = new Contract();
+        mi.seal();
+        c.findReferenceByName("certification_contract").addMatchingItem(mi);
 
         Role r = c.getPermissions().getFirst("split_join").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
@@ -657,7 +660,9 @@ public class PermissionsTest extends ContractTestBase {
 
         Contract c = Contract.fromDslFile(rootPath + "AbonementWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        c.findReferenceByName("certification_contract").addMatchingItem(new Contract());
+        Contract mi = new Contract();
+        mi.seal();
+        c.findReferenceByName("certification_contract").addMatchingItem(mi);
 
         Role r = c.getPermissions().getFirst("decrement_permission").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));

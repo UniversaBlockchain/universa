@@ -76,6 +76,7 @@ public class ReferenceConditionsTest {
         tp.addReferencedItem(contract3);
 
         Contract refContract = new Contract(contract1.seal(), tp);
+        refContract.check();
 
         System.out.println("Check roles conditions");
         assertTrue(refContract.getReferences().get("ref_roles").matchingItems.contains(contract2));

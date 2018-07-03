@@ -1091,6 +1091,50 @@ public class PostgresLedger implements Ledger {
         return conflicts;
     }
 
+    @Override
+    public Set<HashId> findBadReferencesOf(Set<HashId> ids) {
+        try (PooledDb db = dbPool.db()) {
+            String queryPart = String.join(",", Collections.nCopies(ids.size(),"?"));
+            try (
+                    PreparedStatement statement =
+                            db.statement(
+                                    "" +
+                                            "SELECT " +
+                                            "  hash " +
+                                            "FROM ledger " +
+                                            "WHERE hash IN ("+queryPart+") AND state = " + ItemState.APPROVED.ordinal()
+                            )
+            ) {
+                AtomicInteger idx = new AtomicInteger(1);
+                ids.forEach(id -> {
+                    try {
+                        statement.setBytes(idx.getAndIncrement(), id.getDigest());
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                        throw new Failure("findBadReferencesOf failed: " + e);
+                    }
+                });
+
+                statement.closeOnCompletion();
+                ResultSet rs = statement.executeQuery();
+                if (rs == null)
+                    throw new Failure("findBadReferencesOf failed: returning null");
+                Set<HashId> res = new HashSet<>(ids);
+                while (rs.next()) {
+                    res.remove(HashId.withDigest(rs.getBytes(1)));
+                }
+                rs.close();
+                return res;
+            }
+        } catch (SQLException se) {
+            se.printStackTrace();
+            throw new Failure("isNameRecordBusy failed: " + se);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Failure("isNameRecordBusy failed: " + e);
+        }
+    }
+
 
     @Override
     public long saveSubscriptionInStorage(long contractStorageId, ZonedDateTime expiresAt, long environmentId) {

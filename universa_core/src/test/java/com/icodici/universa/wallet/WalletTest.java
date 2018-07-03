@@ -113,6 +113,8 @@ public class WalletTest extends ContractTestBase {
         assertEquals(4, restContract.getStateData().getIntOrThrow(FIELD_NAME));
         sealCheckTrace(restContract, true);
 
+        contract.seal();
+
         TransactionPack tp = contract.getTransactionPack();
         Contract contractToSend = new Contract(contract.seal(), tp);
         contractToSend.addSignerKeyFromFile(PRIVATE_KEY_PATH);

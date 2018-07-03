@@ -182,6 +182,8 @@ public class ModifyDataPermissionTest extends TestCase {
         contract.seal();
 
         Contract referencedContract = new Contract(TestKeys.privateKey(1));
+        referencedContract.seal();
+
         Contract changed = contract.createRevision();
         changed.addSignerKey(TestKeys.privateKey(0));
         Reference ref = new Reference(referencedContract);
@@ -199,6 +201,7 @@ public class ModifyDataPermissionTest extends TestCase {
         Contract contract = new Contract(TestKeys.privateKey(0));
         ModifyDataPermission modifyDataPermission = new ModifyDataPermission(contract.getRole("owner"),new Binder());
         Contract referencedContract = new Contract(TestKeys.privateKey(1));
+        referencedContract.seal();
 
         List<String> listConditionsForDefinition = new ArrayList<>();
         listConditionsForDefinition.add("ref.definition.data.type == \"Good Bank\"");

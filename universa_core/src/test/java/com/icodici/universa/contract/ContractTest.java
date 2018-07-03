@@ -1186,7 +1186,7 @@ public class ContractTest extends ContractTestBase {
 
         Contract oldContract = Contract.fromDslFile(rootPath + "simple_root_contract_past.yml");
         oldContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-
+        oldContract.seal();
         oldContract.check();
         oldContract.traceErrors();
         System.out.println("Contract is valid: " + oldContract.isOk());
@@ -1198,7 +1198,7 @@ public class ContractTest extends ContractTestBase {
 
         Contract futureContract = Contract.fromDslFile(rootPath + "simple_root_contract_future.yml");
         futureContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-
+        futureContract.seal();
         futureContract.check();
         futureContract.traceErrors();
         System.out.println("Contract is valid: " + futureContract.isOk());
@@ -1211,7 +1211,7 @@ public class ContractTest extends ContractTestBase {
         Contract oldContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         oldContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         oldContract.getDefinition().setExpiresAt(oldContract.getCreatedAt().minusMinutes(1));
-
+        oldContract.seal();
         oldContract.check();
         oldContract.traceErrors();
         System.out.println("Contract is valid: " + oldContract.isOk());
@@ -1224,7 +1224,7 @@ public class ContractTest extends ContractTestBase {
         Contract oldContract = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         oldContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         oldContract.getDefinition().setExpiresAt(ZonedDateTime.of(LocalDateTime.MIN.truncatedTo(ChronoUnit.SECONDS), ZoneOffset.UTC));
-
+        oldContract.seal();
         oldContract.check();
         oldContract.traceErrors();
         System.out.println("Contract is valid: " + oldContract.isOk());
@@ -1355,7 +1355,8 @@ public class ContractTest extends ContractTestBase {
 
         Contract remRefContract1 = new Contract(llcProperty.seal(), tp);
         Contract remRefContract2 = new Contract(llcProperty.seal(), tp);
-
+        remRefContract1.check();
+        remRefContract2.check();
 
         assertTrue(remRefContract1.getReferences().get("certification_contract_def").matchingItems.contains(contractCertificate));
         assertTrue(remRefContract1.getReferences().get("certification_contract_state").matchingItems.contains(contractCertificate));

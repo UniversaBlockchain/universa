@@ -467,43 +467,56 @@ public class BaseNetworkTest extends TestCase {
                 ItemState.DECLINED, ItemState.REVOKED, ItemState.LOCKED_FOR_CREATION)
                 ) {
 
-            Thread.sleep(300);
+            PrivateKey key = TestKeys.privateKey(0);
 
-            System.out.println("-------------- check bad state " + badState + " isConsensusFind(" + badState.isConsensusFound() + ") --------");
+            Contract goodReferencedContract = new Contract(key);
+            goodReferencedContract.seal();
 
-            TestItem main = new TestItem(true);
+            Contract badReferencedContract = new Contract(key);
+            badReferencedContract.seal();
 
-            TestItem existingItem1 = new TestItem(true);
-            StateRecord existing1 = ledger.findOrCreate(existingItem1.getId());
-            existing1.setState(ItemState.APPROVED).save();
+            StateRecord existingGood = ledger.findOrCreate(goodReferencedContract.getId());
+            existingGood.setState(ItemState.APPROVED).save();
+
+            StateRecord existingBad = ledger.findOrCreate(badReferencedContract.getId());
+            existingBad.setState(badState).save();
 
 
-            // but second is not good
-            TestItem existingItem2 = new TestItem(false);
-            StateRecord existing2 = ledger.findOrCreate(existingItem2.getId());
-            existing2.setState(badState).save();
+            List <String> listConditionsGood = new ArrayList<>();
+            List <String> listConditionsBad = new ArrayList<>();
+            listConditionsGood.add("ref.state.origin=="+goodReferencedContract.getId().toBase64String());
+            listConditionsBad.add("ref.state.origin=="+badReferencedContract.getId().toBase64String());
 
-            main.addReferencedItems(existingItem1, existingItem2);
+            Binder goodConditions = new Binder();
+            Binder badConditions = new Binder();
+            goodConditions.set("all_of", listConditionsGood);
+            badConditions.set("all_of", listConditionsBad);
 
-            Thread.sleep(300);
+            Contract contract = new Contract(key);
+
+            Reference goodReference = new Reference();
+            goodReference.name = "good";
+            goodReference.type = Reference.TYPE_EXISTING_STATE;
+            goodReference.setConditions(goodConditions);
+            contract.addReference(goodReference);
+
+            Reference badReference = new Reference();
+            badReference.name = "bad";
+            badReference.type = Reference.TYPE_EXISTING_STATE;
+            badReference.setConditions(badConditions);
+            contract.addReference(badReference);
+
+            contract.seal();
+            contract.getTransactionPack().addReferencedItem(goodReferencedContract);
+            contract.getTransactionPack().addReferencedItem(badReferencedContract);
+
+
 
             // check that main is fully approved
-            node.registerItem(main);
-            ItemResult itemResult = node.waitItem(main.getId(), 10000);
+            node.registerItem(contract);
+            ItemResult itemResult = node.waitItem(contract.getId(), 10000);
             assertEquals(ItemState.DECLINED, itemResult.state);
 
-            // and the references are intact
-            while(ItemState.APPROVED != existing1.getState()) {
-                Thread.sleep(500);
-                System.out.println(existing1.reload().getState());
-            }
-            assertEquals(ItemState.APPROVED, existing1.getState());
-
-            while (badState != existing2.getState()) {
-                Thread.sleep(500);
-                System.out.println(existing2.reload().getState());
-            }
-            assertEquals(badState, existing2.getState());
         }
     }
 
@@ -512,44 +525,128 @@ public class BaseNetworkTest extends TestCase {
     @Test(timeout = 90000)
     public void badReferencesDecline() throws Exception {
         if(node == null) {
-            System.out.println("network not inited");
-            return;
+            throw new Exception("network not inited");
         }
 
 
-        TestItem main = new TestItem(true);
-        TestItem new1 = new TestItem(true);
-        TestItem new2 = new TestItem(true);
+        PrivateKey key = TestKeys.privateKey(0);
+
+        Contract goodReferencedContract = new Contract(key);
+        goodReferencedContract.seal();
+
+        Contract badReferencedContract = new Contract(key);
+        badReferencedContract.setCreatorKeys(TestKeys.privateKey(1));
+        badReferencedContract.seal();
 
 
-        TestItem existing1 = new TestItem(false);
-        TestItem existing2 = new TestItem(true);
+        node.registerItem(goodReferencedContract);
+        ItemResult itemResult = node.waitItem(goodReferencedContract.getId(), 10000);
+        assertEquals(itemResult.state,ItemState.APPROVED);
 
-        System.out.println("--------resister (bad) item " + existing1.getId() + " ---------");
-        node.registerItem(existing1);
-        ItemResult ir = node.waitItem(existing1.getId(), 6000);
+        node.registerItem(badReferencedContract);
+        itemResult = node.waitItem(badReferencedContract.getId(), 10000);
+        assertEquals(itemResult.state,ItemState.DECLINED);
 
-        System.out.println("--------resister (good) item " + existing2.getId() + " ---------");
-        node.registerItem(existing2);
-        node.waitItem(existing2.getId(), 6000);
 
-        main.addReferencedItems(existing1, existing2);
-        main.addNewItems(new1, new2);
+        List <String> listConditionsGood = new ArrayList<>();
+        List <String> listConditionsBad = new ArrayList<>();
+        listConditionsGood.add("ref.state.origin=="+goodReferencedContract.getId().toBase64String());
+        listConditionsBad.add("ref.state.origin=="+badReferencedContract.getId().toBase64String());
 
-        System.out.println("--------resister (main) item " + main.getId() + " ---------");
+        Binder goodConditions = new Binder();
+        Binder badConditions = new Binder();
+        goodConditions.set("all_of", listConditionsGood);
+        badConditions.set("all_of", listConditionsBad);
+
+        Contract contract = new Contract(key);
+
+        Contract newItem1 = new Contract(key);
+        newItem1.seal();
+
+        Contract newItem2 = new Contract(key);
+        newItem2.seal();
+
+        contract.addNewItems(newItem1,newItem2);
+
+        Reference goodReference = new Reference();
+        goodReference.name = "good";
+        goodReference.type = Reference.TYPE_EXISTING_STATE;
+        goodReference.setConditions(goodConditions);
+        contract.addReference(goodReference);
+
+        Reference badReference = new Reference();
+        badReference.name = "bad";
+        badReference.type = Reference.TYPE_EXISTING_STATE;
+        badReference.setConditions(badConditions);
+        contract.addReference(badReference);
+
+        contract.seal();
+        contract.getTransactionPack().addReferencedItem(goodReferencedContract);
+        contract.getTransactionPack().addReferencedItem(badReferencedContract);
+
+
 
         // check that main is fully approved
-        node.registerItem(main);
-
-        ItemResult itemResult = node.waitItem(main.getId(), 15000);
+        node.registerItem(contract);
+        itemResult = node.waitItem(contract.getId(), 10000);
         assertEquals(ItemState.DECLINED, itemResult.state);
+        assertEquals(ItemState.UNDEFINED,node.waitItem(newItem1.getId(), 10000).state);
+        assertEquals(ItemState.UNDEFINED,node.waitItem(newItem2.getId(), 10000).state);
+    }
 
-        assertEquals(ItemState.UNDEFINED, node.waitItem(new1.getId(), 3000).state);
-        assertEquals(ItemState.UNDEFINED, node.waitItem(new2.getId(), 3000).state);
 
-        // and the references are intact
-        assertEquals(ItemState.DECLINED, node.waitItem(existing1.getId(), 3000).state);
-        assertEquals(ItemState.APPROVED, node.waitItem(existing2.getId(), 3000).state);
+    @Test(timeout = 90000)
+    public void goodReferencesAccept() throws Exception {
+        if(node == null) {
+            throw new Exception("network not inited");
+        }
+
+
+        PrivateKey key = TestKeys.privateKey(0);
+
+        Contract goodReferencedContract = new Contract(key);
+        goodReferencedContract.seal();
+
+
+        node.registerItem(goodReferencedContract);
+        ItemResult itemResult = node.waitItem(goodReferencedContract.getId(), 10000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+
+
+        List <String> listConditionsGood = new ArrayList<>();
+        listConditionsGood.add("ref.state.origin=="+goodReferencedContract.getId().toBase64String());
+
+        Binder goodConditions = new Binder();
+        goodConditions.set("all_of", listConditionsGood);
+
+        Contract contract = new Contract(key);
+
+        Contract newItem1 = new Contract(key);
+        newItem1.seal();
+
+        Contract newItem2 = new Contract(key);
+        newItem2.seal();
+
+        contract.addNewItems(newItem1,newItem2);
+
+        Reference goodReference = new Reference();
+        goodReference.name = "good";
+        goodReference.type = Reference.TYPE_EXISTING_STATE;
+        goodReference.setConditions(goodConditions);
+        contract.addReference(goodReference);
+
+        contract.seal();
+        contract.getTransactionPack().addReferencedItem(goodReferencedContract);
+
+
+
+        // check that main is fully approved
+        node.registerItem(contract);
+        itemResult = node.waitItem(contract.getId(), 10000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        assertEquals(ItemState.APPROVED,node.waitItem(newItem1.getId(), 10000).state);
+        assertEquals(ItemState.APPROVED,node.waitItem(newItem2.getId(), 10000).state);
     }
 
 
@@ -557,36 +654,58 @@ public class BaseNetworkTest extends TestCase {
     @Test(timeout = 90000)
     public void missingReferencesDecline() throws Exception {
         if(node == null) {
-            System.out.println("network not inited");
-            return;
+            throw new Exception("network not inited");
         }
 
 
-        TestItem main = new TestItem(true);
+        PrivateKey key = TestKeys.privateKey(0);
 
-        TestItem existing = new TestItem(true);
-        node.registerItem(existing);
-        @NonNull ItemResult existingItem = node.waitItem(existing.getId(), 15000);
+        Contract goodReferencedContract = new Contract(key);
+        goodReferencedContract.seal();
 
-        // but second is missing
-        TestItem missing = new TestItem(true);
+        Contract badReferencedContract = new Contract(key);
+        badReferencedContract.seal();
 
-        main.addReferencedItems(existing, missing);
+        node.registerItem(goodReferencedContract);
+        ItemResult itemResult = node.waitItem(goodReferencedContract.getId(), 10000);
+        assertEquals(itemResult.state,ItemState.APPROVED);
 
-        // check that main is declined
-        System.out.println("--------- missind id: " + missing.getId());
-        System.out.println("--------- existing id: " + existing.getId());
-        node.registerItem(main);
-        // need some time to resync missingId
-        ItemResult itemResult = node.waitItem(main.getId(), 15000);
+
+
+        List <String> listConditionsGood = new ArrayList<>();
+        List <String> listConditionsBad = new ArrayList<>();
+        listConditionsGood.add("ref.state.origin=="+goodReferencedContract.getId().toBase64String());
+        listConditionsBad.add("ref.state.origin=="+badReferencedContract.getId().toBase64String());
+
+        Binder goodConditions = new Binder();
+        Binder badConditions = new Binder();
+        goodConditions.set("all_of", listConditionsGood);
+        badConditions.set("all_of", listConditionsBad);
+
+        Contract contract = new Contract(key);
+
+        Reference goodReference = new Reference();
+        goodReference.name = "good";
+        goodReference.type = Reference.TYPE_EXISTING_STATE;
+        goodReference.setConditions(goodConditions);
+        contract.addReference(goodReference);
+
+        Reference badReference = new Reference();
+        badReference.name = "bad";
+        badReference.type = Reference.TYPE_EXISTING_STATE;
+        badReference.setConditions(badConditions);
+        contract.addReference(badReference);
+
+        contract.seal();
+        contract.getTransactionPack().addReferencedItem(goodReferencedContract);
+        contract.getTransactionPack().addReferencedItem(badReferencedContract);
+
+
+
+        // check that main is fully approved
+        node.registerItem(contract);
+        itemResult = node.waitItem(contract.getId(), 10000);
         assertEquals(ItemState.DECLINED, itemResult.state);
-
-        // and the references are intact
-        assertEquals(ItemState.APPROVED, existingItem.state);
-
-        System.out.println(node.getItem(missing.getId()));
-
-        assertNull(node.getItem(missing.getId()));
     }
 
 
@@ -1025,8 +1144,8 @@ public class BaseNetworkTest extends TestCase {
         c3.getStateData().set("amount", new Decimal(500));
         c3.addSignerKey(key);
         c3.addRevokingItems(c1);
-        assertFalse(c3.check());
         c3.seal();
+        assertFalse(c3.check());
 
         registerAndCheckDeclined(c3);
     }
@@ -7219,25 +7338,28 @@ public class BaseNetworkTest extends TestCase {
         Contract refContract1 = new Contract(contract1.seal(), tp);
         Contract refContract2 = new Contract(contract3.seal(), tp);
 
-        assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract1));
+        refContract1.check();
+        refContract2.check();
+
+        assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(refContract1));
         assertTrue(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract2));
         assertFalse(refContract1.getReferences().get("ref_cont").matchingItems.contains(contract3));
 
-        assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract1));
+        assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(refContract1));
         assertFalse(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract2));
         assertTrue(refContract1.getReferences().get("ref_cont2").matchingItems.contains(contract3));
 
-        assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract1));
+        assertTrue(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(refContract1));
         assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract2));
         assertFalse(refContract1.getReferences().get("ref_cont_inherit").matchingItems.contains(contract3));
 
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract1));
         assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract2));
-        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(contract3));
+        assertTrue(refContract2.getReferences().get("ref_cont3").matchingItems.contains(refContract2));
 
         assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract1));
         assertFalse(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract2));
-        assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(contract3));
+        assertTrue(refContract2.getReferences().get("ref_cont4").matchingItems.contains(refContract2));
     }
 
     @Test(timeout = 30000)
@@ -7310,7 +7432,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-//        tp_before.addReferencedItem(jobCertificate);
+        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         TransactionPack tp_after = TransactionPack.unpack(data);
 
@@ -7462,6 +7584,7 @@ public class BaseNetworkTest extends TestCase {
 
         registerAndCheckApproved(llcProperty);
 
+        llcProperty.removeAllReferencedItems();
         Contract llcProperty2 = llcProperty.createRevision(stepaPrivateKeys);
         llcProperty2.getStateData().set("units",
                 llcProperty.getStateData().getIntOrThrow("units") - 1);
@@ -7471,7 +7594,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-//        tp_before.addReferencedItem(jobCertificate);
+        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         TransactionPack tp_after = TransactionPack.unpack(data);
 
@@ -7553,7 +7676,7 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(llcProperty2.isOk());
 
         TransactionPack tp_before = llcProperty2.getTransactionPack();
-//        tp_before.addReferencedItem(jobCertificate);
+        tp_before.addReferencedItem(jobCertificate);
         byte[] data = tp_before.pack();
         TransactionPack tp_after = TransactionPack.unpack(data);
 
@@ -10380,7 +10503,6 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, node.waitItem(referencesContract2.getId(), 8000).state);
 
         UnsContract unsOriginal = uns;
-        unsOriginal.removeReferencedItem(referencesContract1);
 
         //Create revision to add payment without any changes. Should be declined
         uns = (UnsContract) unsOriginal.createRevision(keys);
@@ -11127,6 +11249,7 @@ public class BaseNetworkTest extends TestCase {
         refilledUnsContract.addSignerKey(randomPrivKey);
         refilledUnsContract.addSignerKey(TestKeys.privateKey(8));
         refilledUnsContract.addSignerKey(authorizedNameServiceKey);
+        refilledUnsContract.addOriginContract(referencesContract);
         refilledUnsContract.seal();
 
         paymentContract = getApprovedTUContract();

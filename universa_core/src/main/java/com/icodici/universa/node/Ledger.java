@@ -163,6 +163,8 @@ public interface Ledger {
 
     Set<HashId> saveEnvironment(NImmutableEnvironment environment);
 
+    Set<HashId> findBadReferencesOf(Set<HashId> ids);
+
 
     public static class Rollback extends Db.RollbackException {
     }

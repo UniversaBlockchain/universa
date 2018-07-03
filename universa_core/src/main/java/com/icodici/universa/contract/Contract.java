@@ -168,50 +168,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             newItems.forEach(i -> i.context = context);
         }
 
-        // fill references with contracts from TransactionPack
-
-        /*if (transactional != null && transactional.references != null) {
-            for(Reference ref : transactional.references) {
-                ref.setContract(this);
-                references.put(ref.name, ref);
-            }
-        }
-        if (definition != null && definition.references != null){
-            for(Reference ref : definition.references) {
-                ref.setContract(this);
-                references.put(ref.name, ref);
-            }
-        }
-        if (state != null && state.references != null){
-            for(Reference ref : state.references) {
-                ref.setContract(this);
-                references.put(ref.name, ref);
-            }
-        }*/
-
-        for(Reference ref : getReferences().values()) {
-            Set<Contract> referencedContracts = new HashSet<>(pack.getReferencedItems().values());
-            for(Approvable a : getNewItems()) {
-                if (a instanceof Contract) {
-                    referencedContracts.add((Contract) a);
-                }
-            }
-
-            for(Contract c : pack.getReferencedItems().values()) {
-                if(ref.isMatchingWith(c, referencedContracts)) {
-                    ref.addMatchingItem(c);
-                }
-            }
-
-            for(Approvable a : getNewItems()) {
-                if(a instanceof Contract) {
-                    Contract c = (Contract) a;
-                    if (ref.isMatchingWith(c, referencedContracts)) {
-                        ref.addMatchingItem(c);
-                    }
-                }
-            }
-        }
 
         // fill sealedByKeys from signatures matching with roles
 
@@ -654,13 +610,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return check(prefix, null);
     }
 
-    private boolean check(String prefix, List<Contract> contractsTree) throws Quantiser.QuantiserException {
+    private boolean check(String prefix, Map<HashId,Contract> contractsTree) throws Quantiser.QuantiserException {
 
         // now we looking for references only in one level of tree - among neighbours
         // but for main contract (not from new items) we looking for
         // references among new items
-        if (contractsTree == null)
-            contractsTree = getAllContractInTree();
+        if (contractsTree == null) {
+            contractsTree = new HashMap(getTransactionPack().getSubItems());
+            contractsTree.putAll(getTransactionPack().getReferencedItems());
+            contractsTree.put(getId(),this);
+        }
 
         quantiser.reset(quantiser.getQuantaLimit());
         // Add key verify quanta again (we just reset quantiser)
@@ -736,18 +695,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return errors.size() == 0;
     }
 
-    private boolean checkReferencedItems(List<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+    private boolean checkReferencedItems(Map<HashId, Contract> neighbourContracts) throws Quantiser.QuantiserException {
         return checkReferencedItems(neighbourContracts,false);
     }
 
 
-    private boolean checkReferencedItems(List<Contract> neighbourContracts, boolean roleRefsOnly) throws Quantiser.QuantiserException {
+    private boolean checkReferencedItems(Map<HashId, Contract> neighbourContracts, boolean roleRefsOnly) throws Quantiser.QuantiserException {
         validRoleReferences.clear();
 
         if (getReferences().size() == 0) {
             // if contract has no references -> then it's checkReferencedItems check is ok
             return true;
         }
+
+        Collection<Contract> neighbours = neighbourContracts.values();
 
         // check each reference, all must be ok
         boolean allRefs_check = true;
@@ -761,34 +722,23 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             // use all neighbourContracts to check reference. at least one must be ok
             boolean rm_check = false;
             if(rm.type == Reference.TYPE_TRANSACTIONAL) {
-                for (int j = 0; j < neighbourContracts.size(); ++j) {
-                    Contract neighbour = neighbourContracts.get(j);
+                for(Contract neighbour : neighbours) {
                     if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
                             (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
-                        if (checkOneReference(rm, neighbour) && rm.isMatchingWith(neighbour, neighbourContracts)) {
+                        if (checkOneReference(rm, neighbour) && rm.isMatchingWith(neighbour, neighbours)) {
+                            rm.addMatchingItem(neighbour);
                             rm_check = true;
                             break;
                         }
                 }
             } else if ((rm.type == Reference.TYPE_EXISTING_DEFINITION) || (rm.type == Reference.TYPE_EXISTING_STATE)) {
 
-//                for (String key : getPermissions().keySet()) {
-//                    Collection<Permission> permissions = getPermissions().get(key);
-//                    boolean permissionQuantized = false;
-//                    // TODO: hack - is exist another way to filter references that is use for validness checking
-//                    for (Permission permission : permissions) {
-//                        if (permission.isAllowedFor(getSealedByKeys(), asList(rm.name))) {
-//                            System.out.println(">> " + rm.name + " >> " + rm.matchingItems.size());
-//                            rm_check = rm.isValid();
-//                        } else {
-//                            System.out.println(">>> " + rm.name + " >>> " + rm.matchingItems.size());
-//                            // this reference do not need for contract
-//                            // or need but will fail on checking permitted changes
-//                            rm_check = true;
-//                        }
-//                    }
-//                }
-                //TODO: The check is performed only in the constructors of the Contract class. If the contract is loaded from dsl-template - this check will fail
+                for(Contract neighbour : neighbours) {
+                    if(rm.isMatchingWith(neighbour,neighbours)) {
+                        rm.addMatchingItem(neighbour);
+                    }
+                }
+
                 rm_check = rm.isValid();
             }
 
@@ -1876,6 +1826,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public synchronized Contract createRevision(Transactional transactional) {
         try {
+            // We need to remove all matching items from
+            removeAllReferencedItems();
             // We need deep copy, so, simple while not that fast.
             // note that revisions are create on clients where speed it not of big importance!
             Contract newRevision = copy();
@@ -2767,7 +2719,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
 
-    protected void checkSubItemQuantized(Contract contract, String prefix, List<Contract> neighbourContracts) throws Quantiser.QuantiserException {
+    protected void checkSubItemQuantized(Contract contract, String prefix, Map<HashId,Contract> neighbourContracts) throws Quantiser.QuantiserException {
         // Add checks from subItem quanta
         contract.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
         contract.check(prefix, neighbourContracts);
