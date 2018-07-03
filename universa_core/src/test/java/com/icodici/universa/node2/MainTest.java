@@ -7,6 +7,7 @@
 
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -3201,12 +3202,149 @@ public class MainTest {
 
     }
 
+    @Test
+    public void asdasd123() throws Exception {
+        Map<HashId,Map<ItemState,Set<Integer>>> results = new HashMap<>();
+        Map<HashId,Map<ItemState,Set<Integer>>> resultsRevoking = new HashMap<>();
+        Map<HashId,Map<ItemState,Set<Integer>>> resultsNew  = new HashMap<>();
+        TransactionPack tp = TransactionPack.unpack(Do.read("/Users/romanu/Downloads/ru/token106.unicon"));
+        tp.getContract().check();
+        System.out.println("Processing cost " + tp.getContract().getProcessedCostTU());
+
+
+        results.put(tp.getContract().getId(),new HashMap<>());
+        tp.getContract().getRevokingItems().forEach(a -> {
+            resultsRevoking.put(a.getId(),new HashMap<>());
+        });
+
+        tp.getContract().getNewItems().forEach(a -> {
+            resultsNew.put(a.getId(),new HashMap<>());
+        });
+
+        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
+        Client clients = new Client("http://node-" + 1 + "-com.universa.io:8080", key, null, false);
+        System.out.println(clients.getVersion());
+
+       /* for (int i = 0; i < 33;i++) {
+            Client c = clients.getClient(i);
+            System.out.println("VL:" + c.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING, DatagramAdapter.VerboseLevel.DETAILED, DatagramAdapter.VerboseLevel.NOTHING));
+
+        }*/
+
+       //System.out.println(clients.getClient(30).resyncItem(HashId.withDigest("NPo4dIkNdgYfGiNrdExoX003+lFT/d45OA6GifmcRoTzxSRSm5c5jDHBSTaAS+QleuN7ttX1rTvSQbHIIqkcK/zWjx/fCpP9ziwsgXbyyCtUhLqP9G4YZ+zEY/yL/GVE")));
+
+
+
+
+        for(int i = 0; i < 33;i++) {
+            try {
+
+                Client c = clients.getClient(i);
+                //System.out.println("VL:" + c.setVerboseLevel(DatagramAdapter.VerboseLevel.NOTHING, DatagramAdapter.VerboseLevel.DETAILED, DatagramAdapter.VerboseLevel.NOTHING));
+                int finalI = i;
+
+                results.keySet().forEach(id -> {
+
+                    try {
+                        ItemResult ir = c.getState(id);
+                        System.out.println("this " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if(!results.get(id).containsKey(ir.state)) {
+                            results.get(id).put(ir.state,new HashSet<>());
+                        }
+                        results.get(id).get(ir.state).add(finalI+1);
+
+                    } catch (ClientError clientError) {
+                        clientError.printStackTrace();
+                    }
+                });
+
+                resultsRevoking.keySet().forEach(id -> {
+
+                    try {
+                        ItemResult ir = c.getState(id);
+                        System.out.println("revoking " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if(!resultsRevoking.get(id).containsKey(ir.state)) {
+                            resultsRevoking.get(id).put(ir.state,new HashSet<>());
+                        }
+                        resultsRevoking.get(id).get(ir.state).add(finalI+1);
+                    } catch (ClientError clientError) {
+                        clientError.printStackTrace();
+                    }
+                });
+
+                resultsNew.keySet().forEach(id -> {
+
+                    try {
+                        ItemResult ir = c.getState(id);
+                        System.out.println("new " + id + " node: " + finalI +" " + ir.state + " - " + ir.createdAt + " " + ir.expiresAt);
+                        if(!resultsNew.get(id).containsKey(ir.state)) {
+                            resultsNew.get(id).put(ir.state,new HashSet<>());
+                        }
+                        resultsNew.get(id).get(ir.state).add(finalI+1);
+                    } catch (ClientError clientError) {
+                        clientError.printStackTrace();
+                    }
+                });
+            } catch (IOException e) {
+                System.out.println("failed to connect to " + i);
+                e.printStackTrace();
+            }
+
+        }
+        System.out.println("----THIS---");
+        results.keySet().forEach(id -> {
+            System.out.println(id);
+            results.get(id).keySet().forEach(state -> {
+                System.out.println(state + ": " + results.get(id).get(state).size() + " " + results.get(id).get(state));
+            });
+        });
+
+        System.out.println("----REVOKING---");
+        resultsRevoking.keySet().forEach(id -> {
+            System.out.println(id);
+            resultsRevoking.get(id).keySet().forEach(state -> {
+                System.out.println(state + ": " + resultsRevoking.get(id).get(state).size() + " " + resultsRevoking.get(id).get(state));
+            });
+        });
+
+        System.out.println("----NEW---");
+        resultsNew.keySet().forEach(id -> {
+            System.out.println(id);
+            resultsNew.get(id).keySet().forEach(state -> {
+                System.out.println(state + ": " + resultsNew.get(id).get(state).size() + " "+ resultsNew.get(id).get(state));
+            });
+        });
+
+    }
+
+    @Test
+    public void asd() throws Exception {
+        PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
+        Set<PrivateKey> issuers = new HashSet<>();
+        issuers.add(key);
+        Set<PublicKey> owners = new HashSet<>();
+        owners.add(key.getPublicKey());
+        TestSpace testSpace = prepareTestSpace();
+        testSpace.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        for(int i = 109; i < 110; i++) {
+            Contract c = ContractsService.createTokenContract(issuers, owners, "100000.9", 0.01);
+            c.setIssuerKeys(key.getPublicKey().getShortAddress());
+            c.setCreatorKeys(key.getPublicKey().getShortAddress());
+            c.setExpiresAt(ZonedDateTime.now().plusDays(10));
+            c.seal();
+            new FileOutputStream("/Users/romanu/Downloads/ru/token"+i+".unicon").write(c.getPackedTransaction());
+
+            assertEquals(testSpace.client.register(Contract.fromPackedTransaction(Do.read("/Users/romanu/Downloads/ru/token"+i+".unicon")).getPackedTransaction(),10000).state,ItemState.APPROVED);
+
+
+        }
+    }
 
     private static final String REFERENCE_CONDITION_PREFIX = "ref.id==";
     private static final String REFERENCE_CONDITION2 = "ref.state.revision==1";
 
     @Test
-    public void markContractTest() throws Exception {
+    public void tttt() throws Exception {
         boolean refAsNew = true;
 
         PrivateKey key = TestKeys.privateKey(1);
@@ -3499,15 +3637,6 @@ public class MainTest {
         //PREPARATION END
         /////////////////////////////////////////////////
 
-        //CREATE REFERENCING CONTRACT
-        //Define contract for blocking issuing U contract
-        Contract uIssueBlocker = new Contract(TestKeys.privateKey(21));
-        RoleLink roleLink = new RoleLink("@owner_link","owner");
-        uIssueBlocker.registerRole(roleLink);
-        RevokePermission revokePermission = new RevokePermission(roleLink);
-        uIssueBlocker.addPermission(revokePermission);
-        uIssueBlocker.seal();
-
 
         //CREATE COMPOUND
         Contract compound = ContractsService.createSplit(utnContract, "150", "amount", userKeys,true);
@@ -3521,29 +3650,19 @@ public class MainTest {
         //CREATE U CONTRACT
         //Create standart U contract
         Contract uContract = InnerContractsService.createFreshTU(unitsToIssue, ownerKeys);
-        //Create reference to uIssueBlocker contract
-        Reference reference = new Reference(uContract);
-        reference.type = Reference.TYPE_EXISTING_DEFINITION;
-        reference.name = "issue_block";
-
-        List<Object> conditionsList = new ArrayList<>();
-        conditionsList.add("ref.id=="+uIssueBlocker.getId().toBase64String());
-        conditionsList.add("ref.state.revision==1");
-        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
-        reference.setConditions(conditions);
-        uContract.addReference(reference);
-
-        //Add created reference to U contract's issuer role. This prevents U contract being registered until uIssueBlocker is not registered as well
-        uContract.getIssuer().addRequiredReference(reference.getName(), Role.RequiredMode.ALL_OF);
+        Contract consent = ContractsService.addConsent(uContract, universaAdminKey.getPublicKey().getLongAddress());
         uContract.seal();
-
-        //ADD U TO COMPOUND
         compound.addNewItems(uContract);
+
+        consent.addSignerKey(universaAdminKey);
+        consent.seal();
 
 
         //TRY TO REGISTER COMPOUND WITH INVALID ISSUING REFERENCE INSIDE U
         compound.seal();
-        compound.getTransactionPack().addReferencedItem(uIssueBlocker);
+
+
+
         //attempt to register
         ir = testSpace.client.register(compound.getPackedTransaction());
         while(ir.state.isPending()) {
@@ -3554,25 +3673,19 @@ public class MainTest {
         assertEquals(ir.state,ItemState.DECLINED);
 
 
-        //REGISTER REFENCING CONTRACT
-        //register uIssueBlocker
-        ir = testSpace.client.register(uIssueBlocker.getPackedTransaction());
-        while(ir.state.isPending()) {
-            Thread.sleep(100);
-            ir = testSpace.client.getState(uIssueBlocker.getId());
-        }
-        assertEquals(ir.state,ItemState.APPROVED);
-
-
-        //REGISTER U WITH VALID ISSUING REFERENCE
-        //reseal compound
         compound.seal();
-        compound.getTransactionPack().addReferencedItem(uIssueBlocker);
+
+        //CREATE BATCH CONTAINING compound and its consent
+        Contract batch = ContractsService.createBatch(userKeys, compound, consent);
+
+
+        //REGISTER BATCH WITH VALID REFERENCE
+        //reseal compound
         //attempt to register (uIssueBlocker reference is now valid)
-        ir = testSpace.client.register(compound.getPackedTransaction());
+        ir = testSpace.client.register(batch.getPackedTransaction());
         while(ir.state.isPending()) {
             Thread.sleep(100);
-            ir = testSpace.client.getState(compound.getId());
+            ir = testSpace.client.getState(batch.getId());
         }
         //so everything is fine
         assertEquals(ir.state,ItemState.APPROVED);
@@ -3584,18 +3697,20 @@ public class MainTest {
         Contract sampleContract = new Contract(userKey);
         sampleContract.seal();
         Parcel parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
-        testSpace.client.registerParcel(parcel.pack());
+        testSpace.client.registerParcel(parcel.pack(),5000);
         do {
             Thread.sleep(100);
             ir = testSpace.client.getState(sampleContract.getId());
         } while (ir.state.isPending());
         //so everything is fine
+        ItemResult pr = testSpace.client.getState(parcel.getPaymentContract().getId());
+        assertEquals(pr.state,ItemState.APPROVED);
         assertEquals(ir.state,ItemState.APPROVED);
         uContract = parcel.getPaymentContract();
 
 
-        //REVOKE uIssueBlocker
-        Contract revocation = ContractsService.createRevocation(uIssueBlocker, TestKeys.privateKey(21));
+        //REVOKE consent
+        Contract revocation = ContractsService.createRevocation(consent, universaAdminKey);
         ir = testSpace.client.register(revocation.getPackedTransaction());
         while(ir.state.isPending()) {
             Thread.sleep(100);
@@ -3611,7 +3726,7 @@ public class MainTest {
         sampleContract = new Contract(userKey);
         sampleContract.seal();
         parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
-        testSpace.client.registerParcel(parcel.pack());
+        testSpace.client.registerParcel(parcel.pack(),5000);
         do {
             Thread.sleep(100);
             ir = testSpace.client.getState(sampleContract.getId());
@@ -3620,4 +3735,52 @@ public class MainTest {
         assertEquals(ir.state,ItemState.APPROVED);
 
     }
+
+
+    @Test
+    public void refTest() throws Exception {
+        PrivateKey key = TestKeys.privateKey(0);
+
+        Contract contract1 = new Contract(key);
+        Contract contract2 = new Contract(key);
+        Contract contract3 = new Contract(key);
+        Contract contract4 = new Contract(key);
+        contract4.seal();
+
+        contract1.addNewItems(contract2);
+        contract3.addNewItems(contract4);
+
+        Reference reference = new Reference();
+        reference.name = "consent_"+contract4.getId();
+        reference.type = Reference.TYPE_EXISTING_STATE;
+
+        List<Object> conditionsList = new ArrayList<>();
+        conditionsList.add(REFERENCE_CONDITION_PREFIX+contract4.getId().toBase64String());
+        conditionsList.add(REFERENCE_CONDITION2);
+        Binder conditions = Binder.of(Reference.conditionsModeType.all_of.name(),conditionsList);
+        reference.setConditions(conditions);
+
+
+        contract2.addReference(reference);
+        contract2.getIssuer().addRequiredReference(reference, Role.RequiredMode.ALL_OF);
+
+        contract3.seal();
+        contract2.seal();
+        contract1.seal();
+
+        Contract c = ContractsService.createBatch(Do.listOf(key), contract1, contract3);
+
+
+        TestSpace testSpace = prepareTestSpace();
+        testSpace.nodes.forEach(n->n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        ItemResult ir = testSpace.client.register(c.getPackedTransaction(), 10000);
+        while (ir.state.isPending()) {
+            ir = testSpace.client.getState(c.getId());
+        }
+
+        assertEquals(ir.state,ItemState.APPROVED);
+
+    }
+
 }
