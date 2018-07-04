@@ -393,6 +393,12 @@ public class Reference implements BiSerializable {
 
                     case NOT_EQUAL:
                     case EQUAL:
+                        if (typeOfLeftOperand == compareOperandType.FIELD && left == null && !rightOperand.equals("null"))
+                            break;
+
+                        if (typeOfRightOperand == compareOperandType.FIELD && right == null && !leftOperand.equals("null"))
+                            break;
+
                         if (((left != null) && left.getClass().getName().endsWith("HashId")) ||
                             ((right != null) && right.getClass().getName().endsWith("HashId"))) {
                             String leftID;

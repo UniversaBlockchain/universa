@@ -145,4 +145,101 @@ public class ReferenceConditionsTest {
         assertEquals(false, res);
     }
 
+    @Test
+    public void refMissingFieldConstantForEquals() throws Exception {
+        Contract contractA = new Contract(new PrivateKey(2048));
+        contractA.getStateData().put("another_val", 100);
+
+        Contract contractB = new Contract(new PrivateKey(2048));
+        Reference ref = new Reference();
+        ref.type = Reference.TYPE_EXISTING_STATE;
+        ref.setConditions(Binder.of(
+                Reference.conditionsModeType.all_of.name(),
+                asList("ref.state.data.val==false",
+                       "ref.state.data.ival==0",
+                       "false==ref.state.data.val",
+                       "0==ref.state.data.ival")
+        ));
+        contractB.addReference(ref);
+
+        Contract batch = new Contract(new PrivateKey(2048));
+        batch.addNewItems(contractA);
+        batch.addNewItems(contractB);
+        batch.seal();
+        Boolean res = batch.check();
+        batch.traceErrors();
+        assertEquals(false, res);
+    }
+
+    @Test
+    public void refMissingFieldHashIdForEquals() throws Exception {
+        Contract contractA = new Contract(new PrivateKey(2048));
+        contractA.getStateData().put("another_val", 100);
+
+        Contract contractB = new Contract(new PrivateKey(2048));
+        Reference ref = new Reference();
+        ref.type = Reference.TYPE_EXISTING_STATE;
+        ref.setConditions(Binder.of(
+                Reference.conditionsModeType.all_of.name(),
+                asList("ref.state.data.val!=ref.id",
+                       "this.id!=ref.state.data.val")
+        ));
+        contractB.addReference(ref);
+
+        Contract batch = new Contract(new PrivateKey(2048));
+        batch.addNewItems(contractA);
+        batch.addNewItems(contractB);
+        batch.seal();
+        Boolean res = batch.check();
+        batch.traceErrors();
+        assertEquals(false, res);
+    }
+
+    @Test
+    public void refMissingFieldRoleForEquals() throws Exception {
+        Contract contractA = new Contract(new PrivateKey(2048));
+        contractA.getStateData().put("another_val", 100);
+
+        Contract contractB = new Contract(new PrivateKey(2048));
+        Reference ref = new Reference();
+        ref.type = Reference.TYPE_EXISTING_STATE;
+        ref.setConditions(Binder.of(
+                Reference.conditionsModeType.all_of.name(),
+                asList("ref.state.data.val!=ref.issuer",
+                        "this.issuer!=ref.state.data.val")
+        ));
+        contractB.addReference(ref);
+
+        Contract batch = new Contract(new PrivateKey(2048));
+        batch.addNewItems(contractA);
+        batch.addNewItems(contractB);
+        batch.seal();
+        Boolean res = batch.check();
+        batch.traceErrors();
+        assertEquals(false, res);
+    }
+
+    @Test
+    public void refMissingFieldDateTimeForEquals() throws Exception {
+        Contract contractA = new Contract(new PrivateKey(2048));
+        contractA.getStateData().put("another_val", 100);
+
+        Contract contractB = new Contract(new PrivateKey(2048));
+        Reference ref = new Reference();
+        ref.type = Reference.TYPE_EXISTING_STATE;
+        ref.setConditions(Binder.of(
+                Reference.conditionsModeType.all_of.name(),
+                asList("ref.state.data.val!=ref.definition.created_at",
+                        "this.definition.created_at!=ref.state.data.val")
+        ));
+        contractB.addReference(ref);
+
+        Contract batch = new Contract(new PrivateKey(2048));
+        batch.addNewItems(contractA);
+        batch.addNewItems(contractB);
+        batch.seal();
+        Boolean res = batch.check();
+        batch.traceErrors();
+        assertEquals(false, res);
+    }
 }
