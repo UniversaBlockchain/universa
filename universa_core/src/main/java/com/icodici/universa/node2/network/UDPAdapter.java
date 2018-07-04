@@ -1103,6 +1103,7 @@ public class UDPAdapter extends DatagramAdapter {
                 retransmitMap.forEach((k, v) -> {
                     v.retransmitCounter = 0;
                     v.packet = null;
+                    v.nextRetransmitTime = Instant.now();
                 });
                 removeHandshakePacketsFromRetransmitMap();
                 handshakeStep.set(HANDSHAKE_STEP_INIT);

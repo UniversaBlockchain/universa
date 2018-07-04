@@ -1023,6 +1023,7 @@ public class DatagramAdapterTest {
         });
 
         // send from adapter d1, to d3
+        long reconnectStartTime = System.nanoTime();
         d1.send(node2, payload1);
 
         while (!((waitStatusQueue.take()).equals("DONE"))){
@@ -1034,7 +1035,9 @@ public class DatagramAdapterTest {
 
         // receiver must s
         assertArrayEquals(payload1, data);
-
+        long reconnectTime = System.nanoTime() - reconnectStartTime;
+        System.out.println("reconnectTime: " + reconnectTime/1e+6 + " ms");
+        assertTrue(reconnectTime < 50 * 1e+6);
 
         d1.shutdown();
         d2.shutdown();
