@@ -409,8 +409,11 @@ public class UDPAdapter extends DatagramAdapter {
     private void sendWelcome(SessionReader sessionReader) {
         try {
             report(logLabel, () -> "send welcome to " + sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.BASE);
+            byte[] data = sessionReader.localNonce;
+            byte[] sign = new PrivateKey(ownPrivateKey.pack()).sign(data, HashType.SHA512);
+            byte[] payload = Boss.dumpToArray(Arrays.asList(data, sign));
             Packet packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
-                    sessionReader.remoteNodeInfo.getNumber(), PacketTypes.WELCOME, new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(sessionReader.localNonce));
+                    sessionReader.remoteNodeInfo.getNumber(), PacketTypes.WELCOME, payload);
             sendPacket(sessionReader.remoteNodeInfo, packet);
             sessionReader.removeHandshakePacketsFromRetransmitMap();
             sessionReader.addPacketToRetransmitMap(packet.packetId, packet, sessionReader.localNonce);
@@ -655,20 +658,25 @@ public class UDPAdapter extends DatagramAdapter {
                 session.protectFromDuples(packet.packetId, ()-> {
                     try {
                         if ((session.state.get() == Session.STATE_HANDSHAKE) && (session.handshakeStep.get() == Session.HANDSHAKE_STEP_WAIT_FOR_WELCOME)) {
-                            session.removeHandshakePacketsFromRetransmitMap();
-                            session.remoteNonce = new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload);
+                            List packetData = Boss.load(packet.payload);
+                            byte[] remoteNonce = ((Bytes)packetData.get(0)).toArray();
+                            byte[] packetSign = ((Bytes)packetData.get(1)).toArray();
+                            if (new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).verify(remoteNonce, packetSign, HashType.SHA512)) {
+                                session.removeHandshakePacketsFromRetransmitMap();
+                                session.remoteNonce = remoteNonce;
 
-                            // send key_req
-                            session.localNonce = Do.randomBytes(64);
-                            List data = Arrays.asList(session.localNonce, session.remoteNonce);
-                            byte[] packed = Boss.pack(data);
-                            byte[] encrypted = new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
-                            byte[] sign = new PrivateKey(ownPrivateKey.pack()).sign(encrypted, HashType.SHA512);
+                                // send key_req
+                                session.localNonce = Do.randomBytes(64);
+                                List data = Arrays.asList(session.localNonce, session.remoteNonce);
+                                byte[] packed = Boss.pack(data);
+                                byte[] encrypted = new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).encrypt(packed);
+                                byte[] sign = new PrivateKey(ownPrivateKey.pack()).sign(encrypted, HashType.SHA512);
 
-                            session.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_SESSION);
-                            session.handshake_sessionPart1 = null;
-                            session.handshake_sessionPart2 = null;
-                            sendKeyReq(session, encrypted, sign);
+                                session.handshakeStep.set(Session.HANDSHAKE_STEP_WAIT_FOR_SESSION);
+                                session.handshake_sessionPart1 = null;
+                                session.handshake_sessionPart2 = null;
+                                sendKeyReq(session, encrypted, sign);
+                            }
                         }
                     } catch (EncryptionError e) {
                         callErrorCallbacks("(onReceiveWelcome) EncryptionError in node " + myNodeInfo.getNumber() + ": " + e);
