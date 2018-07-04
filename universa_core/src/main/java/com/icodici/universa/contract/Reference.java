@@ -132,21 +132,21 @@ public class Reference implements BiSerializable {
         return dataThis.equals(dataA);
     }
 
-    final String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches "," is_a "," is_inherit ","inherits ","inherit "};
+    final static String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches "," is_a "," is_inherit ","inherits ","inherit "};
 
-    final int DEFINED = 0;
-    final int UNDEFINED = 1;
-    final int LESS_OR_EQUAL = 2;
-    final int MORE_OR_EQUAL = 3;
-    final int LESS = 4;
-    final int MORE = 5;
-    final int NOT_EQUAL = 6;
-    final int EQUAL = 7;
-    final int MATCHES = 8;
-    final int IS_A = 9;
-    final int IS_INHERIT = 10;
-    final int INHERITS = 11;
-    final int INHERIT = 12;
+    final static int DEFINED = 0;
+    final static int UNDEFINED = 1;
+    final static int LESS_OR_EQUAL = 2;
+    final static int MORE_OR_EQUAL = 3;
+    final static int LESS = 4;
+    final static int MORE = 5;
+    final static int NOT_EQUAL = 6;
+    final static int EQUAL = 7;
+    final static int MATCHES = 8;
+    final static int IS_A = 9;
+    final static int IS_INHERIT = 10;
+    final static int INHERITS = 11;
+    final static int INHERIT = 12;
 
     enum compareOperandType {
         FIELD,
@@ -322,6 +322,12 @@ public class Reference implements BiSerializable {
                     case MORE:
                     case LESS_OR_EQUAL:
                     case MORE_OR_EQUAL:
+                        if(typeOfLeftOperand == compareOperandType.FIELD && left == null)
+                            break;
+
+                        if(typeOfRightOperand == compareOperandType.FIELD && right == null)
+                            break;
+
                         if (((left != null) && left.getClass().getName().endsWith("ZonedDateTime")) ||
                             ((right != null) && right.getClass().getName().endsWith("ZonedDateTime"))) {
                             long leftTime = objectCastToTimeSeconds(left, leftOperand, typeOfLeftOperand);
