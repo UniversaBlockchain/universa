@@ -1082,12 +1082,24 @@ public class MainTest {
         sendBlock(packet, socket, destination);
     }
 
+    protected void sendWelcome(NodeInfo myNodeInfo, NodeInfo destination, UDPAdapter udpAdapter, DatagramSocket socket) throws Exception {
+        byte[] payload = new PublicKey(destination.getPublicKey().pack()).encrypt(Do.randomBytes(64));
+        UDPAdapter.Packet packet = udpAdapter.createTestPacket(
+                new Random().nextInt(Integer.MAX_VALUE),
+                myNodeInfo.getNumber(),
+                destination.getNumber(),
+                UDPAdapter.PacketTypes.WELCOME,
+                payload);
+        sendBlock(packet, socket, destination);
+    }
+
     @Ignore
     @Test
     public void udpDisruptionTest() throws Exception{
         List<Main> mm = new ArrayList<>();
         final int NODE_COUNT = 4;
         final int PORT_BASE = 12000;
+        final int TEST_MODE = UDPAdapter.PacketTypes.WELCOME;
 
         for (int i = 0; i < NODE_COUNT; i++) {
             mm.add(createMain("node" + (i + 1), false));
@@ -1109,7 +1121,10 @@ public class MainTest {
                     DatagramSocket socket = new DatagramSocket(PORT_BASE+ finalI*NODE_COUNT+finalJ);
 
                     while (alive) {
-                        sendHello(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                        if (TEST_MODE == UDPAdapter.PacketTypes.HELLO)
+                            sendHello(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                        else
+                            sendWelcome(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
                         Thread.sleep(1);
                     }
                 } catch (Exception e) {
