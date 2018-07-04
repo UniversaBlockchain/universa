@@ -32,7 +32,7 @@ public class NSmartContract extends Contract implements NContract {
     public static final String PAID_U_FIELD_NAME = "paid_U";
 
     /**
-     * Provide info about payment rates, transaction units issuer and some other data required by smart contract.
+     * Provide info about payment rates, "U" issuer and some other data required by smart contract.
      * @param nodeInfoProvider instance of {@link NodeInfoProvider}
      */
     public void setNodeInfoProvider(NodeInfoProvider nodeInfoProvider) {

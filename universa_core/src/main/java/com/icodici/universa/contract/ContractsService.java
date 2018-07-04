@@ -1196,8 +1196,8 @@ public class ContractsService {
      * <br><br>
      *
      * @param payload is prepared contract you want to register in the Universa.
-     * @param payment is approved contract with transaction units belongs to you.
-     * @param amount  is number of transaction units you want to spend to register payload contract.
+     * @param payment is approved contract with "U" belongs to you.
+     * @param amount is number of "U" you want to spend to register payload contract.
      * @param keys    is own private keys, which are set as owner of payment contract
      * @return parcel, it ready to send to the Universa.
      */
@@ -1212,8 +1212,8 @@ public class ContractsService {
      * <br><br>
      *
      * @param payload         is prepared contract you want to register in the Universa.
-     * @param payment         is approved contract with transaction units belongs to you.
-     * @param amount          is number of transaction units you want to spend to register payload contract.
+     * @param payment is approved contract with "U" belongs to you.
+     * @param amount is number of "U" you want to spend to register payload contract.
      * @param keys            is own private keys, which are set as owner of payment contract
      * @param withTestPayment if true {@link Parcel} will be created with test payment
      * @return parcel, it ready to send to the Universa.
@@ -1244,8 +1244,8 @@ public class ContractsService {
      * <br><br>
      *
      * @param payload is prepared TransactionPack you want to register in the Universa.
-     * @param payment is approved contract with transaction units belongs to you.
-     * @param amount  is number of transaction units you want to spend to register payload contract.
+     * @param payment is approved contract with "U" belongs to you.
+     * @param amount is number of "U" you want to spend to register payload contract.
      * @param keys    is own private keys, which are set as owner of payment contract
      * @return parcel, it ready to send to the Universa.
      */
@@ -1261,8 +1261,8 @@ public class ContractsService {
      * <br><br>
      *
      * @param payload         is prepared TransactionPack you want to register in the Universa.
-     * @param payment         is approved contract with transaction units belongs to you.
-     * @param amount          is number of transaction units you want to spend to register payload contract.
+     * @param payment is approved contract with "U" belongs to you.
+     * @param amount is number of "U" you want to spend to register payload contract.
      * @param keys            is own private keys, which are set as owner of payment contract
      * @param withTestPayment if true {@link Parcel} will be created with test payment
      * @return parcel, it ready to send to the Universa.
@@ -1309,9 +1309,9 @@ public class ContractsService {
      * <br><br>
      *
      * @param payload         is prepared TransactionPack you want to register in the Universa.
-     * @param payment         is approved contract with transaction units belongs to you.
-     * @param amount          is number of transaction units you want to spend to register payload contract.
-     * @param amountSecond    is number of transaction units you want to spend from second payment.
+     * @param payment is approved contract with "U" belongs to you.
+     * @param amount is number of "U" you want to spend to register payload contract.
+     * @param amountSecond is number of "U" you want to spend from second payment.
      * @param keys            is own private keys, which are set as owner of payment contract
      * @param withTestPayment if true {@link Parcel} will be created with test payment
      * @return parcel, it ready to send to the Universa.

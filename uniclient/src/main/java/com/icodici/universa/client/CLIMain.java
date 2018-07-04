@@ -251,13 +251,13 @@ public class CLIMain {
                         .ofType(String.class)
                         .describedAs("u.unicon");
                 accepts("amount", "Use with --register, --create-parcel and -u. " +
-                        "Command is set amount of transaction units will be pay for contract's register.")
+                        "Command is set amount of U will be pay for contract's register.")
                         .withRequiredArg()
                         .ofType(Integer.class)
                         .defaultsTo(1)
                         .describedAs("u amount");
                 accepts("amount-storage", "Use with --register, --create-parcel and -u. " +
-                        "Command is set amount-storage of storage units will be pay for contract's register.")
+                        "Command is set amount-storage of storage U will be pay for contract's register.")
                         .withRequiredArg()
                         .ofType(Integer.class)
                         .defaultsTo(0)

@@ -41,8 +41,8 @@ public class InnerContractsService {
      * U contracts signs with special Universa keys and set as owner public keys from params.
      *<br><br>
      * @param amount is initial number of U that will be have an owner
-     * @param ownerKeys is public keys that will became an owner of U
-     * @param withTestU if true U will be created with test transaction units
+     * @param ownerKeys is public keys that will became an owner of "U"
+     * @param withTestU if true U will be created with test "U"
      * @return sealed U contract; should be registered in the Universa by simplified procedure.
      * @throws IOException with exceptions while contract preparing
      */

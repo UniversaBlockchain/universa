@@ -283,7 +283,7 @@ public class JarNetworkTest extends TestCase {
                 whiteClient.register(stepaU.getPackedTransaction(),15000);
                 uContract = stepaU;
             }
-            int needRecreateTuContractNum = 0;
+            int needRecreateUContractNum = 0;
             for (Client client : normalClients) {
                 int attempts = 10;
                 ItemResult itemResult = client.getState(uContract.getId());
@@ -293,14 +293,14 @@ public class JarNetworkTest extends TestCase {
                 }
                 if (itemResult.state != ItemState.APPROVED) {
                     System.out.println("U: node " + client.getNodeNumber() + " result: " + itemResult);
-                    needRecreateTuContractNum ++;
+                    needRecreateUContractNum ++;
                 }
             }
 
             int recreateBorder = NODES_COUNT - config.getPositiveConsensus() - 1;
             if(recreateBorder < 0)
                 recreateBorder = 0;
-            if (needRecreateTuContractNum > recreateBorder) {
+            if (needRecreateUContractNum > recreateBorder) {
                 uContract = null;
                 Thread.sleep(1000);
                 return getApprovedUContract();

@@ -76,7 +76,7 @@ definition:
     # required for U
     issuerName: "Universa Reserve System"
 
-    description: U with test transaction units.
+    description: Test U.
 
 # required section. Data that represent current contract state, could be modified in accordance with
 # 'permissions' section above

@@ -2577,14 +2577,14 @@ public class MainTest {
                 testSpace.node.node.registerItem(stepaU);
                 testSpace.uContract = stepaU;
             }
-            int needRecreateTuContractNum = 0;
+            int needRecreateUContractNum = 0;
             for (Main m : testSpace.nodes) {
                 try {
                     ItemResult itemResult = m.node.waitItem(testSpace.uContract.getId(), 15000);
                     //assertEquals(ItemState.APPROVED, itemResult.state);
                     if (itemResult.state != ItemState.APPROVED) {
                         System.out.println("U: node " + m.node + " result: " + itemResult);
-                        needRecreateTuContractNum ++;
+                        needRecreateUContractNum ++;
                     }
                 } catch (TimeoutException e) {
                     System.out.println("ping ");
@@ -2593,13 +2593,13 @@ public class MainTest {
 //                    System.out.println(n.traceParcelProcessors());
 //                    System.out.println(n.traceItemProcessors());
                     System.out.println("U: node " + m.node + " timeout: ");
-                    needRecreateTuContractNum ++;
+                    needRecreateUContractNum ++;
                 }
             }
             int recreateBorder = testSpace.nodes.size() - testSpace.node.config.getPositiveConsensus() - 1;
             if(recreateBorder < 0)
                 recreateBorder = 0;
-            if (needRecreateTuContractNum > recreateBorder) {
+            if (needRecreateUContractNum > recreateBorder) {
                 testSpace.uContract = null;
                 Thread.sleep(1000);
                 return getApprovedUContract(testSpace);
