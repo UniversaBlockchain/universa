@@ -1030,21 +1030,42 @@ public class CLIMain {
                                 + " for " + tuAmount + " TU");
                         report("cnotactId: "+contract.getId().toBase64String());
                         parcel = prepareForRegisterContract(contract, tu, tuAmount, tuKeys, tutest);
+                        newTUContract = parcel.getPaymentContract();
                     } else { // if storage payment
                         report("registering the paid contract " + contract.getId() + " from " + source
                                 + " for " + tuAmount + " TU (and " + tuAmountStorage + " TU for storage)");
                         report("cnotactId: "+contract.getId().toBase64String());
                         parcel = prepareForRegisterPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest);
+                        newTUContract = parcel.getPayloadContract().getNew().get(0);
                     }
 
                     if (parcel != null) {
-                        String name;
-                        if(names.size() > s) {
-                            name = names.get(s);
+
+                        report("save payment revision: " + newTUContract.getState().getRevision() + " id: " + newTUContract.getId());
+
+                        CopyOption[] copyOptions = new CopyOption[]{
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.ATOMIC_MOVE
+                        };
+                        String tuDest = new FilenameTool(tuSource).addSuffixToBase("_rev" + tu.getRevision()).toString();
+                        tuDest = FileTool.writeFileContentsWithRenaming(tuDest, new byte[0]);
+                        if (tuDest != null) {
+                            Files.move(Paths.get(tuSource), Paths.get(tuDest), copyOptions);
+                            if (saveContract(newTUContract, tuSource, true, false)) {
+                                String name;
+                                if(names.size() > s) {
+                                    name = names.get(s);
+                                } else {
+                                    name = new FilenameTool(source).setExtension("uniparcel").toString();
+                                }
+                                saveParcel(parcel,name);
+                            } else {
+                                addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
+                            }
                         } else {
-                            name = new FilenameTool(source).setExtension("uniparcel").toString();
+                            addError(Errors.COMMAND_FAILED.name(),tuSource,"unable to backup tu revision");
                         }
-                        saveParcel(parcel,name);
+
                     } else {
                         addError(Errors.COMMAND_FAILED.name(),"parcel","unable to prepare parcel");
                     }
