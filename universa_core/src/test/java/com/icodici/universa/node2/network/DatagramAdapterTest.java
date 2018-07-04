@@ -1023,6 +1023,7 @@ public class DatagramAdapterTest {
         });
 
         // send from adapter d1, to d3
+        Thread.sleep(DatagramAdapter.HANDSHAKE_TIMEOUT_MILLIS);
         long reconnectStartTime = System.nanoTime();
         d1.send(node2, payload1);
 

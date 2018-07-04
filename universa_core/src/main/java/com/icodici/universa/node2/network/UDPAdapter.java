@@ -1103,7 +1103,7 @@ public class UDPAdapter extends DatagramAdapter {
          * Changes session's state to {@link Session#STATE_HANDSHAKE}.
          */
         public void startHandshake() {
-            if (lastHandshakeRestartTime.plusMillis(RETRANSMIT_TIME).isBefore(Instant.now())) {
+            if (lastHandshakeRestartTime.plusMillis(HANDSHAKE_TIMEOUT_MILLIS).isBefore(Instant.now())) {
                 retransmitMap.forEach((k, v) -> {
                     v.retransmitCounter = 0;
                     v.packet = null;

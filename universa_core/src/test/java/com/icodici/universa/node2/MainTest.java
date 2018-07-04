@@ -11,6 +11,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.crypto.digest.Crc32;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.Core;
@@ -1093,13 +1094,30 @@ public class MainTest {
         sendBlock(packet, socket, destination);
     }
 
+    protected void sendDataGarbage(NodeInfo myNodeInfo, NodeInfo destination, UDPAdapter udpAdapter, DatagramSocket socket) throws Exception {
+        byte[] data = new PublicKey(destination.getPublicKey().pack()).encrypt(Do.randomBytes(64));
+        byte[] crc32 = new Crc32().digest(data);
+        byte[] payload = new byte[data.length + crc32.length];
+        System.arraycopy(data, 0, payload, 0, data.length);
+        System.arraycopy(crc32, 0, payload, data.length, crc32.length);
+        UDPAdapter.Packet packet = udpAdapter.createTestPacket(
+                new Random().nextInt(Integer.MAX_VALUE),
+                myNodeInfo.getNumber(),
+                destination.getNumber(),
+                UDPAdapter.PacketTypes.DATA,
+                payload);
+        sendBlock(packet, socket, destination);
+    }
+
     @Ignore
     @Test
     public void udpDisruptionTest() throws Exception{
         List<Main> mm = new ArrayList<>();
         final int NODE_COUNT = 4;
         final int PORT_BASE = 12000;
-        final int TEST_MODE = UDPAdapter.PacketTypes.WELCOME;
+        final int TEST_MODE = UDPAdapter.PacketTypes.HELLO;
+        //final int TEST_MODE = UDPAdapter.PacketTypes.WELCOME;
+        //final int TEST_MODE = UDPAdapter.PacketTypes.DATA;
 
         for (int i = 0; i < NODE_COUNT; i++) {
             mm.add(createMain("node" + (i + 1), false));
@@ -1123,8 +1141,10 @@ public class MainTest {
                     while (alive) {
                         if (TEST_MODE == UDPAdapter.PacketTypes.HELLO)
                             sendHello(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
-                        else
+                        else if (TEST_MODE == UDPAdapter.PacketTypes.WELCOME)
                             sendWelcome(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                        else
+                            sendDataGarbage(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
                         Thread.sleep(1);
                     }
                 } catch (Exception e) {
