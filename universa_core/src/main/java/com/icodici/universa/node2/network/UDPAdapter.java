@@ -499,24 +499,6 @@ public class UDPAdapter extends DatagramAdapter {
      * Each adapter will try to send blocks until have got special {@link Packet} with type {@link PacketTypes#ACK},
      * that means receiver have got block. So when we got block, but something went wrong - call this method. Note that
      * for success blocks needs to call {@link UDPAdapter#sendAck(SessionReader, Integer)}
-     * @param sessionReader is {@link SessionReader} in which sending is.
-     * @param packetId is id of block we have got.
-     */
-    private void sendNack(SessionReader sessionReader, Integer packetId) {
-        report(logLabel, ()->"send nack to "+sessionReader.remoteNodeInfo.getNumber(), VerboseLevel.DETAILED);
-        try {
-            Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                    sessionReader.remoteNodeInfo.getNumber(), PacketTypes.NACK, new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(Boss.pack(packetId)));
-            sendPacket(sessionReader.remoteNodeInfo, packet);
-        } catch (EncryptionError e) {
-            callErrorCallbacks("(sendNack) can't send NACK, EncryptionError: " + e);
-        }
-    }
-
-
-    /**
-     * sessionReader will be got from {@link UDPAdapter#netConfig}
-     * @see UDPAdapter#sendNack(SessionReader, Integer)
      * @param nodeNumber node id in which sending is
      * @param packetId is id of block we have got.
      */
@@ -525,8 +507,12 @@ public class UDPAdapter extends DatagramAdapter {
             NodeInfo destination = netConfig.getInfo(nodeNumber);
             if (destination != null) {
                 report(logLabel, ()->"send nack to "+nodeNumber, VerboseLevel.DETAILED);
+                byte[] randomSeed = Do.randomBytes(64);
+                byte[] data = Boss.dumpToArray(Arrays.asList(packetId, randomSeed));
+                byte[] sign  = new PrivateKey(ownPrivateKey.pack()).sign(data, HashType.SHA512);
+                byte[] payload = Boss.dumpToArray(Arrays.asList(data, sign));
                 Packet packet = new Packet(0, myNodeInfo.getNumber(),
-                        nodeNumber, PacketTypes.NACK, new PublicKey(destination.getPublicKey().pack()).encrypt(Boss.pack(packetId)));
+                        nodeNumber, PacketTypes.NACK, payload);
                 sendPacket(destination, packet);
             }
         } catch (EncryptionError e) {
@@ -860,18 +846,18 @@ public class UDPAdapter extends DatagramAdapter {
                                     sessionReader.protectFromDuples(packet.packetId, ()->receiver.accept(payload));
                                 } else {
                                     callErrorCallbacks("(onReceiveData) decrypted payload too short");
-                                    sendNack(sessionReader, packet.packetId);
+                                    sendNack(packet.senderNodeId, packet.packetId);
                                 }
                             } catch (EncryptionError e) {
                                 callErrorCallbacks("(onReceiveData) EncryptionError: " + e);
-                                sendNack(sessionReader, packet.packetId);
+                                sendNack(packet.senderNodeId, packet.packetId);
                             } catch (SymmetricKey.AuthenticationFailed e) {
                                 callErrorCallbacks("(onReceiveData) SymmetricKey.AuthenticationFailed: " + e);
-                                sendNack(sessionReader, packet.packetId);
+                                sendNack(packet.senderNodeId, packet.packetId);
                             }
                         } else {
                             callErrorCallbacks("sessionReader.sessionKey is null");
-                            sendNack(sessionReader, packet.packetId);
+                            sendNack(packet.senderNodeId, packet.packetId);
                         }
                     } else {
                         callErrorCallbacks("no sessionReader found for node " + packet.senderNodeId);
@@ -912,10 +898,16 @@ public class UDPAdapter extends DatagramAdapter {
             Session session = getOrCreateSession(packet.senderNodeId);
             if (session != null) {
                 if (session.state.get() == Session.STATE_EXCHANGING) {
-                    Integer nackPacketId = Boss.load(new PrivateKey(ownPrivateKey.pack()).decrypt(packet.payload));
-                    if (session.retransmitMap.containsKey(nackPacketId)) {
-                        session.startHandshake();
-                        restartHandshakeIfNeeded(session, Instant.now());
+                    List dataList = Boss.load(packet.payload);
+                    byte[] data = ((Bytes)dataList.get(0)).toArray();
+                    byte[] sign = ((Bytes)dataList.get(1)).toArray();
+                    if (new PublicKey(session.remoteNodeInfo.getPublicKey().pack()).verify(data, sign, HashType.SHA512)) {
+                        List nackPacketIdList = Boss.load(data);
+                        Integer nackPacketId = (int)nackPacketIdList.get(0);
+                        if (session.retransmitMap.containsKey(nackPacketId)) {
+                            session.startHandshake();
+                            restartHandshakeIfNeeded(session, Instant.now());
+                        }
                     }
                 }
             }
