@@ -141,7 +141,7 @@ public class PermissionsTest extends ContractTestBase {
 
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         Binder d = c.getStateData();
-        assertEquals(1000, d.getIntOrThrow("transactional_units_left"));
+        assertEquals(1000, d.getIntOrThrow("U_left"));
         c.seal();
         c.check();
         c.traceErrors();
@@ -156,18 +156,18 @@ public class PermissionsTest extends ContractTestBase {
         assertNotSame(c, c1);
         assertNotSame(d, d1);
 
-        assertEquals(1000, d.getIntOrThrow("transactional_units_left"));
-        assertEquals(1000, d1.getIntOrThrow("transactional_units_left"));
-        d1.addToInt("transactional_units_left", -10);
-        assertEquals(990, d1.getIntOrThrow("transactional_units_left"));
-        assertEquals(1000, d.getIntOrThrow("transactional_units_left"));
+        assertEquals(1000, d.getIntOrThrow("U_left"));
+        assertEquals(1000, d1.getIntOrThrow("U_left"));
+        d1.addToInt("U_left", -10);
+        assertEquals(990, d1.getIntOrThrow("U_left"));
+        assertEquals(1000, d.getIntOrThrow("U_left"));
 
         sealCheckTrace(c1, true);
 
         // not valid: increment by owner
-        d1.addToInt("transactional_units_left", +11);
-        assertEquals(1001, d1.getIntOrThrow("transactional_units_left"));
-        assertEquals(1000, d.getIntOrThrow("transactional_units_left"));
+        d1.addToInt("U_left", +11);
+        assertEquals(1001, d1.getIntOrThrow("U_left"));
+        assertEquals(1000, d.getIntOrThrow("U_left"));
 
         sealCheckTrace(c1, false);
 
@@ -372,7 +372,7 @@ public class PermissionsTest extends ContractTestBase {
 
         setAndCheckOldNewValues(d, d1, oldValue, newValue, field);
 
-        d1.addToInt("transactional_units_left", -50);
+        d1.addToInt("U_left", -50);
         d1.addToInt("direction", 5);
         d1.addToInt("option", -1);
 

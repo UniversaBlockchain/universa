@@ -31,14 +31,14 @@ definition:
 
    # to show to the user
    description:
-     This contract grants holder specified number of transactional units. Each unit allow
+     This contract grants holder specified number of "U". Each "U" allow
      execute a single transaction with up to 10 ledger wirtes, complex transactions require
-     more units, one unit for each 10 ledger writes.
+     more "U", one "U" for each 10 ledger writes.
 
-     Number of transactional units left is kept in state.transactional_units_left field. Only
+     Number of "U" left is kept in state.U_left field. Only
      contract's owner can use the contract, and owner can transfer ownership freely.
 
-     While the contract has at least one transactional unit left the owner has "silver" subscription plan
+     While the contract has at least one "U" left the owner has "silver" subscription plan
      active.
 
 
@@ -60,20 +60,20 @@ definition:
    change_owner: owner
 
    change_number:
-     # owner can decrease units, to pay for performing transactions, maximum one time payment
+     # owner can decrease "U", to pay for performing transactions, maximum one time payment
      # is also limited (a useful option):
      - role: owner
        min_value: 0
        min_step: -400
        max_step: -1
-       field_name: transactional_units_left
+       field_name: U_left
 
     # issuer can recharge (top up) the contract in 1..100000 range:
      - role: issuer
        min_value: 1
        min_step:  1
        max_step:  100000
-       field_name: transactional_units_left
+       field_name: U_left
 
    # who can revoke the contract: owner, and issuer. This is "ANY OF" logic, we create 2 permissions,
    # one for each role. Issuer right is used to block contracts used in positively determined attacks to
@@ -105,7 +105,7 @@ definition:
 #    origin: ~
     fields:
       - description
-      - transactional_units_left
+      - U_left
 
 # required section. Data that represent current contract state, could be modified in accordance with
 # 'permissions' section above
@@ -156,6 +156,6 @@ state:
 
   # required section. any application data that could be changed.
   data:
-    # now contract holds 1000 transactinoal units to spend
-    transactional_units_left: 1000
+    # now contract holds 1000 "U" to spend
+    U_left: 1000
 
