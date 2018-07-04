@@ -412,6 +412,7 @@ public class UDPAdapter extends DatagramAdapter {
             Packet packet = new Packet(getNextPacketId(), myNodeInfo.getNumber(),
                     sessionReader.remoteNodeInfo.getNumber(), PacketTypes.WELCOME, new PublicKey(sessionReader.remoteNodeInfo.getPublicKey().pack()).encrypt(sessionReader.localNonce));
             sendPacket(sessionReader.remoteNodeInfo, packet);
+            sessionReader.removeHandshakePacketsFromRetransmitMap();
             sessionReader.addPacketToRetransmitMap(packet.packetId, packet, sessionReader.localNonce);
         } catch (EncryptionError e) {
             callErrorCallbacks("(sendWelcome) EncryptionError: " + e);
@@ -642,7 +643,10 @@ public class UDPAdapter extends DatagramAdapter {
                 SessionReader sessionReader = getOrCreateSessionReaderCandidate(packet.senderNodeId);
                 if (sessionReader != null) {
                     sessionReader.protectFromDuples(packet.packetId, ()->{
-                        sessionReader.localNonce = Do.randomBytes(64);
+                        if (sessionReader.nextLocalNonceGenerationTime.isBefore(Instant.now())) {
+                            sessionReader.localNonce = Do.randomBytes(64);
+                            sessionReader.nextLocalNonceGenerationTime = Instant.now().plusMillis(HANDSHAKE_TIMEOUT_MILLIS);
+                        }
                         sessionReader.handshake_keyReqPart1 = null;
                         sessionReader.handshake_keyReqPart2 = null;
                         sendWelcome(sessionReader);
@@ -1124,6 +1128,7 @@ public class UDPAdapter extends DatagramAdapter {
      */
     private class SessionReader extends Retransmitter {
         private byte[] localNonce;
+        private Instant nextLocalNonceGenerationTime = Instant.now().minusMillis(HANDSHAKE_TIMEOUT_MILLIS);
         private byte[] remoteNonce;
         private byte[] handshake_keyReqPart1 = null;
         private byte[] handshake_keyReqPart2 = null;

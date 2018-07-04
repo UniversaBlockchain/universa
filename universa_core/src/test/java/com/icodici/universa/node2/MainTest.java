@@ -1110,6 +1110,7 @@ public class MainTest {
 
                     while (alive) {
                         sendHello(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                        Thread.sleep(1);
                     }
                 } catch (Exception e) {
                     System.out.println("runnable exception: " + e.toString());
