@@ -43,12 +43,13 @@ import joptsimple.BuiltinHelpFormatter;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.*;
 import net.sergeych.utils.Base64;
+import net.sergeych.utils.Bytes;
+import net.sergeych.utils.Safe58;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
@@ -87,6 +88,82 @@ public class CLIMain {
     public static final String AMOUNT_FIELD_NAME = "amount";
     private static int nodeNumber = -1;
 
+    private static BiAdapter customBytesBiAdapter = new BiAdapter() {
+        @Override
+        public Binder serialize(Object object, BiSerializer serializer) {
+            throw new IllegalArgumentException("can't serialize Bytes");
+        }
+
+        @Override
+        public Object deserialize(Binder binder, BiDeserializer deserializer) {
+            if(binder.containsKey("base58")) {
+                return new Bytes(Safe58.decode(binder.getStringOrThrow("base58"),true));
+            }
+
+            if(binder.containsKey("safe58")) {
+                return new Bytes(Safe58.decode(binder.getStringOrThrow("safe58")));
+            }
+
+            return new Bytes(Base64.decodeLines(binder.getStringOrThrow("base64")));
+        }
+
+        @Override
+        public String typeName() {
+            return "binary";
+        }
+    };
+
+
+    private static BiAdapter customByteArrayBiAdapter = new BiAdapter() {
+        @Override
+        public Binder serialize(Object object, BiSerializer serializer) {
+            throw new IllegalArgumentException("can't serialize byte[]");
+        }
+
+        @Override
+        public Object deserialize(Binder binder, BiDeserializer deserializer) {
+            if(binder.containsKey("base58")) {
+                return (Safe58.decode(binder.getStringOrThrow("base64"),true));
+            }
+
+            if(binder.containsKey("safe58")) {
+                return (Safe58.decode(binder.getStringOrThrow("base64")));
+            }
+
+            return Base64.decodeLines(binder.getStringOrThrow("base64"));
+        }
+
+        @Override
+        public String typeName() {
+            return "binary";
+        }
+    };
+
+
+
+    private static BiAdapter customKeyAddressBiAdapter = new BiAdapter() {
+        @Override
+        public Binder serialize(Object object, BiSerializer serializer) {
+            Object s = serializer.serialize(((KeyAddress) object).getPacked());;
+            Binder serialized = (Binder) s;
+            if(serialized.containsKey("base64")) {
+                serialized.put("base58", Safe58.encode(Base64.decodeLines((String) serialized.remove("base64"))));
+            }
+
+            return Binder.of("uaddress", serialized);
+        }
+
+        @Override
+        public Object deserialize(Binder binder, BiDeserializer deserializer) {
+            throw new IllegalArgumentException("can't reconstruct KeyAddress");
+        }
+
+        @Override
+        public String typeName() {
+            return "KeyAddress";
+        }
+    };
+
     static public void main(String[] args) throws IOException {
         // when we run untit tests, it is important:
 //        args = new String[]{"-c", "/Users/sergeych/dev/new_universa/uniclient-testcreate/simple_root_contract.yml"};
@@ -122,24 +199,34 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
                         describedAs("contract.unicon");
-                accepts("tu", "Use with -register. Point to file with your transaction units. " +
+                accepts("register-parcel", "register a specified parcel")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class).
+                        describedAs("parcel.uniparcel");
+                accepts("create-parcel", "prepare parcel for registering given contract. use with --tu, --amount and --keys to specify payment options")
+                        .withOptionalArg()
+                        .withValuesSeparatedBy(",")
+                        .ofType(String.class).
+                        describedAs("contract.unicon");
+                accepts("tu", "Use with --register and --create-parcel. Point to file with your transaction units. " +
                         "Use it to pay for contract's register.")
                         .withRequiredArg()
                         .ofType(String.class)
                         .describedAs("tu.unicon");
-                accepts("amount", "Use with -register and -tu. " +
+                accepts("amount", "Use with --register, --create-parcel and -tu. " +
                         "Command is set amount of transaction units will be pay for contract's register.")
                         .withRequiredArg()
                         .ofType(Integer.class)
                         .defaultsTo(1)
                         .describedAs("tu amount");
-                accepts("amount-storage", "Use with -register and -tu. " +
+                accepts("amount-storage", "Use with --register, --create-parcel and -tu. " +
                         "Command is set amount-storage of storage units will be pay for contract's register.")
                         .withRequiredArg()
                         .ofType(Integer.class)
                         .defaultsTo(0)
                         .describedAs("tu amount-storage");
-                accepts("tutest", "Use with -register and -tu. Key is point to use test transaction units.");
+                accepts("tutest", "Use with --register, --create-parcel and -tu. Key is point to use test transaction units.");
                 accepts("no-exit", "Used for tests. Uniclient d");
                 accepts("probe", "query the state of the document in the Universa network")
                         .withOptionalArg()
@@ -431,6 +518,15 @@ public class CLIMain {
             if (options.has("register")) {
                 doRegister();
             }
+
+            if (options.has("register-parcel")) {
+                doRegisterParcel();
+            }
+
+            if (options.has("create-parcel")) {
+                doCreateParcel();
+            }
+
             if (options.has("probe")) {
                 doProbe();
             }
@@ -517,7 +613,10 @@ public class CLIMain {
             System.out.println("\nShow usage: uniclient --help");
 //            usage("Error: " + e.getMessage());
 //            usage(e.getMessage());
-            System.exit(100);
+            if(!options.has("no-exit")) {
+                System.exit(100);
+            }
+
         }
 
     }
@@ -896,6 +995,102 @@ public class CLIMain {
         }
     }
 
+
+    private static void doCreateParcel() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("create-parcel"));
+        List<String> names = (List) options.valuesOf("output");
+        String tuSource = (String) options.valueOf("tu");
+        int tuAmount = (int) options.valueOf("amount");
+        int tuAmountStorage = (int) options.valueOf("amount-storage");
+        boolean tutest = options.has("tutest");
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+            Contract contract = loadContract(source);
+
+            Contract tu = null;
+            if(tuSource != null) {
+                tu = loadContract(tuSource, true);
+                report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
+            }
+
+            Set<PrivateKey> tuKeys = new HashSet<>(keysMap().values());
+            if(contract != null) {
+                if(tu != null && tuKeys != null && tuKeys.size() > 0) {
+                    Parcel parcel;
+                    Contract newTUContract;
+                    if(tuAmountStorage == 0) {
+                        report("registering the paid contract " + contract.getId() + " from " + source
+                                + " for " + tuAmount + " TU");
+                        report("cnotactId: "+contract.getId().toBase64String());
+                        parcel = prepareForRegisterContract(contract, tu, tuAmount, tuKeys, tutest);
+                    } else { // if storage payment
+                        report("registering the paid contract " + contract.getId() + " from " + source
+                                + " for " + tuAmount + " TU (and " + tuAmountStorage + " TU for storage)");
+                        report("cnotactId: "+contract.getId().toBase64String());
+                        parcel = prepareForRegisterPayingParcel(contract, tu, tuAmount, tuAmountStorage, tuKeys, tutest);
+                    }
+
+                    if (parcel != null) {
+                        String name;
+                        if(names.size() > s) {
+                            name = names.get(s);
+                        } else {
+                            name = new FilenameTool(source).setExtension("uniparcel").toString();
+                        }
+                        saveParcel(parcel,name);
+                    } else {
+                        addError(Errors.COMMAND_FAILED.name(),"parcel","unable to prepare parcel");
+                    }
+
+                } else {
+//                    report("registering the contract " + contract.getId().toBase64String() + " from " + source);
+//                    registerContract(contract, (int) options.valueOf("wait"));
+                    addError(Errors.COMMAND_FAILED.name(), tuSource, "payment contract or private keys for payment contract is missing");
+                }
+            }
+        }
+
+        // print cost of processing if asked
+        if (options.has("cost")) {
+            doCost();
+        } else {
+            finish();
+        }
+    }
+
+
+
+    private static void doRegisterParcel() throws IOException {
+        List<String> sources = new ArrayList<String>((List) options.valuesOf("register-parcel"));
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            sources.addAll(asList(opt.split(",")));
+        }
+
+        cleanNonOptionalArguments(sources);
+
+        for (int s = 0; s < sources.size(); s++) {
+            String source = sources.get(s);
+            Parcel parcel = loadParcel(source);
+
+            if (parcel != null) {
+                ItemResult ir = registerParcel(parcel, (int) options.valueOf("wait"));
+                if(ir.state != ItemState.APPROVED) {
+                    addErrors(ir.errors);
+                }
+            }
+        }
+
+        finish();
+    }
+
     private static void doShowId() throws Exception {
         String contractFile = (String) options.valueOf("id");
         Contract c = Contract.fromPackedTransaction(Files.readAllBytes(Paths.get(contractFile)));
@@ -1235,29 +1430,25 @@ public class CLIMain {
             Contract contract = loadContract(source, true);
             if (contract != null) {
                 try {
-                    if (contract.check()) {
-                        report("unpack contract from " + source);
-                        int i = 1;
-                        if (contract.getNewItems() != null) {
-                            for (Approvable newItem : contract.getNewItems()) {
-                                String newItemFileName = new FilenameTool(source).addSuffixToBase("_new_item_" + i).toString();
-                                report("save newItem to " + newItemFileName);
-    //                            ((Contract) newItem).seal();
-                                saveContract((Contract) newItem, newItemFileName);
-                                i++;
-                            }
+                    report("unpack contract from " + source);
+                    int i = 1;
+                    if (contract.getNewItems() != null) {
+                        for (Approvable newItem : contract.getNewItems()) {
+                            String newItemFileName = new FilenameTool(source).addSuffixToBase("_new_item_" + i).toString();
+                            report("save newItem to " + newItemFileName);
+                            //                            ((Contract) newItem).seal();
+                            saveContract((Contract) newItem, newItemFileName);
+                            i++;
                         }
-                        i = 1;
-                        if (contract.getRevokingItems() != null) {
-                            for (Approvable revokeItem : contract.getRevokingItems()) {
-                                String revokeItemFileName = new FilenameTool(source).addSuffixToBase("_revoke_" + i).toString();
-                                report("save revokeItem to " + revokeItemFileName);
-                                saveContract((Contract) revokeItem, revokeItemFileName);
-                                i++;
-                            }
+                    }
+                    i = 1;
+                    if (contract.getRevokingItems() != null) {
+                        for (Approvable revokeItem : contract.getRevokingItems()) {
+                            String revokeItemFileName = new FilenameTool(source).addSuffixToBase("_revoke_" + i).toString();
+                            report("save revokeItem to " + revokeItemFileName);
+                            saveContract((Contract) revokeItem, revokeItemFileName);
+                            i++;
                         }
-                    } else {
-                        addErrors(contract.getErrors());
                     }
                 } catch (Quantiser.QuantiserException e) {
                     addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
@@ -1912,9 +2103,24 @@ public class CLIMain {
                     binder = Binder.convertAllMapsToBinders(xstream.fromXML(reader));
                 }
 
-                BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
+                BiMapper biMapper = DefaultBiMapper.getInstance();
+                //replace existing KeyAddress serializer
+                byte[] dummy = new byte[0];
+                biMapper.unregister(Bytes.class);
+                biMapper.unregister(dummy.getClass());
+                DefaultBiMapper.registerAdapter(dummy.getClass(), customByteArrayBiAdapter);
+                DefaultBiMapper.registerAdapter(Bytes.class, customBytesBiAdapter);
+
+
+                BiDeserializer bm = biMapper.newDeserializer();
                 contract = new Contract();
                 contract.deserialize(binder, bm);
+
+                biMapper.unregister(Bytes.class);
+                biMapper.unregister(dummy.getClass());
+                DefaultBiMapper.registerAdapter(dummy.getClass(), DefaultBiMapper.getByteArrayBiAdapter());
+                DefaultBiMapper.registerAdapter(Bytes.class, DefaultBiMapper.getBytesBiAdapter());
+
 
                 report(">>> imported contract: " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(contract.getCreatedAt()));
 
@@ -1966,6 +2172,30 @@ public class CLIMain {
     }
 
     /**
+     * Load parcel from specified path.
+     *
+     * @param fileName
+
+     *
+     * @return loaded Parcel.
+     */
+    public static Parcel loadParcel(String fileName) throws IOException {
+        Parcel parcel = null;
+
+        File pathFile = new File(fileName);
+        if (pathFile.exists()) {
+            Path path = Paths.get(fileName);
+            byte[] data = Files.readAllBytes(path);
+            parcel = Parcel.unpack(data);
+
+        } else {
+            addError(Errors.NOT_FOUND.name(), fileName, "Path " + fileName + " does not exist");
+        }
+
+        return parcel;
+    }
+
+    /**
      * Load contract from specified path.
      *
      * @param fileName
@@ -2008,7 +2238,19 @@ public class CLIMain {
             }
         }
 
-        Binder binder = contract.serialize(DefaultBiMapper.getInstance().newSerializer());
+
+
+        BiMapper biMapper = DefaultBiMapper.getInstance();
+        //replace existing KeyAddress serializer
+        biMapper.unregister(KeyAddress.class);
+        biMapper.registerAdapter(KeyAddress.class, customKeyAddressBiAdapter);
+
+
+        Binder binder = contract.serialize(biMapper.newSerializer());
+
+        //return existed eariler KeyAddress serializer
+        biMapper.unregister(KeyAddress.class);
+        biMapper.registerAdapter(KeyAddress.class, KeyAddress.getBiAdapter());
 
         byte[] data;
         if ("xml".equals(format)) {
@@ -2280,6 +2522,38 @@ public class CLIMain {
                 addErrors(contract.getErrors());
         } catch (Quantiser.QuantiserException e) {
             addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+        }
+        return (newFileName!=null);
+    }
+
+
+    /**
+     * Save specified parcel to file.
+     *
+     * @param parcel              - parcel to save.
+     * @param fileName              - name of file to save to.
+     *
+     */
+    public static boolean saveParcel(Parcel parcel, String fileName) throws IOException {
+        if (fileName == null) {
+            fileName = "Universa_" + DateTimeFormatter.ofPattern("yyyy-MM-ddTHH:mm:ss").format(parcel.getPayloadContract().getCreatedAt()) + ".uniparcel";
+        }
+
+
+
+        byte[] data = parcel.pack();
+        String newFileName = FileTool.writeFileContentsWithRenaming(fileName, data);
+        report("Parcel is saved to: " + newFileName);
+        report("Parcel size: " + data.length);
+        try {
+            if (parcel.getPaymentContract().check() && parcel.getPayloadContract().check()) {
+                report("Parcel has no errors");
+            } else {
+                addErrors(parcel.getPaymentContract().getErrors());
+                addErrors(parcel.getPayloadContract().getErrors());
+            }
+        } catch (Quantiser.QuantiserException e) {
+            addError("QUANTIZER_COST_LIMIT", parcel.toString(), e.getMessage());
         }
         return (newFileName!=null);
     }

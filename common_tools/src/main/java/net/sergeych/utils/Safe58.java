@@ -71,16 +71,20 @@ public class Safe58 {
         byte[] output = copyOfRange(temp, j, temp.length);
         return new String(output);
     }
-
     public static byte[] decode(String input) {
-        return doDecode(input
-                .replace('I', '1')
-                .replace('!', '1')
-                .replace('|', '1')
-                .replace('l', '1')
-                .replace('O', 'o')
-                .replace('0', 'o')
-        );
+        return decode(input,false);
+    }
+    public static byte[] decode(String input, boolean strict) {
+        if(!strict) {
+            input = input
+                    .replace('I', '1')
+                    .replace('!', '1')
+                    .replace('|', '1')
+                    .replace('l', '1')
+                    .replace('O', 'o')
+                    .replace('0', 'o');
+        }
+        return doDecode(input);
     }
 
     private static byte[] doDecode(String input) {

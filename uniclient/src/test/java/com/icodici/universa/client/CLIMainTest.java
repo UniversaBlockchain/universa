@@ -23,10 +23,7 @@ import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Main;
 import com.icodici.universa.node2.Quantiser;
 import com.icodici.universa.node2.network.Client;
-import net.sergeych.tools.Binder;
-import net.sergeych.tools.ConsoleInterceptor;
-import net.sergeych.tools.Do;
-import net.sergeych.tools.Reporter;
+import net.sergeych.tools.*;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
 import org.junit.AfterClass;
@@ -3246,5 +3243,33 @@ public class CLIMainTest {
         System.out.println(output);
         assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
 
+    }
+
+    @Test
+    public void createRegisterParcel() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.seal();
+
+        String contractFileName = basePath + "createRegisterParcel.unicon";
+        new FileOutputStream(contractFileName).write(contract.getPackedTransaction());
+
+
+        String tuContract = getApprovedTUContract();
+        callMain("--create-parcel", contractFileName, "--verbose",
+                "--tu", tuContract,
+                "--k", rootPath + "keys/stepan_mamontov.private.unikey");
+
+
+        callMain("--register-parcel", new FilenameTool(contractFileName).setExtension("uniparcel").toString());
+
+        Thread.sleep(1500);
+        System.out.println("probe after register");
+        Contract c = CLIMain.loadContract(contractFileName);
+        callMain("--probe", c.getId().toBase64String(), "--verbose");
+
+        System.out.println(output);
+        assertEquals(0, errors.size());
+
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) > 0);
     }
 }

@@ -97,7 +97,13 @@ public class DefaultBiMapper {
         });
 
         byte[] dummy = new byte[0];
-        DefaultBiMapper.registerAdapter(dummy.getClass(), new BiAdapter() {
+
+        DefaultBiMapper.registerAdapter(dummy.getClass(), getByteArrayBiAdapter());
+        DefaultBiMapper.registerAdapter(Bytes.class, getBytesBiAdapter());
+    }
+
+    public static BiAdapter getByteArrayBiAdapter() {
+        return new BiAdapter() {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
                 return Binder.of("base64", Base64.encodeLines((byte[]) object));
@@ -112,10 +118,11 @@ public class DefaultBiMapper {
             public String typeName() {
                 return "binary";
             }
-        });
+        };
+    }
 
-
-        DefaultBiMapper.registerAdapter(Bytes.class, new BiAdapter() {
+    public  static BiAdapter getBytesBiAdapter() {
+        return new BiAdapter() {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
                 return Binder.of("base64", Base64.encodeLines(((Bytes) object).getData()));
@@ -130,7 +137,7 @@ public class DefaultBiMapper {
             public String typeName() {
                 return "binary";
             }
-        });
+        };
     }
 
 }

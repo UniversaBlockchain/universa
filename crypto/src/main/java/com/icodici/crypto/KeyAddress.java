@@ -238,8 +238,8 @@ public class KeyAddress implements KeyMatcher {
         return super.equals(obj);
     }
 
-    static {
-        DefaultBiMapper.registerAdapter(KeyAddress.class, new BiAdapter() {
+    public static BiAdapter getBiAdapter() {
+        return new BiAdapter() {
             @Override
             public Binder serialize(Object object, BiSerializer serializer) {
                 return Binder.of("uaddress", serializer.serialize(((KeyAddress) object).getPacked())); //TODO: serialization is necessary
@@ -259,6 +259,10 @@ public class KeyAddress implements KeyMatcher {
             public String typeName() {
                 return "KeyAddress";
             }
-        });
+        };
+    }
+
+    static {
+        DefaultBiMapper.registerAdapter(KeyAddress.class, getBiAdapter());
     }
 }
