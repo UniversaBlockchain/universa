@@ -8,19 +8,21 @@
 package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.SymmetricKey;
+import com.icodici.crypto.digest.Sha512;
 import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.NetConfig;
 import com.icodici.universa.node2.NodeInfo;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.AsyncEvent;
 import net.sergeych.tools.Do;
+import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeoutException;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
@@ -86,6 +88,7 @@ public class DatagramAdapterTest {
         d3.shutdown();
     }
 
+    @Ignore //support of big data was removed from UDPAdapter
     @Test
     public void sendBigData() throws Exception {
 
@@ -168,6 +171,10 @@ public class DatagramAdapterTest {
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2222".getBytes();
         byte[] payload3 = "test data set 333333333333333".getBytes();
+        Set<String> dataToSend = new HashSet<>();
+        dataToSend.add(new String(payload1));
+        dataToSend.add(new String(payload2));
+        dataToSend.add(new String(payload3));
 
         ArrayList<byte[]> receviedFor2 = new ArrayList<>();
         BlockingQueue<String> waitStatusQueue = new ArrayBlockingQueue<String>(1, true);
@@ -195,14 +202,22 @@ public class DatagramAdapterTest {
         }
 
         assertEquals(3, receviedFor2.size());
-        byte[] data1 = receviedFor2.get(0);
-        byte[] data2 = receviedFor2.get(1);
-        byte[] data3 = receviedFor2.get(2);
+        String data1 = new String(receviedFor2.get(0));
+        String data2 = new String(receviedFor2.get(1));
+        String data3 = new String(receviedFor2.get(2));
+
+        System.out.println("data1: " + new String(data1));
+        System.out.println("data2: " + new String(data2));
+        System.out.println("data3: " + new String(data3));
 
         // receiver must s
-        assertArrayEquals(payload1, data1);
-        assertArrayEquals(payload2, data2);
-        assertArrayEquals(payload3, data3);
+        assertEquals(3, dataToSend.size());
+        dataToSend.remove(data1);
+        assertEquals(2, dataToSend.size());
+        dataToSend.remove(data2);
+        assertEquals(1, dataToSend.size());
+        dataToSend.remove(data3);
+        assertEquals(0, dataToSend.size());
 
         // And test it for all interfaceces and big arrays of data
 
@@ -386,7 +401,7 @@ public class DatagramAdapterTest {
         }
 
         try {
-            ae.await(60000);
+            ae.await(20000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
@@ -579,7 +594,7 @@ public class DatagramAdapterTest {
 
                 sender.send(receiverNode, payload);
             }
-            Thread.sleep(new Random().nextInt(200));
+            Thread.sleep(new Random().nextInt(20));
 //            if(new Random().nextBoolean()) ((UDPAdapter)d1).brakeSessions();
 //            if(new Random().nextBoolean()) ((UDPAdapter)d2).brakeSessions();
 //            if(new Random().nextBoolean()) ((UDPAdapter)d3).brakeSessions();
@@ -626,26 +641,28 @@ public class DatagramAdapterTest {
 
         SymmetricKey symmetricKey1 = new SymmetricKey();
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), symmetricKey1, node1, nc); // create implemented class with node1
+        //d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         List symmetricKeyErrors = new ArrayList();
         d1.addErrorsCallback(m -> {
             System.err.println(m);
             if(m.indexOf("SymmetricKey.AuthenticationFailed") >= 0)
                 symmetricKeyErrors.add(m);
-            return m;});
+            return m;
+        });
 
         byte[] payload = "test data set 1".getBytes();
 
         int attempts = 5;
         int numSends = 5;
 
-        ArrayList<byte[]> receviedFor = new ArrayList<>();
+        AtomicLong receviedFor = new AtomicLong(0);
 
         AsyncEvent<Void> ae = new AsyncEvent<>();
 
         d1.receive(data-> {
-            receviedFor.add(data);
-            if((receviedFor.size()) == attempts * numSends * numNodes)
+            receviedFor.incrementAndGet();
+            if((receviedFor.get()) >= attempts * numSends * numNodes)
                 ae.fire();
         });
 
@@ -654,7 +671,7 @@ public class DatagramAdapterTest {
 
         for (int i = 0; i < numNodes; i++) {
 
-            int keyIndex = new Random().nextInt(2);
+            int keyIndex = new Random().nextInt(20);
             NodeInfo n = new NodeInfo(TestKeys.publicKey(keyIndex),2 + i, "test_node_r_" + i, "localhost", 16203 + i, 16204+i, 16302+i);
 
             nc.addNode(n);
@@ -672,8 +689,8 @@ public class DatagramAdapterTest {
                 return m;});
 
             d.receive(data-> {
-                receviedFor.add(data);
-                if((receviedFor.size()) == attempts * numSends * numNodes)
+                receviedFor.incrementAndGet();
+                if((receviedFor.get()) >= attempts * numSends * numNodes)
                     ae.fire();
             });
         }
@@ -697,14 +714,14 @@ public class DatagramAdapterTest {
         }
 
         try {
-            ae.await(30000);
+            ae.await(10000);
         } catch (TimeoutException e) {
             System.out.println("time is up");
         }
 
         assertEquals(0, symmetricKeyErrors.size());
 
-        System.out.println("all got: " + (receviedFor.size()));
+        System.out.println("all got: " + (receviedFor.get()));
 
         d1.shutdown();
 
@@ -712,7 +729,7 @@ public class DatagramAdapterTest {
             adapters.get(i).shutdown();
         }
 
-        assertEquals(attempts * numSends * numNodes, receviedFor.size());
+        assertEquals(attempts * numSends * numNodes, receviedFor.get());
     }
 
 
@@ -740,13 +757,13 @@ public class DatagramAdapterTest {
         int attempts = 5;
         int numSends = 5;
 
-        ArrayList<byte[]> receviedFor = new ArrayList<>();
+        AtomicLong receviedFor = new AtomicLong(0);
 
         AsyncEvent<Void> ae = new AsyncEvent<>();
 
         d1.receive(data-> {
-            receviedFor.add(data);
-            if((receviedFor.size()) == attempts * numSends * numNodes)
+            receviedFor.incrementAndGet();
+            if((receviedFor.get()) >= attempts * numSends * numNodes)
                 ae.fire();
         });
 
@@ -763,6 +780,8 @@ public class DatagramAdapterTest {
 
             SymmetricKey sk = new SymmetricKey();
             DatagramAdapter d = new UDPAdapter(TestKeys.privateKey(keyIndex), sk, n, nc); // create implemented class with node1
+//            if (i==500)
+//                d.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
             adapters.add(d);
 
@@ -773,8 +792,8 @@ public class DatagramAdapterTest {
                 return m;});
 
             d.receive(data-> {
-                receviedFor.add(data);
-                if((receviedFor.size()) == attempts * numSends * numNodes)
+                receviedFor.incrementAndGet();
+                if((receviedFor.get()) >= attempts * numSends * numNodes)
                     ae.fire();
             });
         }
@@ -805,7 +824,7 @@ public class DatagramAdapterTest {
 
         assertEquals(0, symmetricKeyErrors.size());
 
-        System.out.println("all got: " + (receviedFor.size()));
+        System.out.println("all got: " + (receviedFor.get()));
 
         d1.shutdown();
 
@@ -813,7 +832,7 @@ public class DatagramAdapterTest {
             adapters.get(i).shutdown();
         }
 
-        assertEquals(attempts * numSends * numNodes, receviedFor.size());
+        assertEquals(attempts * numSends * numNodes, receviedFor.get());
     }
 
 
@@ -852,13 +871,13 @@ public class DatagramAdapterTest {
         for (int i = 0; i < attempts; i++) {
             System.out.println("Send part: " + i);
 
-            ArrayList<byte[]> receviedFor2 = new ArrayList<>();
+            AtomicLong receviedFor2 = new AtomicLong(0);
             BlockingQueue<String> waitStatusQueue = new ArrayBlockingQueue<String>(1, true);
 
             d2.receive(d-> {
-                receviedFor2.add(d);
+                receviedFor2.incrementAndGet();
                 try {
-                    if(receviedFor2.size() >= numSends) {
+                    if(receviedFor2.get() >= numSends) {
                         waitStatusQueue.put("DONE");
                     }
                 } catch (InterruptedException e) {
@@ -883,7 +902,7 @@ public class DatagramAdapterTest {
                 // wait until it is delivered
             }
 
-            assertEquals(numSends, receviedFor2.size());
+            assertEquals(numSends, receviedFor2.get());
 //            byte[] data1 = receviedFor2.get(0);
 //            byte[] data2 = receviedFor2.get(1);
 //            byte[] data3 = receviedFor2.get(2);
@@ -922,8 +941,8 @@ public class DatagramAdapterTest {
         DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc); // create implemented class with node1
         DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc); // create implemented class with node1
 
-//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
-//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.DETAILED);
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
 
         byte[] payload1 = "test data set 1".getBytes();
         byte[] payload2 = "test data set 2".getBytes();
@@ -1002,7 +1021,6 @@ public class DatagramAdapterTest {
                 System.out.println("DONE error");
             }
         });
-
 
         // send from adapter d1, to d3
         d1.send(node2, payload1);
@@ -1109,6 +1127,7 @@ public class DatagramAdapterTest {
     }
 
 
+    @Ignore //support of big data was removed from UDPAdapter
     @Test
     public void shufflePackets() throws Exception {
         // create pair of connected adapters
@@ -1359,4 +1378,215 @@ public class DatagramAdapterTest {
         d2.shutdown();
         d3.shutdown();
     }
+
+    @Test
+    public void twoAdapters() throws Exception {
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+        NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
+
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc);
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc);
+
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+
+        AtomicLong d1receiveCounter = new AtomicLong(0);
+        AtomicLong d2receiveCounter = new AtomicLong(0);
+
+        d1.receive(d -> {
+            //System.out.println("d1.onReceive: " + new String(d));
+            d1receiveCounter.incrementAndGet();
+        });
+
+        d2.receive(d -> {
+            //System.out.println("d2.onReceive: " + new String(d));
+            d2receiveCounter.incrementAndGet();
+        });
+
+        AtomicBoolean node1senderStopFlag = new AtomicBoolean(false);
+        AtomicBoolean node2senderStopFlag = new AtomicBoolean(false);
+        AtomicLong node1senderCounter = new AtomicLong(0);
+        AtomicLong node2senderCounter = new AtomicLong(0);
+
+        final int sendSpeed = 50;
+
+        Thread node1sender = new Thread(() -> {
+            while(true) {
+                try {
+                    for (int i = 0; i < sendSpeed; ++i) {
+                        node1senderCounter.incrementAndGet();
+                        d1.send(node2, "test_message_1_to_2".getBytes());
+                    }
+                    Thread.sleep(1);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (node1senderStopFlag.get())
+                    break;
+            }
+            System.out.println("node1sender has stopped");
+        });
+
+        Thread node2sender = new Thread(() -> {
+            while(true) {
+                try {
+                    for (int i = 0; i < sendSpeed; ++i) {
+                        node2senderCounter.incrementAndGet();
+                        d2.send(node1, "test_message_2_to_1".getBytes());
+                    }
+                    Thread.sleep(1);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                if (node2senderStopFlag.get())
+                    break;
+            }
+            System.out.println("node2sender has stopped");
+        });
+
+        d1.send(node2, "test_message_1_to_2".getBytes());
+        d2.send(node1, "test_message_2_to_1".getBytes());
+        node1senderCounter.incrementAndGet();
+        node2senderCounter.incrementAndGet();
+        Thread.sleep(800);
+
+        node1sender.start();
+        node2sender.start();
+
+        Thread.sleep(1000);
+
+        node1senderStopFlag.set(true);
+        node2senderStopFlag.set(true);
+        ((UDPAdapter)d1).printInternalState();
+        ((UDPAdapter)d2).printInternalState();
+        Thread.sleep(UDPAdapter.RETRANSMIT_MAX_ATTEMPTS*UDPAdapter.RETRANSMIT_TIME+1000);
+        d1.shutdown();
+        d2.shutdown();
+
+        ((UDPAdapter)d1).printInternalState();
+        ((UDPAdapter)d2).printInternalState();
+
+        System.out.println("node1senderCounter: " + node1senderCounter.get());
+        System.out.println("node2senderCounter: " + node2senderCounter.get());
+        System.out.println("d1receiveCounter: " + d1receiveCounter.get());
+        System.out.println("d2receiveCounter: " + d2receiveCounter.get());
+        assertEquals(node1senderCounter.get(), d2receiveCounter.get());
+        assertEquals(node2senderCounter.get(), d1receiveCounter.get());
+    }
+
+    @Test
+    public void concurrencySend() throws Exception {
+
+        NodeInfo node1 = new NodeInfo(TestKeys.publicKey(0),10, "test_node_10", "localhost", 16201, 16202, 16301);
+        NodeInfo node2 = new NodeInfo(TestKeys.publicKey(1),11, "test_node_11", "localhost", 16203, 16204, 16302);
+
+        List<NodeInfo> nodes = new ArrayList<>();
+        nodes.add(node1);
+        nodes.add(node2);
+
+        NetConfig nc = new NetConfig(nodes);
+
+        DatagramAdapter d1 = new UDPAdapter(TestKeys.privateKey(0), new SymmetricKey(), node1, nc);
+        DatagramAdapter d2 = new UDPAdapter(TestKeys.privateKey(1), new SymmetricKey(), node2, nc);
+
+//        d1.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+//        d2.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+
+        AtomicLong d1receiveCounter = new AtomicLong(0);
+        AtomicLong d2receiveCounter = new AtomicLong(0);
+
+        d1.receive(d -> {
+            //System.out.println("d1.onReceive: " + new String(d));
+            d1receiveCounter.incrementAndGet();
+        });
+
+        d2.receive(d -> {
+            //System.out.println("d2.onReceive: " + new String(d));
+            d2receiveCounter.incrementAndGet();
+        });
+
+        AtomicBoolean node1senderStopFlag = new AtomicBoolean(false);
+        AtomicBoolean node2senderStopFlag = new AtomicBoolean(false);
+        AtomicLong node1senderCounter = new AtomicLong(0);
+        AtomicLong node2senderCounter = new AtomicLong(0);
+
+        final int sendSpeed = 8;
+        List<Thread> senderThreads = new ArrayList<>();
+
+        for (int it = 0; it < 4; ++it) {
+            Thread node1sender = new Thread(() -> {
+                while (true) {
+                    try {
+                        for (int i = 0; i < sendSpeed; ++i) {
+                            node1senderCounter.incrementAndGet();
+                            d1.send(node2, "test_message_1_to_2".getBytes());
+                        }
+                        Thread.sleep(1);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    if (node1senderStopFlag.get())
+                        break;
+                }
+                System.out.println("node1sender has stopped");
+            });
+
+            Thread node2sender = new Thread(() -> {
+                while (true) {
+                    try {
+                        for (int i = 0; i < sendSpeed; ++i) {
+                            node2senderCounter.incrementAndGet();
+                            d2.send(node1, "test_message_2_to_1".getBytes());
+                        }
+                        Thread.sleep(1);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    if (node2senderStopFlag.get())
+                        break;
+                }
+                System.out.println("node2sender has stopped");
+            });
+
+            senderThreads.add(node1sender);
+            senderThreads.add(node2sender);
+        }
+
+        d1.send(node2, "test_message_1_to_2".getBytes());
+        d2.send(node1, "test_message_2_to_1".getBytes());
+        node1senderCounter.incrementAndGet();
+        node2senderCounter.incrementAndGet();
+        Thread.sleep(800);
+
+        for (Thread t : senderThreads)
+            t.start();
+
+        Thread.sleep(1000);
+
+        node1senderStopFlag.set(true);
+        node2senderStopFlag.set(true);
+        ((UDPAdapter)d1).printInternalState();
+        ((UDPAdapter)d2).printInternalState();
+        Thread.sleep(UDPAdapter.RETRANSMIT_MAX_ATTEMPTS*UDPAdapter.RETRANSMIT_TIME+1000);
+        d1.shutdown();
+        d2.shutdown();
+
+        ((UDPAdapter)d1).printInternalState();
+        ((UDPAdapter)d2).printInternalState();
+
+        System.out.println("node1senderCounter: " + node1senderCounter.get());
+        System.out.println("node2senderCounter: " + node2senderCounter.get());
+        System.out.println("d1receiveCounter: " + d1receiveCounter.get());
+        System.out.println("d2receiveCounter: " + d2receiveCounter.get());
+        assertEquals(node1senderCounter.get(), d2receiveCounter.get());
+        assertEquals(node2senderCounter.get(), d1receiveCounter.get());
+    }
+
 }
