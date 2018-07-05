@@ -12,13 +12,13 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 
 /**
- * The decimal value used in Universa: 9 decimal points in fractional part, half-up rounding, no limits in itegral part.
+ * The decimal value used in Universa: 18 decimal points (1 extra) in fractional part, half-up rounding, no limits in itegral part.
  * While it is slower than plain BigDecimal, it is safer as it limits operation to the abovementioned policy, which, for
  * example, guarantees poper and same results of conversions, divisions and rounds.
  */
 public class Decimal extends Number implements Comparable<Number> {
 
-    static public final int SCALE = 9;
+    static public final int SCALE = 19;
     private static final RoundingMode ROUNDING = RoundingMode.HALF_UP;
 
     static public final Decimal ZERO = new Decimal(0);
@@ -145,7 +145,7 @@ public class Decimal extends Number implements Comparable<Number> {
     public boolean equals(Object x) {
         if (x instanceof BigDecimal)
             return value.compareTo((BigDecimal) x) == 0;
-        if( x instanceof Decimal )
+        if (x instanceof Decimal)
             return value.compareTo(((Decimal) x).value) == 0;
         return false;
     }
