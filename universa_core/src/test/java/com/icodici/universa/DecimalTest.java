@@ -26,14 +26,22 @@ public class DecimalTest {
     public void testPrecision() throws Exception {
         Decimal x = new Decimal("1000000000000");
         Decimal y = x.divide(new Decimal(3));
-        assertEquals("0.333333333", y.getFraction().toString());
-        assertEquals("333333333333.333333333", y.toString());
+        assertEquals("0.333333333333333333", y.getFraction().toString());
+        assertEquals("333333333333.333333333333333333", y.toString());
+    }
+
+    @Test
+    public void testPrecisionRoundUp() throws Exception {
+        Decimal x = new Decimal("2000000000000");
+        Decimal y = x.divide(new Decimal(3));
+        assertEquals("0.666666666666666667", y.getFraction().toString());
+        assertEquals("666666666666.666666666666666667", y.toString());
     }
 
     @Test
     public void ulp() throws Exception {
-        Decimal x = new Decimal("1000000000000.0000000001");
-        assertEquals( 1e-10,x.ulp().doubleValue(), 0);
+        Decimal x = new Decimal("1000000000000.0000000000000000001");
+        assertEquals( 1e-19,x.ulp().doubleValue(), 0);
     }
 
 }
