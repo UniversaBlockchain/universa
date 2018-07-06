@@ -68,7 +68,7 @@ public class CLIMainTest {
     protected static List<Main> localNodes = new ArrayList<>();
 
     protected static Contract tuContract = null;
-    protected Object tuContractLock = new Object();
+    protected static Object tuContractLock = new Object();
 
     @BeforeClass
     public static void prepareRoot() throws Exception {
@@ -151,7 +151,10 @@ public class CLIMainTest {
         contract.addSignerKey(keys.iterator().next());
         contract.seal();
         CLIMain.saveContract(contract, basePath + "packedContract.unicon");
-        callMain("--register", basePath + "packedContract.unicon", "--wait", "5000");
+
+        String tuContract = getApprovedTUContract();
+
+        callMain("--register", basePath + "packedContract.unicon", "--tu", tuContract, "-k", rootPath + "keys/stepan_mamontov.private.unikey", "--wait", "5000");
         Contract packedContract = ContractsService.createSplit(contract, "1", FIELD_NAME, keys);
         packedContract.addSignerKey(keys.iterator().next());
         packedContract.seal();
@@ -2017,6 +2020,21 @@ public class CLIMainTest {
         assertEquals(0, errors.size());
     }
 
+
+    @Test
+    public void unpackParcel() throws Exception {
+        String fileName = basePath + "packedContract.uniparcel";
+        callMain2("--check", fileName, "-v");
+        callMain2("-unpack", fileName, "-v");
+//        System.out.println(" ");
+//        callMain2("--check", basePath + "packedContract_new_item_1.unicon", "-v");
+//        System.out.println(" ");
+//        callMain("--check", basePath + "packedContract_revoke_1.unicon", "-v");
+
+        System.out.println(output);
+        assertEquals(0, errors.size());
+    }
+
     @Test
     public void extraChecks() throws Exception {
         callMain2("-v", "--check", "/Users/sergeych/dev/!/0199efcd-0313-4e2c-8f19-62d6bd1c9755.transaction");
@@ -2250,7 +2268,7 @@ public class CLIMainTest {
 
     }
 
-    protected String getApprovedTUContract() throws Exception {
+    protected static String getApprovedTUContract() throws Exception {
         synchronized (tuContractLock) {
             if (tuContract == null) {
                 PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/tu_key.private.unikey"));

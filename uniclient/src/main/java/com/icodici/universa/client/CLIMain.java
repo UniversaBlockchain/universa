@@ -953,6 +953,7 @@ public class CLIMain {
                     }
 
                     if (parcel != null) {
+                        saveParcel(parcel,new FilenameTool(source).setExtension("uniparcel").toString());
                         report("save payment revision: " + newTUContract.getState().getRevision() + " id: " + newTUContract.getId());
 
                         CopyOption[] copyOptions = new CopyOption[]{
@@ -1306,7 +1307,7 @@ public class CLIMain {
         Contract contract = loadContract(source, true);
         if (contract != null) {
             try {
-                contract = contract.createRevision();
+                contract = contract.createRevision(keysMap().values());
 
                 Decimal value = new Decimal(contract.getStateData().getStringOrThrow(fieldName));
                 for(String filename : nonOptions) {
@@ -1435,6 +1436,32 @@ public class CLIMain {
         finish();
     }
 
+    private static void saveContractSubitems(String source, String suffix, Contract contract) throws IOException {
+        try {
+            report("unpack contract from " + source);
+            int i = 1;
+            if (contract.getNewItems() != null) {
+                for (Approvable newItem : contract.getNewItems()) {
+                    String newItemFileName = new FilenameTool(source).addSuffixToBase(suffix+"_new_item_" + i).toString();
+                    report("save newItem to " + newItemFileName);
+                    //                            ((Contract) newItem).seal();
+                    saveContract((Contract) newItem, newItemFileName);
+                    i++;
+                }
+            }
+            i = 1;
+            if (contract.getRevokingItems() != null) {
+                for (Approvable revokeItem : contract.getRevokingItems()) {
+                    String revokeItemFileName = new FilenameTool(source).addSuffixToBase(suffix+"_revoke_" + i).setExtension("unicon").toString();
+                    report("save revokeItem to " + revokeItemFileName);
+                    saveContract((Contract) revokeItem, revokeItemFileName);
+                    i++;
+                }
+            }
+        } catch (Quantiser.QuantiserException e) {
+            addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+        }
+    }
 
     private static void doUnpackWith() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("unpack"));
@@ -1448,32 +1475,24 @@ public class CLIMain {
         for (int s = 0; s < sources.size(); s++) {
             String source = sources.get(s);
 
-            Contract contract = loadContract(source, true);
-            if (contract != null) {
-                try {
-                    report("unpack contract from " + source);
-                    int i = 1;
-                    if (contract.getNewItems() != null) {
-                        for (Approvable newItem : contract.getNewItems()) {
-                            String newItemFileName = new FilenameTool(source).addSuffixToBase("_new_item_" + i).toString();
-                            report("save newItem to " + newItemFileName);
-                            //                            ((Contract) newItem).seal();
-                            saveContract((Contract) newItem, newItemFileName);
-                            i++;
-                        }
-                    }
-                    i = 1;
-                    if (contract.getRevokingItems() != null) {
-                        for (Approvable revokeItem : contract.getRevokingItems()) {
-                            String revokeItemFileName = new FilenameTool(source).addSuffixToBase("_revoke_" + i).toString();
-                            report("save revokeItem to " + revokeItemFileName);
-                            saveContract((Contract) revokeItem, revokeItemFileName);
-                            i++;
-                        }
-                    }
-                } catch (Quantiser.QuantiserException e) {
-                    addError("QUANTIZER_COST_LIMIT", contract.toString(), e.getMessage());
+            File pathFile = new File(source);
+            if (pathFile.exists()) {
+                byte[] data = Do.read(pathFile);
+                Object x = Boss.load(data);
+                if(x == null) {
+                    addError(Errors.NOT_SUPPORTED.name(), source, "Unknown packed object. Should be either unicapsule or transaction pack or parcel");
                 }
+                if(x instanceof Parcel) {
+                    saveContractSubitems(source,"_payment", ((Parcel) x).getPaymentContract());
+                    saveContractSubitems(source,"_payload", ((Parcel) x).getPayloadContract());
+                    saveContract(((Parcel) x).getPaymentContract(),new FilenameTool(source).addSuffixToBase("_payment").setExtension("unicon").toString());
+                    saveContract(((Parcel) x).getPayloadContract(),new FilenameTool(source).addSuffixToBase("_payload").setExtension("unicon").toString());
+                } else {
+                    Contract contract = loadContract(source);
+                    saveContractSubitems(source,"", contract);
+                }
+            } else {
+                addError(Errors.NOT_FOUND.name(), source, "Path " + source + " does not exist");
             }
         }
 
