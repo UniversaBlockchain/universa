@@ -115,7 +115,7 @@ public class CLIMainTest {
         c1.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         PrivateKey goodKey1 = c1.getKeysToSignWith().iterator().next();
         // let's make this key among owners
-        ((SimpleRole)c1.getRole("owner")).addKeyRecord(new KeyRecord(goodKey1.getPublicKey()));
+        c1.setOwnerKeys(goodKey1);
         c1.seal();
         CLIMain.saveContract(c1, basePath + "contract_for_revoke1.unicon");
 
@@ -123,7 +123,7 @@ public class CLIMainTest {
         c2.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         PrivateKey goodKey2 = c2.getKeysToSignWith().iterator().next();
         // let's make this key among owners
-        ((SimpleRole)c2.getRole("owner")).addKeyRecord(new KeyRecord(goodKey2.getPublicKey()));
+        c2.setOwnerKeys(goodKey2);
         c2.seal();
         CLIMain.saveContract(c2, basePath + "contract_for_revoke2.unicon");
 
@@ -131,7 +131,7 @@ public class CLIMainTest {
         c3.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         PrivateKey goodKey3 = c3.getKeysToSignWith().iterator().next();
         // let's make this key among owners
-        ((SimpleRole)c3.getRole("owner")).addKeyRecord(new KeyRecord(goodKey3.getPublicKey()));
+        c3.setOwnerKeys(goodKey3);
         c3.seal();
         CLIMain.saveContract(c3, basePath + "contract_for_revoke3.unicon");
 
@@ -1431,7 +1431,7 @@ public class CLIMainTest {
         c.addSignerKeyFromFile(rootPath + "keys/tu_key.private.unikey");
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
         // let's make this key among owners
-        ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.setOwnerKeys(goodKey);
         c.seal();
 
         System.out.println("---");
@@ -1812,7 +1812,7 @@ public class CLIMainTest {
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
         // let's make this key among owners
-        ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.setOwnerKeys(goodKey);
         c.seal();
         String contractFileName = basePath + "with_role_for_revoke.unicon";
         CLIMain.saveContract(c, contractFileName);
