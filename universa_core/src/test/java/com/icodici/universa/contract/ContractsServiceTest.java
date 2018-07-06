@@ -52,14 +52,13 @@ public class ContractsServiceTest extends ContractTestBase {
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
-        // let's make this key among owners
-        ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
+        c.setOwnerKeys(new KeyRecord(goodKey.getPublicKey()));
         c.seal();
 
         Contract revokeContract = c.createRevocation(goodKey);
 
-
-        assertTrue(revokeContract.check());
+        revokeContract.check();
+        assertTrue(revokeContract.isOk());
 //        tc.traceErrors();
     }
 

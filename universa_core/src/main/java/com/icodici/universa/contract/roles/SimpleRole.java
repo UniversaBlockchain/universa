@@ -28,7 +28,7 @@ import java.util.*;
  * Base class for any role combination, e.g. single key, any key from a set, all keys from a set, minimum number of key
  * from a set and so on.
  * <p>
- * IMPORTANT, This class express "any_of" logic, e.g. if any of the presented keys is listed, then the role is allowed.
+ * IMPORTANT, This class express "all_of" logic, e.g. if all of the presented keys are listed, then the role is allowed.
  */
 @BiType(name = "SimpleRole")
 public class SimpleRole extends Role {
@@ -163,25 +163,16 @@ public class SimpleRole extends Role {
      */
     @Override
     public boolean isAllowedForKeys(Set<? extends AbstractKey> keys) {
-        // any will go logic
-        return keys.stream().anyMatch(k -> {
-            boolean anyMatch1 = anonymousIds.stream().anyMatch(anonId -> {
-                try {
-                    return k.matchAnonymousId(anonId.getBytes());
-                } catch (IOException e) {
-                    return false;
-                }
-            });
-            boolean anyMatch2 = keyRecords.containsKey(k.getPublicKey());
-            boolean anyMatch3 = keyAddresses.stream().anyMatch(address -> {
-                try {
-                    return k.isMatchingKeyAddress(address);
-                } catch (IllegalArgumentException e) {
-                    return false;
-                }
-            });
-            return anyMatch1 || anyMatch2 || anyMatch3;
-        });
+        boolean allMatch1 = anonymousIds.stream().allMatch(anonId -> keys.stream().anyMatch(key -> {
+            try {
+                return key.matchAnonymousId(anonId.getBytes());
+            } catch (IOException e) {
+                return false;
+            }
+        }));
+        boolean allMatch2 = keyRecords.values().stream().allMatch( kr -> keys.stream().anyMatch(k -> k.getPublicKey().equals(kr.getPublicKey())));
+        boolean allMatch3 = keyAddresses.stream().allMatch(address -> keys.stream().anyMatch(key -> key.isMatchingKeyAddress(address)));
+        return allMatch1 && allMatch2 && allMatch3;
     }
 
     /**
