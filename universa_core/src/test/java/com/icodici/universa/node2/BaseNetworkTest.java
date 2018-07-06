@@ -2284,6 +2284,8 @@ public class BaseNetworkTest extends TestCase {
         }
         newLamborghini.removeAllSignatures();
         newLamborghini.addSignatureToSeal(stepaPrivateKeys);
+        swapContract.removeAllSignatures();
+        swapContract.addSignatureToSeal(stepaPrivateKeys);
 
         swapContract.check();
         swapContract.traceErrors();
@@ -2347,7 +2349,7 @@ public class BaseNetworkTest extends TestCase {
     }
 
 
-    @Test(timeout = 90000)
+    @Test(timeout = 900000)
     public void swapContractsViaTransactionOneWrongSign1() throws Exception {
         if(node == null) {
             System.out.println("network not inited");
@@ -6615,7 +6617,6 @@ public class BaseNetworkTest extends TestCase {
         }
 
         swapContract.seal();
-        swapContract.addSignatureToSeal(keys);
 
         return swapContract;
     }
