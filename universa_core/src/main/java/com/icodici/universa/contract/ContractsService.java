@@ -110,7 +110,7 @@ public class ContractsService {
         Contract splitTo = splitFrom.splitValue(fieldName, new Decimal(amount));
 
         for (PrivateKey key : keys) {
-            splitTo.addSignerKey(key);
+            splitFrom.addSignerKey(key);
         }
         if (andSetCreator) {
             splitTo.createRole("creator", splitTo.getRole("owner"));

@@ -2268,8 +2268,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         for (int i = 0; i < count; i++) {
             // we can't create revision as this is already a new revision, so we copy self:
             Contract c = copy();
-            // keys are not copied by default
-            c.setKeysToSignWith(getKeysToSignWith());
+            // keys are not COPIED by default
+            c.setKeysToSignWith(new HashSet<>(getKeysToSignWith()));
             // save branch information
             c.getState().setBranchNumber(i + 1);
             // and it should refer the same parent to and set of siblings

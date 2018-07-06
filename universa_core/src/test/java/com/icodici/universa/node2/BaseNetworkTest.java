@@ -2480,6 +2480,7 @@ public class BaseNetworkTest extends TestCase {
         swapContract = imitateSendingTransactionToPartner(swapContract);
         ContractsService.finishSwap(swapContract, martyPrivateKeys);
 
+        swapContract.removeAllSignatures();
         swapContract.check();
         swapContract.traceErrors();
         System.out.println("Transaction contract for swapping is valid: " + swapContract.isOk());
@@ -2952,18 +2953,16 @@ public class BaseNetworkTest extends TestCase {
         Contract stepaCoinsSplit = ContractsService.createSplit(stepaCoins, "30", "amount", stepaPrivateKeys);
         Contract stepaCoinsSplitToMarty = stepaCoinsSplit.getNew().get(0);
 
-        martyCoinsSplitToStepa.check();
-        martyCoinsSplitToStepa.traceErrors();
-        stepaCoinsSplitToMarty.check();
-        stepaCoinsSplitToMarty.traceErrors();
+        martyCoinsSplit.check();
+        martyCoinsSplit.traceErrors();
+        stepaCoinsSplit.check();
+        stepaCoinsSplit.traceErrors();
 
         // register swapped contracts using ContractsService
         System.out.println("--- register swapped contracts using ContractsService ---");
 
         Contract swapContract;
         swapContract = ContractsService.startSwap(martyCoinsSplitToStepa, stepaCoinsSplitToMarty, martyPrivateKeys, stepaPublicKeys, false);
-        ContractsService.signPresentedSwap(swapContract, stepaPrivateKeys);
-        ContractsService.finishSwap(swapContract, martyPrivateKeys);
 
         martyCoinsSplit.seal();
         stepaCoinsSplit.seal();
@@ -2971,6 +2970,7 @@ public class BaseNetworkTest extends TestCase {
         swapContract.addNewItems(martyCoinsSplit, stepaCoinsSplit);
         swapContract.seal();
         swapContract.addSignatureToSeal(martyPrivateKeys);
+        swapContract.addSignatureToSeal(stepaPrivateKeys);
 
         swapContract.check();
         swapContract.traceErrors();

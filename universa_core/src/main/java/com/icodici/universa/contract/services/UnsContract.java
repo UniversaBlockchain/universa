@@ -445,7 +445,7 @@ public class UnsContract extends NSmartContract {
                 }
 
                 Contract contract = matchingContracts.get(0);
-                if(!contract.getRole("issuer").isAllowedForKeys(getSealedByKeys())) {
+                if(!contract.getRole("issuer").isAllowedForKeys(getEffectiveKeys())) {
                     addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " referencing to origin " + unsRecord.getOrigin().toString() + ". UNS1 contract should be also signed by this contract issuer key.");
                     return false;
                 }
@@ -465,7 +465,7 @@ public class UnsContract extends NSmartContract {
             if ((unsRecord.getAddresses().size() == 2) && unsRecord.getAddresses().get(0).isLong() == unsRecord.getAddresses().get(1).isLong())
                 addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + ": Addresses list may only contain one short and one long addresses");
 
-            if(!unsRecord.getAddresses().stream().allMatch(keyAddress -> getSealedByKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)))) {
+            if(!unsRecord.getAddresses().stream().allMatch(keyAddress -> getEffectiveKeys().stream().anyMatch(key -> keyAddress.isMatchingKey(key)))) {
                 addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME, "name " + n.getUnsName() + " using address that missing corresponding key UNS contract signed with.");
                 return false;
             }
@@ -477,7 +477,7 @@ public class UnsContract extends NSmartContract {
             return checkResult;
         }
 
-        checkResult = getSealedByKeys().containsAll(getAdditionalKeysToSignWith());
+        checkResult = getEffectiveKeys().containsAll(getAdditionalKeysToSignWith());
         if(!checkResult) {
             addError(Errors.FAILED_CHECK, NAMES_FIELD_NAME,"Authorized name service signature is missing");
             return checkResult;
