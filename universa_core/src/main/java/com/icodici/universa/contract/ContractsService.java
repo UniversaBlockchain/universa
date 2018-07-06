@@ -253,9 +253,9 @@ public class ContractsService {
      * and sign contract that was own for calling part.
      * <br><br>
      * Swap procedure consist from three steps:<br>
-     * (1) prepare contracts with creating transactional section on the first swapper site, sign only one contract;<br>
-     * (2) sign contracts on the second swapper site;<br>
-     * (3) sign lost contracts on the first swapper site and finishing swap.
+     * (1) prepare contracts with creating transactional section on the first swapper site;<br>
+     * (2) sign main contract on the first swapper site;
+     * (3) sign main contract on the second swapper site;<br>
      * <br><br>
      *
      * @param contracts1        is list of own for calling part (swapper1 owned), existing or new revision of contract
@@ -414,7 +414,9 @@ public class ContractsService {
      * @param keys         is own (belongs to swapper2) private keys
      * @return modified swapContract;
      * should be send back to partner (swapper1) and he should go to step (3) of the swap procedure.
+     * @deprecated no special actions required beside {@link #startSwap(Contract, Contract, Set, Set)}. Just sign swap contract with both swapper1 and swapper2 keys
      */
+    @Deprecated
     public synchronized static Contract signPresentedSwap(Contract swapContract, Set<PrivateKey> keys) {
 
         Set<PublicKey> publicKeys = new HashSet<>();
@@ -480,7 +482,9 @@ public class ContractsService {
      * @param swapContract is being processing swap contract, now got back from swapper2
      * @param keys         is own (belongs to swapper1) private keys
      * @return ready and sealed swapContract that should be register in the Universa to finish procedure.
+     * @deprecated no special actions required beside {@link #startSwap(Contract, Contract, Set, Set)}. Just sign swap contract with both swapper1 and swapper2 keys
      */
+    @Deprecated
     public synchronized static Contract finishSwap(Contract swapContract, Set<PrivateKey> keys) {
 
         List<Contract> swappingContracts = (List<Contract>) swapContract.getNew();

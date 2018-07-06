@@ -3639,7 +3639,7 @@ public class MainTest {
 
 
         //CREATE COMPOUND
-        Contract compound = ContractsService.createSplit(utnContract, "150", "amount", userKeys,true);
+        Contract compound = ContractsService.createSplit(utnContract, "150", "amount", new HashSet<>(),true);
         Contract paymentInUTNs = (Contract) compound.getNewItems().iterator().next();
         paymentInUTNs.setOwnerKeys(universaAdminKey);
 
@@ -3660,7 +3660,7 @@ public class MainTest {
 
         //TRY TO REGISTER COMPOUND WITH INVALID ISSUING REFERENCE INSIDE U
         compound.seal();
-
+        compound.addSignatureToSeal(userKeys);
 
 
         //attempt to register
@@ -3674,7 +3674,7 @@ public class MainTest {
 
 
         compound.seal();
-
+        compound.addSignatureToSeal(userKeys);
         //CREATE BATCH CONTAINING compound and its consent
         Contract batch = ContractsService.createBatch(userKeys, compound, consent);
 

@@ -69,6 +69,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     private boolean isSealed = false;
     private final Map<PublicKey, ExtendedSignature> sealedByKeys = new HashMap<>();
+    private Map<PublicKey, ExtendedSignature> effectiveKeys = new HashMap<>();
     private Set<PrivateKey> keysToSignWith = new HashSet<>();
     private HashMap<String, Reference> references = new HashMap<>();
     private HashId id;
@@ -612,18 +613,16 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private boolean check(String prefix, Map<HashId,Contract> contractsTree) throws Quantiser.QuantiserException {
 
-        // now we looking for references only in one level of tree - among neighbours
-        // but for main contract (not from new items) we looking for
-        // references among new items
         if (contractsTree == null) {
             contractsTree = new HashMap(getTransactionPack().getSubItems());
             contractsTree.putAll(getTransactionPack().getReferencedItems());
             contractsTree.put(getId(),this);
+            setEffectiveKeys(null);
         }
 
         quantiser.reset(quantiser.getQuantaLimit());
         // Add key verify quanta again (we just reset quantiser)
-        for (PublicKey key : sealedByKeys.keySet()) {
+        for (PublicKey key : getSealedByKeys()) {
             if (key != null) {
                 verifySignatureQuantized(key);
             }
@@ -635,7 +634,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // quantize revokingItems and referencedItems
         for (Contract r : revokingItems) {
             // Add key verify quanta for each revoking
-            for (PublicKey key : r.sealedByKeys.keySet()) {
+            for (PublicKey key : r.getSealedByKeys()) {
                 if (key != null) {
                     verifySignatureQuantized(key);
                 }
@@ -646,11 +645,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
         }
 
+        //After we added cost for all sig checks we must include additional signatures
+        //on regular basis so it affect the check in all ways
+
+
         checkReferencedItems(contractsTree);
 
         for (Contract r : revokingItems) {
             r.errors.clear();
-            r.checkReferencedItems(contractsTree,true);
+            r.checkReferencedItems(contractsTree, true);
             if (!r.isOk()) {
                 r.errors.forEach(e -> {
                     String name = e.getObjectName();
@@ -658,10 +661,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 });
             }
         }
-        
+
         try {
             // common check for all cases
-//            errors.clear();
+            //            errors.clear();
             basicCheck();
 
 
@@ -693,6 +696,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         checkTestPaymentLimitations();
 
         return errors.size() == 0;
+    }
+
+    private void setEffectiveKeys(Map<PublicKey, ExtendedSignature> additionalSignatures) {
+        //TODO: if we want to filter by creator keys -> do it here. it is the best place
+        effectiveKeys = new HashMap<>(sealedByKeys);
+        if(additionalSignatures != null) {
+            effectiveKeys.putAll(additionalSignatures);
+        }
+
+        newItems.forEach(c -> c.setEffectiveKeys(effectiveKeys));
+
     }
 
     private boolean checkReferencedItems(Map<HashId, Contract> neighbourContracts) throws Quantiser.QuantiserException {
@@ -812,7 +826,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         // we won't check TU contract
         if (!shouldBeU()) {
             isSuitableForTestnet = true;
-            for (PublicKey key : sealedByKeys.keySet()) {
+            for (PublicKey key : getEffectiveKeys()) {
                 if (key != null) {
                     if (key.getBitStrength() != 2048) {
                         isSuitableForTestnet = false;
@@ -826,7 +840,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
             ZonedDateTime expirationLimit = ZonedDateTime.now().plusMonths(Config.maxExpirationMonthsInTestMode);
 
-            if(getExpiresAt().isAfter(expirationLimit)) {
+            if (getExpiresAt().isAfter(expirationLimit)) {
                 isSuitableForTestnet = false;
                 if (isLimitedForTestnet()) {
                     res = false;
@@ -835,7 +849,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
 
             for (Approvable ni : getNewItems()) {
-                if(ni.getExpiresAt().isAfter(expirationLimit)) {
+                if (ni.getExpiresAt().isAfter(expirationLimit)) {
                     isSuitableForTestnet = false;
                     if (isLimitedForTestnet()) {
                         res = false;
@@ -845,9 +859,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
 
             for (Approvable ri : getRevokingItems()) {
-                if(ri.getExpiresAt().isAfter(expirationLimit)) {
+                if (ri.getExpiresAt().isAfter(expirationLimit)) {
                     isSuitableForTestnet = false;
-                    if(isLimitedForTestnet()) {
+                    if (isLimitedForTestnet()) {
                         res = false;
                         addError(Errors.FORBIDDEN, "Revoking items with expiration date father then " + Config.maxExpirationMonthsInTestMode + " months from now is not allowed in the test payment mode.");
                     }
@@ -856,7 +870,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
             if (getProcessedCostTU() > Config.maxCostTUInTestMode) {
                 isSuitableForTestnet = false;
-                if(isLimitedForTestnet()) {
+                if (isLimitedForTestnet()) {
                     res = false;
                     addError(Errors.FORBIDDEN, "Contract can cost not more then " + Config.maxCostTUInTestMode + " TU in the test payment mode.");
                 }
@@ -1072,7 +1086,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
 
-        if (!issuer.isAllowedForKeys(getSealedByKeys())) {
+        if (!issuer.isAllowedForKeys(getEffectiveKeys())) {
             addError(ISSUER_MUST_CREATE, "issuer.keys");
         }
 
@@ -1099,7 +1113,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             if(getParent() != null && rc.getId().equals(getParent()))
                 continue;
 
-            if (!rc.isPermitted("revoke", getSealedByKeys()))
+            if (!rc.isPermitted("revoke", getEffectiveKeys()))
                 addError(FORBIDDEN, "revokingItem", "revocation not permitted for item " + rc.getId());
         }
     }
@@ -1257,15 +1271,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if (role == null)
             return false;
 
-        if (!sealedByKeys.isEmpty())
-            return role.isAllowedForKeys(getSealedByKeys());
-        return role.isAllowedForKeys(
-                getKeysToSignWith()
-                        .stream()
-                        .map(k -> k.getPublicKey())
-                        .collect(Collectors.toSet())
+        return role.isAllowedForKeys(getEffectiveKeys());
 
-        );
     }
 
     /**
@@ -2708,16 +2715,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
 
-    protected void checkSubItemQuantized(Contract contract) throws Quantiser.QuantiserException {
-        // Add checks from subItem quanta
-        checkSubItemQuantized(contract, "");
-    }
-
-
-    protected void checkSubItemQuantized(Contract contract, String prefix) throws Quantiser.QuantiserException {
-        checkSubItemQuantized(contract, prefix, null);
-    }
-
 
     protected void checkSubItemQuantized(Contract contract, String prefix, Map<HashId,Contract> neighbourContracts) throws Quantiser.QuantiserException {
         // Add checks from subItem quanta
@@ -2784,6 +2781,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     public Set<String> getValidRoleReferences() {
         return validRoleReferences;
+    }
+
+    public Set<PublicKey> getEffectiveKeys() {
+        return effectiveKeys.keySet();
     }
 
 
