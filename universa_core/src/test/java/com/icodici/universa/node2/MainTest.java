@@ -1508,6 +1508,98 @@ public class MainTest {
     }
 
     @Test
+    public void resyncSubItemsTest() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
+
+        Contract contractMoney = ContractsService.createTokenContract(
+            new HashSet<>(Arrays.asList(TestKeys.privateKey(1))),
+            new HashSet<>(Arrays.asList(TestKeys.publicKey(1))),
+            "9000"
+        );
+        ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir1.state);
+
+        List<Contract> splittedList = new ArrayList<>();
+        Contract splitNest = contractMoney.createRevision();
+        splitNest.addSignerKey(TestKeys.privateKey(1));
+        Contract[] contracts = splitNest.split(10);
+        Decimal valChange = new Decimal(contractMoney.getStateData().getStringOrThrow("amount"));
+        for (int i = 0; i < contracts.length; ++i) {
+            Contract splitted = contracts[i];
+            Decimal val = new Decimal(i + 1);
+            splitted.getStateData().set("amount", val);
+            splittedList.add(splitted);
+            valChange = valChange.subtract(val);
+        }
+        splitNest.getStateData().set("amount", valChange);
+
+        splittedList.forEach(c -> System.out.println("splitted amount: " + c.getStateData().getStringOrThrow("amount")));
+        System.out.println("contractMoney amount (revoke it): " + contractMoney.getStateData().getStringOrThrow("amount"));
+        System.out.println("splitNest amount: " + splitNest.getStateData().getStringOrThrow("amount"));
+
+        Contract splitBatch = new Contract(TestKeys.privateKey(1));
+        splitBatch.addRevokingItems(contractMoney);
+        splitNest.seal();
+        splitBatch.addNewItems(splitNest);
+        splittedList.forEach(c -> splitBatch.addNewItems(c));
+        splitBatch.seal();
+
+        ItemResult irSplitBatch = testSpace.client.register(splitBatch.getPackedTransaction(), 5000);
+        Thread.sleep(1000);
+        assertEquals(ItemState.APPROVED, irSplitBatch.state);
+        assertEquals(ItemState.APPROVED, testSpace.client.getState(splitNest.getId()).state);
+        for (Contract c : splittedList)
+            assertEquals(ItemState.APPROVED, testSpace.client.getState(c.getId()).state);
+        assertEquals(ItemState.REVOKED, testSpace.client.getState(contractMoney.getId()).state);
+
+        //recreate nodes
+        for (int i = 0; i < testSpace.nodes.size()-1; ++i)
+            testSpace.nodes.get(i).shutdown();
+        Thread.sleep(4000);
+        testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        for (Contract c : splitBatch.getNew()) {
+            for (int i = 0; i < testSpace.nodes.size(); ++i) {
+                Main m = testSpace.nodes.get(i);
+                if (i < testSpace.nodes.size() - 1)
+                    assertTrue(m.node.getLedger().getRecord(c.getId()).isApproved());
+                else
+                    assertNull(m.node.getLedger().getRecord(c.getId()));
+            }
+        }
+
+        //now join all
+        Contract joinAll = splitNest.createRevision();
+        joinAll.getStateData().set("amount", "9000");
+        splittedList.forEach(c -> joinAll.addRevokingItems(c));
+        Decimal joinSum = new Decimal(0);
+        for (Contract c : joinAll.getRevoking())
+            joinSum = joinSum.add(new Decimal(c.getStateData().getStringOrThrow("amount")));
+        joinAll.addSignerKey(TestKeys.privateKey(1));
+        joinAll.seal();
+        System.out.println("client: " + testSpace.clients.get(testSpace.clients.size()-1).getUrl());
+        ItemResult irJoin = testSpace.clients.get(testSpace.clients.size()-1).register(joinAll.getPackedTransaction(), 5000);
+        Thread.sleep(1000);
+        assertEquals(ItemState.APPROVED, irJoin.state);
+        System.out.println("joinAll amount: " + joinAll.getStateData().getStringOrThrow("amount"));
+        for (Contract c : joinAll.getRevoking()) {
+            for (int i = 0; i < testSpace.nodes.size(); ++i) {
+                Main m = testSpace.nodes.get(i);
+                assertTrue(m.node.getLedger().getRecord(c.getId()).isArchived());
+            }
+        }
+        for (int i = 0; i < testSpace.nodes.size(); ++i) {
+            Main m = testSpace.nodes.get(i);
+            assertTrue(m.node.getLedger().getRecord(joinAll.getId()).isApproved());
+        }
+
+        testSpace.nodes.forEach(n -> n.shutdown());
+    }
+
+    @Test
     public void verboseLevelTest() throws Exception {
         PrivateKey issuerKey = new PrivateKey(Do.read("./src/test_contracts/keys/reconfig_key.private.unikey"));
         TestSpace testSpace = prepareTestSpace(issuerKey);
