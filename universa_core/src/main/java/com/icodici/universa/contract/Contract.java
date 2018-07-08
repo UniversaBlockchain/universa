@@ -957,7 +957,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         // check valid decrement_permission
-        if (!isPermitted("decrement_permission", getOwner())) {
+        if (!isPermitted("decrement_permission", getSealedByKeys())) {
             res = false;
             addError(Errors.BAD_VALUE, "decrement_permission is missing");
         }
@@ -1497,18 +1497,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
         return false;
-    }
-
-    /**
-     * Checks if permission of given type that is allowed for given role exists
-     * @param permissionName type of permission to check for
-     * @param role role to check permission with
-     * @return permission allowed for role is found
-     * @throws Quantiser.QuantiserException if quantas limit was reached during check
-     */
-
-    public boolean isPermitted(String permissionName, Role role) throws Quantiser.QuantiserException {
-        return isPermitted(permissionName, role.getKeys());
     }
 
     /**

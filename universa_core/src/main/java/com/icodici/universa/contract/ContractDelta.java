@@ -152,15 +152,6 @@ public class ContractDelta {
         }
     }
 
-    private void checkOwnerChanged() throws Quantiser.QuantiserException {
-        ChangedItem<Role, Role> oc = (ChangedItem<Role, Role>) stateChanges.get("owner");
-        if (oc != null) {
-            stateChanges.remove("owner");
-            Role creator = changed.getRole("creator");
-            if (!existing.isPermitted("change_owner", creator))
-                addError(FORBIDDEN, "state.owner", "creator has no right to change");
-        }
-    }
 
     private void addError(Errors code, String field, String text) {
         changed.addError(code, field, text);
