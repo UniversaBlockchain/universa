@@ -1508,6 +1508,42 @@ public class MainTest {
     }
 
     @Test
+    public void resyncFromClient() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
+        Contract contractMoney = ContractsService.createTokenContract(
+                new HashSet<>(Arrays.asList(TestKeys.privateKey(1))),
+                new HashSet<>(Arrays.asList(TestKeys.publicKey(1))),
+                "9000"
+        );
+        ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir1.state);
+
+        //recreate nodes
+        for (int i = 0; i < testSpace.nodes.size()-1; ++i)
+            testSpace.nodes.get(i).shutdown();
+        Thread.sleep(2000);
+        testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        System.out.println("\n========== resyncing ==========\n");
+        testSpace.nodes.get(testSpace.clients.size()-1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        testSpace.clients.get(testSpace.clients.size()-1).resyncItem(contractMoney.getId());
+        long millisToWait = 60000;
+        long waitPeriod = 2000;
+        ItemResult ir = null;
+        while (millisToWait > 0) {
+            Thread.sleep(waitPeriod);
+            millisToWait -= waitPeriod;
+            ir = testSpace.clients.get(testSpace.clients.size()-1).getState(contractMoney.getId());
+            if (ir.state == ItemState.APPROVED)
+                break;
+        }
+        assertEquals(ItemState.APPROVED, ir.state);
+    }
+
+    @Test
     public void resyncSubItemsTest() throws Exception {
         TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));

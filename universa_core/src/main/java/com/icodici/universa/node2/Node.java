@@ -33,11 +33,13 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -90,6 +92,7 @@ public class Node {
 
     private ConcurrentHashMap<HashId, ItemProcessor> processors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
+    private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
 
     private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128, new ThreadFactory() {
 
@@ -370,10 +373,18 @@ public class Node {
                 itemId),
                 DatagramAdapter.VerboseLevel.BASE);
         Object x = checkItemInternal(itemId);
-        ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+        //ItemResult ir = (x instanceof ItemResult) ? (ItemResult) x : ((ItemProcessor) x).getResult();
+        ItemResult ir = ItemResult.UNDEFINED;
+        if (x instanceof ItemResult)
+            ir = (ItemResult)x;
+        else if (x instanceof ItemProcessor)
+            ir = ((ItemProcessor)x).getResult();
+        else if (x instanceof ResyncProcessor)
+            ir = ((ResyncProcessor)x).getResult();
+        final ItemResult irFinal = ir;
 
         report(getLabel(), () -> concatReportMessage("item state for: ",
-                itemId, "is ", ir.state),
+                itemId, "is ", irFinal.state),
                 DatagramAdapter.VerboseLevel.BASE);
 
         ItemInformer.Record record = informer.takeFor(itemId);
@@ -433,14 +444,23 @@ public class Node {
      * @throws Exception with various types
      */
     public void resync(HashId id) throws Exception {
+        AtomicBoolean isNewProcessor = new AtomicBoolean(false);
+        ResyncProcessor resyncProcessor = resyncProcessors.computeIfAbsent(id, (k)-> {
+            ResyncProcessor rp = new ResyncProcessor(id);
+            rp.startResync();
+            isNewProcessor.set(true);
+            return rp;
+        });
+        if (!isNewProcessor.get())
+            resyncProcessor.restartResync();
 
-        Object x = checkItemInternal(id, null, null, true, true, true);
-        // todo: prevent double launch of resync and break another processes
-        if (x instanceof ItemProcessor) {
-            ((ItemProcessor) x).pulseResync(true);
-        } else {
-            log.e("ItemProcessor hasn't found or created for " + id.toBase64String());
-        }
+//        Object x = checkItemInternal(id, null, null, true, true, true);
+//        // todo: prevent double launch of resync and break another processes
+//        if (x instanceof ItemProcessor) {
+//            ((ItemProcessor) x).pulseResync(true);
+//        } else {
+//            log.e("ItemProcessor hasn't found or created for " + id.toBase64String());
+//        }
     }
 
     /**
@@ -464,6 +484,8 @@ public class Node {
             }
 
             return ((ItemProcessor) x).getResult();
+        } else if (x instanceof ResyncProcessor) {
+            return ((ResyncProcessor) x).getResult();
         }
         return (ItemResult) x;
     }
@@ -495,12 +517,12 @@ public class Node {
      *
      */
     private final void onNotification(Notification notification) {
-
         if (notification instanceof ItemResyncNotification) {
-            obtainResyncNotification((ItemResyncNotification) notification);
-        }
-        else if (notification instanceof ParcelNotification) {
+            obtainItemResyncNotification((ItemResyncNotification) notification);
+        } else if (notification instanceof ParcelNotification) {
             obtainParcelCommonNotification((ParcelNotification) notification);
+        } else if (notification instanceof ResyncNotification) {
+            obtainResyncNotification((ResyncNotification) notification);
         } else if (notification instanceof ItemNotification) {
             obtainCommonNotification((ItemNotification) notification);
         }
@@ -513,7 +535,7 @@ public class Node {
      * @param notification resync notification
      *
      */
-    private final void obtainResyncNotification(ItemResyncNotification notification) {
+    private final void obtainItemResyncNotification(ItemResyncNotification notification) {
 
         HashMap<HashId, ItemState> itemsToResync = notification.getItemsToResync();
         Set<HashId> itemsWithEnvironments = notification.getItemsWithEnvironment();
@@ -584,6 +606,44 @@ public class Node {
                     return null;
                 });
             }
+        }
+    }
+
+    /**
+     * Obtained resync notification: looking for requested item and answer with it's status.
+     * Accept answer if it is.
+     *
+     * @param notification resync notification
+     */
+    private void obtainResyncNotification(ResyncNotification notification) {
+        if (notification.answerIsRequested()) {
+            Object itemObject = checkItemInternal(notification.getItemId());
+            ItemResult itemResult;
+            ItemState itemState;
+
+            if (itemObject instanceof ItemResult) {
+                // we have solution for resyncing subitem:
+                itemResult = (ItemResult) itemObject;
+            } else if (itemObject instanceof ItemProcessor) {
+                // resyncing subitem is still processing, but may be has solution:
+                itemResult = ((ItemProcessor) itemObject).getResult();
+            } else {
+                // we has not solution:
+                itemResult = null;
+            }
+            if (itemResult != null)
+                itemState = itemResult.state.isConsensusFound() ? itemResult.state : ItemState.UNDEFINED;
+            else
+                itemState = ItemState.UNDEFINED;
+            try {
+                network.deliver(notification.getFrom(), new ResyncNotification(myInfo, notification.getItemId(), itemState, false));
+            } catch (IOException e) {
+                report(getLabel(), ()->"error: unable to send ResyncNotification answer, exception: " + e, DatagramAdapter.VerboseLevel.BASE);
+            }
+        } else {
+            ResyncProcessor resyncProcessor = resyncProcessors.get(notification.getItemId());
+            if (resyncProcessor != null)
+                resyncProcessor.obtainAnswer(notification);
         }
     }
 
@@ -874,6 +934,15 @@ public class Node {
                     processors.put(itemId, processor);
                     return processor;
                 } else {
+
+                    ResyncProcessor rp = resyncProcessors.get(itemId);
+                    if (rp != null) {
+                        report(getLabel(), () -> concatReportMessage("checkItemInternal: ", itemId,
+                                "found resync processor in state: ", rp.resyncingItem.resyncingState),
+                                DatagramAdapter.VerboseLevel.BASE);
+                        return rp;
+                    }
+
                     return ItemResult.UNDEFINED;
                 }
             });
@@ -3322,6 +3391,79 @@ public class Node {
 
         public String toString() {
             return "ip -> parcel: " + parcelId + ", item: " + itemId + ", processing state: " + processingState;
+        }
+
+    }
+
+
+
+    private class ResyncProcessor {
+
+        private HashId itemId = null;
+        private ResyncingItem resyncingItem;
+        private Instant resyncExpiresAt = null;
+        RunnableWithDynamicPeriod resyncer = null;
+
+        public ResyncProcessor(HashId itemId) {
+            this.itemId = itemId;
+        }
+
+        public ItemResult getResult() {
+            ItemResult result = new ItemResult(ItemState.PENDING, false, ZonedDateTime.now(), ZonedDateTime.now().plusMinutes(5));
+            result.extraDataBinder = new Binder();
+            result.errors = new ArrayList<>();
+            return result;
+        }
+
+        public void startResync() {
+            report(getLabel(), ()->"ResyncProcessor.startResync(itemId="+itemId+")", DatagramAdapter.VerboseLevel.BASE);
+            resyncExpiresAt = Instant.now().plus(config.getMaxResyncTime());
+            executorService.schedule(()->stopResync(), config.getMaxResyncTime().getSeconds(), TimeUnit.SECONDS);
+            resyncingItem = new ResyncingItem(itemId, ledger.getRecord(itemId));
+            resyncingItem.finishEvent.addConsumer((ri)->onFinishResync(ri));
+            List<Integer> periodsMillis = config.getResyncTime();
+            resyncer = new RunnableWithDynamicPeriod(() -> pulseResync(), periodsMillis, executorService);
+            resyncer.run();
+        }
+
+        public void restartResync() {
+            resyncer.restart();
+        }
+
+        public void pulseResync() {
+            report(getLabel(), ()->"ResyncProcessor.pulseResync(itemId="+itemId+
+                    "), time="+Duration.between(resyncExpiresAt.minus(config.getMaxResyncTime()),
+                    Instant.now()).toMillis()+"ms", DatagramAdapter.VerboseLevel.BASE);
+            if (resyncExpiresAt.isBefore(Instant.now())) {
+                report(getLabel(), ()->"ResyncProcessor.pulseResync(itemId="+itemId+") expired, cancel", DatagramAdapter.VerboseLevel.BASE);
+                resyncer.cancel(true);
+            } else {
+                try {
+                    ResyncNotification notification = new ResyncNotification(myInfo, itemId, true);
+                    network.broadcast(myInfo, notification);
+                } catch (IOException e) {
+                    report(getLabel(), ()->"error: unable to send ResyncNotification, exception: " + e, DatagramAdapter.VerboseLevel.BASE);
+                }
+            }
+        }
+
+        public void obtainAnswer(ResyncNotification answer) {
+            report(getLabel(), ()->"ResyncProcessor.obtainAnswer(itemId="+itemId+"), state: " + answer.getItemState(), DatagramAdapter.VerboseLevel.BASE);
+            resyncingItem.resyncVote(answer.getFrom(), answer.getItemState());
+            if (resyncingItem.isResyncPollingFinished() && resyncingItem.isCommitFinished()) {
+                report(getLabel(), ()->"ResyncProcessor.obtainAnswer... resync done", DatagramAdapter.VerboseLevel.BASE);
+                resyncer.cancel(true);
+            }
+        }
+
+        private void onFinishResync(ResyncingItem ri) {
+            report(getLabel(), ()->"ResyncProcessor.onFinishResync(itemId="+itemId+")", DatagramAdapter.VerboseLevel.BASE);
+            stopResync();
+        }
+
+        private void stopResync() {
+            resyncer.cancel(true);
+            resyncProcessors.remove(itemId);
         }
 
     }
