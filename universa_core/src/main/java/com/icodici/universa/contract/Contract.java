@@ -1026,7 +1026,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
-     * Get the cost used for contract processing
+     * Get the cost used for contract processing.
+     * You must first call {@link #check()} method to check contract and calculate cost.
      * @return cost in quantas
      */
     public int getProcessedCost() {
@@ -1034,7 +1035,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
-     * Get the cost used for contract processing
+     * Get the cost used for contract processing.
+     * You must first call {@link #check()} method to check contract and calculate cost.
      * @return cost in "U"
      */
     public int getProcessedCostU() {
