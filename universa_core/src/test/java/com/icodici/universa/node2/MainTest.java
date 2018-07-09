@@ -1557,21 +1557,29 @@ public class MainTest {
         //recreate nodes
         for (int i = 0; i < testSpace.nodes.size()-1; ++i)
             testSpace.nodes.get(i).shutdown();
-        Thread.sleep(4000);
+        Thread.sleep(2000);
         testSpace = prepareTestSpace(TestKeys.privateKey(0));
         testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        testSpace.clients.get(testSpace.clients.size()-1).resyncItem(splitNest.getId());
+        Thread.sleep(2000);
 
         for (Contract c : splitBatch.getNew()) {
             for (int i = 0; i < testSpace.nodes.size(); ++i) {
                 Main m = testSpace.nodes.get(i);
-                if (i < testSpace.nodes.size() - 1)
+                if (c.getId().equals(splitNest.getId())) {
                     assertTrue(m.node.getLedger().getRecord(c.getId()).isApproved());
-                else
-                    assertNull(m.node.getLedger().getRecord(c.getId()));
+                } else {
+                    if (i < testSpace.nodes.size() - 1)
+                        assertTrue(m.node.getLedger().getRecord(c.getId()).isApproved());
+                    else
+                        assertNull(m.node.getLedger().getRecord(c.getId()));
+                }
             }
         }
 
         //now join all
+        testSpace.nodes.get(testSpace.clients.size()-1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
         Contract joinAll = splitNest.createRevision();
         joinAll.getStateData().set("amount", "9000");
         splittedList.forEach(c -> joinAll.addRevokingItems(c));
