@@ -9,7 +9,6 @@ package com.icodici.universa.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.icodici.crypto.Error;
 import com.icodici.crypto.KeyInfo;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -27,10 +26,7 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Quantiser;
-import com.icodici.universa.node2.network.BasicHttpClientSession;
-import com.icodici.universa.node2.network.Client;
-import com.icodici.universa.node2.network.ClientError;
-import com.icodici.universa.node2.network.DatagramAdapter;
+import com.icodici.universa.node2.network.*;
 import com.icodici.universa.wallet.Wallet;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.Converter;
@@ -48,6 +44,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.*;
 import net.sergeych.utils.Base64;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.Safe58;
 import org.yaml.snakeyaml.Yaml;
@@ -71,6 +68,8 @@ import static java.util.Arrays.asList;
 public class CLIMain {
 
     private static final String CLI_VERSION = Core.VERSION;
+    private static final String URS_ROOT_URL = "https://xchange.universa.io/api/v1";
+    private static final HashId UTN_ORIGIN = HashId.withDigest("NPo4dIkNdgYfGiNrdExoX003+lFT/d45OA6GifmcRoTzxSRSm5c5jDHBSTaAS+QleuN7ttX1rTvSQbHIIqkcK/zWjx/fCpP9ziwsgXbyyCtUhLqP9G4YZ+zEY/yL/GVE");
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -193,6 +192,7 @@ public class CLIMain {
                 acceptsAll(asList("j", "json"), "Return result in json format.");
                 acceptsAll(asList("v", "verbose"), "Provide more detailed information.");
                 acceptsAll(asList("network"), "Check network status.");
+                acceptsAll(asList("u-rate"), "Get how many U are given for 1 UTN at this time.");
                 acceptsAll(asList("no-cache"), "Do not use session cache");
                 accepts("register", "register a specified contract, must be a sealed binary file")
                         .withOptionalArg()
@@ -209,6 +209,13 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
                         describedAs("contract.unicon");
+
+                accepts("u-for-utn", "buy U for UTN. Use with --keys to specify keys required to split UTNs and --amount to specify ammount of U to buy")
+                        .withRequiredArg()
+                        .ofType(String.class).
+                        describedAs("utn.unicon");
+
+
                 accepts("tu", "Use with --register and --create-parcel. Point to file with your transaction units. " +
                         "Use it to pay for contract's register.")
                         .withRequiredArg()
@@ -523,6 +530,16 @@ public class CLIMain {
                 doRegisterParcel();
             }
 
+
+            if (options.has("u-rate")) {
+                doGetURate();
+            }
+
+
+            if (options.has("u-for-utn")) {
+                doBuyUforUTN();
+            }
+
             if (options.has("create-parcel")) {
                 doCreateParcel();
             }
@@ -619,6 +636,161 @@ public class CLIMain {
 
         }
 
+    }
+
+    private static void doBuyUforUTN() throws IOException {
+        String utnPath = (String) options.valueOf("u-for-utn");
+
+        List<String> names = (List) options.valuesOf("output");
+        Contract utnContract = loadContract(utnPath);
+        if(utnContract != null) {
+            String utnBase64 = Base64u.encodeString(utnContract.getLastSealedBinary());
+            if (keysMap().isEmpty()) {
+                addError(Errors.NOT_FOUND.name(), "keys", "keys are not specified");
+                finish();
+            }
+            PrivateKey ownerPrivateKey = keysMap().values().iterator().next();
+            PublicKey ownerPublicKey = ownerPrivateKey.getPublicKey();
+            KeyAddress ownerAddress = ownerPublicKey.getLongAddress();
+            Set<PublicKey> ownerPublicKeys = new HashSet<>();
+            ownerPublicKeys.add(ownerPublicKey);
+            int amount = (int) options.valueOf("amount");
+            BasicHttpClient httpClient = new BasicHttpClient(URS_ROOT_URL);
+            BasicHttpClient.Answer answer = httpClient.commonRequest("uutn/create_purchase",
+                    "utn_base64",utnBase64,
+                    "owner_address",ownerAddress,
+                    "amount",amount);
+
+            if(checkAnswer(answer)) {
+                Contract compound = Contract.fromPackedTransaction(Base64u.decodeLines(answer.data.getString("compound_base64")));
+                keysMap().values().forEach( k -> compound.addSignatureToSeal(k));
+
+                Contract utnRest = null;
+                Contract uContract = null;
+
+                for(Contract subItem : compound.getTransactionPack().getSubItems().values()) {
+                    if(subItem.getOrigin().equals(UTN_ORIGIN) && subItem.getOwner().isAllowedForKeys(ownerPublicKeys) && subItem.getParent().equals(utnContract.getId())) {
+                        utnRest = subItem;
+                    }
+
+                    if(subItem.getStateData().containsKey("transaction_units")) {
+                        uContract = subItem;
+                    }
+                }
+
+
+                if(uContract == null) {
+                    addError(Errors.COMMAND_FAILED.name(), "transaction", "unable to locate U in transaction");
+                    finish();
+                }
+
+                if(utnRest == null) {
+                    System.out.println("No owned UTN found in transaction. Looks like you've spent all the UTNs.");
+                }
+
+                CopyOption[] copyOptions = new CopyOption[]{
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE
+                };
+
+                String utnDest = new FilenameTool(utnPath).addSuffixToBase("_rev" + utnContract.getRevision()).toString();
+                utnDest = FileTool.writeFileContentsWithRenaming(utnDest, new byte[0]);
+                if (utnDest != null) {
+                    Files.move(Paths.get(utnPath), Paths.get(utnDest), copyOptions);
+                    if(utnRest != null) {
+                        if (FileTool.writeFileContentsWithRenaming(utnPath, utnRest.getLastSealedBinary()) == null) {
+                            addError(Errors.COMMAND_FAILED.name(), utnPath, "unable to save owned utn");
+                            finish();
+                        }
+                    }
+                } else {
+                    addError(Errors.COMMAND_FAILED.name(),utnPath,"unable to backup utn revision");
+                    finish();
+                }
+
+                String uPath;
+                if(names.size() > 0) {
+                    uPath = names.get(0);
+                } else {
+                    uPath = new FilenameTool(utnPath).setBase("U_" + amount).toString();
+                }
+
+                if((uPath = FileTool.writeFileContentsWithRenaming(uPath, uContract.getLastSealedBinary())) == null) {
+                    addError(Errors.COMMAND_FAILED.name(),utnPath,"unable to save U from transaction");
+                    finish();
+                }
+
+                byte[] compoundBytes = compound.getPackedTransaction();
+                System.out.println("U purchase transaction is saved to : " +FileTool.writeFileContentsWithRenaming(new FilenameTool(utnPath).setBase("u_purchase_"+ZonedDateTime.now().toEpochSecond()).toString(),compoundBytes));
+                String compoundBase64 = Base64u.encodeString(compoundBytes);
+                answer = httpClient.commonRequest("uutn/purchase","compound_base64",compoundBase64);
+
+                if(checkAnswer(answer)) {
+                    long id = answer.data.getBinder("purchase").getLong("id",0);
+                    if(id == 0) {
+                        addError(Errors.COMMAND_FAILED.name(),"purchase","purchase id is unknown");
+                        finish();
+                    }
+                    String state = answer.data.getBinder("purchase").getString("state");
+                    while(state.equals("in_progress")) {
+                        System.out.println("Purchase in progress...");
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        answer = httpClient.commonRequest("uutn/"+id);
+                        if(checkAnswer(answer)) {
+                            state = answer.data.getBinder("purchase").getString("state");
+                        } else {
+                            finish();
+                        }
+                    }
+
+                    if(state.equals("ready")) {
+                        System.out.println(amount +"U successfully purchased! Path to U contract is : " + uPath );
+                        finish();
+                    } else if(state.equals("cancel")) {
+                        System.out.println("Purchase canceled. Rolling back contracts...");
+                        new File(uPath).delete();
+                        Files.move(Paths.get(utnDest), Paths.get(utnPath), copyOptions);
+                        finish();
+                    } else {
+                        addError(Errors.COMMAND_FAILED.name(),"purchase","unknown purchase state: " + state);
+                        finish();
+                    }
+
+                }
+
+            }
+        }
+
+    }
+
+    private static boolean checkAnswer(BasicHttpClient.Answer answer) {
+        if(answer.code != 200) {
+            addError(Errors.FAILURE.name(),"HTTP","http code " + answer.code);
+            return false;
+        }
+
+        if(answer.data.getString("status").equals("error")) {
+            addError(Errors.COMMAND_FAILED.name(),answer.data.getString("code"),answer.data.getString("text",""));
+            return false;
+        }
+
+        if(!answer.data.getString("status").equalsIgnoreCase("ok")) {
+            addError(Errors.COMMAND_FAILED.name(),"response_status","unknown_response status");
+        }
+        return true;
+    }
+
+    private static void doGetURate() throws IOException {
+        BasicHttpClient httpClient = new BasicHttpClient(URS_ROOT_URL);
+        BasicHttpClient.Answer answer = httpClient.commonRequest("uutn/info");
+        System.out.println("Current U per UTN rate is " + answer.data.getBinder("rates").getString("U_UTN"));
+        System.out.println("Minimum U to buy " + answer.data.getBinder("limits").getBinder("U").getString("min"));
+        System.out.println("Maximum U to buy " + answer.data.getBinder("limits").getBinder("U").getString("max"));
+        finish();
     }
 
     private static void doSetLogLevels() {

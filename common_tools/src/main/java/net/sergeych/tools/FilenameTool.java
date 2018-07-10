@@ -56,6 +56,11 @@ public class FilenameTool {
         return this;
     }
 
+    public FilenameTool setBase(String base) {
+        parts.set(1,base);
+        return this;
+    }
+
     @Override
     public String toString() {
         String path = parts.get(0);

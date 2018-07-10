@@ -7,6 +7,10 @@
 
 package com.icodici.universa.node2.network;
 
+import com.eclipsesource.json.Json;
+import com.eclipsesource.json.JsonArray;
+import com.eclipsesource.json.JsonObject;
+import com.eclipsesource.json.JsonValue;
 import com.icodici.crypto.HashType;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
@@ -27,7 +31,9 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -310,6 +316,28 @@ public class BasicHttpClient {
         return request(path, Binder.fromKeysValues(keysValues));
     }
 
+    public Answer commonRequest(String path, Object... keysValues) throws IOException {
+        JsonObject json = new JsonObject();
+        for (int i = 0; i < keysValues.length; i += 2) {
+            if(keysValues[i + 1] == null) {
+                json.add(keysValues[i].toString(), Json.NULL);
+            } else if(keysValues[i + 1] instanceof Integer) {
+                json.add(keysValues[i].toString(), (Integer) keysValues[i + 1]);
+            } else if(keysValues[i + 1] instanceof Double) {
+                json.add(keysValues[i].toString(), (Double) keysValues[i + 1]);
+            } else if(keysValues[i + 1] instanceof Float) {
+                json.add(keysValues[i].toString(), (Float) keysValues[i + 1]);
+            } else if(keysValues[i + 1] instanceof Boolean) {
+                json.add(keysValues[i].toString(), (Boolean) keysValues[i + 1]);
+            } else if(keysValues[i + 1] instanceof Long) {
+                json.add(keysValues[i].toString(), (Long) keysValues[i + 1]);
+            } else {
+                json.add(keysValues[i].toString(), keysValues[i + 1].toString());
+            }
+        }
+        return commonRequest(path, json);
+    }
+
     public Answer request(String path, Binder params) throws IOException {
         synchronized (this) {
             String charset = "UTF-8";
@@ -355,6 +383,69 @@ public class BasicHttpClient {
             byte[] answer = Do.read(httpConnection.getInputStream());
             httpConnection.disconnect();
             return new Answer(responseCode, Binder.from(Boss.load(answer)));
+        }
+    }
+
+
+    public static Object ofJson(JsonValue json) {
+        if(json.isObject()) {
+            Iterator<JsonObject.Member> iterator = json.asObject().iterator();
+            Binder b = new Binder();
+            while (iterator.hasNext()) {
+                JsonObject.Member m = iterator.next();
+                b.put(m.getName(),ofJson(m.getValue()));
+            }
+            return b;
+        } else if(json.isBoolean()) {
+            return json.asBoolean();
+        } else if(json.isNumber()) {
+            return json.asDouble();
+        } else if(json.isString()) {
+            return json.asString();
+        } else if(json.isArray()) {
+            JsonArray ja = json.asArray();
+            List<Object> list = new ArrayList<>();
+            for(int i = 0; i < ja.size();i++) {
+                list.add(ofJson(ja.get(i)));
+            }
+            return list;
+        }
+        return null;
+    }
+
+    public Answer commonRequest(String path, JsonObject params) throws IOException {
+        synchronized (this) {
+            String charset = "UTF-8";
+
+
+            URLConnection connection = new URL(url + "/" + path).openConnection();
+
+
+            connection.setConnectTimeout(CONNECTION_TIMEOUT);
+            connection.setReadTimeout(CONNECTION_READ_TIMEOUT);
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+
+            if(!params.isEmpty()) {
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setDoOutput(true);
+
+                try (
+                        OutputStream output = connection.getOutputStream();
+                        PrintWriter writer = new PrintWriter(new OutputStreamWriter(output, charset), true);
+                ) {
+                    String json = params.toString();
+                    writer.append(json);
+                }
+            }
+
+            HttpURLConnection httpConnection = (HttpURLConnection) connection;
+            int responseCode = httpConnection.getResponseCode();
+            byte[] answer = Do.read(httpConnection.getInputStream());
+            httpConnection.disconnect();
+            JsonValue json = Json.parse(new String(answer));
+
+
+            return new Answer(responseCode, Binder.of("response",ofJson(json)));
         }
     }
 
