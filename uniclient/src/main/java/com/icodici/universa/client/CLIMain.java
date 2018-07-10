@@ -71,12 +71,13 @@ public class CLIMain {
 
     public static class UUTNWallet {
         Binder config;
-        public HashMap<String,BigDecimal> utnAmounts;
         public HashMap<HashId,Contract> utns;
+        public HashMap<HashId,String> utnPathes;
         public HashMap<HashId,Contract> us;
         public HashMap<HashId,String> uPathes;
         public int uBalance;
         public BigDecimal utnBalance;
+        public String path;
     }
 
     private static final String CLI_VERSION = Core.VERSION;
@@ -1339,9 +1340,37 @@ public class CLIMain {
         }
     }
 
-    private static String getUFromWallet(int amount,boolean isTest) throws IOException {
+    private static String getUFromWallet(UUTNWallet wallet, int amount,boolean isTest) throws IOException {
+        if(wallet == null) {
+            System.out.println("UUTN wallet not found");
+            return null;
+        }
 
         String fieldName = isTest ? "test_transaction_units" : "transaction_units";
+
+        int minAcceptableBalance = 0;
+        HashId acceptableContractId = null;
+        for(HashId uIds : wallet.us.keySet()) {
+            Contract ucontract = wallet.us.get(uIds);
+
+            int unitsCount = ucontract.getStateData().getIntOrThrow(fieldName);
+            if(unitsCount >= amount && (minAcceptableBalance > unitsCount || acceptableContractId == null)) {
+                minAcceptableBalance = unitsCount;
+                acceptableContractId =uIds;
+            }
+        }
+        String acceptableContract = acceptableContractId == null ? null : wallet.uPathes.get(acceptableContractId);
+
+
+        System.out.println("U contract is " + (acceptableContract == null ? "not" : "") + " found in UUTN wallet" + (acceptableContract == null ? "!" : ": " + acceptableContract));
+        System.out.println("Checking status...");
+        if(getClientNetwork().check(wallet.us.get(acceptableContractId).getId()).state != ItemState.APPROVED) {
+            return getUFromWallet(fixUUTNWallet(wallet.path),amount,isTest);
+        }
+
+        return wallet.path + File.separator + acceptableContract;
+    }
+    private static String getUFromWallet(int amount,boolean isTest) throws IOException {
 
         String walletPath = (String) options.valueOf("wallet");
         if(walletPath == null) {
@@ -1350,26 +1379,7 @@ public class CLIMain {
         System.out.println("Looking for U contract in UUTN wallet.");
 
         UUTNWallet wallet = loadWallet(walletPath,true);
-        if(wallet == null) {
-            System.out.println("UUTN wallet not found");
-            return null;
-        }
-
-        int minAcceptableBalance = 0;
-        String acceptableContract = null;
-        for(HashId uIds : wallet.us.keySet()) {
-            Contract ucontract = wallet.us.get(uIds);
-
-            int unitsCount = ucontract.getStateData().getIntOrThrow(fieldName);
-            if(unitsCount >= amount && (minAcceptableBalance > unitsCount || acceptableContract == null)) {
-                minAcceptableBalance = unitsCount;
-                acceptableContract = walletPath + File.separator+wallet.uPathes.get(uIds);
-            }
-        }
-
-        System.out.println("U contract is " + (acceptableContract == null ? "not" : "") + " found in UUTN wallet" + (acceptableContract == null ? "!" : ": " + acceptableContract));
-
-        return acceptableContract;
+        return getUFromWallet(wallet, amount, isTest);
     }
 
     private static UUTNWallet loadWallet(String walletPath, boolean buyMoreIfNeeded) throws IOException {
@@ -1382,6 +1392,7 @@ public class CLIMain {
         Yaml yaml = new Yaml();
         Binder config = Binder.convertAllMapsToBinders(yaml.load(reader));
         UUTNWallet wallet = new UUTNWallet();
+        wallet.path = walletPath;
         wallet.config = config;
 
         boolean saveConfig = false;
@@ -1423,8 +1434,8 @@ public class CLIMain {
         wallet.uBalance = uBalance.get();
 
         final BigDecimal[] untBalance = {new BigDecimal("0")};
-        wallet.utnAmounts = new HashMap();
         wallet.utns = new HashMap();
+        wallet.utnPathes = new HashMap();
         List<String> utnContracts = config.getListOrThrow("utncontracts");
         if(utnContracts.removeIf(contractPath -> {
             //if contract does not exist - remove
@@ -1437,8 +1448,8 @@ public class CLIMain {
                 if(contract == null)
                     return true;
                 BigDecimal amount = new BigDecimal(contract.getStateData().getString("amount", "0"));
-                wallet.utnAmounts.put(contractPath,amount);
                 wallet.utns.put(contract.getId(),contract);
+                wallet.utnPathes.put(contract.getId(),contractPath);
                 untBalance[0] = untBalance[0].add(amount);
 
             } catch (IOException e) {
@@ -1477,15 +1488,21 @@ public class CLIMain {
 
                 if (untBalance[0].compareTo(utnReqired) >= 0) {
                     String utn = null;
-                    for (String utnPath : wallet.utnAmounts.keySet()) {
-                        if (wallet.utnAmounts.get(utnPath).compareTo(utnReqired) >= 0) {
-                            utn = utnPath;
+                    for (HashId id : wallet.utns.keySet()) {
+                        if (new BigDecimal(wallet.utns.get(id).getStateData().getString("amount","0")).compareTo(utnReqired) >= 0) {
+                            utn = wallet.utnPathes.get(id);
+                            System.out.println("Found UTN contract with required amount. Checking status...");
+                            if(getClientNetwork().check(id).state != ItemState.APPROVED) {
+                                System.out.println("Wallet needs to recover. Skipping auto purchase for now.");
+                                return fixUUTNWallet(walletPath);
+                            }
+
                             break;
                         }
                     }
                     if (utn == null) {
                         //TODO: JOIN utns to prepare signle contract
-                        System.out.println("WARNING: Auto purchase can not be completed as all UTN contracts have less amount than required " + utnReqired + ". Join manually or wait for auto-joinig support in future versions");
+                        System.out.println("WARNING: Auto purchase can not be completed as all UTN contracts have less amount than required " + utnReqired + ". Join manually or wait for auto-joinig support in future versions. You can also add another UTN contract to the wallet");
                     } else {
                         String newUContract = buyUforUTN(walletPath + File.separator + utn, null, amount);
                         if (newUContract != null) {
@@ -1507,6 +1524,109 @@ public class CLIMain {
             config.put("ucontracts",uContracts);
             Files.write(Paths.get(walletConfig.getPath()),yaml.dumpAsMap(config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
         }
+        return wallet;
+    }
+
+    private static UUTNWallet fixUUTNWallet(String walletPath) throws IOException {
+        System.out.println("Fixing wallet");
+        UUTNWallet wallet = loadWallet(walletPath,false);
+        Set<HashId> utnsToRemove = new HashSet<>();
+        Map<HashId,Contract> utnsToAdd = new HashMap<>();
+        Map<HashId,String> utnPathesToAdd = new HashMap<>();
+
+        for(HashId id : wallet.utns.keySet()) {
+            Contract utn = wallet.utns.get(id);
+            ItemState state = getClientNetwork().check(utn.getId()).state;
+            System.out.println("Checking " + wallet.utnPathes.get(id));
+            if(state == ItemState.APPROVED) {
+                continue;
+            } else if(state == ItemState.UNDEFINED) {
+                System.out.println("UTN contract revision is created but not registered. Looking for a correct one");
+                HashMap<String, Contract> contractsInPath = findContracts(walletPath);
+                List<Contract> candidates = contractsInPath.values().stream().filter(c -> c.getId().equals(utn.getParent())).collect(Collectors.toList());
+                for(Contract candidate : candidates) {
+                    if (getClientNetwork().check(candidate.getId()).state == ItemState.APPROVED) {
+                        Files.write(Paths.get(walletPath + File.separator + wallet.utnPathes.get(id)), candidate.getLastSealedBinary(), StandardOpenOption.TRUNCATE_EXISTING);
+                        utnsToAdd.put(candidate.getId(), candidate);
+                        utnPathesToAdd.put(candidate.getId(), wallet.utnPathes.get(id));
+                        System.out.println("Found correct one! Replacing...");
+                        break;
+                    }
+                }
+                utnsToRemove.add(id);
+            } else if(state == ItemState.REVOKED) {
+                System.out.println("UTN contract in wallet is revoked. Probably contract was used outside of a wallet OR config was changed manually. Removing...");
+                utnsToRemove.add(id);
+            } else {
+                System.out.println("UTN contract in wallet is other state. Probably contract was used outside of a wallet OR config was changed manually. Removing...");
+                utnsToRemove.add(id);
+            }
+        }
+
+        utnsToRemove.forEach(id -> {
+            wallet.utns.remove(id);
+            wallet.config.getListOrThrow("utncontracts").remove(wallet.utnPathes.remove(id));
+        });
+
+        wallet.utns.putAll(utnsToAdd);
+        wallet.utnPathes.putAll(utnPathesToAdd);
+
+        utnPathesToAdd.values().forEach(path -> {
+            wallet.config.getListOrThrow("utncontracts").add(path);
+        });
+
+
+
+
+
+        Set<HashId> usToRemove = new HashSet<>();
+        Map<HashId,Contract> usToAdd = new HashMap<>();
+        Map<HashId,String> uPathesToAdd = new HashMap<>();
+
+        for(HashId id : wallet.us.keySet()) {
+            System.out.println("Checking " + wallet.uPathes.get(id));
+            Contract ucontract = wallet.us.get(id);
+            ItemState state = getClientNetwork().check(ucontract.getId()).state;
+            if(state == ItemState.APPROVED) {
+                continue;
+            } else if(state == ItemState.UNDEFINED) {
+                System.out.println("U contract revision is created but not registered. Looking for a correct one");
+                HashMap<String, Contract> contractsInPath = findContracts(walletPath);
+                List<Contract> candidates = contractsInPath.values().stream().filter(c -> c.getOrigin().equals(ucontract.getOrigin())).collect(Collectors.toList());
+                for(Contract candidate : candidates) {
+                    if (getClientNetwork().check(candidate.getId()).state == ItemState.APPROVED) {
+                        Files.write(Paths.get(walletPath + File.separator + wallet.uPathes.get(id)), candidate.getLastSealedBinary(), StandardOpenOption.TRUNCATE_EXISTING);
+                        usToAdd.put(candidate.getId(), candidate);
+                        uPathesToAdd.put(candidate.getId(), wallet.uPathes.get(id));
+                        System.out.println("Found correct one! Replacing...");
+                        break;
+                    }
+                }
+                usToRemove.add(id);
+            } else if(state == ItemState.REVOKED) {
+                System.out.println("U contract in wallet is revoked. Probably contract was used outside of a wallet OR config was changed manually. Removing...");
+                usToRemove.add(id);
+            } else {
+                System.out.println("U contract in wallet is other state. Probably contract was used outside of a wallet OR config was changed manually. Removing...");
+                usToRemove.add(id);
+            }
+        }
+
+        usToRemove.forEach(id -> {
+            wallet.us.remove(id);
+            wallet.config.getListOrThrow("ucontracts").remove(wallet.uPathes.remove(id));
+        });
+
+        wallet.us.putAll(usToAdd);
+        wallet.uPathes.putAll(uPathesToAdd);
+
+        uPathesToAdd.values().forEach(path -> {
+            wallet.config.getListOrThrow("ucontracts").add(path);
+        });
+
+        Yaml yaml = new Yaml();
+        Files.write(Paths.get(walletPath+File.separator+DEFAULT_WALLET_CONFIG),yaml.dumpAsMap(wallet.config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
+
         return wallet;
     }
 
