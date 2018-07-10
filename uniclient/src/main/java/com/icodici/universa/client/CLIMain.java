@@ -50,6 +50,7 @@ import net.sergeych.utils.Safe58;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.nio.file.*;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
@@ -70,6 +71,8 @@ public class CLIMain {
     private static final String CLI_VERSION = Core.VERSION;
     private static final String URS_ROOT_URL = "https://xchange.universa.io/api/v1";
     private static final HashId UTN_ORIGIN = HashId.withDigest("NPo4dIkNdgYfGiNrdExoX003+lFT/d45OA6GifmcRoTzxSRSm5c5jDHBSTaAS+QleuN7ttX1rTvSQbHIIqkcK/zWjx/fCpP9ziwsgXbyyCtUhLqP9G4YZ+zEY/yL/GVE");
+    private static final String DEFAULT_WALLET_CONFIG = "config";
+    public static String DEFAULT_WALLET_PATH = System.getProperty("user.home") +File.separator+".universa"+File.separator+"uutnwallet";
 
     private static OptionParser parser;
     private static OptionSet options;
@@ -194,7 +197,7 @@ public class CLIMain {
                 acceptsAll(asList("network"), "Check network status.");
                 acceptsAll(asList("u-rate"), "Get how many U are given for 1 UTN at this time.");
                 acceptsAll(asList("no-cache"), "Do not use session cache");
-                accepts("register", "register a specified contract, must be a sealed binary file")
+                accepts("register", "register a specified contract, must be a sealed binary file. Use with either --wallet or --tu with --keys to specify payment options. If none are specified default wallet will be used. If no default wallet exist command fails. Amount to pay is specified with --amount")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
@@ -204,17 +207,31 @@ public class CLIMain {
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
                         describedAs("parcel.uniparcel");
-                accepts("create-parcel", "prepare parcel for registering given contract. use with --tu, --amount and --keys to specify payment options")
+                accepts("create-parcel", "prepare parcel for registering given contract. use with either --wallet or --tu with --keys to specify payment options. If none are specified default wallet will be used. If no default wallet exist command fails. Amount to pay is specified with --amount")
                         .withOptionalArg()
                         .withValuesSeparatedBy(",")
                         .ofType(String.class).
                         describedAs("contract.unicon");
 
+                accepts("put-into-wallet", "Adds specified U/UTN contracts and keys to UUTN wallet (creates one if not exists). "+
+                        "Use with non-optional arguments passing U and UTN contracts and --keys to specify keys required to split UTNs and decrement Us. " +
+                        "Argument to --put-into-wallet is optional and specifies path to create wallet at. If no path specifed default will be taken (~/.universa)" +
+                        "Wallet can then be used with --register and --create-parcel. It will also try to top up when needed Us if there are any UTN contract in the wallet" )
+                        .withOptionalArg()
+                        .ofType(String.class).
+                        describedAs("/path/to/wallet");
+
+                accepts("wallet", "specify wallet to pay with. Use with --register or --create-parcel.")
+                        .withRequiredArg()
+                        .ofType(String.class).
+                        describedAs("/path/to/wallet");
+
+
+
                 accepts("u-for-utn", "buy U for UTN. Use with --keys to specify keys required to split UTNs and --amount to specify ammount of U to buy")
                         .withRequiredArg()
                         .ofType(String.class).
                         describedAs("utn.unicon");
-
 
                 accepts("tu", "Use with --register and --create-parcel. Point to file with your transaction units. " +
                         "Use it to pay for contract's register.")
@@ -484,7 +501,17 @@ public class CLIMain {
             if (options.has("k")) {
                 keyFileNames = (List<String>) options.valuesOf("k");
             } else {
-                keyFileNames = new ArrayList<>();
+                String walletPath = (String) options.valueOf("wallet");
+                if(walletPath == null) {
+                    walletPath = DEFAULT_WALLET_PATH;
+                }
+                Binder config = loadWalletConfig(walletPath);
+                if(config == null)
+                    keyFileNames = new ArrayList<>();
+                else {
+                    String finalWalletPath = walletPath;
+                    keyFileNames = (List<String>) config.getListOrThrow("keys").stream().map(kPath -> finalWalletPath + File.separator + kPath).collect(Collectors.toList());
+                }
             }
 
             keyFiles = null;
@@ -542,6 +569,10 @@ public class CLIMain {
 
             if (options.has("create-parcel")) {
                 doCreateParcel();
+            }
+
+            if (options.has("put-into-wallet")) {
+                doPutIntoWallet();
             }
 
             if (options.has("probe")) {
@@ -636,6 +667,102 @@ public class CLIMain {
 
         }
 
+    }
+
+    private static void doPutIntoWallet() throws IOException {
+        String mainArg = (String) options.valueOf("put-into-wallet");
+        List<String> contracts = new ArrayList<>();
+        List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
+        for (String opt : nonOptions) {
+            contracts.addAll(asList(opt.split(",")));
+        }
+        String walletPath = DEFAULT_WALLET_PATH;
+        if(mainArg == null)
+            mainArg = walletPath;
+
+        File mainArgFile = new File(mainArg);
+        if (mainArgFile.exists()) {
+            if (mainArgFile.isDirectory()) {
+                walletPath = mainArg;
+            } else {
+                contracts.add(mainArg);
+            }
+        } else {
+            walletPath = mainArg;
+        }
+
+        File walletDir = new File(walletPath);
+        if(!walletDir.exists()) {
+            try {
+                Files.createDirectories(Paths.get(walletPath));
+            } catch (FileAlreadyExistsException e) {
+                addError(Errors.FAILURE.name(), e.getFile(), "File can not be a part of the path");
+                finish();
+            }
+        }
+
+        File walletConfig = new File(walletDir, DEFAULT_WALLET_CONFIG);
+        Binder config;
+        if (walletConfig.exists()) {
+            FileReader reader = new FileReader(walletConfig);
+            Yaml yaml = new Yaml();
+            config = Binder.convertAllMapsToBinders(yaml.load(reader));
+        } else {
+            config = new Binder();
+            config.put("ucontracts",new ArrayList<>());
+            config.put("utncontracts",new ArrayList<>());
+            config.put("keys",new ArrayList<>());
+            config.put("version",1);
+            config.put("auto_payment",Binder.of("min_balance",50,"amount",100));
+        }
+
+        List<String> keys = config.getListOrThrow("keys");
+        Set<PublicKey> publicKeys = new HashSet<>();
+        for(String existingKeyPath : keys) {
+            publicKeys.add(new PrivateKey(Do.read(new File(walletDir,existingKeyPath))).getPublicKey());
+        }
+
+
+        Map<String, PrivateKey> map = keysMap();
+        for(String keyPath : map.keySet()) {
+            PrivateKey pk = map.get(keyPath);
+            publicKeys.add(pk.getPublicKey());
+            String targetFile = FileTool.writeFileContentsWithRenaming(new FilenameTool(keyPath).setPath(walletPath).toString(), pk.pack());
+            keys.add(new FilenameTool(targetFile).getFilename());
+        }
+
+        for(String contractPath : contracts) {
+            Contract contract = loadContract(contractPath);
+            if(contract != null) {
+                List<String> targetList;
+                if(contract.getOrigin().equals(UTN_ORIGIN)) {
+                    //CONTRACT IS UTN
+                    if(!contract.getOwner().isAllowedForKeys(publicKeys)) {
+                        addError(Errors.NOT_SIGNED.name(),contractPath,"contract is not operational for given keys (including the one in the wallet already)");
+                        continue;
+                    }
+
+                    targetList = config.getListOrThrow("utncontracts");
+                } else if(contract.getStateData().containsKey("transaction_units")) {
+                    //CONTRACT IS U
+                    if(!contract.isPermitted("decrement_permission",publicKeys)) {
+                        addError(Errors.NOT_SIGNED.name(),contractPath,"contract is not operational for given keys (including the one in the wallet already)");
+                        continue;
+                    }
+                    targetList = config.getListOrThrow("ucontracts");
+                } else {
+                    addError(Errors.NOT_SUPPORTED.name(),contractPath,"contract is neither U nor UTN");
+                    continue;
+                }
+
+                String targetFile = FileTool.writeFileContentsWithRenaming(new FilenameTool(contractPath).setPath(walletPath).toString(), contract.getLastSealedBinary());
+                targetList.add(new FilenameTool(targetFile).getFilename());
+            }
+        }
+
+        Yaml yaml = new Yaml();
+        Files.write(Paths.get(walletConfig.getPath()),yaml.dumpAsMap(config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
+        finish();
     }
 
     private static void doBuyUforUTN() throws IOException {
@@ -1100,6 +1227,9 @@ public class CLIMain {
             Contract contract = loadContract(source);
 
             Contract tu = null;
+            if(tuSource == null) {
+                tuSource = getUFromWallet(tuAmount+tuAmountStorage,tutest);
+            }
             if(tuSource != null) {
                 tu = loadContract(tuSource, true);
                 report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());
@@ -1168,6 +1298,110 @@ public class CLIMain {
         }
     }
 
+    private static String getUFromWallet(int amount,boolean isTest) throws IOException {
+
+        String fieldName = isTest ? "test_transaction_units" : "transaction_units";
+
+        String walletPath = (String) options.valueOf("wallet");
+        if(walletPath == null) {
+            walletPath = DEFAULT_WALLET_PATH;
+        }
+        System.out.println("Looking for U contract in UUTN wallet.");
+
+        Binder config = loadWalletConfig(walletPath);
+        if(config == null) {
+            System.out.println("UUTN wallet not found");
+            return null;
+        }
+
+        List<String> ucontracts = config.getListOrThrow("ucontracts");
+        int minAcceptableBalance = 0;
+        String acceptableContract = null;
+        for(String contractPath : ucontracts) {
+            Contract ucontract = loadContract(walletPath + File.separator+contractPath);
+            int unitsCount = ucontract.getStateData().getIntOrThrow(fieldName);
+            if(unitsCount >= amount && (minAcceptableBalance > unitsCount || acceptableContract == null)) {
+                minAcceptableBalance = unitsCount;
+                acceptableContract = walletPath + File.separator+contractPath;
+            }
+        }
+
+        System.out.println("U contract is " + (acceptableContract == null ? "not" : "") + " found in UUTN wallet" + (acceptableContract == null ? "!" : ": " + acceptableContract));
+
+        return acceptableContract;
+    }
+
+    private static Binder loadWalletConfig(String walletPath) throws IOException {
+        File walletDir = new File(walletPath);
+        File walletConfig = new File(walletDir, DEFAULT_WALLET_CONFIG);
+        if (!walletConfig.exists()) {
+            return null;
+        }
+        FileReader reader = new FileReader(walletConfig);
+        Yaml yaml = new Yaml();
+        Binder config = Binder.convertAllMapsToBinders(yaml.load(reader));
+
+        boolean saveConfig = false;
+        List<String> uContracts = config.getListOrThrow("ucontracts");
+        if(uContracts.removeIf(contractPath -> {
+            //if contract does not exist - remove
+            if(!new File(walletPath + File.separator + contractPath).exists()) {
+                return true;
+            }
+            try {
+                Contract contract = loadContract(walletPath + File.separator + contractPath);
+                //if contract can't be loaded - remove
+                if(contract == null)
+                    return true;
+
+                //if contract is empty - remove
+                if(contract.getStateData().getInt("transaction_units",0) +
+                        contract.getStateData().getInt("test_transaction_units",0) == 0)
+                    return true;
+
+            } catch (IOException e) {
+                //if contract can't be loaded - remove
+                return true;
+            }
+
+            return false;
+        })) {
+            saveConfig = true;
+        }
+
+        List<String> utnContracts = config.getListOrThrow("utncontracts");
+        if(utnContracts.removeIf(contractPath -> {
+            //if contract does not exist - remove
+            if(!new File(walletPath + File.separator + contractPath).exists()) {
+                return true;
+            }
+            try {
+                Contract contract = loadContract(walletPath + File.separator + contractPath);
+                //if contract can't be loaded - remove
+                if(contract == null)
+                    return true;
+
+            } catch (IOException e) {
+                //if contract can't be loaded - remove
+                return true;
+            }
+
+            return false;
+        })) {
+            saveConfig = true;
+        }
+
+        if(saveConfig) {
+            config.put("utncontracts",utnContracts);
+            config.put("ucontracts",uContracts);
+            Files.write(Paths.get(walletConfig.getPath()),yaml.dumpAsMap(config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
+            finish();
+
+        }
+
+        return config;
+    }
+
 
     private static void doCreateParcel() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("create-parcel"));
@@ -1188,6 +1422,11 @@ public class CLIMain {
             Contract contract = loadContract(source);
 
             Contract tu = null;
+
+            if(tuSource == null) {
+                tuSource = getUFromWallet(tuAmount+tuAmountStorage,tutest);
+            }
+
             if(tuSource != null) {
                 tu = loadContract(tuSource, true);
                 report("load payment revision: " + tu.getState().getRevision() + " id: " + tu.getId());

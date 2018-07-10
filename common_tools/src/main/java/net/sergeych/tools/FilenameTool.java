@@ -61,6 +61,13 @@ public class FilenameTool {
         return this;
     }
 
+    public FilenameTool setPath(String path) {
+        if(path.endsWith(File.separator))
+            path = path.substring(0,path.length()-1);
+        parts.set(0,path);
+        return this;
+    }
+
     @Override
     public String toString() {
         String path = parts.get(0);
@@ -79,5 +86,9 @@ public class FilenameTool {
             sb.append(ext);
         }
         return sb.toString();
+    }
+
+    public String getFilename() {
+        return parts.get(1)+"."+parts.get(2);
     }
 }
