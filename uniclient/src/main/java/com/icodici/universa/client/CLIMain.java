@@ -60,6 +60,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
@@ -501,16 +502,20 @@ public class CLIMain {
             if (options.has("k")) {
                 keyFileNames = (List<String>) options.valuesOf("k");
             } else {
-                String walletPath = (String) options.valueOf("wallet");
-                if(walletPath == null) {
-                    walletPath = DEFAULT_WALLET_PATH;
-                }
-                Binder config = loadWalletConfig(walletPath);
-                if(config == null)
+                if(!options.has("register") && !options.has("create-parcel")) {
                     keyFileNames = new ArrayList<>();
-                else {
-                    String finalWalletPath = walletPath;
-                    keyFileNames = (List<String>) config.getListOrThrow("keys").stream().map(kPath -> finalWalletPath + File.separator + kPath).collect(Collectors.toList());
+                } else {
+                    String walletPath = (String) options.valueOf("wallet");
+                    if (walletPath == null) {
+                        walletPath = DEFAULT_WALLET_PATH;
+                    }
+                    Binder config = loadWalletConfig(walletPath);
+                    if (config == null)
+                        keyFileNames = new ArrayList<>();
+                    else {
+                        String finalWalletPath = walletPath;
+                        keyFileNames = (List<String>) config.getListOrThrow("keys").stream().map(kPath -> finalWalletPath + File.separator + kPath).collect(Collectors.toList());
+                    }
                 }
             }
 
@@ -1342,6 +1347,7 @@ public class CLIMain {
         Binder config = Binder.convertAllMapsToBinders(yaml.load(reader));
 
         boolean saveConfig = false;
+        AtomicInteger uBalance = new AtomicInteger(0);
         List<String> uContracts = config.getListOrThrow("ucontracts");
         if(uContracts.removeIf(contractPath -> {
             //if contract does not exist - remove
@@ -1354,9 +1360,12 @@ public class CLIMain {
                 if(contract == null)
                     return true;
 
+                int UAmount = contract.getStateData().getInt("transaction_units",0);
+                uBalance.addAndGet(UAmount);
+                int testUAmount = contract.getStateData().getInt("test_transaction_units",0);
+
                 //if contract is empty - remove
-                if(contract.getStateData().getInt("transaction_units",0) +
-                        contract.getStateData().getInt("test_transaction_units",0) == 0)
+                if(testUAmount  + UAmount == 0)
                     return true;
 
             } catch (IOException e) {
@@ -1369,6 +1378,7 @@ public class CLIMain {
             saveConfig = true;
         }
 
+        final BigDecimal[] untBalance = {new BigDecimal("0")};
         List<String> utnContracts = config.getListOrThrow("utncontracts");
         if(utnContracts.removeIf(contractPath -> {
             //if contract does not exist - remove
@@ -1381,6 +1391,8 @@ public class CLIMain {
                 if(contract == null)
                     return true;
 
+                untBalance[0] = untBalance[0].add(new BigDecimal(contract.getStateData().getString("amount","0")));
+
             } catch (IOException e) {
                 //if contract can't be loaded - remove
                 return true;
@@ -1390,6 +1402,9 @@ public class CLIMain {
         })) {
             saveConfig = true;
         }
+
+
+        System.out.println("Loaded wallet '" + walletPath + "' Balance is: U " + uBalance +" UTN " + untBalance[0]);
 
         if(saveConfig) {
             config.put("utncontracts",utnContracts);
