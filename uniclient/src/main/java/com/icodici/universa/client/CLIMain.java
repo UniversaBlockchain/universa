@@ -739,6 +739,7 @@ public class CLIMain {
             publicKeys.add(new PrivateKey(Do.read(new File(walletDir,existingKeyPath))).getPublicKey());
         }
 
+        int keysAdded = 0;
 
         Map<String, PrivateKey> map = keysMap();
         for(String keyPath : map.keySet()) {
@@ -749,11 +750,14 @@ public class CLIMain {
             publicKeys.add(pk.getPublicKey());
             String targetFile = FileTool.writeFileContentsWithRenaming(new FilenameTool(keyPath).setPath(walletPath).toString(), pk.pack());
             keys.add(new FilenameTool(targetFile).getFilename());
+            keysAdded++;
         }
 
         List utncontracts = wallet.config.getListOrThrow("utncontracts");
         List ucontracts = wallet.config.getListOrThrow("ucontracts");
 
+        int ucontractsAdded = 0;
+        int utncontractsAdded = 0;
         for(String contractPath : contracts) {
             Contract contract = loadContract(contractPath);
             if(contract != null) {
@@ -770,6 +774,11 @@ public class CLIMain {
                         continue;
                     }
 
+                    if(getClientNetwork().check(contract.getId()).state != ItemState.APPROVED) {
+                        addError(Errors.FORBIDDEN.name(),contractPath,"contract is not approved");
+                        continue;
+                    }
+                    utncontractsAdded++;
                     targetList = utncontracts;
                 } else if(contract.getStateData().containsKey("transaction_units")) {
                     //CONTRACT IS U
@@ -783,6 +792,11 @@ public class CLIMain {
                         continue;
                     }
 
+                    if(getClientNetwork().check(contract.getId()).state != ItemState.APPROVED) {
+                        addError(Errors.FORBIDDEN.name(),contractPath,"contract is not approved");
+                        continue;
+                    }
+                    ucontractsAdded++;
                     targetList = ucontracts;
                 } else {
                     addError(Errors.NOT_SUPPORTED.name(),contractPath,"contract is neither U nor UTN");
@@ -795,6 +809,8 @@ public class CLIMain {
         }
 
         Files.write(Paths.get(walletConfig.getPath()),yaml.dumpAsMap(wallet.config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
+        System.out.println("WALLET CHANGES Added/Total: keys - " + keysAdded + "/" +keys.size() + "; U contracts - " + ucontractsAdded + "/" + ucontracts.size() +
+        "; UTN contracts - " + utncontractsAdded + "/" +utncontracts.size()+".");
         finish();
     }
 
