@@ -509,7 +509,7 @@ public class CLIMain {
                     if (walletPath == null) {
                         walletPath = DEFAULT_WALLET_PATH;
                     }
-                    Binder config = loadWalletConfig(walletPath);
+                    Binder config = loadWalletConfig(walletPath,false);
                     if (config == null)
                         keyFileNames = new ArrayList<>();
                     else {
@@ -774,6 +774,16 @@ public class CLIMain {
         String utnPath = (String) options.valueOf("u-for-utn");
 
         List<String> names = (List) options.valuesOf("output");
+
+        int amount = (int) options.valueOf("amount");
+        String uPath = buyUforUTN(utnPath,names.size() > 0 ? names.get(0) : null,amount);
+        if(uPath != null) {
+            System.out.println(amount + "U successfully purchased! Path to U contract is : " + uPath);
+        }
+        finish();
+    }
+
+    private static String buyUforUTN(String utnPath, String output, int amount) throws IOException {
         Contract utnContract = loadContract(utnPath);
         if(utnContract != null) {
             String utnBase64 = Base64u.encodeString(utnContract.getLastSealedBinary());
@@ -786,7 +796,7 @@ public class CLIMain {
             KeyAddress ownerAddress = ownerPublicKey.getLongAddress();
             Set<PublicKey> ownerPublicKeys = new HashSet<>();
             ownerPublicKeys.add(ownerPublicKey);
-            int amount = (int) options.valueOf("amount");
+
             BasicHttpClient httpClient = new BasicHttpClient(URS_ROOT_URL);
             BasicHttpClient.Answer answer = httpClient.commonRequest("uutn/create_purchase",
                     "utn_base64",utnBase64,
@@ -832,24 +842,24 @@ public class CLIMain {
                     if(utnRest != null) {
                         if (FileTool.writeFileContentsWithRenaming(utnPath, utnRest.getLastSealedBinary()) == null) {
                             addError(Errors.COMMAND_FAILED.name(), utnPath, "unable to save owned utn");
-                            finish();
+                            return null;
                         }
                     }
                 } else {
                     addError(Errors.COMMAND_FAILED.name(),utnPath,"unable to backup utn revision");
-                    finish();
+                    return null;
                 }
 
                 String uPath;
-                if(names.size() > 0) {
-                    uPath = names.get(0);
+                if(output != null) {
+                    uPath = output;
                 } else {
                     uPath = new FilenameTool(utnPath).setBase("U_" + amount).toString();
                 }
 
                 if((uPath = FileTool.writeFileContentsWithRenaming(uPath, uContract.getLastSealedBinary())) == null) {
                     addError(Errors.COMMAND_FAILED.name(),utnPath,"unable to save U from transaction");
-                    finish();
+                    return null;
                 }
 
                 byte[] compoundBytes = compound.getPackedTransaction();
@@ -861,7 +871,7 @@ public class CLIMain {
                     long id = answer.data.getBinder("purchase").getLong("id",0);
                     if(id == 0) {
                         addError(Errors.COMMAND_FAILED.name(),"purchase","purchase id is unknown");
-                        finish();
+                        return null;
                     }
                     String state = answer.data.getBinder("purchase").getString("state");
                     while(state.equals("in_progress")) {
@@ -875,28 +885,27 @@ public class CLIMain {
                         if(checkAnswer(answer)) {
                             state = answer.data.getBinder("purchase").getString("state");
                         } else {
-                            finish();
+                            return null;
                         }
                     }
 
                     if(state.equals("ready")) {
-                        System.out.println(amount +"U successfully purchased! Path to U contract is : " + uPath );
-                        finish();
+                        return uPath;
                     } else if(state.equals("cancel")) {
                         System.out.println("Purchase canceled. Rolling back contracts...");
                         new File(uPath).delete();
                         Files.move(Paths.get(utnDest), Paths.get(utnPath), copyOptions);
-                        finish();
+                        return null;
                     } else {
                         addError(Errors.COMMAND_FAILED.name(),"purchase","unknown purchase state: " + state);
-                        finish();
+                        return null;
                     }
 
                 }
 
             }
         }
-
+        return null;
     }
 
     private static boolean checkAnswer(BasicHttpClient.Answer answer) {
@@ -1313,7 +1322,7 @@ public class CLIMain {
         }
         System.out.println("Looking for U contract in UUTN wallet.");
 
-        Binder config = loadWalletConfig(walletPath);
+        Binder config = loadWalletConfig(walletPath,true);
         if(config == null) {
             System.out.println("UUTN wallet not found");
             return null;
@@ -1336,7 +1345,7 @@ public class CLIMain {
         return acceptableContract;
     }
 
-    private static Binder loadWalletConfig(String walletPath) throws IOException {
+    private static Binder loadWalletConfig(String walletPath, boolean buyMoreIfNeeded) throws IOException {
         File walletDir = new File(walletPath);
         File walletConfig = new File(walletDir, DEFAULT_WALLET_CONFIG);
         if (!walletConfig.exists()) {
@@ -1379,6 +1388,7 @@ public class CLIMain {
         }
 
         final BigDecimal[] untBalance = {new BigDecimal("0")};
+        Map<String,BigDecimal> utnAmounts = new HashMap<>();
         List<String> utnContracts = config.getListOrThrow("utncontracts");
         if(utnContracts.removeIf(contractPath -> {
             //if contract does not exist - remove
@@ -1390,8 +1400,9 @@ public class CLIMain {
                 //if contract can't be loaded - remove
                 if(contract == null)
                     return true;
-
-                untBalance[0] = untBalance[0].add(new BigDecimal(contract.getStateData().getString("amount","0")));
+                BigDecimal amount = new BigDecimal(contract.getStateData().getString("amount", "0"));
+                utnAmounts.put(contractPath,amount);
+                untBalance[0] = untBalance[0].add(amount);
 
             } catch (IOException e) {
                 //if contract can't be loaded - remove
@@ -1404,16 +1415,59 @@ public class CLIMain {
         }
 
 
-        System.out.println("Loaded wallet '" + walletPath + "' Balance is: U " + uBalance +" UTN " + untBalance[0]);
+        if(buyMoreIfNeeded) {
+            System.out.println("Loaded wallet '" + walletPath + "' Balance is: U " + uBalance +" UTN " + untBalance[0]);
+            int minBalance = config.getBinder("auto_payment").getInt("min_balance", -1);
+            if (minBalance > 0 && uBalance.get() < minBalance) {
+                System.out.println("U balance is less than threshold of " + minBalance + ". Trying to buy more Us");
+
+                BasicHttpClient httpClient = new BasicHttpClient(URS_ROOT_URL);
+                BasicHttpClient.Answer answer = httpClient.commonRequest("uutn/info");
+
+                int rate = answer.data.getBinder("rates").getIntOrThrow("U_UTN");
+                int min = answer.data.getBinder("limits").getBinder("U").getIntOrThrow("min");
+                int max = answer.data.getBinder("limits").getBinder("U").getIntOrThrow("max");
+                int amount = config.getBinder("auto_payment").getInt("amount", min);
+                if (amount < min) {
+                    amount = min;
+                } else if (amount > max) {
+                    amount = max;
+                }
+
+                BigDecimal utnReqired = new BigDecimal(amount * 1.0 / rate);
+
+
+                if (untBalance[0].compareTo(utnReqired) >= 0) {
+                    String utn = null;
+                    for (String utnPath : utnAmounts.keySet()) {
+                        if (utnAmounts.get(utnPath).compareTo(utnReqired) >= 0) {
+                            utn = utnPath;
+                            break;
+                        }
+                    }
+                    if (utn == null) {
+                        //TODO: JOIN utns to prepare signle contract
+                        System.out.println("WARNING: Auto purchase can not be completed as all UTN contracts have less amount than required " + utnReqired + ". Join manually or wait for auto-joinig support in future versions");
+                    } else {
+                        String newUContract = buyUforUTN(walletPath + File.separator + utn, null, amount);
+                        if (newUContract != null) {
+                            uContracts.add(new FilenameTool(newUContract).getFilename());
+                            saveConfig = true;
+                        } else {
+                            System.out.println("WARNING: Auto purchase of U failed. Check log/errors for details");
+                        }
+                    }
+                } else {
+                    System.out.println("WARNING: UTN balance is less than required to buy more Us (" + utnReqired + "). Put more UTN to wallet to enable U auto purchases.");
+                }
+            }
+        }
 
         if(saveConfig) {
             config.put("utncontracts",utnContracts);
             config.put("ucontracts",uContracts);
             Files.write(Paths.get(walletConfig.getPath()),yaml.dumpAsMap(config).getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
-            finish();
-
         }
-
         return config;
     }
 
