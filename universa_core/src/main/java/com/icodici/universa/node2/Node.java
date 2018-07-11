@@ -3080,6 +3080,7 @@ public class Node {
         private AsyncEvent<ResyncingItem> finishEvent = new AsyncEvent<>();
         private ConcurrentHashMap<HashId, Integer> resyncingSubTreeItems = new ConcurrentHashMap<>(); //assume it is ConcurrentHashSet
         private ConcurrentHashMap<HashId, ItemState> resyncingSubTreeItemsResults = new ConcurrentHashMap<>();
+        private ConcurrentHashMap<NodeInfo, Integer> obtainedAnswersFromNodes = new ConcurrentHashMap<>(); //assume it is ConcurrentHashSet
 
         public ResyncProcessor(HashId itemId, Consumer<ResyncingItem> onComplete) {
             this.itemId = itemId;
@@ -3101,6 +3102,7 @@ public class Node {
             resyncingItem = new ResyncingItem(itemId, ledger.getRecord(itemId));
             resyncingItem.finishEvent.addConsumer((ri)->onFinishResync(ri));
             List<Integer> periodsMillis = config.getResyncTime();
+            obtainedAnswersFromNodes.clear();
             voteItself();
             resyncer = new RunnableWithDynamicPeriod(() -> pulseResync(), periodsMillis, executorService);
             resyncer.run();
@@ -3114,6 +3116,7 @@ public class Node {
         }
 
         public void restartResync() {
+            obtainedAnswersFromNodes.clear();
             resyncer.restart();
         }
 
@@ -3139,13 +3142,15 @@ public class Node {
         }
 
         public void obtainAnswer(ResyncNotification answer) {
-            report(getLabel(), ()->"ResyncProcessor.obtainAnswer(itemId="+itemId+"), state: " + answer.getItemState(), DatagramAdapter.VerboseLevel.BASE);
-            resyncingItem.resyncVote(answer.getFrom(), answer.getItemState());
-            if (answer.getHasEnvironment())
-                envSources.put(answer.getFrom(), 0);
-            if (resyncingItem.isResyncPollingFinished() && resyncingItem.isCommitFinished()) {
-                report(getLabel(), ()->"ResyncProcessor.obtainAnswer... resync done", DatagramAdapter.VerboseLevel.BASE);
-                resyncer.cancel(true);
+            if (obtainedAnswersFromNodes.putIfAbsent(answer.getFrom(), 0) == null) {
+                report(getLabel(), () -> "ResyncProcessor.obtainAnswer(itemId=" + itemId + "), state: " + answer.getItemState(), DatagramAdapter.VerboseLevel.BASE);
+                resyncingItem.resyncVote(answer.getFrom(), answer.getItemState());
+                if (answer.getHasEnvironment())
+                    envSources.put(answer.getFrom(), 0);
+                if (resyncingItem.isResyncPollingFinished() && resyncingItem.isCommitFinished()) {
+                    report(getLabel(), () -> "ResyncProcessor.obtainAnswer... resync done", DatagramAdapter.VerboseLevel.BASE);
+                    resyncer.cancel(true);
+                }
             }
         }
 
