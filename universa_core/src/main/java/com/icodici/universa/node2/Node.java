@@ -3134,7 +3134,10 @@ public class Node {
             } else {
                 try {
                     ResyncNotification notification = new ResyncNotification(myInfo, itemId, true);
-                    network.broadcast(myInfo, notification);
+                    network.eachNode(node -> {
+                        if (!obtainedAnswersFromNodes.contains(node))
+                            network.deliver(node, notification);
+                    });
                 } catch (IOException e) {
                     report(getLabel(), ()->"error: unable to send ResyncNotification, exception: " + e, DatagramAdapter.VerboseLevel.BASE);
                 }
