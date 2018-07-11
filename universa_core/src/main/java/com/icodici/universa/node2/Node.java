@@ -983,6 +983,8 @@ public class Node {
     public void shutdown() {
         isShuttingDown = true;
         System.out.println(toString() + "please wait, shutting down has started, num alive item processors: " + processors.size());
+        System.out.println(toString() + "  num alive parcel processors: " + parcelProcessors.size());
+        System.out.println(toString() + "  num alive resync processors: " + resyncProcessors.size());
         for (ItemProcessor ip : processors.values()) {
             ip.emergencyBreak();
         }
