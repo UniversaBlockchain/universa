@@ -1541,6 +1541,7 @@ public class MainTest {
                 break;
         }
         assertEquals(ItemState.APPROVED, ir.state);
+        testSpace.nodes.forEach(n->n.shutdown());
     }
 
     @Test
@@ -3767,6 +3768,7 @@ public class MainTest {
 
         assertEquals(ir.state,ItemState.APPROVED);
 
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
 

@@ -1623,7 +1623,6 @@ public class Node {
         private final ItemState stateWas;
         private ItemProcessingState processingState;
         private Set<NodeInfo> sources = new HashSet<>();
-        private Map<HashId,Set<NodeInfo>> envSources = new HashMap<>();
 
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
@@ -1636,7 +1635,6 @@ public class Node {
 
         private Instant pollingExpiresAt;
         private Instant consensusReceivedExpiresAt;
-        private Instant resyncExpiresAt;
 
         private boolean alreadyChecked;
         private boolean isCheckingForce = false;
@@ -1649,7 +1647,6 @@ public class Node {
         private final AsyncEvent<Void> removedEvent = new AsyncEvent<>();
 
         private final Object mutex;
-        private final Object resyncMutex;
 
         private ScheduledFuture<?> downloader;
         private RunnableWithDynamicPeriod poller;
@@ -1708,7 +1705,6 @@ public class Node {
 
 
             mutex = lock;
-            resyncMutex = new Object();
             this.isCheckingForce = isCheckingForce;
 
             processingState = ItemProcessingState.INIT;
@@ -1734,7 +1730,6 @@ public class Node {
 
             pollingExpiresAt = Instant.now().plus(config.getMaxElectionsTime());
             consensusReceivedExpiresAt = Instant.now().plus(config.getMaxConsensusReceivedCheckTime());
-            resyncExpiresAt = Instant.now().plus(config.getMaxResyncTime());
 
             alreadyChecked = false;
 
@@ -2874,35 +2869,6 @@ public class Node {
             }
         }
 
-
-//        private final void resyncVote(HashId hid, NodeInfo node, ItemState state) {
-//            if(processingState.canContinue()) {
-//
-//                if (!processingState.isProcessedToConsensus()) {
-//                    synchronized (resyncMutex) {
-//                        if (resyncingItems.containsKey(hid))
-//                            resyncingItems.get(hid).resyncVote(node, state);
-//
-//                        boolean isResyncPollingFinished = true;
-//                        for (ResyncingItem ri : resyncingItems.values()) {
-//                            if (!ri.isResyncPollingFinished()) {
-//                                isResyncPollingFinished = false;
-//                                break;
-//                            }
-//                        }
-//
-//                        if (isResyncPollingFinished) {
-//                            processingState = ItemProcessingState.GOT_RESYNCED_STATE;
-//                            stopResync();
-//                        }
-//                    }
-//                } else {
-//                    stopResync();
-//                }
-//            }
-//        }
-
-
         private final void onResyncItemFinished(ResyncingItem ri) {
             if(processingState.canContinue()) {
 
@@ -2929,15 +2895,7 @@ public class Node {
 
         public void addItemToResync(HashId hid, StateRecord record) {
             if(processingState.canContinue()) {
-                try {
-                    synchronized (resyncMutex) {
-                        if (!resyncingItems.containsKey(hid)) {
-                            resyncingItems.put(hid, new ResyncingItem(hid, record));
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                resyncingItems.putIfAbsent(hid, new ResyncingItem(hid, record));
             }
         }
 
@@ -3091,16 +3049,6 @@ public class Node {
                 }
             }
         }
-
-        public void addEnvToSources(HashId hid, NodeInfo from) {
-            synchronized (envSources) {
-                if(!envSources.containsKey(hid)) {
-                    envSources.put(hid,new HashSet<>());
-                }
-                envSources.get(hid).add(from);
-            }
-        }
-
 
         private boolean isDone() {
             return processingState.isDone();

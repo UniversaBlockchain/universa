@@ -36,7 +36,12 @@ public class RunnableWithDynamicPeriod implements Runnable {
                 if (waitsCount < periods.size() - 1)
                     l = periods.get(waitsCount);
                 waitsCount += 1;
-                future = es.schedule(this, l, TimeUnit.MILLISECONDS);
+                try {
+                    future = es.schedule(this, l, TimeUnit.MILLISECONDS);
+                } catch (Exception e) {
+                    //unable to schedule task, e.g. node is shutting down
+                    //do nothing
+                }
             }
         }
         if (!cancelled.get()) {

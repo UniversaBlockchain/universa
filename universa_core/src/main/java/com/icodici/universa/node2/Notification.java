@@ -154,7 +154,6 @@ abstract public class Notification {
         // preload
         ItemNotification.init();
         ParcelNotification.init();
-        ItemResyncNotification.init();
         ResyncNotification.init();
     }
 
