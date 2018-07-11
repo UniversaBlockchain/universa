@@ -40,6 +40,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -441,18 +442,9 @@ public class Node {
      * This method launch resync process, call to network to know what consensus is or hasn't consensus for the item.
      *
      * @param id item to resync
-     * @throws Exception with various types
      */
-    public void resync(HashId id) throws Exception {
-        AtomicBoolean isNewProcessor = new AtomicBoolean(false);
-        ResyncProcessor resyncProcessor = resyncProcessors.computeIfAbsent(id, (k)-> {
-            ResyncProcessor rp = new ResyncProcessor(id);
-            rp.startResync();
-            isNewProcessor.set(true);
-            return rp;
-        });
-        if (!isNewProcessor.get())
-            resyncProcessor.restartResync();
+    public void resync(HashId id) {
+        resync(id, null);
 
 //        Object x = checkItemInternal(id, null, null, true, true, true);
 //        // todo: prevent double launch of resync and break another processes
@@ -461,6 +453,18 @@ public class Node {
 //        } else {
 //            log.e("ItemProcessor hasn't found or created for " + id.toBase64String());
 //        }
+    }
+
+    public void resync(HashId id, Consumer<ResyncingItem> onComplete) {
+        AtomicBoolean isNewProcessor = new AtomicBoolean(false);
+        ResyncProcessor resyncProcessor = resyncProcessors.computeIfAbsent(id, (k)-> {
+            ResyncProcessor rp = new ResyncProcessor(id, onComplete);
+            rp.startResync();
+            isNewProcessor.set(true);
+            return rp;
+        });
+        if (!isNewProcessor.get())
+            resyncProcessor.restartResync();
     }
 
     /**
@@ -517,9 +521,7 @@ public class Node {
      *
      */
     private final void onNotification(Notification notification) {
-        if (notification instanceof ItemResyncNotification) {
-            obtainItemResyncNotification((ItemResyncNotification) notification);
-        } else if (notification instanceof ParcelNotification) {
+        if (notification instanceof ParcelNotification) {
             obtainParcelCommonNotification((ParcelNotification) notification);
         } else if (notification instanceof ResyncNotification) {
             obtainResyncNotification((ResyncNotification) notification);
@@ -528,86 +530,6 @@ public class Node {
         }
     }
 
-
-    /**
-     * Obtain got resync notification: looking for result or item processor and register resync vote
-     *
-     * @param notification resync notification
-     *
-     */
-    private final void obtainItemResyncNotification(ItemResyncNotification notification) {
-
-        HashMap<HashId, ItemState> itemsToResync = notification.getItemsToResync();
-        Set<HashId> itemsWithEnvironments = notification.getItemsWithEnvironment();
-
-        HashMap<HashId, ItemState> answersForItems = new HashMap<>();
-        Set<HashId> answersForEnvironments = new HashSet<>();
-
-        NodeInfo from = notification.getFrom();
-
-        // get processor, do not create new if not exist
-        // register resync vote for waiting processor or deliver resync vote
-        Object itemObject = checkItemInternal(notification.getItemId());
-
-
-
-        if (notification.answerIsRequested()) {
-            // iterate on subItems of parent item that need to resync (stored at ItemResyncNotification.getItemsToResync())
-            for (HashId hid : itemsToResync.keySet()) {
-                Object subitemObject = checkItemInternal(hid);
-                ItemResult subItemResult;
-                ItemState subItemState;
-
-                if (subitemObject instanceof ItemResult) {
-                    // we have solution for resyncing subitem:
-                    subItemResult = (ItemResult) subitemObject;
-                } else if (subitemObject instanceof ItemProcessor) {
-                    // resyncing subitem is still processing, but may be has solution:
-                    subItemResult = ((ItemProcessor) subitemObject).getResult();
-                } else {
-                    // we has not solution:
-                    subItemResult = null;
-                }
-
-                // we answer only states with consensus, in other cases we answer ItemState.UNDEFINED
-                if (subItemResult != null) {
-                    subItemState = subItemResult.state.isConsensusFound() ? subItemResult.state : ItemState.UNDEFINED;
-                    if(subItemResult.state == ItemState.APPROVED) {
-                        NImmutableEnvironment ime =  getEnvironment(hid);
-                        if(ime != null) {
-                            answersForEnvironments.add(hid);
-                        }
-                    }
-                } else {
-                    subItemState = ItemState.UNDEFINED;
-                }
-
-                answersForItems.put(hid, subItemState);
-            }
-
-            network.deliver(
-                    from,
-                    new ItemResyncNotification(myInfo, notification.getItemId(), answersForItems,answersForEnvironments, false)
-            );
-        }
-
-        if (itemObject instanceof ItemProcessor) {
-            ItemProcessor ip = (ItemProcessor) itemObject;
-            if(ip.processingState.isResyncing()) {
-                ip.lock(() -> {
-                    for (HashId hid : itemsToResync.keySet()) {
-                        ip.resyncVote(hid, from, itemsToResync.get(hid));
-                        if(itemsWithEnvironments.contains(hid)) {
-                            ip.addEnvToSources(hid,from);
-                        }
-                    }
-
-
-                    return null;
-                });
-            }
-        }
-    }
 
     /**
      * Obtained resync notification: looking for requested item and answer with it's status.
@@ -635,8 +557,12 @@ public class Node {
                 itemState = itemResult.state.isConsensusFound() ? itemResult.state : ItemState.UNDEFINED;
             else
                 itemState = ItemState.UNDEFINED;
+            boolean hasEnvironment = false;
+            if(itemState == ItemState.APPROVED)
+                if (getEnvironment(notification.getItemId()) != null)
+                    hasEnvironment = true;
             try {
-                network.deliver(notification.getFrom(), new ResyncNotification(myInfo, notification.getItemId(), itemState, false));
+                network.deliver(notification.getFrom(), new ResyncNotification(myInfo, notification.getItemId(), itemState, hasEnvironment, false));
             } catch (IOException e) {
                 report(getLabel(), ()->"error: unable to send ResyncNotification answer, exception: " + e, DatagramAdapter.VerboseLevel.BASE);
             }
@@ -1699,15 +1625,11 @@ public class Node {
         private Set<NodeInfo> sources = new HashSet<>();
         private Map<HashId,Set<NodeInfo>> envSources = new HashMap<>();
 
-        /**
-         * Set true if you resyncing item itself (item will be rollbacked with ItemProcessor if resync will failed).
-         */
-        private boolean justResycnNoFurtherVoting;
-
         private Set<NodeInfo> positiveNodes = new HashSet<>();
         private Set<NodeInfo> negativeNodes = new HashSet<>();
 
-        private HashMap<HashId, ResyncingItem> resyncingItems = new HashMap<>();
+        private ConcurrentHashMap<HashId, ResyncingItem> resyncingItems = new ConcurrentHashMap<>();
+        private ConcurrentHashMap<HashId, ItemState> resyncingItemsResults = new ConcurrentHashMap<>();
 
         private List<StateRecord> lockedToRevoke = new ArrayList<>();
         private List<StateRecord> lockedToCreate = new ArrayList<>();
@@ -1732,8 +1654,6 @@ public class Node {
         private ScheduledFuture<?> downloader;
         private RunnableWithDynamicPeriod poller;
         private RunnableWithDynamicPeriod consensusReceivedChecker;
-        private RunnableWithDynamicPeriod resyncer;
-        private ScheduledFuture<?> envSaver;
 
         /**
          * Processor for item that will be processed from check to poll and other processes.
@@ -1920,12 +1840,6 @@ public class Node {
                 downloader.cancel(true);
         }
 
-        private void stopEnvSaver() {
-            if(envSaver != null) {
-                envSaver.cancel(true);
-            }
-        }
-
         //////////// check item section /////////////
 
         private final synchronized void checkItem() {
@@ -2023,7 +1937,7 @@ public class Node {
                             addItemToResync(hid, itemsToResync.get(hid));
                         }
 
-                        pulseResync();
+                        startResync();
                     }
                 }
             }
@@ -2649,7 +2563,7 @@ public class Node {
 
                     if(!resyncingItems.isEmpty()) {
                         processingState = ItemProcessingState.RESYNCING;
-                        pulseResync(true);
+                        startResync();
                         return;
                     }
 
@@ -2947,252 +2861,71 @@ public class Node {
 
         //////////// resync section /////////////
 
-        public final void pulseResync() {
-            pulseResync(false);
-        }
-
-        /**
-         * Start resyncing.
-         *
-         * @param justResyncNoFurtherVoting - set true if you want to resync item itself.
-         */
-        public final void pulseResync(boolean justResyncNoFurtherVoting) {
+        public final void startResync() {
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()) {
-                    this.justResycnNoFurtherVoting = justResyncNoFurtherVoting;
-                    if (justResyncNoFurtherVoting) {
-                        addItemToResync(itemId, record);
-                    }
+                    processingState = ItemProcessingState.RESYNCING;
 
-                    if(!processingState.isProcessedToConsensus()) {
-                        processingState = ItemProcessingState.RESYNCING;
-                    }
-
-                    pulseCheckIfItemsResynced();
-
-                    for (ResyncingItem ri : resyncingItems.values()) {
-                        // vote itself
-                        if (ri.needsResyncVoteFrom(myInfo)) {
-                            if (ri.getItemState().isConsensusFound())
-                                resyncVote(ri.getId(), myInfo, ri.getItemState());
-                            else
-                                resyncVote(ri.getId(), myInfo, ItemState.UNDEFINED);
-                        }
-                    }
-
-                    synchronized (mutex) {
-                        List<Integer> periodsMillis = config.getResyncTime();
-                        if(resyncer == null) {
-                            resyncer = new RunnableWithDynamicPeriod(() -> sendResyncNotification(),
-                                    periodsMillis,
-                                    executorService
-                            );
-                            resyncer.run();
-                        }
-                    }
-                }
-            }
-        }
-
-        private final void sendResyncNotification() {
-            if(processingState.canContinue()) {
-                if (!processingState.isProcessedToConsensus()) {
-                    synchronized (mutex) {
-                        if (processingState.isGotResyncedState())
-                            return;
-                        if (isResyncExpired()) {
-                            // cancel by timeout expired
-                            processingState = ItemProcessingState.GOT_RESYNCED_STATE;
-                            for (ResyncingItem ri : resyncingItems.values()) {
-                                ri.closeByTimeout();
-                            }
-                            stopResync();
-                            return;
-                        }
-                    }
-                    network.eachNode(node -> {
-                        HashMap<HashId, ItemState> itemsToResync = new HashMap<>();
-                        for (HashId hid : resyncingItems.keySet()) {
-                            if (resyncingItems.get(hid).needsResyncVoteFrom(node)) {
-                                //Resync should only send "final" states no PENDING* is possible here
-                                itemsToResync.put(hid, resyncingItems.get(hid).getItemState().isConsensusFound() ? resyncingItems.get(hid).getItemState() : ItemState.UNDEFINED);
-                            }
-                        }
-                        if (itemsToResync.size() > 0) {
-                            ItemResyncNotification notification = new ItemResyncNotification(myInfo, itemId, itemsToResync, new HashSet<>(),  true);
-
-                            network.deliver(node, notification);
-                        }
+                    resyncingItems.forEach((k, v)-> {
+                        resync(k, (re)->onResyncItemFinished(re));
                     });
-                } else {
-                    stopResync();
-                }
-            }
-        }
-
-        private final void resyncVote(HashId hid, NodeInfo node, ItemState state) {
-            if(processingState.canContinue()) {
-
-                if (!processingState.isProcessedToConsensus()) {
-                    synchronized (resyncMutex) {
-                        if (resyncingItems.containsKey(hid))
-                            resyncingItems.get(hid).resyncVote(node, state);
-
-                        boolean isResyncPollingFinished = true;
-                        for (ResyncingItem ri : resyncingItems.values()) {
-                            if (!ri.isResyncPollingFinished()) {
-                                isResyncPollingFinished = false;
-                                break;
-                            }
-                        }
-
-                        if (isResyncPollingFinished) {
-                            processingState = ItemProcessingState.GOT_RESYNCED_STATE;
-                            stopResync();
-                        }
-                    }
-                } else {
-                    stopResync();
                 }
             }
         }
 
 
-        private final void pulseCheckIfItemsResynced() {
-            if(processingState.canContinue()) {
-                synchronized (resyncMutex) {
-                    for (HashId hid : resyncingItems.keySet()) {
-                        resyncingItems.get(hid).finishEvent.addConsumer(i -> onResyncItemFinished(i));
-                    }
-                }
-            }
-        }
+//        private final void resyncVote(HashId hid, NodeInfo node, ItemState state) {
+//            if(processingState.canContinue()) {
+//
+//                if (!processingState.isProcessedToConsensus()) {
+//                    synchronized (resyncMutex) {
+//                        if (resyncingItems.containsKey(hid))
+//                            resyncingItems.get(hid).resyncVote(node, state);
+//
+//                        boolean isResyncPollingFinished = true;
+//                        for (ResyncingItem ri : resyncingItems.values()) {
+//                            if (!ri.isResyncPollingFinished()) {
+//                                isResyncPollingFinished = false;
+//                                break;
+//                            }
+//                        }
+//
+//                        if (isResyncPollingFinished) {
+//                            processingState = ItemProcessingState.GOT_RESYNCED_STATE;
+//                            stopResync();
+//                        }
+//                    }
+//                } else {
+//                    stopResync();
+//                }
+//            }
+//        }
+
 
         private final void onResyncItemFinished(ResyncingItem ri) {
             if(processingState.canContinue()) {
 
                 if (!processingState.isProcessedToConsensus()) {
-                    int numFinished = 0;
-                    synchronized (resyncMutex) {
-                        for (ResyncingItem rit : resyncingItems.values()) {
-                            if (rit.isCommitFinished())
-                                numFinished++;
-                        }
-                    }
-                    if (resyncingItems.size() == numFinished && processingState.isGotResyncedState()) {
-                        stopResync();
-
-                        if(!processingState.isProcessedToConsensus() && !justResycnNoFurtherVoting) {
-                            processingState = ItemProcessingState.CHECKING;
-                        }
-
-                        //DELETE ENVIRONMENTS FOR REVOKED ITEMS
-                        resyncingItems.keySet().forEach(id -> {
-                            if(resyncingItems.get(id).getResyncingState() == ResyncingItemProcessingState.COMMIT_SUCCESSFUL) {
-                                if(resyncingItems.get(id).getItemState() == ItemState.REVOKED) {
-                                    removeEnvironment(id);
-                                }
-                            }
-                        });
-                        //SAVE ENVIRONMENTS FOR APPROVED ITEMS
-                        pulseSaveResyncedEnvironments();
-
-
-
-                        // if we was resyncing itself (not own subitems) and state from network was undefined - rollback state
-                        if (justResycnNoFurtherVoting) {
-                            if (itemId.equals(ri.hashId)) {
-                                if (ri.getResyncingState() == ResyncingItemProcessingState.COMMIT_FAILED) {
-                                    rollbackChanges(stateWas);
-
-                                    //resync failed we need to restart sanitated item
-                                    executorService.schedule(() -> itemSanitationFailed(ri.record),0,TimeUnit.SECONDS);
-                                    return;
-                                }
-                            }
-                            if(!hasEnvironmentsToSave()) {
-                                processingState = ItemProcessingState.FINISHED;
-                                close();
-                            }
-
-                            //item successfully sanitated
-                            executorService.schedule(() -> itemSanitationDone(ri.record),0,TimeUnit.SECONDS);
-                        } else {
-                            try {
-                                checkSubItems();
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                            commitCheckedAndStartPolling();
-                        }
+                    resyncingItemsResults.put(ri.hashId, ri.getItemState());
+                    if (resyncingItemsResults.size() >= resyncingItems.size()) {
+                        onAllResyncItemsFinished();
                     }
                 }
             }
         }
 
-        private void pulseSaveResyncedEnvironments() {
-            envSaver = executorService.schedule(() -> saveResyncedEnvironents(),0,TimeUnit.SECONDS);
-        }
-
-        private boolean hasEnvironmentsToSave() {
-            return !envSources.isEmpty();
-        }
-        private void saveResyncedEnvironents() {
-            if(!envSources.isEmpty()) {
-                HashSet<HashId> itemsToReResync = new HashSet<>();
-                envSources.keySet().forEach(id -> {
-                    Random random = new Random(Instant.now().toEpochMilli() * myInfo.getNumber());
-                    Object[] array = envSources.get(id).toArray();
-                    NodeInfo from = (NodeInfo) array[(int) (array.length * random.nextFloat())];
-                    try {
-                        NImmutableEnvironment environment = network.getEnvironment(id, from, config.getMaxGetItemTime());
-                        if (environment != null) {
-                            Set<HashId> conflicts = ledger.saveEnvironment(environment);
-                            if (conflicts.size() > 0) {
-                                //TODO: remove in release
-                                boolean resyncConflicts = true;
-                                if (resyncConflicts) {
-                                    itemsToReResync.addAll(conflicts);
-                                } else {
-                                    conflicts.forEach(conflict -> removeEnvironment(conflict));
-                                    assert ledger.saveEnvironment(environment).isEmpty();
-                                }
-                            }
-                        }
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-                });
-
-                if (itemsToReResync.size() > 0) {
-                    itemsToReResync.addAll(resyncingItems.keySet());
-                    resyncingItems.clear();
-                    itemsToReResync.forEach(id -> {
-                        //TODO: OPTIMIZE GETTING STATE RECORD
-                        addItemToResync(id, ledger.getRecord(id));
-                    });
-                    pulseResync(true);
-                } else {
-                    if(justResycnNoFurtherVoting) {
-                        processingState = ItemProcessingState.FINISHED;
-                        close();
-                    }
-                }
+        private final void onAllResyncItemsFinished() {
+            processingState = ItemProcessingState.CHECKING;
+            try {
+                checkSubItems();
+            } catch (Exception e) {
+                e.printStackTrace();
+                report(getLabel(), ()->"error: ItemProcessor.onAllResyncItemsFinished() exception: " + e, DatagramAdapter.VerboseLevel.BASE);
             }
+            commitCheckedAndStartPolling();
         }
 
-
-        private boolean isResyncExpired() {
-            return resyncExpiresAt.isBefore(Instant.now());
-        }
-
-        private void stopResync() {
-            if (resyncer != null) {
-                resyncer.cancel(true);
-                resyncer = null;
-            }
-        }
 
         public void addItemToResync(HashId hid, StateRecord record) {
             if(processingState.canContinue()) {
@@ -3251,17 +2984,10 @@ public class Node {
             doneEvent.fire();
 
             if(processingState.canContinue()) {
-                // If we not just resynced itslef
-                if (!justResycnNoFurtherVoting) {
-                    checkIfAllReceivedConsensus();
-                    if (processingState == ItemProcessingState.DONE) {
-                        pulseSendNewConsensus();
-                    } else {
-                        removeSelf();
-                    }
+                checkIfAllReceivedConsensus();
+                if (processingState == ItemProcessingState.DONE) {
+                    pulseSendNewConsensus();
                 } else {
-                    //TODO: some weird tweaking of processing state. It needs to be simplified
-                    processingState = ItemProcessingState.FINISHED;
                     removeSelf();
                 }
             } else {
@@ -3284,10 +3010,8 @@ public class Node {
             processingState = ItemProcessingState.EMERGENCY_BREAK;
 
             stopDownloader();
-            stopEnvSaver();
             stopPoller();
             stopConsensusReceivedChecker();
-            stopResync();
 
             for(ResyncingItem ri : resyncingItems.values()) {
                 if(!ri.isCommitFinished()) {
@@ -3330,7 +3054,6 @@ public class Node {
             stopDownloader();
             stopPoller();
             stopConsensusReceivedChecker();
-            stopResync();
 
             // fire all event to release possible listeners
             downloadedEvent.fire();
@@ -3402,10 +3125,16 @@ public class Node {
         private HashId itemId = null;
         private ResyncingItem resyncingItem;
         private Instant resyncExpiresAt = null;
-        RunnableWithDynamicPeriod resyncer = null;
+        private RunnableWithDynamicPeriod resyncer = null;
+        private Map<NodeInfo,Integer> envSources = new ConcurrentHashMap<>(); //assume it is ConcurrentHashSet
+        private AsyncEvent<ResyncingItem> finishEvent = new AsyncEvent<>();
+        private ConcurrentHashMap<HashId, Integer> resyncingSubTreeItems = new ConcurrentHashMap<>(); //assume it is ConcurrentHashSet
+        private ConcurrentHashMap<HashId, ItemState> resyncingSubTreeItemsResults = new ConcurrentHashMap<>();
 
-        public ResyncProcessor(HashId itemId) {
+        public ResyncProcessor(HashId itemId, Consumer<ResyncingItem> onComplete) {
             this.itemId = itemId;
+            if (onComplete != null)
+                finishEvent.addConsumer(onComplete);
         }
 
         public ItemResult getResult() {
@@ -3418,16 +3147,28 @@ public class Node {
         public void startResync() {
             report(getLabel(), ()->"ResyncProcessor.startResync(itemId="+itemId+")", DatagramAdapter.VerboseLevel.BASE);
             resyncExpiresAt = Instant.now().plus(config.getMaxResyncTime());
-            executorService.schedule(()->stopResync(), config.getMaxResyncTime().getSeconds(), TimeUnit.SECONDS);
+            executorService.schedule(()->resyncEnded(), config.getMaxResyncTime().getSeconds(), TimeUnit.SECONDS);
             resyncingItem = new ResyncingItem(itemId, ledger.getRecord(itemId));
             resyncingItem.finishEvent.addConsumer((ri)->onFinishResync(ri));
             List<Integer> periodsMillis = config.getResyncTime();
+            voteItself();
             resyncer = new RunnableWithDynamicPeriod(() -> pulseResync(), periodsMillis, executorService);
             resyncer.run();
         }
 
+        private void voteItself() {
+            if (resyncingItem.getItemState().isConsensusFound())
+                resyncingItem.resyncVote(myInfo, resyncingItem.getItemState());
+            else
+                resyncingItem.resyncVote(myInfo, ItemState.UNDEFINED);
+        }
+
         public void restartResync() {
             resyncer.restart();
+        }
+
+        public void startResyncSubTree() {
+            resyncingSubTreeItems.forEach((k, v) -> resync(k, ri->onResyncSubTreeItemFinish(ri)));
         }
 
         public void pulseResync() {
@@ -3450,6 +3191,8 @@ public class Node {
         public void obtainAnswer(ResyncNotification answer) {
             report(getLabel(), ()->"ResyncProcessor.obtainAnswer(itemId="+itemId+"), state: " + answer.getItemState(), DatagramAdapter.VerboseLevel.BASE);
             resyncingItem.resyncVote(answer.getFrom(), answer.getItemState());
+            if (answer.getHasEnvironment())
+                envSources.put(answer.getFrom(), 0);
             if (resyncingItem.isResyncPollingFinished() && resyncingItem.isCommitFinished()) {
                 report(getLabel(), ()->"ResyncProcessor.obtainAnswer... resync done", DatagramAdapter.VerboseLevel.BASE);
                 resyncer.cancel(true);
@@ -3458,12 +3201,82 @@ public class Node {
 
         private void onFinishResync(ResyncingItem ri) {
             report(getLabel(), ()->"ResyncProcessor.onFinishResync(itemId="+itemId+")", DatagramAdapter.VerboseLevel.BASE);
+
+            //DELETE ENVIRONMENTS FOR REVOKED ITEMS
+            if(resyncingItem.getResyncingState() == ResyncingItemProcessingState.COMMIT_SUCCESSFUL) {
+                if(resyncingItem.getItemState() == ItemState.REVOKED) {
+                    removeEnvironment(itemId);
+                }
+            }
+            //SAVE ENVIRONMENTS FOR APPROVED ITEMS
+            if (saveResyncedEnvironents()) {
+                resyncEnded();
+            } else {
+                resyncer.cancel(true);
+            }
+        }
+
+        private void onResyncSubTreeItemFinish(ResyncingItem ri) {
+            resyncingSubTreeItemsResults.put(ri.hashId, ri.getItemState());
+            if (resyncingSubTreeItemsResults.size() >= resyncingSubTreeItems.size()) {
+                resyncEnded();
+            }
+        }
+
+        private void resyncEnded() {
+            if (resyncingItem.getResyncingState() == ResyncingItemProcessingState.COMMIT_FAILED) {
+                //TODO: how to call this from ResyncProcessor?
+                //rollbackChanges(stateWas);
+                executorService.schedule(() -> itemSanitationFailed(resyncingItem.record), 0, TimeUnit.SECONDS);
+            } else {
+                executorService.schedule(() -> itemSanitationDone(resyncingItem.record), 0, TimeUnit.SECONDS);
+            }
+            finishEvent.fire(resyncingItem);
             stopResync();
         }
 
         private void stopResync() {
             resyncer.cancel(true);
             resyncProcessors.remove(itemId);
+        }
+
+        private boolean saveResyncedEnvironents() {
+            if(!envSources.isEmpty()) {
+                HashSet<HashId> itemsToReResync = new HashSet<>();
+                HashId id = itemId;
+                Random random = new Random(Instant.now().toEpochMilli() * myInfo.getNumber());
+                Object[] array = envSources.keySet().toArray();
+                NodeInfo from = (NodeInfo) array[(int) (array.length * random.nextFloat())];
+                try {
+                    NImmutableEnvironment environment = network.getEnvironment(id, from, config.getMaxGetItemTime());
+                    if (environment != null) {
+                        Set<HashId> conflicts = ledger.saveEnvironment(environment);
+                        if (conflicts.size() > 0) {
+                            //TODO: remove in release
+                            boolean resyncConflicts = true;
+                            if (resyncConflicts) {
+                                itemsToReResync.addAll(conflicts);
+                            } else {
+                                conflicts.forEach(conflict -> removeEnvironment(conflict));
+                                assert ledger.saveEnvironment(environment).isEmpty();
+                            }
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    return true;
+                }
+
+                if (itemsToReResync.size() > 0) {
+                    resyncingSubTreeItems.clear();
+                    itemsToReResync.forEach(item -> {
+                        //TODO: OPTIMIZE GETTING STATE RECORD
+                        resyncingSubTreeItems.put(item, 0);
+                    });
+                    startResyncSubTree();
+                    return false;
+                }
+            }
+            return true;
         }
 
     }
