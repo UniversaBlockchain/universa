@@ -3861,20 +3861,6 @@ public class Node {
             finishEvent.fire(this);
         }
 
-        /**
-         * true if we need to get resync vote from a node
-         *
-         * @param node we might need vote from
-         *
-         * @return
-         */
-        public boolean needsResyncVoteFrom(NodeInfo node) {
-            return !resyncNodes.get(ItemState.APPROVED).contains(node) &&
-                    !resyncNodes.get(ItemState.REVOKED).contains(node) &&
-                    !resyncNodes.get(ItemState.DECLINED).contains(node) &&
-                    !resyncNodes.get(ItemState.UNDEFINED).contains(node);
-        }
-
         public ResyncingItemProcessingState getResyncingState() {
             return resyncingState;
         }
