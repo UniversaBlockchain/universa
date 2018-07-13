@@ -161,15 +161,7 @@ public class NetworkV2 extends Network {
 
             NodeInfo finalTo = to;
 
-            if(notification instanceof ItemResyncNotification) {
-                report(getLabel(), () -> concatReportMessage(
-                        from.getNumber(),
-                        "->",
-                        finalTo.getNumber(),
-                        " IRN ",
-                        ((ItemResyncNotification)notification).getItemsToResync().keySet()),
-                        DatagramAdapter.VerboseLevel.DETAILED);
-            } else if(notification instanceof ParcelNotification && ((ParcelNotification)notification).getParcelId() != null) {
+            if(notification instanceof ParcelNotification && ((ParcelNotification)notification).getParcelId() != null) {
                 report(getLabel(), () -> concatReportMessage(
                         from.getNumber(),
                         "->",

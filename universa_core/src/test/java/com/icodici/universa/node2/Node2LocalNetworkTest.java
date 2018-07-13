@@ -1063,6 +1063,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
 
         timer.cancel();
 
+        Thread.sleep(500);
         assertEquals(ItemState.REVOKED, node.waitItem(c.getId(), 8000).state);
     }
 

@@ -11,6 +11,7 @@ import com.icodici.crypto.EncryptionError;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.crypto.digest.Crc32;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
 import com.icodici.universa.Core;
@@ -1056,19 +1057,13 @@ public class MainTest {
     }
 
     private static final int MAX_PACKET_SIZE = 512;
-    protected void sendBlock(UDPAdapter.Block block, DatagramSocket socket) throws InterruptedException {
+    protected void sendBlock(UDPAdapter.Packet packet, DatagramSocket socket, NodeInfo destination) throws InterruptedException {
 
-        if(!block.isValidToSend()) {
-            block.prepareToSend(MAX_PACKET_SIZE);
-        }
-
-        List<DatagramPacket> outs = new ArrayList(block.getDatagrams().values());
+        byte[] out = packet.makeByteArray();
+        DatagramPacket dp = new DatagramPacket(out, out.length, destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort());
 
         try {
-
-            for (DatagramPacket d : outs) {
-                socket.send(d);
-            }
+            socket.send(dp);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -1079,11 +1074,39 @@ public class MainTest {
         Binder binder = Binder.fromKeysValues(
                 "data", myNodeInfo.getNumber()
         );
-        UDPAdapter.Block block = udpAdapter.createTestBlock(myNodeInfo.getNumber(), destination.getNumber(),
-                new Random().nextInt(Integer.MAX_VALUE), UDPAdapter.PacketTypes.HELLO,
-                destination.getNodeAddress().getAddress(), destination.getNodeAddress().getPort(),
+        UDPAdapter.Packet packet = udpAdapter.createTestPacket(
+                new Random().nextInt(Integer.MAX_VALUE),
+                myNodeInfo.getNumber(),
+                destination.getNumber(),
+                UDPAdapter.PacketTypes.HELLO,
                 Boss.pack(binder));
-        sendBlock(block, socket);
+        sendBlock(packet, socket, destination);
+    }
+
+    protected void sendWelcome(NodeInfo myNodeInfo, NodeInfo destination, UDPAdapter udpAdapter, DatagramSocket socket) throws Exception {
+        byte[] payload = new PublicKey(destination.getPublicKey().pack()).encrypt(Do.randomBytes(64));
+        UDPAdapter.Packet packet = udpAdapter.createTestPacket(
+                new Random().nextInt(Integer.MAX_VALUE),
+                myNodeInfo.getNumber(),
+                destination.getNumber(),
+                UDPAdapter.PacketTypes.WELCOME,
+                payload);
+        sendBlock(packet, socket, destination);
+    }
+
+    protected void sendDataGarbage(NodeInfo myNodeInfo, NodeInfo destination, UDPAdapter udpAdapter, DatagramSocket socket) throws Exception {
+        byte[] data = new PublicKey(destination.getPublicKey().pack()).encrypt(Do.randomBytes(64));
+        byte[] crc32 = new Crc32().digest(data);
+        byte[] payload = new byte[data.length + crc32.length];
+        System.arraycopy(data, 0, payload, 0, data.length);
+        System.arraycopy(crc32, 0, payload, data.length, crc32.length);
+        UDPAdapter.Packet packet = udpAdapter.createTestPacket(
+                new Random().nextInt(Integer.MAX_VALUE),
+                myNodeInfo.getNumber(),
+                destination.getNumber(),
+                UDPAdapter.PacketTypes.DATA,
+                payload);
+        sendBlock(packet, socket, destination);
     }
 
     @Ignore
@@ -1092,6 +1115,9 @@ public class MainTest {
         List<Main> mm = new ArrayList<>();
         final int NODE_COUNT = 4;
         final int PORT_BASE = 12000;
+        final int TEST_MODE = UDPAdapter.PacketTypes.HELLO;
+        //final int TEST_MODE = UDPAdapter.PacketTypes.WELCOME;
+        //final int TEST_MODE = UDPAdapter.PacketTypes.DATA;
 
         for (int i = 0; i < NODE_COUNT; i++) {
             mm.add(createMain("node" + (i + 1), false));
@@ -1113,7 +1139,13 @@ public class MainTest {
                     DatagramSocket socket = new DatagramSocket(PORT_BASE+ finalI*NODE_COUNT+finalJ);
 
                     while (alive) {
-                        sendHello(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                        if (TEST_MODE == UDPAdapter.PacketTypes.HELLO)
+                            sendHello(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                        else if (TEST_MODE == UDPAdapter.PacketTypes.WELCOME)
+                            sendWelcome(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                        else
+                            sendDataGarbage(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
+                        Thread.sleep(1);
                     }
                 } catch (Exception e) {
                     System.out.println("runnable exception: " + e.toString());
@@ -1473,6 +1505,143 @@ public class MainTest {
 
         testSpace.nodes.forEach(x -> x.shutdown());
 
+    }
+
+    @Test
+    public void resyncFromClient() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
+        Contract contractMoney = ContractsService.createTokenContract(
+                new HashSet<>(Arrays.asList(TestKeys.privateKey(1))),
+                new HashSet<>(Arrays.asList(TestKeys.publicKey(1))),
+                "9000"
+        );
+        ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir1.state);
+
+        //recreate nodes
+        for (int i = 0; i < testSpace.nodes.size()-1; ++i)
+            testSpace.nodes.get(i).shutdown();
+        Thread.sleep(2000);
+        testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        System.out.println("\n========== resyncing ==========\n");
+        testSpace.nodes.get(testSpace.clients.size()-1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        testSpace.clients.get(testSpace.clients.size()-1).resyncItem(contractMoney.getId());
+        long millisToWait = 60000;
+        long waitPeriod = 2000;
+        ItemResult ir = null;
+        while (millisToWait > 0) {
+            Thread.sleep(waitPeriod);
+            millisToWait -= waitPeriod;
+            ir = testSpace.clients.get(testSpace.clients.size()-1).getState(contractMoney.getId());
+            if (ir.state == ItemState.APPROVED)
+                break;
+        }
+        assertEquals(ItemState.APPROVED, ir.state);
+        testSpace.nodes.forEach(n->n.shutdown());
+    }
+
+    @Test
+    public void resyncSubItemsTest() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        testSpace.nodes.get(testSpace.nodes.size()-1).shutdown();
+
+        Contract contractMoney = ContractsService.createTokenContract(
+            new HashSet<>(Arrays.asList(TestKeys.privateKey(1))),
+            new HashSet<>(Arrays.asList(TestKeys.publicKey(1))),
+            "9000"
+        );
+        ItemResult ir1 = testSpace.client.register(contractMoney.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir1.state);
+
+        List<Contract> splittedList = new ArrayList<>();
+        Contract splitNest = contractMoney.createRevision();
+        splitNest.addSignerKey(TestKeys.privateKey(1));
+        Contract[] contracts = splitNest.split(10);
+        Decimal valChange = new Decimal(contractMoney.getStateData().getStringOrThrow("amount"));
+        for (int i = 0; i < contracts.length; ++i) {
+            Contract splitted = contracts[i];
+            Decimal val = new Decimal(i + 1);
+            splitted.getStateData().set("amount", val);
+            splittedList.add(splitted);
+            valChange = valChange.subtract(val);
+        }
+        splitNest.getStateData().set("amount", valChange);
+
+        splittedList.forEach(c -> System.out.println("splitted amount: " + c.getStateData().getStringOrThrow("amount")));
+        System.out.println("contractMoney amount (revoke it): " + contractMoney.getStateData().getStringOrThrow("amount"));
+        System.out.println("splitNest amount: " + splitNest.getStateData().getStringOrThrow("amount"));
+
+        Contract splitBatch = new Contract(TestKeys.privateKey(1));
+        splitBatch.addRevokingItems(contractMoney);
+        splitNest.seal();
+        splitBatch.addNewItems(splitNest);
+        splittedList.forEach(c -> splitBatch.addNewItems(c));
+        splitBatch.seal();
+
+        ItemResult irSplitBatch = testSpace.client.register(splitBatch.getPackedTransaction(), 5000);
+        Thread.sleep(1000);
+        assertEquals(ItemState.APPROVED, irSplitBatch.state);
+        assertEquals(ItemState.APPROVED, testSpace.client.getState(splitNest.getId()).state);
+        for (Contract c : splittedList)
+            assertEquals(ItemState.APPROVED, testSpace.client.getState(c.getId()).state);
+        assertEquals(ItemState.REVOKED, testSpace.client.getState(contractMoney.getId()).state);
+
+        //recreate nodes
+        for (int i = 0; i < testSpace.nodes.size()-1; ++i)
+            testSpace.nodes.get(i).shutdown();
+        Thread.sleep(2000);
+        testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(n -> n.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        testSpace.clients.get(testSpace.clients.size()-1).resyncItem(splitNest.getId());
+        Thread.sleep(2000);
+
+        for (Contract c : splitBatch.getNew()) {
+            for (int i = 0; i < testSpace.nodes.size(); ++i) {
+                Main m = testSpace.nodes.get(i);
+                if (c.getId().equals(splitNest.getId())) {
+                    assertTrue(m.node.getLedger().getRecord(c.getId()).isApproved());
+                } else {
+                    if (i < testSpace.nodes.size() - 1)
+                        assertTrue(m.node.getLedger().getRecord(c.getId()).isApproved());
+                    else
+                        assertNull(m.node.getLedger().getRecord(c.getId()));
+                }
+            }
+        }
+
+        //now join all
+        testSpace.nodes.get(testSpace.clients.size()-1).setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        Contract joinAll = splitNest.createRevision();
+        joinAll.getStateData().set("amount", "9000");
+        splittedList.forEach(c -> joinAll.addRevokingItems(c));
+        Decimal joinSum = new Decimal(0);
+        for (Contract c : joinAll.getRevoking())
+            joinSum = joinSum.add(new Decimal(c.getStateData().getStringOrThrow("amount")));
+        joinAll.addSignerKey(TestKeys.privateKey(1));
+        joinAll.seal();
+        System.out.println("client: " + testSpace.clients.get(testSpace.clients.size()-1).getUrl());
+        ItemResult irJoin = testSpace.clients.get(testSpace.clients.size()-1).register(joinAll.getPackedTransaction(), 5000);
+        Thread.sleep(1000);
+        assertEquals(ItemState.APPROVED, irJoin.state);
+        System.out.println("joinAll amount: " + joinAll.getStateData().getStringOrThrow("amount"));
+        for (Contract c : joinAll.getRevoking()) {
+            for (int i = 0; i < testSpace.nodes.size(); ++i) {
+                Main m = testSpace.nodes.get(i);
+                assertTrue(m.node.getLedger().getRecord(c.getId()).isArchived());
+            }
+        }
+        for (int i = 0; i < testSpace.nodes.size(); ++i) {
+            Main m = testSpace.nodes.get(i);
+            assertTrue(m.node.getLedger().getRecord(joinAll.getId()).isApproved());
+        }
+
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
     @Test
@@ -3599,6 +3768,7 @@ public class MainTest {
 
         assertEquals(ir.state,ItemState.APPROVED);
 
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
 

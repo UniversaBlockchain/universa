@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RunnableWithDynamicPeriod implements Runnable {
 
@@ -18,6 +19,7 @@ public class RunnableWithDynamicPeriod implements Runnable {
     private int waitsCount = 0;
     private ScheduledFuture<?> future;
     private ScheduledExecutorService es;
+    private AtomicBoolean cancelled = new AtomicBoolean(false);
 
     public RunnableWithDynamicPeriod(Runnable lambda, List<Integer> periods, ScheduledExecutorService es) {
         this.lambda = lambda;
@@ -27,18 +29,38 @@ public class RunnableWithDynamicPeriod implements Runnable {
 
     @Override
     public void run() {
-        if (waitsCount > 0)
-            lambda.run();
-        int l = periods.get(periods.size()-1);
-        if (waitsCount < periods.size()-1)
-            l = periods.get(waitsCount);
-        future = es.schedule(this, l, TimeUnit.MILLISECONDS);
-        waitsCount += 1;
+        int waitsCountWas = waitsCount;
+        synchronized (cancelled) {
+            if (!cancelled.get()) {
+                int l = periods.get(periods.size() - 1);
+                if (waitsCount < periods.size() - 1)
+                    l = periods.get(waitsCount);
+                waitsCount += 1;
+                try {
+                    future = es.schedule(this, l, TimeUnit.MILLISECONDS);
+                } catch (Exception e) {
+                    //unable to schedule task, e.g. node is shutting down
+                    //do nothing
+                }
+            }
+        }
+        if (!cancelled.get()) {
+            if (waitsCountWas > 0)
+                lambda.run();
+        }
     }
 
     public void cancel(boolean b) {
+        synchronized (cancelled) {
+            cancelled.set(true);
+        }
+    }
+
+    public void restart() {
+        waitsCount = 0;
         if (future != null)
-            future.cancel(b);
+            future.cancel(true);
+        run();
     }
 
 }

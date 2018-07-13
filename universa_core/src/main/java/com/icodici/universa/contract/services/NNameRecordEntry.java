@@ -78,9 +78,7 @@ public class NNameRecordEntry implements NameRecordEntry,BiSerializable {
 
     @Override
     public void deserialize(Binder data, BiDeserializer deserializer) {
-        Object originObj = data.get("origin");
-        if(originObj != null)
-            origin = deserializer.deserialize(originObj);
+        try {origin = deserializer.deserialize(data.get("origin"));} catch (Exception e) {origin = null;}
         shortAddress = data.getString("shortAddress",null);
         longAddress = data.getString("longAddress",null);
 

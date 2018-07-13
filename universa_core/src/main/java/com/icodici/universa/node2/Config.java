@@ -163,10 +163,10 @@ public class Config {
     private int positiveConsensus;
     private int resyncBreakConsensus;
     private Duration maxElectionsTime = Duration.ofMinutes(15);
-    private List<Integer> pollTimeMillis = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
-    private List<Integer> consensusReceivedCheckTime = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
+    private List<Integer> pollTimeMillis = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
+    private List<Integer> consensusReceivedCheckTime = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration maxConsensusReceivedCheckTime = Duration.ofMinutes(15);
-    private List<Integer> resyncTime = Arrays.asList(1000,1000,1000,2000,4000,8000,16000,32000,60000);
+    private List<Integer> resyncTime = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private Duration checkItemTime = Duration.ofMillis(200);
     private Duration maxResyncTime = Duration.ofMinutes(5);
     private Duration expriedStorageCleanupInterval = Duration.ofMinutes(5);

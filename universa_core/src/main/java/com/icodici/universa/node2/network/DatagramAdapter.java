@@ -45,12 +45,34 @@ public abstract class DatagramAdapter {
     /**
      * Max number of attempts to retransmit a block, defaults to 10
      */
-    static public final int RETRANSMIT_MAX_ATTEMPTS = 50;
+    static public final int RETRANSMIT_MAX_ATTEMPTS = 20;
+
+    /**
+     * Maxmimum number of data blocks in the sending queue after which oldest
+     * items are discarded and overflow flag is set. Defaults to 50.
+     */
+    static public final int MAX_QUEUE_SIZE = 50000;
+
+    /**
+     * Maximum number of data blocks in the retransmit queue after which new
+     * sending blocks are delayed in output queue.
+     */
+    static public final int MAX_RETRANSMIT_QUEUE_SIZE = 5000;
 
     /**
      * Time between attempts to retransmit a DATA block, in milliseconds
      */
     static public final int RETRANSMIT_TIME = 250;
+
+    /**
+     * Each next retransmit delayed little bit more than previous. This factor uses in calculation of delay.
+     */
+    static public final int RETRANSMIT_TIME_GROW_FACTOR = 4;
+
+    /**
+     * Time limit for handshaking procedure. If handshake is not complete for this time, it will be restarted.
+     */
+    static public final int HANDSHAKE_TIMEOUT_MILLIS = 10000;
 
     protected NodeInfo myNodeInfo;
     protected NetConfig netConfig;
