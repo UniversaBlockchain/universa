@@ -1419,7 +1419,7 @@ public class DatagramAdapterTest {
         AtomicLong node1senderCounter = new AtomicLong(0);
         AtomicLong node2senderCounter = new AtomicLong(0);
 
-        final int sendSpeed = 50;
+        final int sendSpeed = 20;
 
         Thread node1sender = new Thread(() -> {
             while(true) {
@@ -1521,7 +1521,7 @@ public class DatagramAdapterTest {
         AtomicLong node1senderCounter = new AtomicLong(0);
         AtomicLong node2senderCounter = new AtomicLong(0);
 
-        final int sendSpeed = 8;
+        final int sendSpeed = 4;
         List<Thread> senderThreads = new ArrayList<>();
 
         for (int it = 0; it < 4; ++it) {

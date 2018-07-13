@@ -1145,7 +1145,7 @@ public class MainTest {
                             sendWelcome(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
                         else
                             sendDataGarbage(source,destination,mm.get(finalI).network.getUDPAdapter(),socket);
-                        Thread.sleep(1);
+                        Thread.sleep(4);
                     }
                 } catch (Exception e) {
                     System.out.println("runnable exception: " + e.toString());
