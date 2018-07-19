@@ -95,6 +95,8 @@ public class ReferenceConditionsTest {
         assertTrue(refContract.getReferences().get("ref_time").matchingItems.contains(contract2));
         System.out.println("Check ref_hashes conditions");
         assertTrue(refContract.getReferences().get("ref_hashes").matchingItems.contains(contract2));
+        System.out.println("Check ref_bigdecimal conditions");
+        assertTrue(refContract.getReferences().get("ref_bigdecimal").matchingItems.contains(contract2));
         System.out.println("Check parent conditions");
         assertTrue(refContract.getReferences().get("ref_parent").matchingItems.contains(contract3));
      }

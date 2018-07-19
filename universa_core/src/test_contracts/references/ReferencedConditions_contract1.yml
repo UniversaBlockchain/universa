@@ -1534,6 +1534,39 @@ state:
          - this.state.data.string5 != this.id
          - ref.id == this.state.data.contract2_id
 
+ - reference:
+     name: ref_bigdecimal
+     where:
+       all_of:
+         - this.state.data.bigdecimal1::number > 1000
+         - ref.state.data.bigdecimal2::number >= 1000000000000000000000000000000000000000000000000
+         - ref.state.data.bigdecimal1::number < "490392893427849819381293782734974325843959438758947358943789579287349817487198743892718937289378938"
+         - this.state.data.bigdecimal1::number <= 90540330931039888203498939009091424678928328433888839898000111129094320492094029007845298372939
+         - ref.state.data.bigdecimal1::number > "-10000000000000000000"
+         - 1000<this.state.data.bigdecimal1::number
+         - 1000000000000000000000000000000000000000000000000<=ref.state.data.bigdecimal2::number
+         - 490392893427849819381293782734974325843959438758947358943789579287349817487198743892718937289378938>ref.state.data.bigdecimal1::number
+         - 90540330931039888203498939009091424678928328433888839898000111129094320492094029007845298372939>=this.state.data.bigdecimal1::number
+         - -10000000000000000000<ref.state.data.bigdecimal1::number
+         - this.state.data.bigdecimal1::number > this.state.data.bigdecimal2::number
+         - ref.state.data.bigdecimal2::number < ref.state.data.bigdecimal1::number
+         - this.state.data.bigdecimal1::number >= ref.state.data.bigdecimal2::number
+         - this.state.data.bigdecimal1::number > this.state.data.bigdecimal2
+         - ref.state.data.bigdecimal2 < ref.state.data.bigdecimal1::number
+         - this.state.data.bigdecimal1::number >= ref.state.data.bigdecimal2
+         - this.state.data.bigdecimal1::number == 90540330931039888203498939009091424678928328433888839898000111129094320492094029007845298372939
+         - ref.state.data.bigdecimal1::number=="490392893427849819381293782734974325843959438758947358943789579287349817487198743892718937289378937"
+         - ref.state.data.bigdecimal1::number!=490392893427849819381293782734974325843959438758947358943789579287349817487198743892718937343
+         - this.state.data.bigdecimal1::number != "83584938594"
+         - 90540330931039888203498939009091424678928328433888839898000111129094320492094029007845298372939 == this.state.data.bigdecimal1::number
+         - 490392893427849819381293782734974325843959438758947358943789579287349817487198743892718937289378937==ref.state.data.bigdecimal1::number
+         - 490392893427849819381293782734974325843959438758947358943789579287349817487198743892718937343!=ref.state.data.bigdecimal1::number
+         - 83584938594 != this.state.data.bigdecimal1::number
+         - ref.state.data.bigdecimal2::number == this.state.data.bigdecimal1::number
+         - ref.state.data.bigdecimal2::number!=this.state.data.bigdecimal2::number
+         - ref.state.data.bigdecimal2==this.state.data.bigdecimal1::number
+         - ref.state.data.bigdecimal2::number != this.state.data.bigdecimal2
+
  # required section. any application data that could be changed.
  data:
    amount: 1000
@@ -1550,6 +1583,8 @@ state:
    long2: 1434344332300905480
    double1: -93029039209309103.09204932042000024555
    double2: 3232322288829209309103.09204932042000024555
+   bigdecimal1: "90540330931039888203498939009091424678928328433888839898000111129094320492094029007845298372939"
+   bigdecimal2: "90540330931039888203498939009091424678928328433888839898000111129094320492094029007845298372938"
 
    time1: 20000000
    time2: 400000000000

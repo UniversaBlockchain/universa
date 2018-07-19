@@ -14,6 +14,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 
+import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -214,6 +215,24 @@ public class Reference implements BiSerializable {
         return val;
     }
 
+    private BigDecimal objectCastToBigDecimal(Object obj, String operand, compareOperandType typeOfOperand) throws Exception {
+        BigDecimal val;
+
+        if ((obj == null) && (typeOfOperand == compareOperandType.FIELD))
+            throw new IllegalArgumentException("Error getting operand: " + operand);
+
+        if ((obj != null) && obj.getClass().getName().endsWith("String"))
+            val = new BigDecimal((String) obj);
+        else if ((obj != null) && isObjectMayCastToLong(obj))
+            val = new BigDecimal(objectCastToLong(obj));
+        else if ((typeOfOperand == compareOperandType.CONSTSTR) || (typeOfOperand == compareOperandType.CONSTOTHER))
+            val = new BigDecimal(operand);
+        else
+            throw new IllegalArgumentException("Error parsing DateTime from operand: " + operand);
+
+        return val;
+    }
+
     /**
      *The comparison method for finding reference contract
      *
@@ -245,8 +264,12 @@ public class Reference implements BiSerializable {
         double rightValD = 0;
         long leftValL = 0;
         long rightValL = 0;
+        BigDecimal leftBigDecimal;
+        BigDecimal rightBigDecimal;
         boolean isLeftDouble = false;
         boolean isRightDouble = false;
+        boolean isLeftBigDecimal = false;
+        boolean isRightBigDecimal = false;
         int firstPointPos;
 
         if ((leftOperand != null) && (typeOfLeftOperand == compareOperandType.FIELD)) {
@@ -277,6 +300,11 @@ public class Reference implements BiSerializable {
                 leftOperand = leftOperand.substring(firstPointPos + 1);
             } else
                 throw new IllegalArgumentException("Invalid format of left operand in condition: " + leftOperand + ". Missing contract field.");
+
+            if (leftOperand.endsWith("::number")) {
+                isLeftBigDecimal = true;
+                leftOperand = leftOperand.substring(0, leftOperand.length() - 8);
+            }
         }
 
         if (rightOperand != null) {     // if != null, rightOperand then FIELD or CONSTANT
@@ -309,6 +337,11 @@ public class Reference implements BiSerializable {
                 }
                 else
                     throw new IllegalArgumentException("Invalid format of right operand in condition: " + rightOperand + ". Missing contract field.");
+
+                if (rightOperand.endsWith("::number")) {
+                    isRightBigDecimal = true;
+                    rightOperand = rightOperand.substring(0, rightOperand.length() - 8);
+                }
             }
 
             if (leftOperandContract != null)
@@ -322,14 +355,23 @@ public class Reference implements BiSerializable {
                     case MORE:
                     case LESS_OR_EQUAL:
                     case MORE_OR_EQUAL:
-                        if(typeOfLeftOperand == compareOperandType.FIELD && left == null)
+                        if (typeOfLeftOperand == compareOperandType.FIELD && left == null)
                             break;
 
-                        if(typeOfRightOperand == compareOperandType.FIELD && right == null)
+                        if (typeOfRightOperand == compareOperandType.FIELD && right == null)
                             break;
 
-                        if (((left != null) && left.getClass().getName().endsWith("ZonedDateTime")) ||
-                            ((right != null) && right.getClass().getName().endsWith("ZonedDateTime"))) {
+                        if (isLeftBigDecimal || isRightBigDecimal) {
+                            leftBigDecimal = objectCastToBigDecimal(left, leftOperand, typeOfLeftOperand);
+                            rightBigDecimal = objectCastToBigDecimal(right, rightOperand, typeOfRightOperand);
+
+                            if (((indxOperator == LESS) && (leftBigDecimal.compareTo(rightBigDecimal) == -1)) ||
+                                ((indxOperator == MORE) && (leftBigDecimal.compareTo(rightBigDecimal) == 1)) ||
+                                ((indxOperator == LESS_OR_EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) < 1)) ||
+                                ((indxOperator == MORE_OR_EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) > -1)))
+                                ret = true;
+                        } else if (((left != null) && left.getClass().getName().endsWith("ZonedDateTime")) ||
+                                  ((right != null) && right.getClass().getName().endsWith("ZonedDateTime"))) {
                             long leftTime = objectCastToTimeSeconds(left, leftOperand, typeOfLeftOperand);
                             long rightTime = objectCastToTimeSeconds(right, rightOperand, typeOfRightOperand);
 
@@ -399,7 +441,14 @@ public class Reference implements BiSerializable {
                         if (typeOfRightOperand == compareOperandType.FIELD && right == null && !leftOperand.equals("null"))
                             break;
 
-                        if (((left != null) && left.getClass().getName().endsWith("HashId")) ||
+                        if (isLeftBigDecimal || isRightBigDecimal) {
+                            leftBigDecimal = objectCastToBigDecimal(left, leftOperand, typeOfLeftOperand);
+                            rightBigDecimal = objectCastToBigDecimal(right, rightOperand, typeOfRightOperand);
+
+                            if (((indxOperator == EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) == 0)) ||
+                                ((indxOperator == NOT_EQUAL) && (leftBigDecimal.compareTo(rightBigDecimal) != 0)))
+                                ret = true;
+                        } else if (((left != null) && left.getClass().getName().endsWith("HashId")) ||
                             ((right != null) && right.getClass().getName().endsWith("HashId"))) {
                             String leftID;
                             String rightID;
