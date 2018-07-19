@@ -297,6 +297,7 @@ public class Research2Test {
         List<Main> mm = new ArrayList<>();
         for (int i = 0; i < 4; i++)
             mm.add(createMain("node" + (i + 1), false));
+        mm.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
         Main main = mm.get(0);
         assertEquals("http://localhost:8080", main.myInfo.internalUrlString());
         assertEquals("http://localhost:8080", main.myInfo.publicUrlString());
@@ -350,7 +351,7 @@ public class Research2Test {
                     Thread.currentThread().sleep(300);
                     for (HashId id : contractHashesMap.keySet()) {
                         ItemResult itemResult = client.getState(id);
-                        if (!itemResult.state.isPending())
+                        if (itemResult.state == ItemState.APPROVED)
                             contractHashesMap.remove(id);
                         else
                             break;
