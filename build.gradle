@@ -1,7 +1,8 @@
 group 'com.icodici'
-version '1.0-SNAPSHOT'
+version '3.7.3'
 
 apply plugin: 'java'
+
 
 sourceCompatibility = 1.8
 

@@ -1,17 +1,40 @@
 group 'com.icodici'
-version '1.0-SNAPSHOT'
+version '3.7.2'
+
 
 apply plugin: 'java'
+apply plugin: 'maven-publish'
+
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        maven {
+            url = "https://maven.universa.io/"
+            credentials {
+                username System.getProperty("user")
+                password System.getProperty("password")
+            }
+        }
+    }
+}
+
 
 sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+    maven {
+        url = "https://maven.universa.io/"
+    }
+
 }
 
-configurations {
-    localDeps
-}
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
@@ -21,10 +44,9 @@ dependencies {
     //    compile group:'org.mapdb', name:'mapdb', version:'3.0.5'
     compile group: 'org.postgresql', name: 'postgresql', version: '42.1.4'
     compile group: 'org.xerial', name: 'sqlite-jdbc', version: '3.8.9.1'
-    localDeps project(':common_tools')
-    localDeps project(':contrib:nanohttpd')
-    localDeps project(':crypto')
-    compile configurations.localDeps
+    compile group: 'com.icodici', name: 'nanohttpd', version: '2.1.0'
+    compile project(':common_tools')
+    compile project(':crypto')
 
     processResources
     processTestResources
@@ -49,6 +71,13 @@ task buildMultiJar(type: Copy) {
     from jar
 }
 
+task buildMultiJar2(type: Copy) {
+    dependsOn build
+    into "$buildDir/output"
+    from configurations.runtime
+    from jar
+}
+
 
 def configFilePath = "src/main/java/com/icodici/universa/node2"
 def configTestFilePath = "src/test_config"
@@ -64,6 +93,7 @@ task testConfigRestore(type: Copy) {
 
 task buildMultiJarTestConfig(type: Task) {
 
+    println "test config"
     doFirst {
         copy {
             from configFilePath
@@ -78,8 +108,8 @@ task buildMultiJarTestConfig(type: Task) {
         }
     }
 
-    finalizedBy buildMultiJar
-    buildMultiJar.finalizedBy testConfigRestore
+    finalizedBy buildMultiJar2
+    buildMultiJar2.finalizedBy testConfigRestore
 }
 
 
@@ -87,6 +117,21 @@ task buildMultiJarTestConfig(type: Task) {
 
 
 task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Gradle Jar with all dependencies',
+                'Implementation-Version': version,
+                'Main-Class': 'com.icodici.universa.node2.Main'
+    }
+//    baseName = project.name + '-all'
+    archiveName = 'uninode-all.jar'
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+    duplicatesStrategy 'exclude'
+    zip64 true
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
+task fatJar2(type: Jar) {
     manifest {
         attributes 'Implementation-Title': 'Gradle Jar with all dependencies',
                 'Implementation-Version': version,
@@ -118,8 +163,8 @@ task fatJarTestConfig(type: Task) {
         }
     }
 
-    finalizedBy fatJar
-    fatJar.finalizedBy testConfigRestore
+    finalizedBy fatJar2
+    fatJar2.finalizedBy testConfigRestore
 }
 
 task contractsServiceJavadoc(type: Javadoc) {

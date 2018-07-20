@@ -1,3 +1,0 @@
-[submodule "contrib/nanohttpd"]
-	path = contrib/nanohttpd
-	url = git://github.com/UniversaBlockchain/nanohttpd.git

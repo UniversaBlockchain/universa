@@ -1,7 +1,26 @@
 group 'com.icodici'
-version '1.0-SNAPSHOT'
+version '3.7.2'
 
 apply plugin: 'java'
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        maven {
+            url = "https://maven.universa.io/"
+            credentials {
+                username System.getProperty("user")
+                password System.getProperty("password")
+            }
+        }
+    }
+}
 
 sourceCompatibility = 1.8
 

@@ -2,6 +2,4 @@ rootProject.name = 'universa'
 include ':common_tools'
 include ':crypto'
 include ':universa_core'
-include ':contrib:nanohttpd'
-project(':contrib:nanohttpd').projectDir = new File(settingsDir, './contrib/nanohttpd/core')
 include ':uniclient'
