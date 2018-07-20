@@ -445,14 +445,6 @@ public class Node {
      */
     public void resync(HashId id) {
         resync(id, null);
-
-//        Object x = checkItemInternal(id, null, null, true, true, true);
-//        // todo: prevent double launch of resync and break another processes
-//        if (x instanceof ItemProcessor) {
-//            ((ItemProcessor) x).pulseResync(true);
-//        } else {
-//            log.e("ItemProcessor hasn't found or created for " + id.toBase64String());
-//        }
     }
 
     public void resync(HashId id, Consumer<ResyncingItem> onComplete) {
@@ -2069,6 +2061,11 @@ public class Node {
                         } else {
                             synchronized (mutex) {
                                 try {
+                                    if (record.getState() == ItemState.APPROVED) {
+                                        // item can be approved by network consensus while our node do checking
+                                        // stop checking in this case
+                                        return;
+                                    }
                                     itemLock.synchronize(newItem.getId(), lock -> {
                                         StateRecord r = record.createOutputLockRecord(newItem.getId());
                                         if (r == null) {
@@ -2488,10 +2485,10 @@ public class Node {
                     // lockedToRevoke/lockedToCreate, as, due to conflicts, these could differ from what the item
                     // yields. We just clean them up afterwards:
 
-                    // first, commit all subitems of our item
-                    downloadAndCommitSubItemsOf(item);
-
                     synchronized (mutex) {
+                        // first, commit all subitems of our item
+                        downloadAndCommitSubItemsOf(item);
+
                         lockedToCreate.clear();
                         lockedToRevoke.clear();
 
