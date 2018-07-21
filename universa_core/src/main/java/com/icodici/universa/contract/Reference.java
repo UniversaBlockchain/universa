@@ -133,6 +133,7 @@ public class Reference implements BiSerializable {
         return dataThis.equals(dataA);
     }
 
+    //Operators
     final static String[] operators = {" defined"," undefined","<=",">=","<",">","!=","=="," matches "," is_a "," is_inherit ","inherits ","inherit "};
 
     final static int DEFINED = 0;
@@ -148,6 +149,10 @@ public class Reference implements BiSerializable {
     final static int IS_INHERIT = 10;
     final static int INHERITS = 11;
     final static int INHERIT = 12;
+
+    //Conversions
+    final static int NO_CONVERSION = 0;
+    final static int CONVERSION_BIG_DECIMAL = 1;  // ::number
 
     enum compareOperandType {
         FIELD,
@@ -251,6 +256,7 @@ public class Reference implements BiSerializable {
                                    String rightOperand,
                                    compareOperandType typeOfLeftOperand,
                                    compareOperandType typeOfRightOperand,
+                                   boolean isBigDecimalConversion,
                                    int indxOperator,
                                    Collection<Contract> contracts,
                                    int iteration)
@@ -268,8 +274,6 @@ public class Reference implements BiSerializable {
         BigDecimal rightBigDecimal;
         boolean isLeftDouble = false;
         boolean isRightDouble = false;
-        boolean isLeftBigDecimal = false;
-        boolean isRightBigDecimal = false;
         int firstPointPos;
 
         if ((leftOperand != null) && (typeOfLeftOperand == compareOperandType.FIELD)) {
@@ -300,11 +304,6 @@ public class Reference implements BiSerializable {
                 leftOperand = leftOperand.substring(firstPointPos + 1);
             } else
                 throw new IllegalArgumentException("Invalid format of left operand in condition: " + leftOperand + ". Missing contract field.");
-
-            if (leftOperand.endsWith("::number")) {
-                isLeftBigDecimal = true;
-                leftOperand = leftOperand.substring(0, leftOperand.length() - 8);
-            }
         }
 
         if (rightOperand != null) {     // if != null, rightOperand then FIELD or CONSTANT
@@ -337,11 +336,6 @@ public class Reference implements BiSerializable {
                 }
                 else
                     throw new IllegalArgumentException("Invalid format of right operand in condition: " + rightOperand + ". Missing contract field.");
-
-                if (rightOperand.endsWith("::number")) {
-                    isRightBigDecimal = true;
-                    rightOperand = rightOperand.substring(0, rightOperand.length() - 8);
-                }
             }
 
             if (leftOperandContract != null)
@@ -361,7 +355,7 @@ public class Reference implements BiSerializable {
                         if (typeOfRightOperand == compareOperandType.FIELD && right == null)
                             break;
 
-                        if (isLeftBigDecimal || isRightBigDecimal) {
+                        if (isBigDecimalConversion) {
                             leftBigDecimal = objectCastToBigDecimal(left, leftOperand, typeOfLeftOperand);
                             rightBigDecimal = objectCastToBigDecimal(right, rightOperand, typeOfRightOperand);
 
@@ -441,7 +435,7 @@ public class Reference implements BiSerializable {
                         if (typeOfRightOperand == compareOperandType.FIELD && right == null && !leftOperand.equals("null"))
                             break;
 
-                        if (isLeftBigDecimal || isRightBigDecimal) {
+                        if (isBigDecimalConversion) {
                             leftBigDecimal = objectCastToBigDecimal(left, leftOperand, typeOfLeftOperand);
                             rightBigDecimal = objectCastToBigDecimal(right, rightOperand, typeOfRightOperand);
 
@@ -681,7 +675,9 @@ public class Reference implements BiSerializable {
                                  String leftOperand,
                                  String rightOperand,
                                  compareOperandType typeOfLeftOperand,
-                                 compareOperandType typeOfRightOperand) {
+                                 compareOperandType typeOfRightOperand,
+                                 int leftConversion,
+                                 int rightConversion) {
         Binder packedCondition = new Binder();
 
         packedCondition.set("operator", operator);
@@ -702,10 +698,16 @@ public class Reference implements BiSerializable {
         else
             packedCondition.set("typeOfRightOperand", 2);
 
+        packedCondition.set("leftConversion", leftConversion);
+        packedCondition.set("rightConversion", rightConversion);
+
         return packedCondition;
     }
 
     private Binder parseCondition(String condition) {
+
+        int leftConversion = NO_CONVERSION;
+        int rightConversion = NO_CONVERSION;
 
         for (int i = 0; i < 2; i++) {
             int operPos = condition.lastIndexOf(operators[i]);
@@ -714,7 +716,12 @@ public class Reference implements BiSerializable {
 
                 String leftOperand = condition.substring(0, operPos).replaceAll("\\s+", "");
 
-                return packCondition(i, leftOperand, null, compareOperandType.FIELD, compareOperandType.CONSTOTHER);
+                if (leftOperand.endsWith("::number")) {
+                    leftConversion = CONVERSION_BIG_DECIMAL;
+                    leftOperand = leftOperand.substring(0, leftOperand.length() - 8);
+                }
+
+                return packCondition(i, leftOperand, null, compareOperandType.FIELD, compareOperandType.CONSTOTHER, leftConversion, rightConversion);
             }
         }
 
@@ -790,7 +797,17 @@ public class Reference implements BiSerializable {
             if ((typeLeftOperand != compareOperandType.FIELD) && (typeRightOperand != compareOperandType.FIELD))
                 throw new IllegalArgumentException("At least one operand must be a field in condition: " + condition);
 
-            return packCondition(i, leftOperand, rightOperand, typeLeftOperand, typeRightOperand);
+            if ((typeLeftOperand == compareOperandType.FIELD) && (leftOperand.endsWith("::number"))) {
+                leftConversion = CONVERSION_BIG_DECIMAL;
+                leftOperand = leftOperand.substring(0, leftOperand.length() - 8);
+            }
+
+            if ((typeRightOperand == compareOperandType.FIELD) && (rightOperand.endsWith("::number"))) {
+                rightConversion = CONVERSION_BIG_DECIMAL;
+                rightOperand = rightOperand.substring(0, rightOperand.length() - 8);
+            }
+
+            return packCondition(i, leftOperand, rightOperand, typeLeftOperand, typeRightOperand, leftConversion, rightConversion);
         }
 
         for (int i = INHERITS; i <= INHERIT; i++) {
@@ -803,7 +820,12 @@ public class Reference implements BiSerializable {
 
                 String rightOperand = subStrR.replaceAll("\\s+", "");
 
-                return packCondition(i, null, rightOperand, compareOperandType.FIELD, compareOperandType.FIELD);
+                if (rightOperand.endsWith("::number")) {
+                    rightConversion = CONVERSION_BIG_DECIMAL;
+                    rightOperand = rightOperand.substring(0, rightOperand.length() - 8);
+                }
+
+                return packCondition(i, null, rightOperand, compareOperandType.FIELD, compareOperandType.FIELD, leftConversion, rightConversion);
             }
         }
 
@@ -844,7 +866,12 @@ public class Reference implements BiSerializable {
         else
             typeOfRightOperand = Reference.compareOperandType.CONSTOTHER;
 
-        return compareOperands(ref, leftOperand, rightOperand, typeOfLeftOperand, typeOfRightOperand, operator, contracts, iteration);
+        int leftConversion = condition.getInt("leftConversion", NO_CONVERSION);
+        int rightConversion = condition.getInt("rightConversion", NO_CONVERSION);
+
+        boolean isBigDecimalConversion = (leftConversion == CONVERSION_BIG_DECIMAL) || (rightConversion == CONVERSION_BIG_DECIMAL);
+
+        return compareOperands(ref, leftOperand, rightOperand, typeOfLeftOperand, typeOfRightOperand, isBigDecimalConversion, operator, contracts, iteration);
     }
 
     /**
