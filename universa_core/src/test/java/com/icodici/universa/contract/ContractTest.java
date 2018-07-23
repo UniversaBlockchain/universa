@@ -31,6 +31,7 @@ import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
+import org.hamcrest.Matchers;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -1407,6 +1408,26 @@ public class ContractTest extends ContractTestBase {
         contract.seal();
         assertTrue(contract.check());
 
+    }
+
+    @Test
+    public void getAllAddresses() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        ListRole owner = new ListRole("owner");
+        owner.addRole(new SimpleRole("owner", Arrays.asList(TestKeys.publicKey(0), TestKeys.publicKey(1))));
+        owner.addRole(new SimpleRole("owner", Arrays.asList(TestKeys.publicKey(2).getLongAddress())));
+        owner.addRole(new SimpleRole("owner", Arrays.asList(TestKeys.publicKey(3).getShortAddress(), TestKeys.publicKey(4))));
+        contract.registerRole(owner);
+        List<String> addresses = contract.getRole("owner").getAllAddresses();
+        System.out.println("owner: " + addresses);
+        for (String addr : addresses)
+            assertThat(addr, Matchers.anyOf(
+                    Matchers.equalTo(TestKeys.publicKey(0).getShortAddress().toString()),
+                    Matchers.equalTo(TestKeys.publicKey(1).getShortAddress().toString()),
+                    Matchers.equalTo(TestKeys.publicKey(2).getLongAddress().toString()),
+                    Matchers.equalTo(TestKeys.publicKey(3).getShortAddress().toString()),
+                    Matchers.equalTo(TestKeys.publicKey(4).getShortAddress().toString())
+            ));
     }
 
 }

@@ -238,6 +238,16 @@ public abstract class Role implements BiSerializable {
         return otherRole.getAnonymousIds().equals(getAnonymousIds());
     }
 
+    /**
+     * Get all addresses, used by this role. For public keys returns addresses too.
+     * @return list of strings with addresses
+     */
+    public List<String> getAllAddresses() {
+        List<String> res = new ArrayList<>();
+        getKeyAddresses().forEach(ka -> res.add(ka.toString()));
+        getKeys().forEach(publicKey -> res.add(publicKey.getShortAddress().toString()));
+        return res;
+    }
 
     /**
      * Initializes role from dsl.

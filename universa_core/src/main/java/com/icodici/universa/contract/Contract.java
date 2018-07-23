@@ -1312,6 +1312,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
+     * Get all addresses, used by registered role from the contract. For public keys returns addresses too.
+     * @return list of strings with addresses
+     */
+    public List<String> getRoleAddresses(String roleName) {
+        return getRole(roleName).getAllAddresses();
+    }
+
+    /**
      * Get the id sealing self if need
      *
      * @param sealAsNeed true to seal the contract if there is no {@link #getLastSealedBinary()}.
