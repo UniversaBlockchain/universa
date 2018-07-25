@@ -4037,10 +4037,10 @@ public class MainTest {
         js += "print('  create new revision...');";
         js += "rev = jsApi.getCurrentContract().createRevision();";
         js += "print('  new revision: ' + rev.getRevision());";
-        js += "var oldValue = rev.getStateData().get('test_value');";
+        js += "var oldValue = rev.getStateDataField('test_value');";
         js += "var newValue = oldValue=='0' ? '1' : '0';";
         js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
-        js += "rev.getStateData().set('test_value', newValue);";
+        js += "rev.setStateDataField('test_value', newValue);";
         js += "result = rev";
         contract.setJS(js);
         contract.seal();
@@ -4080,10 +4080,10 @@ public class MainTest {
         js += "print('  create new revision...');";
         js += "rev = jsApi.getCurrentContract().createRevision();";
         js += "print('  new revision: ' + rev.getRevision());";
-        js += "var oldValue = rev.getStateData().get('test_value');";
+        js += "var oldValue = parseInt(rev.getStateDataField('test_value'));";
         js += "var newValue = (oldValue + 1) >> 0;"; // '>> 0' converts js-number to int
         js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
-        js += "rev.getStateData().set('test_value', newValue);";
+        js += "rev.setStateDataField('test_value', newValue);";
         js += "result = rev";
         contract.setJS(js);
         contract.seal();

@@ -3468,12 +3468,20 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return this.currentContract.getCreatedAt().toEpochSecond();
         }
 
-        public Binder getStateData() {
-            return this.currentContract.getStateData();
+        public String getStateDataField(String fieldPath) {
+            return this.currentContract.getStateData().getStringOrThrow(fieldPath).toString();
         }
 
-        public Binder getDefinitionData() {
-            return this.currentContract.getDefinition().data;
+        public void setStateDataField(String fieldPath, String value) {
+            this.currentContract.getStateData().set(fieldPath, value);
+        }
+
+        public void setStateDataField(String fieldPath, int value) {
+            this.currentContract.getStateData().set(fieldPath, value);
+        }
+
+        public String getDefinitionDataField(String fieldPath) {
+            return this.currentContract.getDefinition().data.getStringOrThrow(fieldPath);
         }
 
         public List<String> getIssuer() {

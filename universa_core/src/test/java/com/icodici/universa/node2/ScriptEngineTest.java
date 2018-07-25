@@ -274,10 +274,9 @@ public class ScriptEngineTest {
         js += "print('currentContract.getCreatedAt(): ' + currentContract.getCreatedAt());";
         js += "print('currentContract.getOrigin(): ' + currentContract.getOrigin());";
         js += "print('currentContract.getParent(): ' + currentContract.getParent());";
-        js += "print('currentContract.getStateData(): ' + currentContract.getStateData());";
-        js += "print('currentContract.getStateData().some_value: ' + currentContract.getStateData().get('some_value'));";
-        js += "print('currentContract.getStateData().some_hash_id: ' + currentContract.getStateData().get('some_hash_id'));";
-        js += "print('currentContract.getDefinitionData(): ' + currentContract.getDefinitionData());";
+        js += "print('currentContract.getStateDataField(some_value): ' + currentContract.getStateDataField('some_value'));";
+        js += "print('currentContract.getStateDataField(some_hash_id): ' + currentContract.getStateDataField('some_hash_id'));";
+        js += "print('currentContract.getDefinitionDataField(script): ' + currentContract.getDefinitionDataField('script'));";
         js += "print('currentContract.getIssuer(): ' + currentContract.getIssuer());";
         js += "print('currentContract.getOwner(): ' + currentContract.getOwner());";
         js += "print('currentContract.getCreator(): ' + currentContract.getCreator());";
