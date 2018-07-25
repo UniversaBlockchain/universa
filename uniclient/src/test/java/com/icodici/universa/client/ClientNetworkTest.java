@@ -14,11 +14,11 @@ public class ClientNetworkTest {
     @Test
     public void checkNetwork() throws Exception {
         ClientNetwork n = new ClientNetwork(null);
-        assertEquals(34, n.size());
+        assertEquals(36, n.size());
 
         ConsoleInterceptor.copyOut(() -> {
             int active = n.checkNetworkState(new Reporter());
-            assertEquals(34, active);
+            assertEquals(36, active);
         });
     }
 }

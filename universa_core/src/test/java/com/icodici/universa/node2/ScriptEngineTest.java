@@ -284,7 +284,7 @@ public class ScriptEngineTest {
         js += "print('call currentContract.setOwner()...');";
         js += "currentContract.setOwner(['ZastWpWNPMqvVJAMocsMUTJg45i8LoC5Msmr7Lt9EaJJRwV2xV', 'a1sxhjdtGhNeji8SWJNPkwV5m6dgWfrQBnhiAxbQwZT6Y5FsXD']);";
         js += "print('currentContract.getOwner(): ' + currentContract.getOwner());";
-        contract.getDefinition().getData().set("js", js);
+        contract.setJS(js);
         contract.seal();
         contract.execJS();
     }
@@ -295,7 +295,7 @@ public class ScriptEngineTest {
         String js = "";
         js += "print('jsApiParams.length: ' + jsApiParams.length);";
         js += "result = jsApiParams.length;";
-        contract.getDefinition().getData().set("js", js);
+        contract.setJS(js);
         contract.seal();
         assertEquals(0, contract.execJS());
     }
@@ -306,7 +306,7 @@ public class ScriptEngineTest {
         String js = "";
         js += "print('jsApiParams.length: ' + jsApiParams.length);";
         js += "result = [jsApiParams.length, jsApiParams[0], jsApiParams[1]];";
-        contract.getDefinition().getData().set("js", js);
+        contract.setJS(js);
         contract.seal();
         ScriptObjectMirror res = (ScriptObjectMirror) contract.execJS("prm1", "prm2");
         assertEquals(2, res.get("0"));

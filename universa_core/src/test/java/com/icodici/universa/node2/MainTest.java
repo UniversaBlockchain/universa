@@ -4042,7 +4042,7 @@ public class MainTest {
         js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
         js += "rev.getStateData().set('test_value', newValue);";
         js += "result = rev";
-        contract.getDefinition().getData().put("js", js);
+        contract.setJS(js);
         contract.seal();
         assertTrue(contract.check());
 
@@ -4085,7 +4085,7 @@ public class MainTest {
         js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
         js += "rev.getStateData().set('test_value', newValue);";
         js += "result = rev";
-        contract.getDefinition().getData().put("js", js);
+        contract.setJS(js);
         contract.seal();
         assertTrue(contract.check());
 

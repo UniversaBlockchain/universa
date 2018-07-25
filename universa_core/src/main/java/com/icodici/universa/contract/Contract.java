@@ -98,6 +98,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private static int testQuantaLimit = -1;
 
+    public static String JSAPI_SCRIPT_FIELD = "script";
+
     /**
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from sealed unicapsule and referenced items from
      * the transaction pack supplied.
@@ -3506,7 +3508,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     public Object execJS(String... params) throws ScriptException {
-        String js = getDefinition().data.getString("js", null);
+        String js = getDefinition().getData().getString(JSAPI_SCRIPT_FIELD, null);
         if (js != null) {
             ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
             jse.put("jsApi", new JSApi());
@@ -3516,8 +3518,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             jse.put("jsApiParams", stringParams);
             jse.eval(js);
             return jse.get("result");
+        } else {
+            throw new IllegalArgumentException("error: cant exec javascript, definition.data." + JSAPI_SCRIPT_FIELD + " is empty");
         }
-        return null;
+    }
+
+    public void setJS(String js) {
+        getDefinition().getData().set(JSAPI_SCRIPT_FIELD, js);
     }
 
     static {
