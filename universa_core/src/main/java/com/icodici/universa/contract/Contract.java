@@ -18,6 +18,7 @@ import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
+import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
@@ -28,6 +29,8 @@ import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.time.Instant;
@@ -94,6 +97,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     private static int testQuantaLimit = -1;
+
+    public static String JSAPI_SCRIPT_FIELD = "script";
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from sealed unicapsule and referenced items from
@@ -3431,6 +3436,125 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
         throw new IllegalArgumentException("can't convert to datetime: "+t);
+    }
+
+    /**
+     * Implements js-api part for working with contract.
+     */
+    public class JSApi_contract {
+        private Contract currentContract;
+
+        public JSApi_contract(Contract c) {
+            this.currentContract = c;
+        }
+
+        public String getId() {
+            return this.currentContract.getId().toBase64String();
+        }
+
+        public int getRevision() {
+            return this.currentContract.getState().revision;
+        }
+
+        public String getOrigin() {
+            return this.currentContract.getOrigin().toBase64String();
+        }
+
+        public String getParent() {
+            return this.currentContract.getParent() == null ? null : this.currentContract.getParent().toBase64String();
+        }
+
+        public long getCreatedAt() {
+            return this.currentContract.getCreatedAt().toEpochSecond();
+        }
+
+        public String getStateDataField(String fieldPath) {
+            return this.currentContract.getStateData().getStringOrThrow(fieldPath).toString();
+        }
+
+        public void setStateDataField(String fieldPath, String value) {
+            this.currentContract.getStateData().set(fieldPath, value);
+        }
+
+        public void setStateDataField(String fieldPath, int value) {
+            this.currentContract.getStateData().set(fieldPath, value);
+        }
+
+        public String getDefinitionDataField(String fieldPath) {
+            return this.currentContract.getDefinition().data.getStringOrThrow(fieldPath);
+        }
+
+        public List<String> getIssuer() {
+            return this.currentContract.getIssuer().getAllAddresses();
+        }
+
+        public List<String> getOwner() {
+            return this.currentContract.getOwner().getAllAddresses();
+        }
+
+        public List<String> getCreator() {
+            return this.currentContract.getCreator().getAllAddresses();
+        }
+
+        public void setOwner(List<String> addresses) throws KeyAddress.IllegalAddressException {
+            List<KeyAddress> addressesList = new ArrayList<>();
+            for (String s : addresses)
+                addressesList.add(new KeyAddress(s));
+            this.currentContract.setOwnerKeys(addressesList);
+        }
+
+        public JSApi_contract createRevision() {
+            return new JSApi_contract(this.currentContract.createRevision());
+        }
+    }
+
+    /**
+     * Extracts instanse of {@link Contract} from instance of {@link JSApi_contract}.
+     * We can not add such getter to JSApi_contract because want to hide Contract class from client javascript.
+     */
+    public static Contract extractContractFromJs(JSApi_contract jsContract) {
+        return jsContract.currentContract;
+    }
+
+    /**
+     * Implements js-api, that provided to client's javascript.
+     */
+    public class JSApi {
+        public JSApi_contract getCurrentContract() {
+            return new JSApi_contract(Contract.this);
+        }
+    }
+
+    /**
+     * Executes javascript, that previously should be saved in contract's definition with {@link Contract#setJS(String)}.
+     * Provides instance of {@link JSApi} to this script, as 'jsApi' global var.
+     * @param params list of strings, will be passed to javascript
+     * @return Object, got it from 'result' global var of javascript.
+     * @throws ScriptException if javascript throws some errors
+     * @throws IllegalArgumentException if javascript is not defined in contract's definition
+     */
+    public Object execJS(String... params) throws ScriptException, IllegalArgumentException {
+        String js = getDefinition().getData().getString(JSAPI_SCRIPT_FIELD, null);
+        if (js != null) {
+            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
+            jse.put("jsApi", new JSApi());
+            String[] stringParams = new String[params.length];
+            for (int i = 0; i < params.length; ++i)
+                stringParams[i] = params[i].toString();
+            jse.put("jsApiParams", stringParams);
+            jse.eval(js);
+            return jse.get("result");
+        } else {
+            throw new IllegalArgumentException("error: cant exec javascript, definition.data." + JSAPI_SCRIPT_FIELD + " is empty");
+        }
+    }
+
+    /**
+     * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(String...)}
+     * @param js text with javascript code
+     */
+    public void setJS(String js) {
+        getDefinition().getData().set(JSAPI_SCRIPT_FIELD, js);
     }
 
     static {
