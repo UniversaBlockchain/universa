@@ -18,6 +18,7 @@ import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node2.Config;
 import com.icodici.universa.node2.Quantiser;
+import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import net.sergeych.biserializer.*;
 import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
@@ -28,6 +29,8 @@ import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.yaml.snakeyaml.Yaml;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.time.Instant;
@@ -3431,6 +3434,90 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
         throw new IllegalArgumentException("can't convert to datetime: "+t);
+    }
+
+    public class JSApi_contract {
+        private Contract currentContract;
+
+        public JSApi_contract(Contract c) {
+            this.currentContract = c;
+        }
+
+        public String getId() {
+            return this.currentContract.getId().toBase64String();
+        }
+
+        public int getRevision() {
+            return this.currentContract.getState().revision;
+        }
+
+        public String getOrigin() {
+            return this.currentContract.getOrigin().toBase64String();
+        }
+
+        public String getParent() {
+            return this.currentContract.getParent() == null ? null : this.currentContract.getParent().toBase64String();
+        }
+
+        public long getCreatedAt() {
+            return this.currentContract.getCreatedAt().toEpochSecond();
+        }
+
+        public Binder getStateData() {
+            return this.currentContract.getStateData();
+        }
+
+        public Binder getDefinitionData() {
+            return this.currentContract.getDefinition().data;
+        }
+
+        public List<String> getIssuer() {
+            return this.currentContract.getIssuer().getAllAddresses();
+        }
+
+        public List<String> getOwner() {
+            return this.currentContract.getOwner().getAllAddresses();
+        }
+
+        public List<String> getCreator() {
+            return this.currentContract.getCreator().getAllAddresses();
+        }
+
+        public void setOwner(List<String> addressesBase64) throws KeyAddress.IllegalAddressException {
+            List<KeyAddress> addresses = new ArrayList<>();
+            for (String s : addressesBase64)
+                addresses.add(new KeyAddress(s));
+            this.currentContract.setOwnerKeys(addresses);
+        }
+
+        public JSApi_contract createRevision() {
+            return new JSApi_contract(this.currentContract.createRevision());
+        }
+    }
+
+    public static Contract extractContractFromJs(JSApi_contract jsContract) {
+        return jsContract.currentContract;
+    }
+
+    public class JSApi {
+        public JSApi_contract getCurrentContract() {
+            return new JSApi_contract(Contract.this);
+        }
+    }
+
+    public Object execJS(String... params) throws ScriptException {
+        String js = getDefinition().data.getString("js", null);
+        if (js != null) {
+            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
+            jse.put("jsApi", new JSApi());
+            String[] stringParams = new String[params.length];
+            for (int i = 0; i < params.length; ++i)
+                stringParams[i] = params[i].toString();
+            jse.put("jsApiParams", stringParams);
+            jse.eval(js);
+            return jse.get("result");
+        }
+        return null;
     }
 
     static {

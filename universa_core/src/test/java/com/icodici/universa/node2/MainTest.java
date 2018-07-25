@@ -18,10 +18,7 @@ import com.icodici.universa.Core;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
-import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
-import com.icodici.universa.contract.permissions.ModifyDataPermission;
-import com.icodici.universa.contract.permissions.RevokePermission;
-import com.icodici.universa.contract.permissions.SplitJoinPermission;
+import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
@@ -4023,6 +4020,88 @@ public class MainTest {
         }
         //assertEquals(ItemState.APPROVED, ir.state);
         assertEquals(ItemState.DECLINED, ir.state); // must be declined due to ref.state.data.some_value<=1000
+    }
+
+    @Test
+    public void jsDemo1() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        ModifyDataPermission perm = new ModifyDataPermission(contract.getOwner(), new Binder());
+        perm.addField("test_value", Arrays.asList("0", "1"));
+        contract.addPermission(perm);
+        contract.getStateData().set("test_value", "0");
+        String js = "";
+        js += "print('demo1');";
+        js += "print('  create new revision...');";
+        js += "rev = jsApi.getCurrentContract().createRevision();";
+        js += "print('  new revision: ' + rev.getRevision());";
+        js += "var oldValue = rev.getStateData().get('test_value');";
+        js += "var newValue = oldValue=='0' ? '1' : '0';";
+        js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
+        js += "rev.getStateData().set('test_value', newValue);";
+        js += "result = rev";
+        contract.getDefinition().getData().put("js", js);
+        contract.seal();
+        assertTrue(contract.check());
+
+        ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir.state);
+
+        for (int i = 0; i < 10; ++i) {
+            contract = Contract.extractContractFromJs((Contract.JSApi_contract) contract.execJS());
+            contract.addSignerKey(TestKeys.privateKey(1));
+            contract.seal();
+            assertEquals(i%2==0 ? "1" : "0", contract.getStateData().getStringOrThrow("test_value"));
+            ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+            assertEquals(ItemState.APPROVED, ir.state);
+        }
+
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
+    @Test
+    public void jsDemo2() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Contract contract = new Contract(TestKeys.privateKey(1));
+        Binder permParams = new Binder();
+        permParams.set("min_value", 1);
+        permParams.set("min_step", 1);
+        permParams.set("max_step", 1);
+        permParams.set("field_name", "test_value");
+        ChangeNumberPermission perm = new ChangeNumberPermission(contract.getOwner(), permParams);
+        contract.addPermission(perm);
+        contract.getStateData().set("test_value", 11);
+        String js = "";
+        js += "print('demo2');";
+        js += "print('  create new revision...');";
+        js += "rev = jsApi.getCurrentContract().createRevision();";
+        js += "print('  new revision: ' + rev.getRevision());";
+        js += "var oldValue = rev.getStateData().get('test_value');";
+        js += "var newValue = (oldValue + 1) >> 0;"; // '>> 0' converts js-number to int
+        js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
+        js += "rev.getStateData().set('test_value', newValue);";
+        js += "result = rev";
+        contract.getDefinition().getData().put("js", js);
+        contract.seal();
+        assertTrue(contract.check());
+
+        ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir.state);
+
+        for (int i = 0; i < 10; ++i) {
+            contract = Contract.extractContractFromJs((Contract.JSApi_contract) contract.execJS());
+            contract.addSignerKey(TestKeys.privateKey(1));
+            contract.seal();
+            assertEquals(i+12, contract.getStateData().getIntOrThrow("test_value"));
+            ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+            assertEquals(ItemState.APPROVED, ir.state);
+        }
+
+        testSpace.nodes.forEach(m -> m.shutdown());
     }
 
 }
