@@ -3438,6 +3438,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         throw new IllegalArgumentException("can't convert to datetime: "+t);
     }
 
+    /**
+     * Implements js-api part for working with contract.
+     */
     public class JSApi_contract {
         private Contract currentContract;
 
@@ -3497,17 +3500,32 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
+    /**
+     * Extracts instanse of {@link Contract} from instance of {@link JSApi_contract}.
+     * We can not add such getter to JSApi_contract because want to hide Contract class from client javascript.
+     */
     public static Contract extractContractFromJs(JSApi_contract jsContract) {
         return jsContract.currentContract;
     }
 
+    /**
+     * Implements js-api, that provided to client's javascript.
+     */
     public class JSApi {
         public JSApi_contract getCurrentContract() {
             return new JSApi_contract(Contract.this);
         }
     }
 
-    public Object execJS(String... params) throws ScriptException {
+    /**
+     * Executes javascript, that previously should be saved in contract's definition with {@link Contract#setJS(String)}.
+     * Provides instance of {@link JSApi} to this script, as 'jsApi' global var.
+     * @param params list of strings, will be passed to javascript
+     * @return Object, got it from 'result' global var of javascript.
+     * @throws ScriptException if javascript throws some errors
+     * @throws IllegalArgumentException if javascript is not defined in contract's definition
+     */
+    public Object execJS(String... params) throws ScriptException, IllegalArgumentException {
         String js = getDefinition().getData().getString(JSAPI_SCRIPT_FIELD, null);
         if (js != null) {
             ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
@@ -3523,6 +3541,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
     }
 
+    /**
+     * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(String...)}
+     * @param js text with javascript code
+     */
     public void setJS(String js) {
         getDefinition().getData().set(JSAPI_SCRIPT_FIELD, js);
     }
