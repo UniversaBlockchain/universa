@@ -3488,11 +3488,11 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return this.currentContract.getCreator().getAllAddresses();
         }
 
-        public void setOwner(List<String> addressesBase64) throws KeyAddress.IllegalAddressException {
-            List<KeyAddress> addresses = new ArrayList<>();
-            for (String s : addressesBase64)
-                addresses.add(new KeyAddress(s));
-            this.currentContract.setOwnerKeys(addresses);
+        public void setOwner(List<String> addresses) throws KeyAddress.IllegalAddressException {
+            List<KeyAddress> addressesList = new ArrayList<>();
+            for (String s : addresses)
+                addressesList.add(new KeyAddress(s));
+            this.currentContract.setOwnerKeys(addressesList);
         }
 
         public JSApi_contract createRevision() {
