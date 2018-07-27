@@ -109,7 +109,8 @@ public class CLIMainTest {
                 "-set", field, "-value", value);
         callMain("-c", rootPath + "simple_root_contract_v2.yml", "--output", basePath + "contract_to_export.unicon",
                 "-set", field, "-value", value);
-
+        callMain("-c", rootPath + "ref_root_contract.yml", "--output", basePath + "ref_contract_to_export.unicon",
+                "-set", field, "-value", value);
 
         Contract c1 = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c1.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
@@ -740,6 +741,51 @@ public class CLIMainTest {
         assertTrue (output.indexOf("export fields as json ok") >= 0);
         assertEquals(0, errors.size());
     }
+
+    @Test
+    public void exportRefsTest() throws Exception {
+        callMain("-e", basePath + "ref_contract_to_export.unicon");
+        System.out.println(output);
+        assertTrue (output.indexOf("export as json ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportRefsAsJSONTest() throws Exception {
+        callMain(
+                "-e", basePath + "ref_contract_to_export.unicon", "-as", "json");
+        System.out.println(output);
+        assertTrue (output.indexOf("export as json ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportRefsAsPrettyJSONTest() throws Exception {
+        callMain(
+                "-e", basePath + "ref_contract_to_export.unicon", "-as", "json", "-pretty");
+        System.out.println(output);
+        assertTrue (output.indexOf("export as json ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportRefsAsXMLTest() throws Exception {
+        callMain(
+                "-e", basePath + "ref_contract_to_export.unicon", "-as", "xml");
+        System.out.println(output);
+        assertTrue (output.indexOf("export as xml ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void exportRefsAsYamlTest() throws Exception {
+        callMain(
+                "-e", basePath + "ref_contract_to_export.unicon", "-as", "yaml");
+        System.out.println(output);
+        assertTrue (output.indexOf("export as yaml ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
 
     @Test
     public void updateFields() throws Exception {

@@ -910,7 +910,7 @@ public class Reference implements BiSerializable {
             List<Object> parsedList = new ArrayList<>();
             List<Object> condList = conds.getList(keyName, null);
             if (condList == null)
-                throw new IllegalArgumentException("Expected all_of conditions");
+                throw new IllegalArgumentException("Expected all_of or any_of conditions");
 
             for (Object item: condList) {
                 if (item.getClass().getName().endsWith("String"))
@@ -1233,11 +1233,125 @@ public class Reference implements BiSerializable {
     }
 
     /**
+     * Assembly condition of reference
+     * @param condition is binder of parsed condition
+     * @return result {@link String} with assembled condition
+     */
+    private String assemblyCondition(Binder condition) {
+
+        if ((condition == null) || (condition.size() == 0))
+            return null;
+
+        String result = "";
+
+        // get parsed data
+        String leftOperand = condition.getString("leftOperand", null);
+        String rightOperand = condition.getString("rightOperand", null);
+        int operator = condition.getIntOrThrow("operator");
+
+        int leftConversion = condition.getInt("leftConversion", NO_CONVERSION);
+        int rightConversion = condition.getInt("rightConversion", NO_CONVERSION);
+
+        int typeLeftOperand = condition.getIntOrThrow("typeOfLeftOperand");
+        int typeRightOperand = condition.getIntOrThrow("typeOfRightOperand");
+
+        // assembly condition
+        if (leftOperand != null) {
+            if (typeLeftOperand == 1)      // CONSTSTR
+                result += "\"";
+
+            result += leftOperand;
+
+            if (typeLeftOperand == 1)      // CONSTSTR
+                result += "\"";
+
+            if (leftConversion == CONVERSION_BIG_DECIMAL)
+                result += "::number";
+        }
+
+        result += operators[operator];
+
+        if (rightOperand != null) {
+            if (typeRightOperand == 1)      // CONSTSTR
+                result += "\"";
+
+            result += rightOperand;
+
+            if (typeRightOperand == 1)      // CONSTSTR
+                result += "\"";
+
+            if (rightConversion == CONVERSION_BIG_DECIMAL)
+                result += "::number";
+        }
+
+        return result;
+    }
+
+    /**
+     * Assembly conditions of reference
+     * @param conds is binder of parsed conditions
+     * @return result {@link Binder} with assembled (string) conditions
+     */
+    private Binder assemblyConditions(Binder conds) {
+
+        if ((conds == null) || (conds.size() == 0))
+            return null;
+
+        boolean all = conds.containsKey(all_of.name());
+        boolean any = conds.containsKey(any_of.name());
+
+        if (all || any) {
+            Binder result = new Binder();
+            String keyName = all ? all_of.name() : any_of.name();
+            List<Object> assembledList = new ArrayList<>();
+            List<Object> condList = conds.getList(keyName, null);
+            if (condList == null)
+                throw new IllegalArgumentException("Expected all_of or any_of conditions");
+
+            for (Object item: condList) {
+                if (item.getClass().getName().endsWith("String"))       // already assembled condition
+                    assembledList.add(item);
+                else {
+                    Binder parsed = null;
+                    String cond = null;
+                    if (item.getClass().getName().endsWith("LinkedHashMap")) {
+                        LinkedHashMap<String, Binder> insideHashMap = (LinkedHashMap<String, Binder>) item;
+                        Binder insideBinder = new Binder(insideHashMap);
+                        parsed = assemblyConditions(insideBinder);
+                    } else if (((Binder) item).containsKey("operator"))
+                        cond = assemblyCondition((Binder) item);
+                    else
+                        parsed = assemblyConditions((Binder) item);
+
+                    if (parsed != null)
+                        assembledList.add(parsed);
+
+                    if (cond != null)
+                        assembledList.add(cond);
+                }
+            }
+
+            result.put(keyName, assembledList);
+            return result;
+        }
+        else
+            throw new IllegalArgumentException("Expected all_of or any_of");
+    }
+
+    /**
      * Get the conditions from the reference
      * @return conditions reference
      */
     public Binder getConditions() {
         return conditions;
+    }
+
+    /**
+     * Export the conditions from the reference as strings
+     * @return strings conditions reference
+     */
+    public Binder exportConditions() {
+        return assemblyConditions(conditions);
     }
 
     /**

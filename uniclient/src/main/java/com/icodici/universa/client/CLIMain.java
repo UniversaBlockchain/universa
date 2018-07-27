@@ -15,10 +15,7 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.SymmetricKey;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.*;
-import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.ContractsService;
-import com.icodici.universa.contract.Parcel;
-import com.icodici.universa.contract.TransactionPack;
+import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.Role;
@@ -177,6 +174,37 @@ public class CLIMain {
             return "KeyAddress";
         }
     };
+
+    private static BiAdapter customReferenceBiAdapter = new BiAdapter() {
+        @Override
+        public Binder serialize(Object object, BiSerializer s) {
+            Reference ref = (Reference) object;
+            Binder data = new Binder();
+
+            data.set("name", s.serialize(ref.name));
+            data.set("type", s.serialize(ref.type));
+            data.set("transactional_id", s.serialize(ref.transactional_id));
+            if (ref.contract_id != null)
+                data.set("contract_id", s.serialize(ref.contract_id));
+            data.set("required", s.serialize(ref.required));
+            if (ref.origin != null)
+                data.set("origin", s.serialize(ref.origin));
+            data.set("signed_by", s.serialize(ref.signed_by));
+
+            data.set("roles", s.serialize(ref.roles));
+            data.set("fields", s.serialize(ref.fields));
+
+            data.set("where", s.serialize(ref.exportConditions()));
+
+            return data;
+        }
+
+        @Override
+        public Object deserialize(Binder binder, BiDeserializer deserializer) {
+            throw new IllegalArgumentException("can't reconstruct Reference");
+        }
+    };
+
 
     static public void main(String[] args) throws IOException {
         // when we run untit tests, it is important:
@@ -2989,12 +3017,19 @@ public class CLIMain {
         biMapper.unregister(KeyAddress.class);
         biMapper.registerAdapter(KeyAddress.class, customKeyAddressBiAdapter);
 
+        //replace existing Reference serializer
+        biMapper.unregister(Reference.class);
+        biMapper.registerAdapter(Reference.class, customReferenceBiAdapter);
 
         Binder binder = contract.serialize(biMapper.newSerializer());
 
-        //return existed eariler KeyAddress serializer
+        //return existed earlier KeyAddress serializer
         biMapper.unregister(KeyAddress.class);
         biMapper.registerAdapter(KeyAddress.class, KeyAddress.getBiAdapter());
+
+        //return existed earlier Reference serializer
+        biMapper.unregister(Reference.class);
+        DefaultBiMapper.registerClass(Reference.class);
 
         byte[] data;
         if ("xml".equals(format)) {
