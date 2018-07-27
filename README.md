@@ -60,7 +60,6 @@ You may also need to configure your future Gradle environment to refer to the ju
 Create a directory where the project will be placed, and, inside it, run the following commands:
 
     git clone git://github.com/UniversaBlockchain/universa.git ./
-    git submodule init && git submodule update
 
 Then you can build it.
 
