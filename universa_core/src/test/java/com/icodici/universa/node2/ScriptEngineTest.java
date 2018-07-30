@@ -276,16 +276,16 @@ public class ScriptEngineTest {
         js += "print('currentContract.getParent(): ' + currentContract.getParent());";
         js += "print('currentContract.getStateDataField(some_value): ' + currentContract.getStateDataField('some_value'));";
         js += "print('currentContract.getStateDataField(some_hash_id): ' + currentContract.getStateDataField('some_hash_id'));";
-        js += "print('currentContract.getDefinitionDataField(script): ' + currentContract.getDefinitionDataField('script'));";
+        js += "print('currentContract.getDefinitionDataField(scripts): ' + currentContract.getDefinitionDataField('scripts'));";
         js += "print('currentContract.getIssuer(): ' + currentContract.getIssuer());";
         js += "print('currentContract.getOwner(): ' + currentContract.getOwner());";
         js += "print('currentContract.getCreator(): ' + currentContract.getCreator());";
         js += "print('call currentContract.setOwner()...');";
         js += "currentContract.setOwner(['ZastWpWNPMqvVJAMocsMUTJg45i8LoC5Msmr7Lt9EaJJRwV2xV', 'a1sxhjdtGhNeji8SWJNPkwV5m6dgWfrQBnhiAxbQwZT6Y5FsXD']);";
         js += "print('currentContract.getOwner(): ' + currentContract.getOwner());";
-        contract.setJS(js);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", false);
         contract.seal();
-        contract.execJS();
+        contract.execJS(js.getBytes());
     }
 
     @Test
@@ -294,9 +294,9 @@ public class ScriptEngineTest {
         String js = "";
         js += "print('jsApiParams.length: ' + jsApiParams.length);";
         js += "result = jsApiParams.length;";
-        contract.setJS(js);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", false);
         contract.seal();
-        assertEquals(0, contract.execJS());
+        assertEquals(0, contract.execJS(js.getBytes()));
     }
 
     @Test
@@ -305,9 +305,9 @@ public class ScriptEngineTest {
         String js = "";
         js += "print('jsApiParams.length: ' + jsApiParams.length);";
         js += "result = [jsApiParams.length, jsApiParams[0], jsApiParams[1]];";
-        contract.setJS(js);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", false);
         contract.seal();
-        ScriptObjectMirror res = (ScriptObjectMirror) contract.execJS("prm1", "prm2");
+        ScriptObjectMirror res = (ScriptObjectMirror) contract.execJS(js.getBytes(), "prm1", "prm2");
         assertEquals(2, res.get("0"));
         assertEquals("prm1", res.get("1"));
         assertEquals("prm2", res.get("2"));
@@ -320,13 +320,39 @@ public class ScriptEngineTest {
         js += "var c = jsApi.getCurrentContract();";
         js += "var rc = c.extractContract(new Object());";
         js += "print('extractContract: ' + rc);";
-        contract.setJS(js);
+        contract.getState().setJS(js.getBytes(), "client script.js", false);
         contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
         try {
-            contract.execJS();
+            contract.execJS(js.getBytes());
             assert false;
         } catch (ClassCastException e) {
-            e.printStackTrace();
+            System.out.println(e);
+            assert true;
+        }
+    }
+
+    @Test
+    public void twoJsInContract() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js1d = "var result = 'return_from_script_1d';";
+        String js2d = "var result = 'return_from_script_2d';";
+        String js1s = "var result = 'return_from_script_1s';";
+        String js2s = "var result = 'return_from_script_2s';";
+        contract.getDefinition().setJS(js1d.getBytes(), "js1d.js", false);
+        contract.getDefinition().setJS(js2d.getBytes(), "js2d.js", false);
+        contract.getState().setJS(js1s.getBytes(), "js1s.js", false);
+        contract.getState().setJS(js2s.getBytes(), "js2s.js", false);
+        contract.seal();
+        assertEquals("return_from_script_1d", contract.execJS(js1d.getBytes()));
+        assertEquals("return_from_script_2d", contract.execJS(js2d.getBytes()));
+        assertEquals("return_from_script_1s", contract.execJS(js1s.getBytes()));
+        assertEquals("return_from_script_2s", contract.execJS(js2s.getBytes()));
+        try {
+            contract.execJS("print('another script');".getBytes());
+            assert false;
+        } catch (IllegalArgumentException e) {
+            System.out.println(e);
             assert true;
         }
     }

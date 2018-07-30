@@ -10,6 +10,7 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.jsapi.JSApi;
+import com.icodici.universa.contract.jsapi.JSApiHelpers;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -99,7 +100,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private static int testQuantaLimit = -1;
 
-    public static String JSAPI_SCRIPT_FIELD = "script";
+    public static String JSAPI_SCRIPT_FIELD = "scripts";
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from sealed unicapsule and referenced items from
@@ -2970,6 +2971,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return this.references;
         }
 
+        /**
+         * Saves client's javascript in contract's state. It can be executed with {@link Contract#execJS(String...)}
+         */
+        public void setJS(byte[] jsFileContent, String jsFileName, boolean isCompressed) {
+            String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName);
+            Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
+            scripts.set(fileNameKey, scriptBinder);
+            getData().put(JSAPI_SCRIPT_FIELD, scripts);
+        }
+
     }
 
     private Multimap<String, Permission> permissions = new Multimap<>();
@@ -3078,6 +3090,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public List<Reference> getReferences() {
             return this.references;
+        }
+
+        /**
+         * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(byte[], String...)}
+         */
+        public void setJS(byte[] jsFileContent, String jsFileName, boolean isCompressed) {
+            String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName);
+            Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
+            scripts.set(fileNameKey, scriptBinder);
+            getData().put(JSAPI_SCRIPT_FIELD, scripts);
         }
 
         /**
@@ -3440,35 +3463,38 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
-     * Executes javascript, that previously should be saved in contract's definition with {@link Contract#setJS(String)}.
+     * Executes javascript, that previously should be saved in contract's definition
+     * with {@link Definition#setJS(String)} or {@link State#setJS(String)}.
      * Provides instance of {@link JSApi} to this script, as 'jsApi' global var.
      * @param params list of strings, will be passed to javascript
      * @return Object, got it from 'result' global var of javascript.
      * @throws ScriptException if javascript throws some errors
      * @throws IllegalArgumentException if javascript is not defined in contract's definition
      */
-    public Object execJS(String... params) throws ScriptException, IllegalArgumentException {
-        String js = getDefinition().getData().getString(JSAPI_SCRIPT_FIELD, null);
-        if (js != null) {
-            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
-            jse.put("jsApi", new JSApi(this));
-            String[] stringParams = new String[params.length];
-            for (int i = 0; i < params.length; ++i)
-                stringParams[i] = params[i].toString();
-            jse.put("jsApiParams", stringParams);
-            jse.eval(js);
-            return jse.get("result");
-        } else {
-            throw new IllegalArgumentException("error: cant exec javascript, definition.data." + JSAPI_SCRIPT_FIELD + " is empty");
-        }
-    }
+    public Object execJS(byte[] jsFileContent, String... params) throws ScriptException, IllegalArgumentException {
+        return JSApiHelpers.execJS(
+                getDefinition().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                jsFileContent,
+                this,
+                params
+        );
 
-    /**
-     * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(String...)}
-     * @param js text with javascript code
-     */
-    public void setJS(String js) {
-        getDefinition().getData().set(JSAPI_SCRIPT_FIELD, js);
+//        HashId jsFileHashId = HashId.of(jsFileContent);
+//        JSApiHelpers.findScriptBinder(getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null), jsFileHashId);
+//        String js = getDefinition().getData().getString(JSAPI_SCRIPT_FIELD, null);
+//        if (js != null) {
+//            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
+//            jse.put("jsApi", new JSApi(this));
+//            String[] stringParams = new String[params.length];
+//            for (int i = 0; i < params.length; ++i)
+//                stringParams[i] = params[i].toString();
+//            jse.put("jsApiParams", stringParams);
+//            jse.eval(js);
+//            return jse.get("result");
+//        } else {
+//            throw new IllegalArgumentException("error: cant exec javascript, definition.data." + JSAPI_SCRIPT_FIELD + " is empty");
+//        }
     }
 
     static {
