@@ -3776,7 +3776,7 @@ public class MainTest {
         /////////////////////////////////////////////////
         PrivateKey universaAdminKey = TestKeys.privateKey(10);
         PrivateKey utnIssuerKey = TestKeys.privateKey(11);
-        PrivateKey uIssuerKey = new PrivateKey(Do.read(Config.tuKeyPath));
+        PrivateKey uIssuerKey = new PrivateKey(Do.read(Config.uKeyPath));
         PrivateKey userKey = TestKeys.privateKey(12);
         Set<PrivateKey> userKeys = new HashSet<>();
         userKeys.add(userKey);
@@ -3816,7 +3816,7 @@ public class MainTest {
 
         //CREATE U CONTRACT
         //Create standart U contract
-        Contract uContract = InnerContractsService.createFreshTU(unitsToIssue, ownerKeys);
+        Contract uContract = InnerContractsService.createFreshU(unitsToIssue, ownerKeys);
         Contract consent = ContractsService.addConsent(uContract, universaAdminKey.getPublicKey().getLongAddress());
         uContract.seal();
         compound.addNewItems(uContract);

@@ -1650,10 +1650,10 @@ public class CLIMain {
     private static void doCreateParcel() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("create-parcel"));
         List<String> names = (List) options.valuesOf("output");
-        String tuSource = (String) options.valueOf("tu");
-        int tuAmount = (int) options.valueOf("amount");
-        int tuAmountStorage = (int) options.valueOf("amount-storage");
-        boolean tutest = options.has("tutest");
+        String uSource = (String) options.valueOf("u");
+        int uAmount = (int) options.valueOf("amount");
+        int uAmountStorage = (int) options.valueOf("amount-storage");
+        boolean utest = options.has("utest");
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));

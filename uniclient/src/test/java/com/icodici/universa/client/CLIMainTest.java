@@ -3237,7 +3237,7 @@ public class CLIMainTest {
 
         Contract c = Contract.fromDslFile(rootPath + "simple_root_contract.yml");
         c.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
-        c.addSignerKeyFromFile(rootPath + "keys/tu_key.private.unikey");
+        c.addSignerKeyFromFile(rootPath + "keys/u_key.private.unikey");
         PrivateKey goodKey = c.getKeysToSignWith().iterator().next();
         // let's make this key among owners
         ((SimpleRole)c.getRole("owner")).addKeyRecord(new KeyRecord(goodKey.getPublicKey()));
