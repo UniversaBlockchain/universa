@@ -18,6 +18,8 @@ import com.icodici.universa.Core;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.jsapi.JSApiAccessor;
+import com.icodici.universa.contract.jsapi.JSApiContract;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -4050,7 +4052,7 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, ir.state);
 
         for (int i = 0; i < 10; ++i) {
-            contract = Contract.extractContractFromJs((Contract.JSApi_contract) contract.execJS());
+            contract = ((JSApiContract) contract.execJS()).extractContract(new JSApiAccessor());
             contract.addSignerKey(TestKeys.privateKey(1));
             contract.seal();
             assertEquals(i%2==0 ? "1" : "0", contract.getStateData().getStringOrThrow("test_value"));
@@ -4093,7 +4095,7 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, ir.state);
 
         for (int i = 0; i < 10; ++i) {
-            contract = Contract.extractContractFromJs((Contract.JSApi_contract) contract.execJS());
+            contract = ((JSApiContract) contract.execJS()).extractContract(new JSApiAccessor());
             contract.addSignerKey(TestKeys.privateKey(1));
             contract.seal();
             assertEquals(i+12, contract.getStateData().getIntOrThrow("test_value"));
