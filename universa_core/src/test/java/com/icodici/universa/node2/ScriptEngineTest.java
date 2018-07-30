@@ -317,15 +317,27 @@ public class ScriptEngineTest {
     @Test
     public void extractContractShouldBeRestricted() throws Exception {
         Contract contract = new Contract(TestKeys.privateKey(0));
-        String js = "";
-        js += "var c = jsApi.getCurrentContract();";
-        js += "var rc = c.extractContract(new Object());";
-        js += "print('extractContract: ' + rc);";
-        contract.getState().setJS(js.getBytes(), "client script.js", false);
+        String js1 = "";
+        js1 += "var c = jsApi.getCurrentContract();";
+        js1 += "var rc = c.extractContract(new Object());";
+        js1 += "print('extractContract: ' + rc);";
+        String js2 = "";
+        js2 += "var c = jsApi.getCurrentContract();";
+        js2 += "var rc = c.extractContract(null);";
+        js2 += "print('extractContract: ' + rc);";
+        contract.getState().setJS(js1.getBytes(), "client script 1.js", false);
+        contract.getState().setJS(js2.getBytes(), "client script 2.js", false);
         contract.seal();
         contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
         try {
-            contract.execJS(js.getBytes());
+            contract.execJS(js1.getBytes());
+            assert false;
+        } catch (ClassCastException e) {
+            System.out.println(e);
+            assert true;
+        }
+        try {
+            contract.execJS(js2.getBytes());
             assert false;
         } catch (ClassCastException e) {
             System.out.println(e);
