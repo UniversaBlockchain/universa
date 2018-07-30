@@ -313,4 +313,22 @@ public class ScriptEngineTest {
         assertEquals("prm2", res.get("2"));
     }
 
+    @Test
+    public void extractContractShouldBeRestricted() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "var c = jsApi.getCurrentContract();";
+        js += "var rc = c.extractContract(new Object());";
+        js += "print('extractContract: ' + rc);";
+        contract.setJS(js);
+        contract.seal();
+        try {
+            contract.execJS();
+            assert false;
+        } catch (ClassCastException e) {
+            e.printStackTrace();
+            assert true;
+        }
+    }
+
 }
