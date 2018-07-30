@@ -2,6 +2,7 @@ package com.icodici.universa.node2;
 
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.jsapi.JSApiHelpers;
 import com.icodici.universa.node.network.TestKeys;
 import jdk.nashorn.api.scripting.ClassFilter;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
@@ -355,6 +356,13 @@ public class ScriptEngineTest {
             System.out.println(e);
             assert true;
         }
+    }
+
+    @Test
+    public void fileName2fileKey() throws Exception {
+        String in = "some long.file name with.extention";
+        String expectedOut = "some_long_file_name_with_extention";
+        assertEquals(expectedOut, JSApiHelpers.fileName2fileKey(in));
     }
 
 }
