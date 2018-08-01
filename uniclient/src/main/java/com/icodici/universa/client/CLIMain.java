@@ -240,10 +240,16 @@ public class CLIMain {
 
 
 
-                accepts("u-for-utn", "buy U for UTN. Use with --keys to specify keys required to split UTNs and --amount to specify ammount of U to buy")
+                accepts("u-for-utn", "buy U for UTN. Use with --keys to specify keys required to split UTNs and --amount to specify amount of U to buy")
                         .withRequiredArg()
                         .ofType(String.class).
                         describedAs("utn.unicon");
+
+
+                accepts("tu", "Deprecated. Use -u instead.")
+                        .withRequiredArg()
+                        .ofType(String.class)
+                        .describedAs("tu.unicon");
 
                 accepts("u", "Use with --register and --create-parcel. Point to file with your U. " +
                         "Use it to pay for contract's register.")
@@ -262,7 +268,9 @@ public class CLIMain {
                         .ofType(Integer.class)
                         .defaultsTo(0)
                         .describedAs("u amount-storage");
-                accepts("tutest", "Use with --register, --create-parcel and -tu. Key is point to use test transaction units.");
+                accepts("tutest", "Deprecated. Use -utest instead.");
+                accepts("utest", "Use with --register, --create-parcel and -u. Key is point to use test U.");
+
                 accepts("no-exit", "Used for tests. Uniclient d");
                 accepts("probe", "query the state of the document in the Universa network")
                         .withOptionalArg()
@@ -1269,10 +1277,16 @@ public class CLIMain {
 
     private static void doRegister() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("register"));
+
         String uSource = (String) options.valueOf("u");
+        if (uSource == null)
+            uSource = (String) options.valueOf("tu");
+
         int uAmount = (int) options.valueOf("amount");
         int uAmountStorage = (int) options.valueOf("amount-storage");
-        boolean utest = options.has("utest");
+
+        boolean utest = options.has("utest") || options.has("tutest");
+
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -1650,10 +1664,16 @@ public class CLIMain {
     private static void doCreateParcel() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("create-parcel"));
         List<String> names = (List) options.valuesOf("output");
+
         String uSource = (String) options.valueOf("u");
+        if (uSource == null)
+            uSource = (String) options.valueOf("tu");
+
         int uAmount = (int) options.valueOf("amount");
         int uAmountStorage = (int) options.valueOf("amount-storage");
-        boolean utest = options.has("utest");
+
+        boolean utest = options.has("utest") || options.has("tutest");
+
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
@@ -1856,9 +1876,15 @@ public class CLIMain {
 
     private static void doRevoke() throws IOException {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("revoke"));
+
         String uSource = (String) options.valueOf("u");
+        if (uSource == null)
+            uSource = (String) options.valueOf("tu");
+
         int uAmount = (int) options.valueOf("amount");
-        boolean utest = options.has("utest");
+
+        boolean utest = options.has("utest") || options.has("tutest");
+
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
             sources.addAll(asList(opt.split(",")));
