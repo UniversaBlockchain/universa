@@ -65,9 +65,9 @@ public class InnerContractsService {
         u.registerRole(ownerRole);
         u.createRole("owner", ownerRole);
 
-        u.getStateData().set("u", amount);
+        u.getStateData().set("transaction_units", amount);
         if(withTestU) {
-            u.getStateData().set("test_u", amount * 100);
+            u.getStateData().set("test_transaction_units", amount * 100);
         }
 
         u.addSignerKey(manufacturePrivateKey);

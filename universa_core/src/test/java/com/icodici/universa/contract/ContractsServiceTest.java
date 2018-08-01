@@ -140,8 +140,8 @@ public class ContractsServiceTest extends ContractTestBase {
         assertEquals(parcel.getPayloadContract().getStateData(), payload.getStateData());
         assertEquals(parcel.getPaymentContract().getDefinition().getData(), payment.getDefinition().getData());
 
-        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000 - 20, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 20, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         System.out.println("OK");
 
@@ -184,7 +184,7 @@ public class ContractsServiceTest extends ContractTestBase {
         u.traceErrors();
 
         assertEquals(true, u.getRole("owner").isAllowedForKeys(keys));
-        assertEquals(100, u.getStateData().getIntOrThrow("u"));
+        assertEquals(100, u.getStateData().getIntOrThrow("transaction_units"));
 
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read( "./src/test_contracts/keys/u_key.private.unikey"));
@@ -204,8 +204,8 @@ public class ContractsServiceTest extends ContractTestBase {
         u.traceErrors();
 
         assertEquals(true, u.getRole("owner").isAllowedForKeys(keys));
-        assertEquals(100, u.getStateData().getIntOrThrow("u"));
-        assertEquals(10000, u.getStateData().getIntOrThrow("test_u"));
+        assertEquals(100, u.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, u.getStateData().getIntOrThrow("test_transaction_units"));
 
 
         PrivateKey manufacturePrivateKey = new PrivateKey(Do.read( "./src/test_contracts/keys/u_key.private.unikey"));

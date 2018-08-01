@@ -311,7 +311,7 @@ public class SlotContractTest extends ContractTestBase {
         keys.add(ownerKey.getPublicKey());
         Contract stepaU = InnerContractsService.createFreshU(100000000, keys);
         Contract paymentDecreased = stepaU.createRevision(ownerKey);
-        paymentDecreased.getStateData().set("u", stepaU.getStateData().getIntOrThrow("u") - 100);
+        paymentDecreased.getStateData().set("transaction_units", stepaU.getStateData().getIntOrThrow("transaction_units") - 100);
         paymentDecreased.seal();
 
         return paymentDecreased;

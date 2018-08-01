@@ -1224,9 +1224,9 @@ public class ContractsService {
         Contract paymentDecreased = payment.createRevision(keys);
 
         if (withTestPayment) {
-            paymentDecreased.getStateData().set("test_u", payment.getStateData().getIntOrThrow("test_u") - amount);
+            paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
         } else {
-            paymentDecreased.getStateData().set("u", payment.getStateData().getIntOrThrow("u") - amount);
+            paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
         }
 
         paymentDecreased.seal();
@@ -1273,9 +1273,9 @@ public class ContractsService {
         Contract paymentDecreased = payment.createRevision(keys);
 
         if (withTestPayment) {
-            paymentDecreased.getStateData().set("test_u", payment.getStateData().getIntOrThrow("test_u") - amount);
+            paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
         } else {
-            paymentDecreased.getStateData().set("u", payment.getStateData().getIntOrThrow("u") - amount);
+            paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
         }
 
         paymentDecreased.seal();
@@ -1322,9 +1322,9 @@ public class ContractsService {
         Contract paymentDecreased = payment.createRevision(keys);
 
         if (withTestPayment) {
-            paymentDecreased.getStateData().set("test_u", payment.getStateData().getIntOrThrow("test_u") - amount);
+            paymentDecreased.getStateData().set("test_transaction_units", payment.getStateData().getIntOrThrow("test_transaction_units") - amount);
         } else {
-            paymentDecreased.getStateData().set("u", payment.getStateData().getIntOrThrow("u") - amount);
+            paymentDecreased.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
         }
 
         paymentDecreased.seal();
@@ -1332,9 +1332,9 @@ public class ContractsService {
         Contract paymentDecreasedSecond = paymentDecreased.createRevision(keys);
 
         if (withTestPayment) {
-            paymentDecreasedSecond.getStateData().set("test_u", paymentDecreased.getStateData().getIntOrThrow("test_u") - amountSecond);
+            paymentDecreasedSecond.getStateData().set("test_transaction_units", paymentDecreased.getStateData().getIntOrThrow("test_transaction_units") - amountSecond);
         } else {
-            paymentDecreasedSecond.getStateData().set("u", paymentDecreased.getStateData().getIntOrThrow("u") - amountSecond);
+            paymentDecreasedSecond.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - amountSecond);
         }
 
         paymentDecreasedSecond.seal();

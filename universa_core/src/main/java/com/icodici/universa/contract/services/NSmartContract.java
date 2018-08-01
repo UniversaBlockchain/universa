@@ -240,21 +240,21 @@ public class NSmartContract extends Contract implements NContract {
                     }
                 }
                 if (parent != null) {
-                    boolean hasTestU = nc.getStateData().get("test_u") != null;
+                    boolean hasTestU = nc.getStateData().get("test_transaction_units") != null;
                     if (hasTestU) {
                         isTestPayment = true;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("test_u")
-                                - nc.getStateData().getIntOrThrow("test_u");
+                        calculatedPayment = parent.getStateData().getIntOrThrow("test_transaction_units")
+                                - nc.getStateData().getIntOrThrow("test_transaction_units");
 
                         if (calculatedPayment <= 0) {
                             isTestPayment = false;
-                            calculatedPayment = parent.getStateData().getIntOrThrow("u")
-                                    - nc.getStateData().getIntOrThrow("u");
+                            calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
+                                    - nc.getStateData().getIntOrThrow("transaction_units");
                         }
                     } else {
                         isTestPayment = false;
-                        calculatedPayment = parent.getStateData().getIntOrThrow("u")
-                                - nc.getStateData().getIntOrThrow("u");
+                        calculatedPayment = parent.getStateData().getIntOrThrow("transaction_units")
+                                - nc.getStateData().getIntOrThrow("transaction_units");
                     }
                 }
 

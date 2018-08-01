@@ -897,25 +897,25 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     public boolean paymentCheck(Set<KeyAddress> issuerKeys) throws Quantiser.QuantiserException {
         boolean res = true;
 
-        boolean hasTestU = getStateData().get("test_u") != null;
+        boolean hasTestU = getStateData().get("test_transaction_units") != null;
 
         // Checks that there is a payment contract and the payment should be >= 1
-        int u = getStateData().getInt("u", -1);
-        int test_u = getStateData().getInt("test_u", -1);
+        int u = getStateData().getInt("transaction_units", -1);
+        int test_u = getStateData().getInt("test_transaction_units", -1);
         if (u < 0) {
             res = false;
             addError(Errors.BAD_VALUE, "u < 0");
         }
 
         // check valid name/type fields combination
-        Object o = getStateData().get("u");
+        Object o = getStateData().get("transaction_units");
         if (o == null || o.getClass() != Integer.class) {
             res = false;
             addError(Errors.BAD_VALUE, "u name/type mismatch");
         }
 
         if(hasTestU) {
-            o = getStateData().get("test_u");
+            o = getStateData().get("test_transaction_units");
             if (o == null || o.getClass() != Integer.class) {
                 res = false;
                 addError(Errors.BAD_VALUE, "test_u name/type mismatch");
@@ -935,8 +935,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 } else {
                     parent = getRevokingItem(getParent());
                 }
-                int was_u = parent.getStateData().getInt("u", -1);
-                int was_test_u = parent.getStateData().getInt("test_u", -1);
+                int was_u = parent.getStateData().getInt("transaction_units", -1);
+                int was_test_u = parent.getStateData().getInt("test_transaction_units", -1);
 
                 if (u != was_u && test_u != was_test_u) {
                     res = false;

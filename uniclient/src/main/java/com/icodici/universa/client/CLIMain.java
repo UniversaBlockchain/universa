@@ -1362,7 +1362,7 @@ public class CLIMain {
             return null;
         }
 
-        String fieldName = isTest ? "test_u" : "u";
+        String fieldName = isTest ? "test_transaction_units" : "transaction_units";
 
         int minAcceptableBalance = 0;
         HashId acceptableContractId = null;
@@ -1427,9 +1427,9 @@ public class CLIMain {
                 if(contract == null)
                     return true;
 
-                int UAmount = contract.getStateData().getInt("u",0);
+                int UAmount = contract.getStateData().getInt("transaction_units",0);
                 uBalance.addAndGet(UAmount);
-                int testUAmount = contract.getStateData().getInt("test_u",0);
+                int testUAmount = contract.getStateData().getInt("test_transaction_units",0);
 
                 //if contract is empty - remove
                 if(testUAmount  + UAmount == 0)

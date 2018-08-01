@@ -2250,7 +2250,7 @@ public class CLIMainTest {
 
 
         Contract paymentDecreased = loaded.createRevision(stepaPrivateKey);
-        paymentDecreased.getStateData().set("u", 99);
+        paymentDecreased.getStateData().set("transaction_units", 99);
 
         paymentDecreased.seal();
         Files.deleteIfExists(Paths.get(basePath + "save_and_load.unicon"));

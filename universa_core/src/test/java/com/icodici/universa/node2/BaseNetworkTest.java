@@ -3216,11 +3216,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys.iterator().next());
-        paymentDecreased.getStateData().set("u", stepaU.getStateData().getIntOrThrow("u") - 1);
+        paymentDecreased.getStateData().set("transaction_units", stepaU.getStateData().getIntOrThrow("transaction_units") - 1);
         paymentDecreased.seal();
 
         Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
-        secondPayment.getStateData().set("u", paymentDecreased.getStateData().getIntOrThrow("u") - 3);
+        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
         secondPayment.seal();
 
         stepaCoins.addNewItems(secondPayment);
@@ -3241,8 +3241,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(secondPayment.isOk());
 
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 1, paymentDecreased.getStateData().getIntOrThrow("u"));
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 4, secondPayment.getStateData().getIntOrThrow("u"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
@@ -3283,12 +3283,12 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys.iterator().next());
-        paymentDecreased.getStateData().set("u", stepaU.getStateData().getIntOrThrow("u") - 1);
+        paymentDecreased.getStateData().set("transaction_units", stepaU.getStateData().getIntOrThrow("transaction_units") - 1);
         paymentDecreased.getDefinition().getData().set("wrong_value", false);
         paymentDecreased.seal();
 
         Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
-        secondPayment.getStateData().set("u", paymentDecreased.getStateData().getIntOrThrow("u") - 3);
+        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
         secondPayment.seal();
 
         stepaCoins.addNewItems(secondPayment);
@@ -3309,8 +3309,8 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(secondPayment.isOk());
 
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 1, paymentDecreased.getStateData().getIntOrThrow("u"));
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 4, secondPayment.getStateData().getIntOrThrow("u"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
@@ -3351,11 +3351,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys.iterator().next());
-        paymentDecreased.getStateData().set("u", stepaU.getStateData().getIntOrThrow("u") - 1);
+        paymentDecreased.getStateData().set("transaction_units", stepaU.getStateData().getIntOrThrow("transaction_units") - 1);
         paymentDecreased.seal();
 
         Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
-        secondPayment.getStateData().set("u", paymentDecreased.getStateData().getIntOrThrow("u") - 3);
+        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
         secondPayment.getDefinition().getData().set("wrong_value", false);
         secondPayment.seal();
 
@@ -3377,8 +3377,8 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(parcel.getPayloadContract().isOk());
         assertFalse(secondPayment.isOk());
 
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 1, paymentDecreased.getStateData().getIntOrThrow("u"));
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 4, secondPayment.getStateData().getIntOrThrow("u"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
@@ -3419,11 +3419,11 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys.iterator().next());
-        paymentDecreased.getStateData().set("u", stepaU.getStateData().getIntOrThrow("u") - 1);
+        paymentDecreased.getStateData().set("transaction_units", stepaU.getStateData().getIntOrThrow("transaction_units") - 1);
         paymentDecreased.seal();
 
         Contract secondPayment = paymentDecreased.createRevision(stepaPrivateKeys.iterator().next());
-        secondPayment.getStateData().set("u", paymentDecreased.getStateData().getIntOrThrow("u") - 3);
+        secondPayment.getStateData().set("transaction_units", paymentDecreased.getStateData().getIntOrThrow("transaction_units") - 3);
         secondPayment.seal();
 
         stepaCoins.addNewItems(secondPayment);
@@ -3448,8 +3448,8 @@ public class BaseNetworkTest extends TestCase {
         assertFalse(parcel.getPayloadContract().isOk());
         assertTrue(secondPayment.isOk());
 
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 1, paymentDecreased.getStateData().getIntOrThrow("u"));
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 4, secondPayment.getStateData().getIntOrThrow("u"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 1, paymentDecreased.getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 4, secondPayment.getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
@@ -3499,7 +3499,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(stepaCoins.getNew().get(0).isOk());
 
-        assertEquals(stepaU.getStateData().getIntOrThrow("u") - 10, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("u"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units") - 10, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
@@ -3552,7 +3552,7 @@ public class BaseNetworkTest extends TestCase {
         assertTrue(parcel.getPayloadContract().isOk());
         assertTrue(stepaCoins.getNew().get(0).isOk());
 
-        assertEquals(stepaU.getStateData().getIntOrThrow("test_u") - 80, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("test_u"));
+        assertEquals(stepaU.getStateData().getIntOrThrow("test_transaction_units") - 80, stepaCoins.getNew().get(0).getStateData().getIntOrThrow("test_transaction_units"));
 
         System.out.println("Parcel: " + parcel.getId());
         System.out.println("Payment contract: " + parcel.getPaymentContract().getId() + " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()));
@@ -3658,8 +3658,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100 - 1 , parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100 - 1 , parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
@@ -3746,8 +3746,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
@@ -3840,8 +3840,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
@@ -3929,8 +3929,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100 - 1 , parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100 - 1 , parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
@@ -4030,8 +4030,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertFalse(parcel.getPaymentContract().isLimitedForTestnet());
@@ -4119,8 +4119,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
@@ -4225,8 +4225,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000 - processedCost, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - processedCost, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
@@ -4285,8 +4285,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
@@ -4344,8 +4344,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPaymentContract().isLimitedForTestnet());
@@ -4395,8 +4395,8 @@ public class BaseNetworkTest extends TestCase {
 
         Contract paymentDecreased = stepaU.createRevision(stepaPrivateKeys);
 
-        paymentDecreased.getStateData().set("test_u", stepaU.getStateData().getIntOrThrow("test_u") - 1);
-        paymentDecreased.getStateData().set("u", stepaU.getStateData().getIntOrThrow("u") - 1);
+        paymentDecreased.getStateData().set("test_transaction_units", stepaU.getStateData().getIntOrThrow("test_transaction_units") - 1);
+        paymentDecreased.getStateData().set("transaction_units", stepaU.getStateData().getIntOrThrow("transaction_units") - 1);
         paymentDecreased.seal();
 
         Parcel parcel = new Parcel(stepaCoins.getTransactionPack(), paymentDecreased.getTransactionPack());
@@ -4406,8 +4406,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertFalse(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
@@ -4461,8 +4461,8 @@ public class BaseNetworkTest extends TestCase {
         parcel.getPayload().getContract().check();
         parcel.getPayload().getContract().traceErrors();
 
-        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("u"));
-        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_u"));
+        assertEquals(100 - 1, parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"));
+        assertEquals(10000, parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"));
 
         assertTrue(parcel.getPaymentContract().isOk());
         assertTrue(parcel.getPayloadContract().isOk());
@@ -4587,7 +4587,7 @@ public class BaseNetworkTest extends TestCase {
 //        registerAndCheckApproved(stepaU);
 
         Contract paymentDecreased = stepaU.createRevision();
-        paymentDecreased.getStateData().set("u", stepaU.getStateData().getIntOrThrow("u") - 50);
+        paymentDecreased.getStateData().set("transaction_units", stepaU.getStateData().getIntOrThrow("transaction_units") - 50);
 
         //paymentDecreased.setIsU(true);
         paymentDecreased.seal();
@@ -7146,7 +7146,7 @@ public class BaseNetworkTest extends TestCase {
     @Test(timeout = 90000)
     public void checkPayment_zeroU() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
-        payment.getStateData().set("u", 0);
+        payment.getStateData().set("transaction_units", 0);
         boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
@@ -7157,7 +7157,7 @@ public class BaseNetworkTest extends TestCase {
     @Test(timeout = 90000)
     public void checkPayment_wrongUtype() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
-        payment.getStateData().set("u", "33");
+        payment.getStateData().set("transaction_units", "33");
         boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
@@ -7168,8 +7168,8 @@ public class BaseNetworkTest extends TestCase {
     @Test(timeout = 90000)
     public void checkPayment_wrongUname() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
-        payment.getStateData().set("u", payment.getStateData().get("u"));
-        payment.getStateData().remove("u");
+        payment.getStateData().set("transaction_units", payment.getStateData().get("transaction_units"));
+        payment.getStateData().remove("transaction_units");
         boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
@@ -7275,7 +7275,7 @@ public class BaseNetworkTest extends TestCase {
 
         Contract uContract = getApprovedUContract();
         Contract modifiedU = uContract.createRevision(stepaPrivateKeys);
-        modifiedU.getStateData().set("u", modifiedU.getStateData().getIntOrThrow("u") - 1);
+        modifiedU.getStateData().set("transaction_units", modifiedU.getStateData().getIntOrThrow("transaction_units") - 1);
         modifiedU.seal();
         // stepaPrivateKeys - is also U keys
         Parcel parcel =  ContractsService.createParcel(modifiedU, uContract, 150, stepaPrivateKeys);
@@ -7299,11 +7299,11 @@ public class BaseNetworkTest extends TestCase {
 
         // stepaPrivateKeys - is also U keys
         Contract paymentDecreased = uContract.createRevision(stepaPrivateKeys);
-        paymentDecreased.getStateData().set("u", uContract.getStateData().getIntOrThrow("u") - 5);
+        paymentDecreased.getStateData().set("transaction_units", uContract.getStateData().getIntOrThrow("transaction_units") - 5);
         paymentDecreased.seal();
 
         Contract modifiedU = paymentDecreased.createRevision(stepaPrivateKeys);
-        modifiedU.getStateData().set("u", modifiedU.getStateData().getIntOrThrow("u") - 1);
+        modifiedU.getStateData().set("transaction_units", modifiedU.getStateData().getIntOrThrow("transaction_units") - 1);
         modifiedU.seal();
 
         Parcel parcel = new Parcel(modifiedU.getTransactionPack(), paymentDecreased.getTransactionPack());

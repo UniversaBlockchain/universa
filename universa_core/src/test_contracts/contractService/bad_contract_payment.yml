@@ -114,5 +114,5 @@ state:
  # required section. any application data that could be changed.
  data:
    # this is writable section for mutable data
-   # u: 100
+   # transaction_units: 100
 

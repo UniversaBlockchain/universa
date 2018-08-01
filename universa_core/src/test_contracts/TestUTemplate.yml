@@ -60,12 +60,12 @@ definition:
       - role: owner
         min_value: 1
         max_step: -1
-        field_name: u
+        field_name: transaction_units
 
       - role: owner
         min_value: 1
         max_step: -1
-        field_name: test_u
+        field_name: test_transaction_units
 
   # required section, could be empty. Any immutable structured data issuer might need to include into the contract
   # this data will be also copied without change during any contract changes.
@@ -120,7 +120,7 @@ state:
 
   # required section. any application data that could be changed.
   data:
-    u : 100
-    test_u : 10000
+    transaction_units : 100
+    test_transaction_units : 10000
 
 
