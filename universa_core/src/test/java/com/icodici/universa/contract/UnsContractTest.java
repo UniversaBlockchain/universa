@@ -232,7 +232,7 @@ public class UnsContractTest extends ContractTestBase {
         keys.add(ownerKey.getPublicKey());
         Contract stepaU = InnerContractsService.createFreshU(100000000, keys);
         Contract paymentDecreased = stepaU.createRevision(ownerKey);
-        paymentDecreased.getStateData().set("test_transaction_units", stepaU.getStateData().getIntOrThrow("test_transaction_units") - 2000);
+        paymentDecreased.getStateData().set("transaction_units", stepaU.getStateData().getIntOrThrow("transaction_units") - 2000);
         paymentDecreased.seal();
 
         return paymentDecreased;
