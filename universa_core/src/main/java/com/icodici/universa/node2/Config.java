@@ -35,7 +35,7 @@ public class Config {
             authorizedNameServiceCenterKey = new PublicKey(Base64u.decodeCompactString("HggcAQABxAABg9ideX6A3Wk9CuwnZrakXdvhYDiIiO0HA+YWmLArcZvhhaGMrw1i1mA6S9L6NPAuhYcZzm8Mxtwr1RESyJqm+HFwU+49s0yXHhCJsXcvK23Yx7NEpIrpGkKt9OCCdBGhQkls0Yc1lBBmGYCrShMntPC9xY9DJZ4sbMuBPIUQzpnWLYgRAbZb+KuZFXAIr7hRO0rNTZ6hE5zp6oPwlQLh9hBy6CsvZD/73Cf2WtKDunHD1qKuQU/KqruqVMMv2fd6ZKo692esWsqqIAiQztg1+sArAhf0Cr8lhRf53G5rndiiQx7RDs1P9Pp1wWK9e93UL1KF4PpVx7e7SznrCHTEdw"));
 
             keysWhiteList.add(new PublicKey(Bytes.fromBase64("HggcAQABxAABxSSWfXW20wGsRn9khVZDtvcCtUqP/scN3oVPU3r0152Fu62pfx9Mjc1cmQnRYSkeZzWA50RYQTU3FlXC5iIN7w+Lm6TGPQxWe+uYGMgKLCbAmyMXPWupvzeB5SEMtylQ5ml12iwFQkamqOiFE2KWMYz/UGhW87/ELPckmpoanZUa8OGCACUfFGALAZV0G+rQ/8xiW3hkGHmOFP0kejZaCZGPO/XGVay+2q0V2cw6CHar+D9F9FomXYA4bAInlY3zOLHdG8ddUTzhHQWOKmzoF9eIW67U9rd9qIR04U9ls9wGLQchqlG/kxHHfR4Js86mwYNgUKW49fQRppig+SsrjQ==").getData())); //transactionUnitsIssuerKey
-            transactionUnitsIssuerKeys.add(new KeyAddress("ZNuBikFEZbw71QQAFkNQtjfkmxFAdMgveTVPMGrFwo9vQwwPVE"));
+            uIssuerKeys.add(new KeyAddress("ZNuBikFEZbw71QQAFkNQtjfkmxFAdMgveTVPMGrFwo9vQwwPVE"));
             addressesWhiteList.add(new KeyAddress("JguevMekFzsM8Co2bqrswrVim9c9WsNxG9thLeCcNxncBcHVsnziRjhzEbhwDnL3wj2hha6H"));
         } catch (KeyAddress.IllegalAddressException e) {
             e.printStackTrace();
@@ -72,7 +72,7 @@ public class Config {
         config.resyncTime = new ArrayList<>(resyncTime);
         config.checkItemTime = checkItemTime;
         config.maxResyncTime = maxResyncTime;
-        config.transactionUnitsIssuerKeys = new HashSet<>(transactionUnitsIssuerKeys);
+        config.uIssuerKeys = new HashSet<>(uIssuerKeys);
         config.keysWhiteList = keysWhiteList;
         config.isFreeRegistrationsLimited = isFreeRegistrationsLimited;
         config.isFreeRegistrationsAllowedFromYaml = isFreeRegistrationsAllowedFromYaml;
@@ -176,11 +176,11 @@ public class Config {
     private Boolean isFreeRegistrationsLimited = null;
     private boolean isFreeRegistrationsAllowedFromYaml = false;
 
-    public void addTransactionUnitsIssuerKeyData(KeyAddress transactionUnitsIssuerKey) {
-        this.transactionUnitsIssuerKeys.add(transactionUnitsIssuerKey);
+    public void addTransactionUnitsIssuerKeyData(KeyAddress UIssuerKey) {
+        this.uIssuerKeys.add(UIssuerKey);
     }
 
-    private Set<KeyAddress> transactionUnitsIssuerKeys = new HashSet<>();
+    private Set<KeyAddress> uIssuerKeys = new HashSet<>();
 
     public List<PublicKey> getKeysWhiteList() {
         return keysWhiteList;
@@ -219,7 +219,7 @@ public class Config {
 
     public static Duration validUntilTailTime = Duration.ofMinutes(5);
 
-    private String tuIssuerName = "Universa Reserve System";
+    private String uIssuerName = "Universa Reserve System";
 
     /**
      * num of known (approved, declined, revoked or locked) subcontracts of a complex contract that starts resync if some another contracts is unknown
@@ -356,9 +356,16 @@ public class Config {
     }
 
     public Set<KeyAddress> getUIssuerKeys() {
-        return transactionUnitsIssuerKeys;
+        return uIssuerKeys;
     }
 
+    /**
+     * @deprecated use {@link #getUIssuerKeys()} instead.
+     */
+    @Deprecated
+    public Set<KeyAddress> getTransactionUnitsIssuerKeys() {
+        return uIssuerKeys;
+    }
 
     public KeyAddress getNetworkReconfigKeyAddress() {
         return networkReconfigKeyAddress;
@@ -383,7 +390,15 @@ public class Config {
     }
 
     public String getUIssuerName() {
-        return tuIssuerName;
+        return uIssuerName;
+    }
+
+    /**
+     * @deprecated use {@link #getUIssuerName()} instead.
+     */
+    @Deprecated
+    public String getTUIssuerName() {
+        return uIssuerName;
     }
 
     public boolean updateConsensusConfig(int nodesCount) {

@@ -1044,6 +1044,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
+     * @deprecated use {@link #getProcessedCostU()} instead.
+     */
+    @Deprecated
+    public int getProcessedCostTU() {
+        return getProcessedCostU();
+    }
+
+    /**
      * All new items and self must have uniqie identication for its level, e.g. origin + revision + branch should always
      * ve different.
      */

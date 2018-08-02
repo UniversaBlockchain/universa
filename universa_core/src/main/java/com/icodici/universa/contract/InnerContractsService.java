@@ -24,7 +24,7 @@ public class InnerContractsService {
      * U contracts signs with special Universa keys and set as owner public keys from params.
      *<br><br>
      * @param amount is initial number of U that will be have an owner
-     * @param ownerKeys is public keys that will became an owner of U     *
+     * @param ownerKeys is public keys that will became an owner of U
      * @return sealed U contract; should be registered in the Universa by simplified procedure.
      * @throws IOException with exceptions while contract preparing
      */
@@ -33,6 +33,14 @@ public class InnerContractsService {
         return createFreshU(amount, ownerKeys, false);
     }
 
+    /**
+     * @deprecated use {@link #createFreshU(int, Set)} instead.
+     */
+    @Deprecated
+    public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys) throws IOException {
+
+        return createFreshTU(amount, ownerKeys, false);
+    }
 
     /**
      * Creates fresh contract in the first revision with "U".
@@ -76,6 +84,13 @@ public class InnerContractsService {
         return u;
     }
 
+    /**
+     * @deprecated use {@link #createFreshU(int, Set, boolean)} instead.
+     */
+    @Deprecated
+    public synchronized static Contract createFreshTU(int amount, Set<PublicKey> ownerKeys, boolean withTestU) throws IOException {
+        return createFreshU(amount, ownerKeys, withTestU);
+    }
 
     /**
      * Return field from given contract as Decimal if it possible.

@@ -84,5 +84,13 @@ public class ParcelNotification extends ItemNotification {
         public boolean isU() {
             return this == PAYMENT;
         }
+
+        /**
+         * @deprecated use {@link #isU()} instead.
+         */
+        @Deprecated
+        public boolean isTU() {
+            return this == PAYMENT;
+        }
     }
 }
