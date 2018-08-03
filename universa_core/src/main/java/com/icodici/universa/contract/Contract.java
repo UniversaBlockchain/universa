@@ -2986,7 +2986,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
          */
         public void setJS(byte[] jsFileContent, String jsFileName, boolean isCompressed) {
             String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
-            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, isCompressed);
             Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
             scripts.set(fileNameKey, scriptBinder);
             getData().put(JSAPI_SCRIPT_FIELD, scripts);
@@ -3107,7 +3107,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
          */
         public void setJS(byte[] jsFileContent, String jsFileName, boolean isCompressed) {
             String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
-            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, isCompressed);
             Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
             scripts.set(fileNameKey, scriptBinder);
             getData().put(JSAPI_SCRIPT_FIELD, scripts);
