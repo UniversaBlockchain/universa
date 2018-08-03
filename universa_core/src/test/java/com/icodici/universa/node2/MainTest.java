@@ -21,6 +21,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
 import com.icodici.universa.contract.jsapi.JSApiAccessor;
 import com.icodici.universa.contract.jsapi.JSApiContract;
+import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -4048,7 +4049,7 @@ public class MainTest {
         js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
         js += "rev.setStateDataField('test_value', newValue);";
         js += "result = rev";
-        contract.getDefinition().setJS(js.getBytes(), "client script.js", false);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         assertTrue(contract.check());
 
@@ -4091,7 +4092,7 @@ public class MainTest {
         js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
         js += "rev.setStateDataField('test_value', newValue);";
         js += "result = rev";
-        contract.getDefinition().setJS(js.getBytes(), "client script.js", false);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         assertTrue(contract.check());
 

@@ -13,6 +13,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.zip.Inflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -26,14 +27,14 @@ public class JSApiHelpers {
         return String.join("_", nameParts2);
     }
 
-    public static Binder createScriptBinder(byte[] jsFileContent, String jsFileName, boolean isCompressed) {
+    public static Binder createScriptBinder(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
         BiSerializer biSerializer = new BiSerializer();
         HashId scriptHashId = HashId.of(jsFileContent);
         Binder scriptBinder = new Binder();
         scriptBinder.put("file_name", jsFileName);
         scriptBinder.put("__type", "file");
         scriptBinder.put("hash_id", biSerializer.serialize(scriptHashId));
-        scriptBinder.put("compression", (isCompressed ? JSApiCompressionEnum.ZIP : JSApiCompressionEnum.RAW).toString());
+        scriptBinder.putAll(scriptParameters.toBinder());
         return scriptBinder;
     }
 
@@ -64,37 +65,24 @@ public class JSApiHelpers {
         throw new IllegalArgumentException("missing script parameter field: compression");
     }
 
-    private static String unpackJSString_fromZipBak(byte[] jsFileContent) {
-        try {
-            Inflater decompressor = new Inflater();
-            decompressor.setInput(jsFileContent);
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            byte[] buf = new byte[1024];
-            while (!decompressor.finished()) {
-                int count = decompressor.inflate(buf);
-                bos.write(buf, 0, count);
-            }
-            bos.close();
-            return new String(bos.toByteArray());
-        } catch (Exception e) {
-            throw new IllegalArgumentException("unable to unzip client javascript: " + e);
-        }
-    }
-
     private static String unpackJSString_fromZip(byte[] jsFileContent) {
         try {
             ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(jsFileContent));
             ZipEntry ze = zis.getNextEntry();
             ByteArrayOutputStream scriptBytes = new ByteArrayOutputStream();
-            byte[] buf = new byte[10];
+            byte[] buf = new byte[1024];
             if (ze != null) {
                 int count;
                 while ((count = zis.read(buf)) >= 0)
                     scriptBytes.write(buf, 0, count);
+            } else {
+                throw new IllegalArgumentException("unable to unzip client javascript");
             }
             zis.closeEntry();
             zis.close();
             return new String(scriptBytes.toByteArray());
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new IllegalArgumentException("unable to unzip client javascript: " + e);
         }
@@ -102,12 +90,13 @@ public class JSApiHelpers {
 
     public static Object execJS(Binder definitionScripts, Binder stateScripts, byte[] jsFileContent,
             Contract currentContract, String... params)
-            throws ScriptException, IllegalArgumentException {
+            throws ScriptException, IllegalArgumentException, InterruptedException {
         HashId jsFileHashId = HashId.of(jsFileContent);
         Binder scriptBinder = JSApiHelpers.findScriptBinder(definitionScripts, jsFileHashId);
         if (scriptBinder == null)
             scriptBinder = JSApiHelpers.findScriptBinder(stateScripts, jsFileHashId);
         if (scriptBinder != null) {
+            JSApiScriptParameters scriptParameters = JSApiScriptParameters.fromBinder(scriptBinder);
             ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
             jse.put("jsApi", new JSApi(currentContract));
             String[] stringParams = new String[params.length];
@@ -115,7 +104,33 @@ public class JSApiHelpers {
                 stringParams[i] = params[i].toString();
             jse.put("jsApiParams", stringParams);
             String jsString = unpackJSString(scriptBinder, jsFileContent);
-            jse.eval(jsString);
+            List<Exception> exceptionsFromEval = new ArrayList<>();
+            Thread evalThread = new Thread(()-> {
+                try {
+                    jse.eval(jsString);
+                } catch (Exception e) {
+                    exceptionsFromEval.add(e);
+                }
+            });
+            evalThread.start();
+            if (scriptParameters.timeLimitMillis == 0) {
+                evalThread.join();
+            } else {
+                try {
+                    evalThread.join(scriptParameters.timeLimitMillis);
+                    if (evalThread.isAlive())
+                        throw new InterruptedException("error: client javascript time limit is up (limit=" + scriptParameters.timeLimitMillis + "ms)");
+                } catch (InterruptedException e) {
+                    throw new InterruptedException("error: client javascript was interrupted (limit=" + scriptParameters.timeLimitMillis + "ms)");
+                }
+            }
+            if (exceptionsFromEval.size() > 0) {
+                Exception e = exceptionsFromEval.get(0);
+                if (e instanceof ScriptException)
+                    throw (ScriptException)e;
+                else if (e instanceof ClassCastException)
+                    throw (ClassCastException)e;
+            }
             return jse.get("result");
         } else {
             throw new IllegalArgumentException("error: cant exec javascript, script hash not found in contract.");

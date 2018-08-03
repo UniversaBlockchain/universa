@@ -4,6 +4,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.jsapi.JSApiCompressionEnum;
 import com.icodici.universa.contract.jsapi.JSApiHelpers;
+import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.node.network.TestKeys;
 import jdk.nashorn.api.scripting.ClassFilter;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
@@ -286,7 +287,7 @@ public class ScriptEngineTest {
         js += "print('call currentContract.setOwner()...');";
         js += "currentContract.setOwner(['ZastWpWNPMqvVJAMocsMUTJg45i8LoC5Msmr7Lt9EaJJRwV2xV', 'a1sxhjdtGhNeji8SWJNPkwV5m6dgWfrQBnhiAxbQwZT6Y5FsXD']);";
         js += "print('currentContract.getOwner(): ' + currentContract.getOwner());";
-        contract.getDefinition().setJS(js.getBytes(), "client script.js", false);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         contract.execJS(js.getBytes());
     }
@@ -297,7 +298,7 @@ public class ScriptEngineTest {
         String js = "";
         js += "print('jsApiParams.length: ' + jsApiParams.length);";
         js += "result = jsApiParams.length;";
-        contract.getDefinition().setJS(js.getBytes(), "client script.js", false);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         assertEquals(0, contract.execJS(js.getBytes()));
     }
@@ -308,7 +309,7 @@ public class ScriptEngineTest {
         String js = "";
         js += "print('jsApiParams.length: ' + jsApiParams.length);";
         js += "result = [jsApiParams.length, jsApiParams[0], jsApiParams[1]];";
-        contract.getDefinition().setJS(js.getBytes(), "client script.js", false);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         ScriptObjectMirror res = (ScriptObjectMirror) contract.execJS(js.getBytes(), "prm1", "prm2");
         assertEquals(2, res.get("0"));
@@ -327,8 +328,8 @@ public class ScriptEngineTest {
         js2 += "var c = jsApi.getCurrentContract();";
         js2 += "var rc = c.extractContract(null);";
         js2 += "print('extractContract: ' + rc);";
-        contract.getState().setJS(js1.getBytes(), "client script 1.js", false);
-        contract.getState().setJS(js2.getBytes(), "client script 2.js", false);
+        contract.getState().setJS(js1.getBytes(), "client script 1.js", new JSApiScriptParameters());
+        contract.getState().setJS(js2.getBytes(), "client script 2.js", new JSApiScriptParameters());
         contract.seal();
         contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
         try {
@@ -354,10 +355,10 @@ public class ScriptEngineTest {
         String js2d = "var result = 'return_from_script_2d';";
         String js1s = "var result = 'return_from_script_1s';";
         String js2s = "var result = 'return_from_script_2s';";
-        contract.getDefinition().setJS(js1d.getBytes(), "js1d.js", false);
-        contract.getDefinition().setJS(js2d.getBytes(), "js2d.js", false);
-        contract.getState().setJS(js1s.getBytes(), "js1s.js", false);
-        contract.getState().setJS(js2s.getBytes(), "js2s.js", false);
+        contract.getDefinition().setJS(js1d.getBytes(), "js1d.js", new JSApiScriptParameters());
+        contract.getDefinition().setJS(js2d.getBytes(), "js2d.js", new JSApiScriptParameters());
+        contract.getState().setJS(js1s.getBytes(), "js1s.js", new JSApiScriptParameters());
+        contract.getState().setJS(js2s.getBytes(), "js2s.js", new JSApiScriptParameters());
         contract.seal();
         assertEquals("return_from_script_1d", contract.execJS(js1d.getBytes()));
         assertEquals("return_from_script_2d", contract.execJS(js2d.getBytes()));
@@ -386,7 +387,7 @@ public class ScriptEngineTest {
         Contract contract = new Contract(TestKeys.privateKey(0));
         contract.getStateData().set("some_value", HashId.createRandom().toBase64String());
         contract.getStateData().set("some_hash_id", HashId.createRandom());
-        contract.getDefinition().setJS(Base64.decodeLines(scriptDump), fileName, false);
+        contract.getDefinition().setJS(Base64.decodeLines(scriptDump), fileName, new JSApiScriptParameters());
         contract.seal();
         String res = (String)contract.execJS(Base64.decodeLines(scriptDump), "3", "6");
         System.out.println("res: " + res);
@@ -403,7 +404,9 @@ public class ScriptEngineTest {
         Contract contract = new Contract(TestKeys.privateKey(0));
         contract.getStateData().set("some_value", HashId.createRandom().toBase64String());
         contract.getStateData().set("some_hash_id", HashId.createRandom());
-        contract.getDefinition().setJS(Base64.decodeLines(scriptDump), fileName, true);
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.isCompressed = true;
+        contract.getDefinition().setJS(Base64.decodeLines(scriptDump), fileName, scriptParameters);
         contract.seal();
         String res = (String)contract.execJS(Base64.decodeLines(scriptDump), "3", "6");
         System.out.println("res: " + res);
@@ -411,6 +414,29 @@ public class ScriptEngineTest {
         String compression = contract.getDefinition().getData().getOrThrow("scripts", JSApiHelpers.fileName2fileKey(fileName), "compression");
         System.out.println("compression: " + compression);
         assertEquals(JSApiCompressionEnum.ZIP, JSApiCompressionEnum.valueOf(compression));
+    }
+
+    @Test
+    public void jsApiTimeLimit() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "function hardWork(ms) {";
+        js += "  var unixtime_ms = new Date().getTime();";
+        js += "  while(new Date().getTime() < unixtime_ms + ms) {}";
+        js += "}";
+        js += "print('jsApiTimeLimit');";
+        js += "print('start hardWork...');";
+        js += "hardWork(10000);";
+        js += "print('hardWork time is up');";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.timeLimitMillis= 2000;
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        try {
+            contract.execJS(js.getBytes());
+        } catch (InterruptedException e) {
+            System.out.println("InterruptedException: " + e);
+        }
     }
 
 }

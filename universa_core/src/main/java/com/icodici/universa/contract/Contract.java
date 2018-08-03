@@ -11,6 +11,7 @@ import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.jsapi.JSApi;
 import com.icodici.universa.contract.jsapi.JSApiHelpers;
+import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -2984,9 +2985,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         /**
          * Saves client's javascript in contract's state. It can be executed with {@link Contract#execJS(String...)}
          */
-        public void setJS(byte[] jsFileContent, String jsFileName, boolean isCompressed) {
+        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
             String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
-            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, isCompressed);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, scriptParameters);
             Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
             scripts.set(fileNameKey, scriptBinder);
             getData().put(JSAPI_SCRIPT_FIELD, scripts);
@@ -3105,9 +3106,9 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         /**
          * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(byte[], String...)}
          */
-        public void setJS(byte[] jsFileContent, String jsFileName, boolean isCompressed) {
+        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
             String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
-            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, isCompressed);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, scriptParameters);
             Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
             scripts.set(fileNameKey, scriptBinder);
             getData().put(JSAPI_SCRIPT_FIELD, scripts);
@@ -3481,7 +3482,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws ScriptException if javascript throws some errors
      * @throws IllegalArgumentException if javascript is not defined in contract's definition
      */
-    public Object execJS(byte[] jsFileContent, String... params) throws ScriptException, IllegalArgumentException {
+    public Object execJS(byte[] jsFileContent, String... params) throws ScriptException, IllegalArgumentException, InterruptedException {
         return JSApiHelpers.execJS(
                 getDefinition().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
                 getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
