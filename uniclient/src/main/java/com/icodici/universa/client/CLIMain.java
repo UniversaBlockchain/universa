@@ -1279,13 +1279,20 @@ public class CLIMain {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("register"));
 
         String uSource = (String) options.valueOf("u");
-        if (uSource == null)
+        if (uSource == null) {
             uSource = (String) options.valueOf("tu");
+            if (uSource != null)
+                // deprecate warning
+                System.out.println("WARNING: Deprecated. Use -u instead.");
+        }
 
         int uAmount = (int) options.valueOf("amount");
         int uAmountStorage = (int) options.valueOf("amount-storage");
 
         boolean utest = options.has("utest") || options.has("tutest");
+        if (options.has("tutest"))
+            System.out.println("WARNING: Deprecated. Use -utest instead.");
+
 
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
@@ -1666,13 +1673,19 @@ public class CLIMain {
         List<String> names = (List) options.valuesOf("output");
 
         String uSource = (String) options.valueOf("u");
-        if (uSource == null)
+        if (uSource == null) {
             uSource = (String) options.valueOf("tu");
+            if (uSource != null)
+                // deprecate warning
+                System.out.println("WARNING: Deprecated. Use -u instead.");
+        }
 
         int uAmount = (int) options.valueOf("amount");
         int uAmountStorage = (int) options.valueOf("amount-storage");
 
         boolean utest = options.has("utest") || options.has("tutest");
+        if (options.has("tutest"))
+            System.out.println("WARNING: Deprecated. Use -utest instead.");
 
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
@@ -1878,12 +1891,18 @@ public class CLIMain {
         List<String> sources = new ArrayList<String>((List) options.valuesOf("revoke"));
 
         String uSource = (String) options.valueOf("u");
-        if (uSource == null)
+        if (uSource == null) {
             uSource = (String) options.valueOf("tu");
+            if (uSource != null)
+                // deprecate warning
+                System.out.println("WARNING: Deprecated. Use -u instead.");
+        }
 
         int uAmount = (int) options.valueOf("amount");
 
         boolean utest = options.has("utest") || options.has("tutest");
+        if (options.has("tutest"))
+            System.out.println("WARNING: Deprecated. Use -utest instead.");
 
         List<String> nonOptions = new ArrayList<String>((List) options.nonOptionArguments());
         for (String opt : nonOptions) {
@@ -2367,6 +2386,10 @@ public class CLIMain {
         if (options.has("pretty")) {
             sources.remove("-pretty");
             sources.remove("--pretty");
+        }
+        if (options.has("tutest")) {
+            sources.remove("-tutest");
+            sources.remove("--tutest");
         }
         if (options.has("utest")) {
             sources.remove("-utest");
