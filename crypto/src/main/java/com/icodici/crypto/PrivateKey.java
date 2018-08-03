@@ -7,6 +7,7 @@
 
 package com.icodici.crypto;
 
+import com.icodici.crypto.digest.Crc32;
 import com.icodici.crypto.digest.Digest;
 import com.icodici.crypto.rsaoaep.RSAOAEPPrivateKey;
 import net.sergeych.biserializer.BiDeserializer;
@@ -18,6 +19,7 @@ import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
+import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.IOException;
@@ -56,8 +58,11 @@ public class PrivateKey extends AbstractKey {
                 error.printStackTrace();
                 throw new EncryptionError("failed to parse private key", error);
             }
-        } else
+        } else if ((Integer) parts.get(0) == 1) {
+            throw new PasswordProtectedException("key is password protected");
+        } else {
             throw new EncryptionError("Bad or unknown private key type");
+        }
     }
 
     public PrivateKey(int bitStrength) {
@@ -168,5 +173,69 @@ public class PrivateKey extends AbstractKey {
                 return "RSAPrivateKey";
             }
         });
+    }
+
+    private static int getKDFRounds() {
+        return Ut.isJUnitTest() ? 250 : 100000;
+    }
+
+    public byte[] packWithPassword(String password) throws EncryptionError {
+        byte[] packedKey = pack();
+        byte[] salt = getClass().getCanonicalName().getBytes();
+        int rounds = getKDFRounds();
+        KeyInfo.PRF function = KeyInfo.PRF.HMAC_SHA256;
+        SymmetricKey key = new KeyInfo(function, rounds, salt, null)
+                .derivePassword(password);
+
+        byte[] packedEncryptedKey = key.encrypt(packedKey);
+
+        return Boss.dumpToArray(new Object[]{
+                1,
+                rounds,
+                salt,
+                function.name(),
+                packedEncryptedKey,
+                new Crc32().update(packedKey).digest()
+        });
+    }
+
+    public static PrivateKey unpackWithPassword(byte[] packedBinary, String password) throws EncryptionError {
+        List params = Boss.load(packedBinary);
+        if((Integer) params.get(0) == 0) {
+            return new PrivateKey(packedBinary);
+        } else if((Integer) params.get(0) == 1) {
+            try {
+                int rounds = (int) params.get(1);
+                Bytes salt = (Bytes) params.get(2);
+                String function = (String) params.get(3);
+                Bytes packedEncryptedKey = (Bytes) params.get(4);
+                Bytes digest = (Bytes) params.get(5);
+                SymmetricKey key = new KeyInfo(KeyInfo.PRF.valueOf(function), rounds, salt.getData(), null)
+                        .derivePassword(password);
+                byte[] packedKey = key.decrypt(packedEncryptedKey.getData());
+                byte[] resDigest = new Crc32().update(packedKey).digest();
+
+                if(!digest.equals(new Bytes(resDigest))) {
+                    throw new PasswordProtectedException("wrong password");
+                }
+
+                return new PrivateKey(packedKey);
+            } catch (Exception e) {
+                if(e instanceof PasswordProtectedException)
+                    throw e;
+
+                throw new EncryptionError("failed to parse password protected private key",e);
+            }
+
+        } else {
+            throw new EncryptionError("Bad or unknown private key type");
+        }
+    }
+
+    public static class PasswordProtectedException extends EncryptionError {
+
+        public PasswordProtectedException(String message) {
+            super(message);
+        }
     }
 }

@@ -11,6 +11,8 @@ import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
 import org.junit.Test;
 
+import java.util.UUID;
+
 import static org.junit.Assert.*;
 
 /**
@@ -63,6 +65,36 @@ public class PrivateKeyTest {
         assertTrue(publicKey.verify(plainText, signature512, HashType.SHA512));
         assertFalse(publicKey.verify(plainText, signature512, HashType.SHA256));
         assertFalse(publicKey.verify(plainText+"tampered", signature512, HashType.SHA512));
+    }
+
+
+    @Test
+    public void passwordProtectedKeyTest() throws Exception {
+        PrivateKey key = TestKeys.privateKey(3);
+        String password = UUID.randomUUID().toString();
+        byte[] packed = key.pack();
+        byte[] packedWithPassword = key.packWithPassword(password);
+
+        //try unpack password protected
+        try {
+            new PrivateKey(packedWithPassword);
+            fail("exception expected");
+        } catch (PrivateKey.PasswordProtectedException e) {
+            assertEquals(e.getMessage(),"key is password protected");
+        }
+
+        //try unpack password with wrong password
+        try {
+            PrivateKey.unpackWithPassword(packedWithPassword,UUID.randomUUID().toString());
+            fail("exception expected");
+        } catch (PrivateKey.PasswordProtectedException e) {
+            assertEquals(e.getMessage(),"wrong password");
+        }
+
+        //try unpack plain key with password
+        assertEquals(PrivateKey.unpackWithPassword(packed,UUID.randomUUID().toString()),key);
+
+        assertEquals(PrivateKey.unpackWithPassword(packedWithPassword,password),key);
     }
 
     static String plainText = "FUBAR means Fucked Up Beyoud All Recognition";
