@@ -429,13 +429,15 @@ public class ScriptEngineTest {
         js += "hardWork(10000);";
         js += "print('hardWork time is up');";
         JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
-        scriptParameters.timeLimitMillis= 2000;
+        scriptParameters.timeLimitMillis= 500;
         contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
         contract.seal();
         try {
             contract.execJS(js.getBytes());
+            assert false;
         } catch (InterruptedException e) {
             System.out.println("InterruptedException: " + e);
+            assert true;
         }
     }
 
