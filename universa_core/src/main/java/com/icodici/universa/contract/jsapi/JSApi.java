@@ -1,6 +1,7 @@
 package com.icodici.universa.contract.jsapi;
 
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.jsapi.roles.JSApiRoleBuilder;
 
 /**
  * Implements js-api, that provided to client's javascript.
@@ -15,6 +16,10 @@ public class JSApi {
 
     public JSApiContract getCurrentContract() {
         return new JSApiContract(this.currentContract);
+    }
+
+    public JSApiRoleBuilder getRoleBuilder() {
+        return new JSApiRoleBuilder();
     }
 
 }

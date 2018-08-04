@@ -1,5 +1,6 @@
 package com.icodici.universa.node2;
 
+import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.jsapi.JSApiCompressionEnum;
@@ -24,9 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class ScriptEngineTest {
 
@@ -439,6 +438,28 @@ public class ScriptEngineTest {
             System.out.println("InterruptedException: " + e);
             assert true;
         }
+    }
+
+    @Test
+    public void testSimpleRole() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSimpleRole');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        js += "result = simpleRole.getAllAddresses();";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        List<String> res = (List<String>)contract.execJS(js.getBytes());
+        assertTrue(res.contains(k0.toString()));
+        assertTrue(res.contains(k1.toString()));
+        assertTrue(res.contains(k2.toString()));
+        assertFalse(res.contains(k3.toString()));
     }
 
 }

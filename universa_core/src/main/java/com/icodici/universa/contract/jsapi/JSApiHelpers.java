@@ -90,7 +90,7 @@ public class JSApiHelpers {
 
     public static Object execJS(Binder definitionScripts, Binder stateScripts, byte[] jsFileContent,
             Contract currentContract, String... params)
-            throws ScriptException, IllegalArgumentException, InterruptedException {
+            throws Exception {
         HashId jsFileHashId = HashId.of(jsFileContent);
         Binder scriptBinder = JSApiHelpers.findScriptBinder(definitionScripts, jsFileHashId);
         if (scriptBinder == null)
@@ -126,10 +126,11 @@ public class JSApiHelpers {
             }
             if (exceptionsFromEval.size() > 0) {
                 Exception e = exceptionsFromEval.get(0);
-                if (e instanceof ScriptException)
-                    throw (ScriptException)e;
-                else if (e instanceof ClassCastException)
-                    throw (ClassCastException)e;
+                throw e;
+//                if (e instanceof ScriptException)
+//                    throw (ScriptException)e;
+//                else if (e instanceof ClassCastException)
+//                    throw (ClassCastException)e;
             }
             return jse.get("result");
         } else {

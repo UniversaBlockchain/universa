@@ -3482,7 +3482,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws ScriptException if javascript throws some errors
      * @throws IllegalArgumentException if javascript is not defined in contract's definition
      */
-    public Object execJS(byte[] jsFileContent, String... params) throws ScriptException, IllegalArgumentException, InterruptedException {
+    public Object execJS(byte[] jsFileContent, String... params) throws Exception {
         return JSApiHelpers.execJS(
                 getDefinition().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
                 getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
@@ -3490,22 +3490,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 this,
                 params
         );
-
-//        HashId jsFileHashId = HashId.of(jsFileContent);
-//        JSApiHelpers.findScriptBinder(getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null), jsFileHashId);
-//        String js = getDefinition().getData().getString(JSAPI_SCRIPT_FIELD, null);
-//        if (js != null) {
-//            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
-//            jse.put("jsApi", new JSApi(this));
-//            String[] stringParams = new String[params.length];
-//            for (int i = 0; i < params.length; ++i)
-//                stringParams[i] = params[i].toString();
-//            jse.put("jsApiParams", stringParams);
-//            jse.eval(js);
-//            return jse.get("result");
-//        } else {
-//            throw new IllegalArgumentException("error: cant exec javascript, definition.data." + JSAPI_SCRIPT_FIELD + " is empty");
-//        }
     }
 
     static {
