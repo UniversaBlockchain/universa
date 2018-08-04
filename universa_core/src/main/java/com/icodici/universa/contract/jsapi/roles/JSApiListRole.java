@@ -7,10 +7,10 @@ import com.icodici.universa.contract.roles.Role;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JSApiListRole {
+public class JSApiListRole extends JSApiRole {
     private ListRole listRole;
 
-    public JSApiListRole(String name, String mode, JSApiSimpleRole... roles) {
+    public JSApiListRole(String name, String mode, JSApiRole... roles) {
         List<Role> listRoles = new ArrayList<>();
         for (int i = 0; i < roles.length; ++i)
             listRoles.add(roles[i].extractRole(new JSApiAccessor()));
@@ -21,8 +21,15 @@ public class JSApiListRole {
         listRole.setQuorum(quorum);
     }
 
+    @Override
     public List<String> getAllAddresses() {
         return listRole.getAllAddresses();
+    }
+
+    @Override
+    public Role extractRole(JSApiAccessor apiAccessor) {
+        JSApiAccessor.checkApiAccessor(apiAccessor);
+        return listRole;
     }
 
     private static ListRole.Mode modeStringToEnum(String mode) {
