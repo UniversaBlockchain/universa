@@ -462,4 +462,32 @@ public class ScriptEngineTest {
         assertFalse(res.contains(k3.toString()));
     }
 
+    @Test
+    public void testListRole() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSimpleRole');";
+        js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
+        js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
+        js += "print('simpleRole0: ' + simpleRole0.getAllAddresses());";
+        js += "print('simpleRole1: ' + simpleRole1.getAllAddresses());";
+        js += "print('simpleRole2: ' + simpleRole2.getAllAddresses());";
+        js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole0, simpleRole1, simpleRole2);";
+        js += "print('listRole: ' + listRole.getAllAddresses());";
+        js += "result = listRole.getAllAddresses();";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        List<String> res = (List<String>)contract.execJS(js.getBytes());
+        assertTrue(res.contains(k0.toString()));
+        assertTrue(res.contains(k1.toString()));
+        assertTrue(res.contains(k2.toString()));
+        assertFalse(res.contains(k3.toString()));
+    }
+
 }

@@ -78,9 +78,8 @@ public class JSApiContract {
     /**
      * Extracts instance of {@link Contract} from instance of {@link JSApiContract}.
      */
-    public Contract extractContract(JSApiAccessor accessor) throws IllegalArgumentException {
-        if (accessor == null)
-            throw new ClassCastException("restricted_method");
+    public Contract extractContract(JSApiAccessor apiAccessor) throws IllegalArgumentException {
+        JSApiAccessor.checkApiAccessor(apiAccessor);
         return currentContract;
     }
 }

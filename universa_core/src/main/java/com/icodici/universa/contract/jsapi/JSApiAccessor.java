@@ -6,4 +6,8 @@ package com.icodici.universa.contract.jsapi;
  * E.g.: {@link JSApiContract#extractContract(JSApiAccessor)}
  */
 public class JSApiAccessor {
+    public static void checkApiAccessor(JSApiAccessor apiAccessor) {
+        if (apiAccessor == null)
+            throw new ClassCastException("restricted_method");
+    }
 }

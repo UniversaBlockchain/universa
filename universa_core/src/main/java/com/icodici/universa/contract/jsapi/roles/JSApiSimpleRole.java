@@ -1,6 +1,8 @@
 package com.icodici.universa.contract.jsapi.roles;
 
 import com.icodici.crypto.KeyAddress;
+import com.icodici.universa.contract.jsapi.JSApiAccessor;
+import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 
 import java.util.ArrayList;
@@ -19,5 +21,10 @@ public class JSApiSimpleRole {
 
     public List<String> getAllAddresses() {
         return simpleRole.getAllAddresses();
+    }
+
+    public Role extractRole(JSApiAccessor apiAccessor) {
+        JSApiAccessor.checkApiAccessor(apiAccessor);
+        return simpleRole;
     }
 }
