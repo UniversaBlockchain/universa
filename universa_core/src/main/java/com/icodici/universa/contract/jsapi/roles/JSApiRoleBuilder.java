@@ -12,4 +12,8 @@ public class JSApiRoleBuilder {
         return new JSApiListRole(name, mode, roles);
     }
 
+    public JSApiRoleLink createRoleLink(String newRoleName, String existingRoleName) throws KeyAddress.IllegalAddressException {
+        return new JSApiRoleLink(newRoleName, existingRoleName);
+    }
+
 }

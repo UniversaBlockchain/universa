@@ -470,7 +470,7 @@ public class ScriptEngineTest {
         KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
-        js += "print('testSimpleRole');";
+        js += "print('testSimpleRoleCheck');";
         js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
         js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
         js += "var check0 = simpleRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"');";
@@ -494,7 +494,7 @@ public class ScriptEngineTest {
         KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
-        js += "print('testSimpleRole');";
+        js += "print('testListRole');";
         js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
         js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
         js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
@@ -522,7 +522,7 @@ public class ScriptEngineTest {
         KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
-        js += "print('testSimpleRole');";
+        js += "print('testListRoleCheckAll');";
         js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
         js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
         js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
@@ -555,7 +555,7 @@ public class ScriptEngineTest {
         KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
-        js += "print('testSimpleRole');";
+        js += "print('testListRoleCheckAny');";
         js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
         js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
         js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
@@ -597,7 +597,7 @@ public class ScriptEngineTest {
         KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
-        js += "print('testSimpleRole');";
+        js += "print('testListRoleCheckQuorum');";
         js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
         js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
         js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
@@ -642,6 +642,53 @@ public class ScriptEngineTest {
         assertTrue((boolean)res.get("6"));
         assertTrue((boolean)res.get("7"));
         assertFalse((boolean)res.get("8"));
+    }
+
+    @Test
+    public void testRoleLink() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testRoleLink');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('k1', '"+k1.toString()+"');";
+        js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('k2', '"+k2.toString()+"');";
+        js += "var listRole = jsApi.getRoleBuilder().createListRole('issuer', 'all', simpleRole1, simpleRole2);";
+        js += "var roleLink0 = jsApi.getRoleBuilder().createRoleLink('link0', 'owner');";
+        js += "var roleLink1 = jsApi.getRoleBuilder().createRoleLink('link1', 'link0');";
+        js += "var roleLink2 = jsApi.getRoleBuilder().createRoleLink('link2', 'issuer');";
+        js += "var roleLink3 = jsApi.getRoleBuilder().createRoleLink('link3', 'link2');";
+        js += "jsApi.getCurrentContract().registerRole(simpleRole);";
+        js += "jsApi.getCurrentContract().registerRole(listRole);";
+        js += "jsApi.getCurrentContract().registerRole(roleLink0);";
+        js += "jsApi.getCurrentContract().registerRole(roleLink1);";
+        js += "jsApi.getCurrentContract().registerRole(roleLink2);";
+        js += "jsApi.getCurrentContract().registerRole(roleLink3);";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        js += "print('listRole: ' + listRole.getAllAddresses());";
+        js += "print('roleLink0: ' + roleLink0.getAllAddresses());";
+        js += "print('roleLink1: ' + roleLink1.getAllAddresses());";
+        js += "print('roleLink2: ' + roleLink2.getAllAddresses());";
+        js += "print('roleLink3: ' + roleLink3.getAllAddresses());";
+        js += "var check0 = roleLink0.isAllowedForAddresses('"+k0.toString()+"');";
+        js += "var check1 = roleLink1.isAllowedForAddresses('"+k1.toString()+"');";
+        js += "var check2 = roleLink2.isAllowedForAddresses('"+k2.toString()+"');";
+        js += "var check3 = roleLink2.isAllowedForAddresses('"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "print('check0: ' + check0);";
+        js += "print('check1: ' + check1);";
+        js += "print('check2: ' + check2);";
+        js += "print('check3: ' + check3);";
+        js += "result = [check0, check1, check2, check3];";
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(js.getBytes());
+        assertTrue((boolean)res.get("0"));
+        assertFalse((boolean)res.get("1"));
+        assertFalse((boolean)res.get("2"));
+        assertTrue((boolean)res.get("3"));
     }
 
 }

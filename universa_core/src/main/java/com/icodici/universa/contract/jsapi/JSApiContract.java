@@ -2,6 +2,7 @@ package com.icodici.universa.contract.jsapi;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.jsapi.roles.JSApiRole;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +70,10 @@ public class JSApiContract {
         for (String s : addresses)
             addressesList.add(new KeyAddress(s));
         this.currentContract.setOwnerKeys(addressesList);
+    }
+
+    public void registerRole(JSApiRole role) {
+        this.currentContract.registerRole(role.extractRole(new JSApiAccessor()));
     }
 
     public JSApiContract createRevision() {
