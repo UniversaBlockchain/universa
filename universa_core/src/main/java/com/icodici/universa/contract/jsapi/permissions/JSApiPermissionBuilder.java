@@ -33,4 +33,8 @@ public class JSApiPermissionBuilder {
         throw new IllegalArgumentException("createModifyDataPermission error: wrong params");
     }
 
+    public JSApiRevokePermission createRevokePermission(JSApiRole role) {
+        return new JSApiRevokePermission(role);
+    }
+
 }

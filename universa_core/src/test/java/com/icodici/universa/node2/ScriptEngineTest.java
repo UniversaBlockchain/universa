@@ -823,4 +823,25 @@ public class ScriptEngineTest {
         assertEquals(field.get(sample), field.get(changeOwnerPermission));
     }
 
+    @Test
+    public void testRevokePermission() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testRevokePermission');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var revokePermission = jsApi.getPermissionBuilder().createRevokePermission(simpleRole);";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        js += "result = revokePermission;";
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        JSApiPermission res = (JSApiPermission) contract.execJS(js.getBytes());
+        RevokePermission revokePermission = (RevokePermission)res.extractPermission(new JSApiAccessor());
+        RevokePermission sample = new RevokePermission(new SimpleRole("test"));
+
+        Field field = Permission.class.getDeclaredField("name");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(revokePermission));
+    }
+
 }

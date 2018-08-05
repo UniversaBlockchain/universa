@@ -2,21 +2,21 @@ package com.icodici.universa.contract.jsapi.permissions;
 
 import com.icodici.universa.contract.jsapi.JSApiAccessor;
 import com.icodici.universa.contract.jsapi.roles.JSApiRole;
-import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
 import com.icodici.universa.contract.permissions.Permission;
+import com.icodici.universa.contract.permissions.RevokePermission;
 
-public class JSApiChangeOwnerPermission extends JSApiPermission {
+public class JSApiRevokePermission extends JSApiPermission {
 
-    private ChangeOwnerPermission changeOwnerPermission;
+    private RevokePermission revokePermission;
 
-    public JSApiChangeOwnerPermission(JSApiRole role) {
-        changeOwnerPermission = new ChangeOwnerPermission(role.extractRole(new JSApiAccessor()));
+    public JSApiRevokePermission(JSApiRole role) {
+        revokePermission = new RevokePermission(role.extractRole(new JSApiAccessor()));
     }
 
     @Override
     public Permission extractPermission(JSApiAccessor apiAccessor) {
         JSApiAccessor.checkApiAccessor(apiAccessor);
-        return changeOwnerPermission;
+        return revokePermission;
     }
 
 }
