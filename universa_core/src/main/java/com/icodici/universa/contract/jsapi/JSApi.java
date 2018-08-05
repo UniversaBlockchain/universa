@@ -1,6 +1,7 @@
 package com.icodici.universa.contract.jsapi;
 
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.jsapi.permissions.JSApiPermissionBuilder;
 import com.icodici.universa.contract.jsapi.roles.JSApiRoleBuilder;
 
 /**
@@ -20,6 +21,10 @@ public class JSApi {
 
     public JSApiRoleBuilder getRoleBuilder() {
         return new JSApiRoleBuilder();
+    }
+
+    public JSApiPermissionBuilder getPermissionBuilder() {
+        return new JSApiPermissionBuilder();
     }
 
 }

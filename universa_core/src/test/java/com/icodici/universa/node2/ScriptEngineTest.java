@@ -3,13 +3,18 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.jsapi.JSApiAccessor;
 import com.icodici.universa.contract.jsapi.JSApiCompressionEnum;
 import com.icodici.universa.contract.jsapi.JSApiHelpers;
 import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
+import com.icodici.universa.contract.jsapi.permissions.JSApiSplitJoinPermission;
+import com.icodici.universa.contract.permissions.SplitJoinPermission;
+import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
 import jdk.nashorn.api.scripting.ClassFilter;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
+import net.sergeych.tools.Binder;
 import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
 import org.junit.Test;
@@ -18,6 +23,7 @@ import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -689,6 +695,42 @@ public class ScriptEngineTest {
         assertFalse((boolean)res.get("1"));
         assertFalse((boolean)res.get("2"));
         assertTrue((boolean)res.get("3"));
+    }
+
+    @Test
+    public void testSplitJoinPermission() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSplitJoinPermission');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var splitJoinPermission = jsApi.getPermissionBuilder().createSplitJoinPermission(simpleRole, " +
+                "{field_name: 'testval', min_value: 33, min_unit: 1e-7, join_match_fields: ['state.origin']}" +
+                ");";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        js += "result = splitJoinPermission;";
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        JSApiSplitJoinPermission res = (JSApiSplitJoinPermission)contract.execJS(js.getBytes());
+        SplitJoinPermission splitJoinPermission = res.extractPermission(new JSApiAccessor());
+        SplitJoinPermission sample = new SplitJoinPermission(new SimpleRole("test"), Binder.of(
+                "field_name", "testval", "min_value", 33, "min_unit", 1e-7));
+
+        Field field = SplitJoinPermission.class.getDeclaredField("fieldName");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(splitJoinPermission));
+
+        field = SplitJoinPermission.class.getDeclaredField("minValue");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(splitJoinPermission));
+
+        field = SplitJoinPermission.class.getDeclaredField("minUnit");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(splitJoinPermission));
+
+        field = SplitJoinPermission.class.getDeclaredField("mergeFields");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(splitJoinPermission));
     }
 
 }

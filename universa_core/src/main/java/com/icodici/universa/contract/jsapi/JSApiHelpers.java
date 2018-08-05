@@ -3,6 +3,7 @@ package com.icodici.universa.contract.jsapi;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
+import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.tools.Binder;
@@ -12,6 +13,7 @@ import javax.script.ScriptException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.zip.Inflater;
@@ -127,15 +129,35 @@ public class JSApiHelpers {
             if (exceptionsFromEval.size() > 0) {
                 Exception e = exceptionsFromEval.get(0);
                 throw e;
-//                if (e instanceof ScriptException)
-//                    throw (ScriptException)e;
-//                else if (e instanceof ClassCastException)
-//                    throw (ClassCastException)e;
             }
             return jse.get("result");
         } else {
             throw new IllegalArgumentException("error: cant exec javascript, script hash not found in contract.");
         }
+    }
+
+    public static Object jo2Object(ScriptObjectMirror jo) {
+        Object res;
+        if (jo.isArray()) {
+            res = new ArrayList<Object>();
+            jo2Object(jo, res);
+        } else {
+            res = new HashMap<String, Object>();
+            jo2Object(jo, res);
+        }
+        return res;
+    }
+
+    public static void jo2Object(ScriptObjectMirror jo, Object dest) {
+        jo.forEach((k, v) -> {
+            Object val = v;
+            if (v instanceof ScriptObjectMirror)
+                val = jo2Object((ScriptObjectMirror)v);
+            if (dest instanceof ArrayList)
+                ((ArrayList)dest).add(val);
+            else if (dest instanceof HashMap)
+                ((HashMap)dest).put(k, val);
+        });
     }
 
 }
