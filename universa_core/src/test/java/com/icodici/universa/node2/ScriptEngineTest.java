@@ -10,10 +10,7 @@ import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.contract.jsapi.permissions.JSApiChangeNumberPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiSplitJoinPermission;
-import com.icodici.universa.contract.permissions.ChangeNumberPermission;
-import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
-import com.icodici.universa.contract.permissions.Permission;
-import com.icodici.universa.contract.permissions.SplitJoinPermission;
+import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
 import jdk.nashorn.api.scripting.ClassFilter;
@@ -32,6 +29,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -795,6 +793,32 @@ public class ScriptEngineTest {
         ChangeOwnerPermission sample = new ChangeOwnerPermission(new SimpleRole("test"));
 
         Field field = Permission.class.getDeclaredField("name");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(changeOwnerPermission));
+    }
+
+    @Test
+    public void testModifyDataPermission() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testModifyDataPermission');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var modifyDataPermission = jsApi.getPermissionBuilder().createModifyDataPermission(simpleRole, " +
+                "{some_field: [1, 2, 3]});";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        js += "result = modifyDataPermission;";
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        JSApiPermission res = (JSApiPermission) contract.execJS(js.getBytes());
+        ModifyDataPermission changeOwnerPermission = (ModifyDataPermission)res.extractPermission(new JSApiAccessor());
+        ModifyDataPermission sample = new ModifyDataPermission(new SimpleRole("test"), Binder.of("fields", Binder.of("some_field", Arrays.asList(1, 2, 3))));
+
+        Field field = Permission.class.getDeclaredField("name");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(changeOwnerPermission));
+
+        field = ModifyDataPermission.class.getDeclaredField("fields");
         field.setAccessible(true);
         assertEquals(field.get(sample), field.get(changeOwnerPermission));
     }

@@ -19,11 +19,18 @@ public class JSApiPermissionBuilder {
         Object paramsMap = JSApiHelpers.jo2Object(params);
         if (paramsMap instanceof HashMap)
             return new JSApiChangeNumberPermission(role, (HashMap)paramsMap);
-        throw new IllegalArgumentException("createSplitJoinPermission error: wrong params");
+        throw new IllegalArgumentException("createChangeNumberPermission error: wrong params");
     }
 
     public JSApiChangeOwnerPermission createChangeOwnerPermission(JSApiRole role) {
         return new JSApiChangeOwnerPermission(role);
+    }
+
+    public JSApiModifyDataPermission createModifyDataPermission(JSApiRole role, ScriptObjectMirror params) {
+        Object paramsMap = JSApiHelpers.jo2Object(params);
+        if (paramsMap instanceof HashMap)
+            return new JSApiModifyDataPermission(role, (HashMap)paramsMap);
+        throw new IllegalArgumentException("createModifyDataPermission error: wrong params");
     }
 
 }
