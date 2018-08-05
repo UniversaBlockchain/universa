@@ -7,7 +7,9 @@ import com.icodici.universa.contract.jsapi.JSApiAccessor;
 import com.icodici.universa.contract.jsapi.JSApiCompressionEnum;
 import com.icodici.universa.contract.jsapi.JSApiHelpers;
 import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
+import com.icodici.universa.contract.jsapi.permissions.JSApiChangeNumberPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiSplitJoinPermission;
+import com.icodici.universa.contract.permissions.ChangeNumberPermission;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
@@ -731,6 +733,46 @@ public class ScriptEngineTest {
         field = SplitJoinPermission.class.getDeclaredField("mergeFields");
         field.setAccessible(true);
         assertEquals(field.get(sample), field.get(splitJoinPermission));
+    }
+
+    @Test
+    public void testChangeNumberPermission() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testChangeNumberPermission');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var changeNumberPermission = jsApi.getPermissionBuilder().createChangeNumberPermission(simpleRole, " +
+                "{field_name: 'testval', min_value: 44, max_value: 55, min_step: 1, max_step: 2}" +
+                ");";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        js += "result = changeNumberPermission;";
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        JSApiChangeNumberPermission res = (JSApiChangeNumberPermission)contract.execJS(js.getBytes());
+        ChangeNumberPermission changeNumberPermission = res.extractPermission(new JSApiAccessor());
+        ChangeNumberPermission sample = new ChangeNumberPermission(new SimpleRole("test"), Binder.of(
+                "field_name", "testval", "min_value", 44, "max_value", 55, "min_step", 1, "max_step", 2));
+
+        Field field = ChangeNumberPermission.class.getDeclaredField("fieldName");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(changeNumberPermission));
+
+        field = ChangeNumberPermission.class.getDeclaredField("minValue");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(changeNumberPermission));
+
+        field = ChangeNumberPermission.class.getDeclaredField("maxValue");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(changeNumberPermission));
+
+        field = ChangeNumberPermission.class.getDeclaredField("minStep");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(changeNumberPermission));
+
+        field = ChangeNumberPermission.class.getDeclaredField("maxStep");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(changeNumberPermission));
     }
 
 }

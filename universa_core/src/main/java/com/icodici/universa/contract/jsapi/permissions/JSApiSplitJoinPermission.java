@@ -8,6 +8,7 @@ import net.sergeych.tools.Binder;
 import java.util.Map;
 
 public class JSApiSplitJoinPermission {
+
     private SplitJoinPermission splitJoinPermission;
 
     public JSApiSplitJoinPermission(JSApiRole role, Map<String, Object> params) {
@@ -20,4 +21,5 @@ public class JSApiSplitJoinPermission {
         JSApiAccessor.checkApiAccessor(apiAccessor);
         return splitJoinPermission;
     }
+
 }

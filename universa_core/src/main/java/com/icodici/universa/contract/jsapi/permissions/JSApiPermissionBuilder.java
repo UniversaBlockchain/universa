@@ -15,4 +15,11 @@ public class JSApiPermissionBuilder {
         throw new IllegalArgumentException("createSplitJoinPermission error: wrong params");
     }
 
+    public JSApiChangeNumberPermission createChangeNumberPermission(JSApiRole role, ScriptObjectMirror params) {
+        Object paramsMap = JSApiHelpers.jo2Object(params);
+        if (paramsMap instanceof HashMap)
+            return new JSApiChangeNumberPermission(role, (HashMap)paramsMap);
+        throw new IllegalArgumentException("createSplitJoinPermission error: wrong params");
+    }
+
 }
