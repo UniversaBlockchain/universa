@@ -7,7 +7,7 @@ import net.sergeych.tools.Binder;
 
 import java.util.Map;
 
-public class JSApiChangeNumberPermission {
+public class JSApiChangeNumberPermission extends JSApiPermission {
 
     private ChangeNumberPermission changeNumberPermission;
 
@@ -17,6 +17,7 @@ public class JSApiChangeNumberPermission {
         changeNumberPermission = new ChangeNumberPermission(role.extractRole(new JSApiAccessor()), paramsBinder);
     }
 
+    @Override
     public ChangeNumberPermission extractPermission(JSApiAccessor apiAccessor) {
         JSApiAccessor.checkApiAccessor(apiAccessor);
         return changeNumberPermission;

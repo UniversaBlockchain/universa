@@ -7,7 +7,7 @@ import net.sergeych.tools.Binder;
 
 import java.util.Map;
 
-public class JSApiSplitJoinPermission {
+public class JSApiSplitJoinPermission extends JSApiPermission {
 
     private SplitJoinPermission splitJoinPermission;
 
@@ -17,6 +17,7 @@ public class JSApiSplitJoinPermission {
         splitJoinPermission = new SplitJoinPermission(role.extractRole(new JSApiAccessor()), paramsBinder);
     }
 
+    @Override
     public SplitJoinPermission extractPermission(JSApiAccessor apiAccessor) {
         JSApiAccessor.checkApiAccessor(apiAccessor);
         return splitJoinPermission;
