@@ -3,6 +3,7 @@ package com.icodici.universa.contract.jsapi.permissions;
 import com.icodici.universa.contract.jsapi.JSApiAccessor;
 import com.icodici.universa.contract.jsapi.roles.JSApiRole;
 import com.icodici.universa.contract.permissions.ChangeNumberPermission;
+import com.icodici.universa.contract.permissions.Permission;
 import net.sergeych.tools.Binder;
 
 import java.util.Map;
@@ -18,7 +19,7 @@ public class JSApiChangeNumberPermission extends JSApiPermission {
     }
 
     @Override
-    public ChangeNumberPermission extractPermission(JSApiAccessor apiAccessor) {
+    public Permission extractPermission(JSApiAccessor apiAccessor) {
         JSApiAccessor.checkApiAccessor(apiAccessor);
         return changeNumberPermission;
     }

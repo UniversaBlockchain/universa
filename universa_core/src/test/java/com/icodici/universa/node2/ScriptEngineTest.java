@@ -8,8 +8,11 @@ import com.icodici.universa.contract.jsapi.JSApiCompressionEnum;
 import com.icodici.universa.contract.jsapi.JSApiHelpers;
 import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.contract.jsapi.permissions.JSApiChangeNumberPermission;
+import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiSplitJoinPermission;
 import com.icodici.universa.contract.permissions.ChangeNumberPermission;
+import com.icodici.universa.contract.permissions.ChangeOwnerPermission;
+import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
@@ -714,7 +717,7 @@ public class ScriptEngineTest {
         contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         JSApiSplitJoinPermission res = (JSApiSplitJoinPermission)contract.execJS(js.getBytes());
-        SplitJoinPermission splitJoinPermission = res.extractPermission(new JSApiAccessor());
+        SplitJoinPermission splitJoinPermission = (SplitJoinPermission)res.extractPermission(new JSApiAccessor());
         SplitJoinPermission sample = new SplitJoinPermission(new SimpleRole("test"), Binder.of(
                 "field_name", "testval", "min_value", 33, "min_unit", 1e-7));
 
@@ -750,7 +753,7 @@ public class ScriptEngineTest {
         contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         JSApiChangeNumberPermission res = (JSApiChangeNumberPermission)contract.execJS(js.getBytes());
-        ChangeNumberPermission changeNumberPermission = res.extractPermission(new JSApiAccessor());
+        ChangeNumberPermission changeNumberPermission = (ChangeNumberPermission)res.extractPermission(new JSApiAccessor());
         ChangeNumberPermission sample = new ChangeNumberPermission(new SimpleRole("test"), Binder.of(
                 "field_name", "testval", "min_value", 44, "max_value", 55, "min_step", 1, "max_step", 2));
 
@@ -773,6 +776,27 @@ public class ScriptEngineTest {
         field = ChangeNumberPermission.class.getDeclaredField("maxStep");
         field.setAccessible(true);
         assertEquals(field.get(sample), field.get(changeNumberPermission));
+    }
+
+    @Test
+    public void testChangeOwnerPermission() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testChangeOwnerPermission');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var changeOwnerPermission = jsApi.getPermissionBuilder().createChangeOwnerPermission(simpleRole);";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        js += "result = changeOwnerPermission;";
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        JSApiPermission res = (JSApiPermission) contract.execJS(js.getBytes());
+        ChangeOwnerPermission changeOwnerPermission = (ChangeOwnerPermission)res.extractPermission(new JSApiAccessor());
+        ChangeOwnerPermission sample = new ChangeOwnerPermission(new SimpleRole("test"));
+
+        Field field = Permission.class.getDeclaredField("name");
+        field.setAccessible(true);
+        assertEquals(field.get(sample), field.get(changeOwnerPermission));
     }
 
 }

@@ -22,4 +22,8 @@ public class JSApiPermissionBuilder {
         throw new IllegalArgumentException("createSplitJoinPermission error: wrong params");
     }
 
+    public JSApiChangeOwnerPermission createChangeOwnerPermission(JSApiRole role) {
+        return new JSApiChangeOwnerPermission(role);
+    }
+
 }

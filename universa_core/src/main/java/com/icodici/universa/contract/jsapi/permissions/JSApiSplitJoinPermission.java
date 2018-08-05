@@ -2,6 +2,7 @@ package com.icodici.universa.contract.jsapi.permissions;
 
 import com.icodici.universa.contract.jsapi.JSApiAccessor;
 import com.icodici.universa.contract.jsapi.roles.JSApiRole;
+import com.icodici.universa.contract.permissions.Permission;
 import com.icodici.universa.contract.permissions.SplitJoinPermission;
 import net.sergeych.tools.Binder;
 
@@ -18,7 +19,7 @@ public class JSApiSplitJoinPermission extends JSApiPermission {
     }
 
     @Override
-    public SplitJoinPermission extractPermission(JSApiAccessor apiAccessor) {
+    public Permission extractPermission(JSApiAccessor apiAccessor) {
         JSApiAccessor.checkApiAccessor(apiAccessor);
         return splitJoinPermission;
     }
