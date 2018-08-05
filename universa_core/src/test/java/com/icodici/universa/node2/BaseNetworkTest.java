@@ -12238,4 +12238,595 @@ public class BaseNetworkTest extends TestCase {
 
     }
 
+    @Test(timeout = 90000)
+    public void ecsrowComplete() throws Exception {
+
+        // init keys
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>();
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>();
+        issuerPrivateKeys.add(TestKeys.privateKey(0));
+        arbitratorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        customerPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        executorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : customerPrivateKeys) {
+            customerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : arbitratorPrivateKeys) {
+            arbitratorPublicKeys.add(pk.getPublicKey());
+        }
+
+        // init payment for escrow contract
+        Contract payment = InnerContractsService.createFreshU(100, customerPublicKeys, true);
+
+        payment.check();
+        payment.traceErrors();
+        registerAndCheckApproved(payment);
+
+        payment = payment.createRevision(customerPrivateKeys);
+
+        // create external escrow contract
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        // add payment to escrow contract
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, payment, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        assertTrue(result);
+
+        // check payment transactional references
+        assertTrue(payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
+
+        escrow.check();
+        escrow.traceErrors();
+
+        registerAndCheckApproved(escrow);
+
+        ItemResult itemResult = node.waitItem(payment.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // complete escrow contract(by external escrow contract)
+        Contract completedEscrow = ContractsService.completeEscrowContract(escrow);
+
+        // check internal escrow contract status
+        assertEquals(completedEscrow.getStateData().getString("status", "null"), "completed");
+
+        // sign completed internal escrow contract by issuer
+        completedEscrow.addSignatureToSeal(issuerPrivateKeys);
+        completedEscrow = imitateSendingTransactionToPartner(completedEscrow);
+
+        // sign completed internal escrow contract by customer
+        completedEscrow.addSignatureToSeal(customerPrivateKeys);
+        completedEscrow = imitateSendingTransactionToPartner(completedEscrow);
+
+        // sign completed internal escrow contract by executor
+        completedEscrow.addSignatureToSeal(executorPrivateKeys);
+
+        completedEscrow.check();
+        completedEscrow.traceErrors();
+
+        // register signed escrow contract
+        registerAndCheckApproved(completedEscrow);
+
+        // transfer payment to executor
+        Contract newPayment = ContractsService.takeEscrowPayment(executorPrivateKeys, payment);
+
+        // internal escrow contract for checking references
+        newPayment.getTransactionPack().addReferencedItem(completedEscrow);
+
+        newPayment.check();
+        newPayment.traceErrors();
+
+        // register result executor payment
+        registerAndCheckApproved(newPayment);
+    }
+
+    @Test(timeout = 90000)
+    public void ecsrowCancel() throws Exception {
+
+        // init keys
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>();
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>();
+        issuerPrivateKeys.add(TestKeys.privateKey(0));
+        arbitratorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        customerPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        executorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : customerPrivateKeys) {
+            customerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : arbitratorPrivateKeys) {
+            arbitratorPublicKeys.add(pk.getPublicKey());
+        }
+
+        // init payment for escrow contract
+        Contract payment = InnerContractsService.createFreshU(100, customerPublicKeys, true);
+
+        payment.check();
+        payment.traceErrors();
+        registerAndCheckApproved(payment);
+
+        payment = payment.createRevision(customerPrivateKeys);
+
+        // create external escrow contract
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        // add payment to escrow contract
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, payment, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        assertTrue(result);
+
+        // check payment transactional references
+        assertTrue(payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
+
+        escrow.check();
+        escrow.traceErrors();
+
+        registerAndCheckApproved(escrow);
+
+        ItemResult itemResult = node.waitItem(payment.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // cancel escrow contract(by external escrow contract)
+        Contract canceledEscrow = ContractsService.cancelEscrowContract(escrow);
+
+        // check internal escrow contract status
+        assertEquals(canceledEscrow.getStateData().getString("status", "null"), "canceled");
+
+        // sign canceled internal escrow contract by issuer
+        canceledEscrow.addSignatureToSeal(issuerPrivateKeys);
+        canceledEscrow = imitateSendingTransactionToPartner(canceledEscrow);
+
+        // sign canceled internal escrow contract by customer
+        canceledEscrow.addSignatureToSeal(customerPrivateKeys);
+        canceledEscrow = imitateSendingTransactionToPartner(canceledEscrow);
+
+        // sign canceled internal escrow contract by arbitrator
+        canceledEscrow.addSignatureToSeal(arbitratorPrivateKeys);
+
+        canceledEscrow.check();
+        canceledEscrow.traceErrors();
+
+        // register signed escrow contract
+        registerAndCheckApproved(canceledEscrow);
+
+        // return payment to customer
+        Contract newPayment = ContractsService.takeEscrowPayment(customerPrivateKeys, payment);
+
+        // internal escrow contract for checking references
+        newPayment.getTransactionPack().addReferencedItem(canceledEscrow);
+
+        newPayment.check();
+        newPayment.traceErrors();
+
+        // register result customer payment
+        registerAndCheckApproved(newPayment);
+    }
+
+    @Test(timeout = 90000)
+    public void ecsrowCompleteFail() throws Exception {
+
+        // init keys
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>();
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>();
+        issuerPrivateKeys.add(TestKeys.privateKey(0));
+        arbitratorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        customerPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        executorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : customerPrivateKeys) {
+            customerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : arbitratorPrivateKeys) {
+            arbitratorPublicKeys.add(pk.getPublicKey());
+        }
+
+        // init payment for escrow contract
+        Contract payment = InnerContractsService.createFreshU(100, customerPublicKeys, true);
+
+        payment.check();
+        payment.traceErrors();
+        registerAndCheckApproved(payment);
+
+        payment = payment.createRevision(customerPrivateKeys);
+
+        // create external escrow contract
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        // add payment to escrow contract
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, payment, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        assertTrue(result);
+
+        // check payment transactional references
+        assertTrue(payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
+
+        escrow.check();
+        escrow.traceErrors();
+
+        registerAndCheckApproved(escrow);
+
+        ItemResult itemResult = node.waitItem(payment.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // complete escrow contract(by external escrow contract)
+        Contract completedEscrow = ContractsService.completeEscrowContract(escrow);
+
+        // check internal escrow contract status
+        assertEquals(completedEscrow.getStateData().getString("status", "null"), "completed");
+
+        // sign completed internal escrow contract by issuer
+        completedEscrow.addSignatureToSeal(issuerPrivateKeys);
+        completedEscrow = imitateSendingTransactionToPartner(completedEscrow);
+
+        // sign completed internal escrow contract by executor
+        completedEscrow.addSignatureToSeal(executorPrivateKeys);
+
+        completedEscrow.check();
+        completedEscrow.traceErrors();
+
+        // try register signed escrow contract (without customer sign)
+        registerAndCheckDeclined(completedEscrow);
+
+        // try transfer payment to executor
+        Contract newPayment = ContractsService.takeEscrowPayment(executorPrivateKeys, payment);
+
+        // internal escrow contract for checking references
+        newPayment.getTransactionPack().addReferencedItem(completedEscrow);
+
+        newPayment.check();
+        newPayment.traceErrors();
+
+        // try register payment for executor
+        registerAndCheckDeclined(newPayment);
+    }
+
+    @Test(timeout = 90000)
+    public void ecsrowCancelFail() throws Exception {
+
+        // init keys
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>();
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>();
+        issuerPrivateKeys.add(TestKeys.privateKey(0));
+        arbitratorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        customerPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        executorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : customerPrivateKeys) {
+            customerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : arbitratorPrivateKeys) {
+            arbitratorPublicKeys.add(pk.getPublicKey());
+        }
+
+        // init payment for escrow contract
+        Contract payment = InnerContractsService.createFreshU(100, customerPublicKeys, true);
+
+        payment.check();
+        payment.traceErrors();
+        registerAndCheckApproved(payment);
+
+        payment = payment.createRevision(customerPrivateKeys);
+
+        // create external escrow contract
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        // add payment to escrow contract
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, payment, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        assertTrue(result);
+
+        // check payment transactional references
+        assertTrue(payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
+
+        escrow.check();
+        escrow.traceErrors();
+
+        registerAndCheckApproved(escrow);
+
+        ItemResult itemResult = node.waitItem(payment.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // cancel escrow contract(by external escrow contract)
+        Contract canceledEscrow = ContractsService.cancelEscrowContract(escrow);
+
+        // check internal escrow contract status
+        assertEquals(canceledEscrow.getStateData().getString("status", "null"), "canceled");
+
+        // sign canceled internal escrow contract by issuer
+        canceledEscrow.addSignatureToSeal(issuerPrivateKeys);
+        canceledEscrow = imitateSendingTransactionToPartner(canceledEscrow);
+
+        // sign canceled internal escrow contract by customer
+        canceledEscrow.addSignatureToSeal(customerPrivateKeys);
+
+        canceledEscrow.check();
+        canceledEscrow.traceErrors();
+
+        // try register signed escrow contract (without signs of executor or arbitrator)
+        registerAndCheckDeclined(canceledEscrow);
+
+        // try return payment to customer
+        Contract newPayment = ContractsService.takeEscrowPayment(customerPrivateKeys, payment);
+
+        // internal escrow contract for checking references
+        newPayment.getTransactionPack().addReferencedItem(canceledEscrow);
+
+        newPayment.check();
+        newPayment.traceErrors();
+
+        // try register payment for customer
+        registerAndCheckDeclined(newPayment);
+    }
+
+    @Test(timeout = 90000)
+    public void ecsrowCompleteAndTakePaymentFail() throws Exception {
+
+        // init keys
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>();
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>();
+        issuerPrivateKeys.add(TestKeys.privateKey(0));
+        arbitratorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        customerPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        executorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : customerPrivateKeys) {
+            customerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : arbitratorPrivateKeys) {
+            arbitratorPublicKeys.add(pk.getPublicKey());
+        }
+
+        // init payment for escrow contract
+        Contract payment = InnerContractsService.createFreshU(100, customerPublicKeys, true);
+
+        payment.check();
+        payment.traceErrors();
+        registerAndCheckApproved(payment);
+
+        payment = payment.createRevision(customerPrivateKeys);
+
+        // create external escrow contract
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        // add payment to escrow contract
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, payment, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        assertTrue(result);
+
+        // check payment transactional references
+        assertTrue(payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
+
+        escrow.check();
+        escrow.traceErrors();
+
+        registerAndCheckApproved(escrow);
+
+        ItemResult itemResult = node.waitItem(payment.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // complete escrow contract(by external escrow contract)
+        Contract completedEscrow = ContractsService.completeEscrowContract(escrow);
+
+        // check internal escrow contract status
+        assertEquals(completedEscrow.getStateData().getString("status", "null"), "completed");
+
+        // sign completed internal escrow contract by issuer
+        completedEscrow.addSignatureToSeal(issuerPrivateKeys);
+        completedEscrow = imitateSendingTransactionToPartner(completedEscrow);
+
+        // sign completed internal escrow contract by customer
+        completedEscrow.addSignatureToSeal(customerPrivateKeys);
+        completedEscrow = imitateSendingTransactionToPartner(completedEscrow);
+
+        // sign completed internal escrow contract by executor
+        completedEscrow.addSignatureToSeal(executorPrivateKeys);
+
+        completedEscrow.check();
+        completedEscrow.traceErrors();
+
+        // register signed escrow contract
+        registerAndCheckApproved(completedEscrow);
+
+        // try return payment to customer (escrow completed)
+        Contract newPayment = ContractsService.takeEscrowPayment(customerPrivateKeys, payment);
+
+        // internal escrow contract for checking references
+        newPayment.getTransactionPack().addReferencedItem(completedEscrow);
+
+        newPayment.check();
+        newPayment.traceErrors();
+
+        // try register payment for customer
+        registerAndCheckDeclined(newPayment);
+    }
+
+    @Test(timeout = 90000)
+    public void ecsrowCancelAndTakePaymentFail() throws Exception {
+
+        // init keys
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>();
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>();
+        issuerPrivateKeys.add(TestKeys.privateKey(0));
+        arbitratorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+        customerPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        executorPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : customerPrivateKeys) {
+            customerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : arbitratorPrivateKeys) {
+            arbitratorPublicKeys.add(pk.getPublicKey());
+        }
+
+        // init payment for escrow contract
+        Contract payment = InnerContractsService.createFreshU(100, customerPublicKeys, true);
+
+        payment.check();
+        payment.traceErrors();
+        registerAndCheckApproved(payment);
+
+        payment = payment.createRevision(customerPrivateKeys);
+
+        // create external escrow contract
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        // add payment to escrow contract
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, payment, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        assertTrue(result);
+
+        // check payment transactional references
+        assertTrue(payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
+
+        escrow.check();
+        escrow.traceErrors();
+
+        registerAndCheckApproved(escrow);
+
+        ItemResult itemResult = node.waitItem(payment.getId(), 8000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // cancel escrow contract(by external escrow contract)
+        Contract canceledEscrow = ContractsService.cancelEscrowContract(escrow);
+
+        // check internal escrow contract status
+        assertEquals(canceledEscrow.getStateData().getString("status", "null"), "canceled");
+
+        // sign canceled internal escrow contract by issuer
+        canceledEscrow.addSignatureToSeal(issuerPrivateKeys);
+        canceledEscrow = imitateSendingTransactionToPartner(canceledEscrow);
+
+        // sign canceled internal escrow contract by customer
+        canceledEscrow.addSignatureToSeal(customerPrivateKeys);
+        canceledEscrow = imitateSendingTransactionToPartner(canceledEscrow);
+
+        // sign canceled internal escrow contract by arbitrator
+        canceledEscrow.addSignatureToSeal(arbitratorPrivateKeys);
+
+        canceledEscrow.check();
+        canceledEscrow.traceErrors();
+
+        // register signed escrow contract
+        registerAndCheckApproved(canceledEscrow);
+
+        // try transfer payment to executor (escrow canceled)
+        Contract newPayment = ContractsService.takeEscrowPayment(executorPrivateKeys, payment);
+
+        // internal escrow contract for checking references
+        newPayment.getTransactionPack().addReferencedItem(canceledEscrow);
+
+        newPayment.check();
+        newPayment.traceErrors();
+
+        // try register payment for executor
+        registerAndCheckDeclined(newPayment);
+    }
 }

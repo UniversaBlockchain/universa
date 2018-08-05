@@ -139,6 +139,28 @@ public class ListRole extends Role {
     }
 
     /**
+     * Check role is allowed to keys and references
+     *
+     * @param keys is collection of keys
+     * @param references is collection of references names
+     * @return true if role is allowed to keys and references
+     */
+    public boolean isAllowedFor(Collection<? extends AbstractKey> keys, Collection<String> references) {
+
+        if(!super.isAllowedFor(keys, references))
+            return false;
+
+        if(this.mode == null)
+            this.mode = Mode.ALL;
+
+        Set<? extends AbstractKey> setKeys = keys instanceof Set ? (Set<? extends AbstractKey>) keys : new HashSet<>(keys);
+
+        return this.mode == Mode.ANY && this.processAnyMode(setKeys, references) ||
+                this.mode == Mode.ALL && this.processAllMode(setKeys, references) ||
+                this.mode == Mode.QUORUM && this.processQuorumMode(setKeys, references);
+    }
+
+    /**
      * Check role is allowed to keys
      *
      * @param keys is set of keys
@@ -155,7 +177,6 @@ public class ListRole extends Role {
                 this.mode == Mode.QUORUM && this.processQuorumMode(keys);
     }
 
-
     @Override
     public boolean isAllowedForReferences(Collection<String> references) {
 
@@ -170,6 +191,32 @@ public class ListRole extends Role {
         return this.mode == Mode.ANY && this.processAnyMode(references) ||
                 this.mode == Mode.ALL && this.processAllMode(references) ||
                 this.mode == Mode.QUORUM && this.processQuorumMode(references);
+    }
+
+    private boolean processAllMode(Set<? extends AbstractKey> keys, Collection<String> references) {
+        return this.roles.stream().allMatch(role -> role.isAllowedFor(keys, references));
+    }
+
+    private boolean processAnyMode(Set<? extends AbstractKey> keys, Collection<String> references) {
+        return this.roles.stream().anyMatch(role -> role.isAllowedFor(keys, references));
+    }
+
+    private boolean processQuorumMode(Set<? extends AbstractKey> keys, Collection<String> references) {
+        int counter = this.quorumSize;
+        boolean result = counter == 0;
+
+        Set<Role> roles = this.roles;
+
+        for (Role role : roles) {
+            if (result) break;
+
+            if (role != null && role.isAllowedFor(keys, references) && --counter == 0) {
+                result = true;
+                break;
+            }
+        }
+
+        return result;
     }
 
     private boolean processQuorumMode(Set<? extends AbstractKey> keys) {

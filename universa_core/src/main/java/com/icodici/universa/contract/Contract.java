@@ -742,9 +742,10 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             boolean rm_check = false;
             if(rm.type == Reference.TYPE_TRANSACTIONAL) {
                 for(Contract neighbour : neighbours) {
-                    if ((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
-                            (rm.contract_id != null && rm.contract_id.equals(neighbour.id)))
-                        if (checkOneReference(rm, neighbour) && rm.isMatchingWith(neighbour, neighbours)) {
+                    if ((((rm.transactional_id != null && neighbour.transactional != null && rm.transactional_id.equals(neighbour.transactional.id)) ||
+                            (rm.contract_id != null && rm.contract_id.equals(neighbour.id))) && checkOneReference(rm, neighbour)) ||
+                            (rm.getConditions().size() > 0))    // new format of reference with conditions, transactional_id - optional
+                        if (rm.isMatchingWith(neighbour, neighbours)) {
                             rm.addMatchingItem(neighbour);
                             rm_check = true;
                             break;

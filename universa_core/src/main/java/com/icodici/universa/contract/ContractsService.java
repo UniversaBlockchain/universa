@@ -13,6 +13,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
+import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
@@ -23,6 +24,8 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.time.ZonedDateTime;
 import java.util.*;
+
+import static java.util.Arrays.asList;
 
 /**
  * Public (for third-party developers) methods for help with creating and preparing contracts.
@@ -1412,6 +1415,270 @@ public class ContractsService {
         source.addReference(reference);
 
         return consent;
+    }
+
+    /**
+     * Create escrow contracts (external and internal) for a expiration period of 5 years.
+     * External escrow contract includes internal escrow contract. Contracts are linked by internal escrow contract origin.
+     * To internal escrow contract establishes the owner role, {@link ListRole} on the basis of the quorum of 2 of 3 roles: customer, executor and arbitrator.
+     * This role is granted exclusive permission to change the value of the status field of internal escrow contract (state.data.status).
+     * Possible values for the internal escrow contract status field are: opened, completed and canceled.
+     *
+     * If necessary, the contents and parameters (expiration period, for example) of escrow contracts
+     * can be changed before sealing and registration.
+     *
+     * @param issuerKeys issuer escrow contract private keys
+     * @param customerKeys customer public keys
+     * @param executorKeys executor public keys
+     * @param arbitratorKeys arbitrator public keys
+     *
+     * @return external escrow contract
+     */
+    public static Contract createEscrowContract(
+            Collection<PrivateKey> issuerKeys,
+            Collection<PublicKey> customerKeys,
+            Collection<PublicKey> executorKeys,
+            Collection<PublicKey> arbitratorKeys) {
+
+        // Create internal escrow contract
+        Contract escrow = new Contract();
+        escrow.setApiLevel(3);
+
+        escrow.getDefinition().setExpiresAt(escrow.getCreatedAt().plusMonths(60));
+
+        escrow.getStateData().set("status", "opened");
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        escrow.registerRole(issuerRole);
+        escrow.createRole("issuer", issuerRole);
+        escrow.createRole("creator", issuerRole);
+
+        Collection<Role> quorumCollection = new HashSet();
+        quorumCollection.add(new SimpleRole("customer", customerKeys));
+        quorumCollection.add(new SimpleRole("executor", executorKeys));
+        quorumCollection.add(new SimpleRole("arbitrator", arbitratorKeys));
+        Role quorumOwner = new ListRole("owner", 2, quorumCollection);
+
+        escrow.registerRole(quorumOwner);
+
+        RoleLink ownerLink = new RoleLink("@owner_link", "owner");
+        ownerLink.setContract(escrow);
+
+        HashMap<String, Object> fieldsMap = new HashMap<>();
+        fieldsMap.put("status", asList("completed", "canceled"));
+        Binder modifyDataParams = Binder.of("fields", fieldsMap);
+        ModifyDataPermission modifyDataPerm = new ModifyDataPermission(ownerLink, modifyDataParams);
+        escrow.addPermission(modifyDataPerm);
+
+        escrow.addSignerKeys(issuerKeys);
+        escrow.seal();
+
+        // Create external escrow contract (escrow pack)
+        Contract escrowPack = new Contract();
+        escrowPack.setApiLevel(3);
+
+        escrowPack.getDefinition().setExpiresAt(escrowPack.getCreatedAt().plusMonths(60));
+
+        escrowPack.getDefinition().getData().set("EscrowOrigin", escrow.getOrigin().toBase64String());
+
+        escrowPack.registerRole(issuerRole);
+        escrowPack.createRole("issuer", issuerRole);
+        escrowPack.createRole("owner", issuerRole);
+        escrowPack.createRole("creator", issuerRole);
+
+        escrowPack.addNewItems(escrow);
+
+        escrowPack.addSignerKeys(issuerKeys);
+        escrowPack.seal();
+
+        return escrowPack;
+    }
+
+    /**
+     * Check external escrow contract and add payment contract to it.
+     * To payment contract is added {@link Contract.Transactional} section with 2 references: send_payment_to_executor, return_payment_to_customer.
+     * The owner of payment contract is set to {@link ListRole} contains customer role with return_payment_to_customer reference
+     * and executor role with send_payment_to_executor reference. Any of these roles is sufficient to own a payment contract.
+     *
+     * @param escrow contract (external) to use with payment. Must be returned from {@link ContractsService#createEscrowContract(Collection, Collection, Collection, Collection)}
+     * @param payment contract to update. Must not be registered (new root or new revision)
+     * @param paymentOwnerKeys keys required for use payment contract (usually, owner private keys). May be null, if payment will be signed later.
+     * @param customerKeys customer public keys of escrow contract
+     * @param executorKeys executor public keys of escrow contract
+     *
+     * @return result of checking external escrow contract and adding payment to it
+     */
+    public static boolean addPaymentToEscrowContract(
+            Contract escrow,
+            Contract payment,
+            Collection<PrivateKey> paymentOwnerKeys,
+            Collection<PublicKey> customerKeys,
+            Collection<PublicKey> executorKeys) {
+
+        // Check external escrow contract
+        String escrowOrigin = escrow.getDefinition().getData().getString("EscrowOrigin", null);
+        if (escrowOrigin == null)
+            return false;
+
+        boolean escrowCheck = false;
+        for (Contract c : escrow.getNew())
+            if (c.getOrigin().toBase64String().equals(escrowOrigin) && c.getStateData().getString("status", "null").equals("opened"))
+                escrowCheck = true;
+
+        if (!escrowCheck)
+            return false;
+
+        // Build payment contracts owner role
+        Reference customerRef = new Reference();
+        customerRef.name = "return_payment_to_customer";
+        customerRef.type =  Reference.TYPE_TRANSACTIONAL;
+        List<String> listCustomerConditions = new ArrayList<>();
+        listCustomerConditions.add("ref.origin == " + escrowOrigin);
+        listCustomerConditions.add("ref.state.data.status == \"canceled\"");
+        Binder customerConditions = new Binder();
+        customerConditions.set("all_of", listCustomerConditions);
+        customerRef.setConditions(customerConditions);
+
+        Reference executorRef = new Reference();
+        executorRef.name = "send_payment_to_executor";
+        executorRef.type =  Reference.TYPE_TRANSACTIONAL;
+        List<String> listExecutorConditions = new ArrayList<>();
+        listExecutorConditions.add("ref.origin == " + escrowOrigin);
+        listExecutorConditions.add("ref.state.data.status == \"completed\"");
+        Binder executorConditions = new Binder();
+        executorConditions.set("all_of", listExecutorConditions);
+        executorRef.setConditions(executorConditions);
+
+        Role customer = new SimpleRole("customer", customerKeys);
+        customer.addRequiredReference(customerRef, Role.RequiredMode.ALL_OF);
+        Role executor = new SimpleRole("executor", executorKeys);
+        executor.addRequiredReference(executorRef, Role.RequiredMode.ALL_OF);
+
+        payment.createTransactionalSection();
+        payment.getTransactional().setId(HashId.createRandom().toBase64String());
+
+        payment.addReference(customerRef);
+        payment.addReference(executorRef);
+
+        Collection<Role> roleCollection = new HashSet();
+        roleCollection.add(customer);
+        roleCollection.add(executor);
+        Role paymentOwner = new ListRole("owner", ListRole.Mode.ANY, roleCollection);
+
+        // Modify payment contract
+        payment.registerRole(paymentOwner);
+
+        if ((paymentOwnerKeys != null) && (paymentOwnerKeys.size() > 0))
+            payment.addSignerKeys(paymentOwnerKeys);
+
+        payment.seal();
+
+        // Add payment contract to external escrow
+        escrow.addNewItems(payment);
+        escrow.seal();
+
+        return true;
+    }
+
+    /**
+     * Completes escrow contract. All linked payments are made available to the executor.
+     * For registration completed escrow contract require quorum of 2 of 3 roles: customer, executor and arbitrator.
+     *
+     * @param escrow contract (external or internal) to complete. Must be registered for creation new revision
+     *
+     * @return completed internal escrow contract or null if error occurred
+     */
+    public static Contract completeEscrowContract(Contract escrow) {
+
+        Contract escrowInside = escrow;
+
+        if (!escrow.getStateData().getString("status", "null").equals("opened")) {      // external escrow contract (escrow pack)
+            // Find internal escrow contract in external escrow contract (escrow pack)
+            String escrowOrigin = escrow.getDefinition().getData().getString("EscrowOrigin", null);
+            if (escrowOrigin == null)
+                return null;
+
+            escrowInside = null;
+            for (Contract c : escrow.getNew())
+                if (c.getOrigin().toBase64String().equals(escrowOrigin) && c.getStateData().getString("status", "null").equals("opened"))
+                    escrowInside = c;
+
+            if (escrowInside == null)
+                return null;
+        }
+
+        Contract revisionEscrow = escrowInside.createRevision();
+        revisionEscrow.getStateData().set("status", "completed");
+        revisionEscrow.seal();
+
+        return revisionEscrow;
+    }
+
+    /**
+     * Cancels escrow contract. All linked payments are made available to the customer.
+     * For registration canceled escrow contract require quorum of 2 of 3 roles: customer, executor and arbitrator.
+     *
+     * @param escrow contract (external or internal) to cancel. Must be registered for creation new revision
+     *
+     * @return canceled internal escrow contract or null if error occurred
+     */
+    public static Contract cancelEscrowContract(Contract escrow) {
+
+        Contract escrowInside = escrow;
+
+        if (!escrow.getStateData().getString("status", "null").equals("opened")) {      // external escrow contract (escrow pack)
+            // Find internal escrow contract in external escrow contract (escrow pack)
+            String escrowOrigin = escrow.getDefinition().getData().getString("EscrowOrigin", null);
+            if (escrowOrigin == null)
+                return null;
+
+            escrowInside = null;
+            for (Contract c : escrow.getNew())
+                if (c.getOrigin().toBase64String().equals(escrowOrigin) && c.getStateData().getString("status", "null").equals("opened"))
+                    escrowInside = c;
+
+            if (escrowInside == null)
+                return null;
+        }
+
+        Contract revisionEscrow = escrowInside.createRevision();
+        revisionEscrow.getStateData().set("status", "canceled");
+        revisionEscrow.seal();
+
+        return revisionEscrow;
+    }
+
+    /**
+     * Transfers payment contract to new owner on the result of escrow.
+     * Use payment contract that was added to escrow contract by
+     * {@link ContractsService#addPaymentToEscrowContract(Contract, Contract, Collection, Collection, Collection)}.
+     * Executor can take the payment contract, if internal escrow contract are completed.
+     * Customer can take the payment contract, if internal escrow contract are canceled.
+     * For registration payment contract (returned by this method) add result internal escrow contract by
+     * {@link TransactionPack#addReferencedItem(Contract)}.
+     *
+     * @param newOwnerKeys private keys of new owner of payment
+     * @param payment contract to take by new owner. Must be registered for creation new revision
+     *
+     * @return new revision of payment contract with new owner
+     */
+    public static Contract takeEscrowPayment(Collection<PrivateKey> newOwnerKeys, Contract payment) {
+        Contract revisionPayment = payment.createRevision(newOwnerKeys);
+
+        // set new owner
+        revisionPayment.setOwnerKeys(newOwnerKeys);
+
+        // remove escrow references from Contract.references (from transactional section references removed automatically)
+        revisionPayment.getReferences().remove("return_payment_to_customer");
+        revisionPayment.getReferences().remove("send_payment_to_executor");
+        revisionPayment.seal();
+
+        return revisionPayment;
     }
 }
 
