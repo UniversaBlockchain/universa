@@ -8,7 +8,7 @@ public class JSApiRoleBuilder {
         return new JSApiSimpleRole(name, addresses);
     }
 
-    public JSApiListRole createListRole(String name, String mode, JSApiSimpleRole... roles) throws KeyAddress.IllegalAddressException {
+    public JSApiListRole createListRole(String name, String mode, JSApiRole... roles) throws KeyAddress.IllegalAddressException {
         return new JSApiListRole(name, mode, roles);
     }
 

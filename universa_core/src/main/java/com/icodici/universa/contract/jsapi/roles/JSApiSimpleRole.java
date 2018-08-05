@@ -6,10 +6,17 @@ import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class JSApiSimpleRole extends JSApiRole {
+
     private SimpleRole simpleRole;
+
+    public JSApiSimpleRole(JSApiAccessor apiAccessor, SimpleRole simpleRole) {
+        JSApiAccessor.checkApiAccessor(apiAccessor);
+        this.simpleRole = simpleRole;
+    }
 
     public JSApiSimpleRole(String name, String... addresses) throws KeyAddress.IllegalAddressException {
         List<KeyAddress> keyAddresses = new ArrayList<>();
@@ -29,4 +36,11 @@ public class JSApiSimpleRole extends JSApiRole {
         JSApiAccessor.checkApiAccessor(apiAccessor);
         return simpleRole;
     }
+
+    @Override
+    public boolean isAllowedForAddresses(String... addresses) {
+        List<String> thisAddresses = getAllAddresses();
+        return thisAddresses.stream().allMatch(s -> Arrays.stream(addresses).anyMatch(a -> a.equals(s)));
+    }
+
 }

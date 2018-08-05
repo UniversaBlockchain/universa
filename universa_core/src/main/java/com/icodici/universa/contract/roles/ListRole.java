@@ -139,6 +139,13 @@ public class ListRole extends Role {
     }
 
     /**
+     * Returns mode of this role.
+     */
+    public Mode getMode() {
+        return this.mode;
+    }
+
+    /**
      * Check role is allowed to keys
      *
      * @param keys is set of keys

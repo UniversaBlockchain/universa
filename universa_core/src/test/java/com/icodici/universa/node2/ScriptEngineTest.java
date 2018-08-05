@@ -463,6 +463,30 @@ public class ScriptEngineTest {
     }
 
     @Test
+    public void testSimpleRoleCheck() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSimpleRole');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        js += "var check0 = simpleRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"');";
+        js += "var check1 = simpleRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "print('check0: ' + check0);";
+        js += "print('check1: ' + check1);";
+        js += "result = [check0, check1];";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(js.getBytes());
+        assertFalse((boolean)res.get("0"));
+        assertTrue((boolean)res.get("1"));
+    }
+
+    @Test
     public void testListRole() throws Exception {
         KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
         KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
@@ -488,6 +512,136 @@ public class ScriptEngineTest {
         assertTrue(res.contains(k1.toString()));
         assertTrue(res.contains(k2.toString()));
         assertFalse(res.contains(k3.toString()));
+    }
+
+    @Test
+    public void testListRoleCheckAll() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSimpleRole');";
+        js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
+        js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
+        js += "var simpleRole3 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k3.toString()+"');";
+        js += "print('simpleRole0: ' + simpleRole0.getAllAddresses());";
+        js += "print('simpleRole1: ' + simpleRole1.getAllAddresses());";
+        js += "print('simpleRole2: ' + simpleRole2.getAllAddresses());";
+        js += "print('simpleRole3: ' + simpleRole3.getAllAddresses());";
+        js += "var listSubRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole2, simpleRole3);";
+        js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole0, simpleRole1, listSubRole);";
+        js += "print('listRole: ' + listRole.getAllAddresses());";
+        js += "var check0 = listRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "var check1 = listRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"', '"+k3.toString()+"');";
+        js += "print('check0: ' + check0);";
+        js += "print('check1: ' + check1);";
+        js += "result = [check0, check1];";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(js.getBytes());
+        assertFalse((boolean)res.get("0"));
+        assertTrue((boolean)res.get("1"));
+    }
+
+    @Test
+    public void testListRoleCheckAny() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSimpleRole');";
+        js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
+        js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
+        js += "var simpleRole3 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k3.toString()+"');";
+        js += "print('simpleRole0: ' + simpleRole0.getAllAddresses());";
+        js += "print('simpleRole1: ' + simpleRole1.getAllAddresses());";
+        js += "print('simpleRole2: ' + simpleRole2.getAllAddresses());";
+        js += "print('simpleRole3: ' + simpleRole3.getAllAddresses());";
+        js += "var listSubRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole2, simpleRole3);";
+        js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'any', simpleRole0, simpleRole1, listSubRole);";
+        js += "print('listRole: ' + listRole.getAllAddresses());";
+        js += "var check0 = listRole.isAllowedForAddresses('"+k0.toString()+"');";
+        js += "var check1 = listRole.isAllowedForAddresses('"+k1.toString()+"');";
+        js += "var check2 = listRole.isAllowedForAddresses('"+k2.toString()+"');";
+        js += "var check3 = listRole.isAllowedForAddresses('"+k3.toString()+"');";
+        js += "var check4 = listRole.isAllowedForAddresses('"+k3.toString()+"', '"+k2.toString()+"');";
+        js += "print('check0: ' + check0);";
+        js += "print('check1: ' + check1);";
+        js += "print('check2: ' + check2);";
+        js += "print('check3: ' + check3);";
+        js += "print('check4: ' + check4);";
+        js += "result = [check0, check1, check2, check3, check4];";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(js.getBytes());
+        assertTrue((boolean)res.get("0"));
+        assertTrue((boolean)res.get("1"));
+        assertFalse((boolean)res.get("2"));
+        assertFalse((boolean)res.get("3"));
+        assertTrue((boolean)res.get("4"));
+    }
+
+    @Test
+    public void testListRoleCheckQuorum() throws Exception {
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSimpleRole');";
+        js += "var simpleRole0 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var simpleRole1 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k1.toString()+"');";
+        js += "var simpleRole2 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k2.toString()+"');";
+        js += "var simpleRole3 = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k3.toString()+"');";
+        js += "print('simpleRole0: ' + simpleRole0.getAllAddresses());";
+        js += "print('simpleRole1: ' + simpleRole1.getAllAddresses());";
+        js += "print('simpleRole2: ' + simpleRole2.getAllAddresses());";
+        js += "print('simpleRole3: ' + simpleRole3.getAllAddresses());";
+        js += "var listSubRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole2, simpleRole3);";
+        js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'any', simpleRole0, simpleRole1, listSubRole);";
+        js += "listRole.setQuorum(2);";
+        js += "print('listRole: ' + listRole.getAllAddresses());";
+        js += "var check0 = listRole.isAllowedForAddresses('"+k0.toString()+"');";
+        js += "var check1 = listRole.isAllowedForAddresses('"+k1.toString()+"');";
+        js += "var check2 = listRole.isAllowedForAddresses('"+k2.toString()+"');";
+        js += "var check3 = listRole.isAllowedForAddresses('"+k3.toString()+"');";
+        js += "var check4 = listRole.isAllowedForAddresses('"+k3.toString()+"', '"+k2.toString()+"');";
+        js += "var check5 = listRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"');";
+        js += "var check6 = listRole.isAllowedForAddresses('"+k0.toString()+"', '"+k2.toString()+"', '"+k3.toString()+"');";
+        js += "var check7 = listRole.isAllowedForAddresses('"+k1.toString()+"', '"+k2.toString()+"', '"+k3.toString()+"');";
+        js += "var check8 = listRole.isAllowedForAddresses('"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "print('check0: ' + check0);";
+        js += "print('check1: ' + check1);";
+        js += "print('check2: ' + check2);";
+        js += "print('check3: ' + check3);";
+        js += "print('check4: ' + check4);";
+        js += "print('check5: ' + check5);";
+        js += "print('check6: ' + check6);";
+        js += "print('check7: ' + check7);";
+        js += "print('check8: ' + check8);";
+        js += "result = [check0, check1, check2, check3, check4, check5, check6, check7, check8];";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(js.getBytes());
+        assertFalse((boolean)res.get("0"));
+        assertFalse((boolean)res.get("1"));
+        assertFalse((boolean)res.get("2"));
+        assertFalse((boolean)res.get("3"));
+        assertFalse((boolean)res.get("4"));
+        assertTrue((boolean)res.get("5"));
+        assertTrue((boolean)res.get("6"));
+        assertTrue((boolean)res.get("7"));
+        assertFalse((boolean)res.get("8"));
     }
 
 }
