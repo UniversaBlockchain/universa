@@ -46,6 +46,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static com.icodici.universa.client.RegexMatcher.matches;
+import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
 import static org.junit.Assert.*;
 
 public class CLIMainTest {
@@ -786,6 +787,89 @@ public class CLIMainTest {
         assertEquals(0, errors.size());
     }
 
+    @Test
+    public void exportRefsConditionsTest() throws Exception {
+        Contract refContract = Contract.fromDslFile(rootPath + "ref_conditions_root_contract.yml");
+
+        Binder conditions = refContract.getReferences().get("test_ref4").getConditions();
+        List<Object> condList = conditions.getList(all_of.name(), null);
+
+        condList.add("\"string\"!=this.state.data.string3");
+        condList.add("\"==INFORMATION==\"==this.state.data.string2");
+        condList.add("\"string\"==this.state.data.string4");
+
+        refContract.getReferences().get("test_ref4").setConditions(conditions);
+
+        refContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        refContract.seal();
+        refContract.check();
+        refContract.traceErrors();
+
+        CLIMain.saveContract(refContract, basePath + "ref_conditions_root_contract.unicon");
+
+        callMain(
+                "-e", basePath + "ref_conditions_root_contract.unicon", "-as", "yaml");
+        System.out.println(output);
+        assertTrue (output.indexOf("export as yaml ok") >= 0);
+        assertEquals(0, errors.size());
+
+       // File file = new File("./src/test_files/temp_contracts/ref_conditions_root_contract.yaml");
+        File file = new File( basePath + "ref_conditions_root_contract.yaml");
+
+        Scanner scanner = new Scanner(file);
+
+        List<String> list=new ArrayList<>();
+        while(scanner.hasNextLine()){
+            list.add(scanner.nextLine());
+        }
+
+        assertTrue((list.contains("      - this.definition.issuer==this.state.issuer")));
+        assertTrue((list.contains("      - this.owner defined")));
+        assertTrue((list.contains("      - this.state.data.int_val>37")));
+        assertTrue((list.contains("      - this.state.data.string_val==\"==DATA==\"")));
+        assertTrue((list.contains("      - false!=this.state.data.boolean_val")));
+        assertTrue((list.contains("      - this.state.data.long_val<=1540809613457836")));
+        assertTrue((list.contains("      - -67029039209309103.09204932<=this.state.data.double_val")));
+        assertTrue((list.contains("      - this.state.data.string_val!=\"jkdsjdksjakjl12901ndasds_ksdokaoss\"")));
+        assertTrue((list.contains("      - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298372939==this.state.data.bigdecimal_val::number")));
+        assertTrue((list.contains("      - this.state.data.bigdecimal_val::number>=\"123980111893281903812098390128320192830219821321321321123910849732682917138291\"")));
+
+        assertTrue((list.contains("      - this.definition.issuer defined")));
+        assertTrue((list.contains("      - inherits this.state.references.test_ref1")));
+        assertTrue((list.contains("        - this.state.data.int_val>37")));
+        assertTrue((list.contains("          - this.state.data.string_val==\"==DATA==\"")));
+        assertTrue((list.contains("          - false!=this.state.data.boolean_val")));
+        assertTrue((list.contains("            - this.state.data.long_val<=1540809613457836")));
+        assertTrue((list.contains("            - -67029039209309103.09204932>this.state.data.double_val")));
+        assertTrue((list.contains("              - jkdsjdksjakjl12901ndasds_ksdokaoss!=this.state.data.string_val")));
+        assertTrue((list.contains("              - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298372939==this.state.data.bigdecimal_val::number")));
+        assertTrue((list.contains("              - this.state.data.bigdecimal_val::number>=\"123980111893281903812098390128320192830219821321321321123910849732682917138291\"")));
+        assertTrue((list.contains("        - this.state.data.long_val<=1540809613457836")));
+        assertTrue((list.contains("        - -67029039209309103.09204932>this.state.data.double_val")));
+        assertTrue((list.contains("          - jkdsjdksjakjl12901ndasds_ksdokaoss!=this.state.data.string_val")));
+        assertTrue((list.contains("          - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298372939==this.state.data.bigdecimal_val::number")));
+        assertTrue((list.contains("          - this.state.data.bigdecimal_val::number>=\"123980111893281903812098390128320192830219821321321321123910849732682917138291\"")));
+
+        assertTrue((list.contains("      - this.definition.issuer==this.state.issuer")));
+        assertTrue((list.contains("      - this.owner defined")));
+        assertTrue((list.contains("      - this.state.data.int_val>37")));
+        assertTrue((list.contains("      - this.state.data.string_val==\"==DATA==\"")));
+        assertTrue((list.contains("      - false!=this.state.data.boolean_val")));
+        assertTrue((list.contains("      - this.state.data.long_val<=1540809613457836")));
+        assertTrue((list.contains("      - -67029039209309103.09204932<=this.state.data.double_val")));
+        assertTrue((list.contains("      - this.state.data.string_val!=\"jkdsjdksjakjl12901ndasds_ksdokaoss\"")));
+        assertTrue((list.contains("      - 3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298372939==this.state.data.bigdecimal_val::number")));
+        assertTrue((list.contains("      - this.state.data.bigdecimal_val::number>=\"123980111893281903812098390128320192830219821321321321123910849732682917138291\"")));
+        assertTrue((list.contains("      - this.state.references.test_ref2 is_a this.state.references.test_ref1")));
+
+        assertTrue((list.contains("      - this.definition.created_at>this.state.data.time3")));
+        assertTrue((list.contains("      - this.definition.expires_at<\"2908-04-18 23:58:00\"")));
+        assertTrue((list.contains("      - this.state.data.time5<=this.definition.created_at")));
+        assertTrue((list.contains("      - '\"string\"!=this.state.data.string3'")));
+        assertTrue((list.contains("      - '\"==INFORMATION==\"==this.state.data.string2'")));
+        assertTrue((list.contains("      - '\"string\"==this.state.data.string4'")));
+
+    }
 
     @Test
     public void updateFields() throws Exception {
