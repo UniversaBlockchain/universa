@@ -844,42 +844,4 @@ public class ScriptEngineTest {
         assertEquals(field.get(sample), field.get(revokePermission));
     }
 
-    @Test
-    public void addPermission() throws Exception {
-        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
-        Contract contract = new Contract(TestKeys.privateKey(0));
-        contract.getStateData().set("testval", 3);
-        String js = "";
-        js += "print('addPermission');";
-        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
-        js += "var changeNumberPermission = jsApi.getPermissionBuilder().createChangeNumberPermission(simpleRole, " +
-                "{field_name: 'testval', min_value: 3, max_value: 80, min_step: 1, max_step: 3}" +
-                ");";
-        js += "jsApi.getCurrentContract().addPermission(changeNumberPermission);";
-        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
-        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
-        contract.seal();
-        contract.execJS(js.getBytes());
-        Contract newRev = contract.createRevision();
-        newRev.addSignerKey(TestKeys.privateKey(0));
-        //newRev.getStateData().set("testval", 5);
-        newRev.seal();
-        System.out.println("newRev.check: " + newRev.check());
-        newRev.traceErrors();
-    }
-
-    @Test
-    public void addPermission2() throws Exception {
-        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
-        Contract contract = new Contract(TestKeys.privateKey(0));
-        contract.getStateData().set("testval", 3);
-        contract.seal();
-        Contract newRev = contract.createRevision();
-        newRev.addSignerKey(TestKeys.privateKey(0));
-        newRev.getStateData().set("testval", 5);
-        newRev.seal();
-        System.out.println("newRev.check: " + newRev.check());
-        newRev.traceErrors();
-    }
-
 }
