@@ -6,6 +6,7 @@ import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
 
 import javax.script.ScriptEngine;
@@ -33,9 +34,9 @@ public class JSApiHelpers {
         BiSerializer biSerializer = new BiSerializer();
         HashId scriptHashId = HashId.of(jsFileContent);
         Binder scriptBinder = new Binder();
-        scriptBinder.put("file_name", jsFileName);
-        scriptBinder.put("__type", "file");
-        scriptBinder.put("hash_id", biSerializer.serialize(scriptHashId));
+        scriptBinder.set("file_name", jsFileName);
+        scriptBinder.set("__type", "file");
+        scriptBinder.set("hash_id", biSerializer.serialize(scriptHashId));
         scriptBinder.putAll(scriptParameters.toBinder());
         return scriptBinder;
     }

@@ -2,6 +2,7 @@ package com.icodici.universa.contract.jsapi;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.contract.Contract;
+import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.roles.JSApiRole;
 
 import java.util.ArrayList;
@@ -78,6 +79,10 @@ public class JSApiContract {
 
     public JSApiContract createRevision() {
         return new JSApiContract(this.currentContract.createRevision());
+    }
+
+    public void addPermission(JSApiPermission permission) {
+        this.currentContract.addPermission(permission.extractPermission(new JSApiAccessor()));
     }
 
     /**
