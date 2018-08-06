@@ -788,7 +788,9 @@ public class CLIMainTest {
     }
 
     @Test
-    public void exportRefsConditionsTest() throws Exception {
+    public void parsingAndExportRefsTest() throws Exception {
+
+        // load contract with references
         Contract refContract = Contract.fromDslFile(rootPath + "ref_conditions_root_contract.yml");
 
         Binder conditions = refContract.getReferences().get("test_ref4").getConditions();
@@ -800,7 +802,41 @@ public class CLIMainTest {
 
         refContract.getReferences().get("test_ref4").setConditions(conditions);
 
-        refContract.addSignerKeyFromFile(rootPath+"_xer0yfe2nn1xthc.private.unikey");
+        // check parsing conditions
+        conditions = refContract.getReferences().get("test_ref3").getConditions();
+        condList = conditions.getList(all_of.name(), null);
+
+        Binder parsed = ((Binder)condList.get(0));
+        assertEquals(parsed.getString("leftOperand", ""), "this.definition.issuer");
+        assertEquals(parsed.getString("rightOperand", ""), "this.state.issuer");
+        assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfLeftOperand"), 0);
+        assertEquals(parsed.getIntOrThrow("leftConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfRightOperand"), 0);
+        assertEquals(parsed.getIntOrThrow("operator"), 7);
+
+        parsed = ((Binder)condList.get(9));
+        assertEquals(parsed.getString("leftOperand", ""), "this.state.data.bigdecimal_val");
+        assertEquals(parsed.getString("rightOperand", ""), "123980111893281903812098390128320192830219821321321321123910849732682917138291");
+        assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfLeftOperand"), 0);
+        assertEquals(parsed.getIntOrThrow("leftConversion"), 1);
+        assertEquals(parsed.getIntOrThrow("typeOfRightOperand"), 1);
+        assertEquals(parsed.getIntOrThrow("operator"), 3);
+
+        conditions = refContract.getReferences().get("test_ref4").getConditions();
+        condList = conditions.getList(all_of.name(), null);
+
+        parsed = ((Binder)condList.get(4));
+        assertEquals(parsed.getString("leftOperand", ""), "==INFORMATION==");
+        assertEquals(parsed.getString("rightOperand", ""), "this.state.data.string2");
+        assertEquals(parsed.getIntOrThrow("rightConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfLeftOperand"), 1);
+        assertEquals(parsed.getIntOrThrow("leftConversion"), 0);
+        assertEquals(parsed.getIntOrThrow("typeOfRightOperand"), 0);
+        assertEquals(parsed.getIntOrThrow("operator"), 7);
+
+        refContract.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
         refContract.seal();
         refContract.check();
         refContract.traceErrors();
@@ -813,7 +849,7 @@ public class CLIMainTest {
         assertTrue (output.indexOf("export as yaml ok") >= 0);
         assertEquals(0, errors.size());
 
-       // File file = new File("./src/test_files/temp_contracts/ref_conditions_root_contract.yaml");
+        // check assembly conditions
         File file = new File( basePath + "ref_conditions_root_contract.yaml");
 
         Scanner scanner = new Scanner(file);
@@ -868,7 +904,6 @@ public class CLIMainTest {
         assertTrue((list.contains("      - '\"string\"!=this.state.data.string3'")));
         assertTrue((list.contains("      - '\"==INFORMATION==\"==this.state.data.string2'")));
         assertTrue((list.contains("      - '\"string\"==this.state.data.string4'")));
-
     }
 
     @Test
