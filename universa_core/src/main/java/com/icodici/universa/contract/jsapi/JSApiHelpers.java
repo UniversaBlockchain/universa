@@ -91,8 +91,8 @@ public class JSApiHelpers {
         }
     }
 
-    public static Object execJS(Binder definitionScripts, Binder stateScripts, byte[] jsFileContent,
-            Contract currentContract, String... params)
+    public static Object execJS(Binder definitionScripts, Binder stateScripts, JSApiExecOptions execOptions,
+            byte[] jsFileContent, Contract currentContract, String... params)
             throws Exception {
         HashId jsFileHashId = HashId.of(jsFileContent);
         Binder scriptBinder = JSApiHelpers.findScriptBinder(definitionScripts, jsFileHashId);
@@ -101,7 +101,7 @@ public class JSApiHelpers {
         if (scriptBinder != null) {
             JSApiScriptParameters scriptParameters = JSApiScriptParameters.fromBinder(scriptBinder);
             ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
-            jse.put("jsApi", new JSApi(currentContract));
+            jse.put("jsApi", new JSApi(currentContract, execOptions));
             String[] stringParams = new String[params.length];
             for (int i = 0; i < params.length; ++i)
                 stringParams[i] = params[i].toString();

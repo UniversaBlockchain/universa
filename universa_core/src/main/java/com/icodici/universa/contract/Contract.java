@@ -10,6 +10,7 @@ package com.icodici.universa.contract;
 import com.icodici.crypto.*;
 import com.icodici.universa.*;
 import com.icodici.universa.contract.jsapi.JSApi;
+import com.icodici.universa.contract.jsapi.JSApiExecOptions;
 import com.icodici.universa.contract.jsapi.JSApiHelpers;
 import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.contract.permissions.*;
@@ -3482,14 +3483,19 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @throws ScriptException if javascript throws some errors
      * @throws IllegalArgumentException if javascript is not defined in contract's definition
      */
-    public Object execJS(byte[] jsFileContent, String... params) throws Exception {
+    public Object execJS(JSApiExecOptions execOptions, byte[] jsFileContent, String... params) throws Exception {
         return JSApiHelpers.execJS(
                 getDefinition().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
                 getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                execOptions,
                 jsFileContent,
                 this,
                 params
         );
+    }
+
+    public Object execJS(byte[] jsFileContent, String... params) throws Exception {
+        return execJS(new JSApiExecOptions(), jsFileContent, params);
     }
 
     static {

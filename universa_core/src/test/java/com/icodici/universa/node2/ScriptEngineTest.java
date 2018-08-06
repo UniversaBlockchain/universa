@@ -3,10 +3,7 @@ package com.icodici.universa.node2;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
-import com.icodici.universa.contract.jsapi.JSApiAccessor;
-import com.icodici.universa.contract.jsapi.JSApiCompressionEnum;
-import com.icodici.universa.contract.jsapi.JSApiHelpers;
-import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
+import com.icodici.universa.contract.jsapi.*;
 import com.icodici.universa.contract.jsapi.permissions.JSApiChangeNumberPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiSplitJoinPermission;
@@ -25,14 +22,12 @@ import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.*;
 
@@ -862,6 +857,134 @@ public class ScriptEngineTest {
         assertEquals(t1value, res);
         assertEquals(t2value, contract.getTransactionalData().getStringOrThrow("t2"));
         System.out.println("t2: " + contract.getTransactionalData().getStringOrThrow("t2"));
+    }
+
+    private List<String> prepareSharedFoldersForTest(String f1content, String f2content, String f3content) throws Exception {
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPath1 = tmpdir + "/" + "sharedTest1";
+        String strPath2 = tmpdir + "/" + "sharedTest2";
+        File strPath1File = new File(strPath1);
+        File strPath2File = new File(strPath2);
+        strPath1File.mkdirs();
+        strPath2File.mkdirs();
+        File f1 = new File(strPath1 + "/f1.txt");
+        File f2 = new File(strPath2 + "/folder/f2.txt");
+        File f3 = new File(tmpdir + "/f3.txt");
+        f1.delete();
+        f2.delete();
+        f3.delete();
+        f1.getParentFile().mkdirs();
+        f2.getParentFile().mkdirs();
+        f3.getParentFile().mkdirs();
+        f1.createNewFile();
+        f2.createNewFile();
+        f3.createNewFile();
+        Files.write(f1.toPath(), f1content.getBytes());
+        Files.write(f2.toPath(), f2content.getBytes());
+        Files.write(f3.toPath(), f3content.getBytes());
+        List<String> res = new ArrayList<>();
+        res.add(strPath1);
+        res.add(strPath2);
+        return res;
+    }
+
+    @Test
+    public void testSharedFolders_read() throws Exception {
+        String f1content = "f1 content";
+        String f2content = "f2 content";
+        String f3content = "f3 content";
+        List<String> sharedFolders = prepareSharedFoldersForTest(f1content, f2content, f3content);
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSharedFolders_read');";
+        js += "function bin2string(array){var result = '';for(var i = 0; i < array.length; ++i){result+=(String.fromCharCode(array[i]));}return result;}";
+        js += "var file1Content = jsApi.getSharedFolders().readAllBytes('f1.txt');";
+        js += "var file2Content = jsApi.getSharedFolders().readAllBytes('folder/f2.txt');";
+        js += "print('file1Content: ' + bin2string(file1Content));";
+        js += "print('file2Content: ' + bin2string(file2Content));";
+        js += "result = [bin2string(file1Content), bin2string(file2Content)];";
+        JSApiExecOptions execOptions = new JSApiExecOptions();
+        execOptions.sharedFolders.addAll(sharedFolders);
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(execOptions, js.getBytes());
+        assertEquals(f1content, res.get("0"));
+        assertEquals(f2content, res.get("1"));
+    }
+
+    @Test
+    public void testSharedFolders_restrictedPath() throws Exception {
+        String f1content = "f1 content";
+        String f2content = "f2 content";
+        String f3content = "f3 content";
+        List<String> sharedFolders = prepareSharedFoldersForTest(f1content, f2content, f3content);
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSharedFolders_restrictedPath');";
+        js += "function bin2string(array){var result = '';for(var i = 0; i < array.length; ++i){result+=(String.fromCharCode(array[i]));}return result;}";
+        js += "try {";
+        js += "  var file3Content = jsApi.getSharedFolders().readAllBytes('../f3.txt');";
+        js += "  print('file3Content: ' + bin2string(file3Content));";
+        js += "} catch (err) {";
+        js += "  result = err;";
+        js += "}";
+        JSApiExecOptions execOptions = new JSApiExecOptions();
+        execOptions.sharedFolders.addAll(sharedFolders);
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        IOException res = (IOException) contract.execJS(execOptions, js.getBytes());
+        System.out.println("IOException from js: " + res);
+        assertTrue(res.toString().contains("file '../f3.txt' not found in shared folders"));
+    }
+
+    @Test
+    public void testSharedFolders_write() throws Exception {
+        String f1content = "f1 content";
+        String f2content = "f2 content";
+        String f3content = "f3 content";
+        String f4content = "f4 content";
+        List<String> sharedFolders = prepareSharedFoldersForTest(f1content, f2content, f3content);
+        Paths.get(sharedFolders.get(0) + "/folder2/f4.txt").toFile().delete();
+        Paths.get(sharedFolders.get(0) + "/folder2/f4.txt").toFile().getParentFile().delete();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSharedFolders_write');";
+        js += "var file4Content = '"+f4content+"';";
+        js += "jsApi.getSharedFolders().writeNewFile('folder2/f4.txt', jsApi.string2bin(file4Content));";
+        JSApiExecOptions execOptions = new JSApiExecOptions();
+        execOptions.sharedFolders.addAll(sharedFolders);
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        contract.execJS(execOptions, js.getBytes());
+        String f4readed = new String(Files.readAllBytes(Paths.get(sharedFolders.get(0) + "/folder2/f4.txt")));
+        System.out.println("f4: " + f4readed);
+        assertEquals(f4content, f4readed);
+    }
+
+    @Test
+    public void testSharedFolders_rewrite() throws Exception {
+        String f1content = "f1 content";
+        String f1contentUpdated = "f1 content updated";
+        String f2content = "f2 content";
+        String f2contentUpdated = "f2 content updated";
+        String f3content = "f3 content";
+        List<String> sharedFolders = prepareSharedFoldersForTest(f1content, f2content, f3content);
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSharedFolders_rewrite');";
+        js += "jsApi.getSharedFolders().rewriteExistingFile('f1.txt', jsApi.string2bin('"+f1contentUpdated+"'));";
+        js += "jsApi.getSharedFolders().rewriteExistingFile('folder/f2.txt', jsApi.string2bin('"+f2contentUpdated+"'));";
+        JSApiExecOptions execOptions = new JSApiExecOptions();
+        execOptions.sharedFolders.addAll(sharedFolders);
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        contract.execJS(execOptions, js.getBytes());
+        String f1readed = new String(Files.readAllBytes(Paths.get(sharedFolders.get(0) + "/f1.txt")));
+        String f2readed = new String(Files.readAllBytes(Paths.get(sharedFolders.get(1) + "/folder/f2.txt")));
+        assertNotEquals(f1content, f1readed);
+        assertNotEquals(f2content, f2readed);
+        assertEquals(f1contentUpdated, f1readed);
+        assertEquals(f2contentUpdated, f2readed);
     }
 
 }

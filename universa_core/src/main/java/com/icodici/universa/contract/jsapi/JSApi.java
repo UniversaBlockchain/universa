@@ -10,9 +10,11 @@ import com.icodici.universa.contract.jsapi.roles.JSApiRoleBuilder;
 public class JSApi {
 
     private Contract currentContract;
+    private JSApiExecOptions execOptions;
 
-    public JSApi(Contract currentContract) {
+    public JSApi(Contract currentContract, JSApiExecOptions execOptions) {
         this.currentContract = currentContract;
+        this.execOptions = execOptions;
     }
 
     public JSApiContract getCurrentContract() {
@@ -25,6 +27,14 @@ public class JSApi {
 
     public JSApiPermissionBuilder getPermissionBuilder() {
         return new JSApiPermissionBuilder();
+    }
+
+    public JSApiSharedFolders getSharedFolders() {
+        return new JSApiSharedFolders(execOptions);
+    }
+
+    public byte[] string2bin(String s) {
+        return s.getBytes();
     }
 
 }
