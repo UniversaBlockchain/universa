@@ -427,7 +427,9 @@ public class PermissionsTest extends ContractTestBase {
     @Test
     public void changeOwnerWithReference() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+        llcPrivateKeys.add(new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey")));
 
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
         for (PrivateKey pk : stepaPrivateKeys) {
@@ -436,12 +438,15 @@ public class PermissionsTest extends ContractTestBase {
         Set<String> references = new HashSet<>();
         references.add("certification_contract");
 
-        Contract referencedItem = new Contract();
-        referencedItem.seal();
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
 
         Contract c = Contract.fromDslFile(rootPath + "NotaryWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        c.findReferenceByName("certification_contract").addMatchingItem(referencedItem);
+        c.addNewItems(jobCertificate);
 
         Role r = c.getPermissions().getFirst("change_owner").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
@@ -460,7 +465,7 @@ public class PermissionsTest extends ContractTestBase {
         // Bad contract change: owner has no right to change owner ;)
         Contract c1 = c.createRevision(TestKeys.privateKey(0));
         c1.setOwnerKey(ownerKey2);
-        c1.findReferenceByName("certification_contract").addMatchingItem(referencedItem);
+        c1.addNewItems(jobCertificate);
         assertNotEquals(c.getOwner(), c1.getOwner());
         c1.seal();
         c1.check();
@@ -488,11 +493,7 @@ public class PermissionsTest extends ContractTestBase {
 
         Contract c3 = c.createRevision(stepaPrivateKeys);
         c3.setOwnerKey(ownerKey3);
-        Reference ref = new Reference();
-        ref.name = "certification_contract";
-        ref.type = Reference.TYPE_EXISTING_DEFINITION;
-        ref.addMatchingItem(new Contract());
-        c3.getReferences().put(ref.name, ref);
+        c3.addNewItems(jobCertificate);
         assertEquals(c3, c3.getPermissions().getFirst("change_owner").getRole().getContract());
         assertNotEquals(c.getOwner(), c3.getOwner());
 
@@ -573,7 +574,9 @@ public class PermissionsTest extends ContractTestBase {
     @Test
     public void splitJoinWithReference() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+        llcPrivateKeys.add(new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey")));
 
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
         for (PrivateKey pk : stepaPrivateKeys) {
@@ -582,11 +585,15 @@ public class PermissionsTest extends ContractTestBase {
         Set<String> references = new HashSet<>();
         references.add("certification_contract");
 
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
         Contract c = Contract.fromDslFile(rootPath + "TokenWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        Contract mi = new Contract();
-        mi.seal();
-        c.findReferenceByName("certification_contract").addMatchingItem(mi);
+        c.addNewItems(jobCertificate);
 
         Role r = c.getPermissions().getFirst("split_join").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
@@ -634,12 +641,7 @@ public class PermissionsTest extends ContractTestBase {
         Contract c3 = ContractsService.createSplit(c, "1", "amount", stepaPrivateKeys);
         c3.createRole("creator", c3.getRole("owner"));
         c3.getNew().get(0).createRole("creator", c3.getNew().get(0).getRole("owner"));
-        Reference ref = new Reference();
-        ref.name = "certification_contract";
-        ref.type = Reference.TYPE_EXISTING_DEFINITION;
-        ref.addMatchingItem(new Contract());
-        c3.getReferences().put(ref.name, ref);
-        c3.getNew().get(0).getReferences().put(ref.name, ref);
+        c3.addNewItems(jobCertificate);
         assertEquals(c3, c3.getPermissions().getFirst("split_join").getRole().getContract());
 
         System.out.println("-------------");
@@ -649,7 +651,9 @@ public class PermissionsTest extends ContractTestBase {
     @Test
     public void decrementWithReference() throws Exception {
         Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PrivateKey>  llcPrivateKeys = new HashSet<>();
         stepaPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+        llcPrivateKeys.add(new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey")));
 
         Set<PublicKey> stepaPublicKeys = new HashSet<>();
         for (PrivateKey pk : stepaPrivateKeys) {
@@ -658,11 +662,15 @@ public class PermissionsTest extends ContractTestBase {
         Set<String> references = new HashSet<>();
         references.add("certification_contract");
 
+        Contract jobCertificate = new Contract(llcPrivateKeys.iterator().next());
+        jobCertificate.setOwnerKeys(stepaPublicKeys);
+        jobCertificate.getDefinition().getData().set("issuer", "Roga & Kopita");
+        jobCertificate.getDefinition().getData().set("type", "chief accountant assignment");
+        jobCertificate.seal();
+
         Contract c = Contract.fromDslFile(rootPath + "AbonementWithReferenceDSLTemplate.yml");
         c.addSignerKeyFromFile(PRIVATE_KEY_PATH);
-        Contract mi = new Contract();
-        mi.seal();
-        c.findReferenceByName("certification_contract").addMatchingItem(mi);
+        c.addNewItems(jobCertificate);
 
         Role r = c.getPermissions().getFirst("decrement_permission").getRole();
         assertThat(r, is(instanceOf(ListRole.class)));
@@ -710,11 +718,7 @@ public class PermissionsTest extends ContractTestBase {
 
         Contract c3 = c.createRevision(stepaPrivateKeys);
         c3.getStateData().set("units", c.getStateData().getIntOrThrow("units") - 1);
-        Reference ref = new Reference();
-        ref.name = "certification_contract";
-        ref.type = Reference.TYPE_EXISTING_DEFINITION;
-        ref.addMatchingItem(new Contract());
-        c3.getReferences().put(ref.name, ref);
+        c3.addNewItems(jobCertificate);
         assertEquals(c3, c3.getPermissions().getFirst("decrement_permission").getRole().getContract());
 
         System.out.println("-------------");

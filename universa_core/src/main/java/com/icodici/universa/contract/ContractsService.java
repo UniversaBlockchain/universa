@@ -1425,7 +1425,8 @@ public class ContractsService {
      * Possible values for the internal escrow contract status field are: opened, completed and canceled.
      *
      * If necessary, the contents and parameters (expiration period, for example) of escrow contracts
-     * can be changed before sealing and registration.
+     * can be changed before sealing and registration. If internal escrow contract has changed, need re-create external
+     * escrow contract by {@link ContractsService#createExternalEscrowContract(Contract, Collection)}.
      *
      * @param issuerKeys issuer escrow contract private keys
      * @param customerKeys customer public keys
@@ -1435,6 +1436,38 @@ public class ContractsService {
      * @return external escrow contract
      */
     public static Contract createEscrowContract(
+            Collection<PrivateKey> issuerKeys,
+            Collection<PublicKey> customerKeys,
+            Collection<PublicKey> executorKeys,
+            Collection<PublicKey> arbitratorKeys) {
+
+        // Create internal escrow contract
+        Contract escrow = createInternalEscrowContract(issuerKeys, customerKeys, executorKeys, arbitratorKeys);
+
+        // Create external escrow contract (escrow pack)
+        Contract escrowPack = createExternalEscrowContract(escrow, issuerKeys);
+
+        return escrowPack;
+    }
+
+    /**
+     * Creates internal escrow contract for a expiration period of 5 years.
+     * To internal escrow contract establishes the owner role, {@link ListRole} on the basis of the quorum of 2 of 3 roles: customer, executor and arbitrator.
+     * This role is granted exclusive permission to change the value of the status field of internal escrow contract (state.data.status).
+     * Possible values for the internal escrow contract status field are: opened, completed and canceled.
+     *
+     * If necessary, the contents and parameters (expiration period, for example) of escrow contract
+     * can be changed before sealing and registration. If internal escrow contract has changed, need re-create external
+     * escrow contract (if used) by {@link ContractsService#createExternalEscrowContract(Contract, Collection)}.
+     *
+     * @param issuerKeys are issuer escrow contract private keys
+     * @param customerKeys are customer public keys
+     * @param executorKeys are executor public keys
+     * @param arbitratorKeys are arbitrator public keys
+     *
+     * @return internal escrow contract
+     */
+    public static Contract createInternalEscrowContract(
             Collection<PrivateKey> issuerKeys,
             Collection<PublicKey> customerKeys,
             Collection<PublicKey> executorKeys,
@@ -1458,6 +1491,7 @@ public class ContractsService {
         escrow.createRole("issuer", issuerRole);
         escrow.createRole("creator", issuerRole);
 
+        // quorum role
         Collection<Role> quorumCollection = new HashSet();
         quorumCollection.add(new SimpleRole("customer", customerKeys));
         quorumCollection.add(new SimpleRole("executor", executorKeys));
@@ -1469,14 +1503,61 @@ public class ContractsService {
         RoleLink ownerLink = new RoleLink("@owner_link", "owner");
         ownerLink.setContract(escrow);
 
+        // modify permission
         HashMap<String, Object> fieldsMap = new HashMap<>();
         fieldsMap.put("status", asList("completed", "canceled"));
         Binder modifyDataParams = Binder.of("fields", fieldsMap);
         ModifyDataPermission modifyDataPerm = new ModifyDataPermission(ownerLink, modifyDataParams);
         escrow.addPermission(modifyDataPerm);
 
+        // reference for deny re-complete and re-cancel
+        Reference finalizeRef = new Reference(escrow);
+        finalizeRef.name = "deny_re-complete_and_re-cancel";
+        finalizeRef.type =  Reference.TYPE_EXISTING_DEFINITION;
+
+        List<String> listParentConditions = new ArrayList<>();
+        listParentConditions.add("ref.id == this.state.parent");
+        listParentConditions.add("ref.state.data.status != \"completed\"");
+        listParentConditions.add("ref.state.data.status != \"canceled\"");
+        Binder parentConditions = new Binder();
+        parentConditions.set("all_of", listParentConditions);
+
+        List<Object> listConditions = new ArrayList<>();
+        listConditions.add("this.state.parent undefined");
+        listConditions.add(parentConditions);
+
+        Binder conditions = new Binder();
+        conditions.set("any_of", listConditions);
+
+        finalizeRef.setConditions(conditions);
+        escrow.addReference(finalizeRef);
+
         escrow.addSignerKeys(issuerKeys);
         escrow.seal();
+
+        return escrow;
+    }
+
+    /**
+     * Creates external escrow contract for a expiration period of 5 years.
+     * External escrow contract includes internal escrow contract. Contracts are linked by internal escrow contract origin.
+     *
+     * If necessary, the contents and parameters (expiration period, for example) of escrow contracts
+     * can be changed before sealing and registration. If internal escrow contract has changed, need re-create external
+     * escrow contract by {@link ContractsService#createExternalEscrowContract(Contract, Collection)}.
+     *
+     * @param internalEscrow is internal escrow contract
+     * @param issuerKeys are issuer escrow contract private keys
+     *
+     * @return external escrow contract
+     */
+    public static Contract createExternalEscrowContract(Contract internalEscrow, Collection<PrivateKey> issuerKeys) {
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
 
         // Create external escrow contract (escrow pack)
         Contract escrowPack = new Contract();
@@ -1484,14 +1565,14 @@ public class ContractsService {
 
         escrowPack.getDefinition().setExpiresAt(escrowPack.getCreatedAt().plusMonths(60));
 
-        escrowPack.getDefinition().getData().set("EscrowOrigin", escrow.getOrigin().toBase64String());
+        escrowPack.getDefinition().getData().set("EscrowOrigin", internalEscrow.getOrigin().toBase64String());
 
         escrowPack.registerRole(issuerRole);
         escrowPack.createRole("issuer", issuerRole);
         escrowPack.createRole("owner", issuerRole);
         escrowPack.createRole("creator", issuerRole);
 
-        escrowPack.addNewItems(escrow);
+        escrowPack.addNewItems(internalEscrow);
 
         escrowPack.addSignerKeys(issuerKeys);
         escrowPack.seal();
@@ -1500,38 +1581,49 @@ public class ContractsService {
     }
 
     /**
-     * Check external escrow contract and add payment contract to it.
+     * Modifies payment contract by making ready for escrow.
      * To payment contract is added {@link Contract.Transactional} section with 2 references: send_payment_to_executor, return_payment_to_customer.
      * The owner of payment contract is set to {@link ListRole} contains customer role with return_payment_to_customer reference
      * and executor role with send_payment_to_executor reference. Any of these roles is sufficient to own a payment contract.
      *
-     * @param escrow contract (external) to use with payment. Must be returned from {@link ContractsService#createEscrowContract(Collection, Collection, Collection, Collection)}
+     * @param escrow is internal escrow contract to use with payment. Must be returned from {@link ContractsService#createInternalEscrowContract(Collection, Collection, Collection, Collection)}
      * @param payment contract to update. Must not be registered (new root or new revision)
-     * @param paymentOwnerKeys keys required for use payment contract (usually, owner private keys). May be null, if payment will be signed later.
-     * @param customerKeys customer public keys of escrow contract
-     * @param executorKeys executor public keys of escrow contract
+     * @param paymentOwnerKeys are keys required for use payment contract (usually, owner private keys). May be null, if payment will be signed later
+     * @param customerKeys are customer public keys of escrow contract
+     * @param executorKeys are executor public keys of escrow contract
      *
-     * @return result of checking external escrow contract and adding payment to it
+     * @return payment contract ready for escrow
      */
-    public static boolean addPaymentToEscrowContract(
+    public static Contract modifyPaymentForEscrowContract(
             Contract escrow,
             Contract payment,
             Collection<PrivateKey> paymentOwnerKeys,
             Collection<PublicKey> customerKeys,
             Collection<PublicKey> executorKeys) {
 
-        // Check external escrow contract
-        String escrowOrigin = escrow.getDefinition().getData().getString("EscrowOrigin", null);
-        if (escrowOrigin == null)
-            return false;
+        return modifyPaymentForEscrowContract(escrow.getOrigin().toBase64String(), payment, paymentOwnerKeys, customerKeys, executorKeys);
+    }
 
-        boolean escrowCheck = false;
-        for (Contract c : escrow.getNew())
-            if (c.getOrigin().toBase64String().equals(escrowOrigin) && c.getStateData().getString("status", "null").equals("opened"))
-                escrowCheck = true;
-
-        if (!escrowCheck)
-            return false;
+    /**
+     * Modifies payment contract by making ready for escrow.
+     * To payment contract is added {@link Contract.Transactional} section with 2 references: send_payment_to_executor, return_payment_to_customer.
+     * The owner of payment contract is set to {@link ListRole} contains customer role with return_payment_to_customer reference
+     * and executor role with send_payment_to_executor reference. Any of these roles is sufficient to own a payment contract.
+     *
+     * @param escrowOrigin is origin (base64 string) of internal escrow contract to use with payment.
+     * @param payment contract to update. Must not be registered (new root or new revision)
+     * @param paymentOwnerKeys are keys required for use payment contract (usually, owner private keys). May be null, if payment will be signed later
+     * @param customerKeys are customer public keys of escrow contract
+     * @param executorKeys are executor public keys of escrow contract
+     *
+     * @return payment contract ready for escrow
+     */
+    public static Contract modifyPaymentForEscrowContract(
+            String escrowOrigin,
+            Contract payment,
+            Collection<PrivateKey> paymentOwnerKeys,
+            Collection<PublicKey> customerKeys,
+            Collection<PublicKey> executorKeys) {
 
         // Build payment contracts owner role
         Reference customerRef = new Reference();
@@ -1577,6 +1669,45 @@ public class ContractsService {
             payment.addSignerKeys(paymentOwnerKeys);
 
         payment.seal();
+
+        return payment;
+    }
+
+    /**
+     * Checks external escrow contract and add payment contract to it.
+     * To payment contract is added {@link Contract.Transactional} section with 2 references: send_payment_to_executor, return_payment_to_customer.
+     * The owner of payment contract is set to {@link ListRole} contains customer role with return_payment_to_customer reference
+     * and executor role with send_payment_to_executor reference. Any of these roles is sufficient to own a payment contract.
+     *
+     * @param escrow contract (external) to use with payment. Must be returned from {@link ContractsService#createEscrowContract(Collection, Collection, Collection, Collection)}
+     * @param payment contract to update. Must not be registered (new root or new revision)
+     * @param paymentOwnerKeys are keys required for use payment contract (usually, owner private keys). May be null, if payment will be signed later.
+     * @param customerKeys are customer public keys of escrow contract
+     * @param executorKeys are executor public keys of escrow contract
+     *
+     * @return result of checking external escrow contract and adding payment to it
+     */
+    public static boolean addPaymentToEscrowContract(
+            Contract escrow,
+            Contract payment,
+            Collection<PrivateKey> paymentOwnerKeys,
+            Collection<PublicKey> customerKeys,
+            Collection<PublicKey> executorKeys) {
+
+        // Check external escrow contract
+        String escrowOrigin = escrow.getDefinition().getData().getString("EscrowOrigin", null);
+        if (escrowOrigin == null)
+            return false;
+
+        boolean escrowCheck = false;
+        for (Contract c : escrow.getNew())
+            if (c.getOrigin().toBase64String().equals(escrowOrigin) && c.getStateData().getString("status", "null").equals("opened"))
+                escrowCheck = true;
+
+        if (!escrowCheck)
+            return false;
+
+        payment = modifyPaymentForEscrowContract(escrowOrigin, payment, paymentOwnerKeys, customerKeys, executorKeys);
 
         // Add payment contract to external escrow
         escrow.addNewItems(payment);
@@ -1655,14 +1786,15 @@ public class ContractsService {
 
     /**
      * Transfers payment contract to new owner on the result of escrow.
-     * Use payment contract that was added to escrow contract by
-     * {@link ContractsService#addPaymentToEscrowContract(Contract, Contract, Collection, Collection, Collection)}.
+     * Use payment contract that was added to external escrow contract by
+     * {@link ContractsService#addPaymentToEscrowContract(Contract, Contract, Collection, Collection, Collection)} or
+     * was modified by {@link ContractsService#modifyPaymentForEscrowContract(Contract, Contract, Collection, Collection, Collection)}.
      * Executor can take the payment contract, if internal escrow contract are completed.
      * Customer can take the payment contract, if internal escrow contract are canceled.
-     * For registration payment contract (returned by this method) add result internal escrow contract by
+     * For registration payment contract (returned by this method) need to add result internal escrow contract by
      * {@link TransactionPack#addReferencedItem(Contract)}.
      *
-     * @param newOwnerKeys private keys of new owner of payment
+     * @param newOwnerKeys are private keys of new owner of payment
      * @param payment contract to take by new owner. Must be registered for creation new revision
      *
      * @return new revision of payment contract with new owner
