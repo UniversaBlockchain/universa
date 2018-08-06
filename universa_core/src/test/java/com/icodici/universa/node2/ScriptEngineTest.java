@@ -844,4 +844,24 @@ public class ScriptEngineTest {
         assertEquals(field.get(sample), field.get(revokePermission));
     }
 
+    @Test
+    public void testTransactionalAccess() throws Exception {
+        String t1value = "t1value";
+        String t2value = "t2value";
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.getTransactionalData().set("t1", t1value);
+        String js = "";
+        js += "print('testTransactionalAccess');";
+        js += "var t1 = jsApi.getCurrentContract().getTransactionalDataField('t1');";
+        js += "print('t1: ' + t1);";
+        js += "jsApi.getCurrentContract().setTransactionalDataField('t2', '"+t2value+"');";
+        js += "result = t1;";
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        String res = (String)contract.execJS(js.getBytes());
+        assertEquals(t1value, res);
+        assertEquals(t2value, contract.getTransactionalData().getStringOrThrow("t2"));
+        System.out.println("t2: " + contract.getTransactionalData().getStringOrThrow("t2"));
+    }
+
 }

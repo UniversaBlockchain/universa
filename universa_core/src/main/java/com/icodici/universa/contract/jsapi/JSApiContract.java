@@ -54,6 +54,14 @@ public class JSApiContract {
         return this.currentContract.getDefinition().getData().getStringOrThrow(fieldPath);
     }
 
+    public String getTransactionalDataField(String fieldPath) {
+        return this.currentContract.getTransactionalData().getStringOrThrow(fieldPath).toString();
+    }
+
+    public void setTransactionalDataField(String fieldPath, String value) {
+        this.currentContract.getTransactionalData().set(fieldPath, value);
+    }
+
     public List<String> getIssuer() {
         return this.currentContract.getIssuer().getAllAddresses();
     }
