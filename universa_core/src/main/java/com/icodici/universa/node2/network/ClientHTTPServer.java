@@ -313,7 +313,9 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder startApproval(final Binder params, Session session) throws IOException, Quantiser.QuantiserException {
         if (config == null || config.limitFreeRegistrations())
-            if(config == null || !config.getKeysWhiteList().contains(session.getPublicKey())) {
+            if(config == null || (
+            !config.getKeysWhiteList().contains(session.getPublicKey()) &&
+            !config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey())))) {
                 System.out.println("startApproval ERROR: session key shoild be in the white list");
 
                 return Binder.of(

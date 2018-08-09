@@ -93,7 +93,8 @@ public class MainTest {
 
             TestSpace ts = prepareTestSpace();
 
-            ts.node.config.getKeysWhiteList().add(TestKeys.publicKey(3));
+            //ts.node.config.getKeysWhiteList().add(TestKeys.publicKey(3));
+            ts.node.config.getAddressesWhiteList().add(new KeyAddress(TestKeys.publicKey(3), 0, true));
             Contract testContract = new Contract(ts.myKey);
             testContract.seal();
             assertTrue(testContract.isOk());
@@ -241,7 +242,8 @@ public class MainTest {
                 }
 
                 try {
-                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")));
+                    //m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")));
+                    m.config.getAddressesWhiteList().add(new KeyAddress(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")), 0, true));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -277,7 +279,8 @@ public class MainTest {
                 }
 
                 try {
-                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")));
+                    //m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")));
+                    m.config.getAddressesWhiteList().add(new KeyAddress(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")), 0, true));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -1400,7 +1403,8 @@ public class MainTest {
 
         testSpace.nodes.get(0).config.setStatsIntervalSmall(Duration.ofSeconds(4));
         testSpace.nodes.get(0).config.setStatsIntervalBig(Duration.ofSeconds(60));
-        testSpace.nodes.get(0).config.getKeysWhiteList().add(issuerKey.getPublicKey());
+        //testSpace.nodes.get(0).config.getKeysWhiteList().add(issuerKey.getPublicKey());
+        testSpace.nodes.get(0).config.getAddressesWhiteList().add(new KeyAddress(issuerKey.getPublicKey(), 0, true));
 
         while(testSpace.client.getStats(null).getIntOrThrow("uptime") >= uptime) {
             Thread.sleep(500);

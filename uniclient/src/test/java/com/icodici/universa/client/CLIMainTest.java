@@ -3276,7 +3276,8 @@ public class CLIMainTest {
         }
 
         try {
-            main.config.getKeysWhiteList().add(CLIMain.getPrivateKey().getPublicKey());
+            //main.config.getKeysWhiteList().add(CLIMain.getPrivateKey().getPublicKey());
+            main.config.getAddressesWhiteList().add(new KeyAddress(CLIMain.getPrivateKey().getPublicKey(), 0, true));
         } catch (IOException e) {
             e.printStackTrace();
         }
