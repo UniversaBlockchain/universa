@@ -125,7 +125,7 @@ public class MainTest {
     @Test
     public void checkPublicKeyMemoryLeak() throws Exception {
 
-        byte[] bytes = Do.read("./src/test_contracts/keys/tu_key.public.unikey");
+        byte[] bytes = Do.read("./src/test_contracts/keys/u_key.public.unikey");
 
         for (int it = 0; it < 10000; it++) {
             PublicKey pk = new PublicKey(bytes);
@@ -241,7 +241,7 @@ public class MainTest {
                 }
 
                 try {
-                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/tu_key.public.unikey")));
+                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -277,7 +277,7 @@ public class MainTest {
                 }
 
                 try {
-                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/tu_key.public.unikey")));
+                    m.config.getKeysWhiteList().add(new PublicKey(Do.read("./src/test_contracts/keys/u_key.public.unikey")));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -327,7 +327,7 @@ public class MainTest {
         PrivateKey myKey = TestKeys.privateKey(3);
         Main main = mm.get(3);
 
-        PrivateKey universaKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+        PrivateKey universaKey = new PrivateKey(Do.read("./src/test_contracts/keys/u_key.private.unikey"));
         Contract contract = new Contract(universaKey);
         contract.seal();
         assertTrue(contract.isOk());
@@ -977,7 +977,7 @@ public class MainTest {
         stepaU.traceErrors();
 
         PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
-        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/u_key.private.unikey"));
         client.getSession().setPrivateKey(newPrivateKey);
         client.restart();
 
@@ -995,7 +995,7 @@ public class MainTest {
     @Test
     public void registerContractWithAnonymousId() throws Exception {
         TestSpace ts = prepareTestSpace();
-        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/tu_key.private.unikey"));
+        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/u_key.private.unikey"));
 
         byte[] myAnonId = newPrivateKey.createAnonymousId();
 
@@ -4189,6 +4189,186 @@ public class MainTest {
         assertNull(ledger.getEnvironment(rev1.getId()));
 
         testSpace.nodes.forEach(n->n.shutdown());
+    }
+
+    @Test
+    public void checkWhiteListKey() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            mm.add(createMain("node" + (i + 1), false));
+        }
+
+        Main main = mm.get(0);
+        PrivateKey myKey = TestKeys.privateKey(3);
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Contract testContract = new Contract(myKey);
+        for (int i = 0; i < 10; i++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            testContract.addNewItems(nc);
+        }
+        testContract.seal();
+        assertTrue(testContract.isOk());
+
+        Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
+        client.registerParcel(parcel.pack());
+
+        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+        while (itemResult.state.isPending()) {
+            Thread.currentThread().sleep(100);
+            itemResult = client.getState(parcel.getPayloadContract().getId());
+            System.out.println(">> wait result: " + itemResult);
+        }
+
+        System.out.println(">> state: " + itemResult);
+
+        assertEquals (ItemState.APPROVED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void checkNotWhiteListKey() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            mm.add(createMain("node" + (i + 1), false));
+        }
+
+        //remove all keys from white list
+        mm.forEach(x -> x.config.getKeysWhiteList().clear());
+
+        Main main = mm.get(0);
+        PrivateKey myKey = TestKeys.privateKey(3);
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Contract testContract = new Contract(myKey);
+        for (int i = 0; i < 10; i++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            testContract.addNewItems(nc);
+        }
+        testContract.seal();
+        assertTrue(testContract.isOk());
+
+        Set<PublicKey> ownerKeys = new HashSet();
+        Collection<PrivateKey> keys = Do.listOf(myKey);
+        keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
+        Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
+        stepaU.check();
+        stepaU.traceErrors();
+
+        PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
+        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/u_key.private.unikey"));
+        client.getSession().setPrivateKey(newPrivateKey);
+        client.restart();
+
+        ItemResult itemResult = client.register(stepaU.getPackedTransaction(), 5000);
+
+        client.getSession().setPrivateKey(clientPrivateKey);
+        client.restart();
+
+        //check error
+        assertEquals(itemResult.errors.size(), 1);
+        assertEquals(itemResult.errors.get(0).getMessage(), "command needs client key from whitelist");
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+        Set<PrivateKey> keySet = new HashSet<>();
+        keySet.addAll(keys);
+        Parcel parcel = ContractsService.createParcel(testContract, stepaU, 150, keySet);
+        client.registerParcel(parcel.pack());
+
+        itemResult = client.getState(parcel.getPayloadContract().getId());
+        while (itemResult.state.isPending()) {
+            Thread.currentThread().sleep(100);
+            itemResult = client.getState(parcel.getPayloadContract().getId());
+            System.out.println(">> wait result: " + itemResult);
+        }
+
+        System.out.println(">> state: " + itemResult);
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void checkWhiteListAddress() throws Exception {
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            mm.add(createMain("node" + (i + 1), false));
+        }
+
+        PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/u_key.private.unikey"));
+
+        //remove all keys from white list
+        mm.forEach(x -> x.config.getKeysWhiteList().clear());
+
+        //add address to white list
+        mm.forEach(x -> x.config.getAddressesWhiteList().add(new KeyAddress(newPrivateKey.getPublicKey(), 0, true)));
+
+        Main main = mm.get(0);
+        PrivateKey myKey = TestKeys.privateKey(3);
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Contract testContract = new Contract(myKey);
+        for (int i = 0; i < 10; i++) {
+            Contract nc = new Contract(myKey);
+            nc.seal();
+            testContract.addNewItems(nc);
+        }
+        testContract.seal();
+        assertTrue(testContract.isOk());
+
+        Set<PublicKey> ownerKeys = new HashSet();
+        Collection<PrivateKey> keys = Do.listOf(myKey);
+        keys.stream().forEach(key->ownerKeys.add(key.getPublicKey()));
+        Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
+        stepaU.check();
+        stepaU.traceErrors();
+
+        PrivateKey clientPrivateKey = client.getSession().getPrivateKey();
+        client.getSession().setPrivateKey(newPrivateKey);
+        client.restart();
+
+        ItemResult itemResult = client.register(stepaU.getPackedTransaction(), 5000);
+
+        client.getSession().setPrivateKey(clientPrivateKey);
+        client.restart();
+
+        assertEquals(ItemState.APPROVED, itemResult.state);
+        Set<PrivateKey> keySet = new HashSet<>();
+        keySet.addAll(keys);
+        Parcel parcel = ContractsService.createParcel(testContract, stepaU, 150, keySet);
+        client.registerParcel(parcel.pack());
+
+        itemResult = client.getState(parcel.getPayloadContract().getId());
+        while (itemResult.state.isPending()) {
+            Thread.currentThread().sleep(100);
+            itemResult = client.getState(parcel.getPayloadContract().getId());
+            System.out.println(">> wait result: " + itemResult);
+        }
+
+        System.out.println(">> state: " + itemResult);
+
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
     }
 
 }

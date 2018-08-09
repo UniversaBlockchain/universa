@@ -60,6 +60,8 @@ public class Config {
         config.maxCacheAge = maxCacheAge;
         config.maxNameCacheAge = maxNameCacheAge;
         config.maxGetItemTime = maxGetItemTime;
+        config.statsIntervalSmall = statsIntervalSmall;
+        config.statsIntervalBig = statsIntervalBig;
         synchronized (this) {
             config.negativeConsensus = negativeConsensus;
             config.positiveConsensus = positiveConsensus;
@@ -73,9 +75,16 @@ public class Config {
         config.checkItemTime = checkItemTime;
         config.maxResyncTime = maxResyncTime;
         config.uIssuerKeys = new HashSet<>(uIssuerKeys);
-        config.keysWhiteList = keysWhiteList;
+        config.holdDuration = holdDuration;
+        config.keysWhiteList = new ArrayList<>(keysWhiteList);
+        config.addressesWhiteList = new ArrayList<>(addressesWhiteList);
         config.isFreeRegistrationsLimited = isFreeRegistrationsLimited;
         config.isFreeRegistrationsAllowedFromYaml = isFreeRegistrationsAllowedFromYaml;
+        config.networkAdminKeyAddress = networkAdminKeyAddress;
+        config.networkReconfigKeyAddress = networkReconfigKeyAddress;
+        config.minPayment = new HashMap<>(minPayment);
+        config.rate = new HashMap<>(rate);
+        config.authorizedNameServiceCenterKey = authorizedNameServiceCenterKey;
         return config;
     }
 

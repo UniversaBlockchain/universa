@@ -6190,7 +6190,7 @@ public class BaseNetworkTest extends TestCase {
                 for (PrivateKey pk : stepaPrivateKeys) {
                     stepaPublicKeys.add(pk.getPublicKey());
                 }
-                PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/tu_key.private.unikey"));
+                PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(ROOT_PATH + "keys/u_key.private.unikey"));
                 int N = 100;
                 for (int i = 0; i < N; i++) {
 
