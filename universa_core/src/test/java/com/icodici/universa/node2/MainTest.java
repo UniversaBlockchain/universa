@@ -4104,4 +4104,34 @@ public class MainTest {
         testSpace.nodes.forEach(m -> m.shutdown());
     }
 
+    @Test
+    public void getStateWithNoLedgerCache() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+        testSpace.nodes.forEach(m -> ((PostgresLedger)m.node.getLedger()).enableCache(false));
+
+        //SHUTDOWN LAST NODE
+        testSpace.nodes.remove(testSpace.nodes.size()-1).shutdown();
+        Thread.sleep(4000);
+
+        Contract rev1 = new Contract(TestKeys.privateKey(0));
+        rev1.getStateData().set("field1", 33);
+        Permission permission = new ChangeNumberPermission(rev1.getOwner(), Binder.of("field_name", "field1"));
+        rev1.addPermission(permission);
+        rev1.seal();
+        ItemResult ir1 = testSpace.client.register(rev1.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir1.state);
+
+        Contract rev2 = rev1.createRevision();
+        rev2.getStateData().set("field1", 34);
+        rev2.addSignerKey(TestKeys.privateKey(0));
+        rev2.seal();
+        ItemResult ir2 = testSpace.client.register(rev2.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir2.state);
+        ir1 = testSpace.client.register(rev1.getPackedTransaction(), 5000);
+        assertEquals(ItemState.REVOKED, ir1.state);
+
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
 }
