@@ -2353,6 +2353,9 @@ public class Node {
                             r.setExpiresAt(ZonedDateTime.now().plus(config.getRevokedItemExpiration()));
                             try {
                                 r.save();
+                                ItemProcessor revokingProcessor = processors.get(revokingItem.getId());
+                                if (revokingProcessor != null)
+                                    revokingProcessor.emergencyBreak();
                                 // if revoking item is smart contract node calls method onRevoked
                                 if(revokingItem instanceof NSmartContract) {
 
