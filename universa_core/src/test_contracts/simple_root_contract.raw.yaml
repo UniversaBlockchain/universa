@@ -10,15 +10,15 @@ definition:
     type: access certificate
   references: []
   permissions:
-    bTmVWP:
-      role: {target_name: owner, __type: RoleLink, name: '@change_owner'}
-      __type: ChangeOwnerPermission
-      name: change_owner
-    gmn4_L:
+    7K8dE2:
       role: {target_name: owner, __type: RoleLink, name: '@revoke'}
       __type: RevokePermission
       name: revoke
-  created_at: {seconds: 1533818313, __type: unixtime}
+    TNxS1p:
+      role: {target_name: owner, __type: RoleLink, name: '@change_owner'}
+      __type: ChangeOwnerPermission
+      name: change_owner
+  created_at: {seconds: 1533819771, __type: unixtime}
   issuer:
     addresses: []
     keys:
@@ -71,6 +71,6 @@ state:
   references: []
   branch_id: null
   origin: null
-  created_at: {seconds: 1533818313, __type: unixtime}
+  created_at: {seconds: 1533819771, __type: unixtime}
   created_by: {target_name: issuer, __type: RoleLink, name: creator}
   revision: 1

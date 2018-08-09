@@ -2355,7 +2355,7 @@ public class Node {
                                 r.save();
                                 ItemProcessor revokingProcessor = processors.get(revokingItem.getId());
                                 if (revokingProcessor != null)
-                                    revokingProcessor.emergencyBreak();
+                                    revokingProcessor.forceRemoveSelf();
                                 // if revoking item is smart contract node calls method onRevoked
                                 if(revokingItem instanceof NSmartContract) {
 
