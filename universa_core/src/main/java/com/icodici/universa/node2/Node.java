@@ -3840,6 +3840,7 @@ public class Node {
                                     .setCreatedAt(createdAt)
                                     .setExpiresAt(expiresAt)
                                     .save();
+                            this.record = newRecord;
                             synchronized (cache) {
                                 cache.update(newRecord.getId(), new ItemResult(newRecord));
                             }
