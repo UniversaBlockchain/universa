@@ -2980,6 +2980,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             return this.references;
         }
 
+        public void setParent(HashId parent) {
+            this.parent = parent;
+        }
+
+        public void setOrigin(HashId origin) {
+            this.origin = origin;
+        }
+
+        public void setRevision(int revision) {
+            this.revision = revision;
+        }
     }
 
     private Multimap<String, Permission> permissions = new Multimap<>();
@@ -3199,6 +3210,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             });
         }
 
+        public ZonedDateTime getExpiresAt() {
+            return expiresAt;
+        }
+
+        public ZonedDateTime getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setCreatedAt(ZonedDateTime createAt) {
+            this.createdAt = createAt;
+        }
     }
 
     /**

@@ -465,7 +465,7 @@ public class CLIMain {
                         .ofType(String.class)
                         .describedAs("file.unicon");
                 accepts("revision-of", "Use with --import command. " +
-                        "Option adds parent to revokes.")
+                        "Option adds parent to revokes and sets origin, parent and revision to imported contract.")
                         .withRequiredArg()
                         .withValuesSeparatedBy(",")
                         .ofType(String.class)
@@ -1226,12 +1226,17 @@ public class CLIMain {
                 if(parentItems.size() > s) {
                     Contract parent = loadContract((String) parentItems.get(s));
                     if(parent != null) {
+                        contract.getState().setParent(parent.getId());
+                        contract.getState().setOrigin(parent.getOrigin());
+                        contract.getState().setRevision(parent.getRevision()+1);
+                        contract.getDefinition().setExpiresAt(parent.getDefinition().getExpiresAt());
+                        contract.getDefinition().setCreatedAt(parent.getDefinition().getCreatedAt());
                         contract.addRevokingItems(parent);
                     }
                 }
 
                 contract.seal();
-                saveContract(contract, name);
+                saveContract(contract, name,true,true);
             }
         }
         finish();
