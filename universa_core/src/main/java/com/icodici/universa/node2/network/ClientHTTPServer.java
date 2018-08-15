@@ -9,6 +9,7 @@ package com.icodici.universa.node2.network;
 
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
@@ -28,11 +29,11 @@ import net.sergeych.tools.BufferedLogger;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClientHTTPServer extends BasicHttpServer {
@@ -51,6 +52,9 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private ExecutorService es = Executors.newFixedThreadPool(40);
 
+    private ConcurrentHashMap<PublicKey, Integer> keyRequests = new ConcurrentHashMap();
+    private CopyOnWriteArraySet<PublicKey> keysUnlimited = new CopyOnWriteArraySet();
+    private Long epochMinute = new Long(0);
 
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
         super(privateKey, port, 32, logger);
@@ -210,6 +214,9 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder unsRate(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
         Double rate = config.rate.get(NSmartContract.SmartContractType.UNS1.name());
         String str = rate.toString();
         Binder b = new Binder();
@@ -219,6 +226,9 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder queryNameRecord(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
         Binder b = new Binder();
         NNameRecord loadedNameRecord;
         String address = params.getString("address",null);
@@ -241,8 +251,10 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder queryNameContract(Binder params, Session session) throws IOException {
-        Binder b = new Binder();
 
+        checkNode(session, true);
+
+        Binder b = new Binder();
         String nameContract = params.getStringOrThrow("name");
         NNameRecord nr = node.getLedger().getNameRecord(nameContract);
         if (nr != null) {
@@ -342,7 +354,8 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder getState(Binder params, Session session) throws CommandFailedException {
 
-        checkNode(session);
+        checkNode(session, true);
+
         try {
             return Binder.of("itemResult",
                     node.checkItem((HashId) params.get("itemId")));
@@ -355,7 +368,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder resyncItem(Binder params, Session session) throws CommandFailedException {
 
-        checkNode(session);
+        checkNode(session, true);
 
         KeyAddress tmpAddress = null;
         try {
@@ -392,7 +405,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder setVerbose(Binder params, Session session) throws CommandFailedException {
 
-        checkNode(session);
+        checkNode(session, true);
 
         KeyAddress tmpAddress = null;
         try {
@@ -457,7 +470,7 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private Binder getStats(Binder params, Session session) throws CommandFailedException {
 
-        checkNode(session);
+        checkNode(session, true);
 
         if (config == null || node == null || !(
                 config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
@@ -473,7 +486,9 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder getParcelProcessingState(Binder params, Session session) throws CommandFailedException {
-        checkNode(session);
+
+        checkNode(session, true);
+
         try {
             return Binder.of("processingState",
                     node.checkParcelProcessingState((HashId) params.get("parcelId")));
@@ -488,6 +503,12 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private void checkNode(Session session) throws CommandFailedException {
+        checkNode(session, false);
+    }
+
+    private void checkNode(Session session, boolean checkKeyLimit) throws CommandFailedException {
+
+        // checking node
         if (node == null) {
             throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
         }
@@ -500,6 +521,28 @@ public class ClientHTTPServer extends BasicHttpServer {
             throw new CommandFailedException(Errors.NOT_READY, "", "please call again after a while");
         }
 
+        // checking key limit
+        if (!checkKeyLimit || (config == null) ||
+            config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
+            node.getNodeKey().equals(session.getPublicKey()) ||
+            config.getKeysWhiteList().contains(session.getPublicKey()) ||
+            config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey())) ||
+            keysUnlimited.contains(session.getPublicKey()))
+            return;
+
+        synchronized (epochMinute) {
+            long currentEpochMinute = ZonedDateTime.now().toEpochSecond() / 60;
+            if (epochMinute != currentEpochMinute) {
+                keyRequests.clear();
+                epochMinute = currentEpochMinute;
+            }
+
+            int requests = keyRequests.getOrDefault(session.getPublicKey(), 0);
+            if (requests >= config.getLimitRequestsForKeyPerMinute())
+                throw new CommandFailedException(Errors.COMMAND_FAILED, "", "exceeded the limit of requests for key per minute, please call again after a while");
+
+            keyRequests.put(session.getPublicKey(), requests + 1);
+        }
     }
 
     static private Binder networkData = null;
@@ -519,6 +562,9 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder storageGetRate(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
         Double rate = config.rate.get(NSmartContract.SmartContractType.SLOT1.name());
         String str = rate.toString();
         Binder b = new Binder();
@@ -528,6 +574,9 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder querySlotInfo(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
         Binder res = new Binder();
         res.set("slot_state", null);
         byte[] slot_id = params.getBinary("slot_id");
@@ -540,6 +589,9 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder queryContract(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
         Binder res = new Binder();
         res.set("contract", null);
         byte[] slot_id = params.getBinary("slot_id");

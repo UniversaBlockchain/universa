@@ -4297,15 +4297,9 @@ public class MainTest {
         assertTrue(testContract.isOk());
 
         Parcel parcel = createParcelWithFreshU(client, testContract,Do.listOf(myKey));
-        client.registerParcel(parcel.pack());
+        client.registerParcel(parcel.pack(), 15000);
 
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
-        while (itemResult.state.isPending()) {
-            Thread.currentThread().sleep(100);
-            itemResult = client.getState(parcel.getPayloadContract().getId());
-            System.out.println(">> wait result: " + itemResult);
-        }
-
         System.out.println(">> state: " + itemResult);
 
         assertEquals (ItemState.APPROVED, itemResult.state);
@@ -4320,8 +4314,11 @@ public class MainTest {
             mm.add(createMain("node" + (i + 1), false));
         }
 
-        //remove all keys from white list
-        mm.forEach(x -> x.config.getKeysWhiteList().clear());
+        //remove all keys and addresses from white list
+        mm.forEach(x -> {
+            x.config.getKeysWhiteList().clear();
+            x.config.getAddressesWhiteList().clear();
+        });
 
         Main main = mm.get(0);
         PrivateKey myKey = TestKeys.privateKey(3);
@@ -4366,15 +4363,9 @@ public class MainTest {
         Set<PrivateKey> keySet = new HashSet<>();
         keySet.addAll(keys);
         Parcel parcel = ContractsService.createParcel(testContract, stepaU, 150, keySet);
-        client.registerParcel(parcel.pack());
+        client.registerParcel(parcel.pack(), 15000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
-        while (itemResult.state.isPending()) {
-            Thread.currentThread().sleep(100);
-            itemResult = client.getState(parcel.getPayloadContract().getId());
-            System.out.println(">> wait result: " + itemResult);
-        }
-
         System.out.println(">> state: " + itemResult);
 
         assertEquals(ItemState.UNDEFINED, itemResult.state);
@@ -4391,8 +4382,11 @@ public class MainTest {
 
         PrivateKey newPrivateKey = new PrivateKey(Do.read("./src/test_contracts/keys/u_key.private.unikey"));
 
-        //remove all keys from white list
-        mm.forEach(x -> x.config.getKeysWhiteList().clear());
+        //remove all keys and addresses from white list
+        mm.forEach(x -> {
+            x.config.getKeysWhiteList().clear();
+            x.config.getAddressesWhiteList().clear();
+        });
 
         //add address to white list
         mm.forEach(x -> x.config.getAddressesWhiteList().add(new KeyAddress(newPrivateKey.getPublicKey(), 0, true)));
@@ -4435,15 +4429,9 @@ public class MainTest {
         Set<PrivateKey> keySet = new HashSet<>();
         keySet.addAll(keys);
         Parcel parcel = ContractsService.createParcel(testContract, stepaU, 150, keySet);
-        client.registerParcel(parcel.pack());
+        client.registerParcel(parcel.pack(), 15000);
 
         itemResult = client.getState(parcel.getPayloadContract().getId());
-        while (itemResult.state.isPending()) {
-            Thread.currentThread().sleep(100);
-            itemResult = client.getState(parcel.getPayloadContract().getId());
-            System.out.println(">> wait result: " + itemResult);
-        }
-
         System.out.println(">> state: " + itemResult);
 
         assertEquals(ItemState.APPROVED, itemResult.state);
@@ -4451,4 +4439,89 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
+    @Test
+    public void checkLimitRequestsForKey() throws Exception {
+
+        PrivateKey myKey = TestKeys.privateKey(3);
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Main main = mm.get(0);
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++) {
+            Contract testContract = new Contract(myKey);
+            testContract.seal();
+            assertTrue(testContract.isOk());
+
+            Set<PublicKey> ownerKeys = new HashSet();
+            Collection<PrivateKey> keys = Do.listOf(myKey);
+            keys.stream().forEach(key -> ownerKeys.add(key.getPublicKey()));
+            Contract stepaU = InnerContractsService.createFreshU(100000000, ownerKeys);
+            stepaU.check();
+            stepaU.traceErrors();
+
+            client.register(stepaU.getPackedTransaction());
+
+            Set<PrivateKey> keySet = new HashSet<>();
+            keySet.addAll(keys);
+            Parcel parcel = ContractsService.createParcel(testContract, stepaU, 150, keySet);
+            client.registerParcel(parcel.pack());
+        }
+
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
+            System.out.println(">> storage rate: " + client.storageGetRate());
+
+        String exception = "";
+        try {
+            client.storageGetRate();
+        } catch (Exception e) {
+            System.out.println("Client exception: " + e.toString());
+            exception = e.getMessage();
+        }
+
+        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
+
+        System.out.println("Wait 1 munite...");
+        Thread.currentThread().sleep(60000);
+
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
+            System.out.println(">> uns rate: " + client.unsRate());
+
+        exception = "";
+        try {
+            client.unsRate();
+        } catch (Exception e) {
+            System.out.println("Client exception: " + e.toString());
+            exception = e.getMessage();
+        }
+
+        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
+
+        System.out.println("Wait 1 munite...");
+        Thread.currentThread().sleep(60000);
+
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
+            client.getStats(90);
+
+        exception = "";
+        try {
+            client.getStats(90);
+        } catch (Exception e) {
+            System.out.println("Client exception: " + e.toString());
+            exception = e.getMessage();
+        }
+
+        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
+
+        mm.forEach(x -> x.shutdown());
+    }
 }
