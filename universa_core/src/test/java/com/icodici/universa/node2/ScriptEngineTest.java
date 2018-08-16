@@ -7,6 +7,7 @@ import com.icodici.universa.contract.jsapi.*;
 import com.icodici.universa.contract.jsapi.permissions.JSApiChangeNumberPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.permissions.JSApiSplitJoinPermission;
+import com.icodici.universa.contract.jsapi.storage.JSApiStorage;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.node.network.TestKeys;
@@ -471,14 +472,16 @@ public class ScriptEngineTest {
         KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
         KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
         KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
-        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        String p0 = TestKeys.publicKey(0).packToBase64String();
+        String p1 = TestKeys.publicKey(1).packToBase64String();
+        String p2 = TestKeys.publicKey(2).packToBase64String();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
         js += "print('testSimpleRoleCheck');";
         js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
         js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
-        js += "var check0 = simpleRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"');";
-        js += "var check1 = simpleRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "var check0 = simpleRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'));";
+        js += "var check1 = simpleRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'));";
         js += "print('check0: ' + check0);";
         js += "print('check1: ' + check1);";
         js += "result = [check0, check1];";
@@ -521,9 +524,13 @@ public class ScriptEngineTest {
     @Test
     public void testListRoleCheckAll() throws Exception {
         KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
-        KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
+        KeyAddress k1 = TestKeys.publicKey(1).getLongAddress();
         KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
-        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getLongAddress();
+        String p0 = TestKeys.publicKey(0).packToBase64String();
+        String p1 = TestKeys.publicKey(1).packToBase64String();
+        String p2 = TestKeys.publicKey(2).packToBase64String();
+        String p3 = TestKeys.publicKey(3).packToBase64String();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
         js += "print('testListRoleCheckAll');";
@@ -538,8 +545,8 @@ public class ScriptEngineTest {
         js += "var listSubRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole2, simpleRole3);";
         js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole0, simpleRole1, listSubRole);";
         js += "print('listRole: ' + listRole.getAllAddresses());";
-        js += "var check0 = listRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"');";
-        js += "var check1 = listRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"', '"+k2.toString()+"', '"+k3.toString()+"');";
+        js += "var check0 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'));";
+        js += "var check1 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'), jsApi.base64toPublicKey('"+p3+"'));";
         js += "print('check0: ' + check0);";
         js += "print('check1: ' + check1);";
         js += "result = [check0, check1];";
@@ -553,10 +560,14 @@ public class ScriptEngineTest {
 
     @Test
     public void testListRoleCheckAny() throws Exception {
-        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        KeyAddress k0 = TestKeys.publicKey(0).getLongAddress();
         KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
-        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getLongAddress();
         KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        String p0 = TestKeys.publicKey(0).packToBase64String();
+        String p1 = TestKeys.publicKey(1).packToBase64String();
+        String p2 = TestKeys.publicKey(2).packToBase64String();
+        String p3 = TestKeys.publicKey(3).packToBase64String();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
         js += "print('testListRoleCheckAny');";
@@ -571,11 +582,11 @@ public class ScriptEngineTest {
         js += "var listSubRole = jsApi.getRoleBuilder().createListRole('listRole', 'all', simpleRole2, simpleRole3);";
         js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'any', simpleRole0, simpleRole1, listSubRole);";
         js += "print('listRole: ' + listRole.getAllAddresses());";
-        js += "var check0 = listRole.isAllowedForAddresses('"+k0.toString()+"');";
-        js += "var check1 = listRole.isAllowedForAddresses('"+k1.toString()+"');";
-        js += "var check2 = listRole.isAllowedForAddresses('"+k2.toString()+"');";
-        js += "var check3 = listRole.isAllowedForAddresses('"+k3.toString()+"');";
-        js += "var check4 = listRole.isAllowedForAddresses('"+k3.toString()+"', '"+k2.toString()+"');";
+        js += "var check0 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'));";
+        js += "var check1 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'));";
+        js += "var check2 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p2+"'));";
+        js += "var check3 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p3+"'));";
+        js += "var check4 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p3+"'), jsApi.base64toPublicKey('"+p2+"'));";
         js += "print('check0: ' + check0);";
         js += "print('check1: ' + check1);";
         js += "print('check2: ' + check2);";
@@ -597,8 +608,12 @@ public class ScriptEngineTest {
     public void testListRoleCheckQuorum() throws Exception {
         KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
         KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
-        KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
-        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        KeyAddress k2 = TestKeys.publicKey(2).getLongAddress();
+        KeyAddress k3 = TestKeys.publicKey(3).getLongAddress();
+        String p0 = TestKeys.publicKey(0).packToBase64String();
+        String p1 = TestKeys.publicKey(1).packToBase64String();
+        String p2 = TestKeys.publicKey(2).packToBase64String();
+        String p3 = TestKeys.publicKey(3).packToBase64String();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
         js += "print('testListRoleCheckQuorum');";
@@ -614,15 +629,15 @@ public class ScriptEngineTest {
         js += "var listRole = jsApi.getRoleBuilder().createListRole('listRole', 'any', simpleRole0, simpleRole1, listSubRole);";
         js += "listRole.setQuorum(2);";
         js += "print('listRole: ' + listRole.getAllAddresses());";
-        js += "var check0 = listRole.isAllowedForAddresses('"+k0.toString()+"');";
-        js += "var check1 = listRole.isAllowedForAddresses('"+k1.toString()+"');";
-        js += "var check2 = listRole.isAllowedForAddresses('"+k2.toString()+"');";
-        js += "var check3 = listRole.isAllowedForAddresses('"+k3.toString()+"');";
-        js += "var check4 = listRole.isAllowedForAddresses('"+k3.toString()+"', '"+k2.toString()+"');";
-        js += "var check5 = listRole.isAllowedForAddresses('"+k0.toString()+"', '"+k1.toString()+"');";
-        js += "var check6 = listRole.isAllowedForAddresses('"+k0.toString()+"', '"+k2.toString()+"', '"+k3.toString()+"');";
-        js += "var check7 = listRole.isAllowedForAddresses('"+k1.toString()+"', '"+k2.toString()+"', '"+k3.toString()+"');";
-        js += "var check8 = listRole.isAllowedForAddresses('"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "var check0 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'));";
+        js += "var check1 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'));";
+        js += "var check2 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p2+"'));";
+        js += "var check3 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p3+"'));";
+        js += "var check4 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p3+"'), jsApi.base64toPublicKey('"+p2+"'));";
+        js += "var check5 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p1+"'));";
+        js += "var check6 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'), jsApi.base64toPublicKey('"+p2+"'), jsApi.base64toPublicKey('"+p3+"'));";
+        js += "var check7 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'), jsApi.base64toPublicKey('"+p3+"'));";
+        js += "var check8 = listRole.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'));";
         js += "print('check0: ' + check0);";
         js += "print('check1: ' + check1);";
         js += "print('check2: ' + check2);";
@@ -653,7 +668,9 @@ public class ScriptEngineTest {
         KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
         KeyAddress k1 = TestKeys.publicKey(1).getShortAddress();
         KeyAddress k2 = TestKeys.publicKey(2).getShortAddress();
-        KeyAddress k3 = TestKeys.publicKey(3).getShortAddress();
+        String p0 = TestKeys.publicKey(0).packToBase64String();
+        String p1 = TestKeys.publicKey(1).packToBase64String();
+        String p2 = TestKeys.publicKey(2).packToBase64String();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
         js += "print('testRoleLink');";
@@ -677,10 +694,10 @@ public class ScriptEngineTest {
         js += "print('roleLink1: ' + roleLink1.getAllAddresses());";
         js += "print('roleLink2: ' + roleLink2.getAllAddresses());";
         js += "print('roleLink3: ' + roleLink3.getAllAddresses());";
-        js += "var check0 = roleLink0.isAllowedForAddresses('"+k0.toString()+"');";
-        js += "var check1 = roleLink1.isAllowedForAddresses('"+k1.toString()+"');";
-        js += "var check2 = roleLink2.isAllowedForAddresses('"+k2.toString()+"');";
-        js += "var check3 = roleLink2.isAllowedForAddresses('"+k1.toString()+"', '"+k2.toString()+"');";
+        js += "var check0 = roleLink0.isAllowedForKeys(jsApi.base64toPublicKey('"+p0+"'));";
+        js += "var check1 = roleLink1.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'));";
+        js += "var check2 = roleLink2.isAllowedForKeys(jsApi.base64toPublicKey('"+p2+"'));";
+        js += "var check3 = roleLink2.isAllowedForKeys(jsApi.base64toPublicKey('"+p1+"'), jsApi.base64toPublicKey('"+p2+"'));";
         js += "print('check0: ' + check0);";
         js += "print('check1: ' + check1);";
         js += "print('check2: ' + check2);";
@@ -698,6 +715,8 @@ public class ScriptEngineTest {
     @Test
     public void testSplitJoinPermission() throws Exception {
         KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        String p0 = TestKeys.publicKey(0).packToBase64String();
+        String p1 = TestKeys.publicKey(1).packToBase64String();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
         js += "print('testSplitJoinPermission');";
@@ -706,11 +725,16 @@ public class ScriptEngineTest {
                 "{field_name: 'testval', min_value: 33, min_unit: 1e-7, join_match_fields: ['state.origin']}" +
                 ");";
         js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
-        js += "result = splitJoinPermission;";
+        js += "jsApi.getCurrentContract().addPermission(splitJoinPermission);";
+        js += "var isPermitted0 = jsApi.getCurrentContract().isPermitted('split_join', jsApi.base64toPublicKey('"+p0+"'));";
+        js += "var isPermitted1 = jsApi.getCurrentContract().isPermitted('split_join', jsApi.base64toPublicKey('"+p1+"'));";
+        js += "print('isPermitted0: ' + isPermitted0);";
+        js += "print('isPermitted1: ' + isPermitted1);";
+        js += "result = [splitJoinPermission, isPermitted0, isPermitted1];";
         contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
-        JSApiSplitJoinPermission res = (JSApiSplitJoinPermission)contract.execJS(js.getBytes());
-        SplitJoinPermission splitJoinPermission = (SplitJoinPermission)res.extractPermission(new JSApiAccessor());
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(js.getBytes());
+        SplitJoinPermission splitJoinPermission = (SplitJoinPermission)((JSApiSplitJoinPermission)res.get("0")).extractPermission(new JSApiAccessor());
         SplitJoinPermission sample = new SplitJoinPermission(new SimpleRole("test"), Binder.of(
                 "field_name", "testval", "min_value", 33, "min_unit", 1e-7));
 
@@ -729,11 +753,16 @@ public class ScriptEngineTest {
         field = SplitJoinPermission.class.getDeclaredField("mergeFields");
         field.setAccessible(true);
         assertEquals(field.get(sample), field.get(splitJoinPermission));
+
+        assertTrue((boolean)res.get("1"));
+        assertFalse((boolean)res.get("2"));
     }
 
     @Test
     public void testChangeNumberPermission() throws Exception {
         KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        String p0 = TestKeys.publicKey(0).packToBase64String();
+        String p1 = TestKeys.publicKey(1).packToBase64String();
         Contract contract = new Contract(TestKeys.privateKey(0));
         String js = "";
         js += "print('testChangeNumberPermission');";
@@ -742,11 +771,16 @@ public class ScriptEngineTest {
                 "{field_name: 'testval', min_value: 44, max_value: 55, min_step: 1, max_step: 2}" +
                 ");";
         js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
-        js += "result = changeNumberPermission;";
+        js += "jsApi.getCurrentContract().addPermission(changeNumberPermission);";
+        js += "var isPermitted0 = jsApi.getCurrentContract().isPermitted('decrement_permission', jsApi.base64toPublicKey('"+p0+"'));";
+        js += "var isPermitted1 = jsApi.getCurrentContract().isPermitted('decrement_permission', jsApi.base64toPublicKey('"+p1+"'));";
+        js += "print('isPermitted0: ' + isPermitted0);";
+        js += "print('isPermitted1: ' + isPermitted1);";
+        js += "result = [changeNumberPermission, isPermitted0, isPermitted1];";
         contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
-        JSApiChangeNumberPermission res = (JSApiChangeNumberPermission)contract.execJS(js.getBytes());
-        ChangeNumberPermission changeNumberPermission = (ChangeNumberPermission)res.extractPermission(new JSApiAccessor());
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(js.getBytes());
+        ChangeNumberPermission changeNumberPermission = (ChangeNumberPermission)((JSApiChangeNumberPermission)res.get("0")).extractPermission(new JSApiAccessor());
         ChangeNumberPermission sample = new ChangeNumberPermission(new SimpleRole("test"), Binder.of(
                 "field_name", "testval", "min_value", 44, "max_value", 55, "min_step", 1, "max_step", 2));
 
@@ -769,6 +803,9 @@ public class ScriptEngineTest {
         field = ChangeNumberPermission.class.getDeclaredField("maxStep");
         field.setAccessible(true);
         assertEquals(field.get(sample), field.get(changeNumberPermission));
+
+        assertTrue((boolean)res.get("1"));
+        assertFalse((boolean)res.get("2"));
     }
 
     @Test
@@ -985,6 +1022,160 @@ public class ScriptEngineTest {
         assertNotEquals(f2content, f2readed);
         assertEquals(f1contentUpdated, f1readed);
         assertEquals(f2contentUpdated, f2readed);
+    }
+
+    @Test
+    public void testSharedStorage() throws Exception {
+        String sharedStoragePath = JSApiStorage.getSharedStoragePath();
+        String testFileName = "./someFolder/file1.txt";
+        Paths.get(sharedStoragePath + testFileName).toFile().delete();
+        String testString1 = "testString1_" + HashId.createRandom().toBase64String();
+        String testString2 = "testString2_" + HashId.createRandom().toBase64String();
+        System.out.println("testString1: " + testString1);
+        System.out.println("testString2: " + testString2);
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testSharedStorage');";
+        js += "function bin2string(array){var result = '';for(var i = 0; i < array.length; ++i){result+=(String.fromCharCode(array[i]));}return result;}";
+        js += "var sharedStorage = jsApi.getSharedStorage();";
+        js += "sharedStorage.writeNewFile('"+testFileName+"', jsApi.string2bin('"+testString1+"'));";
+        js += "var file1readed = bin2string(sharedStorage.readAllBytes('"+testFileName+"'));";
+        js += "sharedStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString2+"'));";
+        js += "var file2readed = bin2string(sharedStorage.readAllBytes('"+testFileName+"'));";
+        js += "var result = [file1readed, file2readed]";
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(new JSApiExecOptions(), js.getBytes());
+        assertEquals(testString1, res.get("0"));
+        assertEquals(testString2, res.get("1"));
+    }
+
+    @Test
+    public void testOriginStorage() throws Exception {
+        String originStoragePath = JSApiStorage.getOriginStoragePath();
+        String testFileName = "./someFolder/file1.txt";
+        String testString1 = "testString1_" + HashId.createRandom().toBase64String();
+        String testString2 = "testString2_" + HashId.createRandom().toBase64String();
+        System.out.println("testString1: " + testString1);
+        System.out.println("testString2: " + testString2);
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testOriginStorage');";
+        js += "function bin2string(array){var result = '';for(var i = 0; i < array.length; ++i){result+=(String.fromCharCode(array[i]));}return result;}";
+        js += "var originStorage = jsApi.getOriginStorage();";
+        js += "originStorage.writeNewFile('"+testFileName+"', jsApi.string2bin('"+testString1+"'));";
+        js += "var file1readed = bin2string(originStorage.readAllBytes('"+testFileName+"'));";
+        js += "originStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString2+"'));";
+        js += "var file2readed = bin2string(originStorage.readAllBytes('"+testFileName+"'));";
+        js += "var result = [file1readed, file2readed]";
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        Paths.get(originStoragePath + JSApiHelpers.hashId2hex(contract.getOrigin()) + "/" + testFileName).toFile().delete();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(new JSApiExecOptions(), js.getBytes());
+        assertEquals(testString1, res.get("0"));
+        assertEquals(testString2, res.get("1"));
+        Contract contract2 = contract.createRevision();
+        String js2 = "";
+        js2 += "print('testOriginStorage_2');";
+        js2 += "function bin2string(array){var result = '';for(var i = 0; i < array.length; ++i){result+=(String.fromCharCode(array[i]));}return result;}";
+        js2 += "var originStorage = jsApi.getOriginStorage();";
+        js2 += "var file2readed = bin2string(originStorage.readAllBytes('"+testFileName+"'));";
+        js2 += "originStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString1+"'));";
+        js2 += "var file1readed = bin2string(originStorage.readAllBytes('"+testFileName+"'));";
+        js2 += "var result = [file1readed, file2readed]";
+        contract2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract2.addSignerKey(TestKeys.privateKey(0));
+        contract2.seal();
+        ScriptObjectMirror res2 = (ScriptObjectMirror)contract2.execJS(new JSApiExecOptions(), js2.getBytes());
+        assertEquals(testString1, res2.get("0"));
+        assertEquals(testString2, res2.get("1"));
+    }
+
+    @Test
+    public void testRevisionStorage() throws Exception {
+        String revisionStoragePath = JSApiStorage.getRevisionStoragePath();
+        String testFileName = "./someFolder/file1.txt";
+        String testString1a = "testString1a_" + HashId.createRandom().toBase64String();
+        String testString1b = "testString1b_" + HashId.createRandom().toBase64String();
+        String testString2a = "testString2a_" + HashId.createRandom().toBase64String();
+        String testString2b = "testString2b_" + HashId.createRandom().toBase64String();
+        String testString3a = "testString3a_" + HashId.createRandom().toBase64String();
+        String testString3b = "testString3b_" + HashId.createRandom().toBase64String();
+        System.out.println("testString1a: " + testString1a);
+        System.out.println("testString1b: " + testString1b);
+        System.out.println("testString2a: " + testString2a);
+        System.out.println("testString2b: " + testString2b);
+        System.out.println("testString3a: " + testString3a);
+        System.out.println("testString3b: " + testString3b);
+        Contract contract1 = new Contract(TestKeys.privateKey(0));
+        String js1 = "";
+        js1 += "print('testRevisionStorage');";
+        js1 += "function bin2string(array){var result = '';for(var i = 0; i < array.length; ++i){result+=(String.fromCharCode(array[i]));}return result;}";
+        js1 += "var revisionStorage = jsApi.getRevisionStorage();";
+        js1 += "revisionStorage.writeNewFile('"+testFileName+"', jsApi.string2bin('"+testString1a+"'));";
+        js1 += "var file1Areaded = bin2string(revisionStorage.readAllBytes('"+testFileName+"'));";
+        js1 += "revisionStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString1b+"'));";
+        js1 += "var file1Breaded = bin2string(revisionStorage.readAllBytes('"+testFileName+"'));";
+        js1 += "var fileParentReaded = null;";
+        js1 += "try {";
+        js1 += "  fileParentReaded = revisionStorage.readAllBytesFromParent('"+testFileName+"');";
+        js1 += "} catch (err) {";
+        js1 += "  fileParentReaded = null;";
+        js1 += "}";
+        js1 += "var result = [file1Areaded, file1Breaded, fileParentReaded]";
+        contract1.getState().setJS(js1.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract1.seal();
+        System.out.println("contract1.getId: " + Bytes.toHex(contract1.getId().getDigest()).replaceAll(" ", ""));
+        System.out.println("contract1.getParent: " + contract1.getParent());
+        Paths.get(revisionStoragePath + JSApiHelpers.hashId2hex(contract1.getId()) + "/" + testFileName).toFile().delete();
+        ScriptObjectMirror res = (ScriptObjectMirror)contract1.execJS(new JSApiExecOptions(), js1.getBytes());
+        assertEquals(testString1a, res.get("0"));
+        assertEquals(testString1b, res.get("1"));
+        assertNull(res.get("2"));
+
+        Contract contract2 = contract1.createRevision();
+        String js2 = "";
+        js2 += "print('testRevisionStorage_2');";
+        js2 += "function bin2string(array){var result = '';for(var i = 0; i < array.length; ++i){result+=(String.fromCharCode(array[i]));}return result;}";
+        js2 += "var revisionStorage = jsApi.getRevisionStorage();";
+        js2 += "revisionStorage.writeNewFile('"+testFileName+"', jsApi.string2bin('"+testString2a+"'));";
+        js2 += "var file2Areaded = bin2string(revisionStorage.readAllBytes('"+testFileName+"'));";
+        js2 += "revisionStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString2b+"'));";
+        js2 += "var file2Breaded = bin2string(revisionStorage.readAllBytes('"+testFileName+"'));";
+        js2 += "var fileParentReaded = revisionStorage.readAllBytesFromParent('"+testFileName+"');";
+        js2 += "fileParentReaded = bin2string(fileParentReaded);";
+        js2 += "var result = [file2Areaded, file2Breaded, fileParentReaded]";
+        contract2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract2.seal();
+        System.out.println("contract2.getId: " + Bytes.toHex(contract2.getId().getDigest()).replaceAll(" ", ""));
+        System.out.println("contract2.getParent: " + Bytes.toHex(contract2.getParent().getDigest()).replaceAll(" ", ""));
+        Paths.get(revisionStoragePath + JSApiHelpers.hashId2hex(contract2.getId()) + "/" + testFileName).toFile().delete();
+        ScriptObjectMirror res2 = (ScriptObjectMirror)contract2.execJS(new JSApiExecOptions(), js2.getBytes());
+        assertEquals(testString2a, res2.get("0"));
+        assertEquals(testString2b, res2.get("1"));
+        assertEquals(testString1b, res2.get("2"));
+
+        Contract contract3 = contract2.createRevision();
+        String js3 = "";
+        js3 += "print('testRevisionStorage_3');";
+        js3 += "function bin2string(array){var result = '';for(var i = 0; i < array.length; ++i){result+=(String.fromCharCode(array[i]));}return result;}";
+        js3 += "var revisionStorage = jsApi.getRevisionStorage();";
+        js3 += "revisionStorage.writeNewFile('"+testFileName+"', jsApi.string2bin('"+testString3a+"'));";
+        js3 += "var file3Areaded = bin2string(revisionStorage.readAllBytes('"+testFileName+"'));";
+        js3 += "revisionStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString3b+"'));";
+        js3 += "var file3Breaded = bin2string(revisionStorage.readAllBytes('"+testFileName+"'));";
+        js3 += "var fileParentReaded = revisionStorage.readAllBytesFromParent('"+testFileName+"');";
+        js3 += "fileParentReaded = bin2string(fileParentReaded);";
+        js3 += "var result = [file3Areaded, file3Breaded, fileParentReaded]";
+        contract3.getState().setJS(js3.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract3.seal();
+        System.out.println("contract3.getId: " + Bytes.toHex(contract3.getId().getDigest()).replaceAll(" ", ""));
+        System.out.println("contract3.getParent: " + Bytes.toHex(contract3.getParent().getDigest()).replaceAll(" ", ""));
+        Paths.get(revisionStoragePath + JSApiHelpers.hashId2hex(contract3.getId()) + "/" + testFileName).toFile().delete();
+        ScriptObjectMirror res3 = (ScriptObjectMirror)contract3.execJS(new JSApiExecOptions(), js3.getBytes());
+        assertEquals(testString3a, res3.get("0"));
+        assertEquals(testString3b, res3.get("1"));
+        assertEquals(testString2b, res3.get("2"));
     }
 
 }

@@ -1,11 +1,11 @@
 package com.icodici.universa.contract.jsapi.roles;
 
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.jsapi.JSApiAccessor;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class JSApiListRole extends JSApiRole {
 
@@ -39,25 +39,9 @@ public class JSApiListRole extends JSApiRole {
     }
 
     @Override
-    public boolean isAllowedForAddresses(String... addresses) {
-        if (listRole.getMode() == ListRole.Mode.ALL)
-            return listRole.getRoles().stream().allMatch(r -> JSApiRole.createJSApiRole(r).isAllowedForAddresses(addresses));
-        if (listRole.getMode() == ListRole.Mode.ANY)
-            return listRole.getRoles().stream().anyMatch(r -> JSApiRole.createJSApiRole(r).isAllowedForAddresses(addresses));
-        if (listRole.getMode() == ListRole.Mode.QUORUM) {
-            int counter = listRole.getQuorum();
-            boolean result = counter == 0;
-            for (Role role : listRole.getRoles()) {
-                if (result)
-                    break;
-                if (role != null && JSApiRole.createJSApiRole(role).isAllowedForAddresses(addresses) && --counter ==0) {
-                    result = true;
-                    break;
-                }
-            }
-            return result;
-        }
-        return false;
+    public boolean isAllowedForKeys(PublicKey... keys) {
+        HashSet<PublicKey> keySet = new HashSet<>(Arrays.asList(keys));
+        return listRole.isAllowedForKeys(keySet);
     }
 
     private static ListRole.Mode modeStringToEnum(String mode) {

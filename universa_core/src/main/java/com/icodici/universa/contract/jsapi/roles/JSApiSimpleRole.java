@@ -1,12 +1,14 @@
 package com.icodici.universa.contract.jsapi.roles;
 
 import com.icodici.crypto.KeyAddress;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.jsapi.JSApiAccessor;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.SimpleRole;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 public class JSApiSimpleRole extends JSApiRole {
@@ -38,9 +40,9 @@ public class JSApiSimpleRole extends JSApiRole {
     }
 
     @Override
-    public boolean isAllowedForAddresses(String... addresses) {
-        List<String> thisAddresses = getAllAddresses();
-        return thisAddresses.stream().allMatch(s -> Arrays.stream(addresses).anyMatch(a -> a.equals(s)));
+    public boolean isAllowedForKeys(PublicKey... keys) {
+        HashSet<PublicKey> keySet = new HashSet<>(Arrays.asList(keys));
+        return simpleRole.isAllowedForKeys(keySet);
     }
 
 }

@@ -1,11 +1,15 @@
 package com.icodici.universa.contract.jsapi;
 
 import com.icodici.crypto.KeyAddress;
+import com.icodici.crypto.PublicKey;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.jsapi.permissions.JSApiPermission;
 import com.icodici.universa.contract.jsapi.roles.JSApiRole;
+import com.icodici.universa.node2.Quantiser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -83,6 +87,11 @@ public class JSApiContract {
 
     public void registerRole(JSApiRole role) {
         this.currentContract.registerRole(role.extractRole(new JSApiAccessor()));
+    }
+
+    public boolean isPermitted(String permissionName, PublicKey... keys) throws Quantiser.QuantiserException {
+        HashSet<PublicKey> keysSet = new HashSet<>(Arrays.asList(keys));
+        return this.currentContract.isPermitted(permissionName, keysSet);
     }
 
     public JSApiContract createRevision() {

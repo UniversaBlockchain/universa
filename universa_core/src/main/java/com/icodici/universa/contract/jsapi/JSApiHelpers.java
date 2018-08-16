@@ -8,6 +8,7 @@ import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
 import net.sergeych.boss.Boss;
 import net.sergeych.tools.Binder;
+import net.sergeych.utils.Bytes;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
@@ -159,6 +160,14 @@ public class JSApiHelpers {
             else if (dest instanceof HashMap)
                 ((HashMap)dest).put(k, val);
         });
+    }
+
+    public static String hashId2hex(HashId hashId) {
+        return Bytes.toHex(hashId.getDigest()).replaceAll(" ", "");
+    }
+
+    public static HashId hex2hashId(String hex) {
+        return HashId.withDigest(Bytes.fromHex(hex).toArray());
     }
 
 }
