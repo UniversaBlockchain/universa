@@ -522,8 +522,8 @@ public class ContractTest extends ContractTestBase {
         splitted.seal();
         forSplit.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         sealCheckTrace(forSplit, true);
-        assertEquals(new Decimal(80), forSplit.getStateData().get("amount"));
-        assertEquals(new Decimal(20), new Decimal(Long.valueOf(splitted.getStateData().get("amount").toString())));
+        assertEquals(new Decimal(80), new Decimal(forSplit.getStateData().getString("amount")));
+        assertEquals(new Decimal(20), new Decimal(Long.valueOf(splitted.getStateData().getString("amount"))));
 
         // Check 4096 bits signature forSplit (8) +
         // Check 4096 bits signature revoking in forSplit (8) +
@@ -545,12 +545,12 @@ public class ContractTest extends ContractTestBase {
 
         System.out.println("----- join -----");
         Contract forJoin = splitted.createRevision();
-        forJoin.getStateData().set("amount", ((Decimal)forSplit.getStateData().get("amount")).
-                add(new Decimal(Integer.valueOf((String)forJoin.getStateData().get("amount")))));
+        forJoin.getStateData().set("amount", (new Decimal(forSplit.getStateData().getString("amount"))).
+                add(new Decimal(Integer.valueOf(forJoin.getStateData().getString("amount")))));
         forJoin.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
         forJoin.addRevokingItems(forSplit);
         sealCheckTrace(forJoin, true);
-        assertEquals(new Decimal(100), forJoin.getStateData().get("amount"));
+        assertEquals(new Decimal(100), new Decimal(forJoin.getStateData().getString("amount")));
 
         // Check 4096 bits signature own (8) +
         // Check 4096 bits signature revoking item (8) +
@@ -584,9 +584,9 @@ public class ContractTest extends ContractTestBase {
             Contract splitted = contract.splitValue(FIELD_NAME, new Decimal(15));
             splitted.seal();
             contract.addSignerKeyFromFile(privateKeyPath);
-            assertEquals(new Decimal(15), new Decimal(Long.valueOf(splitted.getStateData().get("amount").toString())));
+            assertEquals(new Decimal(15), new Decimal(Long.valueOf(splitted.getStateData().getString("amount"))));
             sealCheckTrace(contract, true);
-            assertEquals(new Decimal(85 - i*15), contract.getStateData().get("amount"));
+            assertEquals(new Decimal(85 - i*15), new Decimal(contract.getStateData().getString("amount")));
             splittedList.add(splitted);
             Thread.sleep(1000);
         }
@@ -671,8 +671,8 @@ public class ContractTest extends ContractTestBase {
         splitted.seal();
         forSplit.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         sealCheckTrace(forSplit, true);
-        assertEquals(new Decimal(80), forSplit.getStateData().get("amount"));
-        assertEquals(new Decimal(20), new Decimal(Long.valueOf(splitted.getStateData().get("amount").toString())));
+        assertEquals(new Decimal(80), new Decimal(forSplit.getStateData().getString("amount")));
+        assertEquals(new Decimal(20), new Decimal(Long.valueOf(splitted.getStateData().getString("amount"))));
 
         System.out.println("Calculated processing cost (forSplit): " + forSplit.getProcessedCost() + " (UTN)");
         System.out.println("Calculated processing cost (splitted): " + splitted.getProcessedCost() + " (UTN)");
@@ -730,16 +730,16 @@ public class ContractTest extends ContractTestBase {
         splitted1.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         sealCheckTrace(splitted1, true);
 
-        assertEquals(new Decimal(80), forSplit.getStateData().get("amount"));
-        assertEquals(new Decimal(15), new Decimal(Long.valueOf(splitted1.getStateData().get("amount").toString())));
-        assertEquals(new Decimal(5), new Decimal(Long.valueOf(splitted2.getStateData().get("amount").toString())));
+        assertEquals(new Decimal(80), new Decimal(forSplit.getStateData().getString("amount")));
+        assertEquals(new Decimal(15), new Decimal(Long.valueOf(splitted1.getStateData().getString("amount"))));
+        assertEquals(new Decimal(5), new Decimal(Long.valueOf(splitted2.getStateData().getString("amount"))));
 
         System.out.println("-------- join --------");
 
         Contract forJoin = splitted2.createRevision();
-        forJoin.getStateData().set("amount", ((Decimal)forSplit.getStateData().get("amount")).
-                add((Decimal)splitted1.getStateData().get("amount")).
-                add(new Decimal(Integer.valueOf((String)forJoin.getStateData().get("amount")))));
+        forJoin.getStateData().set("amount", ( new Decimal(forSplit.getStateData().getString("amount"))).
+                add(new Decimal(splitted1.getStateData().getString("amount"))).
+                add(new Decimal(Integer.valueOf(forJoin.getStateData().getString("amount")))));
         forJoin.addSignerKeyFromFile(rootPath +"_xer0yfe2nn1xthc.private.unikey");
         forJoin.addRevokingItems(forSplit);
         forJoin.addRevokingItems(splitted1);
