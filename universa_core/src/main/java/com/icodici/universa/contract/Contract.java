@@ -2308,7 +2308,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         Contract sibling = split(1)[0];
         Binder stateData = getStateData();
         Decimal value = new Decimal(stateData.getStringOrThrow(fieldName));
-        stateData.set(fieldName, value.subtract(valueToExtract));
+        stateData.set(fieldName, value.subtract(valueToExtract).toString());
         sibling.getStateData().put(fieldName, valueToExtract.toString());
         return sibling;
     }
