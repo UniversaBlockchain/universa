@@ -3500,8 +3500,13 @@ public class Node {
 
         // setting unlimited requests for a key
         keyRequests.remove(key);
-        keysUnlimited.remove(key);
-        keysUnlimited.put(key, ZonedDateTime.now().plusMinutes(calculatedPayment / config.getUnlimitPaymentPerMunite()));
+
+        ZonedDateTime endUnlimit = keysUnlimited.remove(key);
+        ZonedDateTime startUnlimit = ZonedDateTime.now();
+        if ((endUnlimit != null) && (endUnlimit.isAfter(startUnlimit)))
+            startUnlimit = endUnlimit;
+
+        keysUnlimited.put(key, startUnlimit.plusMinutes(calculatedPayment / config.getUnlimitPaymentPerMunite()));
     }
 
     private void checkSpecialItem(Approvable item) {
