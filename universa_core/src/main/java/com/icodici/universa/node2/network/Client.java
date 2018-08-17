@@ -319,8 +319,11 @@ public class Client {
                 Instant end = Instant.now().plusMillis(millisToWait);
                 try {
                     Contract c = Contract.fromPackedTransaction(packed);
+                    int interval = 1000;
                     while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
-                        Thread.currentThread().sleep(100);
+                        Thread.currentThread().sleep(interval);
+                        if (interval > 300)
+                            interval -= 350;
                         lastResult = getState(c.getId());
                         //System.out.println("test: " + lastResult);
                     }
@@ -368,15 +371,20 @@ public class Client {
                 try {
                     Parcel parcel = Parcel.unpack(packed);
                     Node.ParcelProcessingState pState = getParcelProcessingState(parcel.getId());
+                    int interval = 1000;
                     while (Instant.now().isBefore(end) && pState.isProcessing()) {
                         System.out.println("parcel state is: " + pState);
-                        Thread.currentThread().sleep(100);
+                        Thread.currentThread().sleep(interval);
+                        if (interval > 300)
+                            interval -= 350;
                         pState = getParcelProcessingState(parcel.getId());
                     }
                     System.out.println("parcel state is: " + pState);
                     ItemResult lastResult = getState(parcel.getPayloadContract().getId());
                     while (Instant.now().isBefore(end) && lastResult.state.isPending()) {
-                        Thread.currentThread().sleep(100);
+                        Thread.currentThread().sleep(interval);
+                        if (interval > 300)
+                            interval -= 350;
                         lastResult = getState(parcel.getPayloadContract().getId());
                         System.out.println("test: " + lastResult);
                     }

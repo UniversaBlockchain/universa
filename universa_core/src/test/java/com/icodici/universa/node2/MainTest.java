@@ -366,7 +366,7 @@ public class MainTest {
         clientKnown.register(contract.getPackedTransaction(), 15000);
         while (true) {
             rr = clientKnown.getState(contract.getId());
-            Thread.currentThread().sleep(50);
+            Thread.currentThread().sleep(500);
             if (!rr.state.isPending())
                 break;
         }
@@ -387,7 +387,7 @@ public class MainTest {
         client.register(contract.getPackedTransaction(), 15000);
         while (true) {
             rr = client.getState(contract.getId());
-            Thread.currentThread().sleep(50);
+            Thread.currentThread().sleep(500);
             if (!rr.state.isPending())
                 break;
         }
@@ -423,7 +423,7 @@ public class MainTest {
         clientKnown.register(contract.getPackedTransaction(), 15000);
         while (true) {
             rr = clientKnown.getState(contract.getId());
-            Thread.currentThread().sleep(50);
+            Thread.currentThread().sleep(500);
             if (!rr.state.isPending())
                 break;
         }
@@ -501,7 +501,7 @@ public class MainTest {
                     ItemResult rr;
                     while (true) {
                         rr = client.getState(contract.getId());
-                        Thread.currentThread().sleep(50);
+                        Thread.currentThread().sleep(500);
                         if (!rr.state.isPending())
                             break;
                     }
@@ -614,7 +614,7 @@ public class MainTest {
         while (true) {
 
             rr = client.getState(configContract.getId());
-            Thread.currentThread().sleep(50);
+            Thread.currentThread().sleep(500);
             if (!rr.state.isPending())
                 break;
         }
@@ -627,7 +627,7 @@ public class MainTest {
         while (true) {
 
             rr = client.getState(configContract.getId());
-            Thread.currentThread().sleep(50);
+            Thread.currentThread().sleep(500);
             if (!rr.state.isPending())
                 break;
         }
@@ -643,7 +643,7 @@ public class MainTest {
         while (true) {
 
             rr = client.getState(configContract.getId());
-            Thread.currentThread().sleep(50);
+            Thread.currentThread().sleep(500);
             if (!rr.state.isPending())
                 break;
         }
@@ -879,7 +879,7 @@ public class MainTest {
         System.out.println(">> after shutdown state: " + itemResult + " and new " + itemResult2);
 
         while (itemResult.state.isPending()) {
-            Thread.currentThread().sleep(100);
+            Thread.currentThread().sleep(500);
             itemResult = client.getState(parcel.getPayloadContract().getId());
             System.out.println(">> wait result: " + itemResult);
         }
@@ -948,7 +948,7 @@ public class MainTest {
 
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
         while (itemResult.state.isPending()) {
-            Thread.currentThread().sleep(100);
+            Thread.currentThread().sleep(500);
             itemResult = client.getState(parcel.getPayloadContract().getId());
             System.out.println(">> wait result: " + itemResult);
         }
@@ -965,7 +965,7 @@ public class MainTest {
         System.out.println(">> after restart state: " + itemResult + " and new " + itemResult2);
 
         while (itemResult.state.isPending()) {
-            Thread.currentThread().sleep(100);
+            Thread.currentThread().sleep(500);
             itemResult = client.getState(parcel.getPayloadContract().getId());
             System.out.println(">> wait result: " + itemResult);
         }
@@ -1490,7 +1490,7 @@ public class MainTest {
             rr = absentNodeClient.getState(contract.getId());
             if(!rr.state.isPending())
                 break;
-            Thread.sleep(100);
+            Thread.sleep(500);
         }
         assertEquals(rr.state,ItemState.APPROVED);
 
@@ -3806,7 +3806,7 @@ public class MainTest {
         @NonNull ItemResult ir = testSpace.client.register(utnContract.getPackedTransaction());
 
         while(ir.state.isPending()) {
-            Thread.sleep(100);
+            Thread.sleep(500);
             ir = testSpace.client.getState(utnContract.getId());
         }
 
@@ -3844,7 +3844,7 @@ public class MainTest {
         //attempt to register
         ir = testSpace.client.register(compound.getPackedTransaction());
         while(ir.state.isPending()) {
-            Thread.sleep(100);
+            Thread.sleep(500);
             ir = testSpace.client.getState(compound.getId());
         }
         //blocked by uIssueBlocker reference
@@ -3862,7 +3862,7 @@ public class MainTest {
         //attempt to register (uIssueBlocker reference is now valid)
         ir = testSpace.client.register(batch.getPackedTransaction());
         while(ir.state.isPending()) {
-            Thread.sleep(100);
+            Thread.sleep(500);
             ir = testSpace.client.getState(batch.getId());
         }
         //so everything is fine
@@ -3877,7 +3877,7 @@ public class MainTest {
         Parcel parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
         testSpace.client.registerParcel(parcel.pack(),5000);
         do {
-            Thread.sleep(100);
+            Thread.sleep(500);
             ir = testSpace.client.getState(sampleContract.getId());
         } while (ir.state.isPending());
         //so everything is fine
@@ -3891,7 +3891,7 @@ public class MainTest {
         Contract revocation = ContractsService.createRevocation(consent, universaAdminKey);
         ir = testSpace.client.register(revocation.getPackedTransaction());
         while(ir.state.isPending()) {
-            Thread.sleep(100);
+            Thread.sleep(500);
             ir = testSpace.client.getState(revocation.getId());
         }
         //uIssueBlocker is revoked
@@ -3906,7 +3906,7 @@ public class MainTest {
         parcel = ContractsService.createParcel(sampleContract,uContract,1,userKeys);
         testSpace.client.registerParcel(parcel.pack(),5000);
         do {
-            Thread.sleep(100);
+            Thread.sleep(500);
             ir = testSpace.client.getState(sampleContract.getId());
         } while (ir.state.isPending());
         //so everything should be fine so revokation of uIssueBlocker should not affect later usage of U
@@ -4482,7 +4482,7 @@ public class MainTest {
 
         String exception = "";
         try {
-            client.storageGetRate();
+            client.storageGetRate();            // limited request
         } catch (Exception e) {
             System.out.println("Client exception: " + e.toString());
             exception = e.getMessage();
@@ -4498,7 +4498,7 @@ public class MainTest {
 
         exception = "";
         try {
-            client.unsRate();
+            client.unsRate();                   // limited request
         } catch (Exception e) {
             System.out.println("Client exception: " + e.toString());
             exception = e.getMessage();
@@ -4514,7 +4514,101 @@ public class MainTest {
 
         exception = "";
         try {
+            client.getStats(90);                // limited request
+        } catch (Exception e) {
+            System.out.println("Client exception: " + e.toString());
+            exception = e.getMessage();
+        }
+
+        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void checkUnlimitRequestsForKey() throws Exception {
+
+        PrivateKey myKey = TestKeys.privateKey(3);
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Main main = mm.get(0);
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Set<PublicKey> ownerKeys = new HashSet();
+        Set<PrivateKey> keys = new HashSet();
+        keys.add(myKey);
+        ownerKeys.add(myKey.getPublicKey());
+        Contract payment = InnerContractsService.createFreshU(100000000, ownerKeys);
+        payment.check();
+        payment.traceErrors();
+
+        client.register(payment.getPackedTransaction());
+
+        Thread.currentThread().sleep(5000);
+
+        // reaching requests limit
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
+            System.out.println(">> storage rate: " + client.storageGetRate());
+
+        String exception = "";
+        try {
+            client.storageGetRate();            // limited request
+        } catch (Exception e) {
+            System.out.println("Client exception: " + e.toString());
+            exception = e.getMessage();
+        }
+
+        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
+
+        // set unlimited requests
+        Contract unlimitContract = ContractsService.createContractForUnlimitKey(myKey.getPublicKey(), keys);
+
+        unlimitContract.check();
+        unlimitContract.traceErrors();
+        assertTrue(unlimitContract.isOk());
+
+        int processedCost = unlimitContract.getProcessedCostU();
+        Parcel parcel = ContractsService.createPayingParcel(unlimitContract.getTransactionPack(), payment, processedCost,
+                main.config.getUnlimitPaymentPerMunite(), keys, false);
+
+        client.registerParcel(parcel.pack());
+
+        Thread.currentThread().sleep(8000);
+
+        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+        System.out.println(">> state: " + itemResult);
+
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        // unlimited requests
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
+            System.out.println(">> storage rate: " + client.storageGetRate());
+
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
+            System.out.println(">> uns rate: " + client.unsRate());
+
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
             client.getStats(90);
+
+        System.out.println("Wait 1 munite...");
+        Thread.currentThread().sleep(60000);
+
+        // resume requests limit after 1 minute
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
+            System.out.println(">> uns rate: " + client.unsRate());
+
+        exception = "";
+        try {
+            client.unsRate();                   // limited request
         } catch (Exception e) {
             System.out.println("Client exception: " + e.toString());
             exception = e.getMessage();

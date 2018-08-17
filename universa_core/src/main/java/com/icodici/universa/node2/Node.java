@@ -95,6 +95,10 @@ public class Node {
     private ConcurrentHashMap<HashId, ParcelProcessor> parcelProcessors = new ConcurrentHashMap();
     private ConcurrentHashMap<HashId, ResyncProcessor> resyncProcessors = new ConcurrentHashMap<>();
 
+    private ConcurrentHashMap<PublicKey, Integer> keyRequests = new ConcurrentHashMap();
+    private ConcurrentHashMap<PublicKey, ZonedDateTime> keysUnlimited = new ConcurrentHashMap();
+    private Long epochMinute = new Long(0);
+
     private ScheduledExecutorService executorService = new ScheduledThreadPoolExecutor(128, new ThreadFactory() {
 
         private final ThreadGroup threadGroup = new ThreadGroup("node-workers");
@@ -1124,6 +1128,47 @@ public class Node {
 
     public int getNumber() {
         return myInfo.getNumber();
+    }
+
+    /**
+     * Checks limit of requests for key.
+     *
+     * @param key for checking limit of requests
+     *
+     * @return result of checking
+     */
+    public boolean checkKeyLimit(PublicKey key) {
+
+        if ((config == null) ||
+             config.getNetworkAdminKeyAddress().isMatchingKey(key) ||
+             getNodeKey().equals(key) ||
+             config.getKeysWhiteList().contains(key) ||
+             config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(key)))
+            return true;
+
+        synchronized (epochMinute) {
+            long currentEpochMinute = ZonedDateTime.now().toEpochSecond() / 60;
+            if (epochMinute != currentEpochMinute) {
+                keyRequests.clear();
+                epochMinute = currentEpochMinute;
+            }
+
+            ZonedDateTime expiredUnlimit = keysUnlimited.getOrDefault(key, null);
+            if (expiredUnlimit != null) {
+                if (expiredUnlimit.isBefore(ZonedDateTime.now()))
+                    keysUnlimited.remove(key);
+                else
+                    return true;
+            }
+
+            int requests = keyRequests.getOrDefault(key, 0);
+            if (requests >= config.getLimitRequestsForKeyPerMinute())
+                return false;
+
+            keyRequests.put(key, requests + 1);
+        }
+
+        return true;
     }
 
     /// ParcelProcessor ///
@@ -3383,41 +3428,87 @@ public class Node {
         }
     }
 
+    private void checkForNetConfig(Contract contract) {
+        if (contract.getIssuer().getKeys().stream().anyMatch(key -> config.getNetworkReconfigKeyAddress().isMatchingKey(key))) {
+            if(contract.getParent() == null)
+                return;
+
+            if(contract.getRevoking().size() == 0 || !contract.getRevoking().get(0).getId().equals(contract.getParent()))
+                return;
+
+            Contract parent = contract.getRevoking().get(0);
+
+            if(!checkContractCorrespondsToConfig(parent,network.allNodes())) {
+                return;
+            }
+
+            if(!checkIfContractContainsNetConfig(contract)) {
+                return;
+            }
+
+            List<NodeInfo> networkNodes = network.allNodes();
+
+            List contractNodes = (List)DefaultBiMapper.getInstance().deserializeObject(contract.getStateData().get("net_config"));
+            contractNodes.stream().forEach(nodeInfo -> {
+                if(!networkNodes.contains(nodeInfo)) {
+                    addNode((NodeInfo) nodeInfo);
+                }
+
+                networkNodes.remove(nodeInfo);
+            });
+
+            networkNodes.stream().forEach( nodeInfo -> removeNode(nodeInfo));
+        }
+    }
+
+    private void checkForSetUnlimit(Contract contract) {
+
+        // check for setting unlimited requests for a key
+        PublicKey key;
+        try {
+            byte[] packedKey = contract.getDefinition().getData().getBinary("unlimited_key");
+            if (packedKey == null)
+                return;
+
+            key = new PublicKey(packedKey);
+        }
+        catch (Exception e) {
+            return;
+        }
+
+        // searching for U contracts and calculate paid U amount
+        int calculatedPayment = 0;
+        for (Contract nc : contract.getNew()) {
+            if (nc.isU(nodeInfoProvider.getUIssuerKeys(), nodeInfoProvider.getUIssuerName())) {
+                Contract parent = null;
+                for (Contract nrc : nc.getRevoking()) {
+                    if (nrc.getId().equals(nc.getParent())) {
+                        parent = nrc;
+                        break;
+                    }
+                }
+
+                if ((parent != null) && (nc.getStateData().get("transaction_units") != null))
+                    calculatedPayment += parent.getStateData().getIntOrThrow("transaction_units")
+                                           - nc.getStateData().getIntOrThrow("transaction_units");
+            }
+        }
+
+        // check payment
+        if (calculatedPayment < config.getUnlimitPaymentPerMunite())
+            return;
+
+        // setting unlimited requests for a key
+        keyRequests.remove(key);
+        keysUnlimited.remove(key);
+        keysUnlimited.put(key, ZonedDateTime.now().plusMinutes(calculatedPayment / config.getUnlimitPaymentPerMunite()));
+    }
 
     private void checkSpecialItem(Approvable item) {
         if(item instanceof Contract) {
             Contract contract = (Contract) item;
-            if (contract.getIssuer().getKeys().stream().anyMatch(key -> config.getNetworkReconfigKeyAddress().isMatchingKey(key))) {
-                if(contract.getParent() == null)
-                    return;
-
-                if(contract.getRevoking().size() == 0 || !contract.getRevoking().get(0).getId().equals(contract.getParent()))
-                    return;
-
-                Contract parent = contract.getRevoking().get(0);
-
-
-                if(!checkContractCorrespondsToConfig(parent,network.allNodes())) {
-                    return;
-                }
-
-                if(!checkIfContractContainsNetConfig(contract)) {
-                    return;
-                }
-
-                List<NodeInfo> networkNodes = network.allNodes();
-
-                List contractNodes = (List)DefaultBiMapper.getInstance().deserializeObject(contract.getStateData().get("net_config"));
-                contractNodes.stream().forEach(nodeInfo -> {
-                    if(!networkNodes.contains(nodeInfo)) {
-                        addNode((NodeInfo) nodeInfo);
-                    }
-
-                    networkNodes.remove(nodeInfo);
-                });
-
-                networkNodes.stream().forEach( nodeInfo -> removeNode(nodeInfo));
-            }
+            checkForNetConfig(contract);
+            checkForSetUnlimit(contract);
         }
     }
 

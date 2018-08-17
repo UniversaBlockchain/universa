@@ -52,10 +52,6 @@ public class ClientHTTPServer extends BasicHttpServer {
 
     private ExecutorService es = Executors.newFixedThreadPool(40);
 
-    private ConcurrentHashMap<PublicKey, Integer> keyRequests = new ConcurrentHashMap();
-    private CopyOnWriteArraySet<PublicKey> keysUnlimited = new CopyOnWriteArraySet();
-    private Long epochMinute = new Long(0);
-
     public ClientHTTPServer(PrivateKey privateKey, int port, BufferedLogger logger) throws IOException {
         super(privateKey, port, 32, logger);
         log = logger;
@@ -522,27 +518,9 @@ public class ClientHTTPServer extends BasicHttpServer {
         }
 
         // checking key limit
-        if (!checkKeyLimit || (config == null) ||
-            config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
-            node.getNodeKey().equals(session.getPublicKey()) ||
-            config.getKeysWhiteList().contains(session.getPublicKey()) ||
-            config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey())) ||
-            keysUnlimited.contains(session.getPublicKey()))
-            return;
-
-        synchronized (epochMinute) {
-            long currentEpochMinute = ZonedDateTime.now().toEpochSecond() / 60;
-            if (epochMinute != currentEpochMinute) {
-                keyRequests.clear();
-                epochMinute = currentEpochMinute;
-            }
-
-            int requests = keyRequests.getOrDefault(session.getPublicKey(), 0);
-            if (requests >= config.getLimitRequestsForKeyPerMinute())
+        if (checkKeyLimit)
+            if (!node.checkKeyLimit(session.getPublicKey()))
                 throw new CommandFailedException(Errors.COMMAND_FAILED, "", "exceeded the limit of requests for key per minute, please call again after a while");
-
-            keyRequests.put(session.getPublicKey(), requests + 1);
-        }
     }
 
     static private Binder networkData = null;

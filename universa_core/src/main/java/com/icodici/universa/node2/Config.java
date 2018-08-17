@@ -173,6 +173,7 @@ public class Config {
     private int positiveConsensus;
     private int resyncBreakConsensus;
     private int limitRequestsForKeyPerMinute = 30;
+    private int unlimitPaymentPerMunite = 1;
     private Duration maxElectionsTime = Duration.ofMinutes(15);
     private List<Integer> pollTimeMillis = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
     private List<Integer> consensusReceivedCheckTime = Arrays.asList(0,1000,1000,1000,2000,4000,8000,16000,32000,60000);
@@ -310,6 +311,8 @@ public class Config {
     }
 
     public int getLimitRequestsForKeyPerMinute() { return limitRequestsForKeyPerMinute; }
+
+    public int getUnlimitPaymentPerMunite() { return unlimitPaymentPerMunite; }
 
     public void setNegativeConsensus(int negativeConsensus) {
         this.negativeConsensus = negativeConsensus;

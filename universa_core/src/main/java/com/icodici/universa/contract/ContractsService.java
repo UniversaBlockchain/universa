@@ -1811,5 +1811,41 @@ public class ContractsService {
 
         return revisionPayment;
     }
+
+    /**
+     * Creates special contract to set unlimited requests for the {@link PublicKey}.
+     * The base limit is 30 per munite (excludes registration requests).
+     * Unlimited requests for cost 1 U per minute.
+     * A payment must be added to this special contract by {@link ContractsService#createPayingParcel(TransactionPack, Contract, int, int, Set, boolean)}.
+     *
+     * @param key is key for setting unlimited requests
+     * @param issuerKeys issuer contract private keys
+     * @return contract for setting unlimited requests to key
+     */
+    public synchronized static Contract createContractForUnlimitKey(PublicKey key, Set<PrivateKey> issuerKeys) {
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        Contract unlimitContract = new Contract();
+        unlimitContract.setApiLevel(3);
+
+        unlimitContract.getDefinition().setExpiresAt(unlimitContract.getCreatedAt().plusMinutes(5));
+
+        unlimitContract.getDefinition().getData().set("unlimited_key", key.pack());
+
+        unlimitContract.registerRole(issuerRole);
+        unlimitContract.createRole("issuer", issuerRole);
+        unlimitContract.createRole("owner", issuerRole);
+        unlimitContract.createRole("creator", issuerRole);
+
+        unlimitContract.addSignerKeys(issuerKeys);
+        unlimitContract.seal();
+
+        return unlimitContract;
+    }
 }
 
