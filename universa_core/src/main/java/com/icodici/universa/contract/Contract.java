@@ -9,6 +9,10 @@ package com.icodici.universa.contract;
 
 import com.icodici.crypto.*;
 import com.icodici.universa.*;
+import com.icodici.universa.contract.jsapi.JSApi;
+import com.icodici.universa.contract.jsapi.JSApiExecOptions;
+import com.icodici.universa.contract.jsapi.JSApiHelpers;
+import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -98,7 +102,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private static int testQuantaLimit = -1;
 
-    public static String JSAPI_SCRIPT_FIELD = "script";
+    public static String JSAPI_SCRIPT_FIELD = "scripts";
 
     /**
      * Extract contract from v2 or v3 sealed form, getting revoking and new items from sealed unicapsule and referenced items from
@@ -2991,6 +2995,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         public void setRevision(int revision) {
             this.revision = revision;
         }
+        /**
+         * Saves client's javascript in contract's state. It can be executed with {@link Contract#execJS(String...)}
+         */
+        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
+            String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, scriptParameters);
+            Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
+            scripts.set(fileNameKey, scriptBinder);
+            getData().put(JSAPI_SCRIPT_FIELD, scripts);
+        }
+
     }
 
     private Multimap<String, Permission> permissions = new Multimap<>();
@@ -3099,6 +3114,17 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         public List<Reference> getReferences() {
             return this.references;
+        }
+
+        /**
+         * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(byte[], String...)}
+         */
+        public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
+            String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
+            Binder scriptBinder = JSApiHelpers.createScriptBinder(jsFileContent, jsFileName, scriptParameters);
+            Binder scripts = getData().getBinder(JSAPI_SCRIPT_FIELD, new Binder());
+            scripts.set(fileNameKey, scriptBinder);
+            getData().put(JSAPI_SCRIPT_FIELD, scripts);
         }
 
         /**
@@ -3472,122 +3498,27 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
-     * Implements js-api part for working with contract.
-     */
-    public class JSApi_contract {
-        private Contract currentContract;
-
-        public JSApi_contract(Contract c) {
-            this.currentContract = c;
-        }
-
-        public String getId() {
-            return this.currentContract.getId().toBase64String();
-        }
-
-        public int getRevision() {
-            return this.currentContract.getState().revision;
-        }
-
-        public String getOrigin() {
-            return this.currentContract.getOrigin().toBase64String();
-        }
-
-        public String getParent() {
-            return this.currentContract.getParent() == null ? null : this.currentContract.getParent().toBase64String();
-        }
-
-        public long getCreatedAt() {
-            return this.currentContract.getCreatedAt().toEpochSecond();
-        }
-
-        public String getStateDataField(String fieldPath) {
-            return this.currentContract.getStateData().getStringOrThrow(fieldPath).toString();
-        }
-
-        public void setStateDataField(String fieldPath, String value) {
-            this.currentContract.getStateData().set(fieldPath, value);
-        }
-
-        public void setStateDataField(String fieldPath, int value) {
-            this.currentContract.getStateData().set(fieldPath, value);
-        }
-
-        public String getDefinitionDataField(String fieldPath) {
-            return this.currentContract.getDefinition().data.getStringOrThrow(fieldPath);
-        }
-
-        public List<String> getIssuer() {
-            return this.currentContract.getIssuer().getAllAddresses();
-        }
-
-        public List<String> getOwner() {
-            return this.currentContract.getOwner().getAllAddresses();
-        }
-
-        public List<String> getCreator() {
-            return this.currentContract.getCreator().getAllAddresses();
-        }
-
-        public void setOwner(List<String> addresses) throws KeyAddress.IllegalAddressException {
-            List<KeyAddress> addressesList = new ArrayList<>();
-            for (String s : addresses)
-                addressesList.add(new KeyAddress(s));
-            this.currentContract.setOwnerKeys(addressesList);
-        }
-
-        public JSApi_contract createRevision() {
-            return new JSApi_contract(this.currentContract.createRevision());
-        }
-    }
-
-    /**
-     * Extracts instanse of {@link Contract} from instance of {@link JSApi_contract}.
-     * We can not add such getter to JSApi_contract because want to hide Contract class from client javascript.
-     */
-    public static Contract extractContractFromJs(JSApi_contract jsContract) {
-        return jsContract.currentContract;
-    }
-
-    /**
-     * Implements js-api, that provided to client's javascript.
-     */
-    public class JSApi {
-        public JSApi_contract getCurrentContract() {
-            return new JSApi_contract(Contract.this);
-        }
-    }
-
-    /**
-     * Executes javascript, that previously should be saved in contract's definition with {@link Contract#setJS(String)}.
+     * Executes javascript, that previously should be saved in contract's definition
+     * with {@link Definition#setJS(String)} or {@link State#setJS(String)}.
      * Provides instance of {@link JSApi} to this script, as 'jsApi' global var.
      * @param params list of strings, will be passed to javascript
      * @return Object, got it from 'result' global var of javascript.
      * @throws ScriptException if javascript throws some errors
      * @throws IllegalArgumentException if javascript is not defined in contract's definition
      */
-    public Object execJS(String... params) throws ScriptException, IllegalArgumentException {
-        String js = getDefinition().getData().getString(JSAPI_SCRIPT_FIELD, null);
-        if (js != null) {
-            ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
-            jse.put("jsApi", new JSApi());
-            String[] stringParams = new String[params.length];
-            for (int i = 0; i < params.length; ++i)
-                stringParams[i] = params[i].toString();
-            jse.put("jsApiParams", stringParams);
-            jse.eval(js);
-            return jse.get("result");
-        } else {
-            throw new IllegalArgumentException("error: cant exec javascript, definition.data." + JSAPI_SCRIPT_FIELD + " is empty");
-        }
+    public Object execJS(JSApiExecOptions execOptions, byte[] jsFileContent, String... params) throws Exception {
+        return JSApiHelpers.execJS(
+                getDefinition().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                getState().getData().getBinder(JSAPI_SCRIPT_FIELD, null),
+                execOptions,
+                jsFileContent,
+                this,
+                params
+        );
     }
 
-    /**
-     * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(String...)}
-     * @param js text with javascript code
-     */
-    public void setJS(String js) {
-        getDefinition().getData().set(JSAPI_SCRIPT_FIELD, js);
+    public Object execJS(byte[] jsFileContent, String... params) throws Exception {
+        return execJS(new JSApiExecOptions(), jsFileContent, params);
     }
 
     static {

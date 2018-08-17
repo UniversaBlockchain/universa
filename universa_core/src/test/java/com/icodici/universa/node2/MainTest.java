@@ -14,10 +14,14 @@ import com.icodici.crypto.PublicKey;
 import com.icodici.crypto.digest.Crc32;
 import com.icodici.db.DbPool;
 import com.icodici.db.PooledDb;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.Core;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.HashId;
 import com.icodici.universa.contract.*;
+import com.icodici.universa.contract.jsapi.JSApiAccessor;
+import com.icodici.universa.contract.jsapi.JSApiContract;
+import com.icodici.universa.contract.jsapi.JSApiScriptParameters;
 import com.icodici.universa.contract.permissions.*;
 import com.icodici.universa.contract.roles.ListRole;
 import com.icodici.universa.contract.roles.Role;
@@ -47,6 +51,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.PreparedStatement;
 import java.time.Duration;
 import java.time.Instant;
@@ -4046,7 +4053,7 @@ public class MainTest {
         js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
         js += "rev.setStateDataField('test_value', newValue);";
         js += "result = rev";
-        contract.setJS(js);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         assertTrue(contract.check());
 
@@ -4054,7 +4061,7 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, ir.state);
 
         for (int i = 0; i < 10; ++i) {
-            contract = Contract.extractContractFromJs((Contract.JSApi_contract) contract.execJS());
+            contract = ((JSApiContract) contract.execJS(js.getBytes())).extractContract(new JSApiAccessor());
             contract.addSignerKey(TestKeys.privateKey(1));
             contract.seal();
             assertEquals(i%2==0 ? "1" : "0", contract.getStateData().getStringOrThrow("test_value"));
@@ -4089,7 +4096,7 @@ public class MainTest {
         js += "print('  change test_value: ' + oldValue + ' -> ' + newValue);";
         js += "rev.setStateDataField('test_value', newValue);";
         js += "result = rev";
-        contract.setJS(js);
+        contract.getDefinition().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
         contract.seal();
         assertTrue(contract.check());
 
@@ -4097,13 +4104,82 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, ir.state);
 
         for (int i = 0; i < 10; ++i) {
-            contract = Contract.extractContractFromJs((Contract.JSApi_contract) contract.execJS());
+            contract = ((JSApiContract) contract.execJS(js.getBytes())).extractContract(new JSApiAccessor());
             contract.addSignerKey(TestKeys.privateKey(1));
             contract.seal();
             assertEquals(i+12, contract.getStateData().getIntOrThrow("test_value"));
             ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
             assertEquals(ItemState.APPROVED, ir.state);
         }
+
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
+    @Test
+    public void jsAddPermission() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        KeyAddress k0 = TestKeys.publicKey(0).getShortAddress();
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        contract.getStateData().set("testval", 3);
+        String js = "";
+        js += "print('addPermission');";
+        js += "var simpleRole = jsApi.getRoleBuilder().createSimpleRole('owner', '"+k0.toString()+"');";
+        js += "var changeNumberPermission = jsApi.getPermissionBuilder().createChangeNumberPermission(simpleRole, " +
+                "{field_name: 'testval', min_value: 3, max_value: 80, min_step: 1, max_step: 3}" +
+                ");";
+        js += "jsApi.getCurrentContract().addPermission(changeNumberPermission);";
+        js += "print('simpleRole: ' + simpleRole.getAllAddresses());";
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.execJS(js.getBytes());
+        contract.seal();
+
+        ItemResult ir = testSpace.client.register(contract.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir.state);
+
+        Contract newRev = contract.createRevision();
+        newRev.addSignerKey(TestKeys.privateKey(0));
+        newRev.getStateData().set("testval", 5);
+        newRev.seal();
+
+        ir = testSpace.client.register(newRev.getPackedTransaction(), 5000);
+        assertEquals(ItemState.APPROVED, ir.state);
+
+        testSpace.nodes.forEach(m -> m.shutdown());
+    }
+
+    @Ignore
+    @Test
+    public void registerFromFile() throws Exception {
+        TestSpace testSpace = prepareTestSpace(TestKeys.privateKey(0));
+        testSpace.nodes.forEach(m -> m.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Path path = Paths.get("/tmp/not3.unicon");
+        byte[] testTransactionPackBytes = Files.readAllBytes(path);
+        Contract contract = Contract.fromPackedTransaction(testTransactionPackBytes);
+
+        System.out.println("======================");
+        System.out.println("check(): " + contract.check());
+        System.out.println("------- errors -------");
+        contract.traceErrors();
+        int i = 0;
+        for (Approvable a : contract.getNewItems()) {
+            Contract nc = (Contract) a;
+            System.out.println("------- errors n"+i+" ----");
+            System.out.println("  check: " + nc.check());
+            nc.traceErrors();
+            ++i;
+        }
+        System.out.println("======================");
+
+        System.out.println("hashId: " + contract.getId().toBase64String());
+        testSpace.node.setVerboseLevel(DatagramAdapter.VerboseLevel.BASE);
+        ItemResult itemResult = testSpace.client.register(testTransactionPackBytes, 5000);
+        ItemResult itemResult2 = testSpace.client.getState(contract.getId());
+
+        System.out.println("itemResult: " + itemResult);
+        System.out.println("itemResult2: " + itemResult2);
 
         testSpace.nodes.forEach(m -> m.shutdown());
     }
