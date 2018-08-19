@@ -608,6 +608,63 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
+     * Checks contract is set unlimited requests for a key.
+     * Errors found can be accessed with {@link #getErrors()} ()}.
+     *
+     * @param config is current node configuration
+     * @return if check was successful
+     */
+    public boolean isUnlimitKeyContract(Config config) {
+
+        try {
+            // check transactional
+            if ((transactional == null) || (transactional.data == null) || (transactional.data.size() != 1))
+                return false;
+
+            // check revoking contract
+            if ((newItems.size() != 0) || (revokingItems.size() != 1))
+                return false;
+
+            if (!getRevoking().get(0).getId().equals(getParent()))
+                return false;
+
+            // check U contracts
+            if (!isU(config.getUIssuerKeys(), config.getUIssuerName()))
+                return false;
+
+            if (!getRevoking().get(0).isU(config.getUIssuerKeys(), config.getUIssuerName()))
+                return false;
+
+            // check unlimited key
+            byte[] packedKey = transactional.data.getBinary("unlimited_key");
+            if (packedKey == null)
+                return false;
+
+            PublicKey key = new PublicKey(packedKey);
+            if (key == null) {
+                addError(Errors.FAILED_CHECK, "", "error getting key for unlimited requests");
+                return false;
+            }
+
+            // check payment
+            int calculatedPayment = getRevoking().get(0).getStateData().getIntOrThrow("transaction_units")
+                                                       - getStateData().getIntOrThrow("transaction_units");
+
+            if (calculatedPayment != config.getUnlimitPayment()) {
+                addError(Errors.FAILED_CHECK, "", "Payment for setting unlimited requests must be " + config.getUnlimitPayment() + "U");
+                return false;
+            }
+        }
+        catch (Exception e) {
+            if (e.getClass().getName().endsWith("EncryptionError"))
+                addError(Errors.FAILED_CHECK, "", "error unpacking key for unlimited requests");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Check contract for errors. This includes checking contract state modification, checking new items, revoke permissions and references acceptance.
      * Errors found can be accessed with {@link #getErrors()} ()}
      *

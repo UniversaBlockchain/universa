@@ -3463,10 +3463,14 @@ public class Node {
 
     private void checkForSetUnlimit(Contract contract) {
 
-        // check for setting unlimited requests for a key
+        // check unlimit contract
+        if (!contract.isUnlimitKeyContract(config))
+            return;
+
+        // get key for setting unlimited requests
         PublicKey key;
         try {
-            byte[] packedKey = contract.getDefinition().getData().getBinary("unlimited_key");
+            byte[] packedKey = contract.getTransactional().getData().getBinary("unlimited_key");
             if (packedKey == null)
                 return;
 
@@ -3476,37 +3480,10 @@ public class Node {
             return;
         }
 
-        // searching for U contracts and calculate paid U amount
-        int calculatedPayment = 0;
-        for (Contract nc : contract.getNew()) {
-            if (nc.isU(nodeInfoProvider.getUIssuerKeys(), nodeInfoProvider.getUIssuerName())) {
-                Contract parent = null;
-                for (Contract nrc : nc.getRevoking()) {
-                    if (nrc.getId().equals(nc.getParent())) {
-                        parent = nrc;
-                        break;
-                    }
-                }
-
-                if ((parent != null) && (nc.getStateData().get("transaction_units") != null))
-                    calculatedPayment += parent.getStateData().getIntOrThrow("transaction_units")
-                                           - nc.getStateData().getIntOrThrow("transaction_units");
-            }
-        }
-
-        // check payment
-        if (calculatedPayment < config.getUnlimitPaymentPerMunite())
-            return;
-
         // setting unlimited requests for a key
         keyRequests.remove(key);
-
-        ZonedDateTime endUnlimit = keysUnlimited.remove(key);
-        ZonedDateTime startUnlimit = ZonedDateTime.now();
-        if ((endUnlimit != null) && (endUnlimit.isAfter(startUnlimit)))
-            startUnlimit = endUnlimit;
-
-        keysUnlimited.put(key, startUnlimit.plusMinutes(calculatedPayment / config.getUnlimitPaymentPerMunite()));
+        keysUnlimited.remove(key);
+        keysUnlimited.put(key, ZonedDateTime.now().plus(config.getUnlimitPeriod()));
     }
 
     private void checkSpecialItem(Approvable item) {

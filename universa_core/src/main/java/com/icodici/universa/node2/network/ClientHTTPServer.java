@@ -276,18 +276,41 @@ public class ClientHTTPServer extends BasicHttpServer {
     }
 
     private Binder approve(Binder params, Session session) throws IOException, Quantiser.QuantiserException {
+
+        Contract contract;
         checkNode(session);
-        if (config.limitFreeRegistrations())
-            if(!(
-                    config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
-                    config.getKeysWhiteList().contains(session.getPublicKey()) ||
-                    config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
-            )) {
-                System.out.println("approve ERROR: command needs client key from whitelist");
+
+        if (config.limitFreeRegistrations() &&
+            (!(
+                config.getNetworkAdminKeyAddress().isMatchingKey(session.getPublicKey()) ||
+                config.getKeysWhiteList().contains(session.getPublicKey()) ||
+                config.getAddressesWhiteList().stream().anyMatch(addr -> addr.isMatchingKey(session.getPublicKey()))
+            ))) {
+
+            try {
+                contract = Contract.fromPackedTransaction(params.getBinaryOrThrow("packedItem"));
+            } catch (Exception e) {
+                System.out.println("approve ERROR: " + e.getMessage());
 
                 return Binder.of(
-                        "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY,"approve", "command needs client key from whitelist"));
+                        "itemResult", itemResultOfError(Errors.COMMAND_FAILED, "approve", e.getMessage()));
             }
+
+            if ((contract == null) || !contract.isUnlimitKeyContract(config)) {
+                if (!contract.isOk()) {
+                    contract.traceErrors();
+
+                    return Binder.of(
+                            "itemResult", itemResultOfError(Errors.FAILED_CHECK, "approve",
+                                    contract.getErrors().get(contract.getErrors().size() - 1).getMessage()));
+                } else {
+                    System.out.println("approve ERROR: command needs client key from whitelist");
+
+                    return Binder.of(
+                            "itemResult", itemResultOfError(Errors.BAD_CLIENT_KEY, "approve", "command needs client key from whitelist"));
+                }
+            }
+        }
 
         try {
             return Binder.of(

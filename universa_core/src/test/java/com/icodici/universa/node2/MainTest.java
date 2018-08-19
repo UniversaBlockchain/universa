@@ -4555,6 +4555,8 @@ public class MainTest {
 
         Thread.currentThread().sleep(5000);
 
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
+
         // reaching requests limit
         for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
             System.out.println(">> storage rate: " + client.storageGetRate());
@@ -4570,21 +4572,18 @@ public class MainTest {
         assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
 
         // set unlimited requests
-        Contract unlimitContract = ContractsService.createContractForUnlimitKey(myKey.getPublicKey(), keys);
+        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
+                myKey.getPublicKey(), payment, main.config.getUnlimitPayment(), keys);
 
         unlimitContract.check();
         unlimitContract.traceErrors();
         assertTrue(unlimitContract.isOk());
 
-        int processedCost = unlimitContract.getProcessedCostU();
-        Parcel parcel = ContractsService.createPayingParcel(unlimitContract.getTransactionPack(), payment, processedCost,
-                main.config.getUnlimitPaymentPerMunite(), keys, false);
+        ItemResult itemResult = client.register(unlimitContract.getPackedTransaction());
 
-        client.registerParcel(parcel.pack());
+        Thread.currentThread().sleep(5000);
 
-        Thread.currentThread().sleep(8000);
-
-        ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
+        itemResult = client.getState(unlimitContract.getId());
         System.out.println(">> state: " + itemResult);
 
         assertEquals(ItemState.APPROVED, itemResult.state);
@@ -4598,23 +4597,6 @@ public class MainTest {
 
         for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
             client.getStats(90);
-
-        System.out.println("Wait 1 munite...");
-        Thread.currentThread().sleep(60000);
-
-        // resume requests limit after 1 minute
-        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
-            System.out.println(">> uns rate: " + client.unsRate());
-
-        exception = "";
-        try {
-            client.unsRate();                   // limited request
-        } catch (Exception e) {
-            System.out.println("Client exception: " + e.toString());
-            exception = e.getMessage();
-        }
-
-        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
 
         mm.forEach(x -> x.shutdown());
     }

@@ -18,6 +18,7 @@ import com.icodici.universa.contract.roles.Role;
 import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
+import com.icodici.universa.node2.Config;
 import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
 
@@ -1814,35 +1815,25 @@ public class ContractsService {
 
     /**
      * Creates special contract to set unlimited requests for the {@link PublicKey}.
-     * The base limit is 30 per munite (excludes registration requests).
-     * Unlimited requests for cost 1 U per minute.
-     * A payment must be added to this special contract by {@link ContractsService#createPayingParcel(TransactionPack, Contract, int, int, Set, boolean)}.
+     * The base limit is 30 per minute (excludes registration requests).
+     * Unlimited requests for 5 minutes cost 5 U.
+     * Register result contract by {@link com.icodici.universa.node2.network.Client#register(byte[])}.
      *
      * @param key is key for setting unlimited requests
-     * @param issuerKeys issuer contract private keys
+     * @param payment is approved contract with "U" belongs to you
+     * @param amount is number of "U" you want to spend to set unlimited requests for key; get by {@link Config#getUnlimitPayment()}
+     * @param keys is own private keys, which are set as owner of payment contract
      * @return contract for setting unlimited requests to key
      */
-    public synchronized static Contract createContractForUnlimitKey(PublicKey key, Set<PrivateKey> issuerKeys) {
+    public synchronized static Contract createContractForUnlimitKey(PublicKey key, Contract payment, int amount, Set<PrivateKey> keys) {
 
-        SimpleRole issuerRole = new SimpleRole("issuer");
-        for (PrivateKey k : issuerKeys) {
-            KeyRecord kr = new KeyRecord(k.getPublicKey());
-            issuerRole.addKeyRecord(kr);
-        }
+        Contract unlimitContract = payment.createRevision(keys);
 
-        Contract unlimitContract = new Contract();
-        unlimitContract.setApiLevel(3);
+        unlimitContract.createTransactionalSection();
+        unlimitContract.getTransactional().setId(HashId.createRandom().toBase64String());
+        unlimitContract.getTransactional().getData().set("unlimited_key", key.pack());
 
-        unlimitContract.getDefinition().setExpiresAt(unlimitContract.getCreatedAt().plusMinutes(5));
-
-        unlimitContract.getDefinition().getData().set("unlimited_key", key.pack());
-
-        unlimitContract.registerRole(issuerRole);
-        unlimitContract.createRole("issuer", issuerRole);
-        unlimitContract.createRole("owner", issuerRole);
-        unlimitContract.createRole("creator", issuerRole);
-
-        unlimitContract.addSignerKeys(issuerKeys);
+        unlimitContract.getStateData().set("transaction_units", payment.getStateData().getIntOrThrow("transaction_units") - amount);
         unlimitContract.seal();
 
         return unlimitContract;
