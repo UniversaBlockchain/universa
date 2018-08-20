@@ -612,7 +612,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * Errors found can be accessed with {@link #getErrors()} ()}.
      *
      * @param config is current node configuration
-     * @return if check was successful
+     * @return if contract set unlimited requests for a key
      */
     public boolean isUnlimitKeyContract(Config config) {
 
@@ -636,16 +636,33 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 return false;
 
             // check unlimited key
-            byte[] packedKey = transactional.data.getBinary("unlimited_key");
-            if (packedKey == null)
+            if (!transactional.data.containsKey("unlimited_key"))
                 return false;
+        }
+        catch (Exception e) {
+            return false;
+        }
 
-            PublicKey key = new PublicKey(packedKey);
-            if (key == null) {
-                addError(Errors.FAILED_CHECK, "", "error getting key for unlimited requests");
+        try {
+            // get unlimited key
+            byte[] packedKey = transactional.data.getBinary("unlimited_key");
+            if (packedKey == null) {
+                addError(Errors.FAILED_CHECK, "", "Invalid format of key for unlimited requests");
                 return false;
             }
 
+            PublicKey key = new PublicKey(packedKey);
+            if (key == null) {
+                addError(Errors.FAILED_CHECK, "", "Invalid format of key for unlimited requests");
+                return false;
+            }
+        }
+        catch (Exception e) {
+            addError(Errors.FAILED_CHECK, "", "Invalid format of key for unlimited requests: " + e.getMessage());
+            return false;
+        }
+
+        try {
             // check payment
             int calculatedPayment = getRevoking().get(0).getStateData().getIntOrThrow("transaction_units")
                                                        - getStateData().getIntOrThrow("transaction_units");
@@ -656,8 +673,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             }
         }
         catch (Exception e) {
-            if (e.getClass().getName().endsWith("EncryptionError"))
-                addError(Errors.FAILED_CHECK, "", "error unpacking key for unlimited requests");
+            addError(Errors.FAILED_CHECK, "", "Error checking payment for setting unlimited requests: " + e.getMessage());
             return false;
         }
 

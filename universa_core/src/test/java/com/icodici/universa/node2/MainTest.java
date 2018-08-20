@@ -4477,6 +4477,12 @@ public class MainTest {
             client.registerParcel(parcel.pack());
         }
 
+        // alignment by begin of minute
+        long seconds = ZonedDateTime.now().toEpochSecond() % 60;
+        if (seconds > 57)
+            Thread.currentThread().sleep(3000);
+
+        // reaching requests limit
         for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
             System.out.println(">> storage rate: " + client.storageGetRate());
 
@@ -4493,6 +4499,12 @@ public class MainTest {
         System.out.println("Wait 1 munite...");
         Thread.currentThread().sleep(60000);
 
+        // alignment by begin of minute
+        seconds = ZonedDateTime.now().toEpochSecond() % 60;
+        if (seconds > 57)
+            Thread.currentThread().sleep(3000);
+
+        // reaching requests limit
         for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
             System.out.println(">> uns rate: " + client.unsRate());
 
@@ -4509,6 +4521,12 @@ public class MainTest {
         System.out.println("Wait 1 munite...");
         Thread.currentThread().sleep(60000);
 
+        // alignment by begin of minute
+        seconds = ZonedDateTime.now().toEpochSecond() % 60;
+        if (seconds > 57)
+            Thread.currentThread().sleep(3000);
+
+        // reaching requests limit
         for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
             client.getStats(90);
 
@@ -4556,6 +4574,11 @@ public class MainTest {
         Thread.currentThread().sleep(5000);
 
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
+
+        // alignment by begin of minute
+        long seconds = ZonedDateTime.now().toEpochSecond() % 60;
+        if (seconds > 57)
+            Thread.currentThread().sleep(3000);
 
         // reaching requests limit
         for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute(); i++)
