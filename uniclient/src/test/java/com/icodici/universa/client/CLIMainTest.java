@@ -3379,8 +3379,6 @@ public class CLIMainTest {
         HashSet<PublicKey> owners = new HashSet<>();
         owners.add(key1.getPublicKey());
 
-
-
         Contract contract = ContractsService.createTokenContract(issuers, owners, "10000.50", 0.01);
         SimpleRole issuer1 = new SimpleRole("issuer1",new KeyRecord(key1.getPublicKey()));
         SimpleRole issuer2 = new SimpleRole("issuer2",new KeyRecord(key2.getPublicKey()));
@@ -3456,4 +3454,73 @@ public class CLIMainTest {
 
         assertTrue (output.indexOf(ItemState.APPROVED.name()) > 0);
     }
+
+    @Test
+    public void ecsrowComplete() throws Exception {
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        for (PrivateKey pk : customerPrivateKeys) {
+            customerPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        for (PrivateKey pk : arbitratorPrivateKeys) {
+            arbitratorPublicKeys.add(pk.getPublicKey());
+        }
+
+        String payment = getApprovedUContract();
+
+        Contract u = CLIMain.loadContract(payment);
+
+        u = u.createRevision(customerPrivateKeys);
+
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        // add payment to escrow contract
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, u, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        assertTrue(result);
+
+        // check payment transactional references
+        assertTrue(u.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(u.findReferenceByName("send_payment_to_executor", "transactional") != null);
+
+        escrow.check();
+        escrow.traceErrors();
+
+        System.out.println("---4 ");
+        CLIMain.saveContract(escrow, basePath + "escrow_root_contract.unicon");
+
+        System.out.println("--- registering contract ");
+
+        callMain("--register", basePath + "escrow_root_contract.unicon",
+                "--u", payment,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "5000");
+
+        System.out.println(output);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+
+       // escrow = Contract.fromDslFile(rootPath + "escrow_root_contract.yml");
+       // Contract completedEscrow = ContractsService.completeEscrowContract(escrow);
+
+    }
+
 }
