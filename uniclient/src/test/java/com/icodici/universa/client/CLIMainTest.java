@@ -3458,49 +3458,46 @@ public class CLIMainTest {
     @Test
     public void ecsrowComplete() throws Exception {
 
-        Set<PrivateKey> issuerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(0)));
-        Set<PrivateKey> customerPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(1)));
-        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(2)));
-        Set<PrivateKey> executorPrivateKeys = new HashSet<>(Arrays.asList(TestKeys.privateKey(3)));
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>();
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>();
 
         Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+
+        issuerPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey")));
         for (PrivateKey pk : issuerPrivateKeys) {
             issuerPublicKeys.add(pk.getPublicKey());
         }
-        Set<PublicKey> customerPublicKeys = new HashSet<>();
+
+        customerPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
         for (PrivateKey pk : customerPrivateKeys) {
             customerPublicKeys.add(pk.getPublicKey());
         }
-        Set<PublicKey> executorPublicKeys = new HashSet<>();
-        for (PrivateKey pk : executorPrivateKeys) {
-            executorPublicKeys.add(pk.getPublicKey());
-        }
-        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+
+        arbitratorPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/u_key.private.unikey")));
         for (PrivateKey pk : arbitratorPrivateKeys) {
             arbitratorPublicKeys.add(pk.getPublicKey());
         }
 
+        executorPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/notarius.private.unikey")));
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+
         String payment = getApprovedUContract();
-
         Contract u = CLIMain.loadContract(payment);
-
-        u = u.createRevision(customerPrivateKeys);
 
         Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
 
-        // check link between external and internal escrow contracts
-        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+        escrow.check();
+        escrow.traceErrors();
 
-        // check internal escrow contract status
-        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
-
-        // add payment to escrow contract
         boolean result = ContractsService.addPaymentToEscrowContract(escrow, u, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
         assertTrue(result);
-
-        // check payment transactional references
-        assertTrue(u.findReferenceByName("return_payment_to_customer", "transactional") != null);
-        assertTrue(u.findReferenceByName("send_payment_to_executor", "transactional") != null);
 
         escrow.check();
         escrow.traceErrors();
@@ -3510,16 +3507,42 @@ public class CLIMainTest {
 
         System.out.println("--- registering contract ");
 
+        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/marty_mcfly.private.unikey");
+        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/stepan_mamontov.private.unikey");
+
+
         callMain("--register", basePath + "escrow_root_contract.unicon",
                 "--u", payment,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-k", rootPath + "keys/marty_mcfly.private.unikey",
                 "-wait", "5000");
 
         System.out.println(output);
-        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+ //       assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+        System.out.println("---6 ");
 
-       // escrow = Contract.fromDslFile(rootPath + "escrow_root_contract.yml");
-       // Contract completedEscrow = ContractsService.completeEscrowContract(escrow);
+
+      /*  escrow = Contract.fromDslFile(basePath + "escrow_root_contract.unicon");
+        Contract completedEscrow = ContractsService.completeEscrowContract(escrow);
+
+        assertEquals(completedEscrow.getStateData().getString("status", "null"), "completed");
+
+        completedEscrow.addSignatureToSeal(issuerPrivateKeys);
+        completedEscrow.addSignatureToSeal(customerPrivateKeys);
+        completedEscrow.addSignatureToSeal(executorPrivateKeys);
+*/
+
+        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/marty_mcfly.private.unikey");
+        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/marty_mcfly.private.unikey");
+        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/marty_mcfly.private.unikey");
+
+        //completedEscrow.check();
+        //completedEscrow.traceErrors();
+
+        callMain("--register", basePath + "escrow_root_contract.unicon",
+                "--u", payment,
+                "-wait", "5000");
+
 
     }
 
