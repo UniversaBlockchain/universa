@@ -2996,7 +2996,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             this.revision = revision;
         }
         /**
-         * Saves client's javascript in contract's state. It can be executed with {@link Contract#execJS(String...)}
+         * Saves client's javascript in contract's state. It can be executed with {@link Contract#execJS(JSApiExecOptions, byte[], String...)}
          */
         public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
             String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
@@ -3117,7 +3117,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         /**
-         * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(byte[], String...)}
+         * Saves client's javascript in contract's definition. It can be executed with {@link Contract#execJS(JSApiExecOptions, byte[], String...)}
          */
         public void setJS(byte[] jsFileContent, String jsFileName, JSApiScriptParameters scriptParameters) {
             String fileNameKey = JSApiHelpers.fileName2fileKey(jsFileName);
@@ -3499,7 +3499,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     /**
      * Executes javascript, that previously should be saved in contract's definition
-     * with {@link Definition#setJS(String)} or {@link State#setJS(String)}.
+     * with {@link Definition#setJS(byte[], String, JSApiScriptParameters)} or {@link State#setJS(byte[], String, JSApiScriptParameters)}.
      * Provides instance of {@link JSApi} to this script, as 'jsApi' global var.
      * @param params list of strings, will be passed to javascript
      * @return Object, got it from 'result' global var of javascript.
