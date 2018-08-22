@@ -3,5 +3,3 @@ include ':common_tools'
 project(':common_tools').projectDir = new File(settingsDir, '../common_tools')
 include ':crypto'
 project(':crypto').projectDir = new File(settingsDir, '../crypto')
-include ':contrib:nanohttpd'
-project(':contrib:nanohttpd').projectDir = new File(settingsDir, '../contrib/nanohttpd/core')
