@@ -20,7 +20,6 @@ import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.time.ZonedDateTime;
 import java.util.*;
