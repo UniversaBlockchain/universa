@@ -3473,7 +3473,7 @@ public class CLIMainTest {
             issuerPublicKeys.add(pk.getPublicKey());
         }
 
-        customerPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/stepan_mamontov.private.unikey")));
+        customerPrivateKeys.add(new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey")));
         for (PrivateKey pk : customerPrivateKeys) {
             customerPublicKeys.add(pk.getPublicKey());
         }
@@ -3488,41 +3488,51 @@ public class CLIMainTest {
             executorPublicKeys.add(pk.getPublicKey());
         }
 
-        String payment = getApprovedUContract();
-        Contract u = CLIMain.loadContract(payment);
+        Contract contract_for_payment = createCoin();
+        contract_for_payment.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract_for_payment.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        contract_for_payment.seal();
 
-        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+        CLIMain.saveContract(contract_for_payment, basePath + "contract_for_payment.unicon");
 
-        escrow.check();
-        escrow.traceErrors();
+        String uContract = getApprovedUContract();
+        System.out.println(output);
 
-        boolean result = ContractsService.addPaymentToEscrowContract(escrow, u, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        callMain2("--register", basePath + "contract_for_payment.unicon",
+                "--u", uContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "80000", "-v");
+
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys,
+                arbitratorPublicKeys);
+
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"),
+                escrow.getNew().get(0).getOrigin().toBase64String());
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, contract_for_payment, customerPrivateKeys,
+                customerPublicKeys, executorPublicKeys);
         assertTrue(result);
 
-        escrow.check();
-        escrow.traceErrors();
+        // check payment transactional references
+        assertTrue(contract_for_payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(contract_for_payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
 
-        System.out.println("---4 ");
-        CLIMain.saveContract(escrow, basePath + "escrow_root_contract.unicon");
+        CLIMain.saveContract(escrow, basePath + "escrow_root_contract.unicon", true, true);
 
-        System.out.println("--- registering contract ");
-
-        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/marty_mcfly.private.unikey");
-        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/stepan_mamontov.private.unikey");
-
-
-        callMain("--register", basePath + "escrow_root_contract.unicon",
-                "--u", payment,
+        callMain2("--register", basePath + "escrow_root_contract.unicon",
+                "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
-                "-k", rootPath + "keys/marty_mcfly.private.unikey",
-                "-wait", "5000");
+                "-wait", "80000", "-v");
 
         System.out.println(output);
- //       assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
-        System.out.println("---6 ");
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
 
+        callMain2("--probe", escrow.getId().toBase64String());
 
-      /*  escrow = Contract.fromDslFile(basePath + "escrow_root_contract.unicon");
         Contract completedEscrow = ContractsService.completeEscrowContract(escrow);
 
         assertEquals(completedEscrow.getStateData().getString("status", "null"), "completed");
@@ -3530,19 +3540,143 @@ public class CLIMainTest {
         completedEscrow.addSignatureToSeal(issuerPrivateKeys);
         completedEscrow.addSignatureToSeal(customerPrivateKeys);
         completedEscrow.addSignatureToSeal(executorPrivateKeys);
-*/
+        completedEscrow.seal();
 
-        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/marty_mcfly.private.unikey");
-        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/marty_mcfly.private.unikey");
-        callMain("--sign",basePath + "escrow_root_contract.unicon","--keys",rootPath + "keys/marty_mcfly.private.unikey");
+        CLIMain.saveContract(completedEscrow, basePath + "completed_escrow.unicon", true, true);
 
-        //completedEscrow.check();
-        //completedEscrow.traceErrors();
+        callMain2("--register", basePath + "completed_escrow.unicon",
+                "--u", uContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "80000", "-v");
+        System.out.println(output);
 
-        callMain("--register", basePath + "escrow_root_contract.unicon",
-                "--u", payment,
-                "-wait", "5000");
+        Thread.sleep(10000);
 
+        //assertTrue (output.indexOf("paid contract " + completedEscrow.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) > 0);
+
+        callMain2("--probe-file", basePath + "completed_escrow.unicon","--verbose");
+
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) > 0);
+
+    }
+
+    @Test(timeout = 90000)
+    public void ecsrowCancel() throws Exception {
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> customerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> arbitratorPrivateKeys = new HashSet<>();
+        Set<PrivateKey> executorPrivateKeys = new HashSet<>();
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        Set<PublicKey> customerPublicKeys = new HashSet<>();
+        Set<PublicKey> arbitratorPublicKeys = new HashSet<>();
+        Set<PublicKey> executorPublicKeys = new HashSet<>();
+
+        issuerPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey")));
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+
+        customerPrivateKeys.add(new PrivateKey(Do.read(rootPath + "_xer0yfe2nn1xthc.private.unikey")));
+        for (PrivateKey pk : customerPrivateKeys) {
+            customerPublicKeys.add(pk.getPublicKey());
+        }
+
+        arbitratorPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/u_key.private.unikey")));
+        for (PrivateKey pk : arbitratorPrivateKeys) {
+            arbitratorPublicKeys.add(pk.getPublicKey());
+        }
+
+        executorPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/notarius.private.unikey")));
+        for (PrivateKey pk : executorPrivateKeys) {
+            executorPublicKeys.add(pk.getPublicKey());
+        }
+
+
+        Contract contract_for_payment = createCoin();
+        contract_for_payment.getStateData().set(FIELD_NAME, new Decimal(100));
+        contract_for_payment.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
+        contract_for_payment.seal();
+
+        CLIMain.saveContract(contract_for_payment, basePath + "contract_for_payment.unicon");
+
+        // create external escrow contract
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+
+        // check link between external and internal escrow contracts
+        assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
+
+        // check internal escrow contract status
+        assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
+
+        // add payment to escrow contract
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, contract_for_payment, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        assertTrue(result);
+
+        // check payment transactional references
+        assertTrue(contract_for_payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
+        assertTrue(contract_for_payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
+
+        CLIMain.saveContract(escrow, basePath + "escrow_root_contract.unicon", true, true);
+
+        String uContract = getApprovedUContract();
+        System.out.println(output);
+
+        callMain2("--register", basePath + "escrow_root_contract.unicon",
+                "--u", uContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "80000", "-v");
+
+        System.out.println(output);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+
+        callMain2("--probe", escrow.getId().toBase64String());
+
+        // cancel escrow contract(by external escrow contract)
+        Contract canceledEscrow = ContractsService.cancelEscrowContract(escrow);
+
+        // check internal escrow contract status
+        assertEquals(canceledEscrow.getStateData().getString("status", "null"), "canceled");
+
+        canceledEscrow.addSignatureToSeal(issuerPrivateKeys);
+        canceledEscrow.addSignatureToSeal(customerPrivateKeys);
+        canceledEscrow.addSignatureToSeal(arbitratorPrivateKeys);
+        canceledEscrow.seal();
+
+        CLIMain.saveContract(canceledEscrow, basePath + "canceled_escrow.unicon", true, true);
+
+        callMain2("--register", basePath + "canceled_escrow.unicon",
+                "--u", uContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "80000", "-v");
+        System.out.println(output);
+
+        callMain2("--probe-file", basePath + "canceled_escrow.unicon");
+
+        // return payment to customer
+        Contract newPayment = ContractsService.takeEscrowPayment(customerPrivateKeys, contract_for_payment);
+
+        // internal escrow contract for checking references
+        newPayment.getTransactionPack().addReferencedItem(canceledEscrow);
+
+        newPayment.check();
+        newPayment.traceErrors();
+
+        CLIMain.saveContract(canceledEscrow, basePath + "new_payment.unicon", true, true);
+
+        callMain2("--register", basePath + "new_payment.unicon",
+                "--u", uContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "80000", "-v");
+        System.out.println(output);
+
+        callMain2("--probe-file", basePath + "new_payment.unicon", "--verbose");
+        System.out.println(output);
+
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) > 0);
 
     }
 
