@@ -1,7 +1,7 @@
 version: '2.1'
 services:
   db:
-    image: postgres:10.4
+    image: postgres:latest
     ports:
       - 5432:5432
     environment:
@@ -20,8 +20,8 @@ services:
           - db
         ipv4_address: 10.6.0.10
   node-1-local:
-    build: .
-    image: uninode:latest
+    image: universa/node:latest
+    command: --config /deploy/
     links:
      - db
     ports:
@@ -36,6 +36,7 @@ services:
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-1:/deploy/tmp
+     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 1
     networks:
@@ -44,7 +45,8 @@ services:
           - node-1-local.universa.io
         ipv4_address: 10.6.0.11
   node-2-local:
-    image: uninode:latest
+    image: universa/node:latest
+    command: --config /deploy/
     links:
      - db
     ports:
@@ -59,6 +61,7 @@ services:
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-2:/deploy/tmp
+     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 2
     networks:
@@ -67,7 +70,8 @@ services:
           - node-2-local.universa.io
         ipv4_address: 10.6.0.12
   node-3-local:
-    image: uninode:latest
+    image: universa/node:latest
+    command: --config /deploy/
     links:
      - db
     ports:
@@ -82,6 +86,7 @@ services:
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-3:/deploy/tmp
+     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 3
     networks:
@@ -90,7 +95,8 @@ services:
           - node-3-local.universa.io
         ipv4_address: 10.6.0.13
   node-4-local:
-    image: uninode:latest
+    image: universa/node:latest
+    command: --config /deploy/
     links:
      - db
     ports:
@@ -105,6 +111,7 @@ services:
      - ./deploy/config/keys:/deploy/config/keys
      - ./deploy/config/nodes:/deploy/config/nodes
      - ./deploy/tmp-node-4:/deploy/tmp
+     - ./init-node.sh:/docker-entrypoint-initdb.d/init-node.sh
     environment:
       NODE_INDEX: 4
     networks:

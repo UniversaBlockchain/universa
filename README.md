@@ -2,11 +2,13 @@
 
 This is the Universa network codebase (Java core), containing the node, the console client (`uniclient`) and the associated subsystems.
 
+To learn more about Universa, you may want to read through Universa Knowledge Base at [kb.universa.io](https://kb.universa.io).
+
 ## Build Dependencies
 
 To build, you need to have the following installed:
 
-- [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) (not tested with JDK 9).
+- [JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) (not tested with JDK 9 or newer).
 - [Gradle](https://gradle.org/install).
 
 To access the Github repository, you may need some git client. The further examples assume you are using the command-line `git` client. To properly clone it from Github, you may need to create an SSH key pair, to register on [Github site](https://github.com) and to [add your SSH public key](https://github.com/settings/keys) on Github.

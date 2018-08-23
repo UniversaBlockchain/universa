@@ -5,7 +5,7 @@ http_client_listen:
 http_server_port: 2082
 udp_server_port: 2700
 node_number: 2
-public_host: node-2-local.universa.io
+public_host: localhost
 node_name: node-2-local.universa.io
 ip:
 - 10.6.0.12

@@ -72,7 +72,7 @@ public class Main {
                         .withRequiredArg().ofType(String.class)
                         .describedAs("db_url");
                 accepts("test", "intended to be used in integration tests");
-                accepts("nolog", "do not buffer log messages (good fot testing)");
+                accepts("nolog", "do not buffer log messages (good for testing)");
                 accepts("verbose", "sets verbose level to nothing, base or detail")
                         .withRequiredArg()
                         .ofType(String.class)

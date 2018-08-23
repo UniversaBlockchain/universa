@@ -1,41 +1,26 @@
+Universa Docker containers
+--------------------------
 
-# Universa Docker
-Allow to execute local environment of Universa Blockchain Smart Contracts.
-## Requirements
-Install Docker and Docker Compose
-### Docker
-https://docs.docker.com/install/linux/docker-ce/ubuntu/
-### Docker Compose
-https://docs.docker.com/compose/install/
-## Description
-docker-compose.yaml file contains definitions of five containers:
- - db: Postgres database.  Image will download the Postgres image 
- - universa-node-1: Universa node. Image will be created from Dockerfile
- - universa-node-2: Universa node. 
- - universa-node-3: Universa node.
- - universa-node-4: Universa node. 
+This Docker configuration allows you to configure and execute a local environment of Universa Blockchain nodes, for various development/debug purposes.
 
-In **deploy** folder are located node's configurations, private and public keys.
-# Run
-    docker-compose up -d
+See more details in our Knowledge Base article on Universa docker images: [kb.universa.io/universa_docker_images/92](https://kb.universa.io/universa_docker_images/92).
 
-# Containers
-| Container | External Ports | Internal IP | Internal Ports |
-| ------ | ------ | ------ | ------ |
-| db | 5432 | 10.6.0.10 | 5432 |
-| node-1-local | 2052, 2082,2700 | 10.6.0.11| 2052, 2082,2700|
-| node-2-local | 2053, 2083,2701 | 10.6.0.12| 2052, 2082,2700|
-| node-3-local | 2054, 2084,2702 |10.6.0.13 |2052, 2082,2700 |
-| node-4-local | 2055, 2085,2703 |10.6.0.14 | 2052, 2082,2700|
 
-# Logs
+## Prerequirements
 
-Firstly, check the name of container to view logs:
+Install Docker and Docker Compose, as appropriate for your environment and operating system. See more details on [Docker site](https://docker.com).
 
-    docker ps
 
-For example, if the name of first node's container is **code_node-1-local_1** (depends of parent folder name, in this case is **code**) log command is:
+### Building
 
-    docker logs code_node-2-local_1
+Build `universa/debian-jdk8`:
 
-This will show the stdout of container.
+~~~
+docker build --tag universa/debian-jdk8:latest docker/debian-jdk8
+~~~
+
+Build `universa/universa/node`:
+
+~~~
+docker build --tag universa/node:latest --compress -f docker/node/Dockerfile .
+~~~

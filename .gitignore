@@ -94,3 +94,5 @@ fabric.properties
 /docs/javadoc/
 /docs/**/javadoc/
 !/universa_core/ExcludeDoclet.jar
+/docker/compose/deploy/config/keys/
+/docker/compose/deploy/tmp-node-*/
