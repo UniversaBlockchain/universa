@@ -102,7 +102,7 @@ public class JSApiHelpers {
         if (scriptBinder != null) {
             JSApiScriptParameters scriptParameters = JSApiScriptParameters.fromBinder(scriptBinder);
             ScriptEngine jse = new NashornScriptEngineFactory().getScriptEngine(s -> false);
-            jse.put("jsApi", new JSApi(currentContract, execOptions));
+            jse.put("jsApi", new JSApi(currentContract, execOptions, scriptParameters));
             String[] stringParams = new String[params.length];
             for (int i = 0; i < params.length; ++i)
                 stringParams[i] = params[i].toString();

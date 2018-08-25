@@ -17,10 +17,12 @@ public class JSApi {
 
     private Contract currentContract;
     private JSApiExecOptions execOptions;
+    private JSApiScriptParameters scriptParameters;
 
-    public JSApi(Contract currentContract, JSApiExecOptions execOptions) {
+    public JSApi(Contract currentContract, JSApiExecOptions execOptions, JSApiScriptParameters scriptParameters) {
         this.currentContract = currentContract;
         this.execOptions = execOptions;
+        this.scriptParameters = scriptParameters;
     }
 
     public JSApiContract getCurrentContract() {
@@ -36,19 +38,27 @@ public class JSApi {
     }
 
     public JSApiSharedFolders getSharedFolders() {
-        return new JSApiSharedFolders(execOptions);
+        if (scriptParameters.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS))
+            return new JSApiSharedFolders(execOptions);
+        throw new IllegalArgumentException("access denied: missing permission " + JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS.toString());
     }
 
     public JSApiSharedStorage getSharedStorage() {
-        return new JSApiSharedStorage();
+        if (scriptParameters.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE))
+            return new JSApiSharedStorage();
+        throw new IllegalArgumentException("access denied: missing permission " + JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE.toString());
     }
 
     public JSApiOriginStorage getOriginStorage() {
-        return new JSApiOriginStorage(this.currentContract.getOrigin());
+        if (scriptParameters.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE))
+            return new JSApiOriginStorage(this.currentContract.getOrigin());
+        throw new IllegalArgumentException("access denied: missing permission " + JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE.toString());
     }
 
     public JSApiRevisionStorage getRevisionStorage() {
-        return new JSApiRevisionStorage(this.currentContract.getId(), this.currentContract.getParent());
+        if (scriptParameters.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE))
+            return new JSApiRevisionStorage(this.currentContract.getId(), this.currentContract.getParent());
+        throw new IllegalArgumentException("access denied: missing permission " + JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE.toString());
     }
 
     public byte[] string2bin(String s) {

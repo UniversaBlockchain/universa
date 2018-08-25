@@ -1043,7 +1043,9 @@ public class ScriptEngineTest {
         js += "sharedStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString2+"'));";
         js += "var file2readed = bin2string(sharedStorage.readAllBytes('"+testFileName+"'));";
         js += "var result = [file1readed, file2readed]";
-        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE, true);
+        contract.getState().setJS(js.getBytes(), "client script.js", scriptParameters);
         contract.seal();
         ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(new JSApiExecOptions(), js.getBytes());
         assertEquals(testString1, res.get("0"));
@@ -1068,7 +1070,9 @@ public class ScriptEngineTest {
         js += "originStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString2+"'));";
         js += "var file2readed = bin2string(originStorage.readAllBytes('"+testFileName+"'));";
         js += "var result = [file1readed, file2readed]";
-        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE, true);
+        contract.getState().setJS(js.getBytes(), "client script.js", scriptParameters);
         contract.seal();
         Paths.get(originStoragePath + JSApiHelpers.hashId2hex(contract.getOrigin()) + "/" + testFileName).toFile().delete();
         ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(new JSApiExecOptions(), js.getBytes());
@@ -1083,7 +1087,7 @@ public class ScriptEngineTest {
         js2 += "originStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString1+"'));";
         js2 += "var file1readed = bin2string(originStorage.readAllBytes('"+testFileName+"'));";
         js2 += "var result = [file1readed, file2readed]";
-        contract2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract2.getState().setJS(js2.getBytes(), "client script.js", scriptParameters);
         contract2.addSignerKey(TestKeys.privateKey(0));
         contract2.seal();
         ScriptObjectMirror res2 = (ScriptObjectMirror)contract2.execJS(new JSApiExecOptions(), js2.getBytes());
@@ -1123,7 +1127,9 @@ public class ScriptEngineTest {
         js1 += "  fileParentReaded = null;";
         js1 += "}";
         js1 += "var result = [file1Areaded, file1Breaded, fileParentReaded]";
-        contract1.getState().setJS(js1.getBytes(), "client script.js", new JSApiScriptParameters());
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE, true);
+        contract1.getState().setJS(js1.getBytes(), "client script.js", scriptParameters);
         contract1.seal();
         System.out.println("contract1.getId: " + Bytes.toHex(contract1.getId().getDigest()).replaceAll(" ", ""));
         System.out.println("contract1.getParent: " + contract1.getParent());
@@ -1145,7 +1151,7 @@ public class ScriptEngineTest {
         js2 += "var fileParentReaded = revisionStorage.readAllBytesFromParent('"+testFileName+"');";
         js2 += "fileParentReaded = bin2string(fileParentReaded);";
         js2 += "var result = [file2Areaded, file2Breaded, fileParentReaded]";
-        contract2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract2.getState().setJS(js2.getBytes(), "client script.js", scriptParameters);
         contract2.seal();
         System.out.println("contract2.getId: " + Bytes.toHex(contract2.getId().getDigest()).replaceAll(" ", ""));
         System.out.println("contract2.getParent: " + Bytes.toHex(contract2.getParent().getDigest()).replaceAll(" ", ""));
@@ -1167,7 +1173,7 @@ public class ScriptEngineTest {
         js3 += "var fileParentReaded = revisionStorage.readAllBytesFromParent('"+testFileName+"');";
         js3 += "fileParentReaded = bin2string(fileParentReaded);";
         js3 += "var result = [file3Areaded, file3Breaded, fileParentReaded]";
-        contract3.getState().setJS(js3.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract3.getState().setJS(js3.getBytes(), "client script.js", scriptParameters);
         contract3.seal();
         System.out.println("contract3.getId: " + Bytes.toHex(contract3.getId().getDigest()).replaceAll(" ", ""));
         System.out.println("contract3.getParent: " + Bytes.toHex(contract3.getParent().getDigest()).replaceAll(" ", ""));
@@ -1176,6 +1182,41 @@ public class ScriptEngineTest {
         assertEquals(testString3a, res3.get("0"));
         assertEquals(testString3b, res3.get("1"));
         assertEquals(testString2b, res3.get("2"));
+    }
+
+    @Test
+    public void scriptPermissionsToBinder() throws Exception {
+        JSApiScriptParameters params = new JSApiScriptParameters();
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE, true);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE, true);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE, true);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS, true);
+        params = JSApiScriptParameters.fromBinder(params.toBinder());
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE));
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE));
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE));
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS));
+
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE, false);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE, false);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE, false);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS, false);
+        params = JSApiScriptParameters.fromBinder(params.toBinder());
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS));
+    }
+
+    @Test
+
+    public void scriptPermissionsDefaultStates() throws Exception {
+        JSApiScriptParameters params = new JSApiScriptParameters();
+        params = JSApiScriptParameters.fromBinder(params.toBinder());
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE));
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS));
     }
 
 }
