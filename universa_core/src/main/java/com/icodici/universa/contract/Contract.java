@@ -70,6 +70,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     private boolean shouldBeU = false;
     private boolean limitedForTestnet = false;
     private boolean isSuitableForTestnet = false;
+    private boolean isNeedVerifySealedKeys = false;
 
     /**
      * true if the contract was imported from sealed capsule
@@ -178,57 +179,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             newItems.forEach(i -> i.context = context);
         }
 
-
-        // fill sealedByKeys from signatures matching with roles
-
-        HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
-
-        roles.values().forEach(role -> {
-            role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
-            role.getAnonymousIds().forEach(anonId -> {
-                transactionPack.getKeysForPack().forEach(
-                        key -> {
-                            try {
-                                if(key.matchAnonymousId(anonId.getBytes())) {
-                                    keys.put(ExtendedSignature.keyId(key), key);
-                                }
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                );
-            });
-            role.getKeyAddresses().forEach(keyAddr -> {
-                transactionPack.getKeysForPack().forEach(
-                        key -> {
-                            try {
-                                if(key.isMatchingKeyAddress(keyAddr)) {
-                                    keys.put(ExtendedSignature.keyId(key), key);
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                );
-            });
-        });
-
-        for (Object signature : (List) data.getOrThrow("signatures")) {
-            byte[] s = ((Bytes) signature).toArray();
-            PublicKey key = ExtendedSignature.extractPublicKey(s);
-            if (key == null) {
-                Bytes keyId = ExtendedSignature.extractKeyId(s);
-                key = keys.get(keyId);
-            }
-            if (key != null) {
-                verifySignatureQuantized(key);
-                ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
-                if (es != null) {
-                    sealedByKeys.put(key, es);
-                } else
-                    addError(Errors.BAD_SIGNATURE, "keytag:" + key.info().getBase64Tag(), "the signature is broken");
-            }
-        }
+        isNeedVerifySealedKeys = true;
     }
 
     /**
@@ -311,7 +262,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 ref.setContract(this);
                 references.put(ref.name, ref);
             }
-        }*/
+        }
 
         for(Reference ref : getReferences().values()) {
 
@@ -387,7 +338,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 } else
                     addError(Errors.BAD_SIGNATURE, "keytag:" + key.info().getBase64Tag(), "the signature is broken");
             }
-        }
+        }*/
     }
 
     /**
@@ -607,6 +558,104 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return contracts;
     }
 
+    private void verifySealedKeys(boolean isQuantise) throws Quantiser.QuantiserException {
+
+        if (sealedBinary == null)
+            return;
+
+        if (!isNeedVerifySealedKeys) {
+            if (isQuantise)
+                // Add key verify quanta again (we just reset quantiser)
+                for (PublicKey key : sealedByKeys.keySet())
+                    if (key != null)
+                        verifySignatureQuantized(key);
+            return;
+        }
+
+        Binder data = Boss.unpack(sealedBinary);
+        if (!data.getStringOrThrow("type").equals("unicapsule"))
+            throw new IllegalArgumentException("wrong object type, unicapsule required");
+
+        byte[] contractBytes = data.getBinaryOrThrow("data");
+
+        // fill sealedByKeys from signatures matching with roles
+        HashMap<Bytes, PublicKey> keys = new HashMap<Bytes, PublicKey>();
+
+        roles.values().forEach(role -> {
+            role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
+            role.getAnonymousIds().forEach(anonId -> {
+                transactionPack.getKeysForPack().forEach(
+                        key -> {
+                            try {
+                                if(key.matchAnonymousId(anonId.getBytes())) {
+                                    keys.put(ExtendedSignature.keyId(key), key);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            });
+            role.getKeyAddresses().forEach(keyAddr -> {
+                transactionPack.getKeysForPack().forEach(
+                        key -> {
+                            try {
+                                if(key.isMatchingKeyAddress(keyAddr)) {
+                                    keys.put(ExtendedSignature.keyId(key), key);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                );
+            });
+        });
+
+        for (Object signature : (List) data.getOrThrow("signatures")) {
+            byte[] s = ((Bytes) signature).toArray();
+
+            PublicKey key = ExtendedSignature.extractPublicKey(s);
+            if (key == null) {
+                Bytes keyId = ExtendedSignature.extractKeyId(s);
+                key = keys.get(keyId);
+            }
+
+            if (key != null) {
+                if (isQuantise)
+                    verifySignatureQuantized(key);
+
+                ExtendedSignature es = ExtendedSignature.verify(key, s, contractBytes);
+                if (es != null) {
+                    sealedByKeys.put(key, es);
+                } else
+                    addError(Errors.BAD_SIGNATURE, "keytag:" + key.info().getBase64Tag(), "the signature is broken");
+            }
+        }
+
+        isNeedVerifySealedKeys = false;
+    }
+
+    private void verifySignatures() throws Quantiser.QuantiserException {
+
+        verifySealedKeys(true);
+
+        // verify signatures of new items
+        for (Contract c: newItems) {
+            // Add verification signatures from new item quanta
+            c.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
+            c.verifySignatures();
+            quantiser.addWorkCostFrom(c.quantiser);
+        }
+
+        // verify signatures of revoking items
+        for (Contract c: revokingItems) {
+            // Add verification signatures from revoking item quanta
+            c.quantiser.reset(quantiser.getQuantaLimit() - quantiser.getQuantaSum());
+            c.verifySealedKeys(true);
+            quantiser.addWorkCostFrom(c.quantiser);
+        }
+    }
+
     /**
      * Check contract for errors. This includes checking contract state modification, checking new items, revoke permissions and references acceptance.
      * Errors found can be accessed with {@link #getErrors()} ()}
@@ -622,6 +671,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     private boolean check(String prefix, Map<HashId,Contract> contractsTree) throws Quantiser.QuantiserException {
 
+        quantiser.reset(quantiser.getQuantaLimit());
+
+        // verify all signatures of main contract and sub items
+        if (prefix.isEmpty())
+            verifySignatures();
+
         if (contractsTree == null) {
             contractsTree = new HashMap(getTransactionPack().getSubItems());
             contractsTree.putAll(getTransactionPack().getReferencedItems());
@@ -629,27 +684,15 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             setEffectiveKeys(null);
         }
 
-        quantiser.reset(quantiser.getQuantaLimit());
-        // Add key verify quanta again (we just reset quantiser)
-        for (PublicKey key : getSealedByKeys()) {
-            if (key != null) {
-                verifySignatureQuantized(key);
-            }
-        }
-
         // Add register a version quanta (for self)
         quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REGISTER_VERSION);
 
-        // quantize revokingItems and referencedItems
-        for (Contract r : revokingItems) {
-            // Add key verify quanta for each revoking
-            for (PublicKey key : r.getSealedByKeys()) {
-                if (key != null) {
-                    verifySignatureQuantized(key);
-                }
-            }
+        // quantize revoking items
+        for (int i = 0; i < revokingItems.size(); i++) {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_REVOKE_VERSION);
         }
+
+        // quantize referenced items
         for (int i = 0; i < getReferences().size(); i++) {
             quantiser.addWorkCost(Quantiser.QuantiserProcesses.PRICE_CHECK_REFERENCED_VERSION);
         }
@@ -1553,6 +1596,14 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      * @return keys contract binary signed with
      */
     public Set<PublicKey> getSealedByKeys() {
+        try {
+            verifySealedKeys(false);
+        }
+        catch (Quantiser.QuantiserException e) {
+            // not passed without Quantisation
+            e.printStackTrace();
+        }
+
         return sealedByKeys.keySet();
     }
 
@@ -1671,7 +1722,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         keysToSignWith.forEach(key -> {
             signatures.add(ExtendedSignature.sign(key, theContract));
         });
-        result.put("data", theContract);
         result.put("signatures", signatures);
         setOwnBinary(result);
         return sealedBinary;
@@ -1696,15 +1746,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         byte[] theContract = Boss.pack(
                 forPack
         );
+        List<byte[]> signatures = new ArrayList<>();
         Binder result = Binder.of(
                 "type", "unicapsule",
                 "version", 3,
-                "data", theContract
+                "data", theContract,
+                "signatures", signatures
         );
-
-        List<byte[]> signatures = new ArrayList<>();
-        result.put("data", theContract);
-        result.put("signatures", signatures);
         setOwnBinary(result);
 
         addSignatureToSeal(keysToSignWith);
@@ -3426,7 +3474,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
     @Override
     public boolean isInWhiteList(List<PublicKey> whiteList) {
-        return sealedByKeys.keySet().stream().anyMatch(k -> whiteList.contains(k));
+        return getSealedByKeys().stream().anyMatch(k -> whiteList.contains(k));
     }
 
 

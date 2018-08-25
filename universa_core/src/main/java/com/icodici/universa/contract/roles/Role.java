@@ -313,9 +313,12 @@ public abstract class Role implements BiSerializable {
      */
     public abstract Set<KeyAddress> getKeyAddresses();
 
-    public Set<KeyRecord> getKeyRecords() {
-        return Collections.emptySet();
-    }
+    /**
+     * Get set of all key records in sub-roles.
+     *
+     * @return set of key records (see {@link KeyAddress})
+     */
+    public abstract Set<KeyRecord> getKeyRecords();
 
     /**
      * If the role is a link or like, get the target role. If it is not possible (no target role, for example), throws
