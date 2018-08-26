@@ -475,6 +475,14 @@ public class ContractTest extends ContractTestBase {
         contract.addSignerKeyFromFile(PRIVATE_KEY_PATH);
         sealCheckTrace(contract, true);
 
+        // Check 4096 bits signature (8) +
+        // Register a version (20)
+        int costShouldBeForParent = 28;
+
+        System.out.println("Calculated processing cost (parent): " + contract.getProcessedCost() + " quanta");
+
+        assertEquals(costShouldBeForParent, contract.getProcessedCost());
+
         Contract forRevision = contract.createRevision();
 //        forRevision.getStateData().set("amount", new Decimal(111));
         forRevision.getState().setExpiresAt(ZonedDateTime.now().plusDays(7));
@@ -486,10 +494,6 @@ public class ContractTest extends ContractTestBase {
         forRevision.traceErrors();
 
         // Check 4096 bits signature (8) +
-        // Register a version (20)
-        int costShouldBeForParent = 28;
-
-        // Check 4096 bits signature (8) +
         // Register a version (20) +
         // Check 4096 bits signature for revoking (8) +
         // Register revoking item a version (20) +
@@ -498,10 +502,8 @@ public class ContractTest extends ContractTestBase {
         // Check self change revoke permission (1)
         int costShouldBeForRevision = 61;
 
-        System.out.println("Calculated processing cost (parent): " + contract.getProcessedCost() + " (UTN)");
-        System.out.println("Calculated processing cost (revision): " + forRevision.getProcessedCost() + " (UTN)");
+        System.out.println("Calculated processing cost (revision): " + forRevision.getProcessedCost() + " quanta");
 
-        assertEquals(costShouldBeForParent, contract.getProcessedCost());
         assertEquals(costShouldBeForRevision, forRevision.getProcessedCost());
     }
 

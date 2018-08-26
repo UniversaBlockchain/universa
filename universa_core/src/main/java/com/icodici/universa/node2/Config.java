@@ -182,6 +182,7 @@ public class Config {
     private Duration expriedStorageCleanupInterval = Duration.ofMinutes(5);
     private Duration expriedNamesCleanupInterval = Duration.ofMinutes(5);
     private Duration holdDuration = Duration.ofDays(30);
+    private int paymentQuantaLimit = 200;
 
     private Boolean isFreeRegistrationsLimited = null;
     private boolean isFreeRegistrationsAllowedFromYaml = false;
@@ -215,7 +216,6 @@ public class Config {
     public static int maxCostUInTestMode = 3;
 
     public static int quantiser_quantaPerU = 200;
-
 
     public int getMinPayment(String extendedType)
     {
@@ -343,6 +343,8 @@ public class Config {
     public TemporalAmount getMaxDownloadOnApproveTime() {
         return maxDownloadOnApproveTime;
     }
+
+    public int getPaymentQuantaLimit() { return paymentQuantaLimit; }
 
     public void setMaxDownloadOnApproveTime(TemporalAmount maxDownloadOnApproveTime) {
         this.maxDownloadOnApproveTime = maxDownloadOnApproveTime;

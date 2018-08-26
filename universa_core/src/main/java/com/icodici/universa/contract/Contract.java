@@ -584,7 +584,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         roles.values().forEach(role -> {
             role.getKeys().forEach(key -> keys.put(ExtendedSignature.keyId(key), key));
             role.getAnonymousIds().forEach(anonId -> {
-                transactionPack.getKeysForPack().forEach(
+                getTransactionPack().getKeysForPack().forEach(
                         key -> {
                             try {
                                 if(key.matchAnonymousId(anonId.getBytes())) {
@@ -597,7 +597,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 );
             });
             role.getKeyAddresses().forEach(keyAddr -> {
-                transactionPack.getKeysForPack().forEach(
+                getTransactionPack().getKeysForPack().forEach(
                         key -> {
                             try {
                                 if(key.isMatchingKeyAddress(keyAddr)) {
