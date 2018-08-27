@@ -24,3 +24,9 @@ Build `universa/universa/node`:
 ~~~
 docker build --tag universa/node:latest --compress -f docker/node/Dockerfile .
 ~~~
+
+or
+
+~~~
+docker build --tag universa/node:latest --compress .
+~~~
