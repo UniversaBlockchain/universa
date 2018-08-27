@@ -1209,7 +1209,6 @@ public class ScriptEngineTest {
     }
 
     @Test
-
     public void scriptPermissionsDefaultStates() throws Exception {
         JSApiScriptParameters params = new JSApiScriptParameters();
         params = JSApiScriptParameters.fromBinder(params.toBinder());
@@ -1217,6 +1216,47 @@ public class ScriptEngineTest {
         assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE));
         assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE));
         assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS));
+    }
+
+    @Test
+    public void testUrlParser() throws Exception {
+        JSApiUrlParser urlParser = new JSApiUrlParser();
+
+        urlParser.addUrlMask("universa.com");
+        urlParser.addUrlMask("t2.universa.com:80");
+        urlParser.addUrlMask("t3.universa.com:3333");
+        urlParser.addUrlMask("universa.io");
+        urlParser.addUrlMask("test1.universa.io:80");
+        urlParser.addUrlMask("test2.universa.io:443");
+        urlParser.addUrlMask("test3.universa.io:8080");
+        urlParser.addUrlMask("test4.universa.io:*");
+        urlParser.addUrlMask("*.universa.io");
+        urlParser.addUrlMask("*.universa.io:4444");
+
+        System.out.println(urlParser.isUrlAllowed("https://www.universa.io/imgres?imgurl=http%3A%2F%2Fkaifolog.ru%2Fuploads%2Fposts%2F2014-02%2F1392187237_005.jpg&imgrefurl=http%3A%2F%2Fkaifolog.ru%2Fpozitiv%2F5234-koteyki-55-foto.html&docid=5_IgRUU_v1M82M&tbnid=fN4J5V9ZY-tIiM%3A&vet=10ahUKEwjYn63jx43dAhVkkosKHW4TAcsQMwiOASgDMAM..i&w=640&h=640&bih=978&biw=1920&q=%D0%BA%D0%BE%D1%82%D0%B5%D0%B9%D0%BA%D0%B8&ved=0ahUKEwjYn63jx43dAhVkkosKHW4TAcsQMwiOASgDMAM&iact=mrc&uact=8"));
+        System.out.println(urlParser.isUrlAllowed("universa.io."));
+        System.out.println(urlParser.isUrlAllowed("http://universa.io"));
+        System.out.println(urlParser.isUrlAllowed("https://universa.io"));
+        System.out.println(urlParser.isUrlAllowed("universa.io.:8080"));
+        System.out.println(urlParser.isUrlAllowed("test2.universa.io.:8080"));
+        System.out.println(urlParser.isUrlAllowed("test3.universa.io.:8080"));
+        System.out.println(urlParser.isUrlAllowed("test4.universa.io.:8080"));
+        System.out.println(urlParser.isUrlAllowed("universa.io.:80"));
+        System.out.println(urlParser.isUrlAllowed("universa.io.:443"));
+        System.out.println(urlParser.isUrlAllowed("test55.universa.io"));
+        System.out.println(urlParser.isUrlAllowed("test55.universa.io:3333"));
+        System.out.println(urlParser.isUrlAllowed("http://test55.universa.io"));
+        System.out.println(urlParser.isUrlAllowed("p1.test55.universa.io"));
+        System.out.println(urlParser.isUrlAllowed("p1.test55.universa.io:3333"));
+        System.out.println(urlParser.isUrlAllowed("p1.test55.universa.io:4444"));
+        System.out.println(urlParser.isUrlAllowed("universa.com"));
+        System.out.println(urlParser.isUrlAllowed("t1.universa.com"));
+        System.out.println(urlParser.isUrlAllowed("t2.universa.com"));
+        System.out.println(urlParser.isUrlAllowed("http://t2.universa.com"));
+        System.out.println(urlParser.isUrlAllowed("http://t3.universa.com"));
+        System.out.println(urlParser.isUrlAllowed("https://t3.universa.com"));
+        System.out.println(urlParser.isUrlAllowed("http://t3.universa.com:3333"));
+        System.out.println(urlParser.isUrlAllowed("https://t3.universa.com:3333"));
     }
 
 }
