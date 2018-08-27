@@ -121,6 +121,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
 
         this.sealedBinary = sealed;
         this.transactionPack = pack;
+        isNeedVerifySealedKeys = true;
         Binder data = Boss.unpack(sealed);
         if (!data.getStringOrThrow("type").equals("unicapsule"))
             throw new IllegalArgumentException("wrong object type, unicapsule required");
@@ -178,8 +179,6 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         if(getSiblings().size() > 1) {
             newItems.forEach(i -> i.context = context);
         }
-
-        isNeedVerifySealedKeys = true;
     }
 
     /**
@@ -558,6 +557,13 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         return contracts;
     }
 
+    /**
+     * Verify signatures in sealed contract (if needed) and forms a map of sealed keys.
+     * Errors found can be accessed with {@link #getErrors()}
+     *
+     * @param isQuantise if needed quantisation verifying signatures
+     * @throws Quantiser.QuantiserException when quantas limit was reached during check
+     */
     private void verifySealedKeys(boolean isQuantise) throws Quantiser.QuantiserException {
 
         if (sealedBinary == null)
@@ -611,6 +617,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             });
         });
 
+        // verify signatures
         for (Object signature : (List) data.getOrThrow("signatures")) {
             byte[] s = ((Bytes) signature).toArray();
 
@@ -635,6 +642,12 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         isNeedVerifySealedKeys = false;
     }
 
+    /**
+     * Verify signatures in contract and all sub-items (if needed).
+     * Errors found can be accessed in certain contract with {@link #getErrors()}
+     *
+     * @throws Quantiser.QuantiserException when quantas limit was reached during check
+     */
     private void verifySignatures() throws Quantiser.QuantiserException {
 
         verifySealedKeys(true);

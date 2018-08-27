@@ -13503,4 +13503,80 @@ public class BaseNetworkTest extends TestCase {
         assertEquals(ItemState.APPROVED, paymentRes.state);
         assertEquals(ItemState.UNDEFINED, payloadRes.state);
     }
+
+    @Test(timeout = 90000)
+    public void checkDeferredVerifyingSignatures() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "_xer0yfe2nn1xthc.private.unikey")));
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        for (PrivateKey pk : martyPrivateKeys)
+            martyPublicKeys.add(pk.getPublicKey());
+
+        // create contracts
+        Contract stepaCoins = Contract.fromDslFile(ROOT_PATH + "stepaCoins.yml");
+
+        Contract sub = new Contract(martyPrivateKeys.iterator().next());
+        sub.seal();
+        stepaCoins.addNewItems(sub);
+
+        stepaCoins.addSignerKeys(stepaPrivateKeys);
+        stepaCoins.seal();
+
+        // imitate transfer contract with signatures
+        stepaCoins = imitateSendingTransactionToPartner(stepaCoins);
+
+        // sealed keys from getSealedByKeys
+        assertEquals(stepaCoins.getSealedByKeys().size(), 2);
+        assertEquals(stepaCoins.getNew().get(0).getSealedByKeys().size(), 1);
+
+        // imitate transfer contract with signatures
+        stepaCoins = imitateSendingTransactionToPartner(stepaCoins);
+
+        stepaCoins.check();
+        stepaCoins.traceErrors();
+
+        // checking quantisation and sealed keys
+        // PRICE_REGISTER_VERSION * 2 + PRICE_CHECK_2048_SIG * 2 + PRICE_CHECK_4096_SIG == 50
+        assertEquals(stepaCoins.getQuantiser().getQuantaSum(), 50);
+        assertEquals(stepaCoins.getSealedByKeys().size(), 2);
+        assertEquals(stepaCoins.getNew().get(0).getSealedByKeys().size(), 1);
+
+        // create and register parcel
+        Parcel parcel = createParcelWithFreshU(stepaCoins, stepaPrivateKeys);
+
+        parcel.getPaymentContract().check();
+        parcel.getPaymentContract().traceErrors();
+        parcel.getPayloadContract().check();
+        parcel.getPayloadContract().traceErrors();
+
+        assertTrue(parcel.getPaymentContract().isOk());
+        assertTrue(parcel.getPayloadContract().isOk());
+
+        System.out.println("Parcel: " + parcel.getId());
+        System.out.println("Payment contract: " + parcel.getPaymentContract().getId() +
+                " is U: " + parcel.getPaymentContract().isU(config.getUIssuerKeys(), config.getUIssuerName()) +
+                " cost: " + parcel.getPaymentContract().getProcessedCost() + " quanta");
+        System.out.println("Payload contract: " + parcel.getPayloadContract().getId() +
+                " is U: " + parcel.getPayloadContract().isU(config.getUIssuerKeys(), config.getUIssuerName()) +
+                " cost: " + parcel.getPayloadContract().getProcessedCost() + " quanta");
+
+        node.registerParcel(parcel);
+        // wait parcel
+        node.waitParcel(parcel.getId(), 18000);
+        // check payment and payload contracts
+        ItemResult paymentRes = node.waitItem(parcel.getPayment().getContract().getId(), 8000);
+        ItemResult payloadRes = node.waitItem(parcel.getPayload().getContract().getId(), 8000);
+        assertEquals(ItemState.APPROVED, paymentRes.state);
+        assertEquals(ItemState.APPROVED, payloadRes.state);
+    }
 }
