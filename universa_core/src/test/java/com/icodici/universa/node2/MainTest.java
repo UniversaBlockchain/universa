@@ -4574,7 +4574,6 @@ public class MainTest {
         payment.traceErrors();
 
         client.register(payment.getPackedTransaction());
-
         Thread.currentThread().sleep(5000);
 
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
@@ -4608,7 +4607,6 @@ public class MainTest {
         assertTrue(unlimitContract.isOk());
 
         ItemResult itemResult = client.register(unlimitContract.getPackedTransaction());
-
         Thread.currentThread().sleep(5000);
 
         itemResult = client.getState(unlimitContract.getId());
@@ -4656,7 +4654,6 @@ public class MainTest {
         payment.traceErrors();
 
         client.register(payment.getPackedTransaction());
-
         Thread.currentThread().sleep(5000);
 
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
@@ -4673,7 +4670,7 @@ public class MainTest {
 
         //set unlimited requests,amount > 5
         Contract unlimitContract1 = ContractsService.createContractForUnlimitKey(
-                myKey.getPublicKey(), payment, 1, keys);
+                myKey.getPublicKey(), payment, 6, keys);
 
         unlimitContract.check();
         unlimitContract.traceErrors();
@@ -4688,7 +4685,6 @@ public class MainTest {
         // registering unlimitContract
 
         ItemResult itemResult = client.register(unlimitContract.getPackedTransaction());
-
         Thread.currentThread().sleep(5000);
 
         System.out.println();
@@ -4704,7 +4700,6 @@ public class MainTest {
         // registering unlimitContract1
 
         itemResult = client.register(unlimitContract1.getPackedTransaction());
-
         Thread.currentThread().sleep(5000);
 
         System.out.println();
@@ -4719,7 +4714,7 @@ public class MainTest {
 
         // reaching requests limit
 
-        for (int i = 0; i < 28; i++)
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute()-2; i++)
             System.out.println(">> uns rate: " + client.unsRate());
 
         String exception = "";
@@ -4766,7 +4761,6 @@ public class MainTest {
         payment.traceErrors();
 
         client.register(payment.getPackedTransaction());
-
         Thread.currentThread().sleep(5000);
 
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
@@ -4794,7 +4788,6 @@ public class MainTest {
 
         // registering unlimitContract
         client.register(unlimitContract.getPackedTransaction());
-
         Thread.currentThread().sleep(5000);
 
         System.out.println();
@@ -4805,7 +4798,7 @@ public class MainTest {
         assertEquals(ItemState.UNDEFINED, itemResult.state);
 
         // reaching requests limit
-        for (int i = 0; i < 29; i++)
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute()-1; i++)
             System.out.println(">> uns rate: " + client.unsRate());
 
         String exception = "";
@@ -4816,7 +4809,8 @@ public class MainTest {
             exception = e.getMessage();
         }
 
-        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
+        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute," +
+                " please call again after a while");
 
         mm.forEach(x -> x.shutdown());
 
@@ -4851,7 +4845,9 @@ public class MainTest {
         payment.check();
         payment.traceErrors();
 
-        client.register(payment.getPackedTransaction(), 5000);
+        client.register(payment.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
         ItemResult itemResult = client.getState(payment.getId());
         System.out.println(">> state payment: " + itemResult);
 
@@ -4864,7 +4860,9 @@ public class MainTest {
         payment.addSignerKey(myKey);
         payment.seal();
 
-        client.register(payment.getPackedTransaction(), 5000);
+        client.register(payment.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
         itemResult = client.getState(payment.getId());
         System.out.println(">> state payment: " + itemResult);
 
@@ -4876,7 +4874,8 @@ public class MainTest {
         Contract unlimitContract = ContractsService.createContractForUnlimitKey(
                 myKey.getPublicKey(), payment, 5, keys);
 
-        client.register(unlimitContract.getPackedTransaction(), 5000);
+        client.register(unlimitContract.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
 
         itemResult = client.getState(unlimitContract.getId());
         System.out.println(">> state: " + itemResult);
@@ -4884,8 +4883,8 @@ public class MainTest {
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // reaching requests limit
-        for (int i = 0; i < 23; i++)
-            System.out.println(">> uns rate: " + client.unsRate());
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute()-3; i++)
+            System.out.println(i + ">> uns rate: " + client.unsRate());
 
         String exception = "";
         try {
@@ -4895,7 +4894,8 @@ public class MainTest {
             exception = e.getMessage();
         }
 
-        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute, please call again after a while");
+        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute," +
+                " please call again after a while");
 
         mm.forEach(x -> x.shutdown());
 
