@@ -1043,7 +1043,9 @@ public class ScriptEngineTest {
         js += "sharedStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString2+"'));";
         js += "var file2readed = bin2string(sharedStorage.readAllBytes('"+testFileName+"'));";
         js += "var result = [file1readed, file2readed]";
-        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE, true);
+        contract.getState().setJS(js.getBytes(), "client script.js", scriptParameters);
         contract.seal();
         ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(new JSApiExecOptions(), js.getBytes());
         assertEquals(testString1, res.get("0"));
@@ -1068,7 +1070,9 @@ public class ScriptEngineTest {
         js += "originStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString2+"'));";
         js += "var file2readed = bin2string(originStorage.readAllBytes('"+testFileName+"'));";
         js += "var result = [file1readed, file2readed]";
-        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE, true);
+        contract.getState().setJS(js.getBytes(), "client script.js", scriptParameters);
         contract.seal();
         Paths.get(originStoragePath + JSApiHelpers.hashId2hex(contract.getOrigin()) + "/" + testFileName).toFile().delete();
         ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(new JSApiExecOptions(), js.getBytes());
@@ -1083,7 +1087,7 @@ public class ScriptEngineTest {
         js2 += "originStorage.rewriteExistingFile('"+testFileName+"', jsApi.string2bin('"+testString1+"'));";
         js2 += "var file1readed = bin2string(originStorage.readAllBytes('"+testFileName+"'));";
         js2 += "var result = [file1readed, file2readed]";
-        contract2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract2.getState().setJS(js2.getBytes(), "client script.js", scriptParameters);
         contract2.addSignerKey(TestKeys.privateKey(0));
         contract2.seal();
         ScriptObjectMirror res2 = (ScriptObjectMirror)contract2.execJS(new JSApiExecOptions(), js2.getBytes());
@@ -1123,7 +1127,9 @@ public class ScriptEngineTest {
         js1 += "  fileParentReaded = null;";
         js1 += "}";
         js1 += "var result = [file1Areaded, file1Breaded, fileParentReaded]";
-        contract1.getState().setJS(js1.getBytes(), "client script.js", new JSApiScriptParameters());
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE, true);
+        contract1.getState().setJS(js1.getBytes(), "client script.js", scriptParameters);
         contract1.seal();
         System.out.println("contract1.getId: " + Bytes.toHex(contract1.getId().getDigest()).replaceAll(" ", ""));
         System.out.println("contract1.getParent: " + contract1.getParent());
@@ -1145,7 +1151,7 @@ public class ScriptEngineTest {
         js2 += "var fileParentReaded = revisionStorage.readAllBytesFromParent('"+testFileName+"');";
         js2 += "fileParentReaded = bin2string(fileParentReaded);";
         js2 += "var result = [file2Areaded, file2Breaded, fileParentReaded]";
-        contract2.getState().setJS(js2.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract2.getState().setJS(js2.getBytes(), "client script.js", scriptParameters);
         contract2.seal();
         System.out.println("contract2.getId: " + Bytes.toHex(contract2.getId().getDigest()).replaceAll(" ", ""));
         System.out.println("contract2.getParent: " + Bytes.toHex(contract2.getParent().getDigest()).replaceAll(" ", ""));
@@ -1167,7 +1173,7 @@ public class ScriptEngineTest {
         js3 += "var fileParentReaded = revisionStorage.readAllBytesFromParent('"+testFileName+"');";
         js3 += "fileParentReaded = bin2string(fileParentReaded);";
         js3 += "var result = [file3Areaded, file3Breaded, fileParentReaded]";
-        contract3.getState().setJS(js3.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract3.getState().setJS(js3.getBytes(), "client script.js", scriptParameters);
         contract3.seal();
         System.out.println("contract3.getId: " + Bytes.toHex(contract3.getId().getDigest()).replaceAll(" ", ""));
         System.out.println("contract3.getParent: " + Bytes.toHex(contract3.getParent().getDigest()).replaceAll(" ", ""));
@@ -1176,6 +1182,142 @@ public class ScriptEngineTest {
         assertEquals(testString3a, res3.get("0"));
         assertEquals(testString3b, res3.get("1"));
         assertEquals(testString2b, res3.get("2"));
+    }
+
+    @Test
+    public void scriptPermissionsToBinder() throws Exception {
+        JSApiScriptParameters params = new JSApiScriptParameters();
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE, true);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE, true);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE, true);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS, true);
+        params = JSApiScriptParameters.fromBinder(params.toBinder());
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE));
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE));
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE));
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS));
+
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE, false);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE, false);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE, false);
+        params.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS, false);
+        params = JSApiScriptParameters.fromBinder(params.toBinder());
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS));
+    }
+
+    @Test
+    public void scriptPermissionsDefaultStates() throws Exception {
+        JSApiScriptParameters params = new JSApiScriptParameters();
+        params = JSApiScriptParameters.fromBinder(params.toBinder());
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_ORIGIN_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE));
+        assertFalse(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_STORAGE));
+        assertTrue(params.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS));
+    }
+
+    @Test
+    public void testUrlParser() throws Exception {
+        JSApiUrlParser urlParser = new JSApiUrlParser();
+
+        urlParser.addUrlMask("universa.com");
+        urlParser.addUrlMask("t2.universa.com:80");
+        urlParser.addUrlMask("t3.universa.com:3333");
+        urlParser.addUrlMask("universa.io");
+        urlParser.addUrlMask("test1.universa.io:80");
+        urlParser.addUrlMask("test2.universa.io:443");
+        urlParser.addUrlMask("test3.universa.io:8080");
+        urlParser.addUrlMask("test4.universa.io:*");
+        urlParser.addUrlMask("*.universa.io");
+        urlParser.addUrlMask("*.universa.io:4444");
+
+        urlParser.addIpMask("192.168.33.44");
+        urlParser.addIpMask("192.168.44.*:8080");
+
+        assertTrue(urlParser.isUrlAllowed("https://www.universa.io/imgres?imgurl=http%3A%2F%2Fkaifolog.ru%2Fuploads%2Fposts%2F2014-02%2F1392187237_005.jpg&imgrefurl=http%3A%2F%2Fkaifolog.ru%2Fpozitiv%2F5234-koteyki-55-foto.html&docid=5_IgRUU_v1M82M&tbnid=fN4J5V9ZY-tIiM%3A&vet=10ahUKEwjYn63jx43dAhVkkosKHW4TAcsQMwiOASgDMAM..i&w=640&h=640&bih=978&biw=1920&q=%D0%BA%D0%BE%D1%82%D0%B5%D0%B9%D0%BA%D0%B8&ved=0ahUKEwjYn63jx43dAhVkkosKHW4TAcsQMwiOASgDMAM&iact=mrc&uact=8"));
+        assertTrue(urlParser.isUrlAllowed("universa.io."));
+        assertTrue(urlParser.isUrlAllowed("http://universa.io"));
+        assertTrue(urlParser.isUrlAllowed("https://universa.io"));
+        assertFalse(urlParser.isUrlAllowed("universa.io.:8080"));
+        assertFalse(urlParser.isUrlAllowed("test2.universa.io.:8080"));
+        assertTrue(urlParser.isUrlAllowed("test3.universa.io.:8080"));
+        assertTrue(urlParser.isUrlAllowed("test4.universa.io.:8080"));
+        assertTrue(urlParser.isUrlAllowed("universa.io.:80"));
+        assertTrue(urlParser.isUrlAllowed("universa.io.:443"));
+        assertTrue(urlParser.isUrlAllowed("test55.universa.io"));
+        assertFalse(urlParser.isUrlAllowed("test55.universa.io:3333"));
+        assertTrue(urlParser.isUrlAllowed("http://test55.universa.io"));
+        assertTrue(urlParser.isUrlAllowed("p1.test55.universa.io"));
+        assertFalse(urlParser.isUrlAllowed("p1.test55.universa.io:3333"));
+        assertTrue(urlParser.isUrlAllowed("p1.test55.universa.io:4444"));
+        assertTrue(urlParser.isUrlAllowed("universa.com"));
+        assertFalse(urlParser.isUrlAllowed("t1.universa.com"));
+        assertFalse(urlParser.isUrlAllowed("t2.universa.com"));
+        assertTrue(urlParser.isUrlAllowed("http://t2.universa.com"));
+        assertFalse(urlParser.isUrlAllowed("http://t3.universa.com"));
+        assertFalse(urlParser.isUrlAllowed("https://t3.universa.com"));
+        assertTrue(urlParser.isUrlAllowed("http://t3.universa.com:3333"));
+        assertTrue(urlParser.isUrlAllowed("https://t3.universa.com:3333"));
+
+        assertTrue(urlParser.isUrlAllowed("192.168.33.44"));
+        assertFalse(urlParser.isUrlAllowed("192.168.33.45"));
+        assertFalse(urlParser.isUrlAllowed("192.168.32.44"));
+        assertFalse(urlParser.isUrlAllowed("192.168.32.44:3333"));
+        assertTrue(urlParser.isUrlAllowed("http://192.168.33.44"));
+        assertFalse(urlParser.isUrlAllowed("192.168.44.55"));
+        assertTrue(urlParser.isUrlAllowed("192.168.44.55:8080"));
+    }
+
+    @Test
+    public void testHttpClient() throws Exception {
+        JSApiScriptParameters jsApiScriptParameters = new JSApiScriptParameters();
+        jsApiScriptParameters.domainMasks.add("httpbin.org");
+        JSApiHttpClient client = new JSApiHttpClient(jsApiScriptParameters);
+        List res = client.sendGetRequest("https://httpbin.org/get?param=333", "json");
+        System.out.println("resp code: " + res.get(0));
+        System.out.println("resp body: " + res.get(1));
+        assertEquals(200, res.get(0));
+        assertEquals("333", ((Map)((Map)res.get(1)).get("args")).get("param"));
+        res = client.sendPostRequest("http://httpbin.org/post", "json", Binder.of("postparam", 44), "form");
+        System.out.println("resp code: " + res.get(0));
+        System.out.println("resp body: " + res.get(1));
+        assertEquals(200, res.get(0));
+        assertEquals("44", ((Map)((Map)res.get(1)).get("form")).get("postparam"));
+        res = client.sendPostRequest("http://httpbin.org/post", "json", Binder.of("jsonparam", 55), "json");
+        System.out.println("resp code: " + res.get(0));
+        System.out.println("resp body: " + res.get(1));
+        assertEquals(200, res.get(0));
+        assertEquals(55l, ((Map)((Map)res.get(1)).get("json")).get("jsonparam"));
+    }
+
+    @Test
+    public void testHttpClientFromJS() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testHttpClientFromJS');";
+        js += "var httpClient = jsApi.getHttpClient();";
+        js += "var res0 = httpClient.sendGetRequest('https://httpbin.org/get?param=333', 'json');";
+        js += "var res1 = httpClient.sendPostRequest('http://httpbin.org/post', 'json', {postparam:44}, 'form');";
+        js += "var res2 = httpClient.sendPostRequest('http://httpbin.org/post', 'json', {jsonparam:55}, 'json');";
+        js += "var result = [res0, res1, res2];";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("httpbin.org");
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT, true);
+        contract.getState().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(new JSApiExecOptions(), js.getBytes());
+        List res0 = (List)res.get("0");
+        assertEquals(200, res0.get(0));
+        assertEquals("333", ((Map)((Map)res0.get(1)).get("args")).get("param"));
+        List res1 = (List)res.get("1");
+        assertEquals(200, res1.get(0));
+        assertEquals("44", ((Map)((Map)res1.get(1)).get("form")).get("postparam"));
+        List res2 = (List)res.get("2");
+        assertEquals(200, res2.get(0));
+        assertEquals(55l, ((Map)((Map)res2.get(1)).get("json")).get("jsonparam"));
     }
 
 }
