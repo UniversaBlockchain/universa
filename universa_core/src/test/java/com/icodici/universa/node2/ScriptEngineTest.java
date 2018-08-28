@@ -1270,4 +1270,18 @@ public class ScriptEngineTest {
         assertTrue(urlParser.isUrlAllowed("192.168.44.55:8080"));
     }
 
+    @Test
+    public void testHttpClient() throws Exception {
+        JSApiHttpClient client = new JSApiHttpClient();
+        List res = client.sendGetRequest("http://httpbin.org/get?param=333", "json");
+        System.out.println("resp code: " + res.get(0));
+        System.out.println("resp body: " + res.get(1));
+        res = client.sendPostRequest("http://httpbin.org/post", "json", Binder.of("postparam", 44), "form");
+        System.out.println("resp code: " + res.get(0));
+        System.out.println("resp body: " + res.get(1));
+        res = client.sendPostRequest("http://httpbin.org/post", "json", Binder.of("postparam", 44), "json");
+        System.out.println("resp code: " + res.get(0));
+        System.out.println("resp body: " + res.get(1));
+    }
+
 }
