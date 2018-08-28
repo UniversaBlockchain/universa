@@ -1272,16 +1272,52 @@ public class ScriptEngineTest {
 
     @Test
     public void testHttpClient() throws Exception {
-        JSApiHttpClient client = new JSApiHttpClient();
-        List res = client.sendGetRequest("http://httpbin.org/get?param=333", "json");
+        JSApiScriptParameters jsApiScriptParameters = new JSApiScriptParameters();
+        jsApiScriptParameters.domainMasks.add("httpbin.org");
+        JSApiHttpClient client = new JSApiHttpClient(jsApiScriptParameters);
+        List res = client.sendGetRequest("https://httpbin.org/get?param=333", "json");
         System.out.println("resp code: " + res.get(0));
         System.out.println("resp body: " + res.get(1));
+        assertEquals(200, res.get(0));
+        assertEquals("333", ((Map)((Map)res.get(1)).get("args")).get("param"));
         res = client.sendPostRequest("http://httpbin.org/post", "json", Binder.of("postparam", 44), "form");
         System.out.println("resp code: " + res.get(0));
         System.out.println("resp body: " + res.get(1));
-        res = client.sendPostRequest("http://httpbin.org/post", "json", Binder.of("postparam", 44), "json");
+        assertEquals(200, res.get(0));
+        assertEquals("44", ((Map)((Map)res.get(1)).get("form")).get("postparam"));
+        res = client.sendPostRequest("http://httpbin.org/post", "json", Binder.of("jsonparam", 55), "json");
         System.out.println("resp code: " + res.get(0));
         System.out.println("resp body: " + res.get(1));
+        assertEquals(200, res.get(0));
+        assertEquals(55l, ((Map)((Map)res.get(1)).get("json")).get("jsonparam"));
+    }
+
+    @Test
+    public void testHttpClientFromJS() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testHttpClientFromJS');";
+        js += "var httpClient = jsApi.getHttpClient();";
+        js += "var res0 = httpClient.sendGetRequest('https://httpbin.org/get?param=333', 'json');";
+        js += "var res1 = httpClient.sendPostRequest('http://httpbin.org/post', 'json', {postparam:44}, 'form');";
+        js += "var res2 = httpClient.sendPostRequest('http://httpbin.org/post', 'json', {jsonparam:55}, 'json');";
+        js += "var result = [res0, res1, res2];";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.domainMasks.add("httpbin.org");
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT, true);
+        contract.getState().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+        ScriptObjectMirror res = (ScriptObjectMirror)contract.execJS(new JSApiExecOptions(), js.getBytes());
+        List res0 = (List)res.get("0");
+        assertEquals(200, res0.get(0));
+        assertEquals("333", ((Map)((Map)res0.get(1)).get("args")).get("param"));
+        List res1 = (List)res.get("1");
+        assertEquals(200, res1.get(0));
+        assertEquals("44", ((Map)((Map)res1.get(1)).get("form")).get("postparam"));
+        List res2 = (List)res.get("2");
+        assertEquals(200, res2.get(0));
+        assertEquals(55l, ((Map)((Map)res2.get(1)).get("json")).get("jsonparam"));
     }
 
 }

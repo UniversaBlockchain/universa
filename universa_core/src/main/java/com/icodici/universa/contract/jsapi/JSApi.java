@@ -61,7 +61,10 @@ public class JSApi {
         throw new IllegalArgumentException("access denied: missing permission " + JSApiScriptParameters.ScriptPermissions.PERM_REVISION_STORAGE.toString());
     }
 
-    public void getHttpClient() {
+    public JSApiHttpClient getHttpClient() {
+        if (scriptParameters.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT))
+            return new JSApiHttpClient(scriptParameters);
+        throw new IllegalArgumentException("access denied: missing permission " + JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT.toString());
     }
 
     public byte[] string2bin(String s) {

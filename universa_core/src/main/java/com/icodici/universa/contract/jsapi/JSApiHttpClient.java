@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -17,18 +16,31 @@ import java.util.Map;
 
 public class JSApiHttpClient {
 
-    public List sendGetRequest(String strUrl, String respType) throws MalformedURLException, IOException {
-        return sendRequest("GET", strUrl, respType, null, null);
+    JSApiUrlParser urlParser;
+
+    public JSApiHttpClient(JSApiScriptParameters scriptParameters) {
+        this.urlParser = new JSApiUrlParser();
+        scriptParameters.domainMasks.forEach(mask -> this.urlParser.addUrlMask(mask));
+        scriptParameters.ipMasks.forEach(mask -> this.urlParser.addIpMask(mask));
     }
 
-    public List sendPostRequest(String strUrl, String respType, Map<String, Object> params, String contentType) throws MalformedURLException, IOException {
-        String header = "application/x-www-form-urlencoded";
-        if ("json".equals(contentType))
-            header = "application/json";
-        return sendRequest("POST", strUrl, respType, params, header);
+    public List sendGetRequest(String strUrl, String respType) throws IOException {
+        if (urlParser.isUrlAllowed(strUrl))
+            return sendRequest("GET", strUrl, respType, null, null);
+        throw new IllegalArgumentException("http access denied");
     }
 
-    private List sendRequest(String method, String strUrl, String respType, Map<String, Object> params, String contentType) throws MalformedURLException, IOException {
+    public List sendPostRequest(String strUrl, String respType, Map<String, Object> params, String contentType) throws IOException {
+        if (urlParser.isUrlAllowed(strUrl)) {
+            String header = "application/x-www-form-urlencoded";
+            if (CONTENTTYPE_JSON.equals(contentType))
+                header = "application/json";
+            return sendRequest("POST", strUrl, respType, params, header);
+        }
+        throw new IllegalArgumentException("http access denied");
+    }
+
+    private List sendRequest(String method, String strUrl, String respType, Map<String, Object> params, String contentType) throws IOException {
         URL url = new URL(strUrl);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
