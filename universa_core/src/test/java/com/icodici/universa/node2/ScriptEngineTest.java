@@ -1233,30 +1233,41 @@ public class ScriptEngineTest {
         urlParser.addUrlMask("*.universa.io");
         urlParser.addUrlMask("*.universa.io:4444");
 
-        System.out.println(urlParser.isUrlAllowed("https://www.universa.io/imgres?imgurl=http%3A%2F%2Fkaifolog.ru%2Fuploads%2Fposts%2F2014-02%2F1392187237_005.jpg&imgrefurl=http%3A%2F%2Fkaifolog.ru%2Fpozitiv%2F5234-koteyki-55-foto.html&docid=5_IgRUU_v1M82M&tbnid=fN4J5V9ZY-tIiM%3A&vet=10ahUKEwjYn63jx43dAhVkkosKHW4TAcsQMwiOASgDMAM..i&w=640&h=640&bih=978&biw=1920&q=%D0%BA%D0%BE%D1%82%D0%B5%D0%B9%D0%BA%D0%B8&ved=0ahUKEwjYn63jx43dAhVkkosKHW4TAcsQMwiOASgDMAM&iact=mrc&uact=8"));
-        System.out.println(urlParser.isUrlAllowed("universa.io."));
-        System.out.println(urlParser.isUrlAllowed("http://universa.io"));
-        System.out.println(urlParser.isUrlAllowed("https://universa.io"));
-        System.out.println(urlParser.isUrlAllowed("universa.io.:8080"));
-        System.out.println(urlParser.isUrlAllowed("test2.universa.io.:8080"));
-        System.out.println(urlParser.isUrlAllowed("test3.universa.io.:8080"));
-        System.out.println(urlParser.isUrlAllowed("test4.universa.io.:8080"));
-        System.out.println(urlParser.isUrlAllowed("universa.io.:80"));
-        System.out.println(urlParser.isUrlAllowed("universa.io.:443"));
-        System.out.println(urlParser.isUrlAllowed("test55.universa.io"));
-        System.out.println(urlParser.isUrlAllowed("test55.universa.io:3333"));
-        System.out.println(urlParser.isUrlAllowed("http://test55.universa.io"));
-        System.out.println(urlParser.isUrlAllowed("p1.test55.universa.io"));
-        System.out.println(urlParser.isUrlAllowed("p1.test55.universa.io:3333"));
-        System.out.println(urlParser.isUrlAllowed("p1.test55.universa.io:4444"));
-        System.out.println(urlParser.isUrlAllowed("universa.com"));
-        System.out.println(urlParser.isUrlAllowed("t1.universa.com"));
-        System.out.println(urlParser.isUrlAllowed("t2.universa.com"));
-        System.out.println(urlParser.isUrlAllowed("http://t2.universa.com"));
-        System.out.println(urlParser.isUrlAllowed("http://t3.universa.com"));
-        System.out.println(urlParser.isUrlAllowed("https://t3.universa.com"));
-        System.out.println(urlParser.isUrlAllowed("http://t3.universa.com:3333"));
-        System.out.println(urlParser.isUrlAllowed("https://t3.universa.com:3333"));
+        urlParser.addIpMask("192.168.33.44");
+        urlParser.addIpMask("192.168.44.*:8080");
+
+        assertTrue(urlParser.isUrlAllowed("https://www.universa.io/imgres?imgurl=http%3A%2F%2Fkaifolog.ru%2Fuploads%2Fposts%2F2014-02%2F1392187237_005.jpg&imgrefurl=http%3A%2F%2Fkaifolog.ru%2Fpozitiv%2F5234-koteyki-55-foto.html&docid=5_IgRUU_v1M82M&tbnid=fN4J5V9ZY-tIiM%3A&vet=10ahUKEwjYn63jx43dAhVkkosKHW4TAcsQMwiOASgDMAM..i&w=640&h=640&bih=978&biw=1920&q=%D0%BA%D0%BE%D1%82%D0%B5%D0%B9%D0%BA%D0%B8&ved=0ahUKEwjYn63jx43dAhVkkosKHW4TAcsQMwiOASgDMAM&iact=mrc&uact=8"));
+        assertTrue(urlParser.isUrlAllowed("universa.io."));
+        assertTrue(urlParser.isUrlAllowed("http://universa.io"));
+        assertTrue(urlParser.isUrlAllowed("https://universa.io"));
+        assertFalse(urlParser.isUrlAllowed("universa.io.:8080"));
+        assertFalse(urlParser.isUrlAllowed("test2.universa.io.:8080"));
+        assertTrue(urlParser.isUrlAllowed("test3.universa.io.:8080"));
+        assertTrue(urlParser.isUrlAllowed("test4.universa.io.:8080"));
+        assertTrue(urlParser.isUrlAllowed("universa.io.:80"));
+        assertTrue(urlParser.isUrlAllowed("universa.io.:443"));
+        assertTrue(urlParser.isUrlAllowed("test55.universa.io"));
+        assertFalse(urlParser.isUrlAllowed("test55.universa.io:3333"));
+        assertTrue(urlParser.isUrlAllowed("http://test55.universa.io"));
+        assertTrue(urlParser.isUrlAllowed("p1.test55.universa.io"));
+        assertFalse(urlParser.isUrlAllowed("p1.test55.universa.io:3333"));
+        assertTrue(urlParser.isUrlAllowed("p1.test55.universa.io:4444"));
+        assertTrue(urlParser.isUrlAllowed("universa.com"));
+        assertFalse(urlParser.isUrlAllowed("t1.universa.com"));
+        assertFalse(urlParser.isUrlAllowed("t2.universa.com"));
+        assertTrue(urlParser.isUrlAllowed("http://t2.universa.com"));
+        assertFalse(urlParser.isUrlAllowed("http://t3.universa.com"));
+        assertFalse(urlParser.isUrlAllowed("https://t3.universa.com"));
+        assertTrue(urlParser.isUrlAllowed("http://t3.universa.com:3333"));
+        assertTrue(urlParser.isUrlAllowed("https://t3.universa.com:3333"));
+
+        assertTrue(urlParser.isUrlAllowed("192.168.33.44"));
+        assertFalse(urlParser.isUrlAllowed("192.168.33.45"));
+        assertFalse(urlParser.isUrlAllowed("192.168.32.44"));
+        assertFalse(urlParser.isUrlAllowed("192.168.32.44:3333"));
+        assertTrue(urlParser.isUrlAllowed("http://192.168.33.44"));
+        assertFalse(urlParser.isUrlAllowed("192.168.44.55"));
+        assertTrue(urlParser.isUrlAllowed("192.168.44.55:8080"));
     }
 
 }
