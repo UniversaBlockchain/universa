@@ -4615,7 +4615,239 @@ public class MainTest {
 
         assertEquals(ItemState.APPROVED, itemResult.state);
 
+        // unlimited requests
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
+            System.out.println(">> storage rate: " + client.storageGetRate());
+
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
+            System.out.println(">> uns rate: " + client.unsRate());
+
+        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
+            client.getStats(90);
+
         mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void checkUnlimitRequestsBadParam() throws Exception {
+
+        PrivateKey myKey = TestKeys.privateKey(3);
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Main main = mm.get(0);
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Set<PublicKey> ownerKeys = new HashSet();
+        Set<PrivateKey> keys = new HashSet();
+        keys.add(myKey);
+        ownerKeys.add(myKey.getPublicKey());
+        Contract payment = InnerContractsService.createFreshU(100000000, ownerKeys);
+        payment.check();
+        payment.traceErrors();
+
+        client.register(payment.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
+
+        //set unlimited requests,amount < 5
+        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
+                myKey.getPublicKey(), payment, 1, keys);
+
+        //set unlimited requests,amount > 5
+        Contract unlimitContract1 = ContractsService.createContractForUnlimitKey(
+                myKey.getPublicKey(), payment, 6, keys);
+
+        unlimitContract.check();
+        unlimitContract.traceErrors();
+        assertTrue(unlimitContract.isOk());
+
+        unlimitContract1.check();
+        unlimitContract1.traceErrors();
+        assertTrue(unlimitContract1.isOk());
+
+        System.out.println("Processing cost " + unlimitContract.getProcessedCostU());
+
+        // registering unlimitContract
+
+        ItemResult itemResult = client.register(unlimitContract.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
+        System.out.println();
+
+        assertEquals((itemResult.errors.get(0).getMessage()),"Payment for setting unlimited requests" +
+                " must be 5U");
+
+        itemResult = client.getState(unlimitContract.getId());
+        System.out.println(">> state: " + itemResult);
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+
+        // registering unlimitContract1
+
+        itemResult = client.register(unlimitContract1.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
+        System.out.println();
+
+        assertEquals((itemResult.errors.get(0).getMessage()),"Payment for setting unlimited requests" +
+                " must be 5U");
+
+        itemResult = client.getState(unlimitContract1.getId());
+        System.out.println(">> state: " + itemResult);
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+    }
+
+    @Test
+    public void checkUnlimitRequestsBadKey() throws Exception {
+
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Main main = mm.get(0);
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Set<PublicKey> ownerKeys = new HashSet();
+        Set<PrivateKey> keys = new HashSet();
+
+        keys.add(myKey);
+
+        ownerKeys.add(myKey.getPublicKey());
+        Contract payment = InnerContractsService.createFreshU(100, ownerKeys);
+        payment.check();
+        payment.traceErrors();
+
+        client.register(payment.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
+
+        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
+                    myKey.getPublicKey(), payment, 5, keys);
+
+        // get unlimited key
+        byte[] packedKey = unlimitContract.getTransactional().getData().getBinary("unlimited_key");
+        PublicKey key = new PublicKey(packedKey);
+
+        // invalid format of key for unlimited requests
+        assertFalse((packedKey == null)||((key == null)));
+
+        // check payment
+        assertEquals(unlimitContract.getRevoking().get(0).getStateData().getIntOrThrow("transaction_units") -
+                unlimitContract.getStateData().getIntOrThrow("transaction_units"), 5);
+
+        unlimitContract.check();
+        unlimitContract.traceErrors();
+        assertTrue(unlimitContract.isOk());
+
+        unlimitContract.getTransactional().getData().set("unlimited_key", "badkeybadkeybadkeybadkey");
+        unlimitContract.seal();
+
+        // registering unlimitContract
+        client.register(unlimitContract.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
+        System.out.println();
+
+        ItemResult itemResult = client.getState(unlimitContract.getId());
+        System.out.println(">> state: " + itemResult);
+
+        assertEquals(ItemState.UNDEFINED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+
+    }
+
+    @Test
+    public void checkLimitRequestsTestU() throws Exception {
+
+        PrivateKey myKey = TestKeys.privateKey(3);
+
+        List<Main> mm = new ArrayList<>();
+        for (int i = 0; i < 4; i++)
+            mm.add(createMain("node" + (i + 1), false));
+
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(true));
+
+        Main main = mm.get(0);
+        Client client = null;
+        try {
+            client = new Client(myKey, main.myInfo, null);
+        } catch (Exception e) {
+            System.out.println("prepareClient exception: " + e.toString());
+        }
+
+        Set<PublicKey> ownerKeys = new HashSet();
+        Set<PrivateKey> keys = new HashSet();
+
+        keys.add(myKey);
+
+        ownerKeys.add(myKey.getPublicKey());
+        Contract payment = InnerContractsService.createFreshU(100, ownerKeys, true);
+        payment.check();
+        payment.traceErrors();
+
+        client.register(payment.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
+        ItemResult itemResult = client.getState(payment.getId());
+        System.out.println(">> state payment: " + itemResult);
+
+        System.out.println(payment.getStateData().getString("transaction_units"));
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        payment = payment.createRevision(myKey);
+        payment.getStateData().set("transaction_units", 1);
+        payment.setOwnerKeys(ownerKeys);
+        payment.addSignerKey(myKey);
+        payment.seal();
+
+        client.register(payment.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
+        itemResult = client.getState(payment.getId());
+        System.out.println(">> state payment: " + itemResult);
+
+        System.out.println(payment.getStateData().getString("transaction_units"));
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
+
+        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
+                myKey.getPublicKey(), payment, 5, keys);
+
+        client.register(unlimitContract.getPackedTransaction());
+        Thread.currentThread().sleep(5000);
+
+        itemResult = client.getState(unlimitContract.getId());
+        System.out.println(">> state: " + itemResult);
+
+        assertEquals(ItemState.DECLINED, itemResult.state);
+
+        mm.forEach(x -> x.shutdown());
+
     }
 
     @Test(timeout = 90000)
@@ -5906,237 +6138,6 @@ public class MainTest {
 
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
         System.out.println("newPayment : " + itemResult);
-        assertEquals(ItemState.DECLINED, itemResult.state);
-
-        // unlimited requests
-        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
-            System.out.println(">> storage rate: " + client.storageGetRate());
-
-        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
-            System.out.println(">> uns rate: " + client.unsRate());
-
-        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute() * 2; i++)
-            client.getStats(90);
-
-        mm.forEach(x -> x.shutdown());
-    }
-
-    @Test
-    public void checkUnlimitRequestsBadParam() throws Exception {
-
-        PrivateKey myKey = TestKeys.privateKey(3);
-        List<Main> mm = new ArrayList<>();
-        for (int i = 0; i < 4; i++)
-            mm.add(createMain("node" + (i + 1), false));
-
-        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(true));
-
-        Main main = mm.get(0);
-        Client client = null;
-        try {
-            client = new Client(myKey, main.myInfo, null);
-        } catch (Exception e) {
-            System.out.println("prepareClient exception: " + e.toString());
-        }
-
-        Set<PublicKey> ownerKeys = new HashSet();
-        Set<PrivateKey> keys = new HashSet();
-        keys.add(myKey);
-        ownerKeys.add(myKey.getPublicKey());
-        Contract payment = InnerContractsService.createFreshU(100000000, ownerKeys);
-        payment.check();
-        payment.traceErrors();
-
-        client.register(payment.getPackedTransaction());
-        Thread.currentThread().sleep(5000);
-
-        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
-
-        //set unlimited requests,amount < 5
-        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
-                myKey.getPublicKey(), payment, 1, keys);
-
-        //set unlimited requests,amount > 5
-        Contract unlimitContract1 = ContractsService.createContractForUnlimitKey(
-                myKey.getPublicKey(), payment, 6, keys);
-
-        unlimitContract.check();
-        unlimitContract.traceErrors();
-        assertTrue(unlimitContract.isOk());
-
-        unlimitContract1.check();
-        unlimitContract1.traceErrors();
-        assertTrue(unlimitContract1.isOk());
-
-        System.out.println("Processing cost " + unlimitContract.getProcessedCostU());
-
-        // registering unlimitContract
-
-        ItemResult itemResult = client.register(unlimitContract.getPackedTransaction());
-        Thread.currentThread().sleep(5000);
-
-        System.out.println();
-
-        assertEquals((itemResult.errors.get(0).getMessage()),"Payment for setting unlimited requests" +
-                " must be 5U");
-
-        itemResult = client.getState(unlimitContract.getId());
-        System.out.println(">> state: " + itemResult);
-
-        assertEquals(ItemState.UNDEFINED, itemResult.state);
-
-        // registering unlimitContract1
-
-        itemResult = client.register(unlimitContract1.getPackedTransaction());
-        Thread.currentThread().sleep(5000);
-
-        System.out.println();
-
-        assertEquals((itemResult.errors.get(0).getMessage()),"Payment for setting unlimited requests" +
-                " must be 5U");
-
-        itemResult = client.getState(unlimitContract1.getId());
-        System.out.println(">> state: " + itemResult);
-
-        assertEquals(ItemState.UNDEFINED, itemResult.state);
-
-        mm.forEach(x -> x.shutdown());
-    }
-
-    @Test
-    public void checkUnlimitRequestsBadKey() throws Exception {
-
-        PrivateKey myKey = TestKeys.privateKey(3);
-
-        List<Main> mm = new ArrayList<>();
-        for (int i = 0; i < 4; i++)
-            mm.add(createMain("node" + (i + 1), false));
-
-        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(true));
-
-        Main main = mm.get(0);
-        Client client = null;
-        try {
-            client = new Client(myKey, main.myInfo, null);
-        } catch (Exception e) {
-            System.out.println("prepareClient exception: " + e.toString());
-        }
-
-        Set<PublicKey> ownerKeys = new HashSet();
-        Set<PrivateKey> keys = new HashSet();
-
-        keys.add(myKey);
-
-        ownerKeys.add(myKey.getPublicKey());
-        Contract payment = InnerContractsService.createFreshU(100, ownerKeys);
-        payment.check();
-        payment.traceErrors();
-
-        client.register(payment.getPackedTransaction());
-        Thread.currentThread().sleep(5000);
-
-        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
-
-        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
-                    myKey.getPublicKey(), payment, 5, keys);
-
-        // get unlimited key
-        byte[] packedKey = unlimitContract.getTransactional().getData().getBinary("unlimited_key");
-        PublicKey key = new PublicKey(packedKey);
-
-        // invalid format of key for unlimited requests
-        assertFalse((packedKey == null)||((key == null)));
-
-        // check payment
-        assertEquals(unlimitContract.getRevoking().get(0).getStateData().getIntOrThrow("transaction_units") -
-                unlimitContract.getStateData().getIntOrThrow("transaction_units"), 5);
-
-        unlimitContract.check();
-        unlimitContract.traceErrors();
-        assertTrue(unlimitContract.isOk());
-
-        unlimitContract.getTransactional().getData().set("unlimited_key", "badkeybadkeybadkeybadkey");
-        unlimitContract.seal();
-
-        // registering unlimitContract
-        client.register(unlimitContract.getPackedTransaction());
-        Thread.currentThread().sleep(5000);
-
-        System.out.println();
-
-        ItemResult itemResult = client.getState(unlimitContract.getId());
-        System.out.println(">> state: " + itemResult);
-
-        assertEquals(ItemState.UNDEFINED, itemResult.state);
-
-        mm.forEach(x -> x.shutdown());
-
-    }
-
-    @Test
-    public void checkLimitRequestsTestU() throws Exception {
-
-        PrivateKey myKey = TestKeys.privateKey(3);
-
-        List<Main> mm = new ArrayList<>();
-        for (int i = 0; i < 4; i++)
-            mm.add(createMain("node" + (i + 1), false));
-
-        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(true));
-
-        Main main = mm.get(0);
-        Client client = null;
-        try {
-            client = new Client(myKey, main.myInfo, null);
-        } catch (Exception e) {
-            System.out.println("prepareClient exception: " + e.toString());
-        }
-
-        Set<PublicKey> ownerKeys = new HashSet();
-        Set<PrivateKey> keys = new HashSet();
-
-        keys.add(myKey);
-
-        ownerKeys.add(myKey.getPublicKey());
-        Contract payment = InnerContractsService.createFreshU(100, ownerKeys, true);
-        payment.check();
-        payment.traceErrors();
-
-        client.register(payment.getPackedTransaction());
-        Thread.currentThread().sleep(5000);
-
-        ItemResult itemResult = client.getState(payment.getId());
-        System.out.println(">> state payment: " + itemResult);
-
-        System.out.println(payment.getStateData().getString("transaction_units"));
-        assertEquals(ItemState.APPROVED, itemResult.state);
-
-        payment = payment.createRevision(myKey);
-        payment.getStateData().set("transaction_units", 1);
-        payment.setOwnerKeys(ownerKeys);
-        payment.addSignerKey(myKey);
-        payment.seal();
-
-        client.register(payment.getPackedTransaction());
-        Thread.currentThread().sleep(5000);
-
-        itemResult = client.getState(payment.getId());
-        System.out.println(">> state payment: " + itemResult);
-
-        System.out.println(payment.getStateData().getString("transaction_units"));
-        assertEquals(ItemState.APPROVED, itemResult.state);
-
-        mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
-
-        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
-                myKey.getPublicKey(), payment, 5, keys);
-
-        client.register(unlimitContract.getPackedTransaction());
-        Thread.currentThread().sleep(5000);
-
-        itemResult = client.getState(unlimitContract.getId());
-        System.out.println(">> state: " + itemResult);
-
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
