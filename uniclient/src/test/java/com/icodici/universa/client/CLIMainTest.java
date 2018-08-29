@@ -3488,19 +3488,16 @@ public class CLIMainTest {
             executorPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract contract_for_payment = createCoin();
-        contract_for_payment.getStateData().set(FIELD_NAME, new Decimal(100));
-        contract_for_payment.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
-        contract_for_payment.seal();
-
-        CLIMain.saveContract(contract_for_payment, basePath + "contract_for_payment.unicon");
-
         String uContract = getApprovedUContract();
 
-        callMain2("--register", basePath + "contract_for_payment.unicon",
-                "--u", uContract,
-                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
-                "-wait", "80000", "-v");
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/u_key.private.unikey"));
+        Contract contract_for_payment = Contract.fromDslFile(rootPath + "StepaU.yml");
+        contract_for_payment.addSignerKey(manufacturePrivateKey);
+        contract_for_payment.seal();
+        contract_for_payment.check();
+        contract_for_payment.traceErrors();
+
+        CLIMain.getClientNetwork().client.register(contract_for_payment.getPackedTransaction(), 5000);
 
         ItemResult itemResult = CLIMain.getClientNetwork().client.getState(contract_for_payment);
         System.out.println("contract_for_payment: " + itemResult);
@@ -3577,7 +3574,6 @@ public class CLIMainTest {
         itemResult = CLIMain.getClientNetwork().client.getState(newPayment);
         System.out.println("newPayment: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
-
     }
 
     @Test(timeout = 90000)
@@ -3613,12 +3609,16 @@ public class CLIMainTest {
             executorPublicKeys.add(pk.getPublicKey());
         }
 
-        Contract contract_for_payment = createCoin();
-        contract_for_payment.getStateData().set(FIELD_NAME, new Decimal(100));
-        contract_for_payment.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
-        contract_for_payment.seal();
+        String uContract = getApprovedUContract();
 
-        CLIMain.saveContract(contract_for_payment, basePath + "contract_for_payment.unicon");
+        PrivateKey manufacturePrivateKey = new PrivateKey(Do.read(rootPath + "keys/u_key.private.unikey"));
+        Contract contract_for_payment = Contract.fromDslFile(rootPath + "StepaU.yml");
+        contract_for_payment.addSignerKey(manufacturePrivateKey);
+        contract_for_payment.seal();
+        contract_for_payment.check();
+        contract_for_payment.traceErrors();
+
+        CLIMain.getClientNetwork().client.register(contract_for_payment.getPackedTransaction(), 5000);
 
         // create external escrow contract
         Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys,
@@ -3639,16 +3639,12 @@ public class CLIMainTest {
         assertTrue(contract_for_payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
         assertTrue(contract_for_payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
 
-        String uContract = getApprovedUContract();
-        System.out.println(output);
+        CLIMain.saveContract(escrow, basePath + "escrow2_root_contract.unicon", true, true);
 
-        CLIMain.saveContract(escrow, basePath + "escrow_root_contract.unicon", true, true);
-
-        callMain2("--register", basePath + "escrow_root_contract.unicon",
+        callMain2("--register", basePath + "escrow2_root_contract.unicon",
                 "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
-
 
         ItemResult itemResult = CLIMain.getClientNetwork().client.getState(escrow);
         System.out.println("escrow: " + itemResult);
@@ -3675,12 +3671,10 @@ public class CLIMainTest {
                 "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
-      //  System.out.println(output);
 
         itemResult = CLIMain.getClientNetwork().client.getState(canceledEscrow);
         System.out.println("canceledEscrow: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
-
 
         // return payment to customer
         Contract newPayment = ContractsService.takeEscrowPayment(customerPrivateKeys, contract_for_payment);
@@ -3691,9 +3685,9 @@ public class CLIMainTest {
         newPayment.check();
         newPayment.traceErrors();
 
-        CLIMain.saveContract(newPayment, basePath + "new_payment.unicon", true, true);
+        CLIMain.saveContract(newPayment, basePath + "new_payment2.unicon", true, true);
 
-        callMain2("--register", basePath + "new_payment.unicon",
+        callMain2("--register", basePath + "new_payment2.unicon",
                 "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
@@ -3701,7 +3695,5 @@ public class CLIMainTest {
         itemResult = CLIMain.getClientNetwork().client.getState(newPayment);
         System.out.println("newPayment: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
-
     }
-
 }
