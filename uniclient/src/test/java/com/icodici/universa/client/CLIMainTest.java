@@ -3496,16 +3496,18 @@ public class CLIMainTest {
         CLIMain.saveContract(contract_for_payment, basePath + "contract_for_payment.unicon");
 
         String uContract = getApprovedUContract();
-        System.out.println(output);
 
         callMain2("--register", basePath + "contract_for_payment.unicon",
                 "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
 
+        ItemResult itemResult = CLIMain.getClientNetwork().client.getState(contract_for_payment);
+        System.out.println("contract_for_payment: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
         Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys,
                 arbitratorPublicKeys);
-
 
         // check link between external and internal escrow contracts
         assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"),
@@ -3528,10 +3530,13 @@ public class CLIMainTest {
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
 
-        System.out.println(output);
-        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+        itemResult = CLIMain.getClientNetwork().client.getState(escrow);
+        System.out.println("escrow: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
 
-        callMain2("--probe", escrow.getId().toBase64String());
+        itemResult = CLIMain.getClientNetwork().client.getState(contract_for_payment);
+        System.out.println("contract_for_payment: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
 
         Contract completedEscrow = ContractsService.completeEscrowContract(escrow);
 
@@ -3548,17 +3553,30 @@ public class CLIMainTest {
                 "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
-        System.out.println(output);
 
-        Thread.sleep(10000);
+        itemResult = CLIMain.getClientNetwork().client.getState(completedEscrow);
+        System.out.println("completedEscrow: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
 
-        //assertTrue (output.indexOf("paid contract " + completedEscrow.getId() +  " submitted with result: ItemResult<APPROVED") >= 0);
+        // transfer payment to executor
+        Contract newPayment = ContractsService.takeEscrowPayment(executorPrivateKeys, contract_for_payment);
 
-        assertTrue (output.indexOf(ItemState.APPROVED.name()) > 0);
+        // internal escrow contract for checking references
+        newPayment.getTransactionPack().addReferencedItem(completedEscrow);
 
-        callMain2("--probe-file", basePath + "completed_escrow.unicon","--verbose");
+        newPayment.check();
+        newPayment.traceErrors();
 
-        assertTrue (output.indexOf(ItemState.APPROVED.name()) > 0);
+        CLIMain.saveContract(newPayment, basePath + "new_payment.unicon", true, true);
+
+        callMain2("--register", basePath + "new_payment.unicon",
+                "--u", uContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "80000", "-v");
+
+        itemResult = CLIMain.getClientNetwork().client.getState(newPayment);
+        System.out.println("newPayment: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
 
     }
 
@@ -3595,7 +3613,6 @@ public class CLIMainTest {
             executorPublicKeys.add(pk.getPublicKey());
         }
 
-
         Contract contract_for_payment = createCoin();
         contract_for_payment.getStateData().set(FIELD_NAME, new Decimal(100));
         contract_for_payment.addSignerKeyFromFile(rootPath + "_xer0yfe2nn1xthc.private.unikey");
@@ -3604,7 +3621,8 @@ public class CLIMainTest {
         CLIMain.saveContract(contract_for_payment, basePath + "contract_for_payment.unicon");
 
         // create external escrow contract
-        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys, arbitratorPublicKeys);
+        Contract escrow = ContractsService.createEscrowContract(issuerPrivateKeys, customerPublicKeys, executorPublicKeys,
+                arbitratorPublicKeys);
 
         // check link between external and internal escrow contracts
         assertEquals(escrow.getDefinition().getData().getString("EscrowOrigin", "null"), escrow.getNew().get(0).getOrigin().toBase64String());
@@ -3613,27 +3631,32 @@ public class CLIMainTest {
         assertEquals(escrow.getNew().get(0).getStateData().getString("status", "null"), "opened");
 
         // add payment to escrow contract
-        boolean result = ContractsService.addPaymentToEscrowContract(escrow, contract_for_payment, customerPrivateKeys, customerPublicKeys, executorPublicKeys);
+        boolean result = ContractsService.addPaymentToEscrowContract(escrow, contract_for_payment, customerPrivateKeys,
+                customerPublicKeys, executorPublicKeys);
         assertTrue(result);
 
         // check payment transactional references
         assertTrue(contract_for_payment.findReferenceByName("return_payment_to_customer", "transactional") != null);
         assertTrue(contract_for_payment.findReferenceByName("send_payment_to_executor", "transactional") != null);
 
-        CLIMain.saveContract(escrow, basePath + "escrow_root_contract.unicon", true, true);
-
         String uContract = getApprovedUContract();
         System.out.println(output);
+
+        CLIMain.saveContract(escrow, basePath + "escrow_root_contract.unicon", true, true);
 
         callMain2("--register", basePath + "escrow_root_contract.unicon",
                 "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
 
-        System.out.println(output);
-        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
 
-        callMain2("--probe", escrow.getId().toBase64String());
+        ItemResult itemResult = CLIMain.getClientNetwork().client.getState(escrow);
+        System.out.println("escrow: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        itemResult = CLIMain.getClientNetwork().client.getState(contract_for_payment);
+        System.out.println("contract_for_payment: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
 
         // cancel escrow contract(by external escrow contract)
         Contract canceledEscrow = ContractsService.cancelEscrowContract(escrow);
@@ -3652,9 +3675,12 @@ public class CLIMainTest {
                 "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
-        System.out.println(output);
+      //  System.out.println(output);
 
-        callMain2("--probe-file", basePath + "canceled_escrow.unicon");
+        itemResult = CLIMain.getClientNetwork().client.getState(canceledEscrow);
+        System.out.println("canceledEscrow: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
 
         // return payment to customer
         Contract newPayment = ContractsService.takeEscrowPayment(customerPrivateKeys, contract_for_payment);
@@ -3665,18 +3691,16 @@ public class CLIMainTest {
         newPayment.check();
         newPayment.traceErrors();
 
-        CLIMain.saveContract(canceledEscrow, basePath + "new_payment.unicon", true, true);
+        CLIMain.saveContract(newPayment, basePath + "new_payment.unicon", true, true);
 
         callMain2("--register", basePath + "new_payment.unicon",
                 "--u", uContract,
                 "-k", rootPath + "keys/stepan_mamontov.private.unikey",
                 "-wait", "80000", "-v");
-        System.out.println(output);
 
-        callMain2("--probe-file", basePath + "new_payment.unicon", "--verbose");
-        System.out.println(output);
-
-        assertTrue (output.indexOf(ItemState.APPROVED.name()) > 0);
+        itemResult = CLIMain.getClientNetwork().client.getState(newPayment);
+        System.out.println("newPayment: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
 
     }
 

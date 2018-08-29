@@ -1776,7 +1776,7 @@ public class MainTest {
         assertFalse(tokenContract.isPermitted("split_join", issuerPublicKeys));
 
         ItemResult itemResult = client.register(tokenContract.getPackedTransaction(), 5000);
-        System.out.println("token contract itemResult: " + itemResult);
+        System.out.println("token contract : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -1803,7 +1803,7 @@ public class MainTest {
         mintableTokenContract.traceErrors();
 
         ItemResult itemResult = client.register(mintableTokenContract.getPackedTransaction(), 5000);
-        System.out.println("mintableTokenContract itemResult: " + itemResult);
+        System.out.println("mintableTokenContract : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         Contract emittedContract = ContractsService.createTokenEmission(mintableTokenContract, "100000000000", issuerPrivateKeys);
@@ -1832,7 +1832,7 @@ public class MainTest {
 
 
         itemResult = client.register(emittedContract.getPackedTransaction(), 5000);
-        System.out.println("emittedContract itemResult: " + itemResult);
+        System.out.println("emittedContract : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         assertEquals(emittedContract.getStateData().getString("amount"), "400000000000");
@@ -1861,7 +1861,7 @@ public class MainTest {
         contractC.traceErrors();
 
         ItemResult itemResult = client.register(contractC.getPackedTransaction(), 5000);
-        System.out.println("contractC itemResult: " + itemResult);
+        System.out.println("contractC : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // 100 - 30 = 70
@@ -1871,7 +1871,7 @@ public class MainTest {
         assertEquals("30", contractB.getStateData().get("amount").toString());
 
         itemResult = client.register(сontractA.getPackedTransaction(), 5000);
-        System.out.println("сontractA itemResult: " + itemResult);
+        System.out.println("сontractA : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         assertEquals("70", сontractA.getStateData().get("amount").toString());
@@ -1888,7 +1888,7 @@ public class MainTest {
         assertTrue(contractC2.isOk());
 
         itemResult = client.register(contractC2.getPackedTransaction(), 5000);
-        System.out.println("contractC2 itemResult: " + itemResult);
+        System.out.println("contractC2 : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         assertEquals(new Decimal(100), contractC2.getStateData().get("amount"));
@@ -1953,7 +1953,7 @@ public class MainTest {
         assertFalse(shareContract.isPermitted("split_join", issuerPublicKeys));
 
         ItemResult itemResult = client.register(shareContract.getPackedTransaction(), 5000);
-        System.out.println("shareContract itemResult: " + itemResult);
+        System.out.println("shareContract : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -1997,7 +1997,7 @@ public class MainTest {
         assertFalse(notaryContract.isPermitted("change_owner", issuerPublicKeys));
 
         ItemResult itemResult = client.register(notaryContract.getPackedTransaction(), 5000);
-        System.out.println("notaryContract itemResult: " + itemResult);
+        System.out.println("notaryContract : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -2039,7 +2039,7 @@ public class MainTest {
         twoSignContract.traceErrors();
 
         ItemResult itemResult = client.register(twoSignContract.getPackedTransaction(), 5000);
-        System.out.println("twoSignContract itemResult: " + itemResult);
+        System.out.println("twoSignContract : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
 
@@ -2054,7 +2054,7 @@ public class MainTest {
         System.out.println("Contract with two signature is valid: " + twoSignContract.isOk());
 
         itemResult = client.register(twoSignContract.getPackedTransaction(), 5000);
-        System.out.println("twoSignContract itemResult: " + itemResult);
+        System.out.println("twoSignContract : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -2085,7 +2085,7 @@ public class MainTest {
 
         Contract stepaU = InnerContractsService.createFreshU(100000000, new HashSet<>(Arrays.asList(TestKeys.publicKey(1))));
         itemResult = client.register(stepaU.getPackedTransaction(), 5000);
-        System.out.println("stepaU itemResult: " + itemResult);
+        System.out.println("stepaU : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         Parcel parcel = ContractsService.createPayingParcel(slotContract.getTransactionPack(), stepaU, 1, 100, new HashSet<>(Arrays.asList(TestKeys.privateKey(1))), false);
@@ -2104,7 +2104,7 @@ public class MainTest {
 
         client.registerParcel(parcel.pack(), 5000);
         itemResult = client.getState(slotContract.getId());
-        System.out.println("slot itemResult: " + itemResult);
+        System.out.println("slot : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         slotInfo = client.querySlotInfo(slotContract.getId());
@@ -2174,7 +2174,7 @@ public class MainTest {
 
         testSpace.client.registerParcel(payingParcel.pack(), 8000);
         itemResult = testSpace.client.getState(unsContract.getId());
-        System.out.println("Uns itemResult: " + itemResult);
+        System.out.println("Uns : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         nameInfo = testSpace.client.queryNameRecord(simpleContract.getId());
@@ -2218,7 +2218,7 @@ public class MainTest {
 
         testSpace.client.registerParcel(payingParcel.pack(), 8000);
         itemResult = testSpace.client.getState(unsContract2.getId());
-        System.out.println("Uns itemResult: " + itemResult);
+        System.out.println("Uns : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         nameInfo = testSpace.client.queryNameRecord(keyAddr.toString());
@@ -2257,7 +2257,7 @@ public class MainTest {
         sourceContract.traceErrors();
 
         ItemResult itemResult = client.register(sourceContract.getPackedTransaction(), 5000);
-        System.out.println("sourceContract itemResult: " + itemResult);
+        System.out.println("sourceContract : " + itemResult);
         assertEquals(ItemState.APPROVED, client.getState(sourceContract.getId()).state);
 
         Contract revokeContract = ContractsService.createRevocation(sourceContract, TestKeys.privateKey(1));
@@ -2266,7 +2266,7 @@ public class MainTest {
         revokeContract.traceErrors();
 
         itemResult = client.register(revokeContract.getPackedTransaction(), 5000);
-        System.out.println("revokeContract itemResult: " + itemResult);
+        System.out.println("revokeContract : " + itemResult);
 
         assertEquals(ItemState.APPROVED, client.getState(revokeContract.getId()).state);
         assertEquals(ItemState.REVOKED, client.getState(sourceContract.getId()).state);
@@ -2516,7 +2516,7 @@ public class MainTest {
         jobCertificate.traceErrors();
 
         ItemResult itemResult = client.register(jobCertificate.getPackedTransaction(), 5000);
-        System.out.println("sourceContract itemResult: " + itemResult);
+        System.out.println("sourceContract : " + itemResult);
         assertEquals(ItemState.APPROVED, client.getState(jobCertificate.getId()).state);
 
         Contract llcProperty = ContractsService.createNotaryContract(llcPrivateKeys, stepaPublicKeys);
@@ -2540,7 +2540,7 @@ public class MainTest {
         llcProperty.traceErrors();
 
         itemResult = client.register(llcProperty.getPackedTransaction(), 5000);
-        System.out.println("sourceContract itemResult: " + itemResult);
+        System.out.println("sourceContract : " + itemResult);
         assertEquals(ItemState.APPROVED, client.getState(llcProperty.getId()).state);
 
         mm.forEach(x -> x.shutdown());
@@ -4658,7 +4658,7 @@ public class MainTest {
 
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -4684,7 +4684,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -4712,7 +4712,7 @@ public class MainTest {
 
         // register signed escrow contract
         itemResult = client.register(completedEscrow.getPackedTransaction(), 5000);
-        System.out.println("completedEscrow itemResult: " + itemResult);
+        System.out.println("completedEscrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // transfer payment to executor
@@ -4726,7 +4726,7 @@ public class MainTest {
 
         // register result executor payment
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -4771,7 +4771,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -4797,7 +4797,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -4825,7 +4825,7 @@ public class MainTest {
 
         // register signed escrow contract
         itemResult = client.register(canceledEscrow.getPackedTransaction(), 5000);
-        System.out.println("canceledEscrow itemResult: " + itemResult);
+        System.out.println("canceledEscrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // return payment to customer
@@ -4839,7 +4839,7 @@ public class MainTest {
 
         // register result customer payment
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -4884,7 +4884,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -4910,7 +4910,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -4934,7 +4934,7 @@ public class MainTest {
 
         // try register signed escrow contract (without customer sign)
         itemResult = client.register(completedEscrow.getPackedTransaction(), 5000);
-        System.out.println("completedEscrow itemResult: " + itemResult);
+        System.out.println("completedEscrow : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // try transfer payment to executor
@@ -4948,7 +4948,7 @@ public class MainTest {
 
         // try register payment for executor
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -4993,7 +4993,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
 
@@ -5020,7 +5020,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -5044,7 +5044,7 @@ public class MainTest {
 
         // try register signed escrow contract (without signs of executor or arbitrator)
         itemResult = client.register(canceledEscrow.getPackedTransaction(), 5000);
-        System.out.println("canceledEscrow itemResult: " + itemResult);
+        System.out.println("canceledEscrow : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // try return payment to customer
@@ -5058,7 +5058,7 @@ public class MainTest {
 
         // try register payment for customer
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -5103,7 +5103,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -5129,7 +5129,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -5157,7 +5157,7 @@ public class MainTest {
 
         // register signed escrow contract
         itemResult = client.register(completedEscrow.getPackedTransaction(), 5000);
-        System.out.println("completedEscrow itemResult: " + itemResult);
+        System.out.println("completedEscrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // try return payment to customer (escrow completed)
@@ -5171,7 +5171,7 @@ public class MainTest {
 
         // try register payment for customer
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -5216,7 +5216,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -5242,7 +5242,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -5270,7 +5270,7 @@ public class MainTest {
 
         // register signed escrow contract
         itemResult = client.register(canceledEscrow.getPackedTransaction(), 5000);
-        System.out.println("canceledEscrow itemResult: " + itemResult);
+        System.out.println("canceledEscrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // try transfer payment to executor (escrow canceled)
@@ -5284,7 +5284,7 @@ public class MainTest {
 
         // try register payment for executor
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -5329,7 +5329,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -5356,11 +5356,11 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // complete escrow contract(by external escrow contract)
@@ -5389,7 +5389,7 @@ public class MainTest {
 
         // register signed escrow contract
         itemResult = client.register(completedEscrow.getPackedTransaction(), 5000);
-        System.out.println("completedEscrow itemResult: " + itemResult);
+        System.out.println("completedEscrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // transfer payment to executor
@@ -5403,7 +5403,7 @@ public class MainTest {
 
         // register result executor payment
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -5448,7 +5448,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -5475,10 +5475,10 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
 
         itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // cancel escrow contract(by external escrow contract)
@@ -5507,7 +5507,7 @@ public class MainTest {
 
         // register signed escrow contract
         itemResult = client.register(canceledEscrow.getPackedTransaction(), 5000);
-        System.out.println("canceledEscrow itemResult: " + itemResult);
+        System.out.println("canceledEscrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // return payment to customer
@@ -5521,7 +5521,7 @@ public class MainTest {
 
         // register result customer payment
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -5566,7 +5566,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -5606,7 +5606,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -5642,7 +5642,7 @@ public class MainTest {
 
         // register signed escrow contract
         itemResult = client.register(completedEscrow.getPackedTransaction(), 5000);
-        System.out.println("completedEscrow itemResult: " + itemResult);
+        System.out.println("completedEscrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // transfer payment to executor
@@ -5656,7 +5656,7 @@ public class MainTest {
 
         // register result executor payment
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -5701,7 +5701,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -5727,7 +5727,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -5755,7 +5755,7 @@ public class MainTest {
 
         // register signed escrow contract
         itemResult = client.register(canceledEscrow.getPackedTransaction(), 5000);
-        System.out.println("canceledEscrow itemResult: " + itemResult);
+        System.out.println("canceledEscrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         // try re-open escrow contract
@@ -5768,7 +5768,7 @@ public class MainTest {
 
         // try register re-open escrow contract
         itemResult = client.register(revisionEscrow.getPackedTransaction(), 5000);
-        System.out.println("revisionEscrow itemResult: " + itemResult);
+        System.out.println("revisionEscrow : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // try re-complete escrow contract
@@ -5781,7 +5781,7 @@ public class MainTest {
 
         // try register re-open escrow contract
         itemResult = client.register(revisionEscrow.getPackedTransaction(), 5000);
-        System.out.println("revisionEscrow itemResult: " + itemResult);
+        System.out.println("revisionEscrow : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // return payment to customer
@@ -5795,7 +5795,7 @@ public class MainTest {
 
         // register result customer payment
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         mm.forEach(x -> x.shutdown());
@@ -5840,7 +5840,7 @@ public class MainTest {
         payment.traceErrors();
 
         ItemResult itemResult = client.register(payment.getPackedTransaction(), 5000);
-        System.out.println("payment itemResult: " + itemResult);
+        System.out.println("payment : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(customerPrivateKeys);
@@ -5866,7 +5866,7 @@ public class MainTest {
         escrow.traceErrors();
 
         itemResult = client.register(escrow.getPackedTransaction(), 5000);
-        System.out.println("escrow itemResult: " + itemResult);
+        System.out.println("escrow : " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         itemResult = main.node.waitItem(payment.getId(), 8000);
@@ -5881,7 +5881,7 @@ public class MainTest {
         newPayment.traceErrors();
 
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // try taking payment from customer (without closed escrow)
@@ -5893,7 +5893,7 @@ public class MainTest {
         newPayment.traceErrors();
 
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // try taking payment from executor (without closed escrow)
@@ -5905,7 +5905,7 @@ public class MainTest {
         newPayment.traceErrors();
 
         itemResult = client.register(newPayment.getPackedTransaction(), 5000);
-        System.out.println("newPayment itemResult: " + itemResult);
+        System.out.println("newPayment : " + itemResult);
         assertEquals(ItemState.DECLINED, itemResult.state);
 
         // unlimited requests
