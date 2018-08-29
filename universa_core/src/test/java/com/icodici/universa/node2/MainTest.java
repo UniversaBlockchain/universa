@@ -4658,12 +4658,6 @@ public class MainTest {
 
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
 
-        // alignment by begin of minute
-        long seconds = ZonedDateTime.now().toEpochSecond() % 60;
-        if (seconds > 57) {
-            Thread.currentThread().sleep(3000);
-        }
-
         //set unlimited requests,amount < 5
         Contract unlimitContract = ContractsService.createContractForUnlimitKey(
                 myKey.getPublicKey(), payment, 1, keys);
@@ -4711,22 +4705,6 @@ public class MainTest {
         System.out.println(">> state: " + itemResult);
 
         assertEquals(ItemState.UNDEFINED, itemResult.state);
-
-        // reaching requests limit
-
-        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute()-2; i++)
-            System.out.println(">> uns rate: " + client.unsRate());
-
-        String exception = "";
-        try {
-            client.unsRate();                   // limited request
-        } catch (Exception e) {
-            System.out.println("Client exception: " + e.toString());
-            exception = e.getMessage();
-        }
-
-        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute," +
-                " please call again after a while");
 
         mm.forEach(x -> x.shutdown());
     }
@@ -4797,21 +4775,6 @@ public class MainTest {
 
         assertEquals(ItemState.UNDEFINED, itemResult.state);
 
-        // reaching requests limit
-        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute()-1; i++)
-            System.out.println(">> uns rate: " + client.unsRate());
-
-        String exception = "";
-        try {
-            client.unsRate();                   // limited request
-        } catch (Exception e) {
-            System.out.println("Client exception: " + e.toString());
-            exception = e.getMessage();
-        }
-
-        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute," +
-                " please call again after a while");
-
         mm.forEach(x -> x.shutdown());
 
     }
@@ -4881,21 +4844,6 @@ public class MainTest {
         System.out.println(">> state: " + itemResult);
 
         assertEquals(ItemState.DECLINED, itemResult.state);
-
-        // reaching requests limit
-        for (int i = 0; i < main.config.getLimitRequestsForKeyPerMinute()-3; i++)
-            System.out.println(i + ">> uns rate: " + client.unsRate());
-
-        String exception = "";
-        try {
-            client.unsRate();                   // limited request
-        } catch (Exception e) {
-            System.out.println("Client exception: " + e.toString());
-            exception = e.getMessage();
-        }
-
-        assertEquals(exception, "ClientError: COMMAND_FAILED exceeded the limit of requests for key per minute," +
-                " please call again after a while");
 
         mm.forEach(x -> x.shutdown());
 
