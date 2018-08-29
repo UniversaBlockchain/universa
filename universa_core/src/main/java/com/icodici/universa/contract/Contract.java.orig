@@ -558,6 +558,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
     }
 
     /**
+<<<<<<< HEAD
      * Checks contract is set unlimited requests for a key.
      * Errors found can be accessed with {@link #getErrors()} ()}.
      *
@@ -628,9 +629,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
         }
 
         return true;
-    }
-
-    /**
+=======
      * Verify signatures in sealed contract (if needed) and forms a map of sealed keys.
      * Errors found can be accessed with {@link #getErrors()}
      *
@@ -740,6 +739,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             c.verifySealedKeys(true);
             quantiser.addWorkCostFrom(c.quantiser);
         }
+>>>>>>> feature_4055
     }
 
     /**

@@ -1449,6 +1449,8 @@ public class Node {
                 // create item processors or get results for payment and payload
                 synchronized (mutex) {
 
+                    payment.getQuantiser().reset(config.getPaymentQuantaLimit());
+
                     Object x = checkItemInternal(payment.getId(), parcelId, payment, true, true);
                     if (x instanceof ItemProcessor) {
                         paymentProcessor = ((ItemProcessor) x);

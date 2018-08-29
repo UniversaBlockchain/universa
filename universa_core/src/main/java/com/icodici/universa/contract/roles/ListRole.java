@@ -330,6 +330,18 @@ public class ListRole extends Role {
     }
 
     /**
+     * Get set of all key records in sub-roles.
+     *
+     * @return set of public keys (see {@link PublicKey})
+     */
+    @Override
+    public Set<KeyRecord> getKeyRecords() {
+        return this.roles.stream()
+                .flatMap(role -> role.getKeyRecords().stream())
+                .collect(Collectors.toSet());
+    }
+
+    /**
      * Get set of all keys in sub-roles.
      *
      * @return set of public keys (see {@link PublicKey})
@@ -337,8 +349,7 @@ public class ListRole extends Role {
     @Override
     public Set<PublicKey> getKeys() {
         return this.roles.stream()
-                .flatMap(role -> role.getKeyRecords().stream()
-                        .map(KeyRecord::getPublicKey))
+                .flatMap(role -> role.getKeys().stream())
                 .collect(Collectors.toSet());
     }
 
