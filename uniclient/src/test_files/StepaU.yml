@@ -58,7 +58,7 @@ definition:
 
     decrement_permission:
       - role: owner
-        min_value: 1
+        min_value: 0
         max_step: -1
         field_name: transaction_units
 

@@ -7159,9 +7159,9 @@ public class BaseNetworkTest extends TestCase {
 
 
     @Test(timeout = 90000)
-    public void checkPayment_zeroU() throws Exception {
+    public void checkPayment_minusU() throws Exception {
         Contract payment = checkPayment_preparePaymentContract(checkPayment_preparePrivateKeys());
-        payment.getStateData().set("transaction_units", 0);
+        payment.getStateData().set("transaction_units", -1);
         boolean res = payment.paymentCheck(config.getUIssuerKeys());
         payment.traceErrors();
         assertFalse(res);
@@ -13593,5 +13593,44 @@ public class BaseNetworkTest extends TestCase {
         ItemResult payloadRes = node.waitItem(parcel.getPayload().getContract().getId(), 8000);
         assertEquals(ItemState.APPROVED, paymentRes.state);
         assertEquals(ItemState.APPROVED, payloadRes.state);
+    }
+
+    @Test(timeout = 90000)
+    public void payForParcelWithLastU() throws Exception {
+
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        Contract paidContract = new Contract(stepaPrivateKeys.iterator().next());
+        paidContract.seal();
+        paidContract.check();
+        paidContract.traceErrors();
+
+        // create 1 U
+        Contract stepaU = InnerContractsService.createFreshU(1, stepaPublicKeys, true);
+        stepaU.check();
+        stepaU.traceErrors();
+        node.registerItem(stepaU);
+        ItemResult itemResult = node.waitItem(stepaU.getId(), 18000);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
+        assertEquals(stepaU.getStateData().getIntOrThrow("transaction_units"), 1);
+        assertEquals(stepaU.getStateData().getIntOrThrow("test_transaction_units"), 100);
+
+        // pay 1 U
+        Parcel parcel = ContractsService.createParcel(paidContract, stepaU, 1, stepaPrivateKeys, false);
+
+        node.registerParcel(parcel);
+        node.waitParcel(parcel.getId(), 8000);
+
+        // check zero U registered
+        assertEquals(ItemState.APPROVED, node.waitItem(paidContract.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(parcel.getPaymentContract().getId(), 8000).state);
+
+        assertEquals(parcel.getPaymentContract().getStateData().getIntOrThrow("transaction_units"), 0);
+        assertEquals(parcel.getPaymentContract().getStateData().getIntOrThrow("test_transaction_units"), 100);
     }
 }
