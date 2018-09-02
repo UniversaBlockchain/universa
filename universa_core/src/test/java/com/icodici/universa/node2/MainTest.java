@@ -4826,7 +4826,7 @@ public class MainTest {
         assertEquals(ItemState.APPROVED, itemResult.state);
 
         payment = payment.createRevision(myKey);
-        payment.getStateData().set("transaction_units", 1);
+        payment.getStateData().set("transaction_units", 0);
         payment.setOwnerKeys(ownerKeys);
         payment.addSignerKey(myKey);
         payment.seal();
