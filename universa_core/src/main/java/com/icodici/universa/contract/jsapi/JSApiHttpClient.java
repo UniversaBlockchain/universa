@@ -42,9 +42,34 @@ public class JSApiHttpClient {
         throw new IllegalArgumentException("http access denied");
     }
 
+    private boolean checkBoundary(String boundary, Map<String, Object> formParams, Map<String, byte[]> files) {
+        for (String paramName : formParams.keySet()) {
+            String paramValue = formParams.get(paramName).toString();
+            if (paramValue.indexOf(boundary) != -1)
+                return false;
+        }
+        for (String paramName : files.keySet()) {
+            byte[] binData = files.get(paramName);
+            String strData = new String(binData);
+            if (strData.indexOf(boundary) != -1)
+                return false;
+        }
+        return true;
+    }
+
+    private String generateBoundary(Map<String, Object> formParams, Map<String, byte[]> files) {
+        int counter = 0;
+        do {
+            String boundary = Bytes.random(16).toHex(false);
+            if (checkBoundary(boundary, formParams, files))
+                return boundary;
+        } while (++counter < 10);
+        throw new IllegalArgumentException("failed to create http multipart boundary");
+    }
+
     public List sendPostRequestMultipart(String strUrl, String respType, Map<String, Object> formParams, Map<String, byte[]> files) throws IOException {
         if (urlParser.isUrlAllowed(strUrl)) {
-            String boundary = Bytes.random(16).toHex(false);
+            String boundary = generateBoundary(formParams, files);
             URL url = new URL(strUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
