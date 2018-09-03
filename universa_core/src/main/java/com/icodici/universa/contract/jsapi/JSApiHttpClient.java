@@ -2,7 +2,9 @@ package com.icodici.universa.contract.jsapi;
 
 import net.sergeych.tools.Do;
 import net.sergeych.tools.JsonTool;
+import net.sergeych.utils.Bytes;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -40,6 +42,57 @@ public class JSApiHttpClient {
         throw new IllegalArgumentException("http access denied");
     }
 
+    public List sendPostRequestMultipart(String strUrl, String respType, Map<String, Object> formParams, Map<String, byte[]> files) throws IOException {
+        if (urlParser.isUrlAllowed(strUrl)) {
+            String boundary = Bytes.random(16).toHex(false);
+            URL url = new URL(strUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestProperty("User-Agent", "Universa JAVA API Client");
+            connection.setRequestProperty("Connection", "close");
+            connection.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+            connection.setDoOutput(true);
+            DataOutputStream os = new DataOutputStream(connection.getOutputStream());
+            for (String paramName : formParams.keySet()) {
+                Object paramValue = formParams.get(paramName);
+                os.writeBytes("--" + boundary + "\r\n");
+                os.writeBytes("Content-Disposition: form-data; name=" + paramName + "\r\n");
+                os.writeBytes("\r\n");
+                os.writeBytes(paramValue.toString());
+                os.writeBytes("\r\n");
+            }
+            int fileCounter = 0;
+            for (String paramName : files.keySet()) {
+                byte[] binData = files.get(paramName);
+                os.writeBytes("--" + boundary + "\r\n");
+                os.writeBytes("Content-Disposition: form-data; name=" + paramName + "; filename=file_" + fileCounter + "\r\n");
+                os.writeBytes("Content-Type: application/octet-stream" + "\r\n");
+                os.writeBytes("\r\n");
+                os.write(binData);
+                os.writeBytes("\r\n");
+                fileCounter += 1;
+            }
+            os.writeBytes("--" + boundary + "--" + "\r\n");
+            os.flush();
+            os.close();
+
+            Object resp;
+            switch (respType) {
+                case RESPTYPE_TEXT:
+                    resp = new String(Do.read(connection.getInputStream()));
+                    break;
+                case RESPTYPE_JSON:
+                    resp = JsonTool.fromJson(new String(Do.read(connection.getInputStream())));
+                    break;
+                default:
+                    resp = Do.read(connection.getInputStream());
+                    break;
+            }
+
+            return Arrays.asList(connection.getResponseCode(), resp);
+        }
+        throw new IllegalArgumentException("http access denied");
+    }
+
     private List sendRequest(String method, String strUrl, String respType, Map<String, Object> params, String contentType) throws IOException {
         URL url = new URL(strUrl);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -58,8 +111,6 @@ public class JSApiHttpClient {
             os.flush();
             os.close();
         }
-        if (200 != connection.getResponseCode())
-            return null;
         Object resp;
         switch (respType) {
             case RESPTYPE_TEXT:

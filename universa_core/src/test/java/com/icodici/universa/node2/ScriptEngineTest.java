@@ -15,8 +15,10 @@ import jdk.nashorn.api.scripting.ClassFilter;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import net.sergeych.tools.Binder;
+import net.sergeych.tools.Do;
 import net.sergeych.utils.Base64;
 import net.sergeych.utils.Bytes;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.script.Invocable;
@@ -1318,6 +1320,44 @@ public class ScriptEngineTest {
         List res2 = (List)res.get("2");
         assertEquals(200, res2.get(0));
         assertEquals(55l, ((Map)((Map)res2.get(1)).get("json")).get("jsonparam"));
+    }
+
+    @Ignore
+    @Test
+    public void testHttpClientMultipart() throws Exception {
+        String tmpdir = System.getProperty("java.io.tmpdir");
+        String strPath1 = tmpdir + "/" + "testHttpClientMultipart";
+        File strPath1File = new File(strPath1);
+        strPath1File.mkdirs();
+        File f1 = new File(strPath1 + "/file1");
+        File f2 = new File(strPath1 + "/file2");
+        f1.delete();
+        f2.delete();
+        f1.getParentFile().mkdirs();
+        f2.getParentFile().mkdirs();
+        f1.createNewFile();
+        f2.createNewFile();
+        Files.write(f1.toPath(), Do.randomBytes(32));
+        Files.write(f2.toPath(), Do.randomBytes(1024));
+
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('testHttpClientFromJS');";
+        js += "var httpClient = jsApi.getHttpClient();";
+        js += "var file1Content = jsApi.getSharedFolders().readAllBytes('file1');";
+        js += "var file2Content = jsApi.getSharedFolders().readAllBytes('file2');";
+        js += "var res = httpClient.sendPostRequestMultipart('http://192.168.1.131/upload', 'text', {imageName1:55, imageName2:66}, {image1:file1Content, image2:file2Content});";
+        js += "var result = res;";
+        JSApiScriptParameters scriptParameters = new JSApiScriptParameters();
+        scriptParameters.ipMasks.add("192.168.1.*");
+        scriptParameters.setPermission(JSApiScriptParameters.ScriptPermissions.PERM_HTTP_CLIENT, true);
+        contract.getState().setJS(js.getBytes(), "client script.js", scriptParameters);
+        contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+        JSApiExecOptions execOptions = new JSApiExecOptions();
+        execOptions.sharedFolders.add(strPath1);
+        Object res = contract.execJS(execOptions, js.getBytes());
+        System.out.println(res);
     }
 
 }
