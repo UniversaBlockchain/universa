@@ -561,8 +561,10 @@ public class ContractsService {
         return twoSignContract;
     }
 
+
+
     /**
-     * Creates a token contract for given keys.
+     * Creates a token contract for given keys with given currency code,name,description.
      * <br><br>
      * The service creates a simple token contract with issuer, creator and owner roles;
      * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
@@ -573,9 +575,12 @@ public class ContractsService {
      * @param ownerKeys is owner public keys.
      * @param amount    is maximum token number.
      * @param minValue  is minimum token value
+     * @param currency  is currency code
+     * @param name  is currency name
+     * @param description  is currency description
      * @return signed and sealed contract, ready for register.
      */
-    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue, String currency, String name, String description) {
         Contract tokenContract = new Contract();
         tokenContract.setApiLevel(3);
 
@@ -583,10 +588,10 @@ public class ContractsService {
         cd.setExpiresAt(tokenContract.getCreatedAt().plusMonths(60));
 
         Binder data = new Binder();
-        data.set("name", "Default token name");
-        data.set("currency_code", "DT");
-        data.set("currency_name", "Default token name");
-        data.set("description", "Default token description.");
+        data.set("currency", currency);
+        data.set("short_currency", currency);
+        data.set("name", name);
+        data.set("description", description);
         cd.setData(data);
 
         SimpleRole issuerRole = new SimpleRole("issuer");
@@ -626,7 +631,7 @@ public class ContractsService {
         SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerLink, params);
         tokenContract.addPermission(splitJoinPerm);
 
-        RevokePermission revokePerm1 = new RevokePermission(ownerRole);
+        RevokePermission revokePerm1 = new RevokePermission(ownerLink);
         tokenContract.addPermission(revokePerm1);
 
         RevokePermission revokePerm2 = new RevokePermission(issuerRole);
@@ -639,11 +644,118 @@ public class ContractsService {
     }
 
     /**
+     * @see #createTokenContract(Set, Set, String, Double,String,String,String)
+     */
+    public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+        return createTokenContract(issuerKeys,ownerKeys,amount,minValue,"DT","Default token name","Default token description");
+    }
+
+    /**
      * @see #createTokenContract(Set, Set, String, Double)
      */
     public synchronized static Contract createTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
         return createTokenContract(issuerKeys, ownerKeys, amount, 0.01);
     }
+
+
+
+
+    /**
+     * Creates a mintable token contract for given keys with given currency code,name,description.
+     * <br><br>
+     * The service creates a mintable token contract with issuer, creator and owner roles;
+     * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
+     * Split_join permission has  following params: "minValue" for min_value and min_unit, "amount" for field_name,
+     * ["definition.data.currency", "definition.issuer"] for join_match_fields.
+     * By default expires at time is set to 60 months from now.
+     *
+     * @param ownerKeys is owner public keys.
+     * @param amount    is maximum token number.
+     * @param minValue  is minimum token value
+     * @param currency  is currency code
+     * @param name  is currency name
+     * @param description  is currency description
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue, String currency, String name, String description) {
+        Contract tokenContract = new Contract();
+        tokenContract.setApiLevel(3);
+
+        Contract.Definition cd = tokenContract.getDefinition();
+        cd.setExpiresAt(tokenContract.getCreatedAt().plusMonths(60));
+
+        Binder data = new Binder();
+        data.set("currency", currency);
+        data.set("short_currency", currency);
+        data.set("name", name);
+        data.set("description", description);
+        cd.setData(data);
+
+        SimpleRole issuerRole = new SimpleRole("issuer");
+        for (PrivateKey k : issuerKeys) {
+            KeyRecord kr = new KeyRecord(k.getPublicKey());
+            issuerRole.addKeyRecord(kr);
+        }
+
+        SimpleRole ownerRole = new SimpleRole("owner");
+        for (PublicKey k : ownerKeys) {
+            KeyRecord kr = new KeyRecord(k);
+            ownerRole.addKeyRecord(kr);
+        }
+
+        tokenContract.registerRole(issuerRole);
+        tokenContract.createRole("issuer", issuerRole);
+        tokenContract.createRole("creator", issuerRole);
+
+        tokenContract.registerRole(ownerRole);
+        tokenContract.createRole("owner", ownerRole);
+
+        tokenContract.getStateData().set("amount", amount);
+
+        RoleLink ownerLink = new RoleLink("@owner_link", "owner");
+        ownerLink.setContract(tokenContract);
+        ChangeOwnerPermission changeOwnerPerm = new ChangeOwnerPermission(ownerLink);
+        tokenContract.addPermission(changeOwnerPerm);
+
+        Binder params = new Binder();
+        params.set("min_value", minValue);
+        params.set("min_unit", minValue);
+        params.set("field_name", "amount");
+        List<String> listFields = new ArrayList<>();
+        listFields.add("definition.data.currency");
+        listFields.add("definition.issuer");
+        params.set("join_match_fields", listFields);
+
+        SplitJoinPermission splitJoinPerm = new SplitJoinPermission(ownerLink, params);
+        tokenContract.addPermission(splitJoinPerm);
+
+        RevokePermission revokePerm1 = new RevokePermission(ownerLink);
+        tokenContract.addPermission(revokePerm1);
+
+        RevokePermission revokePerm2 = new RevokePermission(issuerRole);
+        tokenContract.addPermission(revokePerm2);
+
+        tokenContract.seal();
+        tokenContract.addSignatureToSeal(issuerKeys);
+
+        return tokenContract;
+    }
+
+    /**
+     * @see #createTokenContract(Set, Set, String, Double,String,String,String)
+     */
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
+        return createMintableTokenContract(issuerKeys,ownerKeys,amount,minValue,"DT","Default token name","Default token description");
+    }
+
+    /**
+     * @see #createTokenContract(Set, Set, String, Double)
+     */
+    public synchronized static Contract createMintableTokenContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
+        return createMintableTokenContract(issuerKeys, ownerKeys, amount, 0.01);
+    }
+
+
 
     /**
      * Creates a token contract with possible additional emission.
@@ -661,6 +773,7 @@ public class ContractsService {
      * @param minValue   is minimum token value.
      * @return signed and sealed contract, ready for register.
      */
+    @Deprecated
     public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount, Double minValue) {
 
         Contract tokenContract = createTokenContract(issuerKeys, ownerKeys, amount, minValue);
@@ -683,6 +796,7 @@ public class ContractsService {
     /**
      * @see #createTokenContractWithEmission(Set, Set, String, Double)
      */
+    @Deprecated
     public synchronized static Contract createTokenContractWithEmission(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys, String amount) {
         return createTokenContractWithEmission(issuerKeys, ownerKeys, amount, 0.01);
     }
@@ -699,6 +813,7 @@ public class ContractsService {
      * @param fieldName     is name of token field (usually "amount").
      * @return signed and sealed contract, ready for register.
      */
+    @Deprecated
     public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys, String fieldName) {
 
         Contract emittedToken = tokenContract.createRevision();
@@ -718,6 +833,7 @@ public class ContractsService {
     /**
      * @see #createTokenEmission(Contract, String, Set, String)
      */
+    @Deprecated
     public synchronized static Contract createTokenEmission(Contract tokenContract, String amount, Set<PrivateKey> keys) {
         return createTokenEmission(tokenContract, amount, keys, "amount");
     }

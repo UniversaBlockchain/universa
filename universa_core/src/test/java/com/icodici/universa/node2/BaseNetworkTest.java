@@ -1534,20 +1534,30 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
 
-        Contract tokenContract = ContractsService.createTokenContractWithEmission(martyPrivateKeys, stepaPublicKeys, "300000000000");
+        //Contract tokenContract = ContractsService.createTokenContractWithEmission(martyPrivateKeys, stepaPublicKeys, "300000000000");
 
-        tokenContract.check();
-        tokenContract.traceErrors();
-        registerAndCheckApproved(tokenContract);
+        Contract tokenContract1 = ContractsService.createMintableTokenContract(martyPrivateKeys,stepaPublicKeys,"300000000000");
+        tokenContract1.check();
+        tokenContract1.traceErrors();
+        registerAndCheckApproved(tokenContract1);
 
-        Contract emittedContract = ContractsService.createTokenEmission(tokenContract, "100000000000", martyPrivateKeys);
+        Contract tokenContract2 = ContractsService.createMintableTokenContract(martyPrivateKeys,stepaPublicKeys,"100000000000");
+        tokenContract2.check();
+        tokenContract2.traceErrors();
+        registerAndCheckApproved(tokenContract2);
 
-        emittedContract.check();
-        emittedContract.traceErrors();
-        registerAndCheckApproved(emittedContract);
 
-        assertEquals(emittedContract.getStateData().getString("amount"), "400000000000");
-        assertEquals(ItemState.REVOKED, node.waitItem(tokenContract.getId(), 8000).state);
+        Contract joinedContract = tokenContract1.createRevision(stepaPrivateKeys);
+        joinedContract.addRevokingItems(tokenContract2);
+        joinedContract.getStateData().set("amount","400000000000");
+        joinedContract.seal();
+        joinedContract.check();
+        joinedContract.traceErrors();
+        registerAndCheckApproved(joinedContract);
+
+        assertEquals(joinedContract.getStateData().getString("amount"), "400000000000");
+        assertEquals(ItemState.REVOKED, node.waitItem(tokenContract1.getId(), 8000).state);
+        assertEquals(ItemState.REVOKED, node.waitItem(tokenContract2.getId(), 8000).state);
     }
 
     @Test(timeout = 90000)
@@ -1563,25 +1573,30 @@ public class BaseNetworkTest extends TestCase {
         Set<PrivateKey> martyPrivateKeys = new HashSet<>();
         martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
 
-        Contract tokenContract = ContractsService.createTokenContractWithEmission(martyPrivateKeys, stepaPublicKeys, "300000000000");
+        //Contract tokenContract = ContractsService.createTokenContractWithEmission(martyPrivateKeys, stepaPublicKeys, "300000000000");
 
-        tokenContract.check();
-        tokenContract.traceErrors();
-        registerAndCheckApproved(tokenContract);
+        Contract tokenContract1 = ContractsService.createMintableTokenContract(martyPrivateKeys,stepaPublicKeys,"300000000000");
+        tokenContract1.check();
+        tokenContract1.traceErrors();
+        registerAndCheckApproved(tokenContract1);
 
-        // with bad signature
-        Contract emittedContract = ContractsService.createTokenEmission(tokenContract, "100000000000", stepaPrivateKeys);
+        Contract tokenContract2 = ContractsService.createMintableTokenContract(stepaPrivateKeys,stepaPublicKeys,"100000000000");
+        tokenContract2.check();
+        tokenContract2.traceErrors();
+        registerAndCheckApproved(tokenContract2);
 
-        Set<KeyRecord> krs = new HashSet<>();
-        for (PublicKey k: stepaPublicKeys)
-            krs.add(new KeyRecord(k));
-        emittedContract.setCreator(krs);
 
-        emittedContract.check();
-        emittedContract.traceErrors();
-        registerAndCheckDeclined(emittedContract);
+        Contract joinedContract = tokenContract1.createRevision(stepaPrivateKeys);
+        joinedContract.addRevokingItems(tokenContract2);
+        joinedContract.getStateData().set("amount","400000000000");
+        joinedContract.seal();
+        joinedContract.check();
+        joinedContract.traceErrors();
+        registerAndCheckDeclined(joinedContract);
 
-        assertEquals(ItemState.APPROVED, node.waitItem(tokenContract.getId(), 8000).state);
+        assertEquals(joinedContract.getStateData().getString("amount"), "400000000000");
+        assertEquals(ItemState.APPROVED, node.waitItem(tokenContract1.getId(), 8000).state);
+        assertEquals(ItemState.APPROVED, node.waitItem(tokenContract2.getId(), 8000).state);
     }
 
     @Test(timeout = 90000)
