@@ -1,6 +1,7 @@
 package com.icodici.universa.contract.permissions;
 
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Decimal;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.roles.Role;
 import net.sergeych.biserializer.BiDeserializer;
@@ -24,12 +25,12 @@ import java.util.Set;
 @BiType(name="ChangeNumberPermission")
 public class ChangeNumberPermission extends Permission {
 
-    private int minValue;
-    private int maxValue;
-    private int minStep;
-    private int maxStep;
+    private Decimal minValue;
+    private Decimal maxValue;
+    private Decimal minStep;
+    private Decimal maxStep;
     private String fieldName;
-    private int newValue;
+    private Decimal newValue;
 
     /**
      * Create new permission for change some numeric field.
@@ -48,10 +49,10 @@ public class ChangeNumberPermission extends Permission {
 
     protected void initFromParams() {
         fieldName = params.getStringOrThrow("field_name");
-        minValue = params.getInt("min_value", 0);
-        minStep = params.getInt("min_step", Integer.MIN_VALUE);
-        maxStep = params.getInt("max_step", Integer.MAX_VALUE);
-        maxValue = params.getInt("max_value", Integer.MAX_VALUE);
+        minValue = new Decimal(params.getString("min_value", "0"));
+        minStep = new Decimal(params.getString("min_step", ""+Integer.MIN_VALUE));
+        maxStep = new Decimal(params.getString("max_step", ""+Integer.MAX_VALUE));
+        maxValue = new Decimal(params.getString("max_value", ""+Integer.MAX_VALUE));
     }
 
     @Override
@@ -82,12 +83,13 @@ public class ChangeNumberPermission extends Permission {
             if( !(delta instanceof ChangedItem) )
                 return;
             try {
-                int valueDelta = (int)delta.newValue() - (int)delta.oldValue();
-                if( valueDelta < minStep || valueDelta > maxStep )
+                Decimal valueDelta = new Decimal(delta.newValue().toString());
+                valueDelta = valueDelta.subtract(new Decimal(delta.oldValue().toString()));
+                if (valueDelta.compareTo(minStep) == -1 || valueDelta.compareTo(maxStep) == 1)
                     return;
                 else {
-                    newValue = (int) delta.newValue();
-                    if( newValue > maxValue || newValue < minValue )
+                    newValue = new Decimal(delta.newValue().toString());
+                    if (newValue.compareTo(maxValue) == 1 || newValue.compareTo(minValue) == -1)
                         return;
                     else {
                         dataChanges.remove(fieldName);
