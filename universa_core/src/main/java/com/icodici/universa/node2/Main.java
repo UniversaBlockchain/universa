@@ -250,6 +250,7 @@ public class Main {
             if (hookThread != null)
                 Runtime.getRuntime().removeShutdownHook(hookThread);
 //            network.close();
+            ledger.close();
             log("shutting down");
             network.shutdown();
             clientHTTPServer.shutdown();

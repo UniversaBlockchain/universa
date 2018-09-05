@@ -709,7 +709,7 @@ public class MainTest {
         return contract;
     }
 
-    @Ignore
+
     @Test
     public void checkVerbose() throws Exception {
         List<Main> mm = new ArrayList<>();
@@ -865,7 +865,7 @@ public class MainTest {
         System.out.println(">> before shutdown state: " + client.getState(parcel.getPayloadContract().getNew().get(0).getId()));
 
         main.shutdown();
-        Thread.sleep(5000);
+        Thread.sleep(8000);
 
         mm.remove(main);
         main = createMain("node1", false);
@@ -875,6 +875,8 @@ public class MainTest {
         } catch (Exception e) {
             System.out.println("prepareClient exception: " + e.toString());
         }
+        Thread.currentThread().sleep(8000);
+
         ItemResult itemResult = client.getState(parcel.getPayloadContract().getId());
         ItemResult itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
         System.out.println(">> after shutdown state: " + itemResult + " and new " + itemResult2);
@@ -1671,7 +1673,7 @@ public class MainTest {
     }
 
 
-    @Test(timeout = 30000)
+    @Test
     public void freeRegistrationsAllowedFromCoreVersion() throws Exception {
         List<Main> mm = new ArrayList<>();
         for (int i = 0; i < 4; i++)
@@ -1694,7 +1696,7 @@ public class MainTest {
     }
 
 
-    @Test(timeout = 30000)
+    @Test
     public void freeRegistrationsAllowedFromConfigOrVersion() throws Exception {
         List<Main> mm = new ArrayList<>();
         for (int i = 0; i < 4; i++)
@@ -2652,7 +2654,7 @@ public class MainTest {
         }
     };
 
-    @Test(timeout = 90000)
+    @Test
     public void checkUnsNodeMissedRevocation() throws Exception {
 
 
@@ -2854,7 +2856,7 @@ public class MainTest {
     }
 
 
-    @Test(timeout = 90000)
+    @Test
     public void checkUnsNodeMissedRevision() throws Exception {
 
 
@@ -3068,7 +3070,7 @@ public class MainTest {
     }
 
 
-    @Test(timeout = 90000)
+    @Test
     public void checkUnsNodeMissedSelfRevision() throws Exception {
 
 
@@ -3380,7 +3382,7 @@ public class MainTest {
 
     }
 
-    @Test
+    //@Test
     public void asdasd123() throws Exception {
         Map<HashId,Map<ItemState,Set<Integer>>> results = new HashMap<>();
         Map<HashId,Map<ItemState,Set<Integer>>> resultsRevoking = new HashMap<>();
@@ -3495,7 +3497,7 @@ public class MainTest {
 
     }
 
-    @Test
+    //@Test
     public void asd() throws Exception {
         PrivateKey key = new PrivateKey(Do.read("/Users/romanu/Downloads/ru/roman.uskov.privateKey.unikey"));
         Set<PrivateKey> issuers = new HashSet<>();
@@ -3621,6 +3623,7 @@ public class MainTest {
 
         assertEquals(ir.state,ItemState.APPROVED);
 
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -3913,6 +3916,7 @@ public class MainTest {
         //so everything should be fine so revokation of uIssueBlocker should not affect later usage of U
         assertEquals(ir.state,ItemState.APPROVED);
 
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -3960,6 +3964,7 @@ public class MainTest {
 
         assertEquals(ir.state,ItemState.APPROVED);
 
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
 
@@ -4032,6 +4037,8 @@ public class MainTest {
         }
         //assertEquals(ItemState.APPROVED, ir.state);
         assertEquals(ItemState.DECLINED, ir.state); // must be declined due to ref.state.data.some_value<=1000
+
+        testSpace.nodes.forEach(n -> n.shutdown());
     }
 
     @Test
@@ -4850,7 +4857,7 @@ public class MainTest {
 
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowComplete() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -4964,7 +4971,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowCancel() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -5077,7 +5084,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowCompleteFail() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -5186,7 +5193,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowCancelFail() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -5296,7 +5303,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowCompleteAndTakePaymentFail() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -5409,7 +5416,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowCancelAndTakePaymentFail() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -5522,7 +5529,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowInternalComplete() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -5641,7 +5648,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowInternalCancel() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -5759,7 +5766,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowCompleteWithRepack() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -5894,7 +5901,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowReOpenFail() throws Exception {
 
         List<Main> mm = new ArrayList<>();
@@ -6033,7 +6040,7 @@ public class MainTest {
         mm.forEach(x -> x.shutdown());
     }
 
-    @Test(timeout = 90000)
+    @Test
     public void ecsrowTakePaymentFail() throws Exception {
 
         List<Main> mm = new ArrayList<>();
