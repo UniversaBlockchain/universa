@@ -1049,6 +1049,38 @@ public class CLIMainTest {
     }
 
     @Test
+    public void updateSimpleFields() throws Exception {
+        String field1 = "definition.data.field1";
+        String field2 = "definition.data.field2";
+        String field3 = "definition.data.field3";
+        String field4 = "state.data.field4";
+        String field5 = "state.data.field5";
+        String field6 = "state.data.field6";
+        String value1 = "string_field1";
+        String value2 = "[\"qwerty\", \"asdfgh\", \"zxcvbn\"]";
+        String value3 = "{obj: data}";
+        String value4 = "-10393029.2329082";
+        String value5 = "45303893488122293029328493482478274382898910210012391093019102817384578732318029381202198312029318";
+        String value6 = "\"45303893488122293029328493482478274382898910210012391093019102817384578732318029381202198312029318\"";
+        callMain(
+                "-e", basePath + "contract_to_export.unicon", "-pretty",
+                "-set", field1, "-value", value1,
+                "-set", field2, "-value", value2,
+                "-set", field3, "-value", value3,
+                "-set", field4, "-value", value4,
+                "-set", field5, "-value", value5,
+                "-set", field6, "-value", value6);
+        System.out.println(output);
+        assertTrue (output.indexOf("update field " + field1 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field3 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field4 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field5 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field6 + " ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
     public void exportWrongFields() throws Exception {
         String field = "definition.wrong";
         callMain(

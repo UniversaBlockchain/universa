@@ -28,6 +28,7 @@ import net.sergeych.boss.Boss;
 import net.sergeych.collections.Multimap;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
+import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.Ut;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -2573,46 +2574,139 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
      */
     public void set(String name, Binder value) {
         if (name.startsWith("definition.")) {
-            name = name.substring(11);
-            switch (name) {
+            String subname = name.substring(11);
+            switch (subname) {
                 case "expires_at":
-                    state.expiresAt = value.getZonedDateTimeOrThrow("data");
+                    definition.expiresAt = value.getZonedDateTimeOrThrow("data");
                     return;
                 case "created_at":
                     definition.createdAt = value.getZonedDateTimeOrThrow("data");
                     return;
-                case "issuer":
-                    setRole("issuer", ((SimpleRole) value.get("data")).getKeys());
+                case "extended_type":
+                    definition.setExtendedType(value.getStringOrThrow("data"));
                     return;
-//                case "origin":
-//                    setOrigin();
-//                return;
+                case "issuer":
+                case "owner":
+                case "creator":
+                    Role role = value.getOrThrow("data");
+                    if (!role.getName().equals(subname))
+                        throw new IllegalArgumentException("Field: " + name + " not equals role name in field value");
+                    registerRole(role);
+                    return;
                 default:
-                    if (name.startsWith("data."))
-                        definition.data.set(name.substring(5), value.getOrThrow("data"));
+                    if (subname.startsWith("data."))
+                        definition.data.set(subname.substring(5), value.getOrThrow("data"));
+                    else if (subname.startsWith("references.")) {
+                        Reference ref = value.getOrThrow("data");
+                        if (!ref.getName().equals(subname.substring(11)))
+                            throw new IllegalArgumentException("Field: " + name + " not equals reference name in field value");
+                        if (ref.type != Reference.TYPE_EXISTING_DEFINITION)
+                            throw new IllegalArgumentException("Field: " + name + " contains not definition-type reference in field value");
+
+                        Reference oldRef = findReferenceByName(subname.substring(11), "definition");
+                        if (oldRef != null)
+                            removeReference(oldRef);
+
+                        addReference(ref);
+                    }
                     return;
             }
         } else if (name.startsWith("state.")) {
-            name = name.substring(6);
-            switch (name) {
-//                case "origin":
-//                    setOrigin();
-//                return;
+            String subname = name.substring(6);
+            switch (subname) {
+                case "origin":
+                    if (value.getOrThrow("data").getClass().equals(HashId.class))
+                        state.setOrigin(value.getOrThrow("data"));
+                    else if (value.getOrThrow("data").getClass().equals(String.class))
+                        state.setOrigin(new HashId(Base64u.decodeLines(value.getOrThrow("data"))));
+                    return;
                 case "created_at":
                     state.createdAt = value.getZonedDateTimeOrThrow("data");
                     return;
+                case "expires_at":
+                    state.expiresAt = value.getZonedDateTimeOrThrow("data");
+                    return;
+                case "issuer":
+                case "owner":
+                case "creator":
+                    Role role = value.getOrThrow("data");
+                    if (!role.getName().equals(subname))
+                        throw new IllegalArgumentException("Field: " + name + " not equals role name in field value");
+                    registerRole(role);
+                    return;
+                case "parent":
+                    if (value.getOrThrow("data").getClass().equals(HashId.class))
+                        state.setParent(value.getOrThrow("data"));
+                    else if (value.getOrThrow("data").getClass().equals(String.class))
+                        state.setParent(new HashId(Base64u.decodeLines(value.getOrThrow("data"))));
+                    return;
+                case "revision":
+                    state.setRevision(value.getIntOrThrow("data"));
+                    return;
+                case "branchRevision":
+                    state.setBranchNumber(value.getIntOrThrow("data"));
                 default:
-                    if (name.startsWith("data."))
-                        state.data.set(name.substring(5), value.getOrThrow("data"));
+                    if (subname.startsWith("data."))
+                        state.data.set(subname.substring(5), value.getOrThrow("data"));
+                    else if (subname.startsWith("references.")) {
+                        Reference ref = value.getOrThrow("data");
+                        if (!ref.getName().equals(subname.substring(11)))
+                            throw new IllegalArgumentException("Field: " + name + " not equals reference name in field value");
+                        if (ref.type != Reference.TYPE_EXISTING_STATE)
+                            throw new IllegalArgumentException("Field: " + name + " contains not state-type reference in field value");
+
+                        Reference oldRef = findReferenceByName(subname.substring(11), "state");
+                        if (oldRef != null)
+                            removeReference(oldRef);
+
+                        addReference(ref);
+                    }
                     return;
             }
+        } else if (name.startsWith("transactional.")) {
+            if (transactional != null) {
+                String subname = name.substring(14);
+                switch (subname) {
+                    case "id":
+                        transactional.setId(value.getStringOrThrow("data"));
+                        return;
+                    case "validUntil":
+                        transactional.setValidUntil(value.getLongOrThrow("data"));
+                        return;
+                    default:
+                        if (subname.startsWith("data."))
+                            transactional.getData().set(subname.substring(5), value.getOrThrow("data"));
+                        else if (subname.startsWith("references.")) {
+                            Reference ref = value.getOrThrow("data");
+                            if (!ref.getName().equals(subname.substring(11)))
+                                throw new IllegalArgumentException("Field: " + name + " not equals reference name in field value");
+                            if (ref.type != Reference.TYPE_TRANSACTIONAL)
+                                throw new IllegalArgumentException("Field: " + name + " contains not transactional-type reference in field value");
+
+                            Reference oldRef = findReferenceByName(subname.substring(11), "transactional");
+                            if (oldRef != null)
+                                removeReference(oldRef);
+
+                            addReference(ref);
+                        }
+                        return;
+                }
+            }
         } else switch (name) {
-//            case "id":
-//                setId();
-//                return;
-//            case "origin":
-//                setOrigin();
-//            return;
+            case "origin":
+                if (value.getOrThrow("data").getClass().equals(HashId.class))
+                    state.setOrigin(value.getOrThrow("data"));
+                else if (value.getOrThrow("data").getClass().equals(String.class))
+                    state.setOrigin(new HashId(Base64u.decodeLines(value.getOrThrow("data"))));
+                return;
+            case "issuer":
+            case "owner":
+            case "creator":
+                Role role = value.getOrThrow("data");
+                if (!role.getName().equals(name))
+                    throw new IllegalArgumentException("Field: " + name + " not equals role name in field value");
+                registerRole(role);
+                return;
         }
         throw new IllegalArgumentException("bad root: " + name);
     }
