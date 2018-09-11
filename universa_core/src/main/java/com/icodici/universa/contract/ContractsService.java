@@ -1941,7 +1941,7 @@ public class ContractsService {
      * @param keys is own private keys, which are set as owner of payment contract
      * @return contract for setting unlimited requests to key
      */
-    public synchronized static Contract createContractForUnlimitKey(PublicKey key, Contract payment, int amount, Set<PrivateKey> keys) {
+    public synchronized static Contract createRateLimitDisablingContract(PublicKey key, Contract payment, int amount, Set<PrivateKey> keys) {
 
         Contract unlimitContract = payment.createRevision(keys);
 

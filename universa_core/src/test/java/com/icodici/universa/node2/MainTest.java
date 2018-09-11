@@ -4607,8 +4607,8 @@ public class MainTest {
                 " please call again after a while");
 
         // set unlimited requests
-        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
-                myKey.getPublicKey(), payment, main.config.getUnlimitPayment(), keys);
+        Contract unlimitContract = ContractsService.createRateLimitDisablingContract(
+                myKey.getPublicKey(), payment, main.config.getRateLimitDisablingPayment(), keys);
 
         unlimitContract.check();
         unlimitContract.traceErrors();
@@ -4666,13 +4666,13 @@ public class MainTest {
 
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
 
-        //set unlimited requests,amount < 5
-        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
+        //set unlimited requests,amount < 5 (main.config.getRateLimitDisablingPayment())
+        Contract unlimitContract = ContractsService.createRateLimitDisablingContract(
                 myKey.getPublicKey(), payment, 1, keys);
 
-        //set unlimited requests,amount > 5
-        Contract unlimitContract1 = ContractsService.createContractForUnlimitKey(
-                myKey.getPublicKey(), payment, 6, keys);
+        //set unlimited requests,amount > 5 (main.config.getRateLimitDisablingPayment())
+        Contract unlimitContract1 = ContractsService.createRateLimitDisablingContract(
+                myKey.getPublicKey(), payment, main.config.getRateLimitDisablingPayment() + 1, keys);
 
         unlimitContract.check();
         unlimitContract.traceErrors();
@@ -4751,8 +4751,8 @@ public class MainTest {
 
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
 
-        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
-                    myKey.getPublicKey(), payment, 5, keys);
+        Contract unlimitContract = ContractsService.createRateLimitDisablingContract(
+                    myKey.getPublicKey(), payment, main.config.getRateLimitDisablingPayment(), keys);
 
         // get unlimited key
         byte[] packedKey = unlimitContract.getTransactional().getData().getBinary("unlimited_key");
@@ -4842,8 +4842,8 @@ public class MainTest {
 
         mm.forEach(x -> x.config.setIsFreeRegistrationsAllowedFromYaml(false));
 
-        Contract unlimitContract = ContractsService.createContractForUnlimitKey(
-                myKey.getPublicKey(), payment, 5, keys);
+        Contract unlimitContract = ContractsService.createRateLimitDisablingContract(
+                myKey.getPublicKey(), payment, main.config.getRateLimitDisablingPayment(), keys);
 
         client.register(unlimitContract.getPackedTransaction());
         Thread.currentThread().sleep(5000);

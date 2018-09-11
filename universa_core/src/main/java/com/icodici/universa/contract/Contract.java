@@ -618,8 +618,8 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
             int calculatedPayment = getRevoking().get(0).getStateData().getIntOrThrow("transaction_units")
                                                        - getStateData().getIntOrThrow("transaction_units");
 
-            if (calculatedPayment != config.getUnlimitPayment()) {
-                addError(Errors.FAILED_CHECK, "", "Payment for setting unlimited requests must be " + config.getUnlimitPayment() + "U");
+            if (calculatedPayment != config.getRateLimitDisablingPayment()) {
+                addError(Errors.FAILED_CHECK, "", "Payment for setting unlimited requests must be " + config.getRateLimitDisablingPayment() + "U");
                 return false;
             }
         }
