@@ -203,6 +203,11 @@ public class CLIMain {
         public Object deserialize(Binder binder, BiDeserializer deserializer) {
             throw new IllegalArgumentException("can't reconstruct Reference");
         }
+
+        @Override
+        public String typeName() {
+            return "Reference";
+        }
     };
 
 
@@ -4113,7 +4118,7 @@ public class CLIMain {
         static public final String SIMPLE_ROLE = "SimpleRole";
         static public final String KEY_RECORD = "KeyRecord";
         static public final String RSA_PUBLIC_KEY = "RSAPublicKey";
-        static public final String REFERENCE = "com.icodici.universa.contract.Reference";
+        static public final String REFERENCE = "Reference";
         static public final String ROLE_LINK = "RoleLink";
         static public final String CHANGE_OWNER_PERMISSION = "ChangeOwnerPermission";
         static public final String REVOKE_PERMISSION = "RevokePermission";

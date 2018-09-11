@@ -6,10 +6,7 @@ import com.icodici.universa.HashId;
 import com.icodici.universa.contract.roles.Role;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.universa.node2.Config;
-import net.sergeych.biserializer.BiDeserializer;
-import net.sergeych.biserializer.BiSerializable;
-import net.sergeych.biserializer.BiSerializer;
-import net.sergeych.biserializer.DefaultBiMapper;
+import net.sergeych.biserializer.*;
 import net.sergeych.tools.Binder;
 import net.sergeych.utils.Base64u;
 import net.sergeych.utils.Bytes;
@@ -22,6 +19,7 @@ import java.util.*;
 import static com.icodici.universa.contract.Reference.conditionsModeType.all_of;
 import static com.icodici.universa.contract.Reference.conditionsModeType.any_of;
 
+@BiType(name = "Reference")
 public class Reference implements BiSerializable {
 
     public enum conditionsModeType {

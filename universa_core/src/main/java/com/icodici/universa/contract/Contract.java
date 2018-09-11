@@ -2618,7 +2618,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     if (value.getOrThrow("data").getClass().equals(HashId.class))
                         state.setOrigin(value.getOrThrow("data"));
                     else if (value.getOrThrow("data").getClass().equals(String.class))
-                        state.setOrigin(new HashId(Base64u.decodeLines(value.getOrThrow("data"))));
+                        state.setOrigin(new HashId(Base64u.decodeCompactString(value.getOrThrow("data"))));
                     return;
                 case "created_at":
                     state.createdAt = value.getZonedDateTimeOrThrow("data");
@@ -2638,7 +2638,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                     if (value.getOrThrow("data").getClass().equals(HashId.class))
                         state.setParent(value.getOrThrow("data"));
                     else if (value.getOrThrow("data").getClass().equals(String.class))
-                        state.setParent(new HashId(Base64u.decodeLines(value.getOrThrow("data"))));
+                        state.setParent(new HashId(Base64u.decodeCompactString(value.getOrThrow("data"))));
                     return;
                 case "revision":
                     state.setRevision(value.getIntOrThrow("data"));
@@ -2697,7 +2697,7 @@ public class Contract implements Approvable, BiSerializable, Cloneable {
                 if (value.getOrThrow("data").getClass().equals(HashId.class))
                     state.setOrigin(value.getOrThrow("data"));
                 else if (value.getOrThrow("data").getClass().equals(String.class))
-                    state.setOrigin(new HashId(Base64u.decodeLines(value.getOrThrow("data"))));
+                    state.setOrigin(new HashId(Base64u.decodeCompactString(value.getOrThrow("data"))));
                 return;
             case "issuer":
             case "owner":
