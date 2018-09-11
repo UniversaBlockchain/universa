@@ -1937,7 +1937,7 @@ public class ContractsService {
      *
      * @param key is key for setting unlimited requests
      * @param payment is approved contract with "U" belongs to you
-     * @param amount is number of "U" you want to spend to set unlimited requests for key; get by {@link Config#getUnlimitPayment()}
+     * @param amount is number of "U" you want to spend to set unlimited requests for key; get by {@link Config#getRateLimitDisablingPayment()}
      * @param keys is own private keys, which are set as owner of payment contract
      * @return contract for setting unlimited requests to key
      */
