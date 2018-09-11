@@ -203,6 +203,11 @@ public class CLIMain {
         public Object deserialize(Binder binder, BiDeserializer deserializer) {
             throw new IllegalArgumentException("can't reconstruct Reference");
         }
+
+        @Override
+        public String typeName() {
+            return "Reference";
+        }
     };
 
 
@@ -3207,8 +3212,8 @@ public class CLIMain {
         for (String fieldName : fields.keySet()) {
             report("update field: " + fieldName + " -> " + fields.get(fieldName));
 
-            Binder binder = new Binder();
             Binder data = null;
+            Object obj = null;
 
             try {
                 XStream xstream = new XStream(new DomDriver());
@@ -3216,27 +3221,43 @@ public class CLIMain {
                 xstream.alias(fieldName, Binder.class);
                 data = Binder.convertAllMapsToBinders(xstream.fromXML(fields.get(fieldName)));
             } catch (Exception xmlEx) {
-//                xmlEx.printStackTrace();
                 try {
                     Gson gson = new GsonBuilder().create();
-                    binder = Binder.convertAllMapsToBinders(gson.fromJson(fields.get(fieldName), Binder.class));
-                    data = (Binder) data.get(fieldName);
+                    data = Binder.convertAllMapsToBinders(gson.fromJson(fields.get(fieldName), Binder.class));
+                    if (data.containsKey(fieldName))
+                        data = (Binder) data.get(fieldName);
                 } catch (Exception jsonEx) {
-//                    jsonEx.printStackTrace();
                     try {
                         Yaml yaml = new Yaml();
-                        data = Binder.convertAllMapsToBinders(yaml.load(fields.get(fieldName)));
-                        data = (Binder) data.get(fieldName);
+                        Object loaded = Binder.convertAllMapsToBinders(yaml.load(fields.get(fieldName)));
+                        if (loaded.getClass().equals(Binder.class)) {
+                            data = (Binder) loaded;
+                            if (data.containsKey(fieldName))
+                                data = (Binder) data.get(fieldName);
+                        } else
+                            obj = loaded;
                     } catch (Exception yamlEx) {
-                        yamlEx.printStackTrace();
+                        try {
+                            obj = fields.get(fieldName);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            xmlEx.printStackTrace();
+                            jsonEx.printStackTrace();
+                            yamlEx.printStackTrace();
+                        }
                     }
                 }
             }
 
-            if (data != null) {
-                BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
+            if ((data != null) || (obj != null)) {
+                Binder binder = new Binder();
 
-                binder.put("data", bm.deserialize(data));
+                if (data != null) {
+                    BiDeserializer bm = DefaultBiMapper.getInstance().newDeserializer();
+                    binder.put("data", bm.deserialize(data));
+                }
+                else
+                    binder.put("data", obj);
 
                 contract.set(fieldName, binder);
 
@@ -4097,7 +4118,7 @@ public class CLIMain {
         static public final String SIMPLE_ROLE = "SimpleRole";
         static public final String KEY_RECORD = "KeyRecord";
         static public final String RSA_PUBLIC_KEY = "RSAPublicKey";
-        static public final String REFERENCE = "com.icodici.universa.contract.Reference";
+        static public final String REFERENCE = "Reference";
         static public final String ROLE_LINK = "RoleLink";
         static public final String CHANGE_OWNER_PERMISSION = "ChangeOwnerPermission";
         static public final String REVOKE_PERMISSION = "RevokePermission";

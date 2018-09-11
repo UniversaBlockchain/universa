@@ -290,10 +290,6 @@ public class SimpleRole extends Role {
         }
     }
 
-    static {
-        DefaultBiMapper.registerClass(SimpleRole.class);
-    }
-
     /**
      * Clone the role with a different names, using the same (not copied) key records, in the new copy of the container.
      * So, it is safe to edit cloned keyRecords, while keys itself are not copied and are packed with Boss effeciently.

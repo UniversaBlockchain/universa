@@ -12,6 +12,7 @@ import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
 import com.icodici.universa.Decimal;
 import com.icodici.universa.Errors;
+import com.icodici.universa.HashId;
 import com.icodici.universa.contract.Contract;
 import com.icodici.universa.contract.KeyRecord;
 import com.icodici.universa.contract.ContractsService;
@@ -562,7 +563,7 @@ public class CLIMainTest {
     @Test
     public void exportAsYamlTest() throws Exception {
         callMain(
-                "-e", basePath + "contract_to_export.unicon", "-as", "yaml");
+                "-e", basePath + "contract_to_export.unicon", "-as", "yaml", "-set", "origin", "-value", HashId.createRandom().toBase64String());
         System.out.println(output);
         assertTrue (output.indexOf("export as yaml ok") >= 0);
         assertEquals(0, errors.size());
@@ -1046,6 +1047,303 @@ public class CLIMainTest {
         assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
         assertTrue (output.indexOf("contract expires at " + DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(zdt)) >= 0);
         assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void updateDataFields() throws Exception {
+        String field1 = "definition.data.field1";
+        String field2 = "definition.data.field2";
+        String field3 = "definition.data.field3";
+        String field4 = "state.data.field4";
+        String field5 = "state.data.field5";
+        String field6 = "state.data.field6";
+        String value1 = "string_field1";
+        String value2 = "[\"qwerty\", \"asdfgh\", \"zxcvbn\"]";
+        String value3 = "{obj: data}";
+        String value4 = "-10393029.2329082";
+        String value5 = "45303893488122293029328493482478274382898910210012391093019102817384578732318029381202198312029318";
+        String value6 = "\"45303893488122293029328493482478274382898910210012391093019102817384578732318029381202198312029318\"";
+        callMain(
+                "-e", basePath + "contract_to_export.unicon", "-pretty",
+                "-set", field1, "-value", value1,
+                "-set", field2, "-value", value2,
+                "-set", field3, "-value", value3,
+                "-set", field4, "-value", value4,
+                "-set", field5, "-value", value5,
+                "-set", field6, "-value", value6);
+        System.out.println(output);
+        assertTrue (output.indexOf("update field " + field1 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field3 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field4 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field5 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field6 + " ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void updateSpecialFields() throws Exception {
+        String field1 = "definition.extended_type";
+        String field2 = "state.created_at";
+        String field3 = "state.expires_at";
+        String field4 = "state.creator";
+        String field5 = "state.revision";
+        String field6 = "state.branchRevision";
+        String field7 = "transactional.id";
+        String field8 = "transactional.validUntil";
+        String field9 = "state.parent";
+        String field10 = "origin";
+        String value1 = "UNS1";
+        String value2 = "seconds: " + ZonedDateTime.now().toEpochSecond() + "\n__type: unixtime";
+        String value3 = "{\"seconds\":" + ZonedDateTime.now().plusMonths(3).toEpochSecond() + ",\"__type\":\"unixtime\"}";
+        String value4 = "      {\"keys\": [\n" +
+                "        {\n" +
+                "          \"name\": \"Universa\",\n" +
+                "          \"key\": {\n" +
+                "            \"__type\": \"RSAPublicKey\",\n" +
+                "            \"packed\": {\n" +
+                "              \"__type\": \"binary\",\n" +
+                "              \"base64\": \"HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0W\\nsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOyta\\nICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJ\\nUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/na\\nIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ\\n/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzF\\nbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GL\\ny+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKx\\nBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6\\nDgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c\\u003d\"\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"__type\": \"KeyRecord\"\n" +
+                "        }\n" +
+                "      ],\n" +
+                "      \"__type\": \"SimpleRole\",\n" +
+                "      \"name\": \"creator\"\n" +
+                "    }";
+        String value5 = "1";
+        String value6 = "8";
+        String value7 = HashId.createRandom().toBase64String();
+        String value8 = "" + ZonedDateTime.now().plusMonths(3).toEpochSecond();
+        String value9 = "    composite3:\n" +
+                "      __type: binary\n" +
+                "      base64: |-\n" +
+                "        eP4oXmKwyUDmvgFzjHkjRO+/3g4KUHsn8gpXRcPSG1yRbMjAc4lOKf+h9a+2pFTdp2WKUiMA\n" +
+                "        fxVyjDWXOwFLPmSJHGAiDcRVv7xiAAuo4pXL3cc92qUjymG17qtVxUFo\n" +
+                "    __type: HashId";
+        String value10 = HashId.createRandom().toBase64String();     // HashId as String
+        callMain(
+                "-e", basePath + "contract_to_export.unicon", "-pretty",
+                "-set", field1, "-value", value1,
+                "-set", field2, "-value", value2,
+                "-set", field3, "-value", value3,
+                "-set", field4, "-value", value4,
+                "-set", field5, "-value", value5,
+                "-set", field6, "-value", value6,
+                "-set", field7, "-value", value7,
+                "-set", field8, "-value", value8,
+                "-set", field9, "-value", value9,
+                "-set", field10, "-value", value10);
+        System.out.println(output);
+        assertTrue (output.indexOf("update field " + field1 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field3 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field4 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field5 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field6 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field7 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field8 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field9 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field10 + " ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void updateReferencesFields() throws Exception {
+        String field1 = "definition.references.ref1";
+        String field2 = "state.references.ref2";
+        String field3 = "transactional.references.ref3";
+        String field4 = "definition.references.ref4";
+        String field5 = "state.references.ref5";
+        String field6 = "transactional.references.ref6";
+        String value1 = "    signed_by: []\n" +
+                "    roles: []\n" +
+                "    __type: Reference\n" +
+                "    name: ref1\n" +
+                "    where:\n" +
+                "      all_of:\n" +
+                "      - this.definition.issuer==this.state.issuer\n" +
+                "    type: 2\n" +
+                "    fields: []\n" +
+                "    transactional_id: ''\n" +
+                "    required: true";
+        String value2 = "    signed_by: []\n" +
+                "    roles: []\n" +
+                "    __type: Reference\n" +
+                "    name: ref2\n" +
+                "    where:\n" +
+                "      any_of:\n" +
+                "      - this.definition.issuer defined\n" +
+                "    type: 3\n" +
+                "    fields: []\n" +
+                "    transactional_id: ''\n" +
+                "    required: true";
+        String value3 = "    signed_by: []\n" +
+                "    roles: []\n" +
+                "    __type: Reference\n" +
+                "    name: ref3\n" +
+                "    where:\n" +
+                "      any_of:\n" +
+                "      - this.definition.issuer defined\n" +
+                "    type: 1\n" +
+                "    fields: []\n" +
+                "    transactional_id: ''\n" +
+                "    required: true";
+        String value4 = "      <definition.references.ref4>\n" +
+                "        <Reference>\n" +
+                "          <signed__by isArray=\"true\"/>\n" +
+                "          <roles isArray=\"true\"/>\n" +
+                "          <name>ref4</name>\n" +
+                "          <where>\n" +
+                "            <all__of isArray=\"true\">\n" +
+                "              <item>this.definition.issuer==this.state.issuer</item>\n" +
+                "            </all__of>\n" +
+                "          </where>\n" +
+                "          <type>2</type>\n" +
+                "          <fields isArray=\"true\"/>\n" +
+                "          <transactional__id></transactional__id>\n" +
+                "          <required>true</required>\n" +
+                "        </Reference>\n" +
+                "      </definition.references.ref4>";
+        String value5 = "{\"signed_by\":[],\"roles\":[],\"__type\":\"Reference\",\"name\":\"ref5\",\"where\":{\"all_of\":[\"this.definition.issuer\\u003d\\u003dthis.state.issuer\",\"this.owner defined\",\"this.state.data.int_val\\u003e37\",\"this.state.data.string_val\\u003d\\u003d\\\"\\u003d\\u003dDATA\\u003d\\u003d\\\"\",\"false!\\u003dthis.state.data.boolean_val\",\"this.state.data.long_val\\u003c\\u003d1540809613457836\",\"-67029039209309103.09204932\\u003ethis.state.data.double_val\",\"jkdsjdksjakjl12901ndasds_ksdokaoss!\\u003dthis.state.data.string_val\",\"3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298372939\\u003d\\u003dthis.state.data.bigdecimal_val::number\",\"this.state.data.bigdecimal_val::number\\u003e\\u003d\\\"123980111893281903812098390128320192830219821321321321123910849732682917138291\\\"\"]},\"type\":3,\"fields\":[],\"transactional_id\":\"\",\"required\":true}";
+        String value6 = "      {\n" +
+                "        \"signed_by\": [],\n" +
+                "        \"roles\": [],\n" +
+                "        \"__type\": \"Reference\",\n" +
+                "        \"name\": \"ref6\",\n" +
+                "        \"where\": {\n" +
+                "          \"any_of\": [\n" +
+                "            \"this.definition.issuer defined\",\n" +
+                "            \"inherits this.state.references.test_ref1\",\n" +
+                "            {\n" +
+                "              \"all_of\": [\n" +
+                "                \"this.state.data.int_val\\u003e37\",\n" +
+                "                {\n" +
+                "                  \"any_of\": [\n" +
+                "                    \"this.state.data.string_val\\u003d\\u003d\\\"\\u003d\\u003dDATA\\u003d\\u003d\\\"\",\n" +
+                "                    \"false!\\u003dthis.state.data.boolean_val\",\n" +
+                "                    {\n" +
+                "                      \"all_of\": [\n" +
+                "                        \"this.state.data.long_val\\u003c\\u003d1540809613457836\",\n" +
+                "                        \"-67029039209309103.09204932\\u003ethis.state.data.double_val\",\n" +
+                "                        {\n" +
+                "                          \"any_of\": [\n" +
+                "                            \"jkdsjdksjakjl12901ndasds_ksdokaoss!\\u003dthis.state.data.string_val\",\n" +
+                "                            \"3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298372939\\u003d\\u003dthis.state.data.bigdecimal_val::number\",\n" +
+                "                            \"this.state.data.bigdecimal_val::number\\u003e\\u003d\\\"123980111893281903812098390128320192830219821321321321123910849732682917138291\\\"\"\n" +
+                "                          ]\n" +
+                "                        }\n" +
+                "                      ]\n" +
+                "                    }\n" +
+                "                  ]\n" +
+                "                }\n" +
+                "              ]\n" +
+                "            },\n" +
+                "            {\n" +
+                "              \"all_of\": [\n" +
+                "                \"this.state.data.long_val\\u003c\\u003d1540809613457836\",\n" +
+                "                \"-67029039209309103.09204932\\u003ethis.state.data.double_val\",\n" +
+                "                {\n" +
+                "                  \"any_of\": [\n" +
+                "                    \"jkdsjdksjakjl12901ndasds_ksdokaoss!\\u003dthis.state.data.string_val\",\n" +
+                "                    \"3242905403309310398882034989390309091424678928328433888839898041300111129094320492094029007845298372939\\u003d\\u003dthis.state.data.bigdecimal_val::number\",\n" +
+                "                    \"this.state.data.bigdecimal_val::number\\u003e\\u003d\\\"123980111893281903812098390128320192830219821321321321123910849732682917138291\\\"\"\n" +
+                "                  ]\n" +
+                "                }\n" +
+                "              ]\n" +
+                "            }\n" +
+                "          ]\n" +
+                "        },\n" +
+                "        \"type\": 1,\n" +
+                "        \"fields\": [],\n" +
+                "        \"transactional_id\": \"\",\n" +
+                "        \"required\": true\n" +
+                "      }";
+        callMain(
+                "-e", basePath + "contract_to_export.unicon", "-pretty",
+                "-set", field1, "-value", value1,
+                "-set", field2, "-value", value2,
+                "-set", field3, "-value", value3,
+                "-set", field4, "-value", value4,
+                "-set", field5, "-value", value5,
+                "-set", field6, "-value", value6);
+        System.out.println(output);
+        assertTrue (output.indexOf("update field " + field1 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field2 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field3 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field4 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field5 + " ok") >= 0);
+        assertTrue (output.indexOf("update field " + field6 + " ok") >= 0);
+        assertEquals(0, errors.size());
+    }
+
+    @Test
+    public void updateWrongNameRoleFields() throws Exception {
+        String field = "owner";
+        String value = "      {\"keys\": [\n" +
+                "        {\n" +
+                "          \"name\": \"Universa\",\n" +
+                "          \"key\": {\n" +
+                "            \"__type\": \"RSAPublicKey\",\n" +
+                "            \"packed\": {\n" +
+                "              \"__type\": \"binary\",\n" +
+                "              \"base64\": \"HggcAQABxAACzHE9ibWlnK4RzpgFIB4jIg3WcXZSKXNAqOTYUtGXY03xJSwpqE+y/HbqqE0W\\nsmcAt5a0F5H7bz87Uy8Me1UdIDcOJgP8HMF2M0I/kkT6d59ZhYH/TlpDcpLvnJWElZAfOyta\\nICE01bkOkf6Mz5egpToDEEPZH/RXigj9wkSXkk43WZSxVY5f2zaVmibUZ9VLoJlmjNTZ+utJ\\nUZi66iu9e0SXupOr/+BJL1Gm595w32Fd0141kBvAHYDHz2K3x4m1oFAcElJ83ahSl1u85/na\\nIaf2yuxiQNz3uFMTn0IpULCMvLMvmE+L9io7+KWXld2usujMXI1ycDRw85h6IJlPcKHVQKnJ\\n/4wNBUveBDLFLlOcMpCzWlO/D7M2IyNa8XEvwPaFJlN1UN/9eVpaRUBEfDq6zi+RC8MaVWzF\\nbNi913suY0Q8F7ejKR6aQvQPuNN6bK6iRYZchxe/FwWIXOr0C0yA3NFgxKLiKZjkd5eJ84GL\\ny+iD00Rzjom+GG4FDQKr2HxYZDdDuLE4PEpYSzEB/8LyIqeM7dSyaHFTBII/sLuFru6ffoKx\\nBNk/cwAGZqOwD3fkJjNq1R3h6QylWXI/cSO9yRnRMmMBJwalMexOc3/kPEEdfjH/GcJU0Mw6\\nDgoY8QgfaNwXcFbBUvf3TwZ5Mysf21OLHH13g8gzREm+h8c\\u003d\"\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"__type\": \"KeyRecord\"\n" +
+                "        }\n" +
+                "      ],\n" +
+                "      \"__type\": \"SimpleRole\",\n" +
+                "      \"name\": \"issuer\"\n" +
+                "    }";
+        callMain(
+                "-e", basePath + "contract_to_export.unicon", "-pretty",
+                "-set", field, "-value", value);
+        System.out.println(output);
+        assertTrue (output.indexOf("Field: " + field + " not equals role name in field value") >= 0);
+    }
+
+    @Test
+    public void updateWrongNameReferencesFields() throws Exception {
+        String field = "definition.references.ref1";
+        String value = "    signed_by: []\n" +
+                "    roles: []\n" +
+                "    __type: Reference\n" +
+                "    name: notref1\n" +
+                "    where:\n" +
+                "      all_of:\n" +
+                "      - this.definition.issuer==this.state.issuer\n" +
+                "    type: 2\n" +
+                "    fields: []\n" +
+                "    transactional_id: ''\n" +
+                "    required: true";
+        callMain(
+                "-e", basePath + "contract_to_export.unicon", "-pretty",
+                "-set", field, "-value", value);
+        System.out.println(output);
+        assertTrue (output.indexOf("Field: " + field + " not equals reference name in field value") >= 0);
+    }
+
+    @Test
+    public void updateWrongTypeReferencesFields() throws Exception {
+        String field = "state.references.ref2";
+        String value = "    signed_by: []\n" +
+                "    roles: []\n" +
+                "    __type: Reference\n" +
+                "    name: ref2\n" +
+                "    where:\n" +
+                "      any_of:\n" +
+                "      - this.definition.issuer defined\n" +
+                "    type: 1\n" +
+                "    fields: []\n" +
+                "    transactional_id: ''\n" +
+                "    required: true";
+        callMain(
+                "-e", basePath + "contract_to_export.unicon", "-pretty",
+                "-set", field, "-value", value);
+        System.out.println(output);
+        assertTrue (output.indexOf("Field: " + field + " contains not state-type reference in field value") >= 0);
     }
 
     @Test
