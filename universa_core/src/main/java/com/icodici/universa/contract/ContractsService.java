@@ -997,8 +997,8 @@ public class ContractsService {
         cd.setExpiresAt(slotContract.getCreatedAt().plusMonths(60));
 
         Binder data = new Binder();
-        data.set("name", "Default notary");
-        data.set("description", "Default notary description.");
+        data.set("name", "Default slot");
+        data.set("description", "Default slot description.");
         cd.setData(data);
 
         SimpleRole issuerRole = new SimpleRole("issuer");
