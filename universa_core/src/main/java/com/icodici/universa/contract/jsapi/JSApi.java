@@ -37,6 +37,10 @@ public class JSApi {
         return new JSApiPermissionBuilder();
     }
 
+    public JSApiReferenceBuilder getReferenceBuilder() {
+        return new JSApiReferenceBuilder();
+    }
+
     public JSApiSharedFolders getSharedFolders() {
         if (scriptParameters.checkPermission(JSApiScriptParameters.ScriptPermissions.PERM_SHARED_FOLDERS))
             return new JSApiSharedFolders(execOptions);

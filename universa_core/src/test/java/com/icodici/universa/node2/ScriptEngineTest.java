@@ -1360,4 +1360,26 @@ public class ScriptEngineTest {
         System.out.println(res);
     }
 
+    @Test
+    public void references() throws Exception {
+        Contract contract = new Contract(TestKeys.privateKey(0));
+        String js = "";
+        js += "print('references');";
+        js += "var ref = jsApi.getReferenceBuilder().createReference('EXISTING_STATE');";
+        js += "ref.setConditions({'all_of':['ref.issuer=="+TestKeys.publicKey(1).getShortAddress().toString()+"']});";
+        js += "jsApi.getCurrentContract().addReference(ref);";
+        contract.getState().setJS(js.getBytes(), "client script.js", new JSApiScriptParameters());
+        contract.seal();
+        contract = Contract.fromPackedTransaction(contract.getPackedTransaction());
+
+        Contract batchContract = new Contract(TestKeys.privateKey(3));
+        batchContract.addNewItems(contract);
+        batchContract.seal();
+        assertTrue(batchContract.check());
+        contract.execJS(new JSApiExecOptions(), js.getBytes());
+        contract.seal();
+        batchContract.seal();
+        assertFalse(batchContract.check());
+    }
+
 }

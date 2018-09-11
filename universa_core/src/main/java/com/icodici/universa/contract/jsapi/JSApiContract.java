@@ -102,6 +102,10 @@ public class JSApiContract {
         this.currentContract.addPermission(permission.extractPermission(new JSApiAccessor()));
     }
 
+    public void addReference(JSApiReference reference) {
+        this.currentContract.addReference(reference.extractReference(new JSApiAccessor()));
+    }
+
     /**
      * Extracts instance of {@link Contract} from instance of {@link JSApiContract}.
      */
