@@ -19,9 +19,14 @@ import com.icodici.universa.contract.roles.RoleLink;
 import com.icodici.universa.contract.roles.SimpleRole;
 import com.icodici.universa.contract.services.*;
 import com.icodici.universa.node2.Config;
+import net.sergeych.biserializer.BossBiMapper;
 import net.sergeych.tools.Binder;
 import com.icodici.universa.contract.permissions.*;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.*;
 
@@ -841,7 +846,7 @@ public class ContractsService {
     /**
      * Creates a share contract for given keys.
      * <br><br>
-     * The service creates a simple share contract with issuer, creator and owner roles;
+     * The service creates a simple share contract with issuer, creator and owner roles
      * with change_owner permission for owner, revoke permissions for owner and issuer and split_join permission for owner.
      * Split_join permission has by default following params: 1 for min_value, 1 for min_unit, "amount" for field_name,
      * "state.origin" for join_match_fields.
@@ -918,7 +923,7 @@ public class ContractsService {
     /**
      * Creates a simple notary contract for given keys.
      * <br><br>
-     * The service creates a notary contract with issuer, creator and owner roles;
+     * The service creates a notary contract with issuer, creator and owner roles
      * with change_owner permission for owner and revoke permissions for owner and issuer.
      * By default expires at time is set to 60 months from now.
      * <br><br>
@@ -937,6 +942,8 @@ public class ContractsService {
         Binder data = new Binder();
         data.set("name", "Default notary");
         data.set("description", "Default notary description.");
+        data.set("template_name", "NOTARY_CONTRACT");
+        data.set("holder_identifier", "default holder identifier");
         cd.setData(data);
 
         SimpleRole issuerRole = new SimpleRole("issuer");
@@ -973,6 +980,99 @@ public class ContractsService {
         return notaryContract;
     }
 
+    /**
+     * Creates a simple notary contract for given keys and attach the data to notary contract.
+     * <br><br>
+     * The service creates a notary contract with issuer, creator and owner roles
+     * with change_owner permission for owner and revoke permissions for owner and issuer.
+     * The service attach the data to notary contract.
+     * By default expires at time is set to 60 months from now.
+     * <br><br>
+     *
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys is owner public keys.
+     * @param filePaths is path to data file.
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createNotaryContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys,
+                                                             List<String> filePaths) {
+        return createNotaryContract(issuerKeys, ownerKeys, filePaths, null);
+    }
+
+    /**
+     * Creates a simple notary contract for given keys, attach the data file to notary contract and attach the
+     * data file descriptions.
+     * <br><br>
+     * The service creates a notary contract with issuer, creator and owner roles
+     * with change_owner permission for owner and revoke permissions for owner and issuer.
+     * The service attach the data to notary contract and data file descriptions.
+     * By default expires at time is set to 60 months from now.
+     * <br><br>
+     *
+     * @param issuerKeys is issuer private keys.
+     * @param ownerKeys  is owner public keys.
+     * @param filePaths is path to data file.
+     * @param fileDescriptions is data file descriptions.
+     * @return signed and sealed contract, ready for register.
+     */
+    public synchronized static Contract createNotaryContract(Set<PrivateKey> issuerKeys, Set<PublicKey> ownerKeys,
+                                                             List<String> filePaths, List<String> fileDescriptions) {
+
+        Contract notaryContract = ContractsService.createNotaryContract(issuerKeys, ownerKeys);
+
+        if ((filePaths == null) || filePaths.isEmpty())
+            return notaryContract;
+
+        Binder data = notaryContract.getDefinition().getData();
+        Binder files = new Binder();
+
+        Iterator<String> descriptionsIterator = null;
+
+        if ((fileDescriptions != null) && fileDescriptions.iterator().hasNext())
+            descriptionsIterator = fileDescriptions.iterator();
+
+        for (String filePath: filePaths) {
+            Binder hashBinder = new Binder();
+
+            try (FileInputStream fin = new FileInputStream(filePath)) {
+
+                // Hash calculation
+                byte[] buffer = new byte[fin.available()];
+
+                fin.read(buffer, 0, fin.available());
+                fin.close();
+
+                hashBinder = BossBiMapper.serialize(HashId.of(buffer));
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println(e.getMessage());
+            }
+
+            String fileName = Paths.get(filePath).getFileName().toString();
+
+            String line = fileName.replaceAll("[^a-zA-Zа-яА-Я0-9]", "_");
+
+            // File serialization
+            Binder fileBinder = new Binder();
+            fileBinder.set("file_name", fileName);
+            fileBinder.set("__type", "file");
+            fileBinder.set("hash_id", hashBinder);
+
+            if ((descriptionsIterator != null) && descriptionsIterator.hasNext())
+                fileBinder.set("file_description", descriptionsIterator.next());
+            else
+                fileBinder.set("file_description", "");
+
+            files.set(line, fileBinder);
+        }
+
+        data.set("files", files);
+
+        notaryContract.seal();
+        notaryContract.addSignatureToSeal(issuerKeys);
+
+        return notaryContract;
+    }
 
     /**
      * Create and return ready {@link SlotContract} contract with need permissions and values. {@link SlotContract} is

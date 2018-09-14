@@ -23,6 +23,8 @@ import com.icodici.universa.node.network.TestKeys;
 import com.icodici.universa.node2.network.Network;
 import net.sergeych.biserializer.BiDeserializer;
 import net.sergeych.biserializer.BiSerializer;
+import net.sergeych.biserializer.BossBiMapper;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.Binder;
 import net.sergeych.tools.Do;
 import net.sergeych.utils.Bytes;
@@ -1634,6 +1636,72 @@ public class BaseNetworkTest extends TestCase {
             stepaPublicKeys.add(pk.getPublicKey());
 
         Contract notaryContract = ContractsService.createNotaryContract(martyPrivateKeys, stepaPublicKeys);
+
+        notaryContract.check();
+        notaryContract.traceErrors();
+        registerAndCheckApproved(notaryContract);
+
+    }
+
+    @Test(timeout = 90000)
+    public void goodAttachDataToNotary() throws Exception {
+
+        Set<PrivateKey> martyPrivateKeys = new HashSet<>();
+        Set<PublicKey> martyPublicKeys = new HashSet<>();
+        Set<PrivateKey> stepaPrivateKeys = new HashSet<>();
+        Set<PublicKey> stepaPublicKeys = new HashSet<>();
+
+        String rootPath = "./src/test_contracts/";
+
+        List<String> fileName = new ArrayList<>();
+        List<String> fileDesc = new ArrayList<>();
+
+        fileName.add(rootPath + "/references/ReferencedConditions_contract1.yml");
+        fileName.add(rootPath + "/references/ReferencedConditions_contract2.yml");
+        fileDesc.add("ReferencedConditions_contract1.yml - description");
+        fileDesc.add("ReferencedConditions_contract2.yml - description");
+
+        martyPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/marty_mcfly.private.unikey")));
+        stepaPrivateKeys.add(new PrivateKey(Do.read(ROOT_PATH + "keys/stepan_mamontov.private.unikey")));
+
+        for (PrivateKey pk : stepaPrivateKeys)
+            stepaPublicKeys.add(pk.getPublicKey());
+
+        for (PrivateKey pk : martyPrivateKeys)
+            martyPublicKeys.add(pk.getPublicKey());
+
+        Contract notaryContract = ContractsService.createNotaryContract(martyPrivateKeys, stepaPublicKeys,
+                fileName, fileDesc);
+
+        assertTrue(notaryContract.getOwner().isAllowedForKeys(stepaPublicKeys));
+        assertTrue(notaryContract.getIssuer().isAllowedForKeys(martyPrivateKeys));
+        assertTrue(notaryContract.getCreator().isAllowedForKeys(martyPrivateKeys));
+
+        assertFalse(notaryContract.getOwner().isAllowedForKeys(martyPrivateKeys));
+        assertFalse(notaryContract.getIssuer().isAllowedForKeys(stepaPublicKeys));
+        assertFalse(notaryContract.getCreator().isAllowedForKeys(stepaPublicKeys));
+
+        assertTrue(notaryContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(notaryContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+
+        assertTrue(notaryContract.isPermitted("revoke", stepaPublicKeys));
+        assertTrue(notaryContract.isPermitted("revoke", martyPublicKeys));
+
+        assertTrue(notaryContract.isPermitted("change_owner", stepaPublicKeys));
+        assertFalse(notaryContract.isPermitted("change_owner", martyPublicKeys));
+
+        Binder files = notaryContract.getDefinition().getData().getBinder("files");
+        assertEquals(files.getBinder("ReferencedConditions_contract1_yml").getString("file_name"),
+                "ReferencedConditions_contract1.yml");
+        assertEquals(files.getBinder("ReferencedConditions_contract1_yml").getString("file_description"),
+                "ReferencedConditions_contract1.yml - description");
+        assertEquals(files.getBinder("ReferencedConditions_contract2_yml").getString("file_name"),
+                "ReferencedConditions_contract2.yml");
+        assertEquals(files.getBinder("ReferencedConditions_contract2_yml").getString("file_description"),
+                "ReferencedConditions_contract2.yml - description");
+
+        Contract notaryDeserialized = DefaultBiMapper.deserialize(BossBiMapper.serialize(notaryContract));
+        assertTrue(notaryContract.getDefinition().getData().equals(notaryDeserialized.getDefinition().getData()));
 
         notaryContract.check();
         notaryContract.traceErrors();
@@ -5231,7 +5299,8 @@ public class BaseNetworkTest extends TestCase {
         listConditionsForDefinition.add("this.state.data.account_origin == ref.state.origin"); // mirroring
 
         llcProperty.getStateData().set("account_origin", oldAccountCertificate.getOrigin().toBase64String());
-        ContractsService.addReferenceToContract(llcProperty, oldAccountCertificate, "bank_certificate", Reference.TYPE_EXISTING_DEFINITION, listConditionsForDefinition, true);
+        ContractsService.addReferenceToContract(llcProperty, oldAccountCertificate, "bank_certificate",
+                Reference.TYPE_EXISTING_DEFINITION, listConditionsForDefinition, true);
 
         registerAndCheckApproved(llcProperty);
 

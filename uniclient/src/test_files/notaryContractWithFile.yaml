@@ -1,0 +1,148 @@
+api_level: 3
+definition:
+  expires_at:
+    seconds: 1694698298
+    __type: unixtime
+  data:
+    template_name: NOTARY_CONTRACT
+    holder_identifier: default holder identifier
+    name: Default notary
+    description: Default notary description.
+    files:
+      ref_conditions_root_contract_yml:
+        file_name: ref_conditions_root_contract.yml
+        __type: file
+        file_description: ref_conditions_root_contract.yml - description
+        hash_id:
+          composite3:
+            __type: binary
+            base64: |-
+              uaPIeR4fzeEjF1dHdGzbgcYTrLVq5XY4MlzKQuvXDj97f2Xf1pkFgVazGbE6LaktwGo3TwKU
+              9Vsi49UxG4yrU+3U2iDVFrCcO6+j6oXOcFA2whg3MakeOVTZBH0XBTmp
+          __type: HashId
+      coin100_yml:
+        file_name: coin100.yml
+        __type: file
+        file_description: coin100.yml - description
+        hash_id:
+          composite3:
+            __type: binary
+            base64: |-
+              Ea942WzIGT8W66CVRcRqCwZ34SMMeoWOyr7oG9Zed4EAqHBHX+hVoOvbsjUCoA5UFS7uBsKn
+              Q5QQAOfRGzCOSWodI+68K27+RCuvHUjLV+XDYwDkAVry01OFOOLzzbrv
+          __type: HashId
+  references: []
+  permissions:
+    T1yeZQ:
+      name: revoke
+      role:
+        addresses: []
+        keys:
+        - key:
+            __type: RSAPublicKey
+            packed:
+              __type: binary
+              base64: |-
+                HggcAQABxAABp8V6gGoUG3lsypgABbqNREfvIupyjtTY8yOHOPA3RWAoIr8VLC6ypMKmlbcZ
+                o3OGx6y93BhpYphdOjv9N580044z8viFOEmxp9X6NTFCHEGVzY4YyW+i1LFwJxR2vEKhnrS4
+                dY1O3Ue9g0vbdjBpLoxgfmZQAyGPFHgb0SJiaO9SZA1IanzCu+yOeiuhJsJZeJe6tYyVnwpX
+                7ySuZhXMGhkdmkGjuuMlbscQ0bp9qHNwjvWnLheKcSeObjlhVv74ajh+CgDiQkCnsFqZZZKd
+                QGVkmBVgIhN5cMgDTx+trpATEf86GadnodGTqTUthckUvlRgOsBaWoLADpMhz69kgw==
+          __type: KeyRecord
+        __type: SimpleRole
+        name: issuer
+        anonIds: []
+      __type: RevokePermission
+    XrXXPg:
+      name: revoke
+      role:
+        addresses: []
+        keys:
+        - key:
+            __type: RSAPublicKey
+            packed:
+              __type: binary
+              base64: |-
+                HggcAQABxAABnDocMh3SxrSt3MXFDurzBpes2VXRaroQxaynpmnOO5b6j7lqR8ZxlCUUIpcu
+                0+mrSj3h4j/Pey93n0B3dTs4ec5vEGVfgKCiVoZ8AxhdxMSNbmfqJpEMwZowGmKBwWkOhuk5
+                IjLDxUlnJf717i/XlyAnQWrr+/Q2O3d19nvuvuzNcOgsmH1of2OZXgNb0vvXO4Wbuzpnyb5I
+                dFk0XE3s+vIZv9SE3/VhNi/V/1I/DhoAJoM6leEhehyelPZOFERrg6TyLgbgNSXooKOSoifT
+                VLUsjUPIAHVulgTDmuYJrIxd2kGAmX2l+rT863yAeTkR04WIDkG8NxmcdGGt2dI8HQ==
+          __type: KeyRecord
+        __type: SimpleRole
+        name: owner
+        anonIds: []
+      __type: RevokePermission
+    6wL1wZ:
+      name: change_owner
+      role:
+        addresses: []
+        keys:
+        - key:
+            __type: RSAPublicKey
+            packed:
+              __type: binary
+              base64: |-
+                HggcAQABxAABnDocMh3SxrSt3MXFDurzBpes2VXRaroQxaynpmnOO5b6j7lqR8ZxlCUUIpcu
+                0+mrSj3h4j/Pey93n0B3dTs4ec5vEGVfgKCiVoZ8AxhdxMSNbmfqJpEMwZowGmKBwWkOhuk5
+                IjLDxUlnJf717i/XlyAnQWrr+/Q2O3d19nvuvuzNcOgsmH1of2OZXgNb0vvXO4Wbuzpnyb5I
+                dFk0XE3s+vIZv9SE3/VhNi/V/1I/DhoAJoM6leEhehyelPZOFERrg6TyLgbgNSXooKOSoifT
+                VLUsjUPIAHVulgTDmuYJrIxd2kGAmX2l+rT863yAeTkR04WIDkG8NxmcdGGt2dI8HQ==
+          __type: KeyRecord
+        __type: SimpleRole
+        name: owner
+        anonIds: []
+      __type: ChangeOwnerPermission
+  created_at:
+    seconds: 1536931898
+    __type: unixtime
+  issuer:
+    addresses: []
+    keys:
+    - key:
+        __type: RSAPublicKey
+        packed:
+          __type: binary
+          base64: |-
+            HggcAQABxAABp8V6gGoUG3lsypgABbqNREfvIupyjtTY8yOHOPA3RWAoIr8VLC6ypMKmlbcZ
+            o3OGx6y93BhpYphdOjv9N580044z8viFOEmxp9X6NTFCHEGVzY4YyW+i1LFwJxR2vEKhnrS4
+            dY1O3Ue9g0vbdjBpLoxgfmZQAyGPFHgb0SJiaO9SZA1IanzCu+yOeiuhJsJZeJe6tYyVnwpX
+            7ySuZhXMGhkdmkGjuuMlbscQ0bp9qHNwjvWnLheKcSeObjlhVv74ajh+CgDiQkCnsFqZZZKd
+            QGVkmBVgIhN5cMgDTx+trpATEf86GadnodGTqTUthckUvlRgOsBaWoLADpMhz69kgw==
+      __type: KeyRecord
+    __type: SimpleRole
+    name: issuer
+    anonIds: []
+state:
+  owner:
+    addresses: []
+    keys:
+    - key:
+        __type: RSAPublicKey
+        packed:
+          __type: binary
+          base64: |-
+            HggcAQABxAABnDocMh3SxrSt3MXFDurzBpes2VXRaroQxaynpmnOO5b6j7lqR8ZxlCUUIpcu
+            0+mrSj3h4j/Pey93n0B3dTs4ec5vEGVfgKCiVoZ8AxhdxMSNbmfqJpEMwZowGmKBwWkOhuk5
+            IjLDxUlnJf717i/XlyAnQWrr+/Q2O3d19nvuvuzNcOgsmH1of2OZXgNb0vvXO4Wbuzpnyb5I
+            dFk0XE3s+vIZv9SE3/VhNi/V/1I/DhoAJoM6leEhehyelPZOFERrg6TyLgbgNSXooKOSoifT
+            VLUsjUPIAHVulgTDmuYJrIxd2kGAmX2l+rT863yAeTkR04WIDkG8NxmcdGGt2dI8HQ==
+      __type: KeyRecord
+    __type: SimpleRole
+    name: owner
+    anonIds: []
+  parent: null
+  data: {}
+  references: []
+  branch_id: null
+  origin: null
+  created_at:
+    seconds: 1536931898
+    __type: unixtime
+  created_by:
+    target_name: issuer
+    __type: RoleLink
+    name: creator
+  revision: 1
+transactional:
+  id: null

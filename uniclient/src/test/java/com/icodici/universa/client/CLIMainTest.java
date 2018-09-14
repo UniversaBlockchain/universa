@@ -24,6 +24,8 @@ import com.icodici.universa.node.ItemState;
 import com.icodici.universa.node2.Main;
 import com.icodici.universa.node2.Quantiser;
 import com.icodici.universa.node2.network.Client;
+import net.sergeych.biserializer.BossBiMapper;
+import net.sergeych.biserializer.DefaultBiMapper;
 import net.sergeych.tools.*;
 import net.sergeych.utils.Bytes;
 import net.sergeych.utils.LogPrinter;
@@ -3194,9 +3196,27 @@ public class CLIMainTest {
     }
 
     @Test
-    public void createAndRegisterShareFromDSL() throws Exception {
+    public void createAndRegisterNotaryContractWithFileFromDSL() throws Exception {
 
-        // You have a token dsl and want to release own tokens
+        String uContract = getApprovedUContract();
+
+        callMain2("-create", rootPath + "notaryContractWithFile.yaml", "--output",
+                basePath + "realNotaryContractWithFile.unicon",
+                "-k", rootPath + "keys/marty_mcfly.private.unikey");
+
+        assertTrue (new File(basePath + "realNotaryContractWithFile.unicon").exists());
+
+        callMain("--register", basePath + "realNotaryContractWithFile.unicon",
+                "--u", uContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "--wait", "1000");
+        System.out.println(output);
+        assertTrue (output.indexOf(ItemState.APPROVED.name()) >= 0);
+    }
+
+
+    @Test
+    public void createAndRegisterShareFromDSL() throws Exception {
 
         String uContract = getApprovedUContract();
 
@@ -3993,5 +4013,79 @@ public class CLIMainTest {
         itemResult = CLIMain.getClientNetwork().client.getState(newPayment);
         System.out.println("newPayment: " + itemResult);
         assertEquals(ItemState.APPROVED, itemResult.state);
+    }
+
+    @Test(timeout = 90000)
+    public void goodAttachDataToNotary() throws Exception {
+
+        Set<PrivateKey> issuerPrivateKeys = new HashSet<>();
+        Set<PrivateKey> notariusPrivateKeys = new HashSet<>();
+
+        Set<PublicKey> issuerPublicKeys = new HashSet<>();
+        Set<PublicKey> notariusPublicKeys = new HashSet<>();
+
+        issuerPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/marty_mcfly.private.unikey")));
+        for (PrivateKey pk : issuerPrivateKeys) {
+            issuerPublicKeys.add(pk.getPublicKey());
+        }
+
+        notariusPrivateKeys.add(new PrivateKey(Do.read(rootPath + "keys/notarius.private.unikey")));
+        for (PrivateKey pk : notariusPrivateKeys) {
+            notariusPublicKeys.add(pk.getPublicKey());
+        }
+
+        List<String> fileName = new ArrayList<>();
+        List<String> fileDesc = new ArrayList<>();
+        fileName.add(rootPath + "ref_conditions_root_contract.yml");
+        fileName.add(rootPath + "coin100.yml");
+        fileDesc.add("ref_conditions_root_contract.yml - description");
+        fileDesc.add("coin100.yml - description");
+
+        String uContract = getApprovedUContract();
+
+        Contract notaryContract = ContractsService.createNotaryContract(issuerPrivateKeys, notariusPublicKeys, fileName, fileDesc);
+
+        assertTrue(notaryContract.getOwner().isAllowedForKeys(notariusPublicKeys));
+        assertTrue(notaryContract.getIssuer().isAllowedForKeys(issuerPrivateKeys));
+        assertTrue(notaryContract.getCreator().isAllowedForKeys(issuerPrivateKeys));
+
+        assertFalse(notaryContract.getOwner().isAllowedForKeys(issuerPrivateKeys));
+        assertFalse(notaryContract.getIssuer().isAllowedForKeys(notariusPublicKeys));
+        assertFalse(notaryContract.getCreator().isAllowedForKeys(notariusPublicKeys));
+
+        assertTrue(notaryContract.getExpiresAt().isAfter(ZonedDateTime.now().plusMonths(3)));
+        assertTrue(notaryContract.getCreatedAt().isBefore(ZonedDateTime.now()));
+
+        assertTrue(notaryContract.isPermitted("revoke", notariusPublicKeys));
+        assertTrue(notaryContract.isPermitted("revoke", issuerPublicKeys));
+
+        assertTrue(notaryContract.isPermitted("change_owner", notariusPublicKeys));
+        assertFalse(notaryContract.isPermitted("change_owner", issuerPublicKeys));
+
+        Binder files = notaryContract.getDefinition().getData().getBinder("files");
+        assertEquals(files.getBinder("ref_conditions_root_contract_yml").getString("file_name"), "ref_conditions_root_contract.yml");
+        assertEquals(files.getBinder("ref_conditions_root_contract_yml").getString("file_description"), "ref_conditions_root_contract.yml - description");
+        assertEquals(files.getBinder("coin100_yml").getString("file_name"), "coin100.yml");
+        assertEquals(files.getBinder("coin100_yml").getString("file_description"), "coin100.yml - description");
+
+        Contract notaryDeserialized = DefaultBiMapper.deserialize(BossBiMapper.serialize(notaryContract));
+        assertTrue(notaryContract.getDefinition().getData().equals(notaryDeserialized.getDefinition().getData()));
+
+        CLIMain.saveContract(notaryContract, basePath + "notaryContractWithFile.unicon", true, true);
+
+        callMain("-e", basePath + "notaryContractWithFile.unicon", "--output", basePath + "notaryContractWithFile.json");
+        callMain("-e", basePath + "notaryContractWithFile.unicon", "--output", basePath + "notaryContractWithFile.xml");
+        callMain("-e", basePath + "notaryContractWithFile.unicon", "--output", basePath + "notaryContractWithFile.XML");
+        callMain("-e", basePath + "notaryContractWithFile.unicon", "--output", basePath + "notaryContractWithFile.yaml");
+
+        callMain2("--register", basePath + "notaryContractWithFile.unicon",
+                "--u", uContract,
+                "-k", rootPath + "keys/stepan_mamontov.private.unikey",
+                "-wait", "80000", "-v");
+
+        ItemResult itemResult = CLIMain.getClientNetwork().client.getState(notaryContract);
+        System.out.println("notaryContractWithFile: " + itemResult);
+        assertEquals(ItemState.APPROVED, itemResult.state);
+
     }
 }
