@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Properties;
 
 import static java.util.Arrays.asList;
 
@@ -105,7 +106,7 @@ public class Main {
 
                 ledger.saveConfig(myInfo,netConfig,nodeKey);
             } else if(options.has("database")) {
-                ledger = new PostgresLedger((String) options.valueOf("database"));
+                ledger = new PostgresLedger((String) options.valueOf("database"), config.isPermanetMode());
                 log("ledger constructed");
                 Object[] result = ledger.loadConfig();
                 myInfo = (NodeInfo) result[0];
@@ -330,8 +331,9 @@ public class Main {
         );
 
         config.setIsFreeRegistrationsAllowedFromYaml(settings.getBoolean("allow_free_registrations", false));
+        config.setPermanetMode(settings.getBoolean("permanet_mode", false));
 
-        ledger = new PostgresLedger(settings.getStringOrThrow("database"));
+        ledger = new PostgresLedger(settings.getStringOrThrow("database"), config.isPermanetMode());
         log("ledger constructed");
 
         log("key loaded: " + nodeKey.info());

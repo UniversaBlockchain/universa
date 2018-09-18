@@ -97,6 +97,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
         config_s.setNegativeConsensus(negCons);
         config_s.setResyncBreakConsensus(2);
         config_s.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
+        config_s.setPermanetMode(false);
         //config_s.getKeysWhiteList().add(config_s.getUIssuerKey());
 
         //        config_s.setPollTime(Duration.ofMillis(2500));
@@ -143,7 +144,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             TestLocalNetwork ln = new TestLocalNetwork(nc_s, info, getNodeKey(i));
             ln.setNodes(nodesMap_s);
 //            ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
-            Ledger ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
+            Ledger ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties, config_s.isPermanetMode());
             Node n = new Node(config_s, info, ledger, ln);
             nodesMap_s.put(info, n);
             networks_s.add(ln);

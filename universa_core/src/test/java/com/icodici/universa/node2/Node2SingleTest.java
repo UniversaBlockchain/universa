@@ -72,6 +72,7 @@ public class Node2SingleTest extends BaseNetworkTest {
         config_s.setNegativeConsensus(negCons);
         config_s.setResyncBreakConsensus(1);
         config_s.addTransactionUnitsIssuerKeyData(new KeyAddress("Zau3tT8YtDkj3UDBSznrWHAjbhhU4SXsfQLWDFsv5vw24TLn6s"));
+        config_s.setPermanetMode(false);
         //config_s.getKeysWhiteList().add(config_s.getUIssuerKey());
 
         NodeInfo myInfo = new NodeInfo(getNodePublicKey(0), 1, "node1", "localhost",
@@ -85,7 +86,7 @@ public class Node2SingleTest extends BaseNetworkTest {
         if (file.exists())
             properties.load(new FileReader(file));
 
-        ledger_s = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING, properties);
+        ledger_s = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING, properties, config_s.isPermanetMode());
         node_s = new Node(config_s, myInfo, ledger_s, network_s);
         ((TestSingleNetwork)network_s).addNode(myInfo, node_s);
 

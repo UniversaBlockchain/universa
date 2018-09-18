@@ -1844,11 +1844,11 @@ public class Node {
                     cache.put(item, getResult());
                 }
 
-
-                synchronized (mutex) {
-                    //save item in disk cache
-                    ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
-                }
+                if (!config.isPermanetMode())
+                    synchronized (mutex) {
+                        //save item in disk cache
+                        ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
+                    }
 
                 if(item instanceof Contract) {
                     if(((Contract)item).isLimitedForTestnet()) {
@@ -2448,6 +2448,13 @@ public class Node {
                             r.setExpiresAt(newItem.getExpiresAt());
                             try {
                                 r.save();
+
+                                //save newItem to DB in Permanet mode
+                                if (config.isPermanetMode())
+                                    synchronized (mutex) {
+                                        ledger.putItem(record, newItem, Instant.now());
+                                    }
+
                                 Binder newExtraResult = new Binder();
                                 // if new item is smart contract node calls method onCreated or onUpdated
                                 if(newItem instanceof NSmartContract) {
@@ -2550,6 +2557,12 @@ public class Node {
                                 synchronized (cache) {
                                     cache.update(itemId, getResult());
                                 }
+
+                                //save item to DB in Permanet mode
+                                if (config.isPermanetMode())
+                                    synchronized (mutex) {
+                                        ledger.putItem(record, item, Instant.now());
+                                    }
                             }
                         } catch (Ledger.Failure failure) {
                             emergencyBreak();

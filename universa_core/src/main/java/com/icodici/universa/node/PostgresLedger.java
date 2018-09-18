@@ -48,6 +48,7 @@ public class PostgresLedger implements Ledger {
     private final DbPool dbPool;
 
     private boolean sqlite = false;
+    private boolean isPermanetMode = false;
 
     private Map<HashId, WeakReference<StateRecord>> cachedRecords = new WeakHashMap<>();
     private Map<Long, WeakReference<StateRecord>> cachedRecordsById = new WeakHashMap<>();
@@ -60,6 +61,19 @@ public class PostgresLedger implements Ledger {
 
     public PostgresLedger(String connectionString) throws SQLException {
         Properties properties = new Properties();
+        dbPool = new DbPool(connectionString, properties, MAX_CONNECTIONS);
+        init(dbPool);
+    }
+
+    public PostgresLedger(String connectionString, Properties properties, boolean isPermanetMode) throws SQLException {
+        this.isPermanetMode = isPermanetMode;
+        dbPool = new DbPool(connectionString, properties, MAX_CONNECTIONS);
+        init(dbPool);
+    }
+
+    public PostgresLedger(String connectionString, boolean isPermanetMode) throws SQLException {
+        Properties properties = new Properties();
+        this.isPermanetMode = isPermanetMode;
         dbPool = new DbPool(connectionString, properties, MAX_CONNECTIONS);
         init(dbPool);
     }
@@ -390,7 +404,8 @@ public class PostgresLedger implements Ledger {
         }
         protect(() -> {
             inPool(d -> {
-                d.update("DELETE FROM items WHERE id = ?", recordId);
+                if (!isPermanetMode)
+                    d.update("DELETE FROM items WHERE id = ?", recordId);
                 d.update("DELETE FROM ledger WHERE id = ?", recordId);
                 return null;
             });
@@ -687,15 +702,18 @@ public class PostgresLedger implements Ledger {
         try (PooledDb db = dbPool.db()) {
 
             long now = Instant.now().getEpochSecond();
-            String sqlText = "delete from items where id in (select id from ledger where expires_at < ?);";
-            db.update(sqlText, now);
+            String sqlText;
+
+            if (!isPermanetMode) {
+                sqlText = "delete from items where id in (select id from ledger where expires_at < ?);";
+                db.update(sqlText, now);
+
+                sqlText = "delete from items where keepTill < ?;";
+                db.update(sqlText, now);
+            }
 
             sqlText = "delete from ledger where expires_at < ?;";
             db.update(sqlText, now);
-
-            sqlText = "delete from items where keepTill < ?;";
-            db.update(sqlText, now);
-
 
         } catch (SQLException se) {
             se.printStackTrace();

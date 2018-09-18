@@ -81,6 +81,7 @@ public class Config {
         config.addressesWhiteList = new ArrayList<>(addressesWhiteList);
         config.isFreeRegistrationsLimited = isFreeRegistrationsLimited;
         config.isFreeRegistrationsAllowedFromYaml = isFreeRegistrationsAllowedFromYaml;
+        config.permanetMode = permanetMode;
         config.networkAdminKeyAddress = networkAdminKeyAddress;
         config.networkReconfigKeyAddress = networkReconfigKeyAddress;
         config.minPayment = new HashMap<>(minPayment);
@@ -187,6 +188,7 @@ public class Config {
     private Duration holdDuration = Duration.ofDays(30);
     private int paymentQuantaLimit = 200;
 
+    private Boolean permanetMode = null;
     private Boolean isFreeRegistrationsLimited = null;
     private boolean isFreeRegistrationsAllowedFromYaml = false;
 
@@ -447,5 +449,17 @@ public class Config {
                 isFreeRegistrationsLimited = new Boolean(false);
         }
         return isFreeRegistrationsLimited;
+    }
+
+    public void setPermanetMode(boolean val) {
+        if (permanetMode == null)
+            permanetMode = val;
+    }
+
+    public Boolean isPermanetMode() {
+        if (permanetMode == null)
+            return false;
+
+        return permanetMode;
     }
 }
