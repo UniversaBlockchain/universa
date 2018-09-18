@@ -974,6 +974,7 @@ public class MainTest {
         }
 
         Thread.sleep(7000);
+        itemResult = client.getState(parcel.getPayloadContract().getId());
         itemResult2 = client.getState(parcel.getPayloadContract().getNew().get(0).getId());
 
         assertEquals (ItemState.APPROVED, itemResult.state);
