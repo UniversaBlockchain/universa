@@ -86,7 +86,7 @@ public class Node2SingleTest extends BaseNetworkTest {
         if (file.exists())
             properties.load(new FileReader(file));
 
-        ledger_s = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING, properties, config_s.isPermanetMode());
+        ledger_s = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING, properties);
         node_s = new Node(config_s, myInfo, ledger_s, network_s);
         ((TestSingleNetwork)network_s).addNode(myInfo, node_s);
 

@@ -1844,11 +1844,11 @@ public class Node {
                     cache.put(item, getResult());
                 }
 
-                if (!config.isPermanetMode())
-                    synchronized (mutex) {
-                        //save item in disk cache
-                        ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
-                    }
+
+                synchronized (mutex) {
+                    //save item in disk cache
+                    ledger.putItem(record, item, Instant.now().plus(config.getMaxDiskCacheAge()));
+                }
 
                 if(item instanceof Contract) {
                     if(((Contract)item).isLimitedForTestnet()) {
@@ -2452,7 +2452,7 @@ public class Node {
                                 //save newItem to DB in Permanet mode
                                 if (config.isPermanetMode())
                                     synchronized (mutex) {
-                                        ledger.putItem(record, newItem, Instant.now());
+                                        ledger.putKeepingItem(record, newItem);
                                     }
 
                                 Binder newExtraResult = new Binder();
@@ -2561,7 +2561,7 @@ public class Node {
                                 //save item to DB in Permanet mode
                                 if (config.isPermanetMode())
                                     synchronized (mutex) {
-                                        ledger.putItem(record, item, Instant.now());
+                                        ledger.putKeepingItem(record, item);
                                     }
                             }
                         } catch (Ledger.Failure failure) {

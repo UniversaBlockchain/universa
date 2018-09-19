@@ -144,7 +144,7 @@ public class Node2LocalNetworkTest extends BaseNetworkTest {
             TestLocalNetwork ln = new TestLocalNetwork(nc_s, info, getNodeKey(i));
             ln.setNodes(nodesMap_s);
 //            ledger = new SqliteLedger("jdbc:sqlite:testledger" + "_t" + i);
-            Ledger ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties, config_s.isPermanetMode());
+            Ledger ledger = new PostgresLedger(PostgresLedgerTest.CONNECTION_STRING + "_t" + i, properties);
             Node n = new Node(config_s, info, ledger, ln);
             nodesMap_s.put(info, n);
             networks_s.add(ln);

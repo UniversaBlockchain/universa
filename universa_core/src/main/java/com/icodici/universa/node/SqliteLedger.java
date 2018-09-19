@@ -244,6 +244,16 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public Approvable getKeepingItem(HashId itemId)  {
+        return null;
+    }
+
+    @Override
+    public void putKeepingItem(StateRecord record, Approvable item) {
+
+    }
+
+    @Override
     public NImmutableEnvironment getEnvironment(long environmentId) {
         return null;
     }

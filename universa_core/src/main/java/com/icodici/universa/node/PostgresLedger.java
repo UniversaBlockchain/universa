@@ -48,7 +48,6 @@ public class PostgresLedger implements Ledger {
     private final DbPool dbPool;
 
     private boolean sqlite = false;
-    private boolean isPermanetMode = false;
 
     private Map<HashId, WeakReference<StateRecord>> cachedRecords = new WeakHashMap<>();
     private Map<Long, WeakReference<StateRecord>> cachedRecordsById = new WeakHashMap<>();
@@ -61,19 +60,6 @@ public class PostgresLedger implements Ledger {
 
     public PostgresLedger(String connectionString) throws SQLException {
         Properties properties = new Properties();
-        dbPool = new DbPool(connectionString, properties, MAX_CONNECTIONS);
-        init(dbPool);
-    }
-
-    public PostgresLedger(String connectionString, Properties properties, boolean isPermanetMode) throws SQLException {
-        this.isPermanetMode = isPermanetMode;
-        dbPool = new DbPool(connectionString, properties, MAX_CONNECTIONS);
-        init(dbPool);
-    }
-
-    public PostgresLedger(String connectionString, boolean isPermanetMode) throws SQLException {
-        Properties properties = new Properties();
-        this.isPermanetMode = isPermanetMode;
         dbPool = new DbPool(connectionString, properties, MAX_CONNECTIONS);
         init(dbPool);
     }
@@ -303,7 +289,47 @@ public class PostgresLedger implements Ledger {
         }
     }
 
+    @Override
+    public Approvable getKeepingItem(HashId itemId) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("select * from keeping_items where hash = ? limit 1", itemId.getDigest()))) {
+                if (rs == null)
+                    return null;
+                return Contract.fromPackedTransaction(rs.getBytes("packed"));
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
 
+    @Override
+    public void putKeepingItem(StateRecord record, Approvable item) {
+        if (item instanceof Contract) {
+            try (PooledDb db = dbPool.db()) {
+                try (
+                        PreparedStatement statement =
+                                db.statement(
+                                        "insert into keeping_items (id,hash,origin,packed) values(?,?,?,?);"
+                                )
+                ) {
+                    statement.setLong(1, record.getRecordId());
+                    statement.setBytes(2, record.getId().getDigest());
+                    statement.setBytes(3, ((Contract) item).getOrigin().getDigest());
+                    statement.setBytes(4, ((Contract) item).getPackedTransaction());
+                    db.updateWithStatement(statement);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw e;
+                }
+            } catch (SQLException se) {
+                se.printStackTrace();
+                throw new Failure("keeping item save failed:" + se);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
     private <T> T protect(Callable<T> block) {
         try {
@@ -404,8 +430,7 @@ public class PostgresLedger implements Ledger {
         }
         protect(() -> {
             inPool(d -> {
-                if (!isPermanetMode)
-                    d.update("DELETE FROM items WHERE id = ?", recordId);
+                d.update("DELETE FROM items WHERE id = ?", recordId);
                 d.update("DELETE FROM ledger WHERE id = ?", recordId);
                 return null;
             });
@@ -702,18 +727,15 @@ public class PostgresLedger implements Ledger {
         try (PooledDb db = dbPool.db()) {
 
             long now = Instant.now().getEpochSecond();
-            String sqlText;
-
-            if (!isPermanetMode) {
-                sqlText = "delete from items where id in (select id from ledger where expires_at < ?);";
-                db.update(sqlText, now);
-
-                sqlText = "delete from items where keepTill < ?;";
-                db.update(sqlText, now);
-            }
+            String sqlText = "delete from items where id in (select id from ledger where expires_at < ?);";
+            db.update(sqlText, now);
 
             sqlText = "delete from ledger where expires_at < ?;";
             db.update(sqlText, now);
+
+            sqlText = "delete from items where keepTill < ?;";
+            db.update(sqlText, now);
+
 
         } catch (SQLException se) {
             se.printStackTrace();
