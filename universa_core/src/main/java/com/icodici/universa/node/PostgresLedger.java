@@ -304,6 +304,20 @@ public class PostgresLedger implements Ledger {
     }
 
     @Override
+    public Approvable getKeepingIdByOrigin(HashId origin_id) {
+        return protect(() -> {
+            try (ResultSet rs = inPool(db -> db.queryRow("select * from keeping_items where origin = ? limit 1", origin_id.getDigest()))) {
+                if (rs == null)
+                    return null;
+                return Contract.fromPackedTransaction(rs.getBytes("id"));
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw e;
+            }
+        });
+    }
+
+    @Override
     public void putKeepingItem(StateRecord record, Approvable item) {
         if (item instanceof Contract) {
             try (PooledDb db = dbPool.db()) {

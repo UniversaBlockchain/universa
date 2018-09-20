@@ -198,6 +198,7 @@ public interface Ledger {
 
     Approvable getKeepingItem(HashId itemId);
     void putKeepingItem(StateRecord record, Approvable item);
+    Approvable getKeepingIdByOrigin(HashId origin_id);
 
     NImmutableEnvironment getEnvironment(long environmentId);
     NImmutableEnvironment getEnvironment(HashId contractId);

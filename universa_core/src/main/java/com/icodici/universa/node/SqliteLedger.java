@@ -249,6 +249,11 @@ public class SqliteLedger implements Ledger {
     }
 
     @Override
+    public Approvable getKeepingIdByOrigin(HashId origin_id)  {
+        return null;
+    }
+
+    @Override
     public void putKeepingItem(StateRecord record, Approvable item) {
 
     }

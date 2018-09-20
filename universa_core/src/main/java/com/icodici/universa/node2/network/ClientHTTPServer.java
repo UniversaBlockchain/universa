@@ -10,6 +10,7 @@ package com.icodici.universa.node2.network;
 import com.icodici.crypto.KeyAddress;
 import com.icodici.crypto.PrivateKey;
 import com.icodici.crypto.PublicKey;
+import com.icodici.universa.Approvable;
 import com.icodici.universa.ErrorRecord;
 import com.icodici.universa.Errors;
 import com.icodici.universa.HashId;
@@ -21,6 +22,7 @@ import com.icodici.universa.contract.services.NSmartContract;
 import com.icodici.universa.contract.services.SlotContract;
 import com.icodici.universa.node.ItemResult;
 import com.icodici.universa.node.ItemState;
+import com.icodici.universa.node.StateRecord;
 import com.icodici.universa.node.network.BasicHTTPService;
 import com.icodici.universa.node2.*;
 import net.sergeych.boss.Boss;
@@ -29,6 +31,7 @@ import net.sergeych.tools.BufferedLogger;
 import net.sergeych.utils.Bytes;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
@@ -196,6 +199,9 @@ public class ClientHTTPServer extends BasicHttpServer {
         addSecureEndpoint("queryNameRecord", this::queryNameRecord);
         addSecureEndpoint("queryNameContract", this::queryNameContract);
 
+        addSecureEndpoint("getBody", this::getBody);
+        addSecureEndpoint("getContract", this::getContract);
+
     }
 
     @Override
@@ -261,6 +267,61 @@ public class ClientHTTPServer extends BasicHttpServer {
             }
         }
         return b;
+    }
+
+    private Binder getBody(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        Binder res = new Binder();
+
+        HashId itemId = HashId.withDigest(params.getBinary("itemId"));
+
+        Approvable body = node.getLedger().getKeepingItem(itemId);
+        if (body instanceof Contract) {
+            byte[] packedContract = ((Contract) body).getPackedTransaction();
+            res.put("packedContract", packedContract);
+            return res;
+        }
+
+        node.resync(itemId);
+        ItemResult itemResult = node.checkItem(itemId);
+
+        if (itemResult == ItemResult.UNDEFINED){
+            return null;
+        }
+
+        //
+        //
+
+        StateRecord r = node.getLedger().getRecord(itemId);
+        r.save();
+        node.getLedger().putItem(r,body, Instant.now().plus(config.getMaxDiskCacheAge()));
+
+        byte[] packedContract = ((Contract) body).getPackedTransaction();
+        res.put("packedContract", packedContract);
+
+        return res;
+    }
+
+    private Binder getContract(Binder params, Session session) throws IOException {
+
+        checkNode(session, true);
+
+        Binder res = new Binder();
+
+        HashId origin_id = HashId.withDigest(params.getBinary("origin_id"));
+
+        Approvable contractId = node.getLedger().getKeepingIdByOrigin(origin_id);
+        if (contractId == null){
+            return null;
+        }
+
+        if (contractId instanceof Contract) {
+
+        }
+
+        return res;
     }
 
     private ItemResult itemResultOfError(Errors error, String object, String message) {

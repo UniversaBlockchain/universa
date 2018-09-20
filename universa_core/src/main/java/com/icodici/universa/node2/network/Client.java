@@ -743,4 +743,31 @@ public class Client {
             }
         });
     }
+
+    /**
+     * Get the body contract with the given hash
+     * @param itemId contract hash
+     * @return packed transaction
+     * @throws ClientError
+     */
+    public Binder getBody(HashId itemId) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("getBody", "itemId", itemId.getDigest());
+            return result;
+        });
+    }
+
+    /**
+     * Get the current contract ID with the given origin
+     * @param origin_id contract origin
+     * @return contracts ID
+     * @throws ClientError
+     */
+    public Binder getContract(HashId origin_id) throws ClientError {
+        return protect(() -> {
+            Binder result = httpClient.command("getContract", "origin_id", origin_id.getDigest());
+            return result;
+        });
+    }
+
 }
